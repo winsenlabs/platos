@@ -1,47 +1,24 @@
 ---
 slug: batches
-title: Batches
-description: Group of trigger.dev runs spawned together. Used by Platos for the agent_batch meta-tool.
-category: engine
-order: 50
-trigger_dev_primitive: true
-trigger_dev_link: "https://trigger.dev/docs/v3/triggering"
+title: Batch requests
+description: Submit repeated independent inputs without introducing another execution resource.
+category: platform
+order: 10
 questions:
-  - "What is a batch?"
-  - "How do I spawn 100 runs in one call?"
-  - "How do I see the status of every run in a batch?"
-  - "What is agent_batch and how does it use batches?"
-  - "How do I cancel a whole batch?"
+  - "How do I process many inputs with one Agent Version?"
+  - "How are batch items observed?"
 related:
-  - runs
-  - platos-tasks
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.batches/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.batches.$batchParam/route.tsx
-  - apps/agent/src/trigger-tasks/agent-batch.task.ts
+  - turns
+  - jobs
+  - observability
 ---
 
-# Batches
+# Batch requests
 
-A batch is a group of [runs](/docs/runs) spawned in one call. trigger.dev tracks the batch as a parent record so you can monitor and cancel the whole group as one.
+A batch is a client convenience for submitting many independent inputs. It is not a durable top-level Platos noun.
 
-Platos uses trigger.dev as the durable execution engine. Batches are a trigger.dev concept that Platos surfaces in the dashboard for visibility. The triggering call (`tasks.batchTrigger`) and the per-run semantics are unchanged from upstream.
+Each accepted item creates its own Turn in the selected Thread or its own Job when the work is asynchronous. Status, cost, retries, and errors remain attached to those canonical records.
 
-## In Platos
+Use a stable idempotency key per item. A client can retry submission without duplicating accepted work, and partial failures do not hide successful items.
 
-The Batches page at `/orgs/{org}/projects/{project}/env/{env}/batches` lists every batch with its size, the per-status counts, and a progress bar. Click into a batch to see every run in the group.
-
-The most common Platos use of batches is the `agent_batch` meta-tool. An agent calls `agent_batch({ items: [...], prompt: "...per item..." })`; the runtime turns each item into one run inside a single batch using `agent-batch.task.ts`. The agent gets one batch id back; the dashboard shows it as one row with progress.
-
-Cancelling a batch cancels every running and queued run inside it. Completed runs stay completed. Cancellation cascades to tool calls each run had in flight.
-
-## Reference
-
-The full reference for batch triggers lives in the trigger.dev docs:
-
-**[trigger.dev/docs/v3/triggering](https://trigger.dev/docs/v3/triggering)**
-
-## Related
-
-- [Runs](/docs/runs): each batch contains many runs.
-- [Platos tasks](/docs/platos-tasks): `agent_batch` is the agent-level meta-tool.
+For large asynchronous sets, create a coordinating Job whose input contains item identifiers. Keep item payloads in normal scoped storage rather than embedding sensitive values in Job metadata.

@@ -74,7 +74,7 @@ export interface PlatosArtifact {
 export type PlatosStreamEvent =
   | { type: "connected" }
   | { type: "disconnected"; reason?: string }
-  | { type: "reconnecting"; attempt: number }
+  | { type: "reconnecting"; retryCount: number }
   | { type: "status"; status: string; agentId?: string }
   | { type: "meta"; thread_id?: string; agent_id?: string; usage?: Record<string, unknown> }
   | { type: "token"; text: string }
@@ -84,8 +84,8 @@ export type PlatosStreamEvent =
   | { type: "tool_call"; name: string; params: Record<string, unknown>; callId: string }
   | { type: "tool_result"; name: string; result: unknown; callId: string; display?: unknown }
   | { type: "approval_needed"; approvalId: string; action: string; details?: string }
-  | { type: "run_update"; runId: string; status: string; metadata?: Record<string, unknown> | null; output?: unknown; error?: unknown }
-  | { type: "structured_output"; object: unknown; attempts: number }
+  | { type: "job_update"; jobId: string; status: string; metadata?: Record<string, unknown> | null; output?: unknown; error?: unknown }
+  | { type: "structured_output"; object: unknown; retryCount: number }
   | { type: "artifact_start"; artifactId: string; artifactKey: string; kind: string; revision: number; title?: string; language?: string; op: "generate" | "revise" }
   | { type: "artifact_delta"; artifactId: string; artifactKey: string; chunk: string }
   | { type: "artifact_committed"; artifactId: string; artifactKey: string; kind: string; revision: number; title?: string; language?: string; finalContent: string; createdAt: string }
@@ -100,7 +100,7 @@ export type PlatosStreamEvent =
  * errors, 5xx responses, and 429s that carry `Retry-After`.
  */
 export interface PlatosRetryOptions {
-  /** Max retry attempts (excluding the original request). Default: 3. */
+  /** Max retries (excluding the original request). Default: 3. */
   maxRetries?: number;
   /** Base delay in ms for exponential backoff. Default: 250ms. */
   baseDelayMs?: number;
@@ -118,7 +118,7 @@ export interface PlatosRetryOptions {
 export type PlatosTokenRefreshFn = (ctx: {
   /** The current token the SDK holds (may be stale). */
   currentToken: string | undefined;
-  /** The status code that triggered the refresh. */
+  /** The status code that caused the refresh. */
   status: number;
 }) => Promise<string | null>;
 
@@ -130,7 +130,7 @@ export interface PlatosClientOptions {
   baseUrl: string;
   /**
    * Session-token JWT minted by the entity's webapp (Mode 2). Preferred
-   * for any consumer-facing deployment.
+   * for any consumer-facing service.
    */
   sessionToken?: string;
   /**
@@ -186,12 +186,12 @@ export interface SendMessageOptions {
    */
   signal?: AbortSignal;
   /**
-   * Max socket-reconnection attempts during a single `send()` call.
+   * Max socket-reconnection retries during a single `send()` call.
    * Default: 5. After that the iterator emits `{ type: "error", ... }`
    * and exits. Events that arrive while reconnecting are buffered; none
    * are dropped.
    */
-  maxReconnectAttempts?: number;
+  maxReconnectRetries?: number;
   /**
    * Per-request model routing label. Selects a named route from the agent's
    * `modelRoutes` config (e.g. `"alpha"`, `"bravo"`, `"fast"`). Falls back to

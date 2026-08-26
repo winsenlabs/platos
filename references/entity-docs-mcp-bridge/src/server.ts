@@ -286,7 +286,7 @@ async function main(): Promise<void> {
     },
   });
   // `runForever()` reconnects with exponential backoff on network drops
-  // and re-syncs all registered tools on each attempt.
+      // and re-syncs all registered tools on each retry.
   await client.runForever();
 }
 

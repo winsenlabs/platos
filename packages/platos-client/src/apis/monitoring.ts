@@ -1,7 +1,7 @@
 /**
  * @platosdev/client — monitoring API.
  *
- * Read-only reporting surface: run list, trace view, cost rollups.
+ * Read-only reporting surface: Turn list, trace view, cost rollups.
  * Thin wrappers over the existing webapp / agent REST endpoints.
  * EOBD.85.
  */
@@ -9,7 +9,7 @@
 import type { PlatosClient } from "../client.js";
 import type { PlatosScope } from "../types.js";
 
-export interface RunSummary {
+export interface TurnSummary {
   id: string;
   agentId: string;
   threadId: string;
@@ -23,7 +23,7 @@ export interface RunSummary {
 export interface CostRollupByAgent {
   agentId: string;
   costCents: number;
-  runs: number;
+  turns: number;
   inputTokens: number;
   outputTokens: number;
 }
@@ -31,7 +31,7 @@ export interface CostRollupByAgent {
 export interface CostRollupByScope {
   day: string;
   costCents: number;
-  runs: number;
+  turns: number;
   inputTokens: number;
   outputTokens: number;
 }
@@ -49,7 +49,7 @@ export interface TraceSpan {
 export class MonitoringApi {
   constructor(private readonly client: PlatosClient) {}
 
-  async runs(
+  async turns(
     options: {
       agentId?: string;
       threadId?: string;
@@ -57,23 +57,23 @@ export class MonitoringApi {
       limit?: number;
     } = {},
     scope?: PlatosScope,
-  ): Promise<RunSummary[]> {
+  ): Promise<TurnSummary[]> {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(options)) {
       if (v !== undefined && v !== null) qs.set(k, String(v));
     }
     const tail = qs.toString() ? `?${qs}` : "";
-    const res = await this.client._fetch<{ runs: RunSummary[] }>(
-      `/api/v1/agent/monitoring/runs${tail}`,
+    const res = await this.client._fetch<{ turns: TurnSummary[] }>(
+      `/api/v1/agent/turns${tail}`,
       { method: "GET" },
       scope,
     );
-    return res?.runs ?? [];
+    return res?.turns ?? [];
   }
 
-  async trace(traceId: string, scope?: PlatosScope): Promise<TraceSpan[]> {
+  async trace(threadId: string, scope?: PlatosScope): Promise<TraceSpan[]> {
     const res = await this.client._fetch<{ spans: TraceSpan[] }>(
-      `/api/v1/agent/monitoring/traces/${encodeURIComponent(traceId)}`,
+      `/api/v1/agent/monitoring/trace/${encodeURIComponent(threadId)}`,
       { method: "GET" },
       scope,
     );
@@ -88,7 +88,7 @@ export class MonitoringApi {
     if (options.day) qs.set("day", options.day);
     const tail = qs.toString() ? `?${qs}` : "";
     const res = await this.client._fetch<{ rollup: CostRollupByAgent[] }>(
-      `/api/v1/agent/monitoring/cost/by-agent${tail}`,
+      `/api/v1/agent/monitoring/cost-by-agent${tail}`,
       { method: "GET" },
       scope,
     );
@@ -103,7 +103,7 @@ export class MonitoringApi {
     if (options.daysBack) qs.set("daysBack", String(options.daysBack));
     const tail = qs.toString() ? `?${qs}` : "";
     const res = await this.client._fetch<{ rollup: CostRollupByScope[] }>(
-      `/api/v1/agent/monitoring/cost/by-scope${tail}`,
+      `/api/v1/agent/monitoring/cost${tail}`,
       { method: "GET" },
       scope,
     );

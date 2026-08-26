@@ -1,10 +1,8 @@
 import { Global, Module, type Provider } from "@nestjs/common";
-import {
-  CredentialRootKeyRing,
-  PlatosSecretStore,
-  PrismaClient,
-} from "@platos/tenancy-database";
+import { CredentialRootKeyRing, PlatosSecretStore, PrismaClient } from "@platos/tenancy-database";
 import { env } from "./env";
+import { instrumentPerformanceEvidencePrisma } from "../performance-evidence/performance-evidence.prisma";
+import { performanceEvidenceService } from "../performance-evidence/performance-evidence.service";
 
 export const PRISMA_TOKEN = "PRISMA";
 export const PLATOS_SECRET_STORE_TOKEN = "PLATOS_SECRET_STORE";
@@ -31,8 +29,13 @@ export function environmentScopeWhere(scope: CanonicalEnvironmentScope) {
 const prismaProvider: Provider<PrismaClient> = {
   provide: PRISMA_TOKEN,
   useFactory: async (): Promise<PrismaClient> => {
-    const prisma = new PrismaClient({ datasourceUrl: env.DATABASE_URL });
-    await prisma.$connect();
+    const evidenceEnabled = performanceEvidenceService.enabled();
+    const basePrisma = new PrismaClient({
+      datasourceUrl: env.DATABASE_URL,
+      ...(evidenceEnabled ? { log: [{ emit: "event", level: "query" } as const] } : {}),
+    });
+    const prisma = instrumentPerformanceEvidencePrisma(basePrisma, performanceEvidenceService);
+    await basePrisma.$connect();
     console.log("[Platos] Database connected");
     return prisma;
   },
@@ -47,7 +50,7 @@ const platosSecretStoreProvider: Provider<PlatosSecretStore> = {
       new CredentialRootKeyRing({
         activeVersion: env.PLATOS_CREDENTIAL_ROOT_KEY_VERSION,
         keys: env.PLATOS_CREDENTIAL_ROOT_KEYS,
-      }),
+      })
     ),
 };
 

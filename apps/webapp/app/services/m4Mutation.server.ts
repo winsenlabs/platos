@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { requireEnvironmentScope } from "./auth.server";
-import { agentRequest, PlatosAgentApiError } from "./platosAgent.server";
+import { agentRequest, PlatosAgentApiError, UnsafeCredentialResponseError } from "./platosAgent.server";
 
 export async function m4MutationContext(args: ActionFunctionArgs) {
   const organizationSlug = args.params.organizationSlug;
@@ -32,8 +32,10 @@ export async function m4Mutation(
     // Remix redirect/not-found/auth Responses carry routing semantics. Turning
     // them into mutation JSON creates false 400s and can bypass login redirects.
     if (error instanceof Response) throw error;
-    const code = error instanceof PlatosAgentApiError ? error.code : "INVALID_REQUEST";
-    const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 500
+    const code = error instanceof PlatosAgentApiError || error instanceof UnsafeCredentialResponseError
+      ? error.code
+      : "INVALID_REQUEST";
+    const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 600
       ? error.status
       : 400;
     return json(
@@ -41,7 +43,7 @@ export async function m4Mutation(
         ok: false as const,
         error: {
           code,
-          message: error instanceof PlatosAgentApiError
+          message: error instanceof PlatosAgentApiError || error instanceof UnsafeCredentialResponseError
             ? `${operation} failed (${code})`
             : error instanceof Error
               ? error.message

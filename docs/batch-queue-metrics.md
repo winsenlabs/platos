@@ -46,7 +46,7 @@ These metrics track the underlying message queue operations. With the batch queu
 | `batch-queue.messages.enqueued` | Number of messages (batch items) added to the queue |
 | `batch-queue.messages.completed` | Number of messages successfully processed |
 | `batch-queue.messages.failed` | Number of messages that failed processing |
-| `batch-queue.messages.retried` | Number of message retry attempts |
+| `batch-queue.messages.retried` | Number of message retries |
 | `batch-queue.messages.dlq` | Number of messages sent to dead letter queue |
 
 ### Histograms
@@ -249,4 +249,3 @@ When investigating batch queue issues:
 4. **Check rate limits**: Look for "Global rate limit reached" debug logs
 5. **Check DRR state**: Query `batch:drr:deficit` hash in Redis
 6. **Check batch status**: Query `BatchTaskRun` table for stuck `PROCESSING` batches
-

@@ -40,7 +40,7 @@ async def main() -> None:
                 elif t == "tool_call":
                     print(f"\n[tool → {event.get('name')}]", file=sys.stderr)
                 elif t == "reconnecting":
-                    print(f"\n[reconnecting attempt {event.get('attempt')}]", file=sys.stderr)
+                    print(f"\n[reconnecting retry {event.get('retryCount')}]", file=sys.stderr)
                 elif t == "error":
                     print(f"\n[error] {event.get('message')}", file=sys.stderr)
                 elif t == "done":

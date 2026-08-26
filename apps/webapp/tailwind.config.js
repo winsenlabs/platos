@@ -162,7 +162,7 @@ const queues = colors.purple[500];
 const query = colors.blue[500];
 const metrics = colors.green[500];
 const customDashboards = charcoal[400];
-const deployments = colors.green[500];
+const agentVersions = colors.green[500];
 const concurrency = colors.amber[500];
 const limits = colors.purple[500];
 const regions = colors.green[500];
@@ -249,7 +249,7 @@ module.exports = {
         query,
         regions,
         limits,
-        deployments,
+        agentVersions,
         logs,
         tests,
         apiKeys,

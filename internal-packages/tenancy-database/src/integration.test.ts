@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(91);
+    expect(modelNames).toHaveLength(92);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -76,6 +76,61 @@ describe("domain schema integration", () => {
       await expect(delegate.findUnique({ where: seeded.registry.get(modelName)! }), modelName)
         .resolves.not.toBeNull();
     }
+  });
+
+  test("preserves fork ancestry without ledger duplication and enforces one-way attachment binding", async () => {
+    const ledgerBefore = await Promise.all([
+      control.turn.count(),
+      control.step.count(),
+      control.toolCall.count(),
+    ]);
+    const fork = await control.thread.create({
+      data: {
+        environmentId: seeded.environment.id,
+        agentId: seeded.agent.id,
+        endUserId: seeded.endUser.id,
+        parentThreadId: seeded.thread.id,
+        forkedUpToTurnId: seeded.turn.id,
+        forkedTurnIds: [seeded.turn.id],
+      },
+    });
+    expect(await Promise.all([
+      control.turn.count(),
+      control.step.count(),
+      control.toolCall.count(),
+    ])).toEqual(ledgerBefore);
+    expect(fork).toMatchObject({
+      parentThreadId: seeded.thread.id,
+      forkedUpToTurnId: seeded.turn.id,
+      forkedTurnIds: [seeded.turn.id],
+    });
+
+    const attachment = await control.messageAttachment.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        threadId: seeded.thread.id,
+        kind: "file",
+        mimeType: "text/plain",
+        bytes: 1,
+        storageKey: `binding-${Date.now()}`,
+      },
+    });
+    await control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: seeded.turn.id } });
+    await expect(control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: seeded.turn.id } }))
+      .resolves.toMatchObject({ turnId: seeded.turn.id });
+
+    const secondTurn = await control.turn.create({
+      data: {
+        threadId: seeded.thread.id,
+        agentVersionId: seeded.agentVersion.id,
+        versionBucket: AgentVersionBucket.CURRENT,
+        sequence: 2,
+      },
+    });
+    await expect(control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: secondTurn.id } }))
+      .rejects.toThrow(/one-way and immutable/);
   });
 
   test("exposes only subject delegates and no operator, configuration, or raw SQL path", async () => {
@@ -393,12 +448,12 @@ describe("domain schema integration", () => {
     })).resolves.toBe(1);
   });
 
-  test("serializes channel refresh claims and durably fences interrupted attempts", async () => {
+  test("serializes channel refresh claims and durably fences interrupted refreshes", async () => {
     await control.channelInstallation.update({
       where: { id: seeded.installation.id },
       data: {
         tokenRefreshState: "IDLE",
-        tokenRefreshAttemptId: null,
+        tokenRefreshClaimId: null,
         tokenRefreshStartedAt: null,
         tokenGeneration: 5,
       },
@@ -414,7 +469,7 @@ describe("domain schema integration", () => {
           },
           data: {
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: `00000000-0000-0000-0000-${String(index + 20).padStart(12, "0")}`,
+            tokenRefreshClaimId: `00000000-0000-0000-0000-${String(index + 20).padStart(12, "0")}`,
             tokenRefreshStartedAt: new Date(),
           },
         })
@@ -426,14 +481,14 @@ describe("domain schema integration", () => {
 
     const claimed = await control.channelInstallation.findUniqueOrThrow({
       where: { id: seeded.installation.id },
-      select: { tokenRefreshAttemptId: true },
+      select: { tokenRefreshClaimId: true },
     });
     await control.channelInstallation.update({
       where: { id: seeded.installation.id },
       data: {
         tokenGeneration: { increment: 1 },
         tokenRefreshState: "IDLE",
-        tokenRefreshAttemptId: null,
+        tokenRefreshClaimId: null,
         tokenRefreshRepairCode: null,
       },
     });
@@ -442,7 +497,7 @@ describe("domain schema integration", () => {
         id: seeded.installation.id,
         tokenGeneration: 5,
         tokenRefreshState: "REFRESHING",
-        tokenRefreshAttemptId: claimed.tokenRefreshAttemptId,
+        tokenRefreshClaimId: claimed.tokenRefreshClaimId,
       },
       data: { tokenRefreshState: "REPAIR_REQUIRED", tokenRefreshRepairCode: "STALE" },
     })).resolves.toMatchObject({ count: 0 });
@@ -685,13 +740,13 @@ describe("domain schema integration", () => {
   });
 
   test("acquires and advances the durable compaction cursor atomically", async () => {
-    const attempts = await Promise.all(
+    const requests = await Promise.all(
       Array.from({ length: 8 }, () => control.thread.updateMany({
         where: { id: seeded.thread.id, compactionState: ThreadCompactionState.IDLE },
         data: { compactionState: ThreadCompactionState.IN_PROGRESS },
       }))
     );
-    expect(attempts.reduce((total, attempt) => total + attempt.count, 0)).toBe(1);
+    expect(requests.reduce((total, request) => total + request.count, 0)).toBe(1);
 
     const compactedAt = new Date();
     await control.$transaction(async (tx) => {
@@ -747,7 +802,7 @@ describe("domain schema integration", () => {
         clusterId: seeded.cluster.id,
         kind: "fact",
         content: "Orthogonal fact",
-        visibility: "subject",
+        visibility: "agent_visible",
         source: "manual",
       },
     });
@@ -800,7 +855,7 @@ describe("domain schema integration", () => {
         agentId: seeded.agent.id,
         kind: "fact",
         content: "Private to the owner",
-        visibility: "subject",
+        visibility: "agent_visible",
         source: "manual",
       },
     });
@@ -898,7 +953,7 @@ describe("domain schema integration", () => {
           clusterId: seeded.cluster.id,
           kind: "fact",
           content: "Concurrently extracted fact",
-          visibility: "subject",
+          visibility: "agent_visible",
           source: "extracted",
           sourceThreadId: seeded.thread.id,
           sourceTurnIds: [seeded.turn.id],
@@ -924,7 +979,7 @@ describe("domain schema integration", () => {
         agentId: seeded.agent.id,
         kind: "fact",
         content: "Missing extraction version",
-        visibility: "subject",
+        visibility: "agent_visible",
         source: "extracted",
         sourceThreadId: seeded.thread.id,
         sourceTurnIds: [seeded.turn.id],
@@ -1078,8 +1133,9 @@ describe("domain schema integration", () => {
         agentId: seeded.agent.id,
         kind: "fact",
         content: "private",
-        visibility: "subject",
-        source: "turn",
+        agentVisible: false,
+        visibility: "private",
+        source: "manual",
       },
     });
     const audit = await control.toolCallAudit.create({
@@ -1096,6 +1152,8 @@ describe("domain schema integration", () => {
       data: {
         environmentId: seeded.environment.id,
         endUserId: subject.id,
+        agentId: seeded.agent.id,
+        threadId: thread.id,
         kind: "file",
         mimeType: "text/plain",
         bytes: 7,
@@ -1362,7 +1420,7 @@ async function seedEveryModel(control: PrismaClient) {
       permissions: ["admin"],
     },
   }));
-  track("PostmanTemplate", await control.postmanTemplate.create({
+  const postmanTemplate = track("PostmanTemplate", await control.postmanTemplate.create({
     data: {
       environmentId: environment.id,
       agentId: agent.id,
@@ -1421,6 +1479,23 @@ async function seedEveryModel(control: PrismaClient) {
       output: { text: "hi" },
       costCents: 0.25,
       latencyMs: 120,
+    },
+  }));
+  track("PostmanExecution", await control.postmanExecution.create({
+    data: {
+      environmentId: environment.id,
+      agentId: agent.id,
+      templateId: postmanTemplate.id,
+      requestId: "88888888-8888-4888-8888-888888888888",
+      requestFingerprint: "ab".repeat(32),
+      actorUserId: user.id,
+      simulatedEndUserId: endUser.id,
+      contextHandle: "99999999-9999-4999-8999-999999999999",
+      contextExpiresAt: new Date("2026-08-20T00:15:00.000Z"),
+      status: WorkStatus.SUCCEEDED,
+      threadId: thread.id,
+      turnId: turn.id,
+      completedAt: new Date("2026-08-20T00:00:01.000Z"),
     },
   }));
   const step = track("Step", await control.step.create({
@@ -1498,6 +1573,8 @@ async function seedEveryModel(control: PrismaClient) {
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
+      agentId: agent.id,
+      threadId: thread.id,
       turnId: turn.id,
       kind: "file",
       mimeType: "text/plain",
@@ -1648,15 +1725,15 @@ async function seedEveryModel(control: PrismaClient) {
       kind: "BUDGET",
       idempotencyKey: `budget:${thresholdEvent.id}:${alertChannel.id}`,
       status: "SUCCEEDED",
-      attemptCount: 1,
+      retryCount: 1,
       deliveredAt: new Date(),
     },
   }));
-  track("AlertDeliveryAttempt", await control.alertDeliveryAttempt.create({
+  track("AlertDeliveryRetry", await control.alertDeliveryRetry.create({
     data: {
       environmentId: environment.id,
       deliveryId: delivery.id,
-      attemptNumber: 1,
+      retryNumber: 1,
       status: "SUCCEEDED",
       finishedAt: new Date(),
     },
@@ -1723,7 +1800,7 @@ async function seedEveryModel(control: PrismaClient) {
       environmentId: environment.id,
       externalId: "job",
       displayName: "Background work",
-      triggerType: "manual",
+      invocationType: "manual",
       payloadSchema: { type: "object" },
       handler: "background",
       createdBy: user.id,
@@ -1764,8 +1841,8 @@ async function seedEveryModel(control: PrismaClient) {
       kind: "fact",
       content: "Likes tests",
       metadata: {},
-      visibility: "subject",
-      source: "turn",
+      visibility: "agent_visible",
+      source: "extracted",
       sourceThreadId: thread.id,
       sourceTurnIds: [turn.id],
       extractorVersion: "test-extractor-v1",
@@ -1928,6 +2005,7 @@ async function seedEveryModel(control: PrismaClient) {
   }));
   track("EntityToolPolicy", await control.entityToolPolicy.create({
     data: {
+      environmentId: environment.id,
       entityId: entity.id,
       toolId: tool.id,
       effect: PolicyEffect.ALLOW,

@@ -9,6 +9,12 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 const TOKEN_PREFIX = "plt_ent_";
 const DEFAULT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
+function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
+  return Number.isInteger(value)
+    ? Math.max(minimum, Math.min(maximum, value as number))
+    : fallback;
+}
+
 function constantTimeHexEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   try {
@@ -183,8 +189,13 @@ export class McpBearerTokenService {
   }
 
   /** List tokens for an entity (hashes not returned). */
-  async list(entityPk: string, environmentId: string): Promise<
-    Array<{
+  async list(
+    entityPk: string,
+    environmentId: string,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<
+    {
+      tokens: Array<{
       id: string;
       environmentId: string;
       label: string;
@@ -194,27 +205,45 @@ export class McpBearerTokenService {
       lastUsedAt: Date | null;
       expiresAt: Date | null;
       revokedAt: Date | null;
-    }>
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }
   > {
     const scope = await this.resolveScope(entityPk, environmentId);
     if (!scope) {
       throw new Error("Entity and environment do not share canonical project ancestry");
     }
-    return this.prisma.mcpBearerToken.findMany({
-      where: { entityId: entityPk, environmentId },
-      select: {
-        id: true,
-        environmentId: true,
-        label: true,
-        mcpUserId: true,
-        scopes: true,
-        createdAt: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        revokedAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const limit = boundedInteger(options.limit, 50, 1, 100);
+    const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+    const where = { entityId: entityPk, environmentId };
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.mcpBearerToken.count({ where }),
+      this.prisma.mcpBearerToken.findMany({
+        where,
+        select: {
+          id: true,
+          environmentId: true,
+          label: true,
+          mcpUserId: true,
+          scopes: true,
+          createdAt: true,
+          lastUsedAt: true,
+          expiresAt: true,
+          revokedAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: offset,
+        take: limit,
+      }),
+    ]);
+    return {
+      tokens: rows,
+      total,
+      limit,
+      offset,
+    };
   }
 
   /** Revoke a PAT by id, scoped to entityPk. */

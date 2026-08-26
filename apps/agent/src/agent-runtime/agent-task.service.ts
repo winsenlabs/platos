@@ -12,6 +12,7 @@ import { BudgetService } from "../monitoring/budget.service";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
 import { ProfileCacheService } from "../memory/profile-cache.service";
+import { MemoryService } from "../memory/memory.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
@@ -23,6 +24,10 @@ import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { freshInputTokens } from "../monitoring/usage-ledger";
 import { randomUUID } from "node:crypto";
+import {
+  resolvePostmanContext,
+  traceSessionContext,
+} from "./postman-context-handle";
 
 /** The one stream event AgentTaskService consumes rather than forwards. */
 type SubAgentUsageEvent = Extract<AgentStreamEvent, { type: "sub_agent_usage" }>;
@@ -153,6 +158,7 @@ export class AgentTaskService {
     // Theme M.3 — Redis projection cache for the turn-start __user_profile
     // block. Optional so the test harness still boots without MemoryModule.
     @Optional() private readonly profileCache?: ProfileCacheService,
+    @Optional() private readonly memoryService?: MemoryService,
   ) {}
 
   /**
@@ -227,6 +233,18 @@ export class AgentTaskService {
       replyToMessageId?: string | null;
     } = {},
   ): AsyncGenerator<AgentStreamEvent> {
+    if (scope.sessionContextHandle) {
+      scope = {
+        ...scope,
+        sessionContext: await resolvePostmanContext(
+          this.redis,
+          scope.sessionContextHandle,
+          scope,
+          options.idempotencyKey,
+        ),
+      };
+    }
+
     // Resolve the agentId. Priority:
     //   1. caller-supplied options.agentId — used when an integrator explicitly
     //      switches an agent mid-thread, or for one-off turns without a thread.
@@ -297,43 +315,12 @@ export class AgentTaskService {
       idemKey = ikey;
     }
 
-    // 1. Get or create thread
-    //
-    // PRA-AC: pre-resolve the agent's clusteringId before getOrCreateThread so
-    // a clustered agent can RESOLVE a sibling thread (created by another
-    // cluster member) instead of silently creating a new orphan thread.
-    //
-    // Bug: previously we called getOrCreateThread(scope, …) with bare scope.
-    // For clustered agents whose threadId points to a sibling-owned thread,
-    // getThread (correctly scoped by userId only) fell back to baseWhere
-    // which has no clusteringId — and createThread thus minted a NEW thread.
-    // Then storeMessage(threadReplyToId=…, threadId=<newThreadId>) failed the
-    // `where:{id, threadId}` parent check, throwing "Reply parent message not
-    // found in this thread". Cluster members must inherit the cluster scope
-    // before any thread lookup happens.
-    let preClusteringId: string | null = null;
-    try {
-      const agentRow = await (this.conversationService as any).prisma.agentBinding.findFirst({
-        where: {
-          agentId,
-          environmentId: scope.environmentId,
-          agent: { projectId: scope.projectId },
-          environment: {
-            projectId: scope.projectId,
-            project: { organizationId: scope.organizationId },
-          },
-        },
-        select: { clusterId: true },
-      });
-      preClusteringId = agentRow?.clusterId ?? null;
-    } catch {
-      preClusteringId = null;
-    }
-    const scopeForThreadLookup: typeof scope = preClusteringId
-      ? { ...scope, clusteringId: preClusteringId }
-      : scope;
+    // 1. Resolve the Agent cluster and get or create the canonical Thread.
+    // A supplied Thread ID is reserved identity and never becomes a replacement.
     const thread = await this.conversationService.getOrCreateThread(
-      scopeForThreadLookup, agentId, options.threadId,
+      scope,
+      agentId,
+      options.threadId,
     );
 
     // EOBD.30 — per-thread mutex. Two concurrent messages on the same
@@ -420,6 +407,7 @@ export class AgentTaskService {
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
+      operatorUserId: scope.operatorUserId,
     };
 
     // 1c. Theme H.8 — per-user message rate limit. Fail-closed on exceed;
@@ -655,6 +643,7 @@ export class AgentTaskService {
         resolvedAttachments = await this.attachmentsService.resolveAttachments(
           options.attachmentIds,
           scope,
+          { agentId, threadId: thread.id, endUserId: thread.endUserId },
         );
       } catch (err: any) {
         yield {
@@ -691,6 +680,7 @@ export class AgentTaskService {
         options.attachmentIds!,
         userMessage.id,
         scope,
+        { agentId, threadId: thread.id, endUserId: thread.endUserId },
       );
     }
 
@@ -705,25 +695,64 @@ export class AgentTaskService {
       // dropped. Readers pay the Redis projection cache on the hot path,
       // falling back to Prisma only on cache miss.
       try {
-        let profileData: Record<string, unknown> | null =
-          (await this.profileCache?.get(scopeTuple, agentId, scope.userId)) ?? null;
+        // Rebuild from persisted rows on every turn. Visibility transitions
+        // must take effect immediately and cannot be bypassed by stale cache.
+        let profileData: Record<string, unknown> | null = null;
         if (!profileData) {
           // Cache miss — reassemble from memory rows. Scope-gated to
           // (org, project, env, agentId, userId) so a forged agentId
           // can't leak another scope's data.
           const prisma = (this.conversationService as any).prisma;
           if (prisma?.memory) {
-            const rows: Array<{ content: string; metadata: unknown }> =
-              await prisma.memory.findMany({
-                where: {
-                  environmentId: scope.environmentId,
-                  endUserId: thread.endUserId,
-                  agentId,
-                  kind: "profile",
-                  archivedAt: null,
+            const binding = await prisma.agentBinding.findFirst({
+              where: {
+                environmentId: scope.environmentId,
+                agentId,
+                agent: { projectId: scope.projectId },
+                environment: {
+                  project: { id: scope.projectId, organizationId: scope.organizationId },
                 },
-                select: { content: true, metadata: true },
-              });
+              },
+              select: { clusterId: true },
+            });
+            if (!binding) throw new Error("Profile AgentBinding not found or access denied");
+            const agentFilter = binding.clusterId
+              ? {
+                  agentIds: (await prisma.agentBinding.findMany({
+                    where: {
+                      environmentId: scope.environmentId,
+                      clusterId: binding.clusterId,
+                      agent: { projectId: scope.projectId },
+                      environment: {
+                        project: { id: scope.projectId, organizationId: scope.organizationId },
+                      },
+                    },
+                    select: { agentId: true },
+                  })).map((member: { agentId: string }) => member.agentId),
+                }
+              : { agentId };
+            const rows: Array<{ content: string; metadata: unknown }> =
+              this.memoryService
+                ? await this.memoryService.list(scopeTuple, {
+                    userId: scope.userId,
+                    kind: "profile",
+                    limit: 100,
+                    agentVisibleOnly: true,
+                    visibilityIn: ["agent_visible"],
+                    ...agentFilter,
+                  })
+                : await prisma.memory.findMany({
+                    where: {
+                      environmentId: scope.environmentId,
+                      endUserId: thread.endUserId,
+                      ...(binding.clusterId ? { clusterId: binding.clusterId } : { agentId }),
+                      kind: "profile",
+                      visibility: "agent_visible",
+                      agentVisible: true,
+                      archivedAt: null,
+                    },
+                    select: { content: true, metadata: true },
+                  });
             const data: Record<string, unknown> = {};
             for (const row of rows) {
               const meta = row.metadata as any;
@@ -796,8 +825,8 @@ export class AgentTaskService {
     // rollups describe the same spend.
     const subAgentSteps: SubAgentUsageEvent[] = [];
     // Theme F.5 — when the agent returns a structured output, capture the
-    // validated object + attempt count so it lands in the normalized Turn output.
-    let structuredOutput: { object: unknown; attempts: number } | null = null;
+    // validated object + retry count so it lands in the normalized Turn output.
+    let structuredOutput: { object: unknown; retryCount: number } | null = null;
 
     for await (const event of this.agentService.stream(
       message,
@@ -844,7 +873,7 @@ export class AgentTaskService {
       if (event.type === "structured_output") {
         structuredOutput = {
           object: event.object,
-          attempts: event.attempts,
+          retryCount: event.retryCount,
         };
       }
 
@@ -867,7 +896,7 @@ export class AgentTaskService {
         // deltas that may overlap). Safer to always sum and rely on the
         // finish event being the primary carrier — Vercel AI SDK only
         // emits `meta` in the `finish` chunk + once per structured-output
-        // attempt, not per step.
+        // retry, not per step.
         totalCacheCreationTokens += usage.cacheCreationInputTokens || 0;
         totalCacheReadTokens += usage.cacheReadInputTokens || 0;
         // PRELAUNCH-A1-3 — reasoning tokens.
@@ -1024,7 +1053,7 @@ export class AgentTaskService {
       })),
       latencyMs: Date.now() - turnStartMs,
       structuredOutput: structuredOutput
-        ? { object: structuredOutput.object, attempts: structuredOutput.attempts }
+        ? { object: structuredOutput.object, retryCount: structuredOutput.retryCount }
         : undefined,
     });
     turnFinalized = true;
@@ -1151,10 +1180,7 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
-          sessionContext: scope.sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId,
@@ -1195,10 +1221,7 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
-          sessionContext: scope.sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId,
@@ -1290,7 +1313,7 @@ export class AgentTaskService {
     //    picks it up automatically.
     //
     //    Was a fire-and-forget Promise that didn't survive an agent
-    //    restart and could pile up under load. Now triggers the durable
+        //    restart and could pile up under load. Now starts the durable
     //    `platos.compaction` task with an idempotency key derived from
     //    (threadId + latestMessageId) so a duplicate fire is a no-op.
     //    Falls back to the original in-process behavior when trigger.dev
@@ -1399,7 +1422,7 @@ export class AgentTaskService {
           await this.conversationService.failTurn(
             thread.id,
             openTurnId,
-            scopeForThreadLookup,
+            scope,
             error,
             openStepModel,
           );
@@ -1429,7 +1452,7 @@ export class AgentTaskService {
       // Backfill displayName/email on the clean EndUser from resolved sessionContext.
       // scope.sessionContext is mutated by agentService.stream() so by this point
       // it contains the merged user.* fields (name, email). Fire-and-forget.
-      if (scope.userId && scope.sessionContext) {
+      if (!scope.sessionContextHandle && scope.userId && scope.sessionContext) {
         const ctx = scope.sessionContext as Record<string, unknown>;
         const user = ctx.user as Record<string, unknown> | null;
         const displayName = (user?.name ?? user?.["user.name"]) as string | undefined;
@@ -1654,21 +1677,31 @@ export class AgentTaskService {
     // Extract the final response
     const tokens = events.filter((e) => e.type === "token").map((e) => e.text as string);
     const meta = events.find((e) => e.type === "meta");
-    // Phase 1 review follow-up — pull cost off the message_persisted
-    // event so the non-streaming path (REST + W.1 batch-turn controller)
-    // can return accurate per-turn cost. Falls back to 0 if the turn
-    // short-circuited before persist (e.g. safety flag, idempotent
-    // dedup, validation failure).
+    // Pull cost and the canonical Turn identity off message_persisted so the
+    // non-streaming path can only report completion after the authoritative
+    // write. Error-only and short-circuited streams fail instead of returning
+    // an early Thread identity as a false success.
     const persisted = events.find((e) => (e as any).type === "message_persisted") as
-      | { costCents?: number }
+      | { costCents?: number; messageId?: string }
       | undefined;
+    const threadId = (meta as any)?.thread_id;
+    const canonicalIdentity = /^[A-Za-z0-9_-]{1,100}$/;
+    if (
+      !persisted?.messageId
+      || !canonicalIdentity.test(persisted.messageId)
+      || typeof threadId !== "string"
+      || !canonicalIdentity.test(threadId)
+    ) {
+      throw new Error("Collected turn did not reach authoritative persistence");
+    }
     const costCents = typeof persisted?.costCents === "number" ? persisted.costCents : 0;
 
     return {
       text: tokens.join(""),
-      threadId: (meta as any)?.thread_id,
+      threadId,
       events,
       costCents,
+      messageId: persisted.messageId,
     };
   }
 

@@ -11,8 +11,9 @@ const config: SurfaceConfig = {
     const date = url.searchParams.get("date");
     return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? `/api/v1/agent/monitoring/cost?date=${date}` : "/api/v1/agent/monitoring/cost";
   },
-  secondaryEndpoint: "/api/v1/agent/monitoring/cost-by-agent?days=30&limit=100",
-  supportingEndpoint: "/api/v1/agent/monitoring/cost-by-model?days=30&limit=100",
+  secondaryEndpoint: "/api/v1/agent/monitoring/cost-by-agent?days=30",
+  secondaryCollection: { defaultPageSize: 25, maxPageSize: 100, search: true },
+  supportingEndpoint: "/api/v1/agent/monitoring/cost-by-model?days=30&limit=100&offset=0",
   provenance: "Immutable Turn and Step usage snapshots with historically pinned model rate cards",
 };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }

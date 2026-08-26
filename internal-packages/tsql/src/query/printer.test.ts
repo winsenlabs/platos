@@ -14,9 +14,9 @@ import { QueryError, SyntaxError } from "./errors.js";
 /**
  * Test table schemas
  */
-const taskRunsSchema: TableSchema = {
-  name: "task_runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+const runtimeRunsSchema: TableSchema = {
+  name: "runtime_runs",
+  clickhouseName: "platos_telemetry.runtime_runs_v2",
   columns: {
     id: { name: "id", ...column("String") },
     status: { name: "status", ...column("String") },
@@ -41,7 +41,7 @@ const taskRunsSchema: TableSchema = {
 
 const taskEventsSchema: TableSchema = {
   name: "task_events",
-  clickhouseName: "trigger_dev.task_events_v2",
+  clickhouseName: "platos_telemetry.task_events_v2",
   columns: {
     id: { name: "id", ...column("String") },
     run_id: { name: "run_id", ...column("String") },
@@ -64,7 +64,7 @@ const taskEventsSchema: TableSchema = {
  */
 const runsSchema: TableSchema = {
   name: "runs", // User writes: FROM runs
-  clickhouseName: "trigger_dev.task_runs_v2", // ClickHouse sees this
+  clickhouseName: "platos_telemetry.runtime_runs_v2", // ClickHouse sees this
   columns: {
     id: { name: "id", clickhouseName: "run_id", ...column("String") },
     friendly_id: { name: "friendly_id", ...column("String") }, // No mapping
@@ -89,7 +89,7 @@ const runsSchema: TableSchema = {
 function createTestContext(
   overrides: Partial<Parameters<typeof createPrinterContext>[0]> = {}
 ): PrinterContext {
-  const schema = createSchemaRegistry([taskRunsSchema, taskEventsSchema]);
+  const schema = createSchemaRegistry([runtimeRunsSchema, taskEventsSchema]);
   return createPrinterContext({
     schema,
     enforcedWhereClause: {
@@ -113,12 +113,12 @@ function printQuery(query: string, context?: PrinterContext) {
 describe("ClickHousePrinter", () => {
   describe("Basic SELECT statements", () => {
     it("should expand SELECT * to individual columns", () => {
-      const { sql, params, columns } = printQuery("SELECT * FROM task_runs");
+      const { sql, params, columns } = printQuery("SELECT * FROM runtime_runs");
 
       // SELECT * should be expanded to individual columns
       expect(sql).toContain("SELECT ");
       expect(sql).not.toContain("SELECT *"); // Should NOT contain literal *
-      expect(sql).toContain("FROM trigger_dev.task_runs_v2");
+      expect(sql).toContain("FROM platos_telemetry.runtime_runs_v2");
 
       // Should include all columns from the schema
       expect(sql).toContain("id");
@@ -139,20 +139,20 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should print SELECT with specific columns", () => {
-      const { sql, params } = printQuery("SELECT id, status, created_at FROM task_runs");
+      const { sql, params } = printQuery("SELECT id, status, created_at FROM runtime_runs");
 
       expect(sql).toContain("SELECT id, status, created_at");
-      expect(sql).toContain("FROM trigger_dev.task_runs_v2");
+      expect(sql).toContain("FROM platos_telemetry.runtime_runs_v2");
     });
 
     it("should print SELECT DISTINCT", () => {
-      const { sql } = printQuery("SELECT DISTINCT status FROM task_runs");
+      const { sql } = printQuery("SELECT DISTINCT status FROM runtime_runs");
 
       expect(sql).toContain("SELECT DISTINCT status");
     });
 
     it("should print SELECT with aliases", () => {
-      const { sql } = printQuery("SELECT id AS run_id, status AS run_status FROM task_runs");
+      const { sql } = printQuery("SELECT id AS run_id, status AS run_status FROM runtime_runs");
 
       expect(sql).toContain("id AS run_id");
       expect(sql).toContain("status AS run_status");
@@ -186,10 +186,10 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should expand table.* for specific table", () => {
-      const { sql, columns } = printQuery("SELECT task_runs.* FROM task_runs");
+      const { sql, columns } = printQuery("SELECT runtime_runs.* FROM runtime_runs");
 
-      // Should expand to all columns from task_runs
-      expect(sql).not.toContain("task_runs.*");
+      // Should expand to all columns from runtime_runs
+      expect(sql).not.toContain("runtime_runs.*");
       expect(sql).toContain("id");
       expect(sql).toContain("status");
 
@@ -201,7 +201,7 @@ describe("ClickHousePrinter", () => {
       // Schema with virtual columns
       const schemaWithVirtual: TableSchema = {
         name: "runs",
-        clickhouseName: "trigger_dev.task_runs_v2",
+        clickhouseName: "platos_telemetry.runtime_runs_v2",
         columns: {
           id: { name: "id", ...column("String") },
           started_at: { name: "started_at", ...column("Nullable(DateTime64)") },
@@ -268,7 +268,7 @@ describe("ClickHousePrinter", () => {
       const { sql } = printQuery("SELECT * FROM runs", ctx);
 
       // Table name should be mapped
-      expect(sql).toContain("FROM trigger_dev.task_runs_v2");
+      expect(sql).toContain("FROM platos_telemetry.runtime_runs_v2");
       expect(sql).not.toContain("FROM runs");
     });
 
@@ -369,7 +369,7 @@ describe("ClickHousePrinter", () => {
 
   describe("WHERE clauses", () => {
     it("should print WHERE with equality comparison", () => {
-      const { sql, params } = printQuery("SELECT * FROM task_runs WHERE status = 'completed'");
+      const { sql, params } = printQuery("SELECT * FROM runtime_runs WHERE status = 'completed'");
 
       expect(sql).toContain("WHERE");
       expect(sql).toContain("equals(");
@@ -379,7 +379,7 @@ describe("ClickHousePrinter", () => {
 
     it("should print WHERE with multiple conditions", () => {
       const { sql } = printQuery(
-        "SELECT * FROM task_runs WHERE status = 'completed' AND is_test = 0"
+        "SELECT * FROM runtime_runs WHERE status = 'completed' AND is_test = 0"
       );
 
       expect(sql).toContain("and(");
@@ -388,68 +388,68 @@ describe("ClickHousePrinter", () => {
 
     it("should print WHERE with OR conditions", () => {
       const { sql } = printQuery(
-        "SELECT * FROM task_runs WHERE status = 'completed' OR status = 'failed'"
+        "SELECT * FROM runtime_runs WHERE status = 'completed' OR status = 'failed'"
       );
 
       expect(sql).toContain("or(");
     });
 
     it("should print WHERE with NOT", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE NOT status = 'pending'");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE NOT status = 'pending'");
 
       expect(sql).toContain("not(");
     });
 
     it("should print WHERE with BETWEEN", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE duration_ms BETWEEN 100 AND 1000");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE duration_ms BETWEEN 100 AND 1000");
 
       expect(sql).toContain("BETWEEN");
     });
 
     it("should print WHERE with IN", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE status IN ('completed', 'failed')");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE status IN ('completed', 'failed')");
 
       expect(sql).toContain("in(");
     });
 
     it("should print WHERE with NOT IN", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE status NOT IN ('pending')");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE status NOT IN ('pending')");
 
       expect(sql).toContain("notIn(");
     });
 
     it("should print WHERE with LIKE", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE task_identifier LIKE 'email%'");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE task_identifier LIKE 'email%'");
 
       expect(sql).toContain("like(");
     });
 
     it("should print WHERE with ILIKE", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE task_identifier ILIKE '%Email%'");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE task_identifier ILIKE '%Email%'");
 
       expect(sql).toContain("ilike(");
     });
 
     it("should handle NULL comparisons", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE started_at = NULL");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE started_at = NULL");
 
       expect(sql).toContain("isNull(");
     });
 
     it("should handle != NULL comparisons", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE started_at != NULL");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE started_at != NULL");
 
       expect(sql).toContain("isNotNull(");
     });
 
     it("should handle IS NULL syntax", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE started_at IS NULL");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE started_at IS NULL");
 
       expect(sql).toContain("isNull(started_at)");
     });
 
     it("should handle IS NOT NULL syntax", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE started_at IS NOT NULL");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE started_at IS NOT NULL");
 
       expect(sql).toContain("isNotNull(started_at)");
     });
@@ -459,7 +459,7 @@ describe("ClickHousePrinter", () => {
     // Create a schema with JSON columns that have nullValue set
     const jsonSchema: TableSchema = {
       name: "runs",
-      clickhouseName: "trigger_dev.task_runs_v2",
+      clickhouseName: "platos_telemetry.runtime_runs_v2",
       columns: {
         id: { name: "id", ...column("String") },
         error: {
@@ -673,7 +673,7 @@ describe("ClickHousePrinter", () => {
     // Create a schema with JSON columns that have textColumn set
     const textColumnSchema: TableSchema = {
       name: "runs",
-      clickhouseName: "trigger_dev.task_runs_v2",
+      clickhouseName: "platos_telemetry.runtime_runs_v2",
       columns: {
         id: { name: "id", ...column("String") },
         output: {
@@ -863,7 +863,7 @@ describe("ClickHousePrinter", () => {
       // Create a second schema with the same JSON column names to test JOIN ambiguity
       const runsSchemaWithTextColumn: TableSchema = {
         name: "runs",
-        clickhouseName: "trigger_dev.task_runs_v2",
+        clickhouseName: "platos_telemetry.runtime_runs_v2",
         columns: {
           id: { name: "id", ...column("String") },
           output: {
@@ -885,7 +885,7 @@ describe("ClickHousePrinter", () => {
 
       const eventsSchemaWithTextColumn: TableSchema = {
         name: "events",
-        clickhouseName: "trigger_dev.task_events_v2",
+        clickhouseName: "platos_telemetry.task_events_v2",
         columns: {
           id: { name: "id", ...column("String") },
           run_id: { name: "run_id", ...column("String") },
@@ -962,7 +962,7 @@ describe("ClickHousePrinter", () => {
     // Create a schema with JSON columns that have dataPrefix set
     const dataPrefixSchema: TableSchema = {
       name: "runs",
-      clickhouseName: "trigger_dev.task_runs_v2",
+      clickhouseName: "platos_telemetry.runtime_runs_v2",
       columns: {
         id: { name: "id", ...column("String") },
         output: {
@@ -1112,19 +1112,19 @@ describe("ClickHousePrinter", () => {
 
   describe("ORDER BY clauses", () => {
     it("should print ORDER BY ASC", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs ORDER BY created_at ASC");
+      const { sql } = printQuery("SELECT * FROM runtime_runs ORDER BY created_at ASC");
 
       expect(sql).toContain("ORDER BY created_at ASC");
     });
 
     it("should print ORDER BY DESC", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs ORDER BY created_at DESC");
+      const { sql } = printQuery("SELECT * FROM runtime_runs ORDER BY created_at DESC");
 
       expect(sql).toContain("ORDER BY created_at DESC");
     });
 
     it("should print ORDER BY with multiple columns", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs ORDER BY status ASC, created_at DESC");
+      const { sql } = printQuery("SELECT * FROM runtime_runs ORDER BY status ASC, created_at DESC");
 
       expect(sql).toContain("ORDER BY status ASC, created_at DESC");
     });
@@ -1132,13 +1132,13 @@ describe("ClickHousePrinter", () => {
 
   describe("LIMIT and OFFSET", () => {
     it("should print LIMIT", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs LIMIT 10");
+      const { sql } = printQuery("SELECT * FROM runtime_runs LIMIT 10");
 
       expect(sql).toContain("LIMIT 10");
     });
 
     it("should print LIMIT with OFFSET", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs LIMIT 10 OFFSET 20");
+      const { sql } = printQuery("SELECT * FROM runtime_runs LIMIT 10 OFFSET 20");
 
       expect(sql).toContain("LIMIT 10");
       expect(sql).toContain("OFFSET 20");
@@ -1146,14 +1146,14 @@ describe("ClickHousePrinter", () => {
 
     it("should cap LIMIT to maxRows setting", () => {
       const context = createTestContext({ settings: { maxRows: 100 } });
-      const { sql } = printQuery("SELECT * FROM task_runs LIMIT 1000", context);
+      const { sql } = printQuery("SELECT * FROM runtime_runs LIMIT 1000", context);
 
       expect(sql).toContain("LIMIT 100");
     });
 
     it("should add default LIMIT when none specified", () => {
       const context = createTestContext({ settings: { maxRows: 10000 } });
-      const { sql } = printQuery("SELECT * FROM task_runs", context);
+      const { sql } = printQuery("SELECT * FROM runtime_runs", context);
 
       expect(sql).toContain("LIMIT 10000");
     });
@@ -1161,14 +1161,14 @@ describe("ClickHousePrinter", () => {
 
   describe("GROUP BY clauses", () => {
     it("should print GROUP BY", () => {
-      const { sql } = printQuery("SELECT status, count(*) FROM task_runs GROUP BY status");
+      const { sql } = printQuery("SELECT status, count(*) FROM runtime_runs GROUP BY status");
 
       expect(sql).toContain("GROUP BY status");
     });
 
     it("should print GROUP BY with multiple columns", () => {
       const { sql } = printQuery(
-        "SELECT status, queue_name, count(*) FROM task_runs GROUP BY status, queue_name"
+        "SELECT status, queue_name, count(*) FROM runtime_runs GROUP BY status, queue_name"
       );
 
       expect(sql).toContain("GROUP BY status, queue_name");
@@ -1176,7 +1176,7 @@ describe("ClickHousePrinter", () => {
 
     it("should print GROUP BY with HAVING", () => {
       const { sql } = printQuery(
-        "SELECT status, count(*) as cnt FROM task_runs GROUP BY status HAVING cnt > 10"
+        "SELECT status, count(*) as cnt FROM runtime_runs GROUP BY status HAVING cnt > 10"
       );
 
       expect(sql).toContain("GROUP BY status");
@@ -1187,31 +1187,31 @@ describe("ClickHousePrinter", () => {
 
   describe("Aggregate functions", () => {
     it("should print COUNT", () => {
-      const { sql } = printQuery("SELECT count(*) FROM task_runs");
+      const { sql } = printQuery("SELECT count(*) FROM runtime_runs");
 
       expect(sql).toContain("count(*)");
     });
 
     it("should print COUNT DISTINCT", () => {
-      const { sql } = printQuery("SELECT count(DISTINCT status) FROM task_runs");
+      const { sql } = printQuery("SELECT count(DISTINCT status) FROM runtime_runs");
 
       expect(sql).toContain("count(DISTINCT status)");
     });
 
     it("should print SUM", () => {
-      const { sql } = printQuery("SELECT sum(duration_ms) FROM task_runs");
+      const { sql } = printQuery("SELECT sum(duration_ms) FROM runtime_runs");
 
       expect(sql).toContain("sum(duration_ms)");
     });
 
     it("should print AVG", () => {
-      const { sql } = printQuery("SELECT avg(duration_ms) FROM task_runs");
+      const { sql } = printQuery("SELECT avg(duration_ms) FROM runtime_runs");
 
       expect(sql).toContain("avg(duration_ms)");
     });
 
     it("should print MIN and MAX", () => {
-      const { sql } = printQuery("SELECT min(created_at), max(created_at) FROM task_runs");
+      const { sql } = printQuery("SELECT min(created_at), max(created_at) FROM runtime_runs");
 
       expect(sql).toContain("min(created_at)");
       expect(sql).toContain("max(created_at)");
@@ -1220,31 +1220,31 @@ describe("ClickHousePrinter", () => {
 
   describe("Arithmetic operations", () => {
     it("should print addition", () => {
-      const { sql } = printQuery("SELECT duration_ms + 100 FROM task_runs");
+      const { sql } = printQuery("SELECT duration_ms + 100 FROM runtime_runs");
 
       expect(sql).toContain("plus(duration_ms, 100)");
     });
 
     it("should print subtraction", () => {
-      const { sql } = printQuery("SELECT duration_ms - 100 FROM task_runs");
+      const { sql } = printQuery("SELECT duration_ms - 100 FROM runtime_runs");
 
       expect(sql).toContain("minus(duration_ms, 100)");
     });
 
     it("should print multiplication", () => {
-      const { sql } = printQuery("SELECT duration_ms * 2 FROM task_runs");
+      const { sql } = printQuery("SELECT duration_ms * 2 FROM runtime_runs");
 
       expect(sql).toContain("multiply(duration_ms, 2)");
     });
 
     it("should print division", () => {
-      const { sql } = printQuery("SELECT duration_ms / 1000 FROM task_runs");
+      const { sql } = printQuery("SELECT duration_ms / 1000 FROM runtime_runs");
 
       expect(sql).toContain("divide(duration_ms, 1000)");
     });
 
     it("should print modulo", () => {
-      const { sql } = printQuery("SELECT duration_ms % 60 FROM task_runs");
+      const { sql } = printQuery("SELECT duration_ms % 60 FROM runtime_runs");
 
       expect(sql).toContain("modulo(duration_ms, 60)");
     });
@@ -1252,21 +1252,21 @@ describe("ClickHousePrinter", () => {
 
   describe("Date functions with interval units", () => {
     it("should output dateAdd with string interval as bare keyword", () => {
-      const { sql } = printQuery("SELECT dateAdd('day', 7, created_at) AS week_later FROM task_runs");
+      const { sql } = printQuery("SELECT dateAdd('day', 7, created_at) AS week_later FROM runtime_runs");
 
       expect(sql).toContain("dateAdd(day, 7, created_at)");
       expect(sql).not.toContain("'day'");
     });
 
     it("should output dateAdd with bare identifier interval as keyword", () => {
-      const { sql } = printQuery("SELECT dateAdd(day, 7, created_at) AS week_later FROM task_runs");
+      const { sql } = printQuery("SELECT dateAdd(day, 7, created_at) AS week_later FROM runtime_runs");
 
       expect(sql).toContain("dateAdd(day, 7, created_at)");
     });
 
     it("should output dateDiff with string interval as bare keyword", () => {
       const { sql } = printQuery(
-        "SELECT dateDiff('minute', started_at, completed_at) AS duration_minutes FROM task_runs"
+        "SELECT dateDiff('minute', started_at, completed_at) AS duration_minutes FROM runtime_runs"
       );
 
       expect(sql).toContain("dateDiff(minute,");
@@ -1274,7 +1274,7 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should output dateSub with string interval as bare keyword", () => {
-      const { sql } = printQuery("SELECT dateSub('hour', 1, created_at) AS earlier FROM task_runs");
+      const { sql } = printQuery("SELECT dateSub('hour', 1, created_at) AS earlier FROM runtime_runs");
 
       expect(sql).toContain("dateSub(hour, 1, created_at)");
       expect(sql).not.toContain("'hour'");
@@ -1282,7 +1282,7 @@ describe("ClickHousePrinter", () => {
 
     it("should keep dateTrunc interval as parameterized string (ClickHouse expects string)", () => {
       const { sql } = printQuery(
-        "SELECT dateTrunc('month', created_at) AS month_start FROM task_runs"
+        "SELECT dateTrunc('month', created_at) AS month_start FROM runtime_runs"
       );
 
       expect(sql).toContain("dateTrunc(");
@@ -1291,7 +1291,7 @@ describe("ClickHousePrinter", () => {
 
     it("should output date_add (underscore variant) with bare keyword", () => {
       const { sql } = printQuery(
-        "SELECT date_add('week', 2, created_at) AS two_weeks FROM task_runs"
+        "SELECT date_add('week', 2, created_at) AS two_weeks FROM runtime_runs"
       );
 
       expect(sql).toContain("date_add(week, 2, created_at)");
@@ -1300,7 +1300,7 @@ describe("ClickHousePrinter", () => {
 
     it("should output date_diff (underscore variant) with bare keyword", () => {
       const { sql } = printQuery(
-        "SELECT date_diff('second', started_at, completed_at) AS dur FROM task_runs"
+        "SELECT date_diff('second', started_at, completed_at) AS dur FROM runtime_runs"
       );
 
       expect(sql).toContain("date_diff(second,");
@@ -1308,14 +1308,14 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should handle case-insensitive interval units", () => {
-      const { sql } = printQuery("SELECT dateAdd('DAY', 7, created_at) AS week_later FROM task_runs");
+      const { sql } = printQuery("SELECT dateAdd('DAY', 7, created_at) AS week_later FROM runtime_runs");
 
       expect(sql).toContain("dateAdd(day, 7, created_at)");
     });
 
     it("should output dateDiff with sub-second units as bare keywords", () => {
       const { sql } = printQuery(
-        "SELECT dateDiff('millisecond', started_at, completed_at) AS dur FROM task_runs"
+        "SELECT dateDiff('millisecond', started_at, completed_at) AS dur FROM runtime_runs"
       );
 
       expect(sql).toContain("dateDiff(millisecond,");
@@ -1324,7 +1324,7 @@ describe("ClickHousePrinter", () => {
 
     it("should output dateDiff with microsecond as bare keyword", () => {
       const { sql } = printQuery(
-        "SELECT dateDiff('microsecond', started_at, completed_at) AS dur FROM task_runs"
+        "SELECT dateDiff('microsecond', started_at, completed_at) AS dur FROM runtime_runs"
       );
 
       expect(sql).toContain("dateDiff(microsecond,");
@@ -1332,7 +1332,7 @@ describe("ClickHousePrinter", () => {
 
     it("should output dateDiff with nanosecond as bare keyword", () => {
       const { sql } = printQuery(
-        "SELECT dateDiff('nanosecond', started_at, completed_at) AS dur FROM task_runs"
+        "SELECT dateDiff('nanosecond', started_at, completed_at) AS dur FROM runtime_runs"
       );
 
       expect(sql).toContain("dateDiff(nanosecond,");
@@ -1348,7 +1348,7 @@ describe("ClickHousePrinter", () => {
           environment_id: { op: "eq", value: "env_ghi" },
         },
       });
-      const { sql, params } = printQuery("SELECT * FROM task_runs", context);
+      const { sql, params } = printQuery("SELECT * FROM runtime_runs", context);
 
       // Should have WHERE clause with tenant columns
       expect(sql).toContain("WHERE");
@@ -1363,7 +1363,7 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should combine tenant guards with user WHERE clause", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE status = 'completed'");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE status = 'completed'");
 
       // Should have both tenant guard AND user condition
       expect(sql).toContain("and(");
@@ -1375,7 +1375,7 @@ describe("ClickHousePrinter", () => {
   describe("SQL injection prevention", () => {
     it("should parameterize string values", () => {
       const { sql, params } = printQuery(
-        "SELECT * FROM task_runs WHERE status = 'DROP TABLE users'"
+        "SELECT * FROM runtime_runs WHERE status = 'DROP TABLE users'"
       );
 
       // The malicious string should be in params, not in SQL
@@ -1386,7 +1386,7 @@ describe("ClickHousePrinter", () => {
     it("should safely handle identifiers with special characters", () => {
       // This should either escape or reject
       expect(() => {
-        printQuery("SELECT * FROM task_runs WHERE `weird`column` = 'test'");
+        printQuery("SELECT * FROM runtime_runs WHERE `weird`column` = 'test'");
       }).toThrow();
     });
 
@@ -1402,14 +1402,14 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should parameterize numeric values inline", () => {
-      const { sql, params } = printQuery("SELECT * FROM task_runs WHERE duration_ms > 1000");
+      const { sql, params } = printQuery("SELECT * FROM runtime_runs WHERE duration_ms > 1000");
 
       // Numbers can be inlined safely
       expect(sql).toContain("1000");
     });
 
     it("should handle boolean values safely", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE is_test = 1");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE is_test = 1");
 
       expect(sql).toContain("equals(is_test, 1)");
     });
@@ -1421,7 +1421,7 @@ describe("ClickHousePrinter", () => {
         SELECT status, cnt
         FROM (
           SELECT status, count(*) as cnt
-          FROM task_runs
+          FROM runtime_runs
           GROUP BY status
         )
       `);
@@ -1433,7 +1433,7 @@ describe("ClickHousePrinter", () => {
 
     it("should print subquery in WHERE clause", () => {
       const { sql } = printQuery(`
-        SELECT * FROM task_runs
+        SELECT * FROM runtime_runs
         WHERE id IN (SELECT run_id FROM task_events WHERE event_type = 'completed')
       `);
 
@@ -1445,9 +1445,9 @@ describe("ClickHousePrinter", () => {
   describe("UNION queries", () => {
     it("should print UNION ALL", () => {
       const { sql } = printQuery(`
-        SELECT id, status FROM task_runs WHERE status = 'completed'
+        SELECT id, status FROM runtime_runs WHERE status = 'completed'
         UNION ALL
-        SELECT id, status FROM task_runs WHERE status = 'failed'
+        SELECT id, status FROM runtime_runs WHERE status = 'failed'
       `);
 
       expect(sql).toContain("UNION ALL");
@@ -1458,7 +1458,7 @@ describe("ClickHousePrinter", () => {
     it("should print ROW_NUMBER", () => {
       const { sql } = printQuery(`
         SELECT id, status, row_number() OVER (PARTITION BY status ORDER BY created_at DESC) as rn
-        FROM task_runs
+        FROM runtime_runs
       `);
 
       expect(sql).toContain("row_number()");
@@ -1470,14 +1470,14 @@ describe("ClickHousePrinter", () => {
 
   describe("Functions", () => {
     it("should print toDateTime with column argument", () => {
-      const { sql } = printQuery("SELECT toDateTime(created_at) FROM task_runs");
+      const { sql } = printQuery("SELECT toDateTime(created_at) FROM runtime_runs");
 
       expect(sql).toContain("toDateTime(created_at)");
     });
 
     it("should print toDateTime with string and timezone arguments", () => {
       const { sql, params } = printQuery(
-        "SELECT toDateTime('2024-01-15 10:30:00', 'UTC') FROM task_runs"
+        "SELECT toDateTime('2024-01-15 10:30:00', 'UTC') FROM runtime_runs"
       );
 
       // String values are parameterized for security
@@ -1489,7 +1489,7 @@ describe("ClickHousePrinter", () => {
 
     it("should print toDateTime with timezone containing special characters", () => {
       const { sql, params } = printQuery(
-        "SELECT toDateTime('2024-01-15 10:30:00', 'America/New_York') FROM task_runs"
+        "SELECT toDateTime('2024-01-15 10:30:00', 'America/New_York') FROM runtime_runs"
       );
 
       // String values are parameterized for security
@@ -1501,7 +1501,7 @@ describe("ClickHousePrinter", () => {
 
     it("should print toDateTime64 with precision and timezone", () => {
       const { sql, params } = printQuery(
-        "SELECT toDateTime64('2024-01-15 10:30:00.500000', 6, 'Europe/London') FROM task_runs"
+        "SELECT toDateTime64('2024-01-15 10:30:00.500000', 6, 'Europe/London') FROM runtime_runs"
       );
 
       // String values are parameterized, but numeric precision is inline
@@ -1512,26 +1512,26 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should print now()", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE created_at > now()");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE created_at > now()");
 
       expect(sql).toContain("now()");
     });
 
     it("should print string functions", () => {
-      const { sql } = printQuery("SELECT lower(status), upper(queue_name) FROM task_runs");
+      const { sql } = printQuery("SELECT lower(status), upper(queue_name) FROM runtime_runs");
 
       expect(sql).toContain("lower(status)");
       expect(sql).toContain("upper(queue_name)");
     });
 
     it("should print conditional functions", () => {
-      const { sql } = printQuery("SELECT if(is_test = 1, 'test', 'prod') FROM task_runs");
+      const { sql } = printQuery("SELECT if(is_test = 1, 'test', 'prod') FROM runtime_runs");
 
       expect(sql).toContain("if(");
     });
 
     it("should print coalesce", () => {
-      const { sql } = printQuery("SELECT coalesce(started_at, created_at) FROM task_runs");
+      const { sql } = printQuery("SELECT coalesce(started_at, created_at) FROM runtime_runs");
 
       expect(sql).toContain("coalesce(started_at, created_at)");
     });
@@ -1539,14 +1539,14 @@ describe("ClickHousePrinter", () => {
 
   describe("Arrays and tuples", () => {
     it("should print array literals", () => {
-      const { sql } = printQuery("SELECT * FROM task_runs WHERE status IN ['completed', 'failed']");
+      const { sql } = printQuery("SELECT * FROM runtime_runs WHERE status IN ['completed', 'failed']");
 
       expect(sql).toContain("[");
       expect(sql).toContain("]");
     });
 
     it("should print tuple", () => {
-      const { sql } = printQuery("SELECT tuple(id, status) FROM task_runs");
+      const { sql } = printQuery("SELECT tuple(id, status) FROM runtime_runs");
 
       expect(sql).toContain("tuple(id, status)");
     });
@@ -1561,19 +1561,19 @@ describe("ClickHousePrinter", () => {
 
     it("should throw QueryError for unknown functions", () => {
       expect(() => {
-        printQuery("SELECT unknown_function(id) FROM task_runs");
+        printQuery("SELECT unknown_function(id) FROM runtime_runs");
       }).toThrow(QueryError);
     });
 
     it("should throw QueryError for nested aggregations", () => {
       expect(() => {
-        printQuery("SELECT sum(count(*)) FROM task_runs");
+        printQuery("SELECT sum(count(*)) FROM runtime_runs");
       }).toThrow(QueryError);
     });
 
     it("should throw SyntaxError for malformed queries", () => {
       expect(() => {
-        parseTSQLSelect("SELECT * FORM task_runs"); // typo: FORM instead of FROM
+        parseTSQLSelect("SELECT * FORM runtime_runs"); // typo: FORM instead of FROM
       }).toThrow();
     });
   });
@@ -1581,7 +1581,7 @@ describe("ClickHousePrinter", () => {
   describe("Pretty printing", () => {
     it("should format SQL with newlines when pretty=true", () => {
       const ast = parseTSQLSelect(
-        "SELECT id, status FROM task_runs WHERE status = 'completed' ORDER BY created_at"
+        "SELECT id, status FROM runtime_runs WHERE status = 'completed' ORDER BY created_at"
       );
       const context = createTestContext();
       const printer = new ClickHousePrinter(context, { pretty: true });
@@ -1592,7 +1592,7 @@ describe("ClickHousePrinter", () => {
 
     it("should produce single-line SQL when pretty=false", () => {
       const ast = parseTSQLSelect(
-        "SELECT id, status FROM task_runs WHERE status = 'completed' ORDER BY created_at"
+        "SELECT id, status FROM runtime_runs WHERE status = 'completed' ORDER BY created_at"
       );
       const context = createTestContext();
       const printer = new ClickHousePrinter(context, { pretty: false });
@@ -1607,7 +1607,7 @@ describe("ClickHousePrinter", () => {
   describe("Parameter generation", () => {
     it("should generate unique parameter names", () => {
       const { params } = printQuery(`
-        SELECT * FROM task_runs
+        SELECT * FROM runtime_runs
         WHERE status = 'completed' AND queue_name = 'email' AND task_identifier = 'send'
       `);
 
@@ -1617,7 +1617,7 @@ describe("ClickHousePrinter", () => {
     });
 
     it("should include correct types in placeholders", () => {
-      const { sql, params } = printQuery("SELECT * FROM task_runs WHERE status = 'test'");
+      const { sql, params } = printQuery("SELECT * FROM runtime_runs WHERE status = 'test'");
 
       // Should have String type in placeholder
       expect(sql).toMatch(/\{tsql_val_\d+: String\}/);
@@ -1631,7 +1631,7 @@ describe("Value mapping (valueMap)", () => {
    */
   const statusMappedSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       id: { name: "id", ...column("String") },
       status: {
@@ -1747,7 +1747,7 @@ describe("WHERE transform (whereTransform)", () => {
    */
   const prefixedIdSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       id: { name: "id", ...column("String") },
       batch_id: {
@@ -1924,13 +1924,13 @@ it("should strip prefix from value in equality comparison", () => {
 
 describe("Edge cases", () => {
   it("should handle empty string values", () => {
-    const { sql, params } = printQuery("SELECT * FROM task_runs WHERE status = ''");
+    const { sql, params } = printQuery("SELECT * FROM runtime_runs WHERE status = ''");
 
     expect(Object.values(params)).toContain("");
   });
 
   it("should handle special characters in strings", () => {
-    const { sql, params } = printQuery("SELECT * FROM task_runs WHERE status = 'test\nvalue'");
+    const { sql, params } = printQuery("SELECT * FROM runtime_runs WHERE status = 'test\nvalue'");
 
     // The string value should be parameterized
     expect(Object.keys(params).length).toBeGreaterThan(0);
@@ -1938,20 +1938,20 @@ describe("Edge cases", () => {
 
   it("should handle large numbers", () => {
     // Use a number that JavaScript can safely represent
-    const { sql } = printQuery("SELECT * FROM task_runs WHERE duration_ms > 1000000000000");
+    const { sql } = printQuery("SELECT * FROM runtime_runs WHERE duration_ms > 1000000000000");
 
     expect(sql).toContain("1000000000000");
   });
 
   it("should handle negative numbers", () => {
-    const { sql } = printQuery("SELECT * FROM task_runs WHERE duration_ms > -1000");
+    const { sql } = printQuery("SELECT * FROM runtime_runs WHERE duration_ms > -1000");
 
     // Negative numbers might be expressed as subtraction or negate
     expect(sql).toMatch(/-1000|minus|negate/);
   });
 
   it("should handle floating point numbers", () => {
-    const { sql } = printQuery("SELECT * FROM task_runs WHERE duration_ms > 1.5");
+    const { sql } = printQuery("SELECT * FROM runtime_runs WHERE duration_ms > 1.5");
 
     expect(sql).toContain("1.5");
   });
@@ -1963,7 +1963,7 @@ describe("Virtual columns", () => {
    */
   const virtualColumnSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       status: { name: "status", ...column("String") },
@@ -2213,7 +2213,7 @@ describe("Expression columns with division (cost/invocation_cost pattern)", () =
    */
   const costExpressionSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       status: { name: "status", ...column("String") },
@@ -2356,7 +2356,7 @@ describe("Column metadata", () => {
    */
   const schemaWithRenderTypes: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       friendly_id: { name: "friendly_id", ...column("String") },
@@ -2923,10 +2923,10 @@ describe("Unknown column blocking", () => {
   describe("should block unknown columns in SELECT", () => {
     it("should throw error for unknown column in SELECT list", () => {
       expect(() => {
-        printQuery("SELECT id, unknown_column FROM task_runs");
+        printQuery("SELECT id, unknown_column FROM runtime_runs");
       }).toThrow(QueryError);
       expect(() => {
-        printQuery("SELECT id, unknown_column FROM task_runs");
+        printQuery("SELECT id, unknown_column FROM runtime_runs");
       }).toThrow(/unknown.*column.*unknown_column/i);
     });
 
@@ -2969,7 +2969,7 @@ describe("Unknown column blocking", () => {
 
     it("should throw error for unknown qualified column (table.column)", () => {
       expect(() => {
-        printQuery("SELECT task_runs.unknown_column FROM task_runs");
+        printQuery("SELECT runtime_runs.unknown_column FROM runtime_runs");
       }).toThrow(QueryError);
     });
   });
@@ -2977,13 +2977,13 @@ describe("Unknown column blocking", () => {
   describe("should block unknown columns in WHERE", () => {
     it("should throw error for unknown column in WHERE clause", () => {
       expect(() => {
-        printQuery("SELECT id FROM task_runs WHERE unknown_column = 'test'");
+        printQuery("SELECT id FROM runtime_runs WHERE unknown_column = 'test'");
       }).toThrow(QueryError);
     });
 
     it("should throw error for unknown column in complex WHERE", () => {
       expect(() => {
-        printQuery("SELECT id FROM task_runs WHERE status = 'completed' AND unknown_column > 10");
+        printQuery("SELECT id FROM runtime_runs WHERE status = 'completed' AND unknown_column > 10");
       }).toThrow(QueryError);
     });
   });
@@ -2991,7 +2991,7 @@ describe("Unknown column blocking", () => {
   describe("should block unknown columns in ORDER BY", () => {
     it("should throw error for unknown column in ORDER BY", () => {
       expect(() => {
-        printQuery("SELECT id, status FROM task_runs ORDER BY unknown_column DESC");
+        printQuery("SELECT id, status FROM runtime_runs ORDER BY unknown_column DESC");
       }).toThrow(QueryError);
     });
   });
@@ -2999,7 +2999,7 @@ describe("Unknown column blocking", () => {
   describe("should block unknown columns in GROUP BY", () => {
     it("should throw error for unknown column in GROUP BY", () => {
       expect(() => {
-        printQuery("SELECT count(*) FROM task_runs GROUP BY unknown_column");
+        printQuery("SELECT count(*) FROM runtime_runs GROUP BY unknown_column");
       }).toThrow(QueryError);
     });
   });
@@ -3008,14 +3008,14 @@ describe("Unknown column blocking", () => {
     it("should allow ORDER BY to reference aliased columns", () => {
       // This should NOT throw - 'cnt' is a valid alias from SELECT
       const { sql } = printQuery(
-        "SELECT status, count(*) AS cnt FROM task_runs GROUP BY status ORDER BY cnt DESC"
+        "SELECT status, count(*) AS cnt FROM runtime_runs GROUP BY status ORDER BY cnt DESC"
       );
       expect(sql).toContain("ORDER BY cnt DESC");
     });
 
     it("should allow HAVING to reference aliased columns", () => {
       const { sql } = printQuery(
-        "SELECT status, count(*) AS cnt FROM task_runs GROUP BY status HAVING cnt > 10"
+        "SELECT status, count(*) AS cnt FROM runtime_runs GROUP BY status HAVING cnt > 10"
       );
       expect(sql).toContain("HAVING");
     });
@@ -3023,7 +3023,7 @@ describe("Unknown column blocking", () => {
     it("should allow ORDER BY to reference implicit aggregation names", () => {
       // COUNT() without alias gets implicit name 'count'
       const { sql } = printQuery(
-        "SELECT status, count() FROM task_runs GROUP BY status ORDER BY count DESC"
+        "SELECT status, count() FROM runtime_runs GROUP BY status ORDER BY count DESC"
       );
       expect(sql).toContain("ORDER BY count DESC");
     });
@@ -3039,7 +3039,7 @@ describe("Unknown column blocking", () => {
         SELECT sub.status_name, sub.total
         FROM (
           SELECT status AS status_name, count(*) AS total
-          FROM task_runs
+          FROM runtime_runs
           GROUP BY status
         ) AS sub
         ORDER BY sub.total DESC
@@ -3053,7 +3053,7 @@ describe("Unknown column blocking", () => {
         SELECT status_name, total
         FROM (
           SELECT status AS status_name, count(*) AS total
-          FROM task_runs
+          FROM runtime_runs
           GROUP BY status
         )
         WHERE total > 10
@@ -3068,7 +3068,7 @@ describe("Field Mapping Value Transformation", () => {
   // Test schema with a field mapping column
   const fieldMappingSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       status: { name: "status", ...column("String") },
@@ -3184,7 +3184,7 @@ describe("Internal-only column blocking", () => {
   // Schema with hidden tenant columns (not exposed in public columns)
   const hiddenTenantSchema: TableSchema = {
     name: "hidden_tenant_runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       // Public columns - these are exposed to users
       id: { name: "id", ...column("String") },
@@ -3203,7 +3203,7 @@ describe("Internal-only column blocking", () => {
   // Schema with hidden required filter column
   const hiddenFilterSchema: TableSchema = {
     name: "hidden_filter_runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     columns: {
       id: { name: "id", ...column("String") },
       status: { name: "status", ...column("String") },
@@ -3346,20 +3346,20 @@ describe("Internal-only column blocking", () => {
   });
 
   describe("should allow exposed tenant columns", () => {
-    // In task_runs schema, tenant columns ARE exposed in the public columns
+    // In runtime_runs schema, tenant columns ARE exposed in the public columns
     it("should allow selecting exposed tenant column", () => {
-      // task_runs schema exposes organization_id in its columns
-      const { sql } = printQuery("SELECT id, organization_id FROM task_runs");
+      // runtime_runs schema exposes organization_id in its columns
+      const { sql } = printQuery("SELECT id, organization_id FROM runtime_runs");
       expect(sql).toContain("SELECT id, organization_id");
     });
 
     it("should allow ordering by exposed tenant column", () => {
-      const { sql } = printQuery("SELECT id, status FROM task_runs ORDER BY organization_id");
+      const { sql } = printQuery("SELECT id, status FROM runtime_runs ORDER BY organization_id");
       expect(sql).toContain("ORDER BY organization_id");
     });
 
     it("should allow grouping by exposed tenant column", () => {
-      const { sql } = printQuery("SELECT organization_id, count(*) FROM task_runs GROUP BY organization_id");
+      const { sql } = printQuery("SELECT organization_id, count(*) FROM runtime_runs GROUP BY organization_id");
       expect(sql).toContain("GROUP BY organization_id");
     });
   });
@@ -3373,8 +3373,8 @@ describe("Required Filters", () => {
 
   const schemaWithRequiredFilters: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
-    description: "Task runs table with required filters",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
+    description: "Runtime runs table with required filters",
     tenantColumns: {
       organizationId: "organization_id",
       projectId: "project_id",
@@ -3525,7 +3525,7 @@ describe("timeBucket()", () => {
    */
   const timeBucketSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
     timeConstraint: "triggered_at",
     columns: {
       id: { name: "id", ...column("String") },
@@ -3551,7 +3551,7 @@ describe("timeBucket()", () => {
    */
   const noTimeConstraintSchema: TableSchema = {
     name: "events",
-    clickhouseName: "trigger_dev.events_v1",
+    clickhouseName: "platos_telemetry.events_v1",
     columns: {
       id: { name: "id", ...column("String") },
       event_type: { name: "event_type", ...column("String") },
@@ -3726,7 +3726,7 @@ describe("timeBucket()", () => {
     it("should work with timeConstraint column that has no clickhouseName mapping", () => {
       const schemaNoMapping: TableSchema = {
         name: "logs",
-        clickhouseName: "trigger_dev.logs_v1",
+        clickhouseName: "platos_telemetry.logs_v1",
         timeConstraint: "timestamp",
         columns: {
           id: { name: "id", ...column("String") },

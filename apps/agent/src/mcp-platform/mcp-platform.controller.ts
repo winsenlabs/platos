@@ -6,6 +6,8 @@ import {
   HttpException,
   HttpStatus,
   Inject,
+  NotFoundException,
+  Param,
   Post,
   Query,
   Req,
@@ -42,6 +44,7 @@ import { SkillRegistryService } from "../skills/skill-registry.service";
 import { SkillImporterService } from "../skills/skill-importer.service";
 import { MemoryService } from "../memory/memory.service";
 import { MemoryExtractionService } from "../memory/memory-extraction.service";
+import { MemoryImportService } from "../memory/memory-import.service";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
 import { ProviderKeyService } from "../providers/provider-key.service";
@@ -123,6 +126,7 @@ export class McpPlatformController {
     private readonly skillImporter: SkillImporterService,
     // K.8 control plane
     private readonly memory: MemoryService,
+    private readonly memoryImport: MemoryImportService,
     // MCPF-W2 — memories.extract_now wraps this service's `extractFromThread`.
     private readonly memoryExtraction: MemoryExtractionService,
     private readonly graph: KnowledgeGraphService,
@@ -193,6 +197,7 @@ export class McpPlatformController {
         skillRegistry: this.skillRegistry,
         skillImporter: this.skillImporter,
         memory: this.memory,
+        memoryImport: this.memoryImport,
         // MCPF-W2 — memories.extract_now.
         memoryExtraction: this.memoryExtraction,
         graph: this.graph,
@@ -759,29 +764,44 @@ export class McpPlatformController {
   }
 
   @Get("tokens")
-  async listTokens(@Req() req: Request) {
+  async listTokens(
+    @Req() req: Request,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
     // SECURITY (audit authz-2026-07-22 F5) — platform-token inventory is an
     // operator/dashboard read (enumerates every token's permissions + scope tier).
     // Same admin-action tier as mintToken; end-user/guest tokens must not enumerate.
     requireOperator(scope);
-    const tokens = await this.tokenService.list(scope);
-    return { tokens };
+    return this.tokenService.list(scope, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+    });
   }
 
   @Post("tokens/:id/revoke")
-  async revokeToken(@Req() req: Request, @Body() _body: unknown) {
+  async revokeToken(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() _body: unknown,
+  ) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
     // SECURITY (audit authz-2026-07-22 F5) — token revocation is an operator
     // action; without this an end-user/guest revokes the operator's own
     // control-plane tokens (integrity/DoS on the whole scope's MCP access).
     requireOperator(scope);
-    const id = req.params["id"];
     if (!id) throw new HttpException("id missing", HttpStatus.BAD_REQUEST);
     const ok = await this.tokenService.revoke(id, scope);
-    return { ok };
+    if (!ok) {
+      throw new NotFoundException({
+        code: "MCP_TOKEN_NOT_FOUND",
+        message: "MCP token not found",
+      });
+    }
+    return { ok: true };
   }
 
   /**
@@ -801,6 +821,7 @@ export class McpPlatformController {
   async toolCatalog(@Req() req: Request) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+    requireOperator(scope);
 
     const handlers = this.getRouter().getRegisteredTools();
     const byCategory = new Map<

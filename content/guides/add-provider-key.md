@@ -4,21 +4,15 @@ title: Add a provider key (BYOK)
 description: Create and link an OpenAI, Anthropic, or other credential to one Platos Environment.
 category: getting-started
 order: 30
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Where do I add my OpenAI API key?"
   - "How do I scope a key to one environment?"
   - "How does Platos verify the key works?"
-  - "How do I rotate a key without breaking running agents?"
+  - "How do I rotate a key without breaking active agents?"
   - "Why is the model picker empty even though I have a key?"
 related:
   - quickstart
   - create-first-agent
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx
-  - apps/agent/src/providers/providers.controller.ts
-  - .env.example
 ---
 
 # Add a provider key (BYOK)
@@ -83,7 +77,7 @@ For separate regions or cost centers, create distinctly named/labeled credential
 
 ## Common pitfalls
 
-- **Model picker is empty.** No dashboard credential is linked in this Environment. A deployment env var does not count.
+- **Model picker is empty.** No dashboard credential is linked in this Environment. A installation env var does not count.
 - **Health check fails with 401.** The provider rejected the credential. Rotate it in the dashboard.
 - **Health check fails with 429 or quota error.** The key is valid but the provider account has hit a rate limit or billing issue. Fix on the provider's dashboard.
 - **Wrong reference name.** Check the provider manifest/dashboard hint. `OPENAI_KEY` does not resolve a credential named `OPENAI_API_KEY`.

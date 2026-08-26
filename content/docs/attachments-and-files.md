@@ -4,8 +4,6 @@ title: Attachments and files
 description: Upload files, images, and PDFs into a conversation and let the agent reference them as multimodal inputs.
 category: platform
 order: 190
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I attach a file to a chat message?"
   - "Where are uploaded files stored?"
@@ -17,14 +15,6 @@ related:
   - artifacts
   - conversations-and-threads
   - self-hosting
-source_files_referenced:
-  - apps/agent/src/agent-runtime/attachments.service.ts
-  - apps/agent/src/agent-runtime/multimodal-adapter.ts
-  - apps/agent/src/files/files.controller.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files._index/route.tsx
-  - apps/webapp/app/routes/api.v1.agent.attachments.presigned.ts
-  - apps/webapp/app/routes/api.v1.agent.attachments.retention.ts
-  - docs/themes/THEME_D.md
 ---
 
 # Attachments and files
@@ -33,15 +23,9 @@ Users upload files into a conversation; agents read them as multimodal inputs (i
 
 ## What it is
 
-`AttachmentsService` is the orchestrator. The flow:
+The authenticated chat surface negotiates a scoped object-store upload, uploads bytes directly, and includes the returned attachment reference with the next Turn input. The runtime binds the metadata to the Thread and Turn before assembling model input.
 
-1. Client calls `POST /api/v1/agent/attachments/presigned` with `{ filename, mimeType, conversationId }`. The runtime validates mime type, picks a bucket scoped to the project, and returns a presigned PUT URL.
-2. Client uploads directly to MinIO with the presigned URL.
-3. Client posts the message containing an `attachment` reference id.
-4. The runtime ties the attachment to the message in `PlatosAttachment`, with `(scope, conversationId, messageId, key, mimeType, sizeBytes, retentionAt)`.
-5. At turn assembly, `MultimodalAdapter` reads the attachment, decides whether to inline (small text), pass to a vision-capable model (image), or convert (PDF -> page images plus text).
-
-`FilesController` is the operator-facing surface: list every file in a project, soft-delete, see retention status. The retention sweep runs on the trigger.dev queue and deletes attachments past their `retentionAt`.
+`FilesController` is the operator-facing surface: list every file in a project, soft-delete, see retention status. The retention sweep runs on the internal scheduler and deletes attachments past their `retentionAt`.
 
 Accepted mime types include `image/png`, `image/jpeg`, `image/webp`, `image/gif`, `application/pdf`, `text/csv`, `text/plain`, `application/json`, plus the office types when the conversion adapter is configured.
 
@@ -57,22 +41,13 @@ Retention matters for compliance. A self-hosted Platos that keeps every attachme
 
 Drag a file onto the chat box. The UI calls the presigned endpoint, uploads to MinIO, and includes the reference in the next message. The agent receives the attachment in its turn assembly.
 
-### Attach from the SDK
+### Read Thread attachments through REST
 
-```ts
-const presigned = await platos.attachments.presigned({
-  filename: "invoice.pdf",
-  mimeType: "application/pdf",
-  conversationId,
-});
-
-await fetch(presigned.url, { method: "PUT", body: fileBlob });
-
-await platos.threads.update({
-  threadId,
-  messages: [{ role: "user", content: "Summarise this invoice", attachments: [presigned.attachmentId] }],
-});
+```http
+GET /api/v1/agent/files/threads/{threadId}/attachments
 ```
+
+The first-party consumer SDK does not currently expose an attachment-upload namespace. Use the dashboard upload flow or generated HTTP operations present in your installation's OpenAPI document; do not infer a presign route.
 
 ### Vision routing
 
@@ -84,13 +59,13 @@ When the agent's model is vision-capable (`vision: true` in the model catalog), 
 
 ### Set retention
 
-`PATCH /api/v1/agent/attachments/retention` with `{ retentionDays }` updates the project default. Per-attachment overrides land via the same endpoint with `{ attachmentId, retentionAt }`.
+Retention policy is configured in the Environment settings. Per-file retention metadata is visible to operators but never grants access outside the owning Environment.
 
 ## Common pitfalls
 
 - MinIO bucket creation is at boot. A self-host that does not have its `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` set boots with a degraded attachment path; uploads fail with `MINIO_NOT_CONFIGURED`. See [Self-hosting](/docs/self-hosting).
 - Presigned URLs are short-lived (15 minutes default). Clients that hold the URL too long get 403 on PUT. Re-call the presigned endpoint to refresh.
-- Retention deletion is a soft job; an attachment past `retentionAt` may still be readable for a few minutes until the sweep runs. For hard delete, call `DELETE /api/v1/agent/attachments/:id`.
+- Retention deletion is asynchronous; an attachment past `retentionAt` may remain readable briefly until the sweep completes. Use hard erasure when deletion needs a verified cross-store receipt.
 - Vision routing is per turn. If the agent's model changes between turns (canary, model routes), the same image might inline in one turn and text-fallback in the next. Pin your vision model on agents that depend on image understanding.
 
 ## Related

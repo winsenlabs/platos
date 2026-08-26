@@ -19,6 +19,14 @@ class ToolRegistry:
     def get(self, name: str) -> ToolDef | None:
         return self._tools.get(name)
 
+    def remove(self, name: str) -> bool:
+        """Remove a tool from the next complete declaration."""
+        return self._tools.pop(name, None) is not None
+
+    def clear(self) -> None:
+        """Remove all tools; the next declaration prunes all server mappings."""
+        self._tools.clear()
+
     def all(self) -> list[ToolDef]:
         return list(self._tools.values())
 

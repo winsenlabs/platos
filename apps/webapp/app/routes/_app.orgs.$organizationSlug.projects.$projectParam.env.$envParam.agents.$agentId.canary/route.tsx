@@ -4,9 +4,9 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { requireEnvironmentScope } from "~/services/auth.server";
 import { loadSurface } from "~/services/m4Route.server";
-import { agentRequest } from "~/services/platosAgent.server";
+import { agentRequest, PlatosAgentApiError } from "~/services/platosAgent.server";
 
-const config = { surface: "canary" as const, title: "Canary rollout", description: "Metrics join persisted AgentBinding, AgentVersion, Turn and Step cohort columns; promotion changes runtime selection.", endpoint: "/api/v1/agent/agents/:agentId/canary/metrics?hours=24", secondaryEndpoint: "/api/v1/agent/agents/:agentId/versions?take=200", provenance: "Persisted AgentBinding cohorts and usage-ledger projections from canonical Turn and Step columns" };
+const config = { surface: "canary" as const, title: "Canary rollout", description: "Metrics join persisted AgentBinding, AgentVersion, Turn and Step cohort columns; promotion changes runtime selection.", endpoint: "/api/v1/agent/agents/:agentId/canary/metrics?hours=24", provenance: "Persisted AgentBinding cohorts and usage-ledger projections from canonical Turn and Step columns" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 
 export async function action(args: ActionFunctionArgs) {
@@ -37,7 +37,11 @@ export async function action(args: ActionFunctionArgs) {
     }
     return json({ ok: false, error: "Unsupported canary operation" }, { status: 400 });
   } catch (error) {
-    return json({ ok: false, error: error instanceof Error ? error.message : "Canary operation failed" }, { status: 400 });
+    return json({
+      ok: false,
+      error: "Canary operation failed",
+      ...(error instanceof PlatosAgentApiError ? { code: error.code } : {}),
+    }, { status: error instanceof PlatosAgentApiError ? error.status : 503 });
   }
 }
 

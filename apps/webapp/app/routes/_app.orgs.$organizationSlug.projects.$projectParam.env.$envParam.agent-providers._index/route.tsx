@@ -5,17 +5,21 @@ import { Page } from "~/components/platos/DashboardShell";
 import {
   Alert,
   Button,
+  CollectionSearch,
   DataTable,
   EmptyState,
   PageHeader,
   Panel,
+  PaginationRange,
   PanelFailure,
   SectionHeader,
   StatusChip,
+  Toolbar,
 } from "~/components/platos/ProductPrimitives";
-import { asArray, asBoolean, asRecord, asString, firstArray } from "~/components/platos/safe";
+import { asArray, asBoolean, asNumber, asRecord, asString, firstArray } from "~/components/platos/safe";
 import { requireEnvironmentScope } from "~/services/auth.server";
 import { credentialErrorMessage, credentialPanel, credentialRequest } from "~/services/platosAgent.server";
+import { parseCollectionQuery, withCollectionQuery } from "~/services/pagination.server";
 
 async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs, access: "metadata" | "secret:mutate") {
   const organizationSlug = args.params.organizationSlug;
@@ -27,12 +31,13 @@ async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs, access: "me
 
 export async function loader(args: LoaderFunctionArgs) {
   const { scope } = await scoped(args, "metadata");
+  const query = parseCollectionQuery(new URL(args.request.url), { defaultPageSize: 25, maxPageSize: 100, search: true });
   const [providers, keys, models] = await Promise.all([
     credentialPanel("/api/v1/agent/providers", scope),
-    credentialPanel("/api/v1/agent/providers/keys", scope),
+    credentialPanel(withCollectionQuery("/api/v1/agent/providers/keys", query, { search: true }), scope),
     credentialPanel("/api/v1/agent/providers/models", scope),
   ]);
-  return json({ providers, keys, models });
+  return json({ providers, keys, models, collection: query });
 }
 
 function safeProvider(value: FormDataEntryValue | null): string {
@@ -137,6 +142,7 @@ export default function ProvidersRoute() {
   const fetcher = useFetcher<typeof action>();
   const providerRows = data.providers.ok ? firstArray(asRecord(data.providers.data), "providers", "items") : [];
   const keyRows = data.keys.ok ? firstArray(asRecord(data.keys.data), "keys", "items") : [];
+  const keyRoot = data.keys.ok ? asRecord(data.keys.data) : {};
   const catalogue = modelRows(data.models.ok ? data.models.data : []);
   const busy = fetcher.state !== "idle";
   const missing = providerRows.filter((value) => !asBoolean(asRecord(value).envReady));
@@ -211,9 +217,11 @@ export default function ProvidersRoute() {
 
       <section className="mt-6">
         <SectionHeader title="Credential route readiness" description="Bare credential names are compatibility references; the same-Environment Credential ID remains authoritative." />
+        <Toolbar><CollectionSearch label="Search provider credentials" placeholder="Search all provider credentials" /></Toolbar>
         {!data.keys.ok ? <PanelFailure error={data.keys.error} /> : (
-          <DataTable
+          <><DataTable
             headers={["Provider", "Credential", "Reference", "Resolution", "Last used", "Actions"]}
+            rowKeys={keyRows.map((value, index) => asString(asRecord(value).id, `provider-key-${index}`))}
             rows={keyRows.map((value, index) => {
               const key = asRecord(value);
               const id = asString(key.id, `key-${index}`);
@@ -230,8 +238,8 @@ export default function ProvidersRoute() {
                 </fetcher.Form>,
               ];
             })}
-            empty={<EmptyState title="No provider credentials" description="Create an encrypted BYOK credential or link a stored same-Environment credential below." />}
-          />
+            empty={<EmptyState title={asNumber(asRecord(keyRoot.pagination).total) > 0 ? "No provider credentials on this page" : "No matching provider credentials"} description={asNumber(asRecord(keyRoot.pagination).total) > 0 ? "This page is past the end of the provider credential list. Use Previous to return to available results." : "Create an encrypted BYOK credential, link a stored same-Environment credential, or clear the current search."} />}
+          /><PaginationRange data={keyRoot} label="Provider credential pagination" /></>
         )}
       </section>
 

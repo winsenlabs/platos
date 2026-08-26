@@ -49,8 +49,6 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 | `TRIGGER_SECRET_KEY` | — | No | Project key (`tr_dev_...` or `tr_prod_...`) used by `@trigger.dev/sdk` to call an external Trigger service. Durable agent dispatch requires this and `TRIGGER_API_URL`; with neither set, turns dispatch direct and BGOs use their existing Redis fallback. |
 | `TRIGGER_API_URL` | — | No | Explicit origin of an external Trigger Cloud or separately deployed self-hosted Trigger.dev service. There is intentionally no Cloud, localhost, or Platos-webapp default. Setting only this variable (or only the secret) logs an incomplete-config warning and disables durable dispatch. |
 | `TRIGGER_PROJECT_REF` | — | No | `proj_...` project ref, required if `TRIGGER_SECRET_KEY` is set and you have multiple projects. |
-| `TRIGGER_INTERNAL_SECRET` | — | No | Shared secret for privileged agent↔webapp calls (run metadata, realtime subscribe). Required if you split agent and webapp across processes/hosts. |
-| `TRIGGER_INTERNAL_BASE_URL` | `$TRIGGER_API_URL` | No | Agent-side base URL for privileged calls; can point to an internal DNS name. |
 
 ## Provider keys
 

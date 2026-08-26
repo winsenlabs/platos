@@ -4,8 +4,6 @@ title: Connected entities
 description: External backends that connect to Platos over WebSocket and expose their tools to agents without exposing their data.
 category: platform
 order: 70
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is a connected entity?"
   - "How does an entity authenticate with Platos?"
@@ -20,14 +18,6 @@ related:
   - auth-modes
   - mcp-gateway
   - encryption-and-secrets
-source_files_referenced:
-  - apps/agent/src/tool-gateway/tool-sync-ws.service.ts
-  - apps/agent/src/connections/connections.gateway.ts
-  - apps/agent/src/agent-runtime/agent.controller.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.wire-test/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.new/route.tsx
 ---
 
 # Connected entities
@@ -36,14 +26,16 @@ A connected entity is an external backend (your service, a SaaS adapter, a micro
 
 ## What it is
 
-A `PlatosConnectedEntity` row plus a live WebSocket. The row stores:
+An `Entity` record plus a live connection. The safe Entity row exposes:
 
-- `slug` and `name`: identifier for the entity within the project scope.
-- `serviceSecret`: encrypted, used to authenticate the entity when it connects. Dashboard provider/MCP credentials live separately in the Platos-native Environment credential store; neither path dual-writes to trigger.dev's SecretStore.
-- `entityType`: a discriminator (e.g. `slack`, `calendar`, `custom`).
-- `status`: `online` or `offline`, updated by the gateway on connect/disconnect.
+- `entityId` and `displayName`: the external identifier and label within a Project.
+- `connectionKind`: `wire` for an inbound platools connection or `mcp` for an outbound MCP client.
+- `connectionStatus`: `connected` or `disconnected`, updated by connection or discovery state.
+- `mcpUrls`, `allowedOrigins`, and connection metadata appropriate to the selected kind.
 
-The entity opens a Socket.IO connection at `/connections` with its `serviceSecret` on the upgrade. `tool-sync-ws.service.ts` owns the lifecycle: the early-message buffer is attached before the async auth completes, and once the secret verifies, the buffered frames are replayed in order. This is the load-bearing race-fix at lines 130-135 and 281-284 of that file. Do not violate it.
+For a wire Entity, Platos stores the service secret as an encrypted Environment credential and reveals the raw value only when it is created or rotated. Secret material is not a field on the safe Entity response.
+
+The entity opens a raw WebSocket connection through the platools `/tools/sync` transport. The SDK normalizes that base URL to `/tools/sync/ws/sdk`, sends the service secret as a bearer credential, and identifies the Entity with the `entity` query parameter. `tool-sync-ws.service.ts` attaches an early-message buffer before asynchronous authentication and replays those frames after the secret verifies.
 
 After auth, the entity pushes its tool catalogue. The registry mirrors the catalogue per scope, the agent matrix picks it up, and tool calls dispatch back to the entity over the same socket.
 
@@ -55,7 +47,7 @@ The model where Platos owns the data and the entity is "just a webhook" loses ev
 - Auth is the entity's. Platos rides on a session token that may carry an opaque user-token claim; the entity verifies that claim with its own auth stack.
 - Reconnection is the entity's responsibility. The Platos client SDKs (`@platosdev/platools-sdk` for Node, `platools` for Python) handle backoff and replay locally.
 
-That ownership split is what makes Platos self-hostable as a runtime without becoming a customer's data plane.
+That ownership split is what makes Platos self-hostable as an runtime without becoming a customer's data plane.
 
 ## How to use it
 
@@ -64,7 +56,7 @@ That ownership split is what makes Platos self-hostable as a runtime without bec
 From the dashboard, navigate to `/orgs/{org}/projects/{project}/env/{env}/agent-entities/new`. Provide a slug and name; the dashboard mints a fresh `serviceSecret`, shows it once on the initial-secret page (loaded via Redis GETDEL so it cannot be replayed), and writes the row.
 
 ```bash
-curl -X POST https://platos.example.com/agent/v1/entities \
+curl -X POST https://platos.example.com/api/v1/agent/entities \
   -H "Authorization: Bearer $PAT" \
   -H "X-Platos-Organization-Id: $ORG" \
   -H "X-Platos-Project-Id: $PROJECT" \
@@ -77,18 +69,29 @@ curl -X POST https://platos.example.com/agent/v1/entities \
 Use `@platosdev/platools-sdk` (Node) or `platools` (Python):
 
 ```ts
-import { connect } from "@platosdev/platools-sdk";
+import { Platools } from "@platosdev/platools-sdk";
+import { z } from "zod";
 
-const conn = connect({
-  url: "wss://platos.example.com/connections",
-  serviceSecret: process.env.PLATOS_SERVICE_SECRET,
+const platools = new Platools({
+  url: "wss://platos.example.com/tools/sync?entity=my-entity",
+  secret: process.env.PLATOS_SERVICE_SECRET,
 });
 
-conn.tool("send_email", { to: { type: "string" }, body: { type: "string" } }, async (args, ctx) => {
-  // ctx carries forwarded user-token from Platos.
-  await mailer.send(args);
-  return { ok: true };
-});
+platools.tool(
+  {
+    name: "send_email",
+    input: z.object({ to: z.string().email(), body: z.string() }),
+    output: z.object({ ok: z.boolean() }),
+    auth: "user",
+  },
+  async (args, ctx) => {
+    // ctx carries the mapped per-call context from Platos.
+    await mailer.send(args);
+    return { ok: true };
+  },
+);
+
+await platools.connect();
 ```
 
 ### HMAC nonce signing
@@ -105,7 +108,7 @@ Click "Regenerate secret" on the entity detail page. The old secret is revoked i
 
 ## Common pitfalls
 
-- The gateway is single-process per replica. Multi-replica deployments scale horizontally; an entity connects to one replica, and tool calls fan out via the registry. See the K-track scaling docs.
+- The gateway is single-process per replica. Multi-replica installations scale horizontally; an entity connects to one replica, and tool calls fan out via the registry. See the K-track scaling docs.
 - `X-Forwarded-For` presence forces session-token mode; entities that present a service secret over HTTP from a public IP are rejected. The WebSocket path is the only place service secrets are accepted.
 - Long offline windows do not lose tool catalogue rows. The registry retains them with `status: offline` so cold-start agents do not panic. Calls fail with `ENTITY_OFFLINE` until reconnection.
 - The legacy `/agent-orgs` URL path was renamed to `/agent-entities`. The 307 shim is being retired (drift D-001). Update bookmarks and external links.

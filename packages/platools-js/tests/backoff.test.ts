@@ -3,7 +3,7 @@
  *
  * PRD §5.2 mandates exponential backoff matching the Python SDK:
  *
- *   delay = base * 2^(attempt - 1)
+ *   delay = base * 2^(retryCount - 1)
  *   capped at max
  *
  * with base = 1s, max = 60s. Locking this curve down prevents drift
@@ -26,7 +26,7 @@ describe("backoffDelayMs", () => {
     expect(BACKOFF_MAX_MS).toBe(60_000);
   });
 
-  it("doubles on every attempt", () => {
+  it("doubles on every retryCount", () => {
     expect(backoffDelayMs(1)).toBe(1_000); // 1s
     expect(backoffDelayMs(2)).toBe(2_000); // 2s
     expect(backoffDelayMs(3)).toBe(4_000); // 4s
@@ -42,7 +42,7 @@ describe("backoffDelayMs", () => {
     expect(backoffDelayMs(100)).toBe(60_000);
   });
 
-  it("returns 0 for non-positive attempts (defensive)", () => {
+  it("returns 0 for non-positive retries (defensive)", () => {
     expect(backoffDelayMs(0)).toBe(0);
     expect(backoffDelayMs(-5)).toBe(0);
   });

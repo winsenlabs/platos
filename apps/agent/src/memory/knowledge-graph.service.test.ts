@@ -67,6 +67,7 @@ function prisma(
     $queryRaw: vi.fn(async () => []),
   };
   const clientMemoryEntity = {
+    count: vi.fn(async () => 1),
     findMany: vi.fn(async (_args: any) => [storedEntity]),
   };
   return {
@@ -83,7 +84,8 @@ function prisma(
       },
       agentBinding,
       memoryEntity: clientMemoryEntity,
-      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      $transaction: vi.fn(async (input: ((client: typeof tx) => unknown) | Promise<unknown>[]) =>
+        Array.isArray(input) ? Promise.all(input) : input(tx)),
       $executeRawUnsafe: vi.fn(),
     } as any,
     memoryEntity: transactionMemoryEntity,

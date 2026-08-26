@@ -17,11 +17,11 @@
  *     which is the one refusal most worth keeping.
  *   - THE READS. The inventory route enumerates a subject's footprint and left
  *     no record, so "who went looking at this person" was unanswerable.
- *   - THE HISTORY. `stores` is overwritten wholesale on every attempt, so each
- *     retry destroys the previous attempt's evidence.
+ *   - THE HISTORY. `stores` is overwritten wholesale on every pass, so each
+ *     pass destroys the previous pass's evidence.
  *
  * AdminAudit is append-only at the database level (`reject_admin_audit_mutation`),
- * which is what makes it the right home for all four: a per-attempt record that
+ * which is what makes it the right home for all four: a per-pass record that
  * nothing later can quietly revise.
  *
  * TWO RECORDS PER PASS, NOT ONE
@@ -56,13 +56,13 @@ export type ErasureAuditAction =
   | "privacy.erasure.requested"
   /** Outcome, after the receipt is persisted. */
   | "privacy.erasure.finished"
-  /** Nothing ran: legal hold, idempotency conflict, attempts exhausted. */
+  /** Nothing ran: legal hold, idempotency conflict, retry budget exhausted. */
   | "privacy.erasure.refused"
   /** A subject's footprint was enumerated. */
   | "privacy.erasure.inventoried";
 
 /** What caused this pass. Distinguishes an operator from the queue. */
-export type ErasureTrigger = "request" | "operator-retry" | "queue-resume";
+export type ErasureCause = "request" | "operator-retry" | "queue-resume";
 
 /**
  * Retention classes — what an erasure deliberately leaves behind, and how long.
@@ -159,28 +159,28 @@ export function requestedAudit(args: {
   operationId: string;
   subjectKeyHash: string;
   policyVersion: string;
-  trigger: ErasureTrigger;
+  cause: ErasureCause;
   coverage: ResumeCoverage;
   actor: ErasureAuditActor;
   /** Content-free counts from the inventory, when one was taken. */
   inventory?: Record<string, unknown>;
-  /** Stores this pass intends to run. A retry names only the unsettled ones. */
+  /** Stores this pass intends to run. A later pass names only the unsettled ones. */
   stores: string[];
-  attempts: number;
+  retryCount: number;
 }): ErasureAuditEntry {
   return {
     action: "privacy.erasure.requested",
     subjectType: ERASURE_AUDIT_SUBJECT_TYPE,
     subjectId: args.subjectKeyHash,
     source: "api",
-    reason: `${args.trigger} (attempt ${args.attempts + 1})`,
+    reason: `${args.cause} (pass ${args.retryCount + 1})`,
     payload: {
       operationId: args.operationId,
       policyVersion: args.policyVersion,
-      trigger: args.trigger,
+      cause: args.cause,
       coverage: args.coverage,
       targetStores: args.stores,
-      attempt: args.attempts + 1,
+      pass: args.retryCount + 1,
       actor: { credentialId: args.actor.credentialId, userId: args.actor.userId },
       inventory: contentFreeInventory(args.inventory),
       retention: retentionSummary(),
@@ -191,11 +191,11 @@ export function requestedAudit(args: {
 /** The outcome record: what each store did, and what was kept on purpose. */
 export function finishedAudit(args: {
   receipt: ErasureReceipt;
-  trigger: ErasureTrigger;
+  cause: ErasureCause;
   coverage: ResumeCoverage;
   actor: ErasureAuditActor;
-  /** Null when the queue will not re-drive it; see scheduleAfterAttempt. */
-  nextAttemptAt: Date | null;
+  /** Null when the queue will not re-drive it; see scheduleAfterRetry. */
+  nextRetryAt: Date | null;
 }): ErasureAuditEntry {
   const stores = args.receipt.stores;
   return {
@@ -203,18 +203,18 @@ export function finishedAudit(args: {
     subjectType: ERASURE_AUDIT_SUBJECT_TYPE,
     subjectId: args.receipt.subjectKeyHash,
     source: "api",
-    reason: `${args.trigger}: ${args.receipt.status}`,
+    reason: `${args.cause}: ${args.receipt.status}`,
     payload: {
       operationId: args.receipt.operationId,
       policyVersion: args.receipt.policyVersion,
       status: args.receipt.status,
-      trigger: args.trigger,
+      cause: args.cause,
       coverage: args.coverage,
-      attempt: args.receipt.attempts,
+      pass: args.receipt.retryCount,
       requestedAt: args.receipt.requestedAt,
       startedAt: args.receipt.startedAt ?? null,
       completedAt: args.receipt.completedAt ?? null,
-      nextAttemptAt: args.nextAttemptAt?.toISOString() ?? null,
+      nextRetryAt: args.nextRetryAt?.toISOString() ?? null,
       legalHoldPolicyId: args.receipt.legalHoldPolicyId ?? null,
       actor: { credentialId: args.actor.credentialId, userId: args.actor.userId },
       stores: storeAuditSummary(stores),
@@ -226,7 +226,7 @@ export function finishedAudit(args: {
   };
 }
 
-/** The refusal record: an attempt that was denied, and what denied it. */
+/** The refusal record: a pass that was denied, and what denied it. */
 export function refusedAudit(args: {
   subjectKeyHash: string;
   reason: string;

@@ -4,8 +4,6 @@ title: Prompts
 description: How Platos assembles a prompt, when it caches, and how prompt blocks compose.
 category: platform
 order: 130
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How does Platos assemble a prompt for a turn?"
   - "What are prompt blocks and how do I add one?"
@@ -18,11 +16,6 @@ related:
   - models
   - context
   - traces
-source_files_referenced:
-  - apps/agent/src/agent-runtime/prompt-builder.service.ts
-  - apps/agent/src/agent-runtime/prompt-cache.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.prompts._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.prompts.$promptSlug/route.tsx
 ---
 
 # Prompts

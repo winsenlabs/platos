@@ -8,7 +8,7 @@
  *     `reconnection: false` on the underlying socket so we can own the
  *     state transitions precisely.
  *   - Events that arrive while we're reconnecting are buffered — never
- *     dropped. `{ type: "reconnecting", attempt }` is surfaced to the
+ *     dropped. `{ type: "reconnecting", retryCount }` is surfaced to the
  *     caller so UIs can show a banner.
  *   - Abort signal tears down the socket and emits a terminal
  *     `{ type: "done", stopped: true }`.
@@ -26,7 +26,7 @@ import type {
   SendMessageOptions,
 } from "../types.js";
 
-const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;
+const DEFAULT_MAX_RECONNECT_RETRIES = 5;
 const RECONNECT_BASE_DELAY_MS = 500;
 const RECONNECT_MAX_DELAY_MS = 10_000;
 
@@ -139,7 +139,7 @@ export class ThreadsApi {
     options: SendMessageOptions = {},
     scope?: PlatosScope,
   ): AsyncGenerator<PlatosStreamEvent, void, void> {
-    const maxReconnect = options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+    const maxReconnect = options.maxReconnectRetries ?? DEFAULT_MAX_RECONNECT_RETRIES;
     const queue: PlatosStreamEvent[] = [];
     let waker: (() => void) | null = null;
     let closed = false;
@@ -160,8 +160,7 @@ export class ThreadsApi {
     };
 
     let currentSocket: Socket | null = null;
-    let sentInitial = false; // we only emit `message` once; reconnects just rejoin the thread room
-    let reconnectAttempt = 0;
+    let reconnectRetryCount = 0;
 
     const emitMessage = (sock: Socket) =>
       sock.emit("message", {
@@ -183,15 +182,6 @@ export class ThreadsApi {
       sock.emit("resume_stream", { threadId });
 
     const attachSocketHandlers = (sock: Socket) => {
-      sock.on("connect", () => {
-        push({ type: "connected" });
-        if (!sentInitial) {
-          sentInitial = true;
-          emitMessage(sock);
-        } else {
-          emitResume(sock);
-        }
-      });
       sock.on("agent_event", (ev: PlatosStreamEvent) => {
         push(ev);
         if (ev.type === "done") {
@@ -201,7 +191,7 @@ export class ThreadsApi {
         }
       });
       sock.on("error", (err: unknown) => {
-        // Transport-level error. Treat like a disconnect so we attempt
+        // Transport-level error. Treat like a disconnect so we retry
         // reconnection instead of failing hard — many fly/caddy setups
         // surface a transient "error" before "disconnect".
         push({ type: "error", message: err instanceof Error ? err.message : String(err) });
@@ -224,24 +214,22 @@ export class ThreadsApi {
 
     const scheduleReconnect = async () => {
       if (closed) return;
-      if (reconnectAttempt >= maxReconnect) {
-        terminalError = new Error(`platos-client: exhausted ${maxReconnect} reconnection attempts`);
+      if (reconnectRetryCount >= maxReconnect) {
+        terminalError = new Error(`platos-client: exhausted ${maxReconnect} reconnection retries`);
         closed = true;
         wake();
         return;
       }
-      reconnectAttempt += 1;
-      const delay = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempt - 1));
-      push({ type: "reconnecting", attempt: reconnectAttempt });
+      reconnectRetryCount += 1;
+      const delay = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectRetryCount - 1));
+      push({ type: "reconnecting", retryCount: reconnectRetryCount });
       await new Promise<void>((resolve) => setTimeout(resolve, delay));
       if (closed || options.signal?.aborted) return;
       try {
-        currentSocket = this.client._openSocket(scope);
+        currentSocket = await this.client._openSocketWithRefresh(scope);
         attachSocketHandlers(currentSocket);
-        // socket.io-client with `reconnection: false` still needs an
-        // explicit connect() kick when `autoConnect` was deferred — we
-        // rely on default autoConnect so this is a no-op, but mirror
-        // the pattern for clarity.
+        push({ type: "connected" });
+        emitResume(currentSocket);
       } catch (err) {
         terminalError = err instanceof Error ? err : new Error(String(err));
         closed = true;
@@ -249,9 +237,11 @@ export class ThreadsApi {
       }
     };
 
-    // Open the first socket. The `connect` handler sends the message.
-    currentSocket = this.client._openSocket(scope);
+    // Open the first socket through the same refresh-capable auth path as REST.
+    currentSocket = await this.client._openSocketWithRefresh(scope);
     attachSocketHandlers(currentSocket);
+    push({ type: "connected" });
+    emitMessage(currentSocket);
 
     options.signal?.addEventListener("abort", () => {
       push({ type: "done", stopped: true });

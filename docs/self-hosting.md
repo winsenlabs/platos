@@ -49,7 +49,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -61,41 +61,25 @@ services:
     restart: always
 
   migrations-control:
-    image: node:22-alpine
+    image: ghcr.io/winsenlabs/platos-migrations@sha256:<tested-migration-digest>
     depends_on:
       postgres:
         condition: service_started
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control?schema=public
       DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control?schema=public
-    volumes:
-      - ./internal-packages/tenancy-database:/work
-    working_dir: /work
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -e
-        apk add --no-cache postgresql-client > /dev/null
-        until pg_isready -h postgres -U "${POSTGRES_USER}"; do sleep 1; done
-        psql -h postgres -U "${POSTGRES_USER}" -d postgres -tAc \
-          "SELECT 1 FROM pg_database WHERE datname='platos_control'" \
-          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER}" -d postgres \
-          -c 'CREATE DATABASE "platos_control"'
-        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        npx prisma migrate deploy
+    command: ["postgres"]
     restart: "no"
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redisdata:/data
     restart: always
 
   webapp:
-    image: ghcr.io/platos-dev/platos-webapp:${PLATOS_VERSION:-latest}
+    image: ghcr.io/winsenlabs/platos-webapp@sha256:<tested-webapp-digest>
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control
       DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control
@@ -119,7 +103,7 @@ services:
       replicas: 2
 
   agent:
-    image: ghcr.io/platos-dev/platos-agent:${PLATOS_VERSION:-latest}
+    image: ghcr.io/winsenlabs/platos-agent@sha256:<tested-agent-digest>
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control
       REDIS_URL: redis://redis:6379
@@ -127,7 +111,8 @@ services:
       PLATOS_MESSAGE_ENCRYPTION_KEY: ${PLATOS_MESSAGE_ENCRYPTION_KEY}
       SESSION_SECRET: ${SESSION_SECRET}
       PLATOS_MAX_CONCURRENT_STREAMS: "100"
-      TRIGGER_INTERNAL_SECRET: ${TRIGGER_INTERNAL_SECRET}
+      PLATOS_INTERNAL_AUTH_TOKEN: ${PLATOS_INTERNAL_AUTH_TOKEN}
+      PLATOS_COMPONENT_AUTH_SECRET: ${PLATOS_COMPONENT_AUTH_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: platos-agent
@@ -157,7 +142,8 @@ MAGIC_LINK_SECRET=...        # openssl rand -base64 24 | tr -d '\n'
 ENCRYPTION_KEY=...           # openssl rand -hex 32
 PLATOS_ENCRYPTION_KEY=...    # openssl rand -hex 32, distinct value
 PLATOS_MESSAGE_ENCRYPTION_KEY=... # openssl rand -hex 32, distinct value
-TRIGGER_INTERNAL_SECRET=...  # any strong random string
+PLATOS_INTERNAL_AUTH_TOKEN=...      # openssl rand -hex 32
+PLATOS_COMPONENT_AUTH_SECRET=...    # openssl rand -hex 32, distinct value
 
 # DB
 POSTGRES_USER=platos
@@ -204,7 +190,8 @@ Compose refuses to boot if any of these are missing or empty. Generate locally w
 | `PLATOS_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `MANAGED_WORKER_SECRET` | non-empty | `openssl rand -hex 32` |
-| `TRIGGER_INTERNAL_SECRET` | non-empty | `openssl rand -hex 32` |
+| `PLATOS_INTERNAL_AUTH_TOKEN` | non-empty | `openssl rand -hex 32` |
+| `PLATOS_COMPONENT_AUTH_SECRET` | non-empty and distinct | `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `CLICKHOUSE_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `MINIO_ROOT_PASSWORD` | non-empty | `openssl rand -hex 16` |
@@ -641,7 +628,7 @@ A prebuilt Grafana dashboard (Prometheus datasource) lives at `hosting/grafana-d
 
 Rotate: generate new, set as `SESSION_SECRET`, old sessions invalidated. All users forced to re-log. No data loss. Safe to rotate on any cadence.
 
-### `ENCRYPTION_KEY` (webapp column encryption — trigger secrets)
+### `ENCRYPTION_KEY` (webapp legacy encrypted secret columns)
 
 Rows in this domain do not all carry a key version. Back up Postgres, run a maintenance re-encryption pass with the old and new keys, verify reads, then cut every consumer over together. Do not replace the environment value before re-encryption.
 
@@ -653,9 +640,11 @@ Use the same controlled backup → maintenance re-encryption → verification �
 
 Message envelopes are versioned. Keep the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, place the replacement in the unsuffixed input, increment `PLATOS_MESSAGE_ENCRYPTION_KEY_V`, then re-encrypt historical envelopes before removing the old read key. See [Credential inventory](../content/docs/credential-inventory.md).
 
-### `TRIGGER_INTERNAL_SECRET`
+### `PLATOS_INTERNAL_AUTH_TOKEN` and `PLATOS_COMPONENT_AUTH_SECRET`
 
-Must match between webapp and agent. Rotate simultaneously.
+The bearer token must match between callback callers and the agent. The component
+secret must match between the external durable-task adapter and the agent HMAC
+verifier. Rotate each value across all of its consumers in one coordinated cutover.
 
 ### Per-tool HMAC secrets
 
@@ -715,32 +704,26 @@ Since `docker-compose.platos.yml` ships a `clickhouse-ttl-apply` sidecar that ru
   init container. No manual host-side `pnpm run db:migrate` needed.
   **ClickHouse** uses a separate goose-based migration step — see the
   "ClickHouse migrations" section below.
-- Do a staging deploy first. Smoke test: log in, create agent, chat, trigger a task.
+- Do a staging deploy first. Smoke test: log in, create an Agent, chat, and start a Job.
 - Roll forward. No blue/green needed unless a major version bump calls it out.
 
 ### ClickHouse migrations
 
 The agent's run/queue/batch telemetry lives in ClickHouse. ClickHouse DDL
 isn't managed by Prisma, so the webapp compose flag
-`SKIP_CLICKHOUSE_MIGRATIONS=1` is permanent. Apply migrations with a
-one-shot goose container:
+`SKIP_CLICKHOUSE_MIGRATIONS=1` is permanent. The tested migration image bundles
+pinned Goose and the reviewed ClickHouse schema, so no checkout bind mount or
+mutable third-party migration image is involved:
 
 ```bash
-# from repo root — first-time boot OR after upgrading Platos
-docker run --rm \
-  --network platos_default \
-  -v "$(pwd)/internal-packages/clickhouse/schema:/migrations:ro" \
-  -e CLICKHOUSE_URL="http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123" \
-  ghcr.io/pressly/goose:3 \
-  -dir /migrations clickhouse "$CLICKHOUSE_URL" up
+# first-time boot OR after upgrading Platos
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  run --rm clickhouse-migrate
 ```
 
-If your compose network name isn't `platos_default`, grep the output of
-`docker network ls` for the name with `platos` in it.
-
-For fresh installs we ship this as a recommended pre-launch step; a future
-iteration will fold it into a `clickhouse-migrate` compose service alongside
-the Prisma `migrations-init`.
+`clickhouse-migrate` and `migrations-init` use the same exact
+`PLATOS_MIGRATIONS_IMAGE` digest and select their bundled migration set with the
+`clickhouse` or `postgres` command.
 
 ## Disaster recovery
 

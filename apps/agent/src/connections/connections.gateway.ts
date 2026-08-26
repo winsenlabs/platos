@@ -45,7 +45,7 @@ import { assertsIdentity, stripAssertedIdentity } from "./session-context-overri
 function resolveGatewayCors(): { origin: string | string[] | boolean; credentials: boolean } {
   // TODO(env.ts) consider migration — this runs at @WebSocketGateway decorator
   // time, BEFORE main.ts's validateAgentEnv() runs, so going through the lazy
-  // `env` proxy here would trigger strict parse before the bootstrap handler
+// `env` proxy here would cause strict parse before the bootstrap handler
   // can surface structured errors. Keep process.env direct for now.
   const raw = (process.env.PLATOS_CORS_ORIGIN || "").trim();
   if (process.env.NODE_ENV === "production") {
@@ -261,9 +261,13 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         // SECURITY (audit H6) — capture the token's pinned agentId; a turn must
         // not target a different agent. Operator tokens have no entity bearer
         // authorization and are not guests (mirrors the HTTP ScopeGuard).
+        // Runtime-computed signing provenance is required because an
+        // entity-secret-signed browser token has no authorizationId either.
         pinnedAgentId = (payload as any).agentId;
         principal =
-          payload.authorizationId === undefined && (payload as any).isGuest !== true
+          payload.signingProvenance === "platform" &&
+          payload.authorizationId === undefined &&
+          (payload as any).isGuest !== true
             ? "operator"
             : "end-user";
         // Carry verified-identity claims for NON-GUEST tokens so WS turns

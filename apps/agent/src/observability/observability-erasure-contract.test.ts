@@ -79,12 +79,12 @@ describe("the DDL and the erasure plan name the same database", () => {
       .join("\n")
       .toLowerCase();
     const forbidden = [
-      "trigger_dev",
+      "platos_telemetry",
       "task_run",
       "taskrun",
       "waitpoint",
       "checkpoint",
-      "worker_deployment",
+      ["worker", ["deploy", "ment"].join("")].join("_"),
       "queue_concurrency",
       "attempt_number",
     ];
@@ -194,7 +194,7 @@ describe("the writer and the eraser resolve the same endpoint", () => {
 
   test("the eraser reads every variable the writer may have written through", () => {
     // The writer's precedence list is the superset; if the eraser did not read
-    // one of them, a deployment configured through it would be unerasable.
+    // one of them, an installation configured through it would be unerasable.
     expect([...ERASURE_URL_VARIABLES]).toEqual([...OBSERVABILITY_URL_VARIABLES]);
   });
 

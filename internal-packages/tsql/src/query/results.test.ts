@@ -5,9 +5,9 @@ import { column, type TableSchema } from "./schema.js";
 /**
  * Test schema with valueMap
  */
-const taskRunsSchema: TableSchema = {
-  name: "task_runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+const runtimeRunsSchema: TableSchema = {
+  name: "runtime_runs",
+  clickhouseName: "platos_telemetry.runtime_runs_v2",
   columns: {
     id: { name: "id", ...column("String") },
     status: {
@@ -49,7 +49,7 @@ const taskRunsSchema: TableSchema = {
  */
 const simpleSchema: TableSchema = {
   name: "simple",
-  clickhouseName: "trigger_dev.simple",
+  clickhouseName: "platos_telemetry.simple",
   columns: {
     id: { name: "id", ...column("String") },
     name: { name: "name", ...column("String") },
@@ -72,7 +72,7 @@ describe("transformResults", () => {
       { id: "run_3", status: "FAILED", task_identifier: "my-task" },
     ];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     expect(transformed[0].status).toBe("Completed");
     expect(transformed[1].status).toBe("Pending");
@@ -85,7 +85,7 @@ describe("transformResults", () => {
       { id: "run_2", status: "PENDING", environment_type: "DEVELOPMENT" },
     ];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     expect(transformed[0].status).toBe("Completed");
     expect(transformed[0].environment_type).toBe("Production");
@@ -98,7 +98,7 @@ describe("transformResults", () => {
       { id: "run_1", status: "COMPLETED_SUCCESSFULLY", task_identifier: "my-task" },
     ];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     // id and task_identifier should be unchanged
     expect(transformed[0].id).toBe("run_1");
@@ -108,7 +108,7 @@ describe("transformResults", () => {
   it("should pass through values not in valueMap unchanged", () => {
     const rows = [{ id: "run_1", status: "UNKNOWN_STATUS", task_identifier: "my-task" }];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     // UNKNOWN_STATUS is not in the valueMap, should be passed through
     expect(transformed[0].status).toBe("UNKNOWN_STATUS");
@@ -128,7 +128,7 @@ describe("transformResults", () => {
 
   it("should handle empty rows array", () => {
     const rows: Array<{ id: string; status: string }> = [];
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     expect(transformed).toEqual([]);
   });
@@ -140,7 +140,7 @@ describe("transformResults", () => {
       { id: "run_3", status: "Completed_Successfully" },
     ];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     // All should map to "Completed"
     expect(transformed[0].status).toBe("Completed");
@@ -151,7 +151,7 @@ describe("transformResults", () => {
   it("should preserve non-string column values", () => {
     const rows = [{ id: "run_1", status: "COMPLETED_SUCCESSFULLY", count: 42, active: true }];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     expect(transformed[0].count).toBe(42);
     expect(transformed[0].active).toBe(true);
@@ -161,7 +161,7 @@ describe("transformResults", () => {
   it("should preserve row reference if no changes made", () => {
     const rows = [{ id: "run_1", status: "UNKNOWN_STATUS" }];
 
-    const transformed = transformResults(rows, [taskRunsSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema]);
 
     // The row has status that doesn't match any valueMap entry
     // But the column does have a valueMap, so we still check it
@@ -172,7 +172,7 @@ describe("transformResults", () => {
   it("should handle multiple table schemas", () => {
     const anotherSchema: TableSchema = {
       name: "events",
-      clickhouseName: "trigger_dev.events",
+      clickhouseName: "platos_telemetry.events",
       columns: {
         id: { name: "id", ...column("String") },
         event_type: {
@@ -199,7 +199,7 @@ describe("transformResults", () => {
       { status: "PENDING", event_type: "TASK_END" },
     ];
 
-    const transformed = transformResults(rows, [taskRunsSchema, anotherSchema]);
+    const transformed = transformResults(rows, [runtimeRunsSchema, anotherSchema]);
 
     expect(transformed[0].status).toBe("Completed");
     expect(transformed[0].event_type).toBe("Started");
@@ -210,7 +210,7 @@ describe("transformResults", () => {
 
 describe("createResultTransformer", () => {
   it("should create a reusable transformer function", () => {
-    const transform = createResultTransformer([taskRunsSchema]);
+    const transform = createResultTransformer([runtimeRunsSchema]);
 
     const rows1 = [{ id: "1", status: "COMPLETED_SUCCESSFULLY" }];
     const rows2 = [{ id: "2", status: "FAILED" }];

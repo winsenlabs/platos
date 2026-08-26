@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ClickhouseWriter } from "./client/types.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 export const MetricsV1Input = z.object({
   organization_id: z.string(),
@@ -18,7 +19,7 @@ export type MetricsV1Input = z.input<typeof MetricsV1Input>;
 export function insertMetrics(ch: ClickhouseWriter) {
   return ch.insertUnsafe<MetricsV1Input>({
     name: "insertMetrics",
-    table: "trigger_dev.metrics_v1",
+    table: `${TELEMETRY_DATABASE}.metrics_v1`,
     settings: {
       enable_json_type: 1,
       type_json_skip_duplicated_paths: 1,

@@ -148,7 +148,7 @@ export function normalizeJsonField(field: JsonField, input: unknown): Prisma.Inp
   }
 
   // If one parse produced another string, the root check above rejects it. A
-  // second parse is deliberately never attempted, preventing double encoding.
+  // second parse is deliberately skipped, preventing double encoding.
   assertJsonValue(field, value);
   return value as Prisma.InputJsonValue;
 }

@@ -49,16 +49,16 @@ Rules:
 - knowledgeCutoff: the date when the model's training data ends, in YYYY-MM-DD format. Use null if unknown. This is different from releaseDate — it's when the training data was cut off, not when the model launched.
 - Output ONLY the JSON object, nothing else"
 
-for attempt in $(seq 1 "$MAX_RETRIES"); do
+for retry_number in $(seq 1 "$MAX_RETRIES"); do
   RESULT=$(claude -p "$PROMPT" --model opus --output-format json --permission-mode bypassPermissions --tools WebSearch,WebFetch 2>/dev/null) && {
     echo "$RESULT"
     exit 0
   }
-  if [[ "$attempt" -lt "$MAX_RETRIES" ]]; then
-    echo "  Retry $attempt/$MAX_RETRIES for $MODEL_NAME..." >&2
+  if [[ "$retry_number" -lt "$MAX_RETRIES" ]]; then
+    echo "  Retry $retry_number/$MAX_RETRIES for $MODEL_NAME..." >&2
     sleep 2
   fi
 done
 
-echo "  Failed after $MAX_RETRIES attempts for $MODEL_NAME" >&2
+echo "  Failed after $MAX_RETRIES retries for $MODEL_NAME" >&2
 exit 1

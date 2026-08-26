@@ -18,7 +18,7 @@ vi.mock("@trigger.dev/sdk", () => ({
 import { platosCustomTask, type PlatosCustomTaskPayload } from "./platos-custom-task";
 
 const payload: PlatosCustomTaskPayload = {
-  taskRowId: "job-row-a",
+  jobId: "job-row-a",
   payload: { input: "safe-input" },
   scope: {
     organizationId: "org-a",
@@ -67,7 +67,7 @@ describe("platos custom task callback shell", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://agent.internal.example/api/v1/agent/internal/platos-tasks/execute");
+    expect(url).toBe("https://agent.internal.example/api/v1/agent/internal/jobs/execute");
     expect(request.headers).toMatchObject({
       "Content-Type": "application/json",
       "X-Platos-Internal-Auth": "internal-auth-sentinel",

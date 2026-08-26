@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestScope } from "../auth/scope.guard";
+import { TOOL_POLICY_INVALIDATION_CHANNEL } from "../tool-gateway/tool-policy-invalidation";
 import { AgentCrudService } from "./agent-crud.service";
 
 const scope: RequestScope = {
@@ -75,6 +76,11 @@ const assignedSkills = [
   },
 ];
 
+const assignedToolPolicies = [
+  { toolId: "tool-a", effect: "ALLOW", priority: 5 },
+  { toolId: "tool-b", effect: "DENY", priority: 0 },
+] as const;
+
 function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<typeof version> } = {}) {
   const binding = bindingRow();
   const createdVersion = version("version-new", 4, "updated");
@@ -92,16 +98,27 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
         ? vi.fn().mockRejectedValue(options.cloneError)
         : vi.fn().mockResolvedValue({ count: assignedSkills.length }),
     },
+    agentToolPolicy: {
+      findMany: vi.fn().mockResolvedValue(assignedToolPolicies),
+      createMany: vi.fn().mockResolvedValue({ count: assignedToolPolicies.length }),
+    },
     agentBinding: { update: vi.fn().mockResolvedValue({}) },
     adminAudit: { create: vi.fn().mockResolvedValue({}) },
   };
   const findBinding = vi.fn().mockResolvedValue(binding);
   const prisma = {
     agentBinding: { findFirst: findBinding },
-    agentVersion: { findFirst: vi.fn().mockResolvedValue(targetVersion) },
+    agentVersion: {
+      findFirst: vi.fn().mockResolvedValue(targetVersion),
+      findMany: vi.fn().mockResolvedValue([targetVersion]),
+      count: vi.fn().mockResolvedValue(1),
+    },
     $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
-  const redis = { del: vi.fn().mockResolvedValue(0) };
+  const redis = {
+    del: vi.fn().mockResolvedValue(0),
+    publish: vi.fn().mockResolvedValue(1),
+  };
   return {
     binding,
     createdVersion,
@@ -114,6 +131,43 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
 }
 
 describe("AgentCrudService AgentSkill version rollover", () => {
+  it("lists AgentVersions only after resolving the scoped Agent binding", async () => {
+    const h = makeHarness();
+
+    const result = await h.service.listVersions("agent-a", scope, { take: 25, offset: 0 });
+
+    expect(h.prisma.agentBinding.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        agentId: "agent-a",
+        environmentId: "env-a",
+        environment: { project: { id: "project-a", organizationId: "org-a" } },
+        agent: { projectId: "project-a" },
+      },
+    }));
+    expect(h.prisma.agentVersion.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { agentId: "agent-a" },
+      take: 26,
+      skip: 0,
+    }));
+    expect(result).toMatchObject({ total: 1, limit: 25, offset: 0 });
+  });
+
+  it("rejects version and Canary operations for a missing or foreign Agent binding before state access", async () => {
+    const h = makeHarness();
+    h.prisma.agentBinding.findFirst.mockResolvedValue(null);
+
+    await expect(h.service.listVersions("foreign-agent", scope)).rejects.toThrow("Agent not found");
+    await expect(h.service.setCanary("foreign-agent", scope, {
+      canaryVersionId: "version-canary",
+      canaryPercent: 25,
+    })).rejects.toThrow("Agent not found");
+    await expect(h.service.promoteCanary("foreign-agent", scope)).rejects.toThrow("Agent not found");
+
+    expect(h.prisma.agentVersion.findMany).not.toHaveBeenCalled();
+    expect(h.prisma.agentVersion.findFirst).not.toHaveBeenCalled();
+    expect(h.tx.agentBinding.update).not.toHaveBeenCalled();
+  });
+
   it("clones active-version skills before advancing the binding on ordinary update", async () => {
     const h = makeHarness();
 
@@ -140,6 +194,15 @@ describe("AgentCrudService AgentSkill version rollover", () => {
     expect(h.tx.agentSkill.createMany.mock.invocationCallOrder[0]).toBeLessThan(
       h.tx.agentBinding.update.mock.invocationCallOrder[0],
     );
+    expect(h.tx.agentToolPolicy.createMany).toHaveBeenCalledWith({
+      data: assignedToolPolicies.map((policy) => ({
+        agentVersionId: "version-new",
+        ...policy,
+      })),
+    });
+    expect(h.tx.agentToolPolicy.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      h.tx.agentBinding.update.mock.invocationCallOrder[0],
+    );
     // Clean Turn attribution still has distinct, stable current/canary pointers.
     expect(h.binding.canaryAgentVersionId).toBe("version-canary");
     expect(h.binding.canaryPercent).toBe(25);
@@ -164,6 +227,21 @@ describe("AgentCrudService AgentSkill version rollover", () => {
     });
     expect(h.tx.agentSkill.createMany.mock.invocationCallOrder[0]).toBeLessThan(
       h.tx.agentBinding.update.mock.invocationCallOrder[0],
+    );
+    expect(h.tx.agentToolPolicy.findMany).toHaveBeenCalledWith({
+      where: { agentVersionId: "version-target" },
+      select: { toolId: true, effect: true, priority: true },
+    });
+    expect(h.redis.publish).toHaveBeenCalledWith(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify({
+        organizationId: "org-a",
+        projectId: "project-a",
+        environmentId: "env-a",
+      }),
+    );
+    expect(h.tx.agentBinding.update.mock.invocationCallOrder[0]).toBeLessThan(
+      h.redis.publish.mock.invocationCallOrder[0],
     );
   });
 

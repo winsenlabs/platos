@@ -1,7 +1,5 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { requireEnvironmentScope } from "./auth.server";
-import { agentRequest } from "./platosAgent.server";
+import { agentRequest, m4Mutation } from "./m4Mutation.server";
 
 type ModelRoute = {
   label: string;
@@ -72,22 +70,8 @@ function enumValue<T extends string>(form: FormData, name: string, allowed: read
 }
 
 export async function mutateAgentConfig(args: ActionFunctionArgs, mode: "create" | "update") {
-  const organizationSlug = args.params.organizationSlug;
-  const projectSlug = args.params.projectParam;
-  const environmentSlug = args.params.envParam;
-  if (!organizationSlug || !projectSlug || !environmentSlug) throw new Response("Invalid scope", { status: 400 });
   if (mode === "update" && !args.params.agentId) throw new Response("Invalid Agent", { status: 400 });
-
-  const { scope } = await requireEnvironmentScope({
-    request: args.request,
-    organizationSlug,
-    projectSlug,
-    environmentSlug,
-    access: "secret:mutate",
-  });
-  const form = await args.request.formData();
-
-  try {
+  return m4Mutation(args, `Agent ${mode}`, async ({ scope, form }) => {
     const model = requiredText(form, "model");
     const body = {
       ...(mode === "create" ? { name: requiredText(form, "name"), slug: optionalText(form, "slug") } : { name: optionalText(form, "name") }),
@@ -110,9 +94,6 @@ export async function mutateAgentConfig(args: ActionFunctionArgs, mode: "create"
     const path = mode === "create"
       ? "/api/v1/agent/agents"
       : `/api/v1/agent/agents/${encodeURIComponent(args.params.agentId!)}`;
-    const result = await agentRequest(path, scope, { method: mode === "create" ? "POST" : "PATCH", body });
-    return json({ ok: true, result });
-  } catch (error) {
-    return json({ ok: false, error: error instanceof Error ? error.message : "Agent configuration failed" }, { status: 400 });
-  }
+    return agentRequest(path, scope, { method: mode === "create" ? "POST" : "PATCH", body });
+  });
 }

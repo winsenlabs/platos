@@ -64,9 +64,9 @@ export interface PlatosAuthServiceOptions {
   now?: Clock;
   tokenGenerator?: TokenGenerator;
   sessionTtlMs?: number;
-  loginRateLimit?: { attempts: number; windowMs: number };
-  inviteAcceptRateLimit?: { attempts: number; windowMs: number };
-  mfaVerifyRateLimit?: { attempts: number; windowMs: number };
+  loginRateLimit?: { requests: number; windowMs: number };
+  inviteAcceptRateLimit?: { requests: number; windowMs: number };
+  mfaVerifyRateLimit?: { requests: number; windowMs: number };
 }
 
 export interface OperatorAuthorization {
@@ -277,9 +277,9 @@ export class PlatosAuthService {
   readonly #now: Clock;
   readonly #tokenGenerator: TokenGenerator;
   readonly #sessionTtlMs: number;
-  readonly #loginRateLimit: { attempts: number; windowMs: number };
-  readonly #inviteAcceptRateLimit: { attempts: number; windowMs: number };
-  readonly #mfaVerifyRateLimit: { attempts: number; windowMs: number };
+  readonly #loginRateLimit: { requests: number; windowMs: number };
+  readonly #inviteAcceptRateLimit: { requests: number; windowMs: number };
+  readonly #mfaVerifyRateLimit: { requests: number; windowMs: number };
 
   constructor(database: PrismaClient, options: PlatosAuthServiceOptions) {
     this.#database = database;
@@ -287,13 +287,13 @@ export class PlatosAuthService {
     this.#now = options.now ?? (() => new Date());
     this.#tokenGenerator = options.tokenGenerator ?? generateOpaqueToken;
     this.#sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
-    this.#loginRateLimit = options.loginRateLimit ?? { attempts: 10, windowMs: 60_000 };
+    this.#loginRateLimit = options.loginRateLimit ?? { requests: 10, windowMs: 60_000 };
     this.#inviteAcceptRateLimit = options.inviteAcceptRateLimit ?? {
-      attempts: 10,
+      requests: 10,
       windowMs: 15 * 60_000,
     };
     this.#mfaVerifyRateLimit = options.mfaVerifyRateLimit ?? {
-      attempts: 5,
+      requests: 5,
       windowMs: 5 * 60_000,
     };
   }
@@ -1009,7 +1009,7 @@ export class PlatosAuthService {
   async #consumeRateLimit(
     action: AuthRateLimitAction,
     identifier: string,
-    limit: { attempts: number; windowMs: number }
+    limit: { requests: number; windowMs: number }
   ): Promise<void> {
     const now = this.#now();
     const windowStartMs = Math.floor(now.getTime() / limit.windowMs) * limit.windowMs;
@@ -1030,10 +1030,10 @@ export class PlatosAuthService {
         windowStart,
         expiresAt,
       },
-      update: { attempts: { increment: 1 } },
+      update: { requestCount: { increment: 1 } },
     });
-    if (bucket.attempts > limit.attempts) {
-      throw new PlatosAuthError("rate_limited", 429, "Too many authentication attempts", expiresAt);
+    if (bucket.requestCount > limit.requests) {
+      throw new PlatosAuthError("rate_limited", 429, "Too many authentication requests", expiresAt);
     }
   }
 }

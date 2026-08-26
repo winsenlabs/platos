@@ -42,8 +42,8 @@ export interface TransformResultsOptions {
  * @example
  * ```typescript
  * const schema: TableSchema[] = [{
- *   name: "task_runs",
- *   clickhouseName: "trigger_dev.task_runs_v2",
+ *   name: "runtime_runs",
+ *   clickhouseName: "platos_telemetry.runtime_runs_v2",
  *   columns: {
  *     status: {
  *       name: "status",

@@ -332,12 +332,12 @@ so non-caching providers stay quiet. Everything above was measured only after th
 
 6. **NEW / PRE-EXISTING — ClickHouse is unprovisioned on test.platos, so LLM cost metrics do not
    persist.** Found while verifying the deploy. The agent logs
-   `[Platos Spans] clickhouse write failed: Database trigger_dev does not exist` on every turn.
+   `[Platos Spans] clickhouse write failed: the inherited telemetry database does not exist` on every turn.
    ClickHouse holds only `default`, `system` and the two information schemas, and `default` contains
    **zero tables** — no `platos_spans_v1`, no `llm_metrics_v1`. `CLICKHOUSE_MIGRATIONS=1` is set in
    `.env`, so migrations are nominally enabled but have not run.
 
-   Not caused by this deploy: `INSERT INTO trigger_dev.platos_spans_v1` is hardcoded in
+   Not caused by this deploy: the span insert used the inherited database name in
    `spans.service.ts` and has been since 2026-05-05 (`fcc6854`), and this branch touches no
    ClickHouse or span file.
 

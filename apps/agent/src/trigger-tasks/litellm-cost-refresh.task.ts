@@ -75,7 +75,7 @@ export async function pushLiteLLMCatalog(
 }
 
 /**
- * PPR-52 — fetch the LiteLLM catalog with up-to-3 attempts using exponential
+ * PPR-52 — fetch the LiteLLM catalog with up to three passes using exponential
  * backoff + jitter. Transient 5xx / rate-limits / flaky networks should not
  * silently leave the catalog stale on a Monday-morning DNS hiccup.
  */
@@ -84,10 +84,10 @@ export async function fetchLiteLLMCatalog(
   sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
     new Promise((resolve) => setTimeout(resolve, milliseconds)),
 ): Promise<LiteLLMCatalog> {
-  const MAX_ATTEMPTS = 3;
+  const MAX_PASSES = 3;
   let lastError: string | null = null;
   let catalogValidationFailed = false;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let passNumber = 1; passNumber <= MAX_PASSES; passNumber++) {
     try {
       const res = await fetchImpl(LITELLM_URL, { signal: AbortSignal.timeout(20000) });
       if (!res.ok) {
@@ -105,13 +105,13 @@ export async function fetchLiteLLMCatalog(
     } catch (err: any) {
       lastError = err?.message || "fetch failed";
     }
-    if (attempt < MAX_ATTEMPTS) {
+    if (passNumber < MAX_PASSES) {
       // Exponential backoff with jitter: 500ms, 1500ms (± 250ms).
-      const base = 500 * Math.pow(2, attempt - 1);
+      const base = 500 * Math.pow(2, passNumber - 1);
       const jitter = Math.floor(Math.random() * 500) - 250;
       const wait = Math.max(100, base + jitter);
-      logger.warn("litellm-cost-refresh: fetch attempt failed, retrying", {
-        attempt,
+      logger.warn("litellm-cost-refresh: fetch failed, retrying", {
+        retryNumber: passNumber,
         waitMs: wait,
         error: lastError,
       });

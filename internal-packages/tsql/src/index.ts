@@ -563,9 +563,9 @@ export interface CompileTSQLOptions {
  * @example
  * ```typescript
  * const { sql, params } = compileTSQL(
- *   "SELECT * FROM task_runs WHERE status = 'completed' LIMIT 100",
+ *   "SELECT * FROM runtime_runs WHERE status = 'completed' LIMIT 100",
  *   {
- *     tableSchema: [taskRunsSchema],
+ *     tableSchema: [runtimeRunsSchema],
  *     enforcedWhereClause: {
  *       organization_id: { op: "eq", value: "org_123" },
  *       project_id: { op: "eq", value: "proj_456" },

@@ -157,7 +157,7 @@ export function estimateZero(): SkillEstimatorResult {
 // Platos RAG — RG.1.
 //
 // Flat per-call baseline. Real cost scales with chunk count on ingest +
-// reindex (each chunk triggers one OpenAI embedding call, priced in
+      // reindex (each chunk causes one OpenAI embedding call, priced in
 // EmbeddingService's own telemetry path). The skill-tier number here is
 // deliberately a conservative flat — it keeps budget caps meaningful
 // without double-counting the embedding spend that CostService already

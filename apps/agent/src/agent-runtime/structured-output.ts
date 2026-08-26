@@ -9,7 +9,7 @@
  * surfacing `StructuredOutputError` to the caller.
  *
  * The module is deliberately dependency-free aside from `ai`, `zod`, and
- * `@ai-sdk/ui-utils` (re-exported by `ai` as `jsonSchema`) so it can be
+ * AJV so it can be
  * unit-tested in isolation. It has no Nest decorators — it's pure logic
  * consumed by `AgentService.stream` / `AgentService.run`.
  *
@@ -22,32 +22,33 @@
 
 import { z } from "zod";
 import { jsonSchema, type Schema } from "ai";
+import Ajv from "ajv";
 
 /**
  * Error thrown when the LLM fails to produce valid output twice in a row
  * (initial call + one retry with error feedback). Carries the validation
- * errors from the final attempt so the caller can surface them intact.
+ * errors from the final pass so the caller can surface them intact.
  *
  * Keep the name `StructuredOutputError` — the consumer SDK pattern-matches
  * on it (see THEME_F §4 + `@platosdev/client` error surface).
  */
 export class StructuredOutputError extends Error {
   public readonly code = "structured_output_invalid" as const;
-  public readonly attempts: number;
+  public readonly retryCount: number;
   public readonly validationErrors: string[];
   public readonly rawText?: string;
 
   constructor(
     message: string,
     opts: {
-      attempts: number;
+      retryCount: number;
       validationErrors: string[];
       rawText?: string;
     },
   ) {
     super(message);
     this.name = "StructuredOutputError";
-    this.attempts = opts.attempts;
+    this.retryCount = opts.retryCount;
     this.validationErrors = opts.validationErrors;
     this.rawText = opts.rawText;
   }
@@ -99,7 +100,21 @@ export function normalizeSchema(
   if (typeof input === "object") {
     const keys = Object.keys(input as Record<string, unknown>);
     if (keys.length === 0) return null;
-    return jsonSchema(input as any);
+    // Keep AJV registration request-local. A shared instance registers caller-
+    // controlled `$id` values globally, so one tenant could make a later turn
+    // with the same ordinary schema ID fail during compilation.
+    const validateJson = new Ajv({ allErrors: true, strict: false }).compile(input as any);
+    return jsonSchema(input as any, {
+      validate(value) {
+        if (validateJson(value)) return { success: true, value };
+
+        const error = new Error("JSON Schema validation failed") as Error & {
+          errors?: typeof validateJson.errors;
+        };
+        error.errors = validateJson.errors;
+        return { success: false, error };
+      },
+    });
   }
 
   // Anything else (strings etc.) — refuse rather than silently succeed.

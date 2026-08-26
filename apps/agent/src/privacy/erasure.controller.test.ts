@@ -33,7 +33,7 @@ describe("ErasureController admin control-plane authorization", () => {
 
   beforeEach(() => {
     erasure = {
-      requestErasure: vi.fn().mockResolvedValue({ id: "op_1", attempts: 1 }),
+      requestErasure: vi.fn().mockResolvedValue({ id: "op_1", retryCount: 1 }),
       operationBelongsToOrganization: vi.fn().mockResolvedValue(true),
       getErasure: vi.fn().mockResolvedValue({ id: "op_1" }),
       retryErasureById: vi.fn(),
@@ -148,7 +148,7 @@ describe("ErasureController admin control-plane authorization", () => {
   it("drains only the calling organization's queue", async () => {
     credentials.verify.mockResolvedValue(adminCredential);
     erasure.resumeDueErasures.mockResolvedValue([
-      { operationId: "op_1", status: "partial_failure", attempts: 2 },
+      { operationId: "op_1", status: "partial_failure", retryCount: 2 },
     ]);
     const res = response();
 

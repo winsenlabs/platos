@@ -1,0 +1,741 @@
+{
+  "schemaVersion": 1,
+  "capabilityIds": [
+    "route-002",
+    "route-074",
+    "route-004",
+    "route-005",
+    "route-008",
+    "route-009",
+    "route-010",
+    "route-012",
+    "route-011",
+    "route-014",
+    "route-013",
+    "route-018",
+    "route-016",
+    "route-017",
+    "route-015",
+    "mcp-credential-reference-migration",
+    "route-019",
+    "route-020",
+    "route-021",
+    "route-022",
+    "route-023",
+    "route-024",
+    "route-025",
+    "route-040",
+    "route-027",
+    "route-028",
+    "attachment-presign-upload",
+    "message-rating-lifecycle",
+    "route-029",
+    "route-030",
+    "route-032",
+    "route-031",
+    "route-033",
+    "postman-executable-mode",
+    "postman-template-crud",
+    "route-034",
+    "route-035",
+    "route-036",
+    "agent-tools-loader-action-mismatch",
+    "route-037",
+    "route-038",
+    "route-039",
+    "route-026",
+    "route-041",
+    "access-key-allowed-origins",
+    "access-key-browser-request-correlation",
+    "access-key-one-time-reveal",
+    "access-key-revoke",
+    "access-key-rotation-correlation",
+    "route-042",
+    "route-044",
+    "route-043",
+    "route-045",
+    "route-046",
+    "route-048",
+    "route-047",
+    "route-049",
+    "route-053",
+    "route-052",
+    "route-051",
+    "route-050",
+    "mcp-token-create",
+    "mcp-token-list",
+    "mcp-token-revoke",
+    "route-055",
+    "entity-mcp-bearer-token-create",
+    "entity-mcp-bearer-token-delete",
+    "entity-mcp-bearer-token-list",
+    "mcp-combined-identity-modes",
+    "mcp-identity-context",
+    "mcp-tool-acl-policy",
+    "route-054",
+    "route-056",
+    "route-057",
+    "route-058",
+    "route-060",
+    "route-059",
+    "route-061",
+    "route-063",
+    "route-065",
+    "route-064",
+    "route-062",
+    "route-066",
+    "route-067",
+    "route-070",
+    "route-069",
+    "message-pagination",
+    "route-068",
+    "thread-artifacts",
+    "thread-fork",
+    "route-007",
+    "route-006",
+    "route-072",
+    "route-073",
+    "route-071",
+    "route-003",
+    "route-075",
+    "route-001",
+    "route-077",
+    "route-076",
+    "route-078",
+    "route-079",
+    "route-080",
+    "route-081",
+    "route-082",
+    "route-083",
+    "route-084"
+  ],
+  "interactiveCapabilityIds": [
+    "route-074",
+    "route-005",
+    "route-010",
+    "route-012",
+    "route-011",
+    "route-014",
+    "route-013",
+    "route-016",
+    "route-017",
+    "route-015",
+    "mcp-credential-reference-migration",
+    "route-019",
+    "route-020",
+    "route-024",
+    "route-025",
+    "route-027",
+    "route-028",
+    "attachment-presign-upload",
+    "message-rating-lifecycle",
+    "route-029",
+    "postman-executable-mode",
+    "postman-template-crud",
+    "route-034",
+    "route-035",
+    "route-036",
+    "agent-tools-loader-action-mismatch",
+    "route-037",
+    "route-039",
+    "route-041",
+    "access-key-allowed-origins",
+    "access-key-browser-request-correlation",
+    "access-key-one-time-reveal",
+    "access-key-revoke",
+    "access-key-rotation-correlation",
+    "route-042",
+    "route-043",
+    "route-048",
+    "route-049",
+    "mcp-token-create",
+    "mcp-token-revoke",
+    "route-055",
+    "entity-mcp-bearer-token-create",
+    "entity-mcp-bearer-token-delete",
+    "entity-mcp-bearer-token-list",
+    "mcp-combined-identity-modes",
+    "mcp-identity-context",
+    "mcp-tool-acl-policy",
+    "route-054",
+    "route-056",
+    "route-058",
+    "route-060",
+    "route-059",
+    "route-061",
+    "route-067",
+    "route-068",
+    "thread-artifacts",
+    "thread-fork",
+    "route-073",
+    "route-075",
+    "route-078",
+    "route-079",
+    "route-082",
+    "route-083"
+  ],
+  "mutationCapabilityIds": [
+    "mcp-credential-reference-migration",
+    "attachment-presign-upload",
+    "message-rating-lifecycle",
+    "postman-executable-mode",
+    "postman-template-crud",
+    "agent-tools-loader-action-mismatch",
+    "access-key-allowed-origins",
+    "access-key-browser-request-correlation",
+    "access-key-one-time-reveal",
+    "access-key-revoke",
+    "access-key-rotation-correlation",
+    "mcp-token-create",
+    "mcp-token-revoke",
+    "entity-mcp-bearer-token-create",
+    "entity-mcp-bearer-token-delete",
+    "mcp-combined-identity-modes",
+    "mcp-identity-context",
+    "mcp-tool-acl-policy",
+    "thread-fork"
+  ],
+  "paginationCapabilityIds": [
+    "postman-template-crud",
+    "mcp-token-list",
+    "entity-mcp-bearer-token-list",
+    "mcp-tool-acl-policy",
+    "message-pagination",
+    "thread-artifacts"
+  ],
+  "navigationContracts": {
+    "route-002": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    },
+    "route-074": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-004": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-005": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-008": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-009": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-010": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-012": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-011": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-014": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-013": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-018": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-016": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-017": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-015": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-credential-reference-migration": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-019": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-020": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-021": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-022": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-023": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-024": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-025": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-040": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-027": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-028": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "attachment-presign-upload": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "message-rating-lifecycle": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-029": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-030": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-032": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-031": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/thread"
+    },
+    "route-033": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "postman-executable-mode": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "postman-template-crud": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-034": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-035": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-036": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "agent-tools-loader-action-mismatch": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-037": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-038": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/thread/trace"
+    },
+    "route-039": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-026": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-041": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "access-key-allowed-origins": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "access-key-browser-request-correlation": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "access-key-one-time-reveal": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "access-key-revoke": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "access-key-rotation-correlation": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-042": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-044": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-043": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-045": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-046": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-048": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-047": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-049": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-053": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-052": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-051": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-050": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-token-create": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-token-list": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-token-revoke": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-055": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "entity-mcp-bearer-token-create": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "entity-mcp-bearer-token-delete": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "entity-mcp-bearer-token-list": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-combined-identity-modes": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-identity-context": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "mcp-tool-acl-policy": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-054": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-056": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-057": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-058": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-060": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-059": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-061": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-063": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-065": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/mcps"
+    },
+    "route-064": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/mcps"
+    },
+    "route-062": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/settings/general"
+    },
+    "route-066": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-067": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-070": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-069": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "message-pagination": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-068": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "thread-artifacts": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "thread-fork": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-007": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-006": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    },
+    "route-072": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "organization/settings/team"
+    },
+    "route-073": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-071": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-003": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-075": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-001": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    },
+    "route-077": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-076": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-078": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-079": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-080": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-081": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "target"
+    },
+    "route-082": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    },
+    "route-083": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    },
+    "route-084": {
+      "expectedHttpStatus": 200,
+      "expectedFinalPath": "environment/agents"
+    }
+  },
+  "mutationHandlers": {
+    "mcp-credential-reference-migration": "entity-create",
+    "attachment-presign-upload": "attachment-upload",
+    "message-rating-lifecycle": "message-rating",
+    "postman-executable-mode": "postman-execute",
+    "postman-template-crud": "postman-create",
+    "agent-tools-loader-action-mismatch": "toggle-button",
+    "access-key-allowed-origins": "access-key-origins",
+    "access-key-browser-request-correlation": "access-key-rotate",
+    "access-key-one-time-reveal": "access-key-rotate",
+    "access-key-revoke": "access-key-revoke",
+    "access-key-rotation-correlation": "access-key-rotate",
+    "mcp-token-create": "platform-token-create",
+    "mcp-token-revoke": "platform-token-revoke",
+    "entity-mcp-bearer-token-create": "entity-token-create",
+    "entity-mcp-bearer-token-delete": "entity-token-revoke",
+    "mcp-combined-identity-modes": "mcp-config",
+    "mcp-identity-context": "mcp-config",
+    "mcp-tool-acl-policy": "mcp-tool-acl",
+    "thread-fork": "thread-fork"
+  },
+  "paginationContracts": {
+    "postman-template-crud": {
+      "pageParam": "page",
+      "pageSizeParam": "pageSize",
+      "resultSelector": "form:has(input[name=\"templateId\"])",
+      "rowIdentity": {
+        "selector": "input[name=\"templateId\"]",
+        "source": "value"
+      },
+      "totalSelector": "nav[aria-label=\"Postman template pagination\"] [role=\"status\"]",
+      "totalPattern": "of\\s+([\\d,]+)",
+      "minTotal": 3
+    },
+    "mcp-token-list": {
+      "pageParam": "page",
+      "pageSizeParam": "pageSize",
+      "resultSelector": "section:has-text(\"Platform token inventory\") tbody tr",
+      "rowIdentity": {
+        "selector": "input[name=\"tokenId\"]",
+        "source": "value"
+      },
+      "totalSelector": "body",
+      "totalPattern": "Scoped tokens\\s*([\\d,]+)",
+      "minTotal": 3
+    },
+    "entity-mcp-bearer-token-list": {
+      "pageParam": "tokenPage",
+      "pageSizeParam": "tokenPageSize",
+      "resultSelector": "section:has-text(\"Entity bearer inventory\") tbody tr",
+      "rowIdentity": {
+        "selector": "input[name=\"tokenId\"]",
+        "source": "value"
+      },
+      "totalSelector": "section:has-text(\"Entity bearer inventory\")",
+      "totalPattern": "([\\d,]+)\\s+total",
+      "minTotal": 3
+    },
+    "mcp-tool-acl-policy": {
+      "pageParam": "aclPage",
+      "pageSizeParam": "aclPageSize",
+      "resultSelector": "section:has-text(\"Environment Tool ACL\") form:has(input[name=\"toolId\"])",
+      "rowIdentity": {
+        "selector": "input[name=\"toolId\"]",
+        "source": "value"
+      },
+      "totalSelector": "section:has-text(\"Environment Tool ACL\")",
+      "totalPattern": "([\\d,]+)\\s+filtered Tools",
+      "minTotal": 3
+    },
+    "message-pagination": {
+      "pageParam": "page",
+      "pageSizeParam": "pageSize",
+      "resultSelector": "main > article:has(code)",
+      "rowIdentity": {
+        "selector": "code",
+        "source": "text"
+      },
+      "totalSelector": "nav[aria-label=\"Thread message pagination\"] [role=\"status\"]",
+      "totalPattern": "of\\s+([\\d,]+)",
+      "minTotal": 3
+    },
+    "thread-artifacts": {
+      "pageParam": "artifactPage",
+      "pageSizeParam": "artifactPageSize",
+      "resultSelector": "section:has-text(\"Artifacts\") article",
+      "rowIdentity": {
+        "selector": "h3",
+        "source": "text"
+      },
+      "totalSelector": "nav[aria-label=\"Thread artifact pagination\"] [role=\"status\"]",
+      "totalPattern": "of\\s+([\\d,]+)",
+      "minTotal": 3
+    }
+  },
+  "targetOverrides": {
+    "route-014": "environment/agent-connect",
+    "route-057": "environment/memories",
+    "route-071": "organization/settings/team",
+    "route-078": "embed",
+    "route-079": "embed",
+    "route-080": "embed",
+    "route-083": "root",
+    "route-084": "root"
+  }
+}

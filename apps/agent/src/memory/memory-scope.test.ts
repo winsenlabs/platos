@@ -26,7 +26,7 @@ function prisma(bindings: Array<{ agentId: string; clusterId: string | null }>) 
 
 function memoryController(options: {
   selectedEndUser?: { id: string; identities: Array<{ subject: string }> } | null;
-  list?: ReturnType<typeof vi.fn>;
+  listPage?: ReturnType<typeof vi.fn>;
 } = {}) {
   const database = {
     environment: { findFirst: vi.fn().mockResolvedValue({ id: scope.environmentId }) },
@@ -34,13 +34,16 @@ function memoryController(options: {
     endUserIdentity: { findFirst: vi.fn().mockResolvedValue({ endUserId: "end-user-own", subject: "verified-user" }) },
   };
   const memoryService = {
-    list: options.list ?? vi.fn().mockResolvedValue([]),
+    listPage: options.listPage ?? vi.fn().mockResolvedValue({
+      items: [], total: 0, limit: 50, offset: 0, hasNext: false,
+    }),
   };
   return {
     database,
     memoryService,
     controller: new MemoryController(
       memoryService as any,
+      {} as any,
       {} as any,
       {} as any,
       database as any,
@@ -98,7 +101,7 @@ describe("clean memory Agent/AgentCluster isolation", () => {
       requiresEndUserContext: true,
       code: "MEMORY_END_USER_CONTEXT_REQUIRED",
     });
-    expect(memoryService.list).not.toHaveBeenCalled();
+    expect(memoryService.listPage).not.toHaveBeenCalled();
   });
 
   it("accepts only a direct active same-organization EndUser selection for operators", async () => {
@@ -124,6 +127,7 @@ describe("clean memory Agent/AgentCluster isolation", () => {
         disabledAt: null,
       },
     }));
+    expect(database.environment.findFirst).not.toHaveBeenCalled();
   });
 
   it("rejects an operator selection outside the canonical scope", async () => {
@@ -140,24 +144,28 @@ describe("clean memory Agent/AgentCluster isolation", () => {
   });
 
   it("uses a validated operator selection and never substitutes the operator identity", async () => {
-    const list = vi.fn().mockResolvedValue([]);
+    const listPage = vi.fn().mockResolvedValue({
+      items: [], total: 0, limit: 50, offset: 0, hasNext: false,
+    });
     const { controller, memoryService } = memoryController({
       selectedEndUser: { id: "end-user-selected", identities: [{ subject: "external-selected" }] },
-      list,
+      listPage,
     });
 
     await controller.listMemories({
       scope: { ...scope, userId: "operator-id", principal: "operator" },
     } as any, "end-user-selected");
 
-    expect(memoryService.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+    expect(memoryService.listPage).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       userId: "external-selected",
     }));
   });
 
   it("forces non-operators to their verified scope userId", async () => {
-    const list = vi.fn().mockResolvedValue([]);
-    const { controller, memoryService, database } = memoryController({ list });
+    const listPage = vi.fn().mockResolvedValue({
+      items: [], total: 0, limit: 50, offset: 0, hasNext: false,
+    });
+    const { controller, memoryService, database } = memoryController({ listPage });
 
     await controller.listMemories({
       scope: { ...scope, userId: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce", principal: "end-user" },
@@ -166,7 +174,7 @@ describe("clean memory Agent/AgentCluster isolation", () => {
     expect(database.endUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ id: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce" }),
     }));
-    expect(memoryService.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+    expect(memoryService.listPage).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       userId: "verified-user",
     }));
   });

@@ -4,8 +4,6 @@ title: MCP tokens and PATs
 description: Personal Access Tokens (plt_ent_*) and OAuth 2.1 DCR flows for MCP clients.
 category: dx
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I create a Platos PAT?"
   - "What can a PAT do that a session token can't?"
@@ -16,10 +14,6 @@ questions:
 related:
   - mcp-gateway
   - auth-modes
-source_files_referenced:
-  - apps/agent/src/mcp-platform/token.service.ts
-  - apps/agent/src/mcp-platform/mcp-bearer-token.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.mcp-tokens/route.tsx
 ---
 
 # MCP tokens and PATs
@@ -50,7 +44,7 @@ Both paths land at the same enforcement point and revalidate entity/project/envi
 
 ### Create a PAT
 
-`/settings/integrations/mcp` -> "Mint a new token". Name, TTL, and a **visual permission picker**: toggle tool categories (with live tool counts) or pick a preset — read-only, operator, full, or admin (cross-scope) — and a running "this token sees N tools" preview shows the effective grant. The dashboard shows the token string once; lost tokens cannot be retrieved. Paste the generated config into your MCP client — it uses streamable HTTP (`type: "http"`), the transport modern clients speak.
+`/settings/integrations/mcp` -> "Mint a new token". Name, TTL, and a **visual permission picker**: toggle tool categories (with live tool counts) or pick a preset — read-only, operator, full, or admin (cross-scope) — and an executionning "this token sees N tools" preview shows the effective grant. The dashboard shows the token string once; lost tokens cannot be retrieved. Paste the generated config into your MCP client — it uses streamable HTTP (`type: "http"`), the transport modern clients speak.
 
 ### Use a PAT
 
@@ -81,11 +75,11 @@ The resulting bearer is what the client uses on `/mcp`.
 
 ### Revoke
 
-`DELETE /agent/v1/access-key/:tokenId` revokes immediately. The next MCP call returns 401.
+`DELETE /api/v1/agent/access-key` revokes the active Environment access key immediately. The next MCP call returns 401.
 
 ## Common pitfalls
 
-- PAT bearer tokens MUST start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearer; older deployments may only accept the OAuth shape.
+- PAT bearer tokens MUST start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearer; older installations may only accept the OAuth shape.
 - PATs never default to production or the oldest environment. Mint from the intended environment page; switching dashboard environments creates a separately scoped token.
 - A PAT's `scopes[]` is checked on every call. A token without `agents:write` cannot create an agent even if it has `agents:read`. Audit on `/settings/mcp-tokens` if a permission is failing unexpectedly.
 - OAuth DCR registration is unauthenticated by default; rate limits apply (see [Rate limits](/docs/rate-limits)). Registration cannot add arbitrary scopes, and consent transactions expire and reject tamper or replay.

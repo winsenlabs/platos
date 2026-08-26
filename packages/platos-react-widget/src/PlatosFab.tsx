@@ -77,10 +77,9 @@ function saveIdentity(key: string | null, id: VisitorIdentity): void {
  *      No form, dive into chat. Use this when your app already knows the
  *      user.
  *
- * The widget exposes every per-turn knob the agent supports via
- * `perTurn`: dynamicBlocks, modelLabel, contextType/Id, attachmentIds,
- * sessionContextOverride. Pass exactly the same shape `client.threads.send()`
- * accepts — the widget forwards on every send.
+ * The widget exposes browser-safe per-turn options via `perTurn`:
+ * dynamicBlocks, modelLabel, contextType/Id, and attachmentIds. The widget
+ * forwards those options on every send.
  */
 export function PlatosFab(props: PlatosFabProps) {
   const {

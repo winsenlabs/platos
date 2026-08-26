@@ -4,8 +4,6 @@ title: Backup and restore Postgres, ClickHouse, MinIO
 description: Snapshot Platos's three persistent stores and restore them onto a fresh host.
 category: troubleshooting
 order: 60
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I back up Postgres?"
   - "How do I back up ClickHouse without downtime?"
@@ -15,9 +13,6 @@ questions:
 related:
   - install-self-host
   - fix-encryption-key
-source_files_referenced:
-  - docker-compose.platos.yml
-  - docs/SELF_HOSTING.md
 ---
 
 # Backup and restore Postgres, ClickHouse, MinIO
@@ -70,7 +65,7 @@ A nightly backup of every Platos data store, restorable to a clean VPS in under 
 2. **Clone the repo.**
 
    ```bash
-   git clone https://github.com/platos-labs/platos.git /opt/platos
+   git clone https://github.com/winsenlabs/platos.git /opt/platos
    cd /opt/platos
    cp .env.example .env
    ```
@@ -111,7 +106,7 @@ A nightly backup of every Platos data store, restorable to a clean VPS in under 
 
 - Sign in works with the original credentials.
 - Existing chats load and decrypt.
-- The runs page shows the historical run list.
+- The executions page shows the historical Turn list.
 - The cost dashboard shows pre-restore data.
 
 ## Encrypt the backups

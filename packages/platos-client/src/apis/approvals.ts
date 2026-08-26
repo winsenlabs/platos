@@ -2,7 +2,7 @@
  * @platosdev/client — approvals API (human-in-the-loop).
  *
  * Scope-gated list + resolve endpoints backing the HITL approval
- * waitpoint that agents open via `request_approval` / `cancel_run`.
+ * approval request that agents open before a gated action.
  * EOBD.85.
  */
 
@@ -18,7 +18,8 @@ export interface PlatosApproval {
   };
   agentId: string;
   threadId: string;
-  runId?: string | null;
+  turnId?: string | null;
+  jobId?: string | null;
   question: string;
   context?: unknown;
   status: "pending" | "approved" | "rejected" | "timed_out";
@@ -74,7 +75,7 @@ export class ApprovalsApi {
     scope?: PlatosScope,
   ): Promise<PlatosApproval> {
     return this.client._fetch<PlatosApproval>(
-      `/api/v1/agent/monitoring/approvals/${encodeURIComponent(approvalId)}/resolve`,
+      `/api/v1/agent/approvals/${encodeURIComponent(approvalId)}/resolve`,
       { method: "POST", body: JSON.stringify(body) },
       scope,
     );

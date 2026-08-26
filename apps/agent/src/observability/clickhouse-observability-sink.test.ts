@@ -79,8 +79,8 @@ describe("health", () => {
   });
 
   test("reports misconfigured, not disabled, for an endpoint that is set but unusable", async () => {
-    // A deployment that HAS a store and mistyped where it is must never read as
-    // a deployment that has no store.
+    // An installation that HAS a store and mistyped where it is must never read as
+    // an installation that has no store.
     const { fetchImpl } = transport(() => ({ status: 200 }));
     const sink = new ClickhouseObservabilitySink({
       fetchImpl,
@@ -128,7 +128,7 @@ describe("health", () => {
     expect(sent[0].body).toContain("system.tables");
   });
 
-  test("does not warn every boot about a deployment that chose to have no store", async () => {
+  test("does not warn every boot about an installation that chose to have no store", async () => {
     // Warning on `disabled` trains operators to ignore this line, which is the
     // state that hid the previous breakage.
     expect(healthLogLevel("disabled")).toBe("log");
@@ -140,13 +140,13 @@ describe("health", () => {
 });
 
 describe("writes", () => {
-  test("targets platos_observability and never trigger_dev", async () => {
+  test("targets platos_observability and never platos_telemetry", async () => {
     const { sent, fetchImpl } = transport(() => ({ status: 200 }));
     const sink = new ClickhouseObservabilitySink({ fetchImpl, readConfig: config });
     await sink.writeRows(sampleRows());
     const query = sent[0].url.searchParams.get("query") ?? "";
     expect(query).toBe("INSERT INTO platos_observability.turns_v1 FORMAT JSONEachRow");
-    expect(query).not.toContain("trigger_dev");
+    expect(query).not.toContain("platos_telemetry");
   });
 
   test("sends credentials as a Basic header, never in the URL", async () => {

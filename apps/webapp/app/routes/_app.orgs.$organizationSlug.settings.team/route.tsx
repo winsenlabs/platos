@@ -9,32 +9,37 @@ import { database } from "~/services/database.server";
 
 async function load(request: Request, slug: string) {
   const operator = await requireOperator(request);
-  const organization = await database.organization.findFirst({
-    where: {
-      slug,
-      archivedAt: null,
-      memberships: {
-        some: {
-          userId: operator.userId,
-          deactivatedAt: null,
-          role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] },
+  let organization;
+  try {
+    organization = await database.organization.findFirst({
+      where: {
+        slug,
+        archivedAt: null,
+        memberships: {
+          some: {
+            userId: operator.userId,
+            deactivatedAt: null,
+            role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] },
+          },
         },
       },
-    },
-    select: {
-      id: true,
-      name: true,
-      memberships: {
-        where: { deactivatedAt: null },
-        select: {
-          id: true,
-          role: true,
-          user: { select: { email: true, displayName: true } },
+      select: {
+        id: true,
+        name: true,
+        memberships: {
+          where: { deactivatedAt: null },
+          select: {
+            id: true,
+            role: true,
+            user: { select: { email: true, displayName: true } },
+          },
+          orderBy: { createdAt: "asc" },
         },
-        orderBy: { createdAt: "asc" },
       },
-    },
-  });
+    });
+  } catch {
+    throw new Response("Team unavailable", { status: 503 });
+  }
   if (!organization) throw new Response("Forbidden", { status: 403 });
   return { operator, organization };
 }
@@ -49,6 +54,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const form = await request.formData();
   const membershipId = String(form.get("membershipId") ?? "");
   const role = String(form.get("role") ?? "") as OrganizationRole;
+  if (!membershipId) throw new Response("Membership is required", { status: 400 });
   if (!Object.values(OrganizationRole).includes(role)) {
     throw new Response("Invalid role", { status: 400 });
   }
@@ -61,9 +67,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     });
   } catch (error) {
     if (error instanceof PlatosAuthError) {
-      throw new Response(error.message, { status: error.status });
+      throw new Response("Membership update failed", { status: error.status });
     }
-    throw error;
+    throw new Response("Membership update failed", { status: 503 });
   }
   return json({ ok: true });
 }

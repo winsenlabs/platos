@@ -1122,7 +1122,7 @@ export class CostService {
     // WIN-134 — `tasks` is a set of Turn ids, not a counter. A rebuilt hash
     // that carried real cost and `tasks = 0` made the "Tasks completed" card,
     // `monitoring.cost.daily`/`.range` and a turns-limit budget cap all
-    // under-report for every reconciled day — which, since the task runs
+    // under-report for every reconciled day — which, since reconciliation runs
     // nightly over the trailing two days, is the normal post-Redis-loss state
     // rather than a corner case. `calls` counts Step rows and `tasks` counts
     // the Turns they belong to; a multi-step turn is where the two diverge, and
@@ -1529,7 +1529,7 @@ export class CostService {
         costCents: roundCents(b.costCents),
         costWithCacheCents: roundCents(b.costWithCacheCents),
       }))
-      .sort((a, b) => b.costCents - a.costCents)
+      .sort((a, b) => b.costCents - a.costCents || a.model.localeCompare(b.model))
       .slice(0, limit);
   }
 
@@ -1710,7 +1710,7 @@ export class CostService {
         tasks: b.tasks,
         threads: b.threads.size,
       }))
-      .sort((a, b) => b.costCents - a.costCents)
+      .sort((a, b) => b.costCents - a.costCents || a.agentId.localeCompare(b.agentId))
       .slice(0, limit);
   }
 

@@ -24,7 +24,7 @@ describe("client.tools", () => {
     fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     client = new PlatosClient({
-      baseUrl: "https://play.platos.dev",
+      baseUrl: "https://platos.example.com",
       sessionToken: "test-token",
     });
   });
@@ -39,7 +39,7 @@ describe("client.tools", () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].toolName).toBe("echo");
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://play.platos.dev/api/v1/agent/tools");
+    expect(url).toBe("https://platos.example.com/api/v1/agent/tools");
     expect(init.method).toBe("GET");
   });
 
@@ -48,7 +48,7 @@ describe("client.tools", () => {
     await client.tools.list({ category: "communication" });
     const [url] = fetchSpy.mock.calls[0];
     expect(url).toBe(
-      "https://play.platos.dev/api/v1/agent/tools?category=communication",
+      "https://platos.example.com/api/v1/agent/tools?category=communication",
     );
   });
 
@@ -89,7 +89,7 @@ describe("client.tools", () => {
     expect(out.enabled).toBe(false);
     const [url, init] = fetchSpy.mock.calls[0];
     expect(url).toBe(
-      "https://play.platos.dev/api/v1/agent/tools/fandesk/process_refund/enabled",
+      "https://platos.example.com/api/v1/agent/tools/fandesk/process_refund/enabled",
     );
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body as string)).toEqual({ enabled: false });
@@ -107,7 +107,7 @@ describe("client.tools", () => {
     const result = await client.tools.test("t1", { message: "hi" });
     expect(result.status).toBe("ok");
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://play.platos.dev/api/v1/agent/tools/t1/test");
+    expect(url).toBe("https://platos.example.com/api/v1/agent/tools/t1/test");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({ params: { message: "hi" } });
   });

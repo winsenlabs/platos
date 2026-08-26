@@ -1,9 +1,23 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MemoryService } from "./memory.service";
+import { runMemoryProfileMigrationCommands } from "./memory-profile-migration.test-fixture";
+import {
+  applicationQueryCount,
+  type CapturedPrismaQuery,
+  explainCapturedQuery,
+  postgresUrlWithParams,
+  requireCapturedEndpointQueries,
+  requireCapturedRelationQuery,
+  startPostgresIntegrationDatabase,
+  type PostgresIntegrationDatabase,
+  writeExplainEvidence,
+  writePostgresRuntimeEvidence,
+  writeQueryCountEvidence,
+} from "./postgres-integration-evidence";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
@@ -14,17 +28,18 @@ const queryVector = unitVectorValues(1);
 type ScopeFixture = Awaited<ReturnType<typeof seedScope>>;
 
 describe("memory PostgreSQL HNSW retrieval", () => {
-  let container: StartedPostgreSqlContainer;
-  let prisma: PrismaClient;
+  let database: PostgresIntegrationDatabase;
+  let prisma: ReturnType<typeof createQueryPrismaClient>;
   let memory: MemoryService;
   let primary: ScopeFixture;
   let secondary: ScopeFixture;
   let otherAgentId: string;
+  const queries: CapturedPrismaQuery[] = [];
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
-    const databaseUrl = container.getConnectionUri();
-    execFileSync(
+    database = await startPostgresIntegrationDatabase();
+    const databaseUrl = database.databaseUrl;
+    const migration = spawnSync(
       resolve(process.cwd(), "../../node_modules/.bin/prisma"),
       [
         "migrate",
@@ -35,22 +50,70 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       {
         cwd: process.cwd(),
         env: { ...process.env, DATABASE_URL: databaseUrl },
-        stdio: "pipe",
+        encoding: "utf8",
       }
     );
+    const evidenceDirectory = process.env.PLATOS_POSTGRES_EVIDENCE_DIR?.trim();
+    if (evidenceDirectory) {
+      const suiteDirectory = resolve(evidenceDirectory, "suites");
+      mkdirSync(suiteDirectory, { recursive: true });
+      writeFileSync(
+        resolve(suiteDirectory, "memory-retrieval.prisma-migrate.stdout.log"),
+        migration.stdout || "",
+        "utf8"
+      );
+      writeFileSync(
+        resolve(suiteDirectory, "memory-retrieval.prisma-migrate.stderr.log"),
+        migration.stderr || migration.error?.message || "",
+        "utf8"
+      );
+    }
+    if (migration.error || migration.status !== 0) {
+      throw new Error(
+        [
+          `Prisma migrate deploy failed${migration.error ? `: ${migration.error.message}` : ` with status ${migration.status}`}`,
+          migration.stdout?.trim(),
+          migration.stderr?.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    }
 
-    prisma = new PrismaClient({
-      datasources: { db: { url: `${databaseUrl}?connection_limit=1` } },
-    });
-    memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
-    primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-    secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-    otherAgentId = await seedAgent(prisma, primary.projectId, primary.environmentId, "other");
+    try {
+      prisma = createQueryPrismaClient(databaseUrl);
+      prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
+      runMemoryProfileMigrationCommands(databaseUrl);
+      memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
+      primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+      secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+      otherAgentId = await seedAgent(prisma, primary.projectId, primary.environmentId, "other");
+      const [runtime] = await prisma.$queryRawUnsafe<
+        Array<{
+          serverVersion: string;
+          pgvectorVersion: string;
+        }>
+      >(
+        `SELECT current_setting('server_version') AS "serverVersion",
+                (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS "pgvectorVersion"`
+      );
+      expect(runtime?.pgvectorVersion).toBeTruthy();
+      writePostgresRuntimeEvidence(runtime!);
+    } catch (error) {
+      if (evidenceDirectory) {
+        writeFileSync(
+          resolve(evidenceDirectory, "suites", "memory-retrieval.setup.error.log"),
+          error instanceof Error ? error.stack || error.message : String(error),
+          "utf8"
+        );
+      }
+      throw error;
+    }
   }, 180_000);
 
   afterAll(async () => {
     await prisma?.$disconnect();
-    await container?.stop();
+    await database?.stop();
   });
 
   it("fills selective filtered recall and exposes stable cosine/confidence reranking", async () => {
@@ -115,33 +178,32 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     await prisma.$executeRawUnsafe("SET enable_seqscan = off");
     await prisma.$executeRawUnsafe("SET enable_bitmapscan = off");
     await prisma.$executeRawUnsafe("SET enable_sort = off");
+    await prisma.$executeRawUnsafe("SET statement_timeout = '15s'");
 
-    const plan = await prisma.$queryRawUnsafe<Array<{ "QUERY PLAN": string }>>(
-      `EXPLAIN (COSTS OFF)
-       SELECT "id"
-       FROM "Memory"
-       WHERE "environmentId" = $2::uuid
-         AND "endUserId" = $3::uuid
-         AND "embedding" IS NOT NULL
-         AND "quarantinedAt" IS NULL
-         AND "archivedAt" IS NULL
-         AND "kind" = $4
-         AND "agentId" = ANY($5::uuid[])
-         AND "visibility" = ANY($6::text[])
-       ORDER BY "embedding" <=> $1::vector
-       LIMIT 200`,
-      unitVector(1),
-      primary.environmentId,
-      primary.endUserId,
-      KIND,
-      [primary.agentId],
-      ["agent_visible", "hidden"]
-    );
-    expect(plan.map((row) => row["QUERY PLAN"]).join("\n")).toContain(
-      "Memory_embedding_hnsw_cosine_idx"
-    );
-
+    const queryStart = queries.length;
     const first = await search(memory, primary, 50);
+    const capturedQueries = queries.slice(queryStart);
+    const queryCount = applicationQueryCount(capturedQueries);
+    expect(queryCount).toBeLessThanOrEqual(12);
+    writeQueryCountEvidence({
+      name: "memory-semantic-search.query-count.json",
+      endpoint: "MemoryService.semanticSearch",
+      queryCount,
+      maximumQueryCount: 12,
+      fixtureRows: 1_559,
+    });
+    const searchPlan = await explainCapturedQuery(
+      prisma,
+      requireCapturedRelationQuery(capturedQueries, "Memory")
+    );
+    expect(JSON.stringify(searchPlan.plan)).toContain("Memory_embedding_hnsw_cosine_idx");
+    writeExplainEvidence({
+      name: "memory-semantic-search.explain.json",
+      endpoint: "MemoryService.semanticSearch",
+      rowLimit: 200,
+      statementTimeoutMs: 15_000,
+      plans: { search: searchPlan },
+    });
     const second = await search(memory, primary, 50);
 
     expect(first).toHaveLength(50);
@@ -170,7 +232,212 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     });
     expect(cosineThreshold.map(({ id }) => id)).toEqual([closestId]);
   });
+
+  it("recalls only persisted dual-predicate agent-visible rows while management search is explicit", async () => {
+    const visibleId = "00000000-0000-4000-8000-000000000101";
+    const hiddenId = "00000000-0000-4000-8000-000000000102";
+    const privateId = "00000000-0000-4000-8000-000000000103";
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "agentVisible", "visibility", "source", "confidence", "embedding",
+         "createdAt", "updatedAt"
+       ) VALUES
+         ($1::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'visible', true, 'agent_visible', 'manual', 0.5, $7::vector, NOW(), NOW()),
+         ($2::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'hidden', false, 'hidden', 'manual', 0.5, $7::vector, NOW(), NOW()),
+         ($3::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'private', false, 'private', 'manual', 0.5, $7::vector, NOW(), NOW())`,
+      visibleId,
+      hiddenId,
+      privateId,
+      primary.environmentId,
+      primary.endUserId,
+      primary.agentId,
+      unitVector(1)
+    );
+
+    const runtime = await memory.semanticSearch(searchScope(primary), {
+      query: "query",
+      userId: primary.externalUserId,
+      kind: "visibility-hnsw-test",
+      limit: 10,
+    });
+    expect(runtime.map(({ id }) => id)).toEqual([visibleId]);
+
+    const management = await memory.semanticSearch(searchScope(primary), {
+      query: "query",
+      userId: primary.externalUserId,
+      kind: "visibility-hnsw-test",
+      visibilityIn: ["agent_visible", "hidden", "private"],
+      limit: 10,
+    });
+    expect(new Set(management.map(({ id }) => id))).toEqual(
+      new Set([visibleId, hiddenId, privateId])
+    );
+  });
+
+  it("atomically collapses concurrent normalized profile writes and keeps the latest value", async () => {
+    await Promise.all([
+      memory.add(searchScope(primary), {
+        userId: primary.externalUserId,
+        kind: "profile",
+        content: "Ada first",
+        metadata: { profileKey: " Name " },
+        visibility: "agent_visible",
+        source: "manual",
+      }),
+      memory.add(searchScope(primary), {
+        userId: primary.externalUserId,
+        kind: "profile",
+        content: "Ada concurrent",
+        metadata: { profileKey: "name" },
+        visibility: "agent_visible",
+        source: "manual",
+      }),
+    ]);
+    await memory.add(searchScope(primary), {
+      userId: primary.externalUserId,
+      kind: "profile",
+      content: "Ada latest",
+      metadata: { profileKey: "NAME" },
+      visibility: "agent_visible",
+      source: "manual",
+    });
+
+    const rows = await prisma.memory.findMany({
+      where: {
+        environmentId: primary.environmentId,
+        endUserId: primary.endUserId,
+        agentId: primary.agentId,
+        kind: "profile",
+        profileKey: "name",
+      },
+      select: { content: true, profileKey: true },
+    });
+    expect(rows).toEqual([{ content: "Ada latest", profileKey: "name" }]);
+  });
+
+  it("traverses an exact 384-row scope with truthful totals and deterministic bounded pages", async () => {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "visibility", "source", "createdAt", "updatedAt"
+       )
+       SELECT gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid, 'fact',
+              concat('pagination fixture ', series), 'agent_visible', 'manual',
+              '2026-01-01T00:00:00.000Z'::timestamp,
+              '2026-01-01T00:00:00.000Z'::timestamp
+       FROM generate_series(1, 384) AS series`,
+      primary.environmentId,
+      primary.endUserId,
+      primary.agentId
+    );
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "visibility", "source", "createdAt", "updatedAt"
+       )
+       SELECT gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid, 'fact',
+              concat('outside tenant pagination fixture ', series), 'agent_visible', 'manual',
+              '2026-01-01T00:00:00.000Z'::timestamp,
+              '2026-01-01T00:00:00.000Z'::timestamp
+       FROM generate_series(1, 17) AS series`,
+      secondary.environmentId,
+      secondary.endUserId,
+      secondary.agentId
+    );
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "visibility", "source", "createdAt", "updatedAt"
+       )
+       SELECT gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid,
+              CASE WHEN series <= 11 THEN 'fact' ELSE 'preference' END,
+              concat('filtered pagination fixture ', series), 'agent_visible',
+              CASE WHEN series <= 11 THEN 'extracted' ELSE 'manual' END,
+              '2026-01-01T00:00:00.000Z'::timestamp,
+              '2026-01-01T00:00:00.000Z'::timestamp
+       FROM generate_series(1, 24) AS series`,
+      primary.environmentId,
+      primary.endUserId,
+      primary.agentId
+    );
+    const input = {
+      userId: primary.externalUserId,
+      kind: "fact",
+      source: "manual",
+      limit: 100,
+    } as const;
+    const queryStart = queries.length;
+    const first = await memory.listPage(searchScope(primary), { ...input, offset: 0 });
+    const capturedQueries = queries.slice(queryStart);
+    const queryCount = applicationQueryCount(capturedQueries);
+    expect(queryCount).toBeLessThanOrEqual(8);
+    writeQueryCountEvidence({
+      name: "memory-dense-page.query-count.json",
+      endpoint: "MemoryService.listPage",
+      queryCount,
+      maximumQueryCount: 8,
+      fixtureRows: 384,
+    });
+    const capturedPageQueries = requireCapturedEndpointQueries(capturedQueries, "Memory");
+    const [repeated, middle, later, last, empty, outsideTenant] = await Promise.all([
+      memory.listPage(searchScope(primary), { ...input, offset: 0 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 100 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 200 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 300 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 400 }),
+      memory.listPage(searchScope(secondary), { ...input, offset: 0 }),
+    ]);
+
+    for (const page of [first, repeated, middle, later, last, empty]) {
+      expect(page.total).toBe(384);
+      expect(page.limit).toBe(100);
+    }
+    expect(first.items).toHaveLength(100);
+    expect(middle.items).toHaveLength(100);
+    expect(later.items).toHaveLength(100);
+    expect(last.items).toHaveLength(84);
+    expect(empty.items).toHaveLength(0);
+    expect(last.hasNext).toBe(false);
+    expect(first.items.map(({ id }) => id)).toEqual(repeated.items.map(({ id }) => id));
+    const traversedIds = [...first.items, ...middle.items, ...later.items, ...last.items].map(
+      ({ id }) => id
+    );
+    expect(traversedIds).toEqual(
+      [...traversedIds].sort((left, right) => left.localeCompare(right))
+    );
+    expect(new Set(traversedIds).size).toBe(384);
+    expect(outsideTenant).toMatchObject({ total: 17, hasNext: false });
+    expect(outsideTenant.items).toHaveLength(17);
+
+    const explainPlans = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '15s'");
+        return {
+          items: await explainCapturedQuery(tx, capturedPageQueries.items),
+          count: await explainCapturedQuery(tx, capturedPageQueries.count),
+        };
+      },
+      { timeout: 30_000 }
+    );
+    writeExplainEvidence({
+      name: "memory-dense-page.explain.json",
+      endpoint: "MemoryService.listPage",
+      rowLimit: 100,
+      statementTimeoutMs: 15_000,
+      plans: explainPlans,
+    });
+  });
 });
+
+function createQueryPrismaClient(databaseUrl: string) {
+  return new PrismaClient({
+    datasources: {
+      db: { url: postgresUrlWithParams(databaseUrl, { connection_limit: "1" }) },
+    },
+    log: [{ emit: "event", level: "query" }],
+  });
+}
 
 async function seedScope(prisma: PrismaClient, slug: string, subject: string) {
   const organization = await prisma.organization.create({

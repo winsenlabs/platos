@@ -5,8 +5,7 @@ const env = process.env;
 /**
  * Durable tool block execution — PPR-25 full impl.
  *
- * Triggered by the agent runtime (via the `spawn_bgo` meta-tool — formerly
- * `spawn_task`, kept as a deprecated alias) whenever the
+ * Invoked by the agent runtime through the `spawn_job` tool whenever the
  * LLM decides a tool call needs to survive a restart, exceed the default
  * 30s agent HTTP budget, or benefit from trigger.dev's retry policy.
  *
@@ -20,6 +19,8 @@ const env = process.env;
  * rather than re-throwing, so `runs.retrieve` callers see a clean handle.
  */
 export interface AgentToolBlockPayload {
+  /** Platos-owned Job identifier; external execution ids stay adapter-local. */
+  jobId?: string;
   /**
    * The tool to invoke, exactly as it appears in the scoped tool registry
    * (e.g. `list_deals`). Matches the MCP `tools/call` name.
@@ -61,7 +62,7 @@ export interface AgentToolBlockPayload {
   };
   /**
    * Legacy fields retained from the BLOCK-1 scaffold so existing callers
-   * (the old `spawn_task` — now `spawn_bgo` — payload shape) stay
+   * the external Trigger task payload shape stay
    * wire-compatible. Ignored when the new `tool` field is present.
    */
   taskId?: string;
@@ -76,7 +77,7 @@ export interface AgentToolBlockPayload {
   /**
    * IDENTITY-CORE §B.1 (G2) — the resolved end-user EXTERNAL id
    * ({{endUserId}} = Composio `user_id`), resolved ONCE by the parent
-   * (`spawn_bgo` handler, post-§C-gate) and carried on the LEGACY top-level
+   * (`spawn_job` handler, post-§C-gate) and carried on the LEGACY top-level
    * payload shape. `null` when the origin thread gated closed. The task
    * forwards it into the HMAC-signed `/internal/execute-tool` body so the
    * durable tool call substitutes the same person the streaming turn would.
@@ -90,11 +91,11 @@ export interface AgentToolBlockOutput {
   result?: unknown;
   error?: string;
   latencyMs: number;
-  attempts: number;
+  retryCount: number;
 }
 
 /**
- * Backwards-compat shim: the original `spawn_task` (now `spawn_bgo`) payload used
+ * External adapter shim: the Trigger task payload uses
  * `{ organizationId, projectId, ... }` at the top level. If we receive a
  * legacy payload, lift it into the new shape so BLOCK-2 contract holds.
  */
@@ -119,7 +120,7 @@ function normalizePayload(p: AgentToolBlockPayload): AgentToolBlockPayload | nul
       // IDENTITY-CORE §B.1 (G2) — this legacy branch RECONSTRUCTS a fresh
       // payload object, so it must explicitly carry the top-level `endUserId`
       // through; without this line the resolved end user is silently dropped
-      // (the whole point of G2). `spawn_bgo` hits THIS branch, not the
+      // (the whole point of G2). `spawn_job` hits THIS branch, not the
       // new-shape `:93` passthrough.
       endUserId: p.endUserId,
     };
@@ -133,7 +134,7 @@ export const agentToolBlock = task({
   queue: { concurrencyLimit: parseInt(process.env.PLATOS_WORKER_CONCURRENCY ?? "50", 10) },
   maxDuration: 600,
   // Trigger.dev handles exponential backoff via its native retry policy.
-  // We set maxAttempts=3 so transient entity-side 5xx/timeouts self-heal
+  // We set the vendor maxAttempts=3 so transient entity-side 5xx/timeouts self-heal
   // without user intervention; final failure resolves (not rejects) so
   // the handle reports a structured `{ status: "failed" }`.
   retry: { maxAttempts: 3, factor: 2, minTimeoutInMs: 1000, maxTimeoutInMs: 10000 },
@@ -147,7 +148,7 @@ export const agentToolBlock = task({
         tool: payload.tool ?? "unknown",
         error,
         latencyMs: 0,
-        attempts: ctx?.attempt?.number ?? 1,
+        retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
       };
     }
     const { tool, params, scope, origin, endUserId } = normalized;
@@ -168,12 +169,12 @@ export const agentToolBlock = task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const internalSecret = env.TRIGGER_INTERNAL_SECRET;
+    const internalSecret = env.PLATOS_COMPONENT_AUTH_SECRET;
     if (!internalSecret || internalSecret === "dev-internal-secret-change-me") {
       if (env.NODE_ENV === "production") {
-        throw new Error("TRIGGER_INTERNAL_SECRET must be set to a secure value in production (openssl rand -hex 32)");
+        throw new Error("PLATOS_COMPONENT_AUTH_SECRET must be set to a secure value in production (openssl rand -hex 32)");
       }
-      logger.warn("TRIGGER_INTERNAL_SECRET is using the insecure default — set it via env var before production deploy");
+      logger.warn("PLATOS_COMPONENT_AUTH_SECRET is using the insecure default — set it via env var before production deploy");
     }
     const resolvedInternalSecret = internalSecret || "dev-internal-secret-change-me";
     const timestamp = new Date().toISOString();
@@ -223,7 +224,7 @@ export const agentToolBlock = task({
         const errText = await res.text().catch(() => "");
         // Throwing here hands control back to trigger.dev's retry engine —
         // 5xx / network errors get retried per the `retry` config above.
-        // On the final attempt the outer catch turns it into a structured
+        // On the final retry the outer catch turns it into a structured
         // failure payload.
         throw new Error(`internal/execute-tool ${res.status}: ${errText.slice(0, 200)}`);
       }
@@ -245,7 +246,7 @@ export const agentToolBlock = task({
           tool,
           error: json.error,
           latencyMs,
-          attempts: ctx?.attempt?.number ?? 1,
+          retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
         };
       }
       return {
@@ -253,25 +254,25 @@ export const agentToolBlock = task({
         tool,
         result: json.result,
         latencyMs,
-        attempts: ctx?.attempt?.number ?? 1,
+        retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
       };
     } catch (err: any) {
       const latencyMs = Date.now() - startedAt;
-      const attempts = ctx?.attempt?.number ?? 1;
+      const vendorPassNumber = ctx?.attempt?.number ?? 1;
       // `ctx.run.maxAttempts` is optional; default to the task-level retry
       // config (3). If the SDK doesn't surface it on this version we fall
-      // back to the attempt bound.
+      // back to the vendor retry bound.
       const maxAttempts = (ctx as any)?.run?.maxAttempts ?? 3;
-      const isFinal = attempts >= maxAttempts;
+      const isFinal = vendorPassNumber >= maxAttempts;
       if (!isFinal) {
         // Re-throw so trigger.dev's retry policy fires. The dashboard still
-        // shows the attempt + reason thanks to metadata above.
+        // shows the retry + reason thanks to metadata above.
         throw err;
       }
       logger.error("agent-tool-block final failure", {
         tool,
         error: err?.message,
-        attempts,
+        retryCount: Math.max(0, vendorPassNumber - 1),
       });
       metadata.set("progress", { step: 3, total: 3, stage: "failed" });
       return {
@@ -279,7 +280,7 @@ export const agentToolBlock = task({
         tool,
         error: err?.message || String(err),
         latencyMs,
-        attempts,
+        retryCount: Math.max(0, vendorPassNumber - 1),
       };
     }
   },

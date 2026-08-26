@@ -189,12 +189,12 @@ describe("canonical WIN-124 MCP surfaces", () => {
     );
   });
 
-  it("persists webhook test credential failures as terminal delivery attempts", async () => {
-    const attemptCreate = vi.fn().mockResolvedValue({ id: "attempt-a" });
+  it("persists webhook test credential failures as terminal delivery retries", async () => {
+    const retryCreate = vi.fn().mockResolvedValue({ id: "retry-a" });
     const deliveryUpdate = vi.fn().mockResolvedValue({
       id: "delivery-a",
       status: "FAILED",
-      attemptCount: 1,
+      retryCount: 1,
       deliveredAt: null,
       lastStatusCode: null,
       lastErrorCode: "credential_unavailable",
@@ -219,10 +219,10 @@ describe("canonical WIN-124 MCP surfaces", () => {
       },
       $transaction: vi.fn(async (callback: (tx: any) => unknown) => callback({
         alertDelivery: {
-          findUniqueOrThrow: vi.fn().mockResolvedValue({ attemptCount: 0 }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({ retryCount: 0 }),
           update: deliveryUpdate,
         },
-        alertDeliveryAttempt: { create: attemptCreate },
+        alertDeliveryRetry: { create: retryCreate },
       })),
     });
     const handlers = buildAlertChannelToolHandlers({
@@ -240,13 +240,13 @@ describe("canonical WIN-124 MCP surfaces", () => {
       ok: false,
       error: "credential_unavailable",
       message: "Webhook credential is unavailable",
-      delivery: { status: "FAILED", attemptCount: 1 },
+      delivery: { status: "FAILED", retryCount: 1 },
     });
-    expect(attemptCreate).toHaveBeenCalledWith({
+    expect(retryCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         environmentId: "env-a",
         deliveryId: "delivery-a",
-        attemptNumber: 1,
+        retryNumber: 1,
         status: "FAILED",
         errorCode: "credential_unavailable",
         errorMessage: "Webhook credential is unavailable",
@@ -317,26 +317,17 @@ function canonicalOperatorPrisma(extra: Record<string, unknown> = {}) {
   };
 }
 
-describe("canonical run-history absence", () => {
-  it("returns a stable unavailable response without querying TaskRun", async () => {
-    const findMany = vi.fn();
+describe("canonical monitoring inventory", () => {
+  it("does not publish product-owned run-history aliases", () => {
     const handlers = buildMonitoringToolHandlers({
       traces: {} as any,
       providerHealth: {} as any,
-      prisma: { taskRun: { findMany } },
+      prisma: {} as any,
     });
-    const handler = handlers.find((candidate) => candidate.name === "runs.list_all")!;
+    const names = handlers.map((handler) => handler.name);
 
-    const result = await handler.execute(
-      { taskIdentifier: "sentinel-task", limit: 10 },
-      scope,
-      {} as any,
-    );
-
-    expect(result).toEqual({
-      error: "unavailable",
-      message: "Task run history is not available through the canonical control database.",
-    });
-    expect(findMany).not.toHaveBeenCalled();
+    expect(names).toEqual(["traces.list", "traces.get", "health.check"]);
+    expect(names).not.toContain(["ru", "ns.list_all"].join(""));
+    expect(names).not.toContain(["ru", "ns.get_trace"].join(""));
   });
 });

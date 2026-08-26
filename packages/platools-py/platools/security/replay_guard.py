@@ -83,7 +83,7 @@ class _NonceLru:
 
 
 # Per-entity LRU. Keyed by ``entity_id`` so multi-tenant SDK
-# deployments don't collide.
+# instances don't collide.
 _caches: dict[str, _NonceLru] = {}
 _warned_legacy = False
 

@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AgentController } from "./agent.controller";
 
@@ -12,6 +12,7 @@ const scope = {
 const KEY_HASH = "a".repeat(64);
 const KEY_PREFIX = "platos_live_test";
 const RAW_KEY = "platos_live_RAW_SENTINEL";
+const REQUEST_ID = "11111111-1111-4111-8111-111111111111";
 
 function harness() {
   const authService = {
@@ -37,12 +38,13 @@ function harness() {
 }
 
 describe("AgentController AccessKey boundary", () => {
-  it("accepts exactly keyHash and keyPrefix without serializing hash or raw material", async () => {
+  it("echoes the request correlation only after hash persistence succeeds", async () => {
     const { controller, authService, req } = harness();
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const result = await controller.createOrRotateAccessKey(req, {
+      requestId: REQUEST_ID,
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
@@ -51,6 +53,7 @@ describe("AgentController AccessKey boundary", () => {
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
+    expect(result.requestId).toBe(REQUEST_ID);
     const serialized = JSON.stringify(result);
     const serializedLogs = JSON.stringify([...log.mock.calls, ...error.mock.calls]);
     expect(serialized).not.toContain(KEY_HASH);
@@ -63,15 +66,17 @@ describe("AgentController AccessKey boundary", () => {
   });
 
   it.each([
-    ["accessKey", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
-    ["rawKey", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
-    ["key", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
-    ["allowedOrigins", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
+    ["missing request ID", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["malformed request ID", { requestId: "not-random", keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["accessKey", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
+    ["rawKey", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
+    ["key", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
+    ["allowedOrigins", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
     [
       "nested secret-bearing field",
-      { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
+      { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
     ],
-    ["unknown field", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
+    ["unknown field", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
   ])("rejects the extra %s field and does not call the service", async (_name, body) => {
     const { controller, authService, req } = harness();
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
@@ -93,5 +98,28 @@ describe("AgentController AccessKey boundary", () => {
 
     log.mockRestore();
     errorLog.mockRestore();
+  });
+
+  it.each([
+    ["missing persisted result", undefined],
+    ["missing persisted key", { retiringKey: null }],
+    ["null persisted key", { key: null, retiringKey: null }],
+    ["missing persisted ID", { key: { environmentId: scope.environmentId, keyPrefix: KEY_PREFIX }, retiringKey: null }],
+    ["mismatched persisted prefix", { key: { id: "key_1", environmentId: scope.environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
+    ["mismatched persisted Environment", { key: { id: "key_1", environmentId: "other-env", keyPrefix: KEY_PREFIX }, retiringKey: null }],
+  ])("does not echo request correlation for %s", async (_name, persistedResult) => {
+    const { controller, authService, req } = harness();
+    authService.createOrRotateAccessKey.mockResolvedValueOnce(persistedResult as any);
+
+    const rejection = await controller.createOrRotateAccessKey(req, {
+      requestId: REQUEST_ID,
+      keyHash: KEY_HASH,
+      keyPrefix: KEY_PREFIX,
+    }).catch((value: unknown) => value);
+
+    expect(rejection).toBeInstanceOf(ServiceUnavailableException);
+    expect((rejection as ServiceUnavailableException).message).toBe("access_key_persistence_mismatch");
+    expect(JSON.stringify(rejection)).not.toContain(REQUEST_ID);
+    expect(JSON.stringify(rejection)).not.toContain(KEY_HASH);
   });
 });

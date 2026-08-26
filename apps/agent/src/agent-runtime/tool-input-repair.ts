@@ -10,7 +10,7 @@
  *
  *     { "calls": "[{\"tool\": \"GMAIL_SEND_EMAIL\", \"params\": {\"body\": \"a\\nb\"}}]" }
  *
- * The trigger is doubly-nested JSON containing multi-line string content (email
+ * The failure mode is doubly-nested JSON containing multi-line string content (email
  * bodies with \n): the model escapes its way into emitting the inner array as a
  * string. Each rejection cost a FULL-PRICE 100k+ token LLM step before the
  * model happened to recover, so a formatting slip was billing like real work.

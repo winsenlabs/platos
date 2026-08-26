@@ -1,7 +1,7 @@
 {
   "name": "@platos/react-hooks",
   "version": "4.4.4",
-  "description": "Platos consumer React hooks — Realtime bindings for trigger.dev-backed Platos agents (streaming, runs, agent context).",
+  "description": "Platos consumer React hooks for agent streaming, artifacts, and context.",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -37,9 +37,7 @@
     "check-exports": "attw --pack ."
   },
   "dependencies": {
-    "@platos/core": "workspace:^4.4.4",
-    "isomorphic-dompurify": "^2.16.0",
-    "swr": "^2.2.5"
+    "isomorphic-dompurify": "^2.16.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.4",

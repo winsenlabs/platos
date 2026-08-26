@@ -7,8 +7,8 @@
  *     typed errors from `errors.ts`.
  *   - Open Socket.IO connections for the realtime streaming module.
  *
- * Agent APIs (agents / threads / trigger) are attached on construction
- * so consumer code writes `client.agents.list()` / `client.trigger.runs.list()`.
+ * Agent APIs are attached on construction so consumers can write
+ * `client.agents.list()` and `client.jobs.list()`.
  */
 
 import { io, type Socket } from "socket.io-client";
@@ -28,7 +28,7 @@ import { MonitoringApi } from "./apis/monitoring.js";
 import { MessagesApi } from "./apis/messages.js";
 import { ThreadsApi } from "./apis/threads.js";
 import { ToolsApi } from "./apis/tools.js";
-import { TriggerApi } from "./apis/trigger.js";
+import { JobsApi } from "./apis/jobs.js";
 import type {
   PlatosClientOptions,
   PlatosRetryOptions,
@@ -75,7 +75,7 @@ export class PlatosClient {
   readonly approvals: ApprovalsApi;
   /** EOBD.85 — read-only budget cap + status surface. */
   readonly budgets: BudgetsApi;
-  /** EOBD.85 — runs / traces / cost rollups. */
+  /** EOBD.85 — Turns, traces, and cost rollups. */
   readonly monitoring: MonitoringApi;
   /**
    * Tool catalog (issue #2). Backs the dashboard's Tools tab + Matrix.
@@ -93,18 +93,8 @@ export class PlatosClient {
    * id surfaced on the `message_persisted` stream event.
    */
   readonly messages: MessagesApi;
-  /**
-   * Theme BGO — unified background-operations surface. Backed by the
-   * trigger.dev engine; exposes `client.bgo.tasks` (catalog), `.runs`,
-   * `.schedules`, `.batches`.
-   */
-  readonly bgo: TriggerApi;
-  /**
-   * @deprecated since Theme BGO — use `client.bgo` instead. Pointer to the
-   * same `TriggerApi` instance; preserved for one release for backwards
-   * compatibility. Will be removed in the next major.
-   */
-  readonly trigger: TriggerApi;
+  /** Platos-owned asynchronous background work. */
+  readonly jobs: JobsApi;
 
   private readonly opts: PlatosClientOptions;
   private sessionToken: string | undefined;
@@ -131,11 +121,7 @@ export class PlatosClient {
     this.monitoring = new MonitoringApi(this);
     this.tools = new ToolsApi(this);
     this.messages = new MessagesApi(this);
-    // Theme BGO — `bgo` is the canonical namespace; `trigger` is the
-    // deprecated alias pointing at the same instance. Kept for one
-    // release (see docs/BGO_RENAME.md).
-    this.bgo = new TriggerApi(this);
-    this.trigger = this.bgo;
+    this.jobs = new JobsApi(this);
   }
 
   /** Update the session token in place (e.g. after a manual refresh). */
@@ -227,13 +213,13 @@ export class PlatosClient {
     const externalSignal = init.signal ?? undefined;
 
     let lastError: unknown;
-    for (let attempt = 0; attempt <= this.retryCfg.maxRetries; attempt++) {
-      // Per-attempt timeout signal combined with caller's signal.
-      const attemptCtrl = new AbortController();
-      const timeoutId = setTimeout(() => attemptCtrl.abort(), this.timeoutMs);
+    for (let retryCount = 0; retryCount <= this.retryCfg.maxRetries; retryCount++) {
+      // Per-retry timeout signal combined with caller's signal.
+      const retryController = new AbortController();
+      const timeoutId = setTimeout(() => retryController.abort(), this.timeoutMs);
       const combined = externalSignal
-        ? anySignal([externalSignal, attemptCtrl.signal])
-        : attemptCtrl.signal;
+        ? anySignal([externalSignal, retryController.signal])
+        : retryController.signal;
 
       let res: Response;
       try {
@@ -246,8 +232,8 @@ export class PlatosClient {
         clearTimeout(timeoutId);
         const netErr = new PlatosNetworkError(err);
         lastError = netErr;
-        if (attempt < this.retryCfg.maxRetries && !externalSignal?.aborted) {
-          await sleep(this._backoffMs(attempt), externalSignal);
+        if (retryCount < this.retryCfg.maxRetries && !externalSignal?.aborted) {
+          await sleep(this._backoffMs(retryCount), externalSignal);
           continue;
         }
         throw netErr;
@@ -263,7 +249,7 @@ export class PlatosClient {
       const parsed = await errorFromResponse(res);
       lastError = parsed;
       if (
-        attempt < this.retryCfg.maxRetries &&
+        retryCount < this.retryCfg.maxRetries &&
         isRetryableError(parsed) &&
         !externalSignal?.aborted
       ) {
@@ -271,7 +257,7 @@ export class PlatosClient {
         const delay =
           parsed instanceof PlatosRateLimitError && parsed.retryAfterMs
             ? parsed.retryAfterMs
-            : this._backoffMs(attempt);
+            : this._backoffMs(retryCount);
         await sleep(delay, externalSignal);
         continue;
       }
@@ -282,8 +268,8 @@ export class PlatosClient {
     throw lastError instanceof PlatosError ? lastError : new PlatosServerError(0, "exhausted retries");
   }
 
-  private _backoffMs(attempt: number): number {
-    const base = this.retryCfg.baseDelayMs * Math.pow(2, attempt);
+  private _backoffMs(retryCount: number): number {
+    const base = this.retryCfg.baseDelayMs * Math.pow(2, retryCount);
     const capped = Math.min(base, this.retryCfg.maxDelayMs);
     const jitterFrac = this.retryCfg.jitter;
     const rand = 1 + (Math.random() * 2 - 1) * jitterFrac;
@@ -324,10 +310,10 @@ export class PlatosClient {
    *
    * The returned promise resolves when the socket is `connect`ed or
    * rejects with the last `connect_error` once the single refresh
-   * attempt is exhausted.
+   * retry is exhausted.
    */
   async _openSocketWithRefresh(scope?: PlatosScope): Promise<Socket> {
-    const attempt = async (refreshedOnce: boolean): Promise<Socket> => {
+    const connect = async (refreshedOnce: boolean): Promise<Socket> => {
       const socket = this._openSocket(scope);
       return new Promise<Socket>((resolve, reject) => {
         const onConnect = () => {
@@ -353,7 +339,7 @@ export class PlatosClient {
               if (fresh && fresh !== this.sessionToken) {
                 this.sessionToken = fresh;
                 // Retry with new token exactly once.
-                resolve(attempt(true));
+                resolve(connect(true));
                 return;
               }
             } catch {
@@ -366,7 +352,7 @@ export class PlatosClient {
         socket.once("connect_error", onError);
       });
     };
-    return attempt(false);
+    return connect(false);
   }
 }
 

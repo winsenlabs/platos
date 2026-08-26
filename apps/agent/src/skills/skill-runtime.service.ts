@@ -191,7 +191,7 @@ export class SkillRuntimeService {
             currentCents: cap.currentCents,
           };
           // Still emit a zero-cost usage event with latencyMs=0 so the
-          // observability surface sees blocked attempts alongside successes.
+          // observability surface sees blocked executions alongside successes.
           if (this.costService) {
             try {
               await this.costService.recordSkillUsage(scope, {
@@ -231,17 +231,15 @@ export class SkillRuntimeService {
     let errored = false;
 
     try {
-      // audit L5 — `context.agentId` never reached the handler: dispatch()
-      // forwards only `scope`, so the acting agent was dropped for EVERY
-      // caller (including agent.service.ts:4903/:6165, which do pass it —
-      // it was only ever used for the audit rows above). Handlers that need
-      // the acting agent read it off the widened scope, exactly as they
-      // already do for `userId` (skill-handlers.ts ragResolveUserId).
-      // Merging here fixes every call site at once instead of threading a
-      // second arg through OfficialSkillHandlers.dispatch's switch.
-      const dispatchScope = (
-        context.agentId != null ? { ...scope, agentId: context.agentId } : scope
-      ) as ScopeTuple;
+      // audit L5 — handlers read acting Agent and Thread from the widened
+      // scope, just as they already read userId. Merge both canonical context
+      // values here so attachment consumers cannot fall back to Environment-
+      // only or cluster-wide ownership checks.
+      const dispatchScope = {
+        ...scope,
+        ...(context.agentId != null ? { agentId: context.agentId } : {}),
+        ...(context.threadId != null ? { threadId: context.threadId } : {}),
+      } as ScopeTuple;
       result = await this.handlers.dispatch(dispatchScope, tool.handler, input);
       // Extract + strip the `_usage` bookkeeping key (non-enumerable-safe:
       // we clone with rest-destructuring when it's an object so the LLM

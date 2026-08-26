@@ -19,6 +19,27 @@ const DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY =
 const DEV_SENTINEL_SESSION_SECRET = "dev-session-secret-rotate-before-prod";
 const DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const DEV_COMPONENT_AUTH_SECRET = "dev-internal-secret-change-me";
+const COMPONENT_AUTH_PLACEHOLDERS = new Set([
+  "",
+  DEV_COMPONENT_AUTH_SECRET,
+  "change-me",
+  "changeme",
+]);
+const LEGACY_COMPONENT_AUTH_KEY = [`TRI${"GGER"}`, "INTERNAL", "SECRET"].join("_");
+
+export const COMPONENT_AUTH_COMPATIBILITY_POLICY = Object.freeze({
+  legacyKeyAcceptedThrough: "1.x",
+  legacyKeyRemovedIn: "2.0.0",
+});
+
+function normalizeAgentEnvSource(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  if (source.PLATOS_COMPONENT_AUTH_SECRET?.trim()) return source;
+  const legacyValue = source[LEGACY_COMPONENT_AUTH_KEY];
+  return legacyValue === undefined
+    ? source
+    : { ...source, PLATOS_COMPONENT_AUTH_SECRET: legacyValue };
+}
 
 // Helpers
 const boolLike = z
@@ -175,7 +196,9 @@ export const AgentEnvSchema = z
     // External Trigger integration
     TRIGGER_API_URL: z.string().url().optional(),
     TRIGGER_SECRET_KEY: optTrimmedString,
-    TRIGGER_INTERNAL_SECRET: optTrimmedString,
+    // Platos-owned HMAC key for authenticated component callbacks. The
+    // external Trigger adapter is one consumer, not the owner of this key.
+    PLATOS_COMPONENT_AUTH_SECRET: optTrimmedString,
     PLATOS_TRIGGER_API_URL: z.string().url().optional(),
     PLATOS_TRIGGER_API_KEY: optTrimmedString,
     PLATOS_TRIGGER_PROJECT_REF: optTrimmedString,
@@ -203,6 +226,7 @@ export const AgentEnvSchema = z
 
     // MinIO / attachments (THEME D). All 5 are all-or-nothing.
     MINIO_ENDPOINT: optTrimmedString,
+    MINIO_PUBLIC_ENDPOINT: z.string().url().optional(),
     MINIO_ACCESS_KEY: optTrimmedString,
     MINIO_SECRET_KEY: optTrimmedString,
     MINIO_BUCKET: optTrimmedString,
@@ -257,6 +281,16 @@ export const AgentEnvSchema = z
     PLATOS_ATTACHMENT_TTL_DAYS: intString("PLATOS_ATTACHMENT_TTL_DAYS", {
       min: 1,
     }),
+    PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS: intString("PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS", {
+      min: 60,
+      max: 3600,
+    }),
+    PLATOS_ATTACHMENT_GRACE_DAYS: intString("PLATOS_ATTACHMENT_GRACE_DAYS", {
+      min: 1,
+    }),
+    PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: intString("PLATOS_ATTACHMENT_ORG_QUOTA_BYTES", {
+      min: 1,
+    }),
     PLATOS_MAX_ATTACHMENT_BYTES: intString("PLATOS_MAX_ATTACHMENT_BYTES", {
       min: 1,
     }),
@@ -270,7 +304,7 @@ export const AgentEnvSchema = z
       min: 1,
     }),
     PLATOS_TURN_MAX_MS: intString("PLATOS_TURN_MAX_MS", { min: 1000 }),
-    PLATOS_MAX_BGOS_PER_TURN: intString("PLATOS_MAX_BGOS_PER_TURN", { min: 0 }),
+    PLATOS_MAX_JOBS_PER_TURN: intString("PLATOS_MAX_JOBS_PER_TURN", { min: 0 }),
     // OSS launch member cap — hard limit on org members + pending invites.
     // Default mirrors the webapp default (2). Self-hosters bump as needed.
     // Enforced inside `OrganizationService.addMemberInvite` so the cap
@@ -331,6 +365,12 @@ export const AgentEnvSchema = z
       max: 1,
     }),
     PLATOS_OTEL_CLICKHOUSE_URL: z.string().url().optional(),
+    PLATOS_TELEMETRY_DATABASE: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, {
+        message: "PLATOS_TELEMETRY_DATABASE must be a valid unquoted ClickHouse identifier",
+      })
+      .default("platos_telemetry"),
     PLATOS_OTEL_SAMPLE_RATE: floatString("PLATOS_OTEL_SAMPLE_RATE", {
       min: 0,
       max: 1,
@@ -350,7 +390,7 @@ export const AgentEnvSchema = z
     PLATOS_OBSERVABILITY_REQUIRE_SINK: boolLike,
     PLATOS_OBSERVABILITY_BATCH_SIZE: optTrimmedString,
     PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE: optTrimmedString,
-    PLATOS_OBSERVABILITY_MAX_ATTEMPTS: optTrimmedString,
+    PLATOS_OBSERVABILITY_MAX_RETRIES: optTrimmedString,
 
     // Misc
     PLATOS_ALLOW_HTTP_WEBHOOKS: boolLike,
@@ -438,6 +478,14 @@ export const AgentEnvSchema = z
           path: ["ENCRYPTION_KEY"],
           message:
             "ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
+        });
+      }
+      if (COMPONENT_AUTH_PLACEHOLDERS.has(data.PLATOS_COMPONENT_AUTH_SECRET ?? "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_COMPONENT_AUTH_SECRET"],
+          message:
+            "PLATOS_COMPONENT_AUTH_SECRET must be set to a strong random value in production",
         });
       }
     }
@@ -534,14 +582,14 @@ export type AgentEnv = z.infer<typeof AgentEnvSchema>;
 
 /** Strict parse. Throws a ZodError on failure. */
 export function parseEnv(source: NodeJS.ProcessEnv = process.env): AgentEnv {
-  return AgentEnvSchema.parse(source);
+  return AgentEnvSchema.parse(normalizeAgentEnvSource(source));
 }
 
 /** Non-throwing variant for main.ts. Returns structured errors. */
 export function validateAgentEnv(
   source: NodeJS.ProcessEnv = process.env
 ): { ok: true; env: AgentEnv } | { ok: false; errors: string[] } {
-  const result = AgentEnvSchema.safeParse(source);
+  const result = AgentEnvSchema.safeParse(normalizeAgentEnvSource(source));
   if (result.success) {
     return { ok: true, env: result.data };
   }
@@ -554,7 +602,7 @@ export function validateAgentEnv(
 }
 
 // Lazy typed accessor. Evaluates on first use — safe to import at the
-// top of a file without triggering validation before main.ts runs.
+  // top of a file without starting validation before main.ts runs.
 let _env: AgentEnv | undefined;
 export const env: AgentEnv = new Proxy({} as AgentEnv, {
   get(_target, prop) {

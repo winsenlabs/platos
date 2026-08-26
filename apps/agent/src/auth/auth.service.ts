@@ -6,7 +6,9 @@ import {
   PlatosSecretStore,
   authorizeEnvironmentOperator,
   authorizeEnvironmentRuntime,
+  revokeAccessKeys,
   rotateAccessKey,
+  setAccessKeyAllowedOrigins,
   type EnvironmentAuthorizationAccess,
   type EnvironmentOperatorAuthorization,
   type OperatorAuthorization,
@@ -68,6 +70,12 @@ export interface SessionPayload {
   userIdentities?: Array<{ channel: string; handle: string; verified?: boolean }>;
   exp: number;
 }
+
+export type SessionSigningProvenance = "platform" | "entity";
+
+export type ValidatedSessionPayload = SessionPayload & {
+  signingProvenance: SessionSigningProvenance;
+};
 
 export interface EntityRegistration {
   organizationId: string;
@@ -226,7 +234,7 @@ export class AuthService {
     return unwrapEntitySecretMaterial(plaintext);
   }
 
-  async validateSessionToken(token: string): Promise<SessionPayload | null> {
+  async validateSessionToken(token: string): Promise<ValidatedSessionPayload | null> {
     try {
       const parts = token.split(".");
       if (parts.length !== 3) {
@@ -421,7 +429,13 @@ export class AuthService {
         }
       }
 
-      return claims;
+      return {
+        ...claims,
+        // Validation provenance is computed from the signing authority that
+        // actually verified the token. Keep this after the spread so a signed
+        // caller claim cannot promote an entity token to platform provenance.
+        signingProvenance: platformSigned ? "platform" : "entity",
+      };
     } catch (err) {
       this.logger.warn(`validateSessionToken error: ${(err as Error).message}`);
       return null;
@@ -845,6 +859,37 @@ export class AuthService {
     return entities.map(AuthService.projectEntity);
   }
 
+  async listEntitiesPage(
+    organizationId: string,
+    projectId: string,
+    options: { limit: number; offset: number; search?: string | null; connectionKind?: string },
+  ): Promise<{ entities: any[]; total: number }> {
+    const where = {
+      projectId,
+      project: { organizationId },
+      ...(options.connectionKind ? { connectionKind: options.connectionKind } : {}),
+      ...(options.search
+        ? {
+            OR: [
+              { externalId: { contains: options.search, mode: "insensitive" as const } },
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [entities, total] = await Promise.all([
+      this.prisma.entity.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: options.limit,
+        skip: options.offset,
+        select: AuthService.ENTITY_SAFE_SELECT,
+      }),
+      this.prisma.entity.count({ where }),
+    ]);
+    return { entities: entities.map(AuthService.projectEntity), total };
+  }
+
   /** Delete an entity, its credentials, and its tool exposure atomically. */
   async deleteEntity(organizationId: string, projectId: string, identifier: string): Promise<boolean> {
     const entity = await this.prisma.entity.findFirst({
@@ -1035,13 +1080,9 @@ export class AuthService {
 
   async setAllowedOrigins(scope: AccessKeyOperatorScope, origins: string[]): Promise<void> {
     const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
-    await this.prisma.accessKey.updateMany({
-      where: {
-        environmentId: authorization.environmentId,
-        revokedAt: null,
-        validUntil: null,
-      },
-      data: { allowedOrigins: origins },
+    await setAccessKeyAllowedOrigins(this.prisma, {
+      environmentId: authorization.environmentId,
+      origins,
     });
   }
 
@@ -1115,9 +1156,8 @@ export class AuthService {
 
   async deleteAccessKey(scope: AccessKeyOperatorScope): Promise<void> {
     const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
-    await this.prisma.accessKey.updateMany({
-      where: { environmentId: authorization.environmentId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    await revokeAccessKeys(this.prisma, {
+      environmentId: authorization.environmentId,
     });
   }
 

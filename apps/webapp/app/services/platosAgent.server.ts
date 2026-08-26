@@ -29,6 +29,9 @@ export class UnsafeCredentialResponseError extends Error {
 }
 
 type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; signal?: AbortSignal };
+type McpManagementOptions = RequestOptions & { method: NonNullable<RequestOptions["method"]> };
+
+export type AgentRequestResult<T> = { status: number; payload: T };
 
 function assertAgentPath(path: string) {
   if (!path.startsWith("/api/v1/agent/") && path !== "/api/v1/agent" && !path.startsWith("/api/v1/memory")) {
@@ -36,8 +39,31 @@ function assertAgentPath(path: string) {
   }
 }
 
-export async function agentRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
-  const response = await agentResponse(path, scope, options);
+function assertMcpManagementPath(path: string, method: string) {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("MCP management calls must use an absolute local path");
+  }
+  const parsed = new URL(path, "http://platos-agent.local");
+  const pathname = parsed.pathname;
+  const allowed =
+    (pathname === "/mcp/platform/tokens" && (method === "GET" || method === "POST")) ||
+    (method === "POST" && /^\/mcp\/platform\/tokens\/[^/]+\/revoke$/.test(pathname)) ||
+    (method === "GET" && pathname === "/mcp/platform/catalog") ||
+    (method === "GET" && pathname === "/mcp/entity") ||
+    ((method === "GET" || method === "PATCH") && /^\/mcp\/entity\/[^/]+\/config$/.test(pathname)) ||
+    ((method === "GET" || method === "POST") && /^\/mcp\/entity\/[^/]+\/tokens$/.test(pathname)) ||
+    (method === "DELETE" && /^\/mcp\/entity\/[^/]+\/tokens\/[^/]+$/.test(pathname)) ||
+    (method === "GET" && /^\/mcp\/entity\/[^/]+\/tool-acl$/.test(pathname)) ||
+    (method === "PATCH" && /^\/mcp\/entity\/[^/]+\/tool-acl\/[^/]+$/.test(pathname)) ||
+    (method === "POST" && /^\/mcp\/entity\/[^/]+\/tool-acl\/bulk$/.test(pathname)) ||
+    (method === "PATCH" && /^\/mcp\/entity\/[^/]+\/(?:branding|identity|enabled|inject-context)$/.test(pathname));
+  if (!allowed) {
+    throw new Error(`Unsupported MCP management operation: ${method} ${pathname}`);
+  }
+}
+
+async function parseAgentResponse<T>(response: Response): Promise<AgentRequestResult<T>> {
+  const status = response.status;
   const text = await response.text();
   let payload: unknown = null;
   if (text) {
@@ -56,10 +82,6 @@ export async function agentRequest<T = unknown>(path: string, scope: AgentScope,
       record.details
     );
   }
-  // Defensive compatibility while older Agent deployments are draining:
-  // historical handlers returned `{ error, status }` with HTTP 200. Treat the
-  // explicit numeric error status as transport failure rather than rendering
-  // it as successful product data.
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const record = payload as Record<string, unknown>;
     const embeddedStatus = typeof record.status === "number" ? record.status : null;
@@ -72,7 +94,20 @@ export async function agentRequest<T = unknown>(path: string, scope: AgentScope,
       );
     }
   }
-  return payload as T;
+  return { status, payload: payload as T };
+}
+
+export async function agentRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
+  const response = await agentResponse(path, scope, options);
+  // Defensive compatibility while older Agent deployments are draining:
+  // historical handlers returned `{ error, status }` with HTTP 200. Treat the
+  // explicit numeric error status as transport failure rather than rendering
+  // it as successful product data.
+  return parseAgentResponse<T>(response);
+}
+
+export async function agentRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
+  return (await agentRequestResult<T>(path, scope, options)).payload;
 }
 
 export function agentResponse(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<Response> {
@@ -98,6 +133,53 @@ export function agentResponse(path: string, scope: AgentScope, options: RequestO
   });
 }
 
+/** Dashboard-only transport for the exact management operations colocated
+ * under public MCP protocol prefixes. The method/path allow-list prevents a
+ * scoped webapp request from ever becoming a broad /mcp protocol bypass. */
+export function mcpManagementResponse(
+  path: string,
+  scope: AgentScope,
+  options: McpManagementOptions,
+): Promise<Response> {
+  assertMcpManagementPath(path, options.method);
+  return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
+    method: options.method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Platos-Organization-Id": scope.organizationId,
+      "X-Platos-Project-Id": scope.projectId,
+      "X-Platos-Environment-Id": scope.environmentId,
+      "X-Platos-User-Id": scope.userId,
+      ...(env.PLATOS_INTERNAL_AUTH_TOKEN
+        ? { "X-Platos-Internal-Auth": env.PLATOS_INTERNAL_AUTH_TOKEN }
+        : {}),
+    },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal ?? AbortSignal.timeout(10_000),
+  });
+}
+
+export async function mcpManagementRequest<T = unknown>(
+  path: string,
+  scope: AgentScope,
+  options: McpManagementOptions,
+): Promise<T> {
+  return (await parseAgentResponse<T>(await mcpManagementResponse(path, scope, options))).payload;
+}
+
+export async function mcpManagementPanel<T = unknown>(path: string, scope: AgentScope) {
+  try {
+    return { ok: true as const, data: await mcpManagementRequest<T>(path, scope, { method: "GET" }) };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof PlatosAgentApiError
+        ? { status: error.status, code: error.code, message: error.message }
+        : { status: 503, code: "AGENT_UNAVAILABLE", message: "The agent service is unavailable" },
+    };
+  }
+}
+
 export function publicAgentResponse(path: "/api/v1/public/guest-token", options: RequestOptions & { forwardedFor: string }): Promise<Response> {
   return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
     method: options.method ?? "POST",
@@ -114,13 +196,17 @@ export function publicAgentResponse(path: "/api/v1/public/guest-token", options:
 export function sessionAgentResponse(
   path: string,
   sessionToken: string,
-  signal?: AbortSignal,
+  options: RequestOptions = {},
 ): Promise<Response> {
   assertAgentPath(path);
   return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
-    method: "GET",
-    headers: { "X-Platos-Session-Token": sessionToken },
-    signal: signal ?? AbortSignal.timeout(10_000),
+    method: options.method ?? "GET",
+    headers: {
+      "X-Platos-Session-Token": sessionToken,
+      ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal ?? AbortSignal.timeout(10_000),
   });
 }
 
@@ -136,7 +222,7 @@ export async function agentPanel<T = unknown>(path: string, scope: AgentScope): 
   }
 }
 
-const FORBIDDEN_CREDENTIAL_FIELDS = /^(?:raw[A-Za-z0-9]*|apiKey|accessKey|keyHash|hash|ciphertext|nonce|authTag|salt|plain(?:text)?(?:Secret|Value|Credential|Material)?|value|secret(?:Material|Value)?|credential(?:Value|Secret|Material)|clientSecret|privateKey|password|token|rootKey|encrypted(?:Value|Secret|Reference)?)$/i;
+const FORBIDDEN_CREDENTIAL_FIELDS = /^(?:raw[A-Za-z0-9]*|apiKey|accessKey|keyHash|tokenHash|hash|ciphertext|nonce|authTag|salt|plain(?:text)?(?:Secret|Value|Credential|Material)?|value|secret(?:Material|Value)?|credential(?:Value|Secret|Material)|clientSecret|privateKey|password|token|rootKey|encrypted(?:Value|Secret|Reference)?)$/i;
 
 type CredentialMetadataShape =
   | true
@@ -239,6 +325,13 @@ function projectKnownCredentialEndpoint(path: string, method: string, payload: u
     if (method === "DELETE") {
       return projectCredentialMetadata(payload, { ok: true });
     }
+    if (method === "POST") {
+      return projectCredentialMetadata(payload, {
+        requestId: true,
+        key: ACCESS_KEY_METADATA_SHAPE,
+        retiringKey: ACCESS_KEY_METADATA_SHAPE,
+      });
+    }
     return projectCredentialMetadata(payload, {
       key: ACCESS_KEY_METADATA_SHAPE,
       retiringKey: ACCESS_KEY_METADATA_SHAPE,
@@ -274,10 +367,17 @@ function projectKnownCredentialEndpoint(path: string, method: string, payload: u
   return payload;
 }
 
-export async function credentialRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
-  const payload = await agentRequest<unknown>(path, scope, options);
+export async function credentialRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
+  const { status, payload } = await agentRequestResult<unknown>(path, scope, options);
   assertCredentialSafePayload(payload);
-  return projectKnownCredentialEndpoint(path, options.method ?? "GET", payload) as T;
+  return {
+    status,
+    payload: projectKnownCredentialEndpoint(path, options.method ?? "GET", payload) as T,
+  };
+}
+
+export async function credentialRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
+  return (await credentialRequestResult<T>(path, scope, options)).payload;
 }
 
 export async function credentialPanel<T = unknown>(path: string, scope: AgentScope): Promise<{ ok: true; data: T } | { ok: false; error: { code: string; message: string } }> {

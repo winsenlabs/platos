@@ -21,6 +21,34 @@ export function requireOperator(scope: Pick<RequestScope, "principal">): void {
   }
 }
 
+/** Public MCP protocol transports self-authenticate in their controllers.
+ * Keep this matcher method-aware and exact because the same route prefixes
+ * also contain operator-only management endpoints. */
+export function isPublicMcpTransport(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  if (
+    (method === "POST" && pathname === "/mcp/platform") ||
+    (method === "GET" && pathname === "/mcp/platform/sse") ||
+    (method === "POST" && pathname === "/mcp/platform/messages") ||
+    (method === "GET" && pathname === "/mcp/platform/events/subscribe")
+  ) {
+    return true;
+  }
+  const entityProtocol = pathname.match(
+    /^\/mcp\/entity\/[^/]+(?:\/(sse|messages|events\/subscribe))?$/,
+  );
+  if (!entityProtocol) return false;
+  const suffix = entityProtocol[1];
+  return (
+    (!suffix && method === "POST") ||
+    (suffix === "sse" && method === "GET") ||
+    (suffix === "messages" && method === "POST") ||
+    (suffix === "events/subscribe" && method === "GET")
+  );
+}
+
 /**
  * EOBD.40 — parse a W3C traceparent header into its trace-id +
  * parent-span-id components. Returns null if the header is missing or
@@ -52,9 +80,9 @@ function parseTraceparent(
 /**
  * Full four-axis scope. Every Platos-agent API call must resolve to one of these.
  *
- * - organizationId — trigger.dev Organization.id
- * - projectId      — trigger.dev Project.id
- * - environmentId  — trigger.dev RuntimeEnvironment.id (DEVELOPMENT|STAGING|PREVIEW|PRODUCTION)
+ * - organizationId — Platos Organization.id
+ * - projectId      — Platos Project.id
+ * - environmentId  — Platos Environment.id
  * - userId         — the acting user
  *
  * Optional hints:
@@ -146,6 +174,8 @@ export interface RequestScope {
    * list can show it back to them.
    */
   operatorUserId?: string;
+  /** Opaque Redis-bound handle for one Postman turn's untrusted context. */
+  sessionContextHandle?: string;
   /**
    * WIN-133 — plaintext identity an ENTITY SIGNED FOR, and the only provenance
    * allowed to reach `turns_v1.user_display_name` / `.user_email`.
@@ -293,17 +323,7 @@ export class ScopeGuard implements CanActivate {
     // pin happens inside McpPlatformController. Token CRUD sub-routes
     // (tokens, tokens/:id/revoke) still run under the normal ScopeGuard
     // — they're admin actions dispatched by the webapp.
-    if (
-      url === "/mcp/platform" ||
-      url === "/mcp/platform/sse" ||
-      url.startsWith("/mcp/platform?") ||
-      url === "/mcp/platform/messages" ||
-      url.startsWith("/mcp/platform/messages?") ||
-      url === "/mcp/platform/events/subscribe" ||
-      url.startsWith("/mcp/platform/events/subscribe?")
-    ) {
-      return true;
-    }
+    if (isPublicMcpTransport(request.method, url)) return true;
 
     // Phase 3 — public docs MCP. Read-only catalog of `content/{docs,guides}`
     // exposed as MCP resources + a `search_docs` tool. Intentionally
@@ -339,20 +359,9 @@ export class ScopeGuard implements CanActivate {
     // from the webapp WITH X-Platos-* scope headers. Only bypass the
     // protocol routes — management routes need the scope guard to populate
     // req.scope from the headers.
-    if (url.startsWith("/mcp/entity/")) {
-      const path = url.split("?")[0];
-      const managementSuffixes = [
-        "/tokens",
-        "/tool-acl",
-        "/config",
-        "/branding",
-        "/identity",
-        "/enabled",
-      ];
-      const isManagement = managementSuffixes.some((suffix) => path.includes(suffix));
-      if (!isManagement) return true;
-      // management endpoint — fall through to normal scope extraction
-    }
+    // Every other /mcp/entity route is management and falls through to the
+    // normal ScopeGuard path. In particular, inject-context must never inherit
+    // the protocol bypass.
 
     // Theme K.10 — OAuth 2.1 endpoints. Public by design; each endpoint
     // does its own protocol-level auth (client credentials, PKCE,
@@ -391,7 +400,7 @@ export class ScopeGuard implements CanActivate {
     // WIN-132 — callback-only custom task execution. This route has no user
     // session; its controller performs the timing-safe internal-token check and
     // rejects every other auth path before parsing or executing the body.
-    if (url.split("?", 1)[0] === "/api/v1/agent/internal/platos-tasks/execute") {
+    if (url.split("?", 1)[0] === "/api/v1/agent/internal/jobs/execute") {
       return true;
     }
 
@@ -462,12 +471,12 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/monitoring/budget/email") ||
       url.startsWith("/api/v1/agent/monitoring/approvals/expiry-sweep") ||
       url.startsWith("/api/v1/agent/evals/sample") ||
-      url.startsWith("/api/v1/agent/evals/run") ||
+      url.startsWith("/api/v1/agent/evals/dispatch") ||
       url.startsWith("/api/v1/agent/attachments/retention") ||
       // memory-extraction sweep callback (platos.memory.extract task). Note
       // the non-/agent prefix — served by the memory module's own controller;
       // needs its own Caddy route (/api/v1/memory/* → agent) or it lands on
-      // the webapp and 401s with the trigger-style problem+json.
+      // the webapp and 401s with the callback-style problem+json.
       url.startsWith("/api/v1/memory/admin/extraction-sweep")
     ) {
       const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
@@ -543,11 +552,14 @@ export class ScopeGuard implements CanActivate {
           userId: payload.userId,
           entityId: payload.entityId,
           userToken: payload.userToken,
-          // Operator ONLY when the platform token is neither guest nor backed
-          // by an entity McpBearerToken. `iss` alone cannot distinguish the
-          // control plane now that every scoped token uses platform signing.
+          // Operator ONLY when runtime validation proved platform signing and
+          // the token is neither guest nor backed by an entity McpBearerToken.
+          // Entity-secret-signed browser tokens have no authorizationId, so
+          // claim shape alone must never promote them to the control plane.
           principal:
-            payload.authorizationId === undefined && (payload as any).isGuest !== true
+            payload.signingProvenance === "platform" &&
+            payload.authorizationId === undefined &&
+            (payload as any).isGuest !== true
               ? "operator"
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),

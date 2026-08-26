@@ -41,7 +41,26 @@ interface PlatosChatClientData {
   agentId: string;
   threadId: string;
   clientMessageId?: string | null;
+  attachmentIds?: string[];
   scope: SessionScope;
+}
+
+export function chatSessionCallbackBody(
+  clientData: PlatosChatClientData,
+  message: string,
+) {
+  return {
+    threadId: clientData.threadId,
+    agentId: clientData.agentId,
+    message,
+    clientMessageId: clientData.clientMessageId ?? null,
+    attachmentIds: clientData.attachmentIds ?? [],
+    scope: {
+      ...clientData.scope,
+      agentId: clientData.agentId,
+      threadId: clientData.threadId,
+    },
+  };
 }
 
 /** Minimal UIMessageChunk shapes we emit (AI SDK v7 wire vocabulary). */
@@ -203,13 +222,7 @@ export const platosChatSession = chat.customAgent({
       const res = await fetch(`${AGENT_API_URL}/api/v1/agent/internal/chat/stream-turn`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Platos-Internal-Auth": adminToken },
-        body: JSON.stringify({
-          threadId: cd.threadId,
-          agentId: cd.agentId,
-          message,
-          clientMessageId: cd.clientMessageId ?? null,
-          scope: { ...cd.scope, agentId: cd.agentId, threadId: cd.threadId },
-        }),
+        body: JSON.stringify(chatSessionCallbackBody(cd, message)),
         signal: fetchAborter.signal,
       });
       if (!res.ok || !res.body) {

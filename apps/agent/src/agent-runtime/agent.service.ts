@@ -32,6 +32,7 @@ import { hardenToolResults } from "./tool-result-sanitizer";
 import { z } from "zod";
 import * as crypto from "crypto";
 import type { RequestScope } from "../auth/scope.guard";
+import { traceSessionContext } from "./postman-context-handle";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { PRISMA_TOKEN, environmentScopeWhere } from "../shared/database.provider";
@@ -50,7 +51,10 @@ import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { CostService } from "../monitoring/cost.service";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
-import type { CanonicalModelPriceSnapshot } from "@platos/tenancy-database";
+import {
+  normalizeMemoryProfileKey,
+  type CanonicalModelPriceSnapshot,
+} from "@platos/tenancy-database";
 import { turnTokenDetails } from "../monitoring/usage-ledger";
 import { SpansService } from "../monitoring/spans.service";
 // Theme L — pgvector-backed semantic memory + knowledge-graph services.
@@ -66,6 +70,7 @@ import {
   type CacheableMessage,
 } from "./anthropic-cache-breakpoints";
 import { repairStringifiedToolInput } from "./tool-input-repair";
+import { jobInvocationSelect, jobInvocationType } from "./job-persistence";
 // Theme O — memory extraction service for the manual `memory_extract`
 // meta-tool. Optional so the unit-test harness without MemoryModule still
 // boots.
@@ -79,7 +84,7 @@ import { ProfileCacheService } from "../memory/profile-cache.service";
 // Injected via forwardRef because TriggerBridgeModule already imports
 // AgentRuntimeModule for `/internal/batch-turn` access to AgentTaskService.
 // W.1.2 — RunsBridgeService is NOT imported at module top level. A top-level
-// import triggers a CJS require cycle: connections.gateway ← agent-task.service
+// import creates a CJS require cycle: connections.gateway ← agent-task.service
 // ← agent.service ← runs-bridge.service ← connections.gateway (partial),
 // causing `design:paramtypes` metadata on RunsBridgeService to capture
 // `ConnectionsGateway = undefined` → runtime DI failure with
@@ -157,18 +162,18 @@ import {
   resolveExternalTriggerConfig,
 } from "../shared/external-trigger-config";
 
-// Trigger.dev SDK — used by `spawn_bgo` and related meta-tools.
+// Trigger.dev SDK — used by `spawn_job` and related runtime tools.
 // Global SDK calls require an explicitly configured external Trigger endpoint
 // and token. Embedded RuntimeEnvironment API keys belong to the retired
 // Platos-hosted engine and must never be sent to an external Trigger service.
 const moduleLogger = new Logger("AgentService");
-let triggerSdk: any = null;
-let triggerConfigured = false;
+let externalRuntimeSdk: any = null;
+let externalRuntimeConfigured = false;
 try {
-  triggerSdk = require("@trigger.dev/sdk");
-  triggerConfigured = configureExternalTriggerSdk(triggerSdk).status === "configured";
+  externalRuntimeSdk = require("@trigger.dev/sdk");
+  externalRuntimeConfigured = configureExternalTriggerSdk(externalRuntimeSdk).status === "configured";
   moduleLogger.log(
-    triggerConfigured
+    externalRuntimeConfigured
       ? "[trigger.sdk] configured for the explicit external endpoint"
       : "[trigger.sdk] external durable dispatch disabled; direct dispatch remains available",
   );
@@ -485,7 +490,7 @@ export type AgentStreamEvent =
         | "rate_limit"
         | "budget_cap";
       validationErrors?: string[];
-      attempts?: number;
+      retryCount?: number;
       /** Populated on `provider_unavailable` errors. */
       model?: string;
       providerId?: string;
@@ -507,7 +512,7 @@ export type AgentStreamEvent =
        */
       type: "structured_output";
       object: unknown;
-      attempts: number;
+      retryCount: number;
     }
   | {
       /**
@@ -576,7 +581,7 @@ export type AgentStreamEvent =
       /**
        * PPR-26 — realtime trigger.dev run update forwarded by
        * RunsBridgeService into the thread + scope Socket.IO rooms. The
-       * meta-tool (`spawn_bgo`, formerly `spawn_task`) hands out the
+       * runtime tool `spawn_job` hands out the
        * `runId`; consumers who want a progress UI subscribe via
        * `join_thread` and filter by `runId`.
        */
@@ -715,21 +720,21 @@ export interface AgentConfig {
   /** PRA-AC: cluster this agent belongs to. When set, memory recall is cluster-wide. */
   clusteringId?: string | null;
   /**
-   * Per-agent cap on how many spawn_bgo / agent_batch calls may be issued
-   * within a single turn. Overrides PLATOS_MAX_BGOS_PER_TURN env var.
+   * Per-agent cap on how many spawn_job / agent_batch calls may be issued
+   * within a single turn. Overrides PLATOS_MAX_JOBS_PER_TURN env var.
    * null / undefined = fall back to the env var (default 10).
    */
-  maxBgosPerTurn?: number | null;
+  maxJobsPerTurn?: number | null;
   /**
    * Subagent spawning — per-agent cap on how many `spawn_agent` children may
-   * be spawned within a single turn (shares the per-turn `bgo_cap` Redis
-   * counter with spawn_bgo / agent_batch). Overrides
+   * be spawned within a single turn (shares the per-turn `job_cap` Redis
+   * counter with spawn_job / agent_batch). Overrides
    * PLATOS_MAX_CHILDREN_PER_TURN. null / undefined = env var (default 5).
    */
   maxChildrenPerTurn?: number | null;
   /**
    * LAUNCH-2 — per-agent retry/fallback waterfall. When set, each rule
-   * overrides DEFAULT_RETRY_RULES for the matching trigger. When null,
+   * overrides DEFAULT_RETRY_RULES for the matching condition. When null,
    * the runtime falls back to the built-in defaults.
    */
   agentRetryConfig?: { rules: RetryRule[] } | null;
@@ -747,7 +752,7 @@ export interface AgentConfig {
  * Groups (locked by TL.1 subtask description):
  *   - memory       — long-term memory CRUD + graph primitives
  *   - discovery    — BM25 tool search + execute_tools bridge
- *   - orchestration — durable bgo spawns + batching
+ *   - orchestration — durable job spawns + batching
  *   - approvals    — in-the-loop + durable approval requests
  *   - artifacts    — artifact create/edit
  *   - profile      — per-user profile KV
@@ -764,8 +769,7 @@ export const META_TOOL_CATEGORIES: Record<string, string> = {
   find_tools: "discovery",
   execute_tools: "discovery",
   // orchestration — durable trigger.dev task spawning
-  spawn_bgo: "orchestration",
-  spawn_task: "orchestration",
+  spawn_job: "orchestration",
   agent_batch: "orchestration",
   spawn_agent: "orchestration",
   // approvals — in-the-loop HITL
@@ -1517,12 +1521,9 @@ export class AgentService {
         list_memories: true,
         relate: true,
         memory_extract: false,
-        spawn_bgo: true,
-        list_bgos: false,
-        schedule_bgo: false,
-        spawn_task: true,
-        list_tasks: false,
-        trigger_with_delay: false,
+        spawn_job: true,
+        list_jobs: false,
+        schedule_job: false,
         spawn_batch: false,
         agent_batch: true,
         wait_for_runs: false,
@@ -1567,7 +1568,7 @@ export class AgentService {
       providerKeyId: runtime.providerKeyId ?? null,
       modelRoutes: routes,
       clusteringId: binding?.clusterId ?? null,
-      maxBgosPerTurn: runtime.maxBgosPerTurn ?? null,
+      maxJobsPerTurn: runtime.maxJobsPerTurn ?? null,
       agentRetryConfig: runtime.agentRetryConfig ?? null,
     };
     (config as any).contextMapping = runtime.contextMapping ?? null;
@@ -1637,8 +1638,8 @@ export class AgentService {
    * Build the meta-tools available to the agent.
    *
    * Behaviour depends on config.toolsBlockConfig.mode:
-   *   - "direct" (default): parent gets find_tools + execute_tools + memory + profile + spawn_bgo (alias: spawn_task)
-   *   - "sub-agent":        parent gets delegate_to_sub_agent + memory + profile + spawn_bgo (alias: spawn_task)
+   *   - "direct" (default): parent gets find_tools + execute_tools + memory + profile + spawn_job
+   *   - "sub-agent":        parent gets delegate_to_sub_agent + memory + profile + spawn_job
    *                         (no execute_tools — delegation handles tool calling)
    *   - "execute-tool":     parent gets find_tools + execute_tools only (minimalist mode)
    */
@@ -2294,17 +2295,22 @@ export class AgentService {
       execute: async ({ kind, limit, offset }) => {
         if (!this.memoryService) return { memories: [], total: 0, error: "memory service unavailable" };
         try {
-          const rows = await this.memoryService.list(scopeTuple, {
+          const page = await this.memoryService.listPage(scopeTuple, {
             userId: memoryUserId,
             kind,
             limit,
             offset,
+            agentVisibleOnly: true,
+            visibilityIn: ["agent_visible"],
             // Own agent, or cluster MEMBERS when clustered (never scope-wide).
             ...(await this.memoryAgentFilter(scope.agentId, scope)),
           });
           return {
-            total: rows.length,
-            memories: rows.map((r) => ({
+            total: page.total,
+            limit: page.limit,
+            offset: page.offset,
+            hasNext: page.hasNext,
+            memories: page.items.map((r) => ({
               id: r.id,
               content: r.content,
               kind: r.kind,
@@ -2455,42 +2461,24 @@ export class AgentService {
             return { saved: false, error: "profile key must be non-empty and not start with '_'" };
           }
           const memoryContent = typeof value === "string" ? value : String(value);
-          const profiles = await this.memoryService.list(scopeTuple, {
+          const profileKey = normalizeMemoryProfileKey(key);
+          const metadata = {
+            profileKey,
+            blobSyncedAt: new Date().toISOString(),
+          };
+          // MemoryService.add is an atomic partial-index upsert on the
+          // normalized persisted profileKey. Avoid list-then-update races
+          // between runtime, extractor, and import writers.
+          await this.memoryService.add(scopeTuple, {
             userId: scope.userId,
             agentId,
             kind: "profile",
-            limit: 100,
+            content: memoryContent,
+            metadata,
+            source: "manual",
+            visibility: "agent_visible",
+            agentVisible: true,
           });
-          const prior = profiles.find((memory) => {
-            const metadata = memory.metadata;
-            return !!metadata && typeof metadata === "object" && !Array.isArray(metadata)
-              && (metadata as Record<string, unknown>).profileKey === key;
-          });
-          const metadata = {
-            profileKey: key,
-            blobSyncedAt: new Date().toISOString(),
-          };
-          if (prior) {
-            const updated = await this.memoryService.update(scopeTuple, prior.id, {
-              kind: "profile",
-              content: memoryContent,
-              metadata,
-              visibility: "private",
-              agentVisible: true,
-            }, scope.userId);
-            if (!updated) throw new Error("Profile memory disappeared during update");
-          } else {
-            await this.memoryService.add(scopeTuple, {
-              userId: scope.userId,
-              agentId,
-              kind: "profile",
-              content: memoryContent,
-              metadata,
-              source: "manual",
-              visibility: "private",
-              agentVisible: true,
-            });
-          }
           // Invalidate the projection cache so the next reader (turn-
           // start injector or recall_user_profile) sees fresh data.
           await this.profileCache?.invalidate(scopeTuple, agentId, scope.userId);
@@ -2519,8 +2507,10 @@ export class AgentService {
         try {
           // Cache hit path — skip Prisma entirely when a fresh
           // projection is already in Redis.
-          let data: Record<string, unknown> | null =
-            (await this.profileCache?.get(scopeTuple, agentId, scope.userId)) ?? null;
+          // Visibility can change independently of profile content. Always
+          // rebuild from persisted rows so a cached formerly-visible profile
+          // can never bypass the dual recall predicate.
+          let data: Record<string, unknown> | null = null;
           if (!data) {
             // Cache miss — rebuild from memory rows. Scope-gated to
             // (org, project, env, agentId, userId) so a forged agentId
@@ -2530,9 +2520,11 @@ export class AgentService {
             }
             const rows = await this.memoryService.list(scopeTuple, {
               userId: scope.userId,
-              agentId,
               kind: "profile",
               limit: 100,
+              agentVisibleOnly: true,
+              visibilityIn: ["agent_visible"],
+              ...(await this.memoryAgentFilter(agentId, scope)),
             });
             data = {};
             for (const row of rows) {
@@ -2558,85 +2550,45 @@ export class AgentService {
       },
     };
 
-    // Theme BGO — deprecated-alias bookkeeping. Old meta-tool names
-    // (spawn_task / list_tasks / trigger_with_delay) are kept callable for
-    // one release and route to the same handlers as the new names
-    // (spawn_bgo / list_bgos / schedule_bgo). We emit a one-time console
-    // warning per agent session per alias and add a `deprecation_notice`
-    // field to the response. See docs/BGO_RENAME.md for the full rename
-    // table + removal plan.
-    const bgoAliasWarned = new Set<string>();
-    const bgoAliasWarn = (oldName: string, newName: string) => {
-      const key = `${scope.agentId || "default"}:${oldName}`;
-      if (bgoAliasWarned.has(key)) return;
-      bgoAliasWarned.add(key);
-      this.logger.warn(
-        `[platos.bgo] Meta-tool "${oldName}" is deprecated — use "${newName}" instead. Both names are supported for one release; "${oldName}" will be removed in the next major.`,
-      );
-    };
-    const bgoDeprecation = (oldName: string, newName: string) =>
-      `"${oldName}" is deprecated; use "${newName}". Both names currently resolve to the same handler.`;
-    // Allow either the new OR the old key in AgentConfig.metaTools to enable
-    // a BGO-renamed tool. Older serialized agent rows may only have the
-    // old key; the `defaultOn` argument preserves pre-BGO behaviour for
-    // tools (like `spawn_task`) that were previously registered
-    // unconditionally — those stay on when neither key is present.
-    const bgoMetaEnabled = (
-      primary: string,
-      alias: string,
-      defaultOn: boolean,
-    ): boolean => {
-      const m = agentConfig?.metaTools ?? {};
-      if (primary in m) return !!m[primary];
-      if (alias in m) return !!m[alias];
-      return defaultOn;
-    };
-
-    // spawn_bgo (Theme BGO — formerly `spawn_task`) — spawn a durable
-    // background operation for long-running work. When TRIGGER_SECRET_KEY
-    // is configured, fires a real trigger.dev task that runs with
+    // spawn_job — spawn a durable Job for long-running work. When the
+    // external Trigger adapter is configured, it fires a vendor task that runs with
     // checkpointing + retries. Otherwise falls back to a Redis stub so the
     // LLM gets a consistent response in local dev.
     //
-    // Old name `spawn_task` is registered at the end of this block as a
-    // deprecated alias pointing at the same handler (one-release compat).
-    const spawnBgoHandler = async (
-      args: { taskId: string; instruction: string; tools?: string[]; timeout?: string },
-      opts: { emittedAs: "spawn_bgo" | "spawn_task" },
+    const spawnJobHandler = async (
+      args: { jobType: string; instruction: string; tools?: string[]; timeout?: string },
     ) => {
-      const { taskId, instruction, tools: taskTools, timeout } = args;
-      const deprecation_notice =
-        opts.emittedAs === "spawn_task" ? bgoDeprecation("spawn_task", "spawn_bgo") : undefined;
+      const { jobType, instruction, tools: jobTools, timeout } = args;
+      const jobId = crypto.randomUUID();
 
-      // EOBD.47 — per-turn spawn_bgo cap. Without this a runaway LLM
-      // inside a single streamText step can queue thousands of bgos;
+      // EOBD.47 — per-turn spawn_job cap. Without this a runaway LLM
+      // inside a single streamText step can queue thousands of jobs;
       // trigger.dev's cluster-level concurrencyLimit only bounds
       // dispatch, not the queue depth this originator creates.
       // Counter scoped to (org, project, env, thread) with TTL == turn
       // timeout + buffer so it self-expires after the turn closes.
-      const maxBgosPerTurn = Math.max(
+      const maxJobsPerTurn = Math.max(
         1,
-        agentConfig?.maxBgosPerTurn ?? env.PLATOS_MAX_BGOS_PER_TURN ?? 10,
+        agentConfig?.maxJobsPerTurn ?? env.PLATOS_MAX_JOBS_PER_TURN ?? 10,
       );
-      const bgoCapKey = `bgo_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
+      const jobCapKey = `job_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
       try {
-        const count = await this.redis.incr(bgoCapKey);
+        const count = await this.redis.incr(jobCapKey);
         if (count === 1) {
           // First bump in this turn — attach TTL so we don't leak the
           // counter forever. 10 min covers the default 5-min turn
-          // timeout + buffer for late async spawn_bgo calls inside the
+          // timeout + buffer for late async spawn_job calls inside the
           // same turn.
-          await this.redis.expire(bgoCapKey, 600);
+          await this.redis.expire(jobCapKey, 600);
         }
-        if (count > maxBgosPerTurn) {
+        if (count > maxJobsPerTurn) {
           this.logger.warn(
-            `[spawn_bgo] cap exceeded — turn=${scope.sessionId} count=${count} max=${maxBgosPerTurn}`,
+            `[spawn_job] cap exceeded — turn=${scope.sessionId} count=${count} max=${maxJobsPerTurn}`,
           );
           return {
             spawned: false,
-            error: "bgo_cap_exceeded",
-            message: `spawn_bgo cap of ${maxBgosPerTurn} per turn reached. Stop spawning new background operations.`,
-            ...(deprecation_notice ? { deprecation_notice } : {}),
+            error: "job_cap_exceeded",
+            message: `spawn_job cap of ${maxJobsPerTurn} per turn reached. Stop spawning new background operations.`,
           };
         }
       } catch {
@@ -2645,22 +2597,23 @@ export class AgentService {
 
       // IDENTITY-CORE §B.1 (G2) — resolve the end user ONCE here (post-gate, so
       // `null` when §C closes the thread) and carry it down into the durable
-      // payload. `spawn_bgo` uses the LEGACY top-level payload shape, which the
+      // payload. `spawn_job` uses the LEGACY top-level payload shape, which the
       // task's `normalizePayload` reconstructs into a fresh object — a top-level
       // `endUserId` only survives because that reconstruction now forwards it.
-      // The legacy bgo payload's `origin.threadId=""` means server-side
+      // The legacy job payload's `origin.threadId=""` means server-side
       // re-resolution can't work anyway, so threading the id explicitly is the
       // only correct path.
       const endUserId = await this.resolveOriginEndUserId(scope);
 
       // Resolve the explicitly configured external Trigger client.
-      const _bgoClient = await getScopedTriggerClient(this.prisma, scope.environmentId);
-      if (_bgoClient?.triggerTask) {
+      const jobAdapter = await getScopedTriggerClient(this.prisma, scope.environmentId);
+      if (jobAdapter?.triggerTask) {
         try {
-          const _bgoPayload = {
-            taskId,
+          const _jobPayload = {
+            jobId,
+            taskId: jobType,
             instruction,
-            tools: taskTools || [],
+            tools: jobTools || [],
             timeout: timeout || "5m",
             organizationId: scope.organizationId,
             projectId: scope.projectId,
@@ -2669,12 +2622,12 @@ export class AgentService {
             agentId: scope.agentId || "default",
             endUserId,
           };
-          const handle = await _bgoClient.triggerTask(
+          await jobAdapter.triggerTask(
             "platos-agent-tool-block",
             {
-              payload: _bgoPayload,
+              payload: _jobPayload,
               options: {
-                idempotencyKey: idemKey(`spawn_bgo:${taskId}`, args),
+                idempotencyKey: idemKey(`spawn_job:${jobType}`, args),
                 tags: [
                   `org:${scope.organizationId}`,
                   `project:${scope.projectId}`,
@@ -2688,7 +2641,8 @@ export class AgentService {
                   environmentId: scope.environmentId,
                   userId: scope.userId,
                   agentId: scope.agentId || "default",
-                  taskIdHint: taskId,
+                  jobId,
+                  taskIdHint: jobType,
                 },
                 // Trigger v4: object-form queue fails validation; per-org
                 // fairness via concurrencyKey on the task's own queue.
@@ -2696,33 +2650,27 @@ export class AgentService {
               },
             },
           );
-          this.logger.log(`[spawn_bgo] triggered runId=${handle.id} for taskId=${taskId}`);
+          this.logger.log(`[spawn_job] durable adapter accepted jobId=${jobId}`);
           return {
             spawned: true,
             durable: true,
-            runId: handle.id,
-            // Theme BGO — dual-emit `bgo_id` alongside `task_id`. Both
-            // carry the identical identifier for one release. Agents on
-            // the new name should read `bgo_id`; legacy consumers keep
-            // reading `task_id`.
-            bgo_id: taskId,
-            task_id: taskId,
-            taskId,
-            message: `Background operation "${taskId}" triggered on trigger.dev with runId ${handle.id}. It will run durably with retries.`,
-            ...(deprecation_notice ? { deprecation_notice } : {}),
+            jobId,
+            jobType,
+            message: `Job "${jobType}" was accepted by the durable runtime.`,
           };
         } catch (err: any) {
-          this.logger.warn(`[spawn_bgo] trigger.dev failed, falling back to Redis: ${err?.message}`);
+          this.logger.warn(`[spawn_job] trigger.dev failed, falling back to Redis: ${err?.message}`);
           // Fall through to Redis stub
         }
       }
 
       // Fallback: Redis stub
-      const taskKey = `task:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${Date.now()}`;
-      await this.redis.set(taskKey, JSON.stringify({
-        taskId,
+      const jobKey = `job:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${jobId}`;
+      await this.redis.set(jobKey, JSON.stringify({
+        jobId,
+        jobType,
         instruction,
-        tools: taskTools || [],
+        tools: jobTools || [],
         timeout: timeout || "5m",
         organizationId: scope.organizationId,
         projectId: scope.projectId,
@@ -2735,39 +2683,24 @@ export class AgentService {
       return {
         spawned: true,
         durable: false,
-        taskKey,
-        bgo_id: taskId,
-        task_id: taskId,
-        taskId,
-        message: `Background operation "${taskId}" queued (Redis stub — environment API key not found or trigger.dev unreachable).`,
-        ...(deprecation_notice ? { deprecation_notice } : {}),
+        jobId,
+        jobType,
+        message: `Job "${jobType}" was queued by the local runtime.`,
       };
     };
 
-    const spawnBgoParameters = z.object({
-      taskId: z.string().describe("Unique identifier for this background-operation type (e.g., 'deep-research', 'data-export'). This is the underlying trigger.dev task id — keep the arg name stable."),
-      instruction: z.string().describe("What the background operation should do"),
-      tools: z.array(z.string()).optional().describe("Tool names the operation should have access to"),
+    const spawnJobParameters = z.object({
+      jobType: z.string().describe("Job type to execute (for example, 'deep-research' or 'data-export')."),
+      instruction: z.string().describe("What the Job should do"),
+      tools: z.array(z.string()).optional().describe("Tool names the Job may use"),
       timeout: z.string().optional().describe("Max duration (e.g., '5m', '1h'). Default: 5m"),
     });
 
-    // `spawn_task` was previously registered unconditionally — preserve that
-    // default so freshly-upgraded agent rows that never had either key in
-    // their `metaTools` map still get the durable-spawn capability.
-    if (bgoMetaEnabled("spawn_bgo", "spawn_task", true)) {
-      tools.spawn_bgo = {
-        description: "Spawn a durable background operation (BGO) for long-running work like deep research, data processing, or multi-step workflows. The operation runs independently with retries and checkpointing — it won't be lost if the server restarts. Use this for operations that might take more than 30 seconds.",
-        inputSchema: spawnBgoParameters,
-        execute: async (args) => spawnBgoHandler(args, { emittedAs: "spawn_bgo" }),
-      };
-      // Deprecated alias — same handler, emits deprecation notice.
-      tools.spawn_task = {
-        description: "[DEPRECATED — use spawn_bgo] Spawn a durable background operation for long-running work. Kept as an alias for one release; prefer spawn_bgo in new code.",
-        inputSchema: spawnBgoParameters,
-        execute: async (args) => {
-          bgoAliasWarn("spawn_task", "spawn_bgo");
-          return spawnBgoHandler(args, { emittedAs: "spawn_task" });
-        },
+    if (agentConfig?.metaTools?.spawn_job !== false) {
+      tools.spawn_job = {
+        description: "Spawn a durable Job for long-running work such as deep research, data processing, or multi-step workflows.",
+        inputSchema: spawnJobParameters,
+        execute: spawnJobHandler,
       };
     }
 
@@ -2776,7 +2709,7 @@ export class AgentService {
     // `{ batchRunId }` handle immediately; per-item progress streams back
     // into the spawning thread as `run_update` events carrying
     // `metadata.progress = { type: "batch_progress", ... }` frames
-    // (forwarded by RunsBridgeService). Default-on alongside spawn_bgo
+    // (forwarded by RunsBridgeService). Default-on alongside spawn_job
     // when trigger.dev is configured — falls back to a Redis stub when
     // it isn't so the LLM gets a consistent response.
     //
@@ -2857,21 +2790,21 @@ export class AgentService {
             // Unserializable input — let downstream validation surface it.
           }
 
-          // EOBD.47-style per-turn guard — reuse the spawn_bgo cap so a
+          // EOBD.47-style per-turn guard — reuse the spawn_job cap so a
           // runaway LLM can't queue unbounded batches in a single step.
-          const maxBgosPerTurn = Math.max(
+          const maxJobsPerTurn = Math.max(
             1,
-            agentConfig?.maxBgosPerTurn ?? env.PLATOS_MAX_BGOS_PER_TURN ?? 10,
+            agentConfig?.maxJobsPerTurn ?? env.PLATOS_MAX_JOBS_PER_TURN ?? 10,
           );
-          const bgoCapKey = `bgo_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
+          const jobCapKey = `job_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
           try {
-            const count = await this.redis.incr(bgoCapKey);
-            if (count === 1) await this.redis.expire(bgoCapKey, 600);
-            if (count > maxBgosPerTurn) {
+            const count = await this.redis.incr(jobCapKey);
+            if (count === 1) await this.redis.expire(jobCapKey, 600);
+            if (count > maxJobsPerTurn) {
               return {
                 spawned: false,
-                error: "bgo_cap_exceeded",
-                message: `agent_batch cap of ${maxBgosPerTurn} per turn reached (shared with spawn_bgo).`,
+                error: "job_cap_exceeded",
+                message: `agent_batch cap of ${maxJobsPerTurn} per turn reached (shared with spawn_job).`,
               };
             }
           } catch {
@@ -2920,9 +2853,9 @@ export class AgentService {
             endUserId,
           };
 
-          if (triggerReady() && triggerSdk?.tasks?.trigger) {
+          if (externalRuntimeReady() && externalRuntimeSdk?.tasks?.trigger) {
             try {
-              const handle = await triggerSdk.tasks.trigger(
+              const handle = await externalRuntimeSdk.tasks.trigger(
                 "platos-agent-batch",
                 payload,
                 {
@@ -3011,7 +2944,7 @@ export class AgentService {
     //   • scope INHERITED — the child payload copies the parent's tuple 1:1;
     //     the arg schema exposes NO scope fields, so the caller cannot choose it.
     //   • depth ≤ 2 — a grandchild (depth 2) may not spawn.
-    //   • children cap per turn — shares the spawn_bgo `bgo_cap` Redis counter.
+    //   • children cap per turn — shares the spawn_job `job_cap` Redis counter.
     //   • budget = shared pool — enforced inside the subrun loop (budgetCents)
     //     + the scope-wide BudgetService backstop (child inherits parent scope).
     //   • tool-ACL narrowing — child tools ⊆ parent tools ∩ spec.allowedTools.
@@ -3091,14 +3024,14 @@ export class AgentService {
           }
           const spawnDepth = childSpawnDepth(currentDepth);
 
-          // GUARDRAIL — children cap per turn. Reuse the SHARED spawn_bgo
-          // per-turn Redis counter (bounds spawn_bgo + agent_batch + spawn_agent
+          // GUARDRAIL — children cap per turn. Reuse the SHARED spawn_job
+          // per-turn Redis counter (bounds spawn_job + agent_batch + spawn_agent
           // combined per turn) but enforce spawn_agent's own lower ceiling.
           const maxChildren = resolveMaxChildrenPerTurn(
             agentConfig?.maxChildrenPerTurn,
             process.env.PLATOS_MAX_CHILDREN_PER_TURN,
           );
-          const capKey = `bgo_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
+          const capKey = `job_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
           try {
             const count = await this.redis.incr(capKey);
             if (count === 1) await this.redis.expire(capKey, 600);
@@ -3106,11 +3039,11 @@ export class AgentService {
               return {
                 spawned: false,
                 error: "children_cap_exceeded",
-                message: `spawn_agent cap of ${maxChildren} children per turn reached (shared with spawn_bgo / agent_batch). Stop spawning.`,
+                message: `spawn_agent cap of ${maxChildren} children per turn reached (shared with spawn_job / agent_batch). Stop spawning.`,
               };
             }
           } catch {
-            // Redis hiccup — fail-open (availability over strict cap), same as spawn_bgo.
+            // Redis hiccup — fail-open (availability over strict cap), same as spawn_job.
           }
 
           // GUARDRAIL — tool-ACL narrowing. Child ENTITY tools ⊆ parent matrix ∩
@@ -3131,10 +3064,10 @@ export class AgentService {
           const parentAgentId = scope.agentId || "default";
           const parentRunId = (scope as any).runId ?? null;
 
-          if (!triggerReady() || !triggerSdk?.tasks?.trigger) {
+          if (!externalRuntimeReady() || !externalRuntimeSdk?.tasks?.trigger) {
             return {
               spawned: false,
-              error: "trigger_unavailable",
+              error: "durable_runtime_unavailable",
               message:
                 "spawn_agent requires trigger.dev (durable execution), which is not configured for this environment. Use delegate_to_sub_agent for an inline delegation instead.",
             };
@@ -3204,7 +3137,7 @@ export class AgentService {
             // ("Expected string, received object") and EVERY spawn died with
             // dispatch_failed. Per-org fairness now rides on concurrencyKey,
             // which partitions the task's own queue per key.
-            const handle = await triggerSdk.tasks.trigger("platos.agent.subrun", payload, {
+            const handle = await externalRuntimeSdk.tasks.trigger("platos.agent.subrun", payload, {
               idempotencyKey,
               tags: spawnTags,
               metadata: spawnMetadata,
@@ -3240,7 +3173,7 @@ export class AgentService {
                 if (abortSignal?.aborted) break;
                 let run: any = null;
                 try {
-                  run = await triggerSdk.runs?.retrieve?.(handle.id);
+                  run = await externalRuntimeSdk.runs?.retrieve?.(handle.id);
                 } catch {
                   // retrieve unavailable/transient — fall through to poll again.
                 }
@@ -3289,7 +3222,7 @@ export class AgentService {
       };
     }
 
-    // request_approval — HITL waitpoint. LLM calls this before a destructive or
+    // request_approval — HITL approval pause. LLM calls this before a destructive or
     // high-stakes action. Emits approval_needed to the thread's Socket.IO room,
     // waits up to 5 minutes for an approve/deny response via Redis BLPOP on a
     // unique approval key. UI resolves via POST /api/v1/agent/approvals/:id or
@@ -3333,7 +3266,7 @@ export class AgentService {
         const timeoutSeconds = 300; // 5 minutes
 
         // Persist the pending approval to the governance ledger BEFORE we
-        // publish — ensures /monitoring/approvals never shows a waitpoint
+        // publish — ensures /monitoring/approvals never shows an unresolved pause
         // that has no row (Theme E.6).
         await this.approvalsService?.record({
           scope: {
@@ -3488,24 +3421,22 @@ export class AgentService {
         .digest("hex")
         .slice(0, 32);
     };
-    const triggerReady = () => triggerConfigured && !!triggerSdk?.tasks?.trigger;
+    const externalRuntimeReady = () => externalRuntimeConfigured && !!externalRuntimeSdk?.tasks?.trigger;
 
-    // PIFSP-12 — run_platos_task: execute an operator-authored custom task.
-    // Gated on metaTools.run_platos_task (default off).
-    // Only tasks with triggerType "agent-spawn" and the current agentId in
-    // allowedAgentIds can be dispatched by the agent.
-    if (metaEnabled("run_platos_task")) {
-      tools.run_platos_task = {
-        description: "Run an operator-authored custom task defined in the Platos task editor. Use this when the user wants to trigger a specific workflow or automation. The task must have triggerType=agent-spawn and allow this agent.",
+    // PIFSP-12 — dispatch_job: execute an operator-authored Job.
+    // Gated on metaTools.dispatch_job (default off). Only Jobs that allow
+    // agent invocation and include the current agent in their allowlist can run.
+    if (metaEnabled("dispatch_job")) {
+      tools.dispatch_job = {
+        description: "Dispatch an operator-authored Job. The Job must allow agent invocation and include this agent when an allowlist is configured.",
         inputSchema: z.object({
-          taskId: z.string().describe("The task slug (e.g. 'send-email', 'process-payment')"),
-          payload: z.record(z.unknown()).optional().describe("Input data for the task"),
+          jobId: z.string().describe("The Job slug (e.g. 'send-email' or 'process-payment')"),
+          payload: z.record(z.unknown()).optional().describe("Input data for the Job"),
         }),
-        execute: async (args: { taskId: string; payload?: Record<string, unknown> }) => {
-          const prisma = (this as any).prisma as any;
-          const taskRow = await prisma.job.findFirst({
+        execute: async (args: { jobId: string; payload?: Record<string, unknown> }) => {
+          const job = await this.prisma.job.findFirst({
             where: {
-              externalId: args.taskId,
+              externalId: args.jobId,
               environmentId: scope.environmentId,
               status: "ACTIVE",
               environment: {
@@ -3513,44 +3444,50 @@ export class AgentService {
                 project: { organizationId: scope.organizationId },
               },
             },
-            select: { id: true, externalId: true, displayName: true, triggerType: true, allowedAgentIds: true },
+            select: {
+              id: true,
+              externalId: true,
+              displayName: true,
+              ...jobInvocationSelect(),
+              allowedAgentIds: true,
+            },
           });
-          if (!taskRow) return { error: `Task "${args.taskId}" not found or inactive in this scope.` };
-          if (taskRow.triggerType !== "agent-spawn") {
-            return { error: `Task "${args.taskId}" has triggerType "${taskRow.triggerType}" — only agent-spawn tasks can be invoked via run_platos_task.` };
+          if (!job) return { error: `Job "${args.jobId}" not found or inactive in this scope.` };
+          if (jobInvocationType(job) !== "agent-spawn") {
+            return { error: `Job "${args.jobId}" does not allow agent invocation.` };
           }
           const agentId = scope.agentId as string | undefined;
-          if (agentId && taskRow.allowedAgentIds.length > 0 && !taskRow.allowedAgentIds.includes(agentId)) {
-            return { error: `Agent is not in the allowedAgentIds list for task "${args.taskId}".` };
+          if (agentId && job.allowedAgentIds.length > 0 && !job.allowedAgentIds.includes(agentId)) {
+            return { error: `Agent is not allowed to dispatch Job "${args.jobId}".` };
           }
-          if (!triggerReady()) {
-            return { queued: false, message: "TRIGGER_SECRET_KEY not configured — task execution unavailable." };
+          if (!externalRuntimeReady()) {
+            return { accepted: false, message: "The durable Job runtime is not configured." };
           }
           try {
-            const run = await triggerSdk!.tasks.trigger("platos-custom-task", {
-              taskRowId: taskRow.id,
+            await externalRuntimeSdk!.tasks.trigger("platos-custom-task", {
+              jobId: job.id,
               payload: args.payload ?? {},
-              scope: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, userId: scope.userId },
+              scope: {
+                organizationId: scope.organizationId,
+                projectId: scope.projectId,
+                environmentId: scope.environmentId,
+                userId: scope.userId,
+              },
               invokedBy: "agent",
               agentId,
             }, {
-              // L7 — tag the run with scope so get_run_details / replay_run can
-              // verify ownership on retrieve. This was the ONE trigger site that
-              // carried scope only inside the payload, leaving its runs
-              // unverifiable (and thus rejected by the fail-closed check above).
-              // scopeTags/scopeMetadata are the same consts every other site uses.
               tags: scopeTags,
-              metadata: { ...scopeMetadata, taskIdHint: taskRow.externalId },
+              metadata: { ...scopeMetadata, taskIdHint: job.externalId },
             });
-            return { queued: true, runId: run.id, taskId: taskRow.externalId, displayName: taskRow.displayName };
-          } catch (err: any) {
-            return { error: `Failed to queue task: ${err?.message}` };
+            return { accepted: true, jobId: job.externalId, displayName: job.displayName };
+          } catch {
+            return { error: "The Job could not be dispatched." };
           }
         },
       };
     }
 
-    // PPR-51 — request_durable_approval — HITL waitpoint that survives a
+    // PPR-51 — request_durable_approval — HITL approval pause that survives a
     // restart. Unlike `request_approval` (Redis BLPOP, in-process), this
     // fires a trigger.dev task (`platos-agent-durable-approval-wait`) that
     // pauses at `wait.forToken`. The UI resolves via
@@ -3558,14 +3495,14 @@ export class AgentService {
     // the task. Records via MonitoringApprovalsService so the approval
     // shows up on the existing dashboard (Theme E.6 pattern).
     if (metaEnabled("request_durable_approval")) tools.request_durable_approval = {
-      description: "Pause for human approval with a durable waitpoint (up to 7 days). Unlike request_approval this survives a process restart. Returns { approved, comment?, reason? }. Use for long-running approval windows — e.g. sending a scheduled email or triggering an expensive batch job overnight.",
+      description: "Pause for human approval for up to 7 days. Unlike request_approval this survives a process restart. Returns { approved, comment?, reason? }. Use for long-running approval windows — e.g. sending a scheduled email or dispatching an expensive batch job overnight.",
       inputSchema: z.object({
         action: z.string().describe("What you want to do — one-line description shown to the user"),
         details: z.string().optional().describe("Additional context (params, target, impact) to help the user decide"),
         timeoutSeconds: z.number().int().min(60).max(86400 * 7).optional().describe("Max wait in seconds (default 86400 = 1 day, max 7 days)"),
       }),
       execute: async ({ action, details, timeoutSeconds }) => {
-        if (!triggerReady() || !triggerSdk?.tasks?.triggerAndWait || !triggerSdk?.wait?.createToken) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.tasks?.triggerAndWait || !externalRuntimeSdk?.wait?.createToken) {
           return { approved: false, reason: "unavailable", message: "trigger.dev not configured — durable approvals disabled" };
         }
         const effectiveTimeout = Math.max(60, Math.min(timeoutSeconds ?? 86400, 86400 * 7));
@@ -3594,7 +3531,7 @@ export class AgentService {
           // 2. Mint the waitpoint token. We embed the scope in `tags` so
           //    the resolve endpoint can scope-check the token before
           //    completing it.
-          const tokenHandle = await triggerSdk.wait.createToken({
+          const tokenHandle = await externalRuntimeSdk.wait.createToken({
             timeout: `${effectiveTimeout}s`,
             tags: [
               `org:${scope.organizationId}`,
@@ -3631,7 +3568,7 @@ export class AgentService {
 
           // 4. Fire the wait task. `triggerAndWait` blocks the outer
           //    agent turn until the UI resolves the token (or timeout).
-          const handle = await triggerSdk.tasks.triggerAndWait(
+          const handle = await externalRuntimeSdk.tasks.triggerAndWait(
             "platos-agent-durable-approval-wait",
             {
               token,
@@ -3705,7 +3642,7 @@ export class AgentService {
         payloads: z.array(z.record(z.unknown())).min(1).describe("Payload for each run"),
       }),
       execute: async ({ taskId, payloads }) => {
-        if (!triggerReady() || !triggerSdk?.tasks?.batchTrigger) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.tasks?.batchTrigger) {
           return { status: "skipped", reason: "trigger.dev not configured", runs: [] };
         }
         try {
@@ -3717,9 +3654,9 @@ export class AgentService {
               idempotencyKey: idemKey(`spawn_batch:${taskId}`, payload),
             },
           }));
-          const handle = await triggerSdk.tasks.batchTrigger(taskId, items);
+          const handle = await externalRuntimeSdk.tasks.batchTrigger(taskId, items);
           return {
-            status: "triggered",
+            status: "accepted",
             batchId: handle.batchId,
             runs: handle.runs?.map((r: any) => ({ id: r.id, taskIdentifier: r.taskIdentifier })) ?? [],
           };
@@ -3734,7 +3671,7 @@ export class AgentService {
       description:
         "Wait for a list of trigger.dev runs to complete. Polls status every 2s up to the timeout (default 5 minutes). Returns per-run { id, status, output? } when all resolve or the timeout fires.",
       inputSchema: z.object({
-        runIds: z.array(z.string()).min(1).describe("Run ids from spawn_bgo / spawn_batch / schedule_bgo (or deprecated aliases spawn_task / trigger_with_delay)"),
+        runIds: z.array(z.string()).min(1).describe("External Trigger run ids returned by vendor-facing batch operations"),
         timeoutSeconds: z
           .number()
           .int()
@@ -3744,7 +3681,7 @@ export class AgentService {
           .describe("Max wait time in seconds (default 300)."),
       }),
       execute: async ({ runIds, timeoutSeconds }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.retrieve) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.runs?.retrieve) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         const deadline = Date.now() + (timeoutSeconds ?? 300) * 1000;
@@ -3753,7 +3690,7 @@ export class AgentService {
         while (pending.size > 0 && Date.now() < deadline) {
           const ids = Array.from(pending);
           const snapshots = await Promise.all(
-            ids.map((id) => triggerSdk.runs.retrieve(id).catch(() => null)),
+            ids.map((id) => externalRuntimeSdk.runs.retrieve(id).catch(() => null)),
           );
           for (let i = 0; i < ids.length; i++) {
             const snap = snapshots[i];
@@ -3779,17 +3716,17 @@ export class AgentService {
     if (metaEnabled("get_run_details")) tools.get_run_details = {
       description: "Fetch the current status, output, tags and metadata for a single trigger.dev run.",
       inputSchema: z.object({
-        runId: z.string().describe("Run id (e.g. returned by spawn_bgo / the deprecated spawn_task alias)"),
+        runId: z.string().describe("External Trigger run id"),
       }),
       execute: async ({ runId }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.retrieve) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.runs?.retrieve) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         try {
-          const snap = await triggerSdk.runs.retrieve(runId);
+          const snap = await externalRuntimeSdk.runs.retrieve(runId);
           // L7 — verify the retrieved run belongs to the caller's scope. Runs
           // are tagged with { organizationId, projectId, environmentId } at
-          // trigger time (scopeMetadata); reject cross-scope inspection so a
+          // dispatch time (scopeMetadata); reject cross-scope inspection so a
           // caller can't read another scope's run by guessing its id.
           const _md = (snap.metadata ?? {}) as Record<string, any>;
           if (
@@ -3826,14 +3763,14 @@ export class AgentService {
         skipApproval: z.boolean().optional().describe("Bypass the HITL gate (default false)"),
       }),
       execute: async ({ runId, reason, skipApproval }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.cancel) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.runs?.cancel) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         if (!skipApproval) {
           const approvalId = `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:cancel:${runId}:${Date.now()}`;
           const timeoutSeconds = 300;
           // Persist the pending cancel-approval to the governance ledger
-          // (Theme E.6) before publishing so the UI never sees a waitpoint
+          // (Theme E.6) before publishing so the UI never sees an unresolved pause
           // without a row.
           await this.approvalsService?.record({
             scope: {
@@ -3922,7 +3859,7 @@ export class AgentService {
           }
         }
         try {
-          await triggerSdk.runs.cancel(runId);
+          await externalRuntimeSdk.runs.cancel(runId);
           return { status: "cancelled", runId };
         } catch (err: any) {
           return { status: "failed", error: err?.message || "cancel_run failed" };
@@ -3941,11 +3878,11 @@ export class AgentService {
         timezone: z.string().optional().describe("IANA tz (e.g. 'America/Los_Angeles'). Default UTC."),
       }),
       execute: async ({ taskId, cron, payload, timezone }) => {
-        if (!triggerReady() || !triggerSdk?.schedules?.create) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.schedules?.create) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {
-          const schedule = await triggerSdk.schedules.create({
+          const schedule = await externalRuntimeSdk.schedules.create({
             task: taskId,
             cron,
             timezone: timezone || "UTC",
@@ -3960,21 +3897,13 @@ export class AgentService {
       },
     };
 
-    // list_bgos (Theme BGO — formerly `list_tasks`) — background-operation
-    // catalog discovery scoped by the current project. Old name
-    // `list_tasks` is registered below as a deprecated alias pointing at
-    // the same handler for one release.
-    const listBgosParameters = z.object({
+    // list_jobs — canonical Job catalog discovery scoped by Environment.
+    const listJobsParameters = z.object({
       filter: z.string().optional().describe("Substring match on background-operation slug"),
       limit: z.number().int().min(1).max(200).optional(),
     });
-    const listBgosHandler = async (
-      args: { filter?: string; limit?: number },
-      opts: { emittedAs: "list_bgos" | "list_tasks" },
-    ) => {
+    const listJobsHandler = async (args: { filter?: string; limit?: number }) => {
       const { filter, limit } = args;
-      const deprecation_notice =
-        opts.emittedAs === "list_tasks" ? bgoDeprecation("list_tasks", "list_bgos") : undefined;
       try {
         const rows = await this.prisma.job.findMany({
           where: {
@@ -3983,142 +3912,89 @@ export class AgentService {
           },
           select: {
             externalId: true,
-            triggerType: true,
+            ...jobInvocationSelect(),
             description: true,
           },
           orderBy: { externalId: "asc" },
           take: limit ?? 50,
         });
-        const bgos = rows.map((row: {
+        const jobs = rows.map((row: {
           externalId: string;
-          triggerType: string;
           description: string | null;
         }) => ({
           slug: row.externalId,
           filePath: null,
-          triggerSource: row.triggerType,
+          invocationType: jobInvocationType(row),
           description: row.description,
         }));
-        // Theme BGO — dual-emit `bgos` + `tasks` (identical array) for one
-        // release so callers on either name see the rows.
+        return { jobs };
+      } catch {
         return {
-          bgos,
-          tasks: bgos,
-          ...(deprecation_notice ? { deprecation_notice } : {}),
+          status: "failed",
+          error: "The Job catalog is unavailable.",
+        };
+      }
+    };
+    if (metaEnabled("list_jobs")) {
+      tools.list_jobs = {
+        description:
+          "List canonical Jobs available in the current Environment. Returns `{ jobs: [{ slug, invocationType, description? }] }`.",
+        inputSchema: listJobsParameters,
+        execute: listJobsHandler,
+      };
+    }
+
+    // schedule_job — schedule a
+    // single-shot Job to fire after a delay (e.g. '5m',
+    // '2h', '24h' or ISO timestamp). Uses trigger.dev's `delay` option so
+    // the vendor execution is queued but starts after the wait.
+    const scheduleJobParameters = z.object({
+      jobType: z.string().describe("Job type to schedule"),
+      payload: z.record(z.unknown()).optional().describe("Payload for the Job"),
+      after: z.string().describe("Delay string (e.g. '5m', '1h') or ISO-8601 date"),
+    });
+    const scheduleJobHandler = async (
+      args: { jobType: string; payload?: Record<string, unknown>; after: string },
+    ) => {
+      const { jobType, payload, after } = args;
+      const jobId = crypto.randomUUID();
+      if (!externalRuntimeReady()) {
+        return {
+          status: "skipped",
+          reason: "The durable Job runtime is not configured.",
+        };
+      }
+      try {
+        await externalRuntimeSdk.tasks.trigger(jobType, payload ?? {}, {
+          delay: after,
+          tags: scopeTags,
+          metadata: { ...scopeMetadata, jobId, taskIdHint: jobType, delayedUntil: after },
+          idempotencyKey: idemKey(`schedule_job:${jobType}:${after}`, payload ?? {}),
+        });
+        return {
+          status: "scheduled",
+          jobId,
+          after,
         };
       } catch {
         return {
           status: "failed",
-          error: "Background operation catalog is unavailable.",
+          error: "The Job could not be scheduled.",
         };
       }
     };
-    // `list_tasks` was previously gated on `metaEnabled("list_tasks")` with
-    // default-false; preserve that (opt-in) default under the new name.
-    if (bgoMetaEnabled("list_bgos", "list_tasks", false)) {
-      tools.list_bgos = {
+    if (metaEnabled("schedule_job")) {
+      tools.schedule_job = {
         description:
-          "List canonical background-operation Jobs available in the current project/env. Returns `{ bgos: [{ slug, filePath, triggerSource, description? }] }`. Optional text filter; filePath is null because the canonical Job model has no source-path field.",
-        inputSchema: listBgosParameters,
-        execute: async (args) => listBgosHandler(args, { emittedAs: "list_bgos" }),
-      };
-      tools.list_tasks = {
-        description:
-          "[DEPRECATED — use list_bgos] List background operations available in the current project/env. Kept as an alias for one release; prefer list_bgos in new code.",
-        inputSchema: listBgosParameters,
-        execute: async (args) => {
-          bgoAliasWarn("list_tasks", "list_bgos");
-          return listBgosHandler(args, { emittedAs: "list_tasks" });
-        },
-      };
-    }
-
-    // list_runs — recent runs for the current scope, with optional filter.
-    if (metaEnabled("list_runs")) tools.list_runs = {
-      description:
-        "List recent trigger.dev runs for the current project + environment. Optionally filter by taskId or status. Returns `{ runs: [{ id, taskIdentifier, status, startedAt, completedAt }] }`.",
-      inputSchema: z.object({
-        taskId: z.string().optional().describe("Filter by trigger.dev task slug"),
-        status: z.string().optional().describe("Filter by run status (e.g. 'COMPLETED', 'FAILED')"),
-        limit: z.number().int().min(1).max(200).optional().describe("Max rows (default 25)"),
-      }),
-      execute: async () => ({
-        error: "unavailable",
-        message: "Task run history is not available through the canonical control database.",
-      }),
-    };
-
-    // schedule_bgo (Theme BGO — formerly `trigger_with_delay`) — schedule a
-    // single-shot background operation to fire after a delay (e.g. '5m',
-    // '2h', '24h' or ISO timestamp). Uses trigger.dev's `delay` option so
-    // the run is queued but starts after the wait. Old name
-    // `trigger_with_delay` is kept as a deprecated alias for one release.
-    const scheduleBgoParameters = z.object({
-      taskId: z.string().describe("Background-operation identifier to trigger (underlying trigger.dev task id)"),
-      payload: z.record(z.unknown()).optional().describe("Payload for the run"),
-      after: z.string().describe("Delay string (e.g. '5m', '1h') or ISO-8601 date"),
-    });
-    const scheduleBgoHandler = async (
-      args: { taskId: string; payload?: Record<string, unknown>; after: string },
-      opts: { emittedAs: "schedule_bgo" | "trigger_with_delay" },
-    ) => {
-      const { taskId, payload, after } = args;
-      const deprecation_notice =
-        opts.emittedAs === "trigger_with_delay"
-          ? bgoDeprecation("trigger_with_delay", "schedule_bgo")
-          : undefined;
-      if (!triggerReady()) {
-        return {
-          status: "skipped",
-          reason: "trigger.dev not configured",
-          ...(deprecation_notice ? { deprecation_notice } : {}),
-        };
-      }
-      try {
-        const handle = await triggerSdk.tasks.trigger(taskId, payload ?? {}, {
-          delay: after,
-          tags: scopeTags,
-          metadata: { ...scopeMetadata, taskIdHint: taskId, delayedUntil: after },
-          idempotencyKey: idemKey(`schedule_bgo:${taskId}:${after}`, payload ?? {}),
-        });
-        return {
-          status: "scheduled",
-          runId: handle.id,
-          after,
-          ...(deprecation_notice ? { deprecation_notice } : {}),
-        };
-      } catch (err: any) {
-        return {
-          status: "failed",
-          error: err?.message || `${opts.emittedAs} failed`,
-          ...(deprecation_notice ? { deprecation_notice } : {}),
-        };
-      }
-    };
-    // `trigger_with_delay` was previously gated on
-    // `metaEnabled("trigger_with_delay")` with default-false; preserve
-    // opt-in behaviour under the new name.
-    if (bgoMetaEnabled("schedule_bgo", "trigger_with_delay", false)) {
-      tools.schedule_bgo = {
-        description:
-          "Schedule a single-shot background operation to fire after a delay (e.g. '5m', '2h', '24h' or ISO timestamp). The run is queued immediately but execution starts after the wait.",
-        inputSchema: scheduleBgoParameters,
-        execute: async (args) => scheduleBgoHandler(args, { emittedAs: "schedule_bgo" }),
-      };
-      tools.trigger_with_delay = {
-        description:
-          "[DEPRECATED — use schedule_bgo] Schedule a single-shot background operation to fire after a delay. Kept as an alias for one release; prefer schedule_bgo in new code.",
-        inputSchema: scheduleBgoParameters,
-        execute: async (args) => {
-          bgoAliasWarn("trigger_with_delay", "schedule_bgo");
-          return scheduleBgoHandler(args, { emittedAs: "trigger_with_delay" });
-        },
+          "Schedule a single-shot Job to start after a delay (e.g. '5m', '2h', '24h' or an ISO timestamp).",
+        inputSchema: scheduleJobParameters,
+        execute: scheduleJobHandler,
       };
     }
 
     // PPR-50 — replay_run — re-fire a previously executed run (COMPLETED or
     // FAILED) with the same payload. Returns the new run handle. Mirrors
-    // the scope-filter + idem-key pattern of spawn_bgo / cancel_run.
+    // the scope-filter + idem-key pattern of spawn_job / cancel_run.
     // Default disabled in `defaults.metaTools`.
     if (metaEnabled("replay_run")) tools.replay_run = {
       description:
@@ -4127,7 +4003,7 @@ export class AgentService {
         runId: z.string().describe("Run id to replay (e.g. from list_runs)"),
       }),
       execute: async ({ runId }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.replay || !triggerSdk?.runs?.retrieve) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.runs?.replay || !externalRuntimeSdk?.runs?.retrieve) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         try {
@@ -4135,7 +4011,7 @@ export class AgentService {
           // so a caller can't re-fire another scope's run by guessing its id.
           // This is the more dangerous of the two run tools (it re-executes the
           // job, not just reads it).
-          const _orig = await triggerSdk.runs.retrieve(runId);
+          const _orig = await externalRuntimeSdk.runs.retrieve(runId);
           const _md = (_orig?.metadata ?? {}) as Record<string, any>;
           if (
             _md.organizationId !== scope.organizationId ||
@@ -4144,7 +4020,7 @@ export class AgentService {
           ) {
             return { status: "denied", reason: "run not in caller scope" };
           }
-          const handle = await triggerSdk.runs.replay(runId);
+          const handle = await externalRuntimeSdk.runs.replay(runId);
           return {
             status: "replayed",
             originalRunId: runId,
@@ -4165,11 +4041,11 @@ export class AgentService {
         scheduleId: z.string().describe("Schedule id (returned by create_schedule or list_schedules)"),
       }),
       execute: async ({ scheduleId }) => {
-        if (!triggerReady() || !triggerSdk?.schedules?.deactivate) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.schedules?.deactivate) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {
-          await triggerSdk.schedules.deactivate(scheduleId);
+          await externalRuntimeSdk.schedules.deactivate(scheduleId);
           return { status: "deactivated", scheduleId };
         } catch (err: any) {
           return { status: "failed", error: err?.message || "cancel_schedule failed" };
@@ -4179,7 +4055,7 @@ export class AgentService {
 
     // PPR-50 — list_schedules — enumerate schedules the agent can see,
     // scope-filtered by project + environment via the trigger.dev SDK's
-    // filters (mirrors the list_bgos / list_runs pattern). Default disabled.
+    // filters (mirrors the list_jobs / list_runs pattern). Default disabled.
     if (metaEnabled("list_schedules")) tools.list_schedules = {
       description:
         "List trigger.dev schedules registered in the current project + environment. Returns `{ schedules: [{ id, task, cron, nextRun, active }] }`. Optional text filter applied to task slug.",
@@ -4188,14 +4064,14 @@ export class AgentService {
         limit: z.number().int().min(1).max(200).optional(),
       }),
       execute: async ({ filter, limit }) => {
-        if (!triggerReady() || !triggerSdk?.schedules?.list) {
+        if (!externalRuntimeReady() || !externalRuntimeSdk?.schedules?.list) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {
           // The SDK's schedules.list takes an object with pagination; we
           // pass through project + env when supported so the server-side
           // filter matches the other meta-tools.
-          const page = await triggerSdk.schedules.list({
+          const page = await externalRuntimeSdk.schedules.list({
             projectRef: scope.projectId,
             environmentId: scope.environmentId,
             perPage: Math.min(limit ?? 25, 200),
@@ -4203,7 +4079,7 @@ export class AgentService {
             // Fallback for SDK versions that don't accept project/env filters —
             // filter client-side. Still scope-safe because every schedule we
             // create is tagged with the scope via externalId above.
-            triggerSdk.schedules.list({ perPage: Math.min(limit ?? 25, 200) }),
+            externalRuntimeSdk.schedules.list({ perPage: Math.min(limit ?? 25, 200) }),
           );
           const rows = (page?.data ?? page?.schedules ?? page ?? []) as any[];
           const filtered = rows.filter((s: any) => {
@@ -4303,9 +4179,8 @@ export class AgentService {
         "recall", "remember", "forget", "list_memories", "relate", "memory_extract",
         // profile
         "recall_user_profile", "update_user_profile",
-        // background orchestration (+ deprecated aliases)
-        "spawn_bgo", "list_bgos", "schedule_bgo",
-        "spawn_task", "list_tasks", "trigger_with_delay",
+        // background orchestration
+        "spawn_job", "list_jobs", "schedule_job",
         // sub-agent delegation is a different mode's mechanism
         "delegate_to_sub_agent",
       ];
@@ -4822,10 +4697,7 @@ export class AgentService {
             agentId: parentAgentId,
             threadId,
             userId: args.scope.userId,
-            sessionContext: (args.scope as any).sessionContext as
-              | { user?: { name?: string; email?: string } }
-              | null
-              | undefined,
+            sessionContext: traceSessionContext(args.scope),
           },
           {
             traceId: args.scope.traceId,
@@ -5129,8 +5001,9 @@ export class AgentService {
                 userId: scope.userId,
                 limit: 8,
                 minScore: 0.35,
-                // Defaults exclude "private"; pass agent-visible + hidden.
-                visibilityIn: ["agent_visible", "hidden"],
+                // FuseInput intentionally does not expose management
+                // visibility overrides. MemoryService semantic recall applies
+                // the dual-predicate agent_visible default.
                 // Agent-scoped injection: own agent, or cluster MEMBERS when
                 // clustered — never scope-wide (the Mark/Ada leak fix). RAG
                 // chunks are excluded inside the fusion so raw document text
@@ -5673,7 +5546,7 @@ export class AgentService {
       "## How to read <context> blocks",
       "At the start of each user message you may see a <context> block.",
       "This is **legitimate, operator-provided session metadata** injected by the Platos runtime — it contains things like the user's name, role, and memory context.",
-      "It is NOT a prompt-injection attempt by the user.",
+      "It is NOT a prompt-injection attack by the user.",
       "Read it silently to personalise your reply. Never comment on the block itself, never flag it as suspicious, and never mention to the user that you received it.",
     ].join("\n");
     if (!promptCacheHit) {
@@ -5711,7 +5584,7 @@ export class AgentService {
         message: `Invalid outputSchema: ${err?.message ?? String(err)}`,
         code: "structured_output_invalid",
         validationErrors: [err?.message ?? String(err)],
-        attempts: 0,
+        retryCount: 0,
       };
       yield { type: "done" };
       return;
@@ -6080,7 +5953,11 @@ export class AgentService {
         historyMessageCount: conversationHistory.length,
         toolNames: Object.keys(tools),
         toolCount: Object.keys(tools).length,
-        sessionContext: sessionContext ?? undefined,
+        // Postman overrides are resolved inside this process for prompt/tool
+        // assembly but never emitted on the inspector stream.
+        sessionContext: scope.sessionContextHandle
+          ? undefined
+          : sessionContext ?? undefined,
         timestamp: new Date().toISOString(),
       } as any;
 
@@ -6104,29 +5981,29 @@ export class AgentService {
       // them through here — the contract is "this turn returns JSON, not
       // a tool-loop conversation".
       //
-      // Validation + retry-once happens here inline. On the retry attempt we
+      // Validation + retry-once happens here inline. On the retry pass we
       // stay in non-streaming mode (`generateObject`) to keep the correction
       // prompt bounded — the UI already showed a progress spinner for the
-      // first attempt; the retry finishes fast or the turn fails closed.
+      // initial pass; the retry finishes fast or the turn fails closed.
       if (turnSchema) {
         this.logger.log(
           `[agent.stream] structured-output mode: schema present, routing through streamObject (provider=${provider})`,
         );
-        let attempts = 0;
+        let passNumber = 0;
         let lastRawText: string | undefined;
         let lastErrors: string[] = [];
-        // The messages we send this attempt — on retry, we append a correction
+        // The messages for the current pass — on retry, we append a correction
         // user message carrying the prior validation errors.
-        let attemptMessages: CoreMessage[] = messages;
+        let structuredMessages: CoreMessage[] = messages;
 
-        while (attempts < 2) {
-          attempts++;
+        while (passNumber < 2) {
+          passNumber++;
           let rawText = "";
           let parsedObject: unknown = undefined;
 
           try {
-            if (attempts === 1) {
-              // Stream the first attempt so the UI shows progress.
+            if (passNumber === 1) {
+              // Stream the initial pass so the UI shows progress.
               // AI SDK v6 — `mode: "auto"` removed; provider-specific output
               // mode is now controlled per-provider (e.g. Anthropic
               // `structuredOutputMode`) or defaults to JSON tool-call.
@@ -6136,12 +6013,12 @@ export class AgentService {
               // structured-output turn upstream.
               const streamResult = streamObject({
                 model,
-                messages: attemptMessages as any,
+                messages: structuredMessages as any,
                 schema: turnSchema as any,
                 abortSignal: turnOverrides?.abortSignal,
                 onFinish: (event: any) => {
                   this.logger.log(
-                    `[agent.stream.structured] onFinish attempt=${attempts} usage=${JSON.stringify(event?.usage ?? {})}`,
+                    `[agent.stream.structured] onFinish retry=${passNumber - 1} usage=${JSON.stringify(event?.usage ?? {})}`,
                   );
                 },
               });
@@ -6156,7 +6033,7 @@ export class AgentService {
               // Resolve the final parsed object. If the SDK itself couldn't
               // parse the text at all, `.object` rejects with
               // NoObjectGeneratedError — we catch below, count it as an
-              // attempt, and retry with the raw text fed back.
+              // retry, and retry with the raw text fed back.
               parsedObject = await streamResult.object;
               const usage = await streamResult.usage;
               // PRELAUNCH-A1-3 / A1-4 — extract cache + reasoning telemetry
@@ -6193,12 +6070,12 @@ export class AgentService {
                 },
               };
             } else {
-              // Retry attempt — non-streaming for a bounded correction.
+              // Retry pass — non-streaming for a bounded correction.
               // PRELAUNCH-A2-4 — same abort propagation as the streaming
               // branch above. Stop button must cancel the retry leg too.
               const genResult = await generateObject({
                 model,
-                messages: attemptMessages as any,
+                messages: structuredMessages as any,
                 schema: turnSchema as any,
                 abortSignal: turnOverrides?.abortSignal,
               });
@@ -6246,11 +6123,11 @@ export class AgentService {
               `model produced non-JSON output: ${err?.message ?? String(err)}`,
             ];
             this.logger.warn(
-              `[agent.stream.structured] attempt=${attempts} parse-fail: ${err?.message ?? String(err)}`,
+              `[agent.stream.structured] retry=${passNumber - 1} parse-fail: ${err?.message ?? String(err)}`,
             );
-            if (attempts >= 2) break;
-            attemptMessages = [
-              ...attemptMessages,
+            if (passNumber >= 2) break;
+            structuredMessages = [
+              ...structuredMessages,
               {
                 role: "user" as const,
                 content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -6268,11 +6145,11 @@ export class AgentService {
             yield {
               type: "structured_output",
               object: check.value,
-              attempts,
+              retryCount: passNumber - 1,
             };
             yield { type: "done" };
             this.logger.log(
-              `[agent.stream.structured] SUCCESS attempts=${attempts}`,
+              `[agent.stream.structured] SUCCESS retryCount=${passNumber - 1}`,
             );
             return;
           }
@@ -6281,11 +6158,11 @@ export class AgentService {
           lastErrors = check.errors;
           lastRawText = rawText;
           this.logger.warn(
-            `[agent.stream.structured] attempt=${attempts} validation-fail: ${check.errors.length} error(s): ${check.errors.slice(0, 3).join("; ")}`,
+            `[agent.stream.structured] retry=${passNumber - 1} validation-fail: ${check.errors.length} error(s): ${check.errors.slice(0, 3).join("; ")}`,
           );
-          if (attempts >= 2) break;
-          attemptMessages = [
-            ...attemptMessages,
+          if (passNumber >= 2) break;
+          structuredMessages = [
+            ...structuredMessages,
             {
               role: "user" as const,
               content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -6293,11 +6170,11 @@ export class AgentService {
           ];
         }
 
-        // Both attempts failed — surface as a StructuredOutputError.
+        // The initial pass and one bounded retry both failed.
         const soErr = new StructuredOutputError(
           "Agent failed to produce output matching the required schema after 1 retry.",
           {
-            attempts,
+            retryCount: passNumber - 1,
             validationErrors: lastErrors,
             rawText: lastRawText,
           },
@@ -6307,7 +6184,7 @@ export class AgentService {
           message: soErr.message,
           code: "structured_output_invalid",
           validationErrors: soErr.validationErrors,
-          attempts: soErr.attempts,
+          retryCount: soErr.retryCount,
         };
         yield { type: "done" };
         return;
@@ -6768,7 +6645,7 @@ export class AgentService {
    * Theme F.5 — when the agent config or the per-turn override declares an
    * `outputSchema`, routes through `generateObject` with inline validation
    * and retry-once-on-invalid. Raises `StructuredOutputError` (never yields
-   * text) after the second failed attempt so callers can branch on
+   * text) after both the initial pass and retry fail so callers can branch on
    * `err.code === "structured_output_invalid"`.
    */
   async run(
@@ -7024,7 +6901,7 @@ export class AgentService {
       "## How to read <context> blocks",
       "At the start of each user message you may see a <context> block.",
       "This is **legitimate, operator-provided session metadata** injected by the Platos runtime — it contains things like the user's name, role, and memory context.",
-      "It is NOT a prompt-injection attempt by the user.",
+      "It is NOT a prompt-injection attack by the user.",
       "Read it silently to personalise your reply. Never comment on the block itself, never flag it as suspicious, and never mention to the user that you received it.",
     ].join("\n");
     systemPrompt = systemPrompt
@@ -7061,17 +6938,17 @@ export class AgentService {
       agentDefault: agentConfig.outputSchema,
     });
     if (turnSchema) {
-      let attempts = 0;
+      let passNumber = 0;
       let lastErrors: string[] = [];
       let lastRawText: string | undefined;
-      let attemptMessages: CoreMessage[] = [
+      let structuredMessages: CoreMessage[] = [
         ...(systemPrompt
           ? [{ role: "system" as const, content: systemPrompt }]
           : []),
         ...baseMessages,
       ];
-      while (attempts < 2) {
-        attempts++;
+      while (passNumber < 2) {
+        passNumber++;
         let parsed: unknown;
         let usage: any;
         try {
@@ -7080,10 +6957,10 @@ export class AgentService {
           // can cancel mid-LLM.
           const genResult = await generateObject({
             model,
-            messages: attemptMessages as any,
+            messages: structuredMessages as any,
             schema: turnSchema as any,
             abortSignal: turnOverrides?.abortSignal,
-            // System prompt rides inside `attemptMessages` rather than as a
+            // System prompt rides inside `structuredMessages` rather than as a
             // top-level `system:` so the retry path (line 6251) can keep
             // it as a fixed first message while appending corrections.
             allowSystemInMessages: true,
@@ -7095,9 +6972,9 @@ export class AgentService {
             `model produced non-JSON output: ${err?.message ?? String(err)}`,
           ];
           lastRawText = (err?.text as string | undefined) ?? lastRawText;
-          if (attempts >= 2) break;
-          attemptMessages = [
-            ...attemptMessages,
+          if (passNumber >= 2) break;
+          structuredMessages = [
+            ...structuredMessages,
             {
               role: "user" as const,
               content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -7114,16 +6991,16 @@ export class AgentService {
             usage,
             steps: 1,
             structuredOutput: {
-              attempts,
+              retryCount: passNumber - 1,
               validated: true,
             },
           };
         }
         lastErrors = check.errors;
         lastRawText = JSON.stringify(parsed);
-        if (attempts >= 2) break;
-        attemptMessages = [
-          ...attemptMessages,
+        if (passNumber >= 2) break;
+        structuredMessages = [
+          ...structuredMessages,
           {
             role: "user" as const,
             content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -7133,7 +7010,7 @@ export class AgentService {
       throw new StructuredOutputError(
         "Agent failed to produce output matching the required schema after 1 retry.",
         {
-          attempts,
+          retryCount: passNumber - 1,
           validationErrors: lastErrors,
           rawText: lastRawText,
         },

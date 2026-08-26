@@ -7,7 +7,7 @@
  * argument and re-reads it, which is also what makes the resolution order
  * testable without touching a real process.
  *
- * ONE ENDPOINT PER DEPLOYMENT, AND THE ERASER MUST AGREE
+ * ONE ENDPOINT PER INSTALLATION, AND THE ERASER MUST AGREE
  *
  * apps/agent/src/privacy/clickhouse.ts resolves its own endpoint from its own
  * copy of this variable order — deliberately, because the module whose only job
@@ -18,7 +18,7 @@
  * the drift is a failing test rather than a silent one.
  */
 
-/** The analytical database. Never `trigger_dev`. */
+/** The turn-shaped projection stays separate from the telemetry adapter store. */
 export const OBSERVABILITY_DATABASE = "platos_observability";
 
 /** Every table the projection writes, in Thread → Turn → Step → Tool Call order. */
@@ -36,7 +36,7 @@ export type ObservabilityTable = (typeof OBSERVABILITY_TABLES)[number];
  *
  * The dedicated variable comes first so an operator can point the turn-shaped
  * projection somewhere other than the legacy span store. The legacy names
- * follow so a deployment that already has a ClickHouse does not have to
+ * follow so an installation that already has a ClickHouse does not have to
  * rediscover it — but note that adopting one only makes the sink CONFIGURED.
  * If `platos_observability` is not there, the startup probe says so loudly
  * rather than writing into a database that does not exist.
@@ -69,18 +69,18 @@ export interface ObservabilityConfig {
    *
    * Distinct from `drainBatchSize`, and the distinction is the throughput
    * ceiling: a drain that read one batch and returned delivered at most
-   * `drainBatchSize` projections per scheduled run, so any deployment busier
+   * `drainBatchSize` projections per scheduled run, so any installation busier
    * than that accumulated a backlog no healthy sink could work off. The drain
    * now loops, and this is what bounds the loop.
    */
   drainMaxRows: number;
-  /** Deliveries attempted before a row is parked as FAILED. */
-  maxAttempts: number;
+  /** Delivery retries allowed before a row is parked as FAILED. */
+  maxRetries: number;
   /**
    * Turn a configured-but-unusable sink into a boot failure.
    *
    * Off by default because the product must run with no analytical store at
-   * all. An operator who has decided their deployment is not allowed to lose
+   * all. An operator who has decided their installation is not allowed to lose
    * analytics turns it on and gets fail-closed startup instead.
    */
   requireSink: boolean;
@@ -106,7 +106,7 @@ export function readObservabilityUrl(
  *
  * Returns null for anything that is not a usable http(s) URL. Null means
  * UNUSABLE, not absent: `new URL("clickhouse:8123")` parses happily into a
- * nonsense protocol, and a deployment that fat-fingered its endpoint still has
+ * nonsense protocol, and an installation that fat-fingered its endpoint still has
  * a ClickHouse it expects to be written to.
  */
 export function parseObservabilityEndpoint(
@@ -162,7 +162,7 @@ export function resolveObservabilityConfig(env: EnvLike = process.env): Observab
     // path itself can produce, so the queue is bounded by the sink's health
     // rather than by the drain's arithmetic.
     drainMaxRows: positiveInt(env.PLATOS_OBSERVABILITY_DRAIN_MAX_ROWS, 50_000, 1_000_000),
-    maxAttempts: positiveInt(env.PLATOS_OBSERVABILITY_MAX_ATTEMPTS, 10, 100),
+    maxRetries: positiveInt(env.PLATOS_OBSERVABILITY_MAX_RETRIES, 10, 100),
     requireSink: boolLike(env.PLATOS_OBSERVABILITY_REQUIRE_SINK),
   };
 }

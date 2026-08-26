@@ -155,6 +155,7 @@ model User {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   mcpBearerTokensCreated  McpBearerToken[]
+  postmanExecutions       PostmanExecution[]
 }
 
 model OperatorSession {
@@ -243,7 +244,7 @@ model AuthRateLimitBucket {
   action         AuthRateLimitAction
   identifierHash String
   windowStart    DateTime
-  attempts       Int                 @default(1)
+  requestCount   Int                 @default(1) @map("attempts")
   expiresAt      DateTime
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -391,6 +392,7 @@ model Environment {
   archivedAt DateTime?
   memoryFeedbackBackfillCursor      String?   @db.Uuid
   memoryFeedbackBackfillCompletedAt DateTime?
+  accessKeyRevocationVersion        Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -405,8 +407,9 @@ model Environment {
   alertChannels            AlertChannel[]
   budgetThresholdEvents    BudgetThresholdEvent[]
   alertDeliveries          AlertDelivery[]
-  alertDeliveryAttempts    AlertDeliveryAttempt[]
+  alertDeliveryRetries     AlertDeliveryRetry[]
   postmanTemplates        PostmanTemplate[]
+  postmanExecutions       PostmanExecution[]
   threads                 Thread[]
   artifacts               Artifact[]
   messageAttachments      MessageAttachment[]
@@ -443,6 +446,7 @@ model Environment {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   mcpBearerTokens         McpBearerToken[]
+  entityToolPolicies      EntityToolPolicy[]
 
   @@unique([projectId, slug])
   @@index([projectId, archivedAt])
@@ -484,6 +488,7 @@ model EndUser {
   memoryEntities      MemoryEntity[]
   memoryRelationships MemoryRelationship[]
   messageAttachments  MessageAttachment[]
+  postmanExecutions   PostmanExecution[]
 
   @@unique([id, organizationId])
   @@index([organizationId, disabledAt])
@@ -546,6 +551,7 @@ model Agent {
   versions             AgentVersion[]
   bindings             AgentBinding[]
   postmanTemplates     PostmanTemplate[]
+  postmanExecutions    PostmanExecution[]
   threads              Thread[]
   approvals            AgentApproval[]
   budgets              Budget[]
@@ -561,6 +567,7 @@ model Agent {
   channelApps          ChannelApp[]
   channelInstallations ChannelInstallation[]
   toolCallAudits       ToolCallAudit[]
+  messageAttachments   MessageAttachment[]
 
   @@unique([projectId, slug])
   @@index([projectId, isActive])
@@ -946,6 +953,7 @@ model PostmanTemplate {
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  executions  PostmanExecution[]
 
   @@unique([environmentId, agentId, name])
   @@index([agentId])
@@ -958,6 +966,9 @@ model Thread {
   endUserId           String                @db.Uuid
   clusterId           String?               @db.Uuid
   parentThreadId      String?               @db.Uuid
+  forkedUpToTurnId    String?               @db.Uuid
+  /// Ordered references to canonical ancestor Turns. These preserve fork history without duplicating billable ledger rows.
+  forkedTurnIds       String[]              @default([]) @db.Uuid
   compactedUpToTurnId String?               @db.Uuid
   title               String?
   status              WorkStatus            @default(ACTIVE)
@@ -978,8 +989,10 @@ model Thread {
   cluster           AgentCluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   parentThread      Thread?            @relation("ThreadFork", fields: [parentThreadId], references: [id], onDelete: SetNull)
   forks             Thread[]           @relation("ThreadFork")
+  forkedUpToTurn    Turn?              @relation("ThreadForkBoundary", fields: [forkedUpToTurnId], references: [id], onDelete: Restrict)
   compactedUpToTurn Turn?              @relation("ThreadCompactionCursor", fields: [compactedUpToTurnId], references: [id], onDelete: SetNull)
   turns             Turn[]             @relation("ThreadTurns")
+  messageAttachments MessageAttachment[]
   sourceMemories    Memory[]           @relation("MemorySourceThread")
   artifacts         Artifact[]
   channelThreads    ChannelThread[]
@@ -988,11 +1001,13 @@ model Thread {
   safetyEvents      SafetyEvent[]
   agentEvals        AgentEval[]
   toolCallAudits    ToolCallAudit[]
+  postmanExecutions PostmanExecution[]
 
   @@index([environmentId, endUserId, updatedAt])
   @@index([agentId, status])
   @@index([clusterId])
   @@index([parentThreadId])
+  @@index([forkedUpToTurnId])
   @@index([compactionState, compactedAt])
 }
 
@@ -1081,6 +1096,7 @@ model Turn {
   revisions                  Turn[]              @relation("TurnRevision")
   agentVersion               AgentVersion        @relation(fields: [agentVersionId], references: [id], onDelete: Restrict)
   compactionCursorForThreads Thread[]            @relation("ThreadCompactionCursor")
+  forkBoundaryForThreads     Thread[]            @relation("ThreadForkBoundary")
   steps                      Step[]
   attachments                MessageAttachment[]
   artifacts                  Artifact[]
@@ -1090,12 +1106,48 @@ model Turn {
   agentEvals                 AgentEval[]
   channelEventInbox          ChannelEventInbox?
   observabilityOutbox        ObservabilityOutbox?
+  postmanExecution           PostmanExecution?
 
   @@unique([threadId, sequence])
   @@unique([threadId, idempotencyKey])
   @@index([parentTurnId])
   @@index([agentVersionId, versionBucket])
   @@index([threadId, status])
+}
+
+/// Durable admission and forensic attribution for one executable Postman turn.
+/// Request context is never stored here; contextHandle points at a short-lived,
+/// request-bound Redis envelope and is opaque outside the Agent process.
+model PostmanExecution {
+  id                 String     @id @default(uuid()) @db.Uuid
+  environmentId      String     @db.Uuid
+  agentId            String     @db.Uuid
+  templateId         String?    @db.Uuid
+  requestId          String     @db.Uuid
+  requestFingerprint String
+  actorUserId        String     @db.Uuid
+  simulatedEndUserId String?    @db.Uuid
+  contextHandle      String     @unique
+  contextExpiresAt   DateTime
+  status             WorkStatus @default(PENDING)
+  threadId           String?    @db.Uuid
+  turnId             String?    @unique @db.Uuid
+  completedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  environment      Environment      @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  agent            Agent            @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  template         PostmanTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  actor            User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  simulatedEndUser EndUser?         @relation(fields: [simulatedEndUserId], references: [id], onDelete: SetNull)
+  thread           Thread?          @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  turn             Turn?            @relation(fields: [turnId], references: [id], onDelete: SetNull)
+
+  @@unique([templateId, requestId])
+  @@index([environmentId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([threadId])
 }
 
 model Step {
@@ -1189,7 +1241,7 @@ model ObservabilityOutbox {
   /// Object root containing the redacted turn-shaped projection; validated by jsonShapeRegistry.
   payload        Json
   status         String    @default("PENDING")
-  attempts       Int       @default(0)
+  retryCount     Int       @default(0)
   availableAt    DateTime  @default(now())
   /// Error CLASS only. ClickHouse quotes the failing statement in its bodies.
   lastErrorCode  String?
@@ -1233,6 +1285,8 @@ model MessageAttachment {
   id            String    @id @default(uuid()) @db.Uuid
   environmentId String    @db.Uuid
   endUserId     String    @db.Uuid
+  agentId       String    @db.Uuid
+  threadId      String    @db.Uuid
   turnId        String?   @db.Uuid
   kind          String
   mimeType      String
@@ -1248,9 +1302,13 @@ model MessageAttachment {
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   endUser     EndUser     @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  thread      Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   turn        Turn?       @relation(fields: [turnId], references: [id], onDelete: Cascade)
 
   @@index([environmentId, endUserId, createdAt])
+  @@index([agentId, threadId, createdAt])
+  @@index([threadId, turnId])
   @@index([turnId])
 }
 
@@ -1361,7 +1419,7 @@ model ChannelInstallation {
   lastEventAt            DateTime?
   /// Durable rotating-grant fence: IDLE | REFRESHING | REPAIR_REQUIRED.
   tokenRefreshState      String    @default("IDLE")
-  tokenRefreshAttemptId  String?   @db.Uuid
+  tokenRefreshClaimId    String?   @map("tokenRefreshAttemptId") @db.Uuid
   tokenRefreshStartedAt  DateTime?
   tokenRefreshRepairCode String?
   /// Advances whenever an OAuth/import grant replaces the canonical credential.
@@ -1389,7 +1447,7 @@ model ChannelEventInbox {
   payloadKeyVersion    Int
   encryptedPayload String
   status           String    @default("PENDING")
-  attempts         Int       @default(0)
+  retryCount       Int       @default(0) @map("attempts")
   availableAt      DateTime  @default(now())
   leaseOwner       String?
   leaseExpiresAt   DateTime?
@@ -1711,11 +1769,11 @@ model AlertDelivery {
   kind                   AlertDeliveryKind
   idempotencyKey         String
   status                 AlertDeliveryStatus @default(PENDING)
-  attemptCount           Int                 @default(0)
+  retryCount             Int                 @default(0) @map("attemptCount")
   claimGeneration        Int                 @default(0)
   claimToken             String?             @db.Uuid
   availableAt            DateTime            @default(now())
-  lastAttemptAt          DateTime?
+  lastRetryAt            DateTime?           @map("lastAttemptAt")
   deliveredAt            DateTime?
   lastStatusCode         Int?
   lastErrorCode          String?
@@ -1726,7 +1784,7 @@ model AlertDelivery {
   environment    Environment            @relation(fields: [environmentId], references: [id], onDelete: Restrict)
   channel        AlertChannel           @relation(fields: [channelId, environmentId], references: [id, environmentId], onDelete: Restrict)
   thresholdEvent BudgetThresholdEvent?  @relation(fields: [budgetThresholdEventId, environmentId], references: [id, environmentId], onDelete: Restrict)
-  attempts       AlertDeliveryAttempt[]
+  retries        AlertDeliveryRetry[]
 
   @@unique([id, environmentId])
   @@unique([environmentId, idempotencyKey])
@@ -1735,11 +1793,11 @@ model AlertDelivery {
   @@index([channelId, createdAt])
 }
 
-model AlertDeliveryAttempt {
+model AlertDeliveryRetry {
   id             String              @id @default(uuid()) @db.Uuid
   environmentId  String              @db.Uuid
   deliveryId     String              @db.Uuid
-  attemptNumber  Int
+  retryNumber    Int                 @map("attemptNumber")
   status         AlertDeliveryStatus
   responseStatus Int?
   errorCode      String?
@@ -1750,8 +1808,9 @@ model AlertDeliveryAttempt {
   environment Environment   @relation(fields: [environmentId], references: [id], onDelete: Restrict)
   delivery    AlertDelivery @relation(fields: [deliveryId, environmentId], references: [id, environmentId], onDelete: Restrict)
 
-  @@unique([deliveryId, attemptNumber])
+  @@unique([deliveryId, retryNumber])
   @@index([environmentId, status, startedAt])
+  @@map("AlertDeliveryAttempt")
 }
 
 model SafetyEvent {
@@ -1888,7 +1947,7 @@ model Job {
   externalId       String?
   displayName      String
   description      String?
-  triggerType      String
+  invocationType   String     @map("triggerType")
   scheduleCron     String?
   scheduleTimezone String?
   allowedAgentIds  String[]   @default([])
@@ -2010,6 +2069,7 @@ model Memory {
   agentId          String                       @db.Uuid
   clusterId        String?                      @db.Uuid
   kind             String
+  profileKey       String?
   content          String
   /// Object root containing non-secret extraction/source attributes; validated by jsonShapeRegistry.
   metadata         Json?
@@ -2020,6 +2080,10 @@ model Memory {
   sourceThreadId   String?                      @db.Uuid
   sourceTurnIds    String[]                     @default([]) @db.Uuid
   extractorVersion String?
+  /// Inert provenance retained across import and legacy normalization; never resolved as live FKs.
+  originalSource         String?
+  originalSourceThreadId String?
+  originalSourceTurnIds  String[]               @default([])
   contentHash      String?
   confidence       Float?
   feedbackBaselineConfidence Float?
@@ -2289,6 +2353,7 @@ model McpOidcSession {
 
 model EntityToolPolicy {
   id              String       @id @default(uuid()) @db.Uuid
+  environmentId   String       @db.Uuid
   entityId        String       @db.Uuid
   toolId          String       @db.Uuid
   effect          PolicyEffect
@@ -2298,10 +2363,11 @@ model EntityToolPolicy {
   addedAt         DateTime     @default(now())
   lastReviewedAt  DateTime?
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  tool        Tool        @relation(fields: [toolId], references: [id], onDelete: Cascade)
 
-  @@unique([entityId, toolId])
+  @@unique([environmentId, entityId, toolId])
   @@index([toolId])
 }
 
@@ -2323,8 +2389,8 @@ model ErasureOperation {
   legalHoldPolicyId String?
   retryCount        Int        @default(0)
   /// When the queue should next re-drive the unsettled stores; null once the
-  /// operation is settled, blocked, or has exhausted its automatic attempts.
-  nextAttemptAt     DateTime?
+  /// operation is settled, blocked, or has exhausted its automatic retries.
+  nextRetryAt       DateTime?  @map("nextAttemptAt")
   /// Held for the duration of one destructive pass, so two cannot overlap.
   leaseToken        String?
   leaseExpiresAt    DateTime?
@@ -2337,7 +2403,7 @@ model ErasureOperation {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, subjectKeyHash, requestedAt])
-  @@index([organizationId, nextAttemptAt])
+  @@index([organizationId, nextRetryAt])
 }
 
 /// Erased-subject register: one row per ALIAS an erased subject could be

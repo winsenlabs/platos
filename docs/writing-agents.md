@@ -128,11 +128,11 @@ Notice the cache hit on turn 2 — the system prompt + tool schemas are identica
 
 ---
 
-## Example 2 — Research agent (spawn_bgo for multi-step)
+## Example 2 — Research agent (spawn_job for multi-step)
 
 Long-horizon research that can't fit in a single LLM turn: fetch 20 URLs, summarize each, synthesize. You don't want this running in the request-response path; you want it durable so retries, logs, and timeouts are free.
 
-Platos exposes `spawn_bgo` as a meta-tool (formerly `spawn_task` — kept as a deprecated alias for one release; see [BGO_RENAME.md](./BGO_RENAME.md)). It calls `tasks.trigger()` on the underlying trigger.dev engine and returns a run handle. The agent can then `await` a wait.forToken or poll.
+Platos exposes `spawn_job` as a runtime tool. It calls `tasks.trigger()` on the underlying trigger.dev engine and returns a run handle. The agent can then `await` a wait.forToken or poll.
 
 ### System prompt
 
@@ -140,7 +140,7 @@ Platos exposes `spawn_bgo` as a meta-tool (formerly `spawn_task` — kept as a d
 You are a research agent. When asked a research question, follow this loop:
 
 1. Call plan_research to break the question into 3-7 subqueries.
-2. For each subquery, call spawn_bgo("fetch_and_summarize", { query }).
+2. For each subquery, call spawn_job("fetch_and_summarize", { query }).
    Collect all run IDs.
 3. Call wait_for_runs with those run IDs. Block until all complete.
 4. Synthesize a final answer citing each source with a footnote [1][2]...
@@ -161,8 +161,8 @@ await client.agents.create({
   systemPrompt: /* above */,
   tools: [
     { name: "plan_research", callbackUrl: "...", /* schema */ },
-    { name: "spawn_bgo", builtIn: true },     // Platos meta-tool (formerly spawn_task)
-    { name: "wait_for_runs", builtIn: true },  // Platos meta-tool
+    { name: "spawn_job", builtIn: true },     // Platos Job runtime tool
+    { name: "wait_for_runs", builtIn: true },  // Platos runtime tool
   ],
 });
 ```
@@ -201,7 +201,7 @@ Run `trigger.dev dev` so the task registers with your local engine. See [trigger
 User:  What are the top 3 approaches to durable workflow execution as of 2024?
 
 Agent: [plan_research] → 4 subqueries
-       [spawn_bgo × 4] → run IDs [run_a, run_b, run_c, run_d]
+       [spawn_job × 4] → run IDs [run_a, run_b, run_c, run_d]
        [wait_for_runs] → blocking...
        (~45 seconds later, all 4 complete)
        Three dominant approaches emerged:
@@ -218,7 +218,7 @@ Agent: [plan_research] → 4 subqueries
        [2] ...
 ```
 
-The key insight: you get durability without writing your own orchestration. Each `spawn_bgo` run has full tracing in the Runs view, auto-retries, and appears in trigger.dev observability.
+The key insight: you get durability without writing your own orchestration. Each `spawn_job` execution has full tracing in Trigger's Runs view, auto-retries, and appears in trigger.dev observability.
 
 ---
 
@@ -348,5 +348,5 @@ Run `pnpm --filter @platos/agent eval path/to/tests.jsonl`.
 ## Next
 
 - Register a real tool server via the platools SDK: [tool-gateway.md](./tool-gateway.md)
-- Use `spawn_bgo` (alias: `spawn_task`), batches, schedules: [trigger-integration.md](./trigger-integration.md)
+- Use `spawn_job`, batches, schedules: [trigger-integration.md](./trigger-integration.md)
 - Production: [self-hosting.md](./self-hosting.md)

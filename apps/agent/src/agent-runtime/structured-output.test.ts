@@ -48,6 +48,21 @@ describe("structured-output: normalizeSchema", () => {
     expect(typeof (result as any)?.validate === "function").toBe(true);
   });
 
+  it("isolates repeated caller-controlled JSON Schema IDs", () => {
+    const schema = {
+      $id: "https://example.test/shared-output-schema",
+      type: "object",
+      properties: { count: { type: "integer" } },
+      required: ["count"],
+    };
+
+    const first = normalizeSchema(structuredClone(schema));
+    const second = normalizeSchema(structuredClone(schema));
+
+    expect((first as any).validate({ count: 1 })).toMatchObject({ success: true });
+    expect((second as any).validate({ count: 2 })).toMatchObject({ success: true });
+  });
+
   it("throws on non-object, non-Zod input", () => {
     expect(() => normalizeSchema("not a schema" as any)).toThrow(
       /Unsupported outputSchema type/,
@@ -154,15 +169,15 @@ describe("structured-output: buildRetryCorrectionMessage", () => {
 });
 
 describe("structured-output: StructuredOutputError", () => {
-  it("carries code, attempts, and errors", () => {
+  it("carries code, retryCount, and errors", () => {
     const err = new StructuredOutputError("failed", {
-      attempts: 2,
+      retryCount: 1,
       validationErrors: ["root: expected string"],
       rawText: '{"x":1}',
     });
     expect(err.name).toBe("StructuredOutputError");
     expect(err.code).toBe("structured_output_invalid");
-    expect(err.attempts).toBe(2);
+    expect(err.retryCount).toBe(1);
     expect(err.validationErrors).toEqual(["root: expected string"]);
     expect(err.rawText).toBe('{"x":1}');
     expect(err).toBeInstanceOf(Error);

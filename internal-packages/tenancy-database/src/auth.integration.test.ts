@@ -395,7 +395,7 @@ describe("Platos-native auth integration", () => {
     const limited = new PlatosAuthService(database, {
       encryptionKey,
       now: () => now,
-      mfaVerifyRateLimit: { attempts: 1, windowMs: 60_000 },
+      mfaVerifyRateLimit: { requests: 1, windowMs: 60_000 },
     });
     const limitedSession = await limited.issueOperatorSession({ userId: user.id });
     await expect(
@@ -496,7 +496,7 @@ describe("Platos-native auth integration", () => {
     const limited = new PlatosAuthService(database, {
       encryptionKey,
       now: () => now,
-      loginRateLimit: { attempts: 1, windowMs: 60_000 },
+      loginRateLimit: { requests: 1, windowMs: 60_000 },
     });
     await limited.issueMagicLink({
       email: "limited@example.test",
@@ -509,7 +509,7 @@ describe("Platos-native auth integration", () => {
       })
     ).rejects.toEqual(expectAuthError("rate_limited"));
     const bucket = await database.authRateLimitBucket.findFirstOrThrow({
-      where: { attempts: 2 },
+      where: { requestCount: 2 },
     });
     expect(bucket.identifierHash).not.toContain("limited@example.test");
   });

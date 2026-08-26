@@ -42,7 +42,7 @@ export const referenceRouteManifest: ReferenceRouteClassification[] = [
   { reference: "35-governance.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/agent-governance" },
   { reference: "36-evals.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/agent-evals" },
   { reference: "37-audit.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/audit" },
-  { reference: "38-jobs.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/platos-tasks" },
+  { reference: "38-jobs.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/jobs" },
   { reference: "39-variables.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/environment-variables" },
   { reference: "40-settings.dc.html", classification: "production", target: "/orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/settings/general" },
   { reference: "41-widget.dc.html", classification: "production", target: "/embed/:agentId" },

@@ -1,0 +1,23 @@
+# External base indices audited and pinned 2026-08-24.
+FROM golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f AS goose-builder
+RUN CGO_ENABLED=0 go install github.com/pressly/goose/v3/cmd/goose@v3.26.0
+
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
+
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
+WORKDIR /migrations
+
+COPY internal-packages/tenancy-database/migration-image/package.json ./package.json
+COPY internal-packages/tenancy-database/migration-image/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile --prod
+
+COPY internal-packages/tenancy-database/prisma ./prisma
+COPY internal-packages/clickhouse/schema ./clickhouse
+COPY internal-packages/tenancy-database/migration-image/entrypoint.sh ./entrypoint.sh
+COPY internal-packages/tenancy-database/migration-image/rehearse-clickhouse-namespace.mjs ./rehearse-clickhouse-namespace.mjs
+COPY internal-packages/tenancy-database/migration-image/migrate-memory-profiles.mjs ./migrate-memory-profiles.mjs
+COPY --from=goose-builder /go/bin/goose /usr/local/bin/goose
+RUN chmod +x ./entrypoint.sh /usr/local/bin/goose
+
+ENTRYPOINT ["/migrations/entrypoint.sh"]
+CMD ["postgres"]

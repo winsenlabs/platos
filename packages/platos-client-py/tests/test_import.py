@@ -76,8 +76,8 @@ def test_retry_backoff_bounds():
     client = PlatosClient(
         base_url="http://localhost:3100", session_token="tok"
     )
-    # Zero attempt yields roughly base_delay (± jitter).
+    # A zero retry count yields roughly base_delay (± jitter).
     delay = client._backoff(0)
     assert 0.0 <= delay <= 0.5
-    # Max attempts cap at max_delay * (1 + jitter).
+    # Max retries cap at max_delay * (1 + jitter).
     assert client._backoff(10) <= client._retry.max_delay_s * 1.5

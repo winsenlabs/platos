@@ -4,8 +4,6 @@ title: Import a Claude skill from a URL
 description: Paste a Claude-compatible skill manifest URL and Platos will fetch, parse, and surface it.
 category: integrations
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the format of a Claude skill manifest?"
   - "How do I import a skill from GitHub?"
@@ -15,10 +13,6 @@ questions:
 related:
   - quickstart
   - create-first-agent
-source_files_referenced:
-  - apps/agent/src/skills/skill-importer.service.ts
-  - apps/agent/src/skills/skill-manifest.parser.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new/route.tsx
 ---
 
 # Import a Claude skill from a URL
@@ -45,7 +39,7 @@ An imported skill that shows up in your skills list, with its tools available fo
    - Fetches the URL with SSRF guards (private IPs are rejected).
    - Parses the manifest (`SkillManifestParser`).
    - Validates `required_env` against your environment's variables.
-   - Writes a `PlatosSkill` row scoped to the project.
+   - Writes a `Skill` row owned by the Organization and enables it for the Project.
 
 4. **Link required env vars.**
 

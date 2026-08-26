@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import {
+  MEMORY_OFFSET_MAX,
+  MEMORY_PAGE_DEFAULT,
+  MEMORY_PAGE_MAX,
+} from "@platos/tenancy-database";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { EmbeddingService } from "./embedding.service";
@@ -11,6 +16,7 @@ import {
   resolveAgentBinding,
   resolveEndUser,
   resolveReadAgentIds,
+  resolveReadAgentBindings,
   resolveWriteBinding,
 } from "./memory-scope";
 
@@ -52,6 +58,27 @@ export interface EntityRelationships {
   entity: EntityRow;
   outbound: Array<{ relationship: RelationshipRow; to: EntityRow }>;
   inbound: Array<{ relationship: RelationshipRow; from: EntityRow }>;
+}
+
+export interface EntityPage {
+  items: EntityRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+}
+
+export interface ExportRelationshipRow extends RelationshipRow {
+  fromEntityKey: string;
+  toEntityKey: string;
+}
+
+export interface RelationshipPage {
+  items: ExportRelationshipRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasNext: boolean;
 }
 
 export interface ShortestPathHop {
@@ -124,29 +151,19 @@ export class KnowledgeGraphService {
     scope: ScopeTuple,
     requestedAgentId?: string | null,
     requestedAgentIds?: string[],
+    client: ControlDatabaseClient = this.prisma,
   ): Promise<GraphReadWhere> {
-    const agentIds = await resolveReadAgentIds(
-      this.prisma,
+    const bindings = await resolveReadAgentBindings(
+      client,
       scope,
       requestedAgentId,
       requestedAgentIds,
     );
-    const bindings = await this.prisma.agentBinding.findMany({
-      where: {
-        ...environmentScopeWhere(scope),
-        agentId: { in: agentIds },
-        agent: { projectId: scope.projectId },
-      },
-      select: { agentId: true, clusterId: true },
-    });
-    if (bindings.length !== agentIds.length) {
-      throw new Error("Memory Agent scope not found or access denied");
-    }
     const clusterId = bindings[0]?.clusterId;
     if (clusterId && bindings.every((binding) => binding.clusterId === clusterId)) {
       return { clusterId };
     }
-    return { agentId: { in: agentIds } };
+    return { agentId: { in: bindings.map(({ agentId }) => agentId) } };
   }
 
   async getEntities(
@@ -154,28 +171,210 @@ export class KnowledgeGraphService {
     input: {
       userId: string;
       entityType?: string;
+      query?: string;
       limit?: number;
       offset?: number;
       agentId?: string | null;
       agentIds?: string[];
     },
   ): Promise<EntityRow[]> {
+    return (await this.getEntitiesPageInternal(scope, input, 500, Number.MAX_SAFE_INTEGER)).items;
+  }
+
+  async getEntitiesPage(
+    scope: ScopeTuple,
+    input: {
+      userId: string;
+      entityType?: string;
+      query?: string;
+      limit?: number;
+      offset?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
+  ): Promise<EntityPage> {
+    return this.getEntitiesPageInternal(scope, input, MEMORY_PAGE_MAX, MEMORY_OFFSET_MAX);
+  }
+
+  async getEntitiesExportPage(
+    scope: ScopeTuple,
+    input: {
+      userId: string;
+      entityType?: string;
+      query?: string;
+      limit?: number;
+      offset?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
+  ): Promise<EntityPage> {
+    return this.getEntitiesPageInternal(scope, input, 1_000, Number.MAX_SAFE_INTEGER);
+  }
+
+  private async getEntitiesPageInternal(
+    scope: ScopeTuple,
+    input: {
+      userId: string;
+      entityType?: string;
+      query?: string;
+      limit?: number;
+      offset?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
+    maximumLimit: number,
+    maximumOffset: number,
+  ): Promise<EntityPage> {
     if (!input.userId) throw new Error("KnowledgeGraphService.getEntities: `userId` is required");
     await assertEnvironmentScope(this.prisma, scope);
     const endUser = await resolveEndUser(this.prisma, scope, input.userId);
     const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
-    const rows = await this.prisma.memoryEntity.findMany({
+    const query = input.query?.trim();
+    const where = {
+      ...environmentScopeWhere(scope),
+      endUserId: endUser.id,
+      ...(input.entityType ? { entityType: input.entityType } : {}),
+      ...(query ? {
+        OR: [
+          { entityKey: { contains: query, mode: "insensitive" as const } },
+          ...(isUuid(query) ? [{ id: query }] : []),
+        ],
+      } : {}),
+      ...readWhere,
+    };
+    const limit = clampInt(input.limit ?? MEMORY_PAGE_DEFAULT, 1, maximumLimit);
+    const offset = clampInt(input.offset ?? 0, 0, maximumOffset);
+    const [total, rows] = await this.prisma.$transaction(
+      [
+        this.prisma.memoryEntity.count({ where }),
+        this.prisma.memoryEntity.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+          take: limit,
+          skip: offset,
+        }),
+      ],
+      { isolationLevel: "RepeatableRead" },
+    );
+    return {
+      items: rows.map((row) => this.toEntityRow(row, scope, endUser.externalId)),
+      total,
+      limit,
+      offset,
+      hasNext: offset + rows.length < total,
+    };
+  }
+
+  async getEntitiesExportKeysetPage(
+    scope: ScopeTuple,
+    userId: string,
+    afterId: string | null,
+    limit = 500,
+    client: ControlDatabaseClient = this.prisma,
+  ): Promise<{ items: EntityRow[]; nextCursor: string | null }> {
+    await assertEnvironmentScope(client, scope);
+    const endUser = await resolveEndUser(client, scope, userId);
+    const readWhere = await this.resolveGraphReadWhere(scope, undefined, undefined, client);
+    const rows = await client.memoryEntity.findMany({
       where: {
         ...environmentScopeWhere(scope),
         endUserId: endUser.id,
-        ...(input.entityType ? { entityType: input.entityType } : {}),
         ...readWhere,
+        ...(afterId ? { id: { gt: afterId } } : {}),
       },
-      orderBy: { createdAt: "desc" },
-      take: clampInt(input.limit ?? 100, 1, 500),
-      skip: clampInt(input.offset ?? 0, 0, 10_000),
+      orderBy: { id: "asc" },
+      take: clampInt(limit, 1, 1_000),
     });
-    return rows.map((row) => this.toEntityRow(row, scope, endUser.externalId));
+    return {
+      items: rows.map((row) => this.toEntityRow(row, scope, endUser.externalId)),
+      nextCursor: rows.length ? rows[rows.length - 1]!.id : null,
+    };
+  }
+
+  async getRelationshipsExportKeysetPage(
+    scope: ScopeTuple,
+    userId: string,
+    afterId: string | null,
+    limit = 500,
+    client: ControlDatabaseClient = this.prisma,
+  ): Promise<{ items: ExportRelationshipRow[]; nextCursor: string | null }> {
+    await assertEnvironmentScope(client, scope);
+    const endUser = await resolveEndUser(client, scope, userId);
+    const readWhere = await this.resolveGraphReadWhere(scope, undefined, undefined, client);
+    const rows = await client.memoryRelationship.findMany({
+      where: {
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        ...readWhere,
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      include: {
+        fromEntity: { select: { entityKey: true } },
+        toEntity: { select: { entityKey: true } },
+      },
+      orderBy: { id: "asc" },
+      take: clampInt(limit, 1, 1_000),
+    });
+    return {
+      items: rows.map((row) => ({
+        ...this.toRelationshipRow(row, scope, endUser.externalId),
+        fromEntityKey: row.fromEntity.entityKey,
+        toEntityKey: row.toEntity.entityKey,
+      })),
+      nextCursor: rows.length ? rows[rows.length - 1]!.id : null,
+    };
+  }
+
+  async listRelationshipsPage(
+    scope: ScopeTuple,
+    input: {
+      userId: string;
+      limit?: number;
+      offset?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
+  ): Promise<RelationshipPage> {
+    if (!input.userId) {
+      throw new Error("KnowledgeGraphService.listRelationshipsPage: `userId` is required");
+    }
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
+    const where = {
+      ...environmentScopeWhere(scope),
+      endUserId: endUser.id,
+      ...readWhere,
+    };
+    const limit = clampInt(input.limit ?? MEMORY_PAGE_DEFAULT, 1, 500);
+    const offset = clampInt(input.offset ?? 0, 0, Number.MAX_SAFE_INTEGER);
+    const [total, rows] = await this.prisma.$transaction(
+      [
+        this.prisma.memoryRelationship.count({ where }),
+        this.prisma.memoryRelationship.findMany({
+          where,
+          include: {
+            fromEntity: { select: { entityKey: true } },
+            toEntity: { select: { entityKey: true } },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+          take: limit,
+          skip: offset,
+        }),
+      ],
+      { isolationLevel: "RepeatableRead" },
+    );
+    return {
+      items: rows.map((row) => ({
+        ...this.toRelationshipRow(row, scope, endUser.externalId),
+        fromEntityKey: row.fromEntity.entityKey,
+        toEntityKey: row.toEntity.entityKey,
+      })),
+      total,
+      limit,
+      offset,
+      hasNext: offset + rows.length < total,
+    };
   }
 
   async upsertEntity(scope: ScopeTuple, input: UpsertEntityInput): Promise<EntityRow> {
@@ -653,6 +852,30 @@ export class KnowledgeGraphService {
     return matches.sort((left, right) => right.score - left.score).slice(0, clampInt(input.limit ?? 20, 1, 100));
   }
 
+  async resolveEntityReference(
+    scope: ScopeTuple,
+    userId: string,
+    reference: string,
+  ): Promise<EntityRow | null> {
+    const value = reference.trim();
+    if (!value) return null;
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = await resolveEndUser(this.prisma, scope, userId);
+    const readWhere = await this.resolveGraphReadWhere(scope);
+    const row = await this.prisma.memoryEntity.findFirst({
+      where: {
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        ...readWhere,
+        OR: [
+          { entityKey: value },
+          ...(isUuid(value) ? [{ id: value }] : []),
+        ],
+      },
+    });
+    return row ? this.toEntityRow(row, scope, endUser.externalId) : null;
+  }
+
   async updateEntityById(
     scope: ScopeTuple,
     id: string,
@@ -819,6 +1042,10 @@ function clampInt(value: number, min: number, max: number): number {
   const normalized = Math.floor(Number(value));
   if (!Number.isFinite(normalized)) return min;
   return Math.min(Math.max(normalized, min), max);
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function asDate(value: Date | string): Date {

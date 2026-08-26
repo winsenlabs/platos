@@ -119,6 +119,32 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
         { type: "done" },
       ]);
     });
+
+    it("carries bounded attachment identities in durable Session client data", async () => {
+      vi.stubEnv("PLATOS_CHAT_SESSIONS", "true");
+      let constructed: any;
+      class AgentChatStub {
+        readonly session = {};
+        constructor(options: any) {
+          constructed = options;
+          void options.onTurnComplete({ lastEventId: "cursor-1" });
+        }
+        async sendMessage() {
+          return gen(
+            { type: "text-delta", delta: "reply" } as any,
+            { type: "data-platos-event", data: { type: "message_persisted", messageId: "message-1" } } as any,
+          );
+        }
+      }
+
+      conversationService.getOrCreateThread.mockResolvedValue({ id: "thread-1" });
+      vi.spyOn(svc as any, "loadAgentChat").mockReturnValue(AgentChatStub);
+      await expect(svc.collectSession("agent-1", makeCtx({
+        threadId: "thread-1",
+        attachmentIds: ["attachment-1", "attachment-2"],
+      }))).resolves.toMatchObject({ messageId: "message-1", threadId: "thread-1" });
+      expect(constructed.clientData.attachmentIds).toEqual(["attachment-1", "attachment-2"]);
+    });
   });
 
   describe("resolveMode — the ONE executionMode read", () => {
@@ -225,6 +251,122 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
       const r = await svc.collectTurn("a1", makeCtx());
       expect(r).toMatchObject({ text: "fallback", threadId: "t2", costCents: 1, messageId: "m2" });
       expect(trig).not.toHaveBeenCalled();
+    });
+
+    it("rejects a direct error stream instead of treating early Thread metadata as completion", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("direct");
+      vi.spyOn(svc, "streamDirect").mockReturnValue(
+        gen(
+          { type: "meta", thread_id: "t-error" } as AgentStreamEvent,
+          { type: "error", message: "unsafe upstream detail" } as AgentStreamEvent,
+          { type: "done" } as AgentStreamEvent,
+        ),
+      );
+
+      await expect(svc.collectTurn("a1", makeCtx())).rejects.toMatchObject({
+        code: "TURN_NOT_PERSISTED",
+        message: "Collected turn did not reach authoritative persistence",
+      });
+    });
+
+    it("accepts authoritative persistence after a non-fatal error event", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("direct");
+      vi.spyOn(svc, "streamDirect").mockReturnValue(
+        gen(
+          { type: "meta", thread_id: "t-persisted" } as AgentStreamEvent,
+          { type: "error", code: "tool_output_denied", message: "non-fatal" } as unknown as AgentStreamEvent,
+          { type: "message_persisted", messageId: "m-persisted", costCents: 1 } as AgentStreamEvent,
+          { type: "done" } as AgentStreamEvent,
+        ),
+      );
+
+      await expect(svc.collectTurn("a1", makeCtx())).resolves.toMatchObject({
+        threadId: "t-persisted",
+        messageId: "m-persisted",
+      });
+    });
+
+    it("rejects a direct meta-only completion without message_persisted", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("direct");
+      vi.spyOn(svc, "streamDirect").mockReturnValue(
+        gen(
+          { type: "meta", thread_id: "t-meta" } as AgentStreamEvent,
+          { type: "done" } as AgentStreamEvent,
+        ),
+      );
+
+      await expect(svc.collectTurn("a1", makeCtx())).rejects.toMatchObject({
+        code: "TURN_NOT_PERSISTED",
+      });
+    });
+
+    it("rejects a committed durable result without persistence and never falls back to direct", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
+      vi.spyOn(svc, "collectSession").mockResolvedValue({
+        text: "",
+        threadId: "t-committed",
+        costCents: 0,
+      });
+      const direct = vi.spyOn(svc, "streamDirect");
+
+      await expect(
+        svc.collectTurn("a1", makeCtx({ threadId: "t-committed" })),
+      ).rejects.toMatchObject({ code: "TURN_NOT_PERSISTED" });
+      expect(direct).not.toHaveBeenCalled();
+    });
+
+    it("fails closed when durable collection rejects outside its handled pre-commit boundary", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
+      vi.spyOn(svc, "collectSession").mockRejectedValue(new Error("ambiguous durable failure"));
+      const direct = vi.spyOn(svc, "streamDirect");
+
+      await expect(
+        svc.collectTurn("a1", makeCtx({ threadId: "t-ambiguous" })),
+      ).rejects.toMatchObject({ code: "TURN_NOT_PERSISTED" });
+      expect(direct).not.toHaveBeenCalled();
+    });
+
+    it("rejects malformed persisted identity", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
+      vi.spyOn(svc, "collectSession").mockResolvedValue({
+        text: "reply",
+        threadId: "thread-reserved",
+        costCents: 0,
+        messageId: "message with spaces",
+      });
+
+      await expect(
+        svc.collectTurn("a1", makeCtx({
+          threadId: "thread-reserved",
+          attachmentIds: ["attachment-1"],
+        })),
+      ).rejects.toMatchObject({ code: "TURN_NOT_PERSISTED" });
+    });
+
+    it("rejects a persisted attachment result from a Thread other than its reservation", async () => {
+      vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
+      vi.spyOn(svc, "collectSession").mockResolvedValue({
+        text: "reply",
+        threadId: "thread-other",
+        costCents: 0,
+        messageId: "message-canonical",
+      });
+
+      await expect(
+        svc.collectTurn("a1", makeCtx({
+          threadId: "thread-reserved",
+          attachmentIds: ["attachment-1"],
+        })),
+      ).rejects.toMatchObject({ code: "TURN_NOT_PERSISTED" });
+    });
+
+    it("rejects malformed attachment identities before selecting an execution mode", async () => {
+      const resolveMode = vi.spyOn(svc, "resolveMode");
+
+      await expect(
+        svc.collectTurn("a1", makeCtx({ attachmentIds: ["attachment with spaces"] })),
+      ).rejects.toMatchObject({ code: "ATTACHMENT_IDS_INVALID" });
+      expect(resolveMode).not.toHaveBeenCalled();
     });
   });
 

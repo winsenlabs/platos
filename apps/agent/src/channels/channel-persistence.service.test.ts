@@ -81,7 +81,7 @@ function makeRefreshHarness(
     revokedAt: null,
     tokenGeneration: 4,
     tokenRefreshState: "IDLE",
-    tokenRefreshAttemptId: null,
+    tokenRefreshClaimId: null,
     tokenRefreshStartedAt: null,
     tokenRefreshRepairCode: null,
     ...overrides,
@@ -167,6 +167,36 @@ function makeRefreshHarness(
 }
 
 describe("ChannelPersistenceService", () => {
+  it("searches a default Agent UUID only by validated exact equality", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const count = vi.fn().mockResolvedValue(0);
+    const prisma = {
+      environment: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: ENVIRONMENT,
+          projectId: PROJECT,
+          project: { id: PROJECT, organizationId: ORG_A },
+        }),
+      },
+      channelConnection: { findMany, count },
+    };
+    const service = new ChannelPersistenceService(prisma as any, cryptoShim as any);
+    const scope = { organizationId: ORG_A, projectId: PROJECT, environmentId: ENVIRONMENT };
+
+    await service.listConnectionsPage(scope, { limit: 25, offset: 0, search: "support" });
+    expect(findMany.mock.calls[0][0].where.OR).toEqual([
+      { displayName: { contains: "support", mode: "insensitive" } },
+      { provider: { contains: "support", mode: "insensitive" } },
+    ]);
+
+    const agentId = "00000000-0000-4000-8000-000000000013";
+    await service.listConnectionsPage(scope, { limit: 25, offset: 0, search: agentId });
+    expect(findMany.mock.calls[1][0].where.OR).toContainEqual({ defaultAgentId: agentId });
+    expect(findMany.mock.calls[1][0].where.OR).not.toContainEqual({
+      defaultAgentId: { contains: agentId, mode: "insensitive" },
+    });
+  });
+
   it("fails closed for event admission when dedicated inbox crypto is unavailable", async () => {
     const service = new ChannelPersistenceService({} as any, cryptoShim as any);
     await expect(service.enqueueChannelEvent(APP, "Ev1", { text: "secret" })).rejects.toThrow(
@@ -350,7 +380,7 @@ describe("ChannelPersistenceService", () => {
     const claimed = await harness.service.beginInstallationRefresh(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
     );
 
@@ -360,7 +390,7 @@ describe("ChannelPersistenceService", () => {
       credentialRevision: harness.expectation.credentialRevision,
       tokenGeneration: 4,
       tokenRefreshState: "REFRESHING",
-      tokenRefreshAttemptId: "attempt-1",
+      tokenRefreshClaimId: "claim-1",
       botToken: "xoxb-old",
       refreshToken: "xoxe-old",
     });
@@ -371,13 +401,13 @@ describe("ChannelPersistenceService", () => {
     const revisionHarness = makeRefreshHarness();
 
     await expect(
-      generationHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-1", {
+      generationHarness.service.beginInstallationRefresh(INSTALLATION, APP, "claim-1", {
         ...generationHarness.expectation,
         tokenGeneration: 3,
       }),
     ).resolves.toBeNull();
     await expect(
-      revisionHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-2", {
+      revisionHarness.service.beginInstallationRefresh(INSTALLATION, APP, "claim-2", {
         ...revisionHarness.expectation,
         credentialRevision: `${CREDENTIAL}:0`,
       }),
@@ -398,21 +428,21 @@ describe("ChannelPersistenceService", () => {
     const mark = await harness.service.markInstallationRefreshRepairRequired(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       "refresh_failed",
     );
     const finalized = await harness.service.finalizeInstallationRefresh(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
     );
     const preserved = await harness.service.preserveInstallationRefreshGrantForRepair(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
       "refresh_commit_failed",

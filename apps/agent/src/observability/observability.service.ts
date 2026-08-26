@@ -134,7 +134,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
    * broke, it was that nothing said so.
    *
    * `PLATOS_OBSERVABILITY_REQUIRE_SINK=true` converts it to a boot failure for
-   * a deployment that has decided losing analytics is not acceptable.
+   * an installation that has decided losing analytics is not acceptable.
    */
   async onApplicationBootstrap(): Promise<void> {
     const health = await this.sink.health().catch(
@@ -197,7 +197,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
         // Re-arm a row that had been parked: the payload is new, so the reason
         // the old one failed may no longer apply.
         status: "PENDING",
-        attempts: 0,
+        retryCount: 0,
         availableAt: new Date(),
         lastErrorCode: null,
         deliveredAt: null,
@@ -238,7 +238,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
     try {
       await tx.$executeRawUnsafe(`SAVEPOINT ${PROJECTION_SAVEPOINT}`);
     } catch (err) {
-      // No savepoint means no way to fail safely, so do not attempt the write
+      // No savepoint means no way to fail safely, so do not try the write
       // at all: a lost projection is recoverable from Postgres, a lost Turn is
       // not.
       this.logger.error(
@@ -276,7 +276,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
    *
    * One `findMany` of `drainBatchSize` per scheduled run caps steady-state
    * delivery at that many projections per run regardless of turn volume. At the
-   * old hourly cron and a 500-row read, a deployment completing more than about
+   * old hourly cron and a 500-row read, an installation completing more than about
    * eight turns a minute accumulated a PENDING backlog it could never work off
    * even with a perfectly healthy ClickHouse — and `prune` only deletes
    * DELIVERED rows, so the table grew without bound while nothing reported the
@@ -337,7 +337,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
         payloadVersion: true,
         payload: true,
         status: true,
-        attempts: true,
+        retryCount: true,
       },
     });
     return pending.map((row) => ({
@@ -387,12 +387,12 @@ export class ObservabilityService implements OnApplicationBootstrap {
         await this.settle(row, deliverySucceeded(row, new Date()));
         summary.delivered++;
       } catch (err) {
-        const outcome = deliveryFailed(row, new Date(), config.maxAttempts, errorClass(err));
+        const outcome = deliveryFailed(row, new Date(), config.maxRetries, errorClass(err));
         await this.settle(row, outcome);
         if (outcome.status === "FAILED") {
           summary.parked++;
           this.logger.error(
-            `[observability] parked outbox row ${row.id} after ${outcome.attempts} attempts` +
+            `[observability] parked outbox row ${row.id} after ${outcome.retryCount} retries` +
               ` (${outcome.lastErrorCode}); the projection for this turn is not delivered`,
           );
         } else {
@@ -481,7 +481,7 @@ export class ObservabilityService implements OnApplicationBootstrap {
       where: { id: row.id },
       data: {
         status: outcome.status,
-        attempts: outcome.attempts,
+        retryCount: outcome.retryCount,
         // A settled or parked row keeps its last availableAt rather than
         // gaining a null: the column is NOT NULL, and "when it was last due" is
         // more useful to an operator than a reset clock.

@@ -7,10 +7,28 @@ const scope = {
   environmentId: "env-a",
   userId: "user-a",
   agentId: "agent-a",
+  threadId: "thread-a",
 } as any;
 
 describe("OfficialSkillHandlers clean attachment transport", () => {
-  it("requires clean MessageAttachment ownership through EndUser and Turn/Thread AgentCluster", async () => {
+  it("fails closed for RAG attachment sources that carry only Environment scope", async () => {
+    const handler = new OfficialSkillHandlers(
+      { get: vi.fn() } as any,
+      undefined,
+      undefined,
+    );
+
+    await expect((handler as any).ragResolveSource(
+      {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      },
+      "attachmentId:attachment-a",
+    )).rejects.toThrow("requires an authenticated Agent and Thread boundary");
+  });
+
+  it("requires the persisted EndUser, Agent, Thread, and final Turn binding", async () => {
     const findAttachment = vi.fn(async () => ({
       id: "attachment-a",
       storageKey: "objects/attachment-a",
@@ -18,16 +36,10 @@ describe("OfficialSkillHandlers clean attachment transport", () => {
       bytes: 123,
     }));
     const prisma = {
-      endUser: {
+      endUserIdentity: {
         findFirst: vi.fn(async () => ({
-          id: "end-user-a",
-          identities: [{ subject: "user-a" }],
-        })),
-      },
-      agentBinding: {
-        findFirst: vi.fn(async () => ({
-          agentId: "agent-a",
-          clusterId: "cluster-a",
+          endUserId: "end-user-a",
+          subject: "user-a",
         })),
       },
       messageAttachment: { findFirst: findAttachment },
@@ -53,24 +65,13 @@ describe("OfficialSkillHandlers clean attachment transport", () => {
       where: {
         id: "attachment-a",
         endUserId: "end-user-a",
+        agentId: "agent-a",
+        threadId: "thread-a",
+        turnId: { not: null },
         environmentId: "env-a",
         environment: {
           projectId: "project-a",
           project: { organizationId: "org-a" },
-        },
-        turn: {
-          thread: {
-            endUserId: "end-user-a",
-            environmentId: "env-a",
-            environment: {
-              projectId: "project-a",
-              project: { organizationId: "org-a" },
-            },
-            OR: [
-              { agentId: "agent-a" },
-              { clusterId: "cluster-a" },
-            ],
-          },
         },
       },
       select: {
@@ -84,12 +85,6 @@ describe("OfficialSkillHandlers clean attachment transport", () => {
 
   it("fails closed when the runtime does not carry an acting Agent", async () => {
     const prisma = {
-      endUser: {
-        findFirst: vi.fn(async () => ({
-          id: "end-user-a",
-          identities: [{ subject: "user-a" }],
-        })),
-      },
       messageAttachment: { findFirst: vi.fn() },
     };
     const handler = new OfficialSkillHandlers(
@@ -103,6 +98,22 @@ describe("OfficialSkillHandlers clean attachment transport", () => {
       "attachment-a",
       { prisma },
     )).rejects.toThrow("acting Agent is required");
+    expect(prisma.messageAttachment.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the runtime does not carry an acting Thread", async () => {
+    const prisma = { messageAttachment: { findFirst: vi.fn() } };
+    const handler = new OfficialSkillHandlers(
+      { get: vi.fn() } as any,
+      undefined,
+      undefined,
+    );
+
+    await expect((handler as any).resolveSandboxAttachment(
+      { ...scope, threadId: null },
+      "attachment-a",
+      { prisma },
+    )).rejects.toThrow("acting Thread is required");
     expect(prisma.messageAttachment.findFirst).not.toHaveBeenCalled();
   });
 });

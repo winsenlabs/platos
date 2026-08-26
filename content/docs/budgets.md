@@ -4,8 +4,6 @@ title: Budget caps
 description: Per-agent and per-environment spend caps that throttle or block turns when the budget is exceeded.
 category: governance
 order: 20
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I set a daily budget cap on an agent?"
   - "What happens when an agent hits its budget?"
@@ -17,33 +15,29 @@ related:
   - costs
   - rate-limits
   - safety-and-pii
-source_files_referenced:
-  - apps/agent/src/monitoring/budget.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx
-  - docs/themes/THEME_H.md
 ---
 
 # Budget caps
 
-A budget cap is a per-period spend ceiling. When an agent or environment hits its cap, the runtime blocks new turns (and emits a webhook). Caps roll up across the four spend lanes the runtime tracks: model inference, embeddings, LLM-judge evals, and skill metering. Without caps, a runaway prompt loop is a runaway invoice.
+A budget cap is a per-period spend ceiling. When an Agent or Environment hits its cap, the runtime blocks new Turns. Caps roll up across the four spend lanes the runtime tracks: model inference, embeddings, LLM-judge evals, and skill metering.
 
 ## What it is
 
-A `PlatosBudgetCap` row keyed on `(scope, agentId | null, period)`. Carries:
+A `Budget` record keyed by Environment and optional Agent. It carries:
 
 - `period`: `daily`, `weekly`, `monthly`. Wall-clock periods aligned to UTC midnight.
 - `capCents`: the limit.
-- `softWarnCents`: optional; emits a warn webhook when crossed.
+- `softWarnCents`: optional warning threshold surfaced in budget status.
 - `hardCap`: when true, blocks turns. When false, alerts only.
 - `lanes`: optional; restrict to specific cost lanes (e.g. cap only on `model_inference`, leave embeddings unmetered).
 
 `BudgetService` reads the cap on every turn start and rolls up actual spend from the cost rows. Spend updates land via `CostService`; the cap check is a Redis lookup against a rolling counter, not a Postgres scan.
 
-Override capability: an admin can `POST /agent/v1/budgets/:capId/override` with a `bypassUntil` timestamp to let a single agent run beyond cap during incidents.
+Override capability: an admin can `POST /api/v1/agent/budgets/:capId/override` with a `bypassUntil` timestamp to let a single agent run beyond cap during incidents.
 
 ## Why it matters
 
-The default LLM cost curve is exponential to the agent. A single prompt with the wrong loop (model calls itself in a tool, model emits a memory write that triggers extraction that calls itself) can spend $1000 in an hour. Budget caps fail loud before that becomes a postmortem. The runtime stops you from shooting yourself in the foot; the cap is the safety on the gun.
+The default LLM cost curve is exponential to the agent. A single prompt with the wrong loop (model calls itself in a tool, model emits a memory write that starts extraction that calls itself) can spend $1000 in an hour. Budget caps fail loud before that becomes a postmortem. The runtime stops you from shooting yourself in the foot; the cap is the safety on the gun.
 
 Shadow lanes matter because they are easy to miss. A judge eval at $0.01 per call across 50 inputs and 3 criteria is $1.50, just on the eval. If you only cap on `model_inference`, the eval lane runs free. The default cap covers all four lanes; restrict only when you know why.
 
@@ -59,11 +53,11 @@ The agent detail header shows a budget pill with "X% used today" when a cap exis
 
 ### When the cap hits
 
-A turn that would exceed the cap is rejected before it dispatches to the model. The agent's response to the user is `BUDGET_CAP_EXCEEDED` plus the reset time (next period boundary). A webhook (`budget.exceeded`) fires; tie it to your alerting.
+A Turn that would exceed the cap is rejected before it dispatches to the model. The Agent's response is `BUDGET_CAP_EXCEEDED` plus the reset time. Poll budget status or read monitoring records from your operator-owned alerting adapter.
 
 ### Soft warn
 
-Set `softWarnCents` to (say) 80% of cap. A `budget.soft_warn` webhook fires when spend crosses the threshold. The agent keeps running; the warn is informational.
+Set `softWarnCents` to 80% of the cap, for example. The Agent remains active after crossing this informational threshold; monitor the budget status from the documented API.
 
 ### Bypass during an incident
 

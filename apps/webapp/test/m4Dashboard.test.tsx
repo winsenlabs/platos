@@ -65,6 +65,7 @@ describe("M4 dashboard rebuild", () => {
         ok: true,
         data: {
           total: 12,
+          pagination: { page: 1, pageSize: 25, total: 12, totalPages: 1, from: 1, to: 12, hasPrevious: false, hasNext: false },
           threads: [{
             id: "thread-1",
             title: "Refund request",
@@ -77,7 +78,7 @@ describe("M4 dashboard rebuild", () => {
     });
     expect(html).toContain("Refund request");
     expect(html).toContain("user-1");
-    expect(html).toContain("Rows 1–1 of 12");
+    expect(html).toContain("1–12 of 12");
   });
 
   it("renders the monitoring-user payload and bounded cursor navigation", () => {
@@ -112,7 +113,7 @@ describe("M4 dashboard rebuild", () => {
     expect(html).toContain("cursor=page_3");
   });
 
-  it("renders bounded previous and next conversation pages", () => {
+  it("renders truthful previous and next conversation pages", () => {
     const html = render({
       surface: "conversations",
       title: "Threads",
@@ -121,19 +122,74 @@ describe("M4 dashboard rebuild", () => {
         ok: true,
         data: {
           total: 40,
+          pagination: { page: 2, pageSize: 10, total: 40, totalPages: 4, from: 11, to: 20, hasPrevious: true, hasNext: true },
           threads: Array.from({ length: 10 }, (_, index) => ({
             id: `thread-${index + 1}`,
             title: `Thread ${index + 1}`,
           })),
         },
       },
-    }, "/?limit=10&offset=10");
+    }, "/?page=2&pageSize=10");
 
-    expect(html).toContain("Rows 11–20 of 40");
-    expect(html).toContain("Previous page");
-    expect(html).toContain("Next page");
-    expect(html).toContain("offset=0");
-    expect(html).toContain("offset=20");
+    expect(html).toContain("11–20 of 40");
+    expect(html).toContain("Previous");
+    expect(html).toContain("Next");
+    expect(html).toContain("page=1");
+    expect(html).toContain("page=3");
+  });
+
+  it("renders paginated Thread messages, artifacts, and a scoped fork control", () => {
+    const html = render({
+      surface: "thread",
+      title: "Thread",
+      description: "Diagnostic",
+      panel: {
+        ok: true,
+        data: {
+          thread: { id: "thread-1", title: "Persisted Thread", turns: [{ sequence: 2 }] },
+          messages: {
+            messages: [{ id: "turn-2", role: "assistant", content: "Persisted answer" }],
+            total: 31,
+            pagination: { page: 2, pageSize: 25, total: 31, totalPages: 2, from: 26, to: 31, hasPrevious: true, hasNext: false },
+          },
+          artifacts: {
+            total: 1,
+            artifacts: [{ id: "artifact-1", artifactKey: "report", title: "Final report", kind: "document", revision: 2, revisionCount: 2, mimeType: "text/markdown", producedByTurnId: "turn-2", content: "# Canonical report" }],
+            pagination: { page: 2, pageSize: 1, total: 2, totalPages: 2, from: 2, to: 2, hasPrevious: true, hasNext: false },
+          },
+        },
+      },
+    }, "/?page=2&pageSize=25&artifactPage=2&artifactPageSize=1");
+
+    expect(html).toContain("26–31 of 31");
+    expect(html).toContain("Final report");
+    expect(html).toContain("Revision 2 of 2");
+    expect(html).toContain('aria-label="Thread artifact pagination"');
+    expect(html).toContain("2–2 of 2");
+    expect(html).toContain("artifactPage=1");
+    expect(html).toContain("artifactPageSize=1");
+    expect(html).toContain("Fork and open child");
+    expect(html).toContain('name="upToMessageId"');
+  });
+
+  it("keeps first, middle, final partial, and empty Thread message pages truthful", () => {
+    const page = (pagination: Record<string, unknown>, messages: unknown[]) => render({
+      surface: "thread",
+      title: "Thread",
+      description: "History",
+      panel: { ok: true, data: { thread: { id: "thread-1", turns: [] }, messages: { messages, total: pagination.total, pagination }, artifacts: { artifacts: [], total: 0 } } },
+    }, `/?page=${pagination.page}&pageSize=25`);
+
+    const first = page({ page: 1, pageSize: 25, total: 60, totalPages: 3, from: 1, to: 25, hasPrevious: false, hasNext: true }, [{ id: "turn-1", role: "user", content: "First" }]);
+    const middle = page({ page: 2, pageSize: 25, total: 60, totalPages: 3, from: 26, to: 50, hasPrevious: true, hasNext: true }, [{ id: "turn-26", role: "user", content: "Middle" }]);
+    const last = page({ page: 3, pageSize: 25, total: 60, totalPages: 3, from: 51, to: 60, hasPrevious: true, hasNext: false }, [{ id: "turn-51", role: "assistant", content: "Final" }]);
+    const empty = page({ page: 1, pageSize: 25, total: 0, totalPages: 0, from: 0, to: 0, hasPrevious: false, hasNext: false }, []);
+
+    expect(first).toContain("1–25 of 60");
+    expect(middle).toContain("26–50 of 60");
+    expect(last).toContain("51–60 of 60");
+    expect(empty).toContain("No results");
+    expect(empty).toContain("Nothing here yet");
   });
 
   it("renders top-level trace messages, spans, and spanTree content", () => {
@@ -233,12 +289,15 @@ describe("M4 dashboard rebuild", () => {
       surface: "agent-tools",
       title: "Tools",
       description: "Runtime mapping",
-      panel: { ok: true, data: { toolExposure: "meta", tools: [{ toolName: "sheets.query", sourceEntity: "sheets", enabled: true, dispatchable: false, health: "disconnected" }] } },
+      panel: { ok: true, data: { toolExposure: "meta", tools: [{ toolId: "tool-sheets-query", toolName: "sheets.query", sourceEntity: "sheets", enabled: true, dispatchable: false, health: "disconnected" }] } },
     });
     expect(html).toContain("Find-only");
     expect(html).toContain("Runtime Tools");
     expect(html).toContain("Always present");
     expect(html).toContain("Disable mapping");
+    expect(html).toContain('name="toolId" value="tool-sheets-query"');
+    expect(html).not.toContain('name="sourceEntity"');
+    expect(html).not.toContain('name="toolName"');
   });
 
   it("renders canary metrics from persisted cohorts with set and promote controls", () => {
@@ -277,7 +336,7 @@ describe("M4 dashboard rebuild", () => {
       secondary: { ok: true, data: { rows: [{ sourceEntityId: "notes", toolName: "notes.list", enabled: true, dispatchable: false, health: { lastStatus: "ENTITY_NOT_CONNECTED" } }] } },
     });
     expect(html).toContain("Entity disconnected");
-    expect(html).toContain("Registry now");
+    expect(html).toContain("Matching Tools");
     expect(html).toContain("undispatchable");
     expect(html).toContain("ENTITY_NOT_CONNECTED");
     expect(html).toContain("Delete Entity and registry residue");
@@ -325,29 +384,128 @@ describe("M4 dashboard rebuild", () => {
       surface: "memories",
       title: "Memory",
       description: "Scoped recall",
-      panel: { ok: true, data: { total: 1, memories: [{ id: "memory-1", content: "Ada prefers concise answers", kind: "preference", visibility: "private", source: "manual" }] } },
+      panel: { ok: true, data: { total: 384, limit: 50, offset: 50, hasNext: true, memories: [{ id: "memory-1", content: "Ada prefers concise answers", kind: "preference", metadata: { over: ["long", "short"], ordering: "prefer_a_over_b" }, visibility: "private", source: "manual" }, { id: "memory-2", content: "Ada profile", kind: "profile", metadata: { profileKey: "name" }, visibility: "hidden", source: "imported", archivedAt: "2026-08-20T00:00:00.000Z" }] } },
       secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support", clusteringId: "cluster-1" }] } },
     }, "/?userId=user-1&agentId=agent-1&q=concise&kind=preference");
     expect(memory).toContain("Ada prefers concise answers");
-    expect(memory).toContain("Semantic memory search");
+    expect(memory).toContain("Search and filter memory");
     expect(memory).toContain("Extract from Thread");
     expect(memory).toContain("Import memory bundle");
+    expect(memory).toContain("Agent visible");
+    expect(memory).toContain("Hidden from Agent recall");
+    expect(memory).toContain('value="profile"');
+    expect(memory).toContain("Profile key");
+    expect(memory).toContain("Archive");
+    expect(memory).toContain("Restore");
+    expect(memory).not.toContain('value="cluster"');
     expect(memory).toContain('type="hidden" name="q" value="concise"');
     expect(memory).toContain('type="hidden" name="kind" value="preference"');
+
+    const pagedMemory = render({
+      surface: "memories",
+      title: "Memory",
+      description: "Scoped recall",
+      panel: { ok: true, data: { total: 384, limit: 50, offset: 50, hasNext: true, memories: [{ id: "memory-1", content: "Page item", kind: "fact", visibility: "agent_visible", source: "manual" }] } },
+      secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support" }] } },
+    }, "/?userId=user-1&agentId=agent-1&kind=fact&source=manual&archiveState=active&limit=50&offset=50");
+    expect(pagedMemory).toContain("Showing 51–51 of 384");
+    expect(pagedMemory).toContain("Previous");
+    expect(pagedMemory).toContain("Next");
+    expect(pagedMemory).toContain("source=manual");
+    expect(pagedMemory).toContain("archiveState=active");
 
     const graph = render({
       surface: "memory-graph",
       title: "Memory graph",
       description: "Relationships",
-      panel: { ok: true, data: { entities: [{ id: "entity-1", entityKey: "person:ada", label: "Ada", entityType: "person", aliases: ["A"] }] } },
+      panel: { ok: true, data: { total: 141, limit: 100, offset: 0, hasNext: true, entities: [{ id: "entity-1", entityKey: "person:ada", label: "Ada", entityType: "person", aliases: ["A"] }, { id: "entity-2", entityKey: "company:platos", label: "Platos", entityType: "company", aliases: [] }] } },
       secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support", clusteringId: "cluster-1" }] } },
-    }, "/?userId=user-1&agentId=agent-1&from=person%3Aada&to=company%3Aplatos&maxHops=4");
+      supporting: { ok: true, data: { path: [{ entity: { id: "entity-cross-page", entityKey: "person:grace", label: "Grace" } }, { entity: { id: "entity-2", entityKey: "company:platos", label: "Platos" } }] } },
+    }, "/?userId=user-1&agentId=agent-1&from=person%3Agrace&to=company%3Aplatos&maxHops=4&entityLimit=100&entityOffset=0");
     expect(graph).toContain("person:ada");
     expect(graph).toContain("Shortest path");
     expect(graph).toContain("Create relationship");
-    expect(graph).toContain('type="hidden" name="from" value="person:ada"');
+    expect(graph).toContain("entity-1");
+    expect(graph).toContain('value="person:ada"');
+    expect(graph).toContain("Graph entities");
+    expect(graph).toContain("141");
+    expect(graph).toContain("Resolved path");
+    expect(graph).toContain("Grace");
+    expect(graph).toContain('name="from" value="person:grace"');
     expect(graph).toContain('type="hidden" name="to" value="company:platos"');
     expect(graph).toContain('type="hidden" name="maxHops" value="4"');
+    expect(graph).toContain("entityOffset=100");
+  });
+
+  it("keeps dense Memory and graph Agent selectors bounded while hydrating a deep-linked cluster", () => {
+    const pageAgents = Array.from({ length: 25 }, (_, index) => ({
+      id: `agent-${index + 1}`,
+      name: `Agent ${index + 1}`,
+      clusteringId: null,
+    }));
+    const secondary = {
+      ok: true as const,
+      data: {
+        agents: pageAgents,
+        pagination: { page: 1, pageSize: 25, total: 40, totalPages: 2, from: 1, to: 25, hasPrevious: false, hasNext: true },
+      },
+    };
+    const selection = { ok: true as const, data: { id: "agent-40", name: "Agent 40", clusteringId: "cluster-deep" } };
+    const entry = "/?userId=user-1&agentId=agent-40&agentPage=1&agentPageSize=25";
+    const memory = render({
+      surface: "memories",
+      title: "Memory",
+      description: "Scoped recall",
+      panel: { ok: true, data: { total: 0, memories: [] } },
+      secondary,
+      selection,
+    }, entry);
+
+    expect(memory).toContain("Search all Agents");
+    expect(memory).toContain("Agent 40 · cluster cluster-deep");
+    expect(memory).not.toContain("Agent 39");
+    expect(memory).toContain('aria-label="Memory Agent selector pagination"');
+    expect(memory).toContain("1–25 of 40 · Page 1 of 2");
+    expect(memory).toContain('rel="next"');
+    expect(memory).toContain("agentPage=2");
+    expect(memory).toContain("agentPageSize=25");
+    expect(memory).toContain("AgentCluster");
+    expect(memory).toContain("cluster-deep");
+
+    const graph = render({
+      surface: "memory-graph",
+      title: "Memory graph",
+      description: "Relationships",
+      panel: { ok: true, data: { entities: [] } },
+      secondary,
+      selection,
+    }, entry);
+    expect(graph).toContain("Agent 40 · cluster cluster-deep");
+    expect(graph).toContain("AgentCluster <code>cluster-deep</code> selected by Agent <code>agent-40</code>");
+    expect(graph).toContain("agentPage=2");
+  });
+
+  it("renders Home totals and exact unavailable Tools beyond the current pages", () => {
+    const html = render({
+      surface: "home",
+      title: "Home",
+      description: "Overview",
+      panel: {
+        ok: true,
+        data: {
+          agents: { ok: true, data: { agents: Array.from({ length: 25 }, (_, index) => ({ id: `agent-${index}` })), pagination: { total: 40 } } },
+          tools: { ok: true, data: { rows: Array.from({ length: 25 }, (_, index) => ({ toolId: `tool-${index}`, dispatchable: true })), pagination: { total: 200 }, aggregates: { unavailable: 37 } } },
+          approvals: { ok: true, data: { approvals: Array.from({ length: 10 }, (_, index) => ({ id: `approval-${index}` })), pagination: { total: 12 } } },
+          monitoring: { ok: true, data: { cards: [] } },
+        },
+      },
+    });
+
+    expect(html).toMatch(/>Agents<\/div><div[^>]*>40<\/div>/);
+    expect(html).toMatch(/>Tools<\/div><div[^>]*>200<\/div>/);
+    expect(html).toMatch(/>Waiting approvals<\/div><div[^>]*>12<\/div>/);
+    expect(html).toContain("37 undispatchable");
+    expect(html).toContain("37 canonical Tool rows are not dispatchable");
   });
 
   it("renders every level of the operator-only Files hierarchy", () => {
@@ -360,6 +518,98 @@ describe("M4 dashboard rebuild", () => {
     const attachments = render({ surface: "files-attachments", title: "Attachments", description: "Files", panel: { ok: true, data: { attachments: [{ id: "file-1", filename: "invoice.pdf", mimeType: "application/pdf", kind: "document", bytes: 2048, downloadUrl: "https://files.example/invoice" }] } } });
     expect(attachments).toContain("invoice.pdf");
     expect(attachments).toContain("2.0 KB");
+  });
+
+  it("renders truthful accessible ranges and bounded dense tables", () => {
+    const html = render({
+      surface: "files",
+      title: "Files",
+      description: "Agents",
+      panel: {
+        ok: true,
+        data: {
+          agents: Array.from({ length: 25 }, (_, index) => ({
+            agentId: `agent-${index + 26}`,
+            name: `Agent ${index + 26}`,
+            attachmentCount: index + 1,
+          })),
+          pagination: {
+            page: 2,
+            pageSize: 25,
+            total: 60,
+            totalPages: 3,
+            from: 26,
+            to: 50,
+            hasPrevious: true,
+            hasNext: true,
+          },
+        },
+      },
+    }, "/?page=2&pageSize=25&search=Agent");
+
+    expect(html).toContain('aria-label="Agents with files pagination"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain("26–50 of 60 · Page 2 of 3");
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain('rel="next"');
+    expect(html).toContain("search=Agent");
+    expect(html).toContain("max-h-[70vh]");
+    expect(html).toContain("min-w-max");
+    expect(html).toContain('scope="col"');
+  });
+
+  it("distinguishes filtered-empty and past-end collection states", () => {
+    const filtered = render({
+      surface: "files-attachments",
+      title: "Attachments",
+      description: "Files",
+      panel: {
+        ok: true,
+        data: {
+          attachments: [],
+          pagination: { page: 1, pageSize: 25, total: 0, totalPages: 0, from: 0, to: 0, hasPrevious: false, hasNext: false },
+        },
+      },
+    }, "/?search=invoice&mime=application%2Fpdf");
+    expect(filtered).toContain("No matching attachments");
+    expect(filtered).toContain('aria-disabled="true"');
+
+    const pastEnd = render({
+      surface: "files-attachments",
+      title: "Attachments",
+      description: "Files",
+      panel: {
+        ok: true,
+        data: {
+          attachments: [],
+          pagination: { page: 4, pageSize: 25, total: 60, totalPages: 3, from: 0, to: 0, hasPrevious: true, hasNext: false },
+        },
+      },
+    }, "/?page=4&pageSize=25");
+    expect(pastEnd).toContain("No attachments on this page");
+    expect(pastEnd).toContain('rel="prev"');
+    expect(pastEnd).toContain('aria-disabled="true"');
+  });
+
+  it("keeps truthful Agent navigation on a past-end page", () => {
+    const html = render({
+      surface: "agents",
+      title: "Agents",
+      description: "List",
+      panel: {
+        ok: true,
+        data: {
+          agents: [],
+          pagination: { page: 4, pageSize: 25, total: 60, totalPages: 3, from: 0, to: 0, hasPrevious: true, hasNext: false },
+        },
+      },
+    }, "/?page=4&pageSize=25");
+
+    expect(html).toContain("No Agents on this page");
+    expect(html).not.toContain("No agents yet");
+    expect(html).toContain('aria-label="Agent pagination"');
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain('href="/?page=3&amp;pageSize=25"');
   });
 
   it("renders safe variable, settings, and end-user projections", () => {
@@ -406,11 +656,14 @@ describe("M4 dashboard rebuild", () => {
     expect(skills).toContain("Skill URL");
     expect(skills).toContain("Import and validate");
     const postman = render({ surface: "postman", title: "Postman templates", description: "Debug", panel: { ok: true, data: { templates: [{ id: "template-1", name: "Ada", simulateUserId: "user-1", sessionContext: { account: "a" }, isDefault: true }] } } });
-    expect(postman).toContain("Simulated user ID");
+    expect(postman).toContain("Canonical EndUser ID");
     expect(postman).toContain("Session Context — JSON object");
+    expect(postman).toContain("Execute one Turn");
+    expect(postman).toContain("Organization OWNER/ADMIN only");
     const mcp = render({ surface: "mcp-config", title: "MCP Entity", description: "Gateway", panel: { ok: true, data: { enabled: true, identityMode: "bearer", bearerTokenCount: 2, rateLimitPerMinute: 60 } } });
     expect(mcp).toContain("Save typed MCP config");
-    expect(mcp).toContain("Active bearer tokens");
+    expect(mcp).toContain("Inject MCP context");
+    expect(mcp).toContain("Identity providers — JSON array");
   });
 
   it("keeps the agent-service failure isolated to its panel", () => {
@@ -431,7 +684,7 @@ describe("M4 dashboard rebuild", () => {
 
   it("centralizes scoped dashboard API transport", () => {
     const routes = files(join(process.cwd(), "app/routes"))
-      .filter((path) => /agent|approvals|eval|clusters|platos-tasks/.test(path))
+      .filter((path) => /agent|approvals|eval|clusters|jobs/.test(path))
       .map((path) => readFileSync(path, "utf8"));
     const directCalls = routes.filter((source) => source.includes("PLATOS_AGENT_API_URL"));
     expect(directCalls).toEqual([]);
@@ -448,17 +701,25 @@ describe("M4 dashboard rebuild", () => {
   });
 
   it("keeps AccessKey bearer material in browser memory and submits hash metadata only", () => {
-    const source = readFileSync(
+    const routeSource = readFileSync(
       join(process.cwd(), "app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx"),
       "utf8",
     );
-    expect(source).toContain("crypto.getRandomValues");
-    expect(source).toContain('crypto.subtle.digest("SHA-256"');
-    expect(source).toContain('body: { keyHash, keyPrefix }');
-    expect(source).toContain('["intent", "keyHash", "keyPrefix"]');
-    expect(source).toContain("asRecord(accessKeys.key)");
-    expect(source).toContain("asRecord(accessKeys.retiringKey)");
-    expect(source).not.toMatch(/name=["'](?:rawKey|accessKey|key)["']/);
+    const lifecycleSource = readFileSync(join(process.cwd(), "app/components/platos/accessKeyLifecycle.ts"), "utf8");
+    expect(lifecycleSource).toContain("crypto.getRandomValues");
+    expect(lifecycleSource).toContain("crypto.randomUUID()");
+    expect(lifecycleSource).toContain('crypto.subtle.digest("SHA-256"');
+    expect(routeSource).toContain("body: { requestId, keyHash, keyPrefix }");
+    expect(routeSource).toContain('["intent", "requestId", "keyHash", "keyPrefix"]');
+    expect(routeSource).toContain("lifecycle.settle(fetcher.data)");
+    expect(routeSource).toContain("await beginGeneratedAccessKey(lifecycle)");
+    expect(routeSource).toContain("if (!submission) return");
+    expect(routeSource).toContain("setRevealedKey(settlement.rawKey)");
+    expect(routeSource).toContain("useEffect(() => () => lifecycle.dispose()");
+    expect(routeSource).toContain("asRecord(accessKeys.key)");
+    expect(routeSource).toContain("asRecord(accessKeys.retiringKey)");
+    expect(routeSource).not.toContain("setRevealedKey(generated.rawKey)");
+    expect(routeSource).not.toMatch(/name=["'](?:rawKey|accessKey|key)["']/);
   });
 
   it("keeps Entity secrets reveal-once and renders nested Entity operations", () => {
@@ -488,7 +749,7 @@ describe("M4 dashboard rebuild", () => {
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index",
-      "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new",
+      "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.eval-criteria._index",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new",
@@ -538,12 +799,12 @@ describe("M4 dashboard rebuild", () => {
         route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId",
       },
       {
-        operation: "GET /api/v1/agent/entities/:entityId/mcp/config",
+        operation: "GET /mcp/entity/:entityId/config",
         route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index",
       },
       {
-        operation: "GET /api/v1/agent/platos-tasks/:id",
-        route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId",
+        operation: "GET /api/v1/agent/jobs/:id",
+        route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId",
       },
     ];
 
@@ -553,5 +814,32 @@ describe("M4 dashboard rebuild", () => {
       const source = readFileSync(join(process.cwd(), "app/routes", contract.route, "route.tsx"), "utf8");
       expect(source, contract.route).toContain(contract.operation.slice(4));
     }
+  });
+
+  it("keeps the public Jobs dashboard on the canonical route and dispatch contracts", () => {
+    const routeRoot = join(process.cwd(), "app/routes");
+    const listRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx"),
+      "utf8",
+    );
+    const detailRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx"),
+      "utf8",
+    );
+    const createRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx"),
+      "utf8",
+    );
+    const webappCorpus = files(join(process.cwd(), "app"))
+      .map((path) => readFileSync(path, "utf8"))
+      .join("\n");
+
+    expect(listRoute).toContain('endpoint: "/api/v1/agent/jobs"');
+    expect(detailRoute).toContain('endpoint: "/api/v1/agent/jobs/:id"');
+    expect(detailRoute).toContain("/api/v1/agent/jobs/${jobId}/dispatch");
+    expect(createRoute).toContain('"/api/v1/agent/jobs"');
+    expect(webappCorpus).not.toContain(["platos", "tasks"].join("-"));
+    expect(webappCorpus).not.toContain(["task", "Id"].join(""));
+    expect(webappCorpus).not.toContain(["tri", "ggerType"].join(""));
   });
 });

@@ -2,7 +2,7 @@
 
 Official JavaScript / TypeScript client SDK for [Platos](https://platos.dev) — the open-source agent runtime.
 
-Agents · threads · realtime streaming · approvals · budgets · background operations · monitoring.
+Agents · threads · Jobs · realtime streaming · approvals · budgets · monitoring.
 
 ## Install
 
@@ -27,7 +27,7 @@ const platos = new PlatosClient({
 });
 
 // Create a thread for an agent.
-const thread = await platos.threads.create({ agentId: "agt_abc123" });
+const thread = await platos.threads.create(undefined, { agentId: "agt_abc123" });
 
 // Send a message and stream the response.
 for await (const event of platos.threads.send(thread.id, "Summarise today's inbox.")) {
@@ -84,6 +84,7 @@ const platos = new PlatosClient({
 | `tool_call` | Agent invoked a tool (`name`, `params`, `callId`) |
 | `tool_result` | Tool returned (`name`, `result`, optional `display` hint) |
 | `approval_needed` | HITL gate — call `client.approvals.resolve(...)` to continue |
+| `job_update` | Job progress (`jobId`, `status`, output/error metadata) |
 | `artifact_start` / `artifact_delta` / `artifact_committed` | Streaming artifact build |
 | `safety_flags` | PII / safety filter hits |
 | `done` | Turn finished (carries `usage` cost summary) |
@@ -125,10 +126,15 @@ try {
 |---|---|
 | `client.agents` | `list`, `get`, `listVersions` |
 | `client.threads` | `create`, `list`, `get`, `messages`, `artifacts`, `send` (streaming) |
+| `client.jobs` | `list`, `create`, `get`, `update`, `delete`, `dispatch` |
 | `client.approvals` | `list`, `resolve` (human-in-the-loop) |
 | `client.budgets` | `list`, `status` (read-only — caps managed in the dashboard) |
-| `client.monitoring` | `runs`, `traces`, `costByAgent`, `costByScope` |
-| `client.bgo` | `tasks`, `runs`, `schedules`, `batches` (background-operation engine) |
+| `client.monitoring` | `turns`, `trace`, `costByAgent`, `costByScope` |
+
+`client.bgo`, `client.trigger`, and their nested legacy methods are removed in
+1.0.0 because they cannot map truthfully to the canonical Job routes. Canonical
+Turn methods will be added when the runtime exposes `/api/v1/agent/turns`. See
+[`docs/sdk-v1-migration.md`](../../docs/sdk-v1-migration.md).
 
 ## Versioning
 

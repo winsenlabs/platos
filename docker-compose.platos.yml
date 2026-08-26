@@ -6,7 +6,8 @@
 #   redis       — cache + queues (port 6379)
 #   clickhouse  — run/queue/batch telemetry (port 8123)
 #   minio       — S3-compatible object store for multimodal attachments (ports 9001/9002)
-#   migrations-init — one-shot Prisma migrate deploy before webapp boots (EOBD.55)
+#   migrations-init — one-shot Prisma migrate deploy before app services boot (EOBD.55)
+#   memory-profile-migrate — one-shot encrypted profile migration and verification
 #   agent       — Platos agent runtime, NestJS (port 3100)
 #   webapp      — Platos dashboard + API, Remix (port 3030)
 #
@@ -55,7 +56,7 @@ services:
     # binaries pre-installed. The Theme L migration issues
     # `CREATE EXTENSION IF NOT EXISTS vector` so the extension is
     # available to subsequent migrations that declare vector columns.
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     restart: unless-stopped
     logging: *default-logging
     # 2026-05-19 incident: 512m default OOMed under storm-driven UPSERT load + autovacuum.
@@ -82,7 +83,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7
+    image: redis:7@sha256:91d0f7e8c748ec7a4c2b4fb2c4f84edab794dd91d01e095e38dc906db9d684ab
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${REDIS_MEM_LIMIT:-256m}
@@ -98,7 +99,7 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.3-alpine
+    image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
     restart: unless-stopped
     logging: *default-logging
     # 2026-05-19 incident: 1200m default caused 523 OOM-restarts in 12 days
@@ -153,7 +154,7 @@ services:
   # NODE_ENV=production.
   # ─────────────────────────────────────────────────────────────
   minio:
-    image: minio/minio:RELEASE.2025-02-03T21-03-04Z
+    image: minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${MINIO_MEM_LIMIT:-256m}
@@ -181,11 +182,7 @@ services:
     healthcheck:
       # MinIO ships a built-in `/minio/health/live` endpoint. Use 127.0.0.1 to
       # mirror the ClickHouse IPv4-only pattern (host may have IPv6 disabled).
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://127.0.0.1:9000/minio/health/live || exit 1",
-        ]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/minio/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -194,7 +191,7 @@ services:
   # One-shot: create the platos-media bucket on first boot.
   # Idempotent — re-running is a no-op if the bucket already exists.
   minio-init:
-    image: minio/mc:RELEASE.2025-01-17T23-25-50Z
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
     logging: *default-logging
     depends_on:
       minio:
@@ -213,23 +210,17 @@ services:
     restart: on-failure
 
   # ─────────────────────────────────────────────────────────────
-  # EOBD.63 — ClickHouse migrations one-shot. Runs goose against the
-  # bind-mounted schema directory so a fresh `docker compose up`
-  # produces a ClickHouse instance with all migrations applied — no
-  # manual host-side step.
+  # EOBD.63 — ClickHouse migrations one-shot. The same migration image as
+  # Postgres contains pinned Goose and the reviewed ClickHouse schema, so a
+  # fresh `docker compose up` applies exact image-bundled migrations.
   #
   # Exits 0 when all migrations are up. Webapp depends on this via
   # service_completed_successfully.
   # ─────────────────────────────────────────────────────────────
   clickhouse-migrate:
-    # `ghcr.io/pressly/goose` no longer resolves — it answers `unauthorized`
-    # for every tag, anonymously and authenticated alike. Because the webapp
-    # waits on this service completing, an unpullable image meant `compose up`
-    # aborted before anything started, and the ClickHouse schema silently never
-    # migrated. `gomicro/goose` publishes the same CLI on Docker Hub; it needs
-    # an explicit entrypoint because its default is not the goose binary.
-    image: gomicro/goose:latest
-    entrypoint: ["goose"]
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
     logging: *default-logging
     depends_on:
       clickhouse:
@@ -237,9 +228,8 @@ services:
     environment:
       GOOSE_DRIVER: clickhouse
       GOOSE_DBSTRING: "tcp://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:9000"
-    volumes:
-      - ./internal-packages/clickhouse/schema:/migrations:ro
-    command: ["-dir", "/migrations", "up"]
+      CLICKHOUSE_HTTP_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123"
+    command: ["clickhouse"]
     restart: "no"
 
   # ─────────────────────────────────────────────────────────────
@@ -256,7 +246,7 @@ services:
   # Idempotent: ALTER ... MODIFY TTL is a no-op when already set.
   # ─────────────────────────────────────────────────────────────
   clickhouse-ttl-apply:
-    image: clickhouse/clickhouse-server:25.3-alpine
+    image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
     logging: *default-logging
     depends_on:
       clickhouse:
@@ -275,9 +265,9 @@ services:
   # ─────────────────────────────────────────────────────────────
   # EOBD.55 — migrations-init. One-shot that runs
   # `prisma migrate deploy` against the fresh Postgres before the
-  # webapp + agent start. The prod webapp image doesn't carry the
-  # Prisma CLI, so this uses a dedicated node + prisma image with
-  # the schema bind-mounted.
+  # webapp + agent start. Prisma and its engine are installed from the
+  # dedicated project's frozen pnpm lockfile while this image is built;
+  # the serving host never performs a runtime package install.
   #
   # Exits 0 on success (migrations applied / already in sync); the
   # webapp `depends_on` uses service_completed_successfully so it
@@ -286,36 +276,43 @@ services:
   # Deploys the clean tenancy schema the agent runtime reads. This is the
   # canonical database: Agent, Thread, Turn, Step, ToolCall, Memory.
   migrations-init:
-    image: node:22-alpine
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
     logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      PGPASSWORD: "${POSTGRES_PASSWORD}"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-    volumes:
-      - ./internal-packages/tenancy-database:/work
-    working_dir: /work
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -e
-        echo '[migrations-init] ensuring the clean control database exists...'
-        apk add --no-cache postgresql-client > /dev/null
-        psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres -tAc \
-          "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_DB:-platos_control}'" \
-          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres \
-          -c "CREATE DATABASE \"${POSTGRES_DB:-platos_control}\""
-        echo '[migrations-init] installing prisma...'
-        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        echo '[migrations-init] deploying the clean tenancy schema...'
-        npx prisma migrate deploy
-        echo '[migrations-init] done'
+    command: ["postgres"]
     restart: "no"
 
+  # Safe default bootstrap. It creates the exact indexes only when no profile
+  # data exists, and otherwise accepts only an already-complete contract. An
+  # existing database that needs data migration fails closed here and must use
+  # scripts/deploy-platos.sh with stopped writers, the immutable migrations
+  # image, and a separately reviewed dry-run digest.
+  memory-profile-migrate:
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
+    logging: *default-logging
+    depends_on:
+      migrations-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
+    command: ["memory-profile-bootstrap-empty"]
+    restart: "no"
 
   agent:
     build:
@@ -350,6 +347,8 @@ services:
       minio:
         condition: service_healthy
       migrations-init:
+        condition: service_completed_successfully
+      memory-profile-migrate:
         condition: service_completed_successfully
     environment:
       PLATOS_PUBLIC_BASE_URL: "${PLATOS_PUBLIC_BASE_URL:-}"
@@ -396,7 +395,7 @@ services:
       # direct. Self-hosted Trigger.dev URLs are supported.
       TRIGGER_API_URL: "${TRIGGER_API_URL:-}"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
-      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
+      PLATOS_COMPONENT_AUTH_SECRET: "${PLATOS_COMPONENT_AUTH_SECRET:?required — openssl rand -hex 32}"
       # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
       # durable-mode agents route turns through the platos.chat.session worker
       # + gateway proxy-bridge instead of the durable-turn task path.
@@ -406,7 +405,7 @@ services:
       PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
       PLATOS_PER_ORG_BATCH_CONCURRENCY: "${PLATOS_PER_ORG_BATCH_CONCURRENCY:-10}"
       PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
-      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
+      PLATOS_MAX_JOBS_PER_TURN: "${PLATOS_MAX_JOBS_PER_TURN:-5}"
       PLATOS_TURN_MAX_MS: "${PLATOS_TURN_MAX_MS:-300000}"
       PLATOS_RATE_LIMIT_PER_MIN: "${PLATOS_RATE_LIMIT_PER_MIN:-30}"
       PLATOS_RATE_LIMIT_PER_DAY: "${PLATOS_RATE_LIMIT_PER_DAY:-200}"
@@ -437,11 +436,15 @@ services:
       # internal (docker network) endpoint; browsers go via the public
       # endpoint minted in presigned URLs by the webapp.
       MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://minio:9000}"
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://localhost:9001}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-platos-minio-admin}"
       MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
       MINIO_BUCKET: "${MINIO_BUCKET:-platos-media}"
       MINIO_REGION: "${MINIO_REGION:-us-east-1}"
       PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
+      PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS: "${PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS:-900}"
+      PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
+      PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: "${PLATOS_ATTACHMENT_ORG_QUOTA_BYTES:-10737418240}"
       # Admin token — shared with the webapp so the scheduled retention
       # task can POST /api/v1/agent/attachments/retention.
       PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
@@ -452,13 +455,15 @@ services:
       # EOBD.42 — Sentry optional.
       PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
       PLATOS_SENTRY_TRACES_SAMPLE_RATE: "${PLATOS_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
-      # PPR-15 — span dual-write to ClickHouse `trigger_dev.platos_spans_v1`.
+      # PPR-15 — span dual-write to ClickHouse `platos_telemetry.platos_spans_v1`.
       # When unset, spans stay Redis-only (short retention). When set, every
       # sampled span ALSO lands in ClickHouse for long-retention analytics
       # queries (cost rollups, per-user trace lookup, etc.). Default points
       # at the in-cluster ClickHouse so an OSS `up -d` gets dual-write for
       # free; override to "" to disable.
       PLATOS_OTEL_CLICKHOUSE_URL: "${PLATOS_OTEL_CLICKHOUSE_URL:-http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123}"
+      PLATOS_TELEMETRY_DATABASE: "${PLATOS_TELEMETRY_DATABASE:-platos_telemetry}"
+      PLATOS_OBSERVABILITY_MAX_RETRIES: "${PLATOS_OBSERVABILITY_MAX_RETRIES:-10}"
       PLATOS_OTEL_SAMPLE_RATE: "${PLATOS_OTEL_SAMPLE_RATE:-1}"
       PLATOS_OTEL_STDOUT: "${PLATOS_OTEL_STDOUT:-false}"
       # MCP approval-UI — opt-in. When `true`, mutating Platform-MCP
@@ -509,6 +514,8 @@ services:
         condition: service_healthy
       migrations-init:
         condition: service_completed_successfully
+      memory-profile-migrate:
+        condition: service_completed_successfully
       clickhouse-migrate:
         condition: service_completed_successfully
     environment:
@@ -539,6 +546,7 @@ services:
       RATE_LIMIT_REDIS_PASSWORD: "${RATE_LIMIT_REDIS_PASSWORD:-}"
       RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED: "${RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED:-0}"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123?secure=false"
+      CLICKHOUSE_DATABASE: "${CLICKHOUSE_DATABASE:-platos_telemetry}"
       RUN_REPLICATION_ENABLED: "1"
       RUN_REPLICATION_CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123"
       RUN_REPLICATION_LOG_LEVEL: info
@@ -678,7 +686,7 @@ services:
       # not test.platos.dev. Skips Caddy + TLS for the WS hop and is
       # immune to DNS / cert weirdness during local dev.
       # The ?entity= slug is REQUIRED — without it the gateway cannot know
-      # which registered entity is connecting and rejects every attempt, which
+      # which registered entity is connecting and rejects every request, which
       # on test.platos meant a 1s reconnect loop logging ~23 rejections a
       # minute. It must match the entity's externalId in the dashboard.
       PLATOS_URL: "${PLATOS_DOCS_MCP_BRIDGE_PLATOS_URL:-ws://agent:3100/tools/sync?entity=platos-docs-mcp}"

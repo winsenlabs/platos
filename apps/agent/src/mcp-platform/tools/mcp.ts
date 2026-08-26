@@ -75,8 +75,20 @@ export function buildMcpToolHandlers(deps: {
         const now = Date.now();
         const allTokens = await Promise.all(
           (filtered as Array<{ id: string; entityId: string }>).map(async (e) => {
-            const rows = await bearerTokens.list(e.id, scope.environmentId);
-            return rows.map((r) => ({
+            const firstPage = await bearerTokens.list(e.id, scope.environmentId, {
+              limit: 100,
+              offset: 0,
+            });
+            const remainingPages = await Promise.all(
+              Array.from(
+                { length: Math.ceil(Math.max(0, firstPage.total - firstPage.tokens.length) / 100) },
+                (_, index) => bearerTokens.list(e.id, scope.environmentId, {
+                  limit: 100,
+                  offset: (index + 1) * 100,
+                }),
+              ),
+            );
+            return [firstPage, ...remainingPages].flatMap((page) => page.tokens).map((r) => ({
               id: r.id,
               entityId: e.entityId,
               entityPk: e.id,

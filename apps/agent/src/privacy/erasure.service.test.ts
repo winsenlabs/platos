@@ -302,11 +302,11 @@ describe("ErasureService canonical subject discovery and runtime metadata", () =
         statements.push({ sql, params: options.params });
         if (sql.startsWith("SELECT database, table, name")) {
           return ["organization_id", "user_id", "thread_id"]
-            .map((column) => `trigger_dev\tplatos_spans_v1\t${column}`)
+            .map((column) => `platos_telemetry\tplatos_spans_v1\t${column}`)
             .join("\n");
         }
         if (sql.startsWith("SELECT database, table, mutation_id")) {
-          return submitted ? "trigger_dev\tplatos_spans_v1\tmutation_1\t1\t0\n" : "\n";
+          return submitted ? "platos_telemetry\tplatos_spans_v1\tmutation_1\t1\t0\n" : "\n";
         }
         if (sql.startsWith("ALTER TABLE")) {
           submitted = true;
@@ -334,7 +334,7 @@ describe("ErasureService canonical subject discovery and runtime metadata", () =
       select: { id: true },
     });
     const mutation = statements.find((s) => s.sql.startsWith("ALTER TABLE"));
-    expect(mutation?.sql).toContain("ALTER TABLE trigger_dev.platos_spans_v1 DELETE WHERE");
+    expect(mutation?.sql).toContain("ALTER TABLE platos_telemetry.platos_spans_v1 DELETE WHERE");
     expect(mutation?.params).toMatchObject({
       organization: "org_1",
       ids: "['end_user_1','external_1']",

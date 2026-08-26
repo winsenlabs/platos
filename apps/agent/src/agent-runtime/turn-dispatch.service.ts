@@ -112,6 +112,24 @@ export interface CollectedTurnResult {
   events?: AgentStreamEvent[];
 }
 
+export class CollectedTurnPersistenceError extends Error {
+  readonly code = "TURN_NOT_PERSISTED";
+
+  constructor() {
+    super("Collected turn did not reach authoritative persistence");
+    this.name = "CollectedTurnPersistenceError";
+  }
+}
+
+export class AttachmentIdsInvalidError extends Error {
+  readonly code = "ATTACHMENT_IDS_INVALID";
+
+  constructor() {
+    super("Attachment IDs are invalid");
+    this.name = "AttachmentIdsInvalidError";
+  }
+}
+
 /**
  * TurnDispatchService — THE single durable-vs-direct chokepoint.
  *
@@ -268,9 +286,9 @@ export class TurnDispatchService {
    * payload, concurrency key, scope-namespaced idempotency key, and tags).
    *
    * ALWAYS resolves the client-supplied threadId through
-   * `getOrCreateThread` first (cross-tenant IDOR guard — a foreign threadId
-   * resolves to a freshly minted owned thread rather than joining someone
-   * else's room / run). Returns the run handle + the resolved threadId.
+   * `getOrCreateThread` first. A supplied Thread is reserved identity: an
+   * inaccessible or wrong-Agent Thread fails closed instead of silently
+   * minting a replacement. Returns the run handle + the resolved threadId.
    *
    * THROWS on any failure (trigger unconfigured, thread resolution failure,
    * trigger send error) so callers can fail-open to the direct in-process path.
@@ -281,9 +299,8 @@ export class TurnDispatchService {
     }
     const scope = ctx.scope;
     // SECURITY (cross-tenant IDOR) — scope+owner-gate the threadId before we
-    // hand it to a durable run. getOrCreateThread → getThread filters by the
-    // full scope tuple AND ownership; a non-owned threadId resolves to a fresh
-    // owned thread instead.
+    // hand it to a durable run. Operators may act on any EndUser Thread in the
+    // verified Environment; non-operators remain bound to their EndUser.
     const resolved = await this.conversationService.getOrCreateThread(scope, agentId, ctx.threadId);
     const threadId = resolved?.id;
     if (!threadId) {
@@ -372,6 +389,7 @@ export class TurnDispatchService {
    * the invariant while matching the dashboard demo turn-for-turn.
    */
   async *streamTurn(agentId: string, ctx: TurnDispatchContext): AsyncGenerator<AgentStreamEvent> {
+    ctx = { ...ctx, attachmentIds: this.canonicalAttachmentIds(ctx.attachmentIds) };
     const mode = await this.resolveMode(agentId, ctx.scope);
     if (mode === "direct") {
       yield* this.streamDirect(agentId, ctx);
@@ -409,6 +427,7 @@ export class TurnDispatchService {
    * failure); the session's own persistence/error handling stands.
    */
   async collectTurn(agentId: string, ctx: TurnDispatchContext): Promise<CollectedTurnResult> {
+    ctx = { ...ctx, attachmentIds: this.canonicalAttachmentIds(ctx.attachmentIds) };
     if (ctx.idempotencyKey && ctx.threadId) {
       const persisted = await this.conversationService.findTurnByIdempotency(
         ctx.threadId,
@@ -430,18 +449,19 @@ export class TurnDispatchService {
       return this.collectDirect(agentId, ctx);
     }
     // durable → Trigger Sessions (the ONE durable mechanism).
-    let sessionResult: CollectedTurnResult | null = null;
+    let sessionResult: CollectedTurnResult | null;
     try {
       sessionResult = await this.collectSession(agentId, ctx);
     } catch (err: any) {
-      // Unexpected throw (driveSession fails open with null, not a throw) —
-      // treat as pre-commit and fall open to the direct in-process turn.
+      // collectSession converts every known pre-commit failure to null. Any
+      // escaping rejection is therefore ambiguous or post-commit and must fail
+      // closed; direct fallback here could execute the same Turn twice.
       this.logger.warn(
-        `durable session failed (collectTurn), falling back to direct: ${err?.message ?? err}`,
+        `durable session failed after its pre-commit boundary: ${err?.message ?? err}`,
       );
-      return this.collectDirect(agentId, ctx);
+      throw new CollectedTurnPersistenceError();
     }
-    if (sessionResult) return sessionResult;
+    if (sessionResult) return this.requirePersistedCollection(sessionResult, ctx);
     // Session unavailable pre-commit → the ONLY fallback is direct in-process.
     return this.collectDirect(agentId, ctx);
   }
@@ -465,13 +485,40 @@ export class TurnDispatchService {
     const persisted = events.find((e) => (e as any).type === "message_persisted") as
       | { costCents?: number; messageId?: string }
       | undefined;
-    return {
+    return this.requirePersistedCollection({
       text,
       threadId: meta?.thread_id ?? ctx.threadId ?? "",
       costCents: typeof persisted?.costCents === "number" ? persisted.costCents : 0,
       messageId: persisted?.messageId,
       events,
-    };
+    }, ctx);
+  }
+
+  private requirePersistedCollection(
+    result: CollectedTurnResult,
+    ctx: TurnDispatchContext,
+  ): CollectedTurnResult {
+    const canonicalIdentity = /^[A-Za-z0-9_-]{1,100}$/;
+    if (
+      !result.messageId
+      || !canonicalIdentity.test(result.messageId)
+      || !result.threadId
+      || !canonicalIdentity.test(result.threadId)
+      || (ctx.attachmentIds?.length && ctx.threadId && result.threadId !== ctx.threadId)
+    ) {
+      throw new CollectedTurnPersistenceError();
+    }
+    return result;
+  }
+
+  private canonicalAttachmentIds(value: unknown): string[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > 100) throw new AttachmentIdsInvalidError();
+    const ids = [...new Set(value)];
+    if (ids.some((id) => typeof id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(id))) {
+      throw new AttachmentIdsInvalidError();
+    }
+    return ids as string[];
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -544,8 +591,8 @@ export class TurnDispatchService {
     const scope = ctx.scope;
 
     // SECURITY (cross-tenant IDOR) — ALWAYS resolve the threadId through
-    // getOrCreateThread, which scope+owner-gates it. A non-owned threadId
-    // resolves to a freshly minted (owned) thread instead. The session
+    // getOrCreateThread, which scope+owner-gates it. A supplied Thread is
+    // reserved identity and cannot drift to a replacement. The session
     // externalId IS this resolved threadId (1:1 session↔thread), so it must
     // exist first anyway. (Same guard as `triggerDurable`.)
     let threadId: string | undefined;
@@ -695,6 +742,7 @@ export class TurnDispatchService {
           agentId,
           threadId,
           clientMessageId: ctx.idempotencyKey ?? null,
+          attachmentIds: ctx.attachmentIds ?? [],
           // Single source of truth for what crosses the Trigger-session
           // boundary — see session-scope.ts. Carries userToken (turn-proof),
           // entityId, principal (trust tier), userIdentities (end-user
@@ -824,7 +872,7 @@ export class TurnDispatchService {
     //
     // And on the non-clean paths we must DELETE the key, not merely skip the
     // write: a stale stamp from an earlier turn would be even older and would
-    // trigger the skip on its own. Deleting forces the next turn through the
+      // activate the skip on its own. Deleting forces the next turn through the
     // full guard (fail safe).
     const drainCompletedCleanly = !timedOut && !drainErrored && committedCursor !== undefined;
     await (drainCompletedCleanly

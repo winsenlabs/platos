@@ -295,7 +295,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Discord regular (non-interaction) messages arrive ONLY over the
-   * long-lived Gateway WebSocket — no webhook hit ever triggers the lazy
+   * long-lived Gateway WebSocket — no webhook hit ever initiates the lazy
    * getOrCreateBot build for them. So after every boot the bots for enabled
    * discord connections must be warmed EAGERLY, and kept warm on an interval
    * (webhook-driven TTL refresh never happens for a gateway-only
@@ -1667,20 +1667,20 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const appId = String(app?.id ?? "");
     if (!installationId || !appId) throw new Error("installation unavailable");
     const expected = this.refreshExpectation(installation);
-    const attemptId = crypto.randomUUID();
+    const claimId = crypto.randomUUID();
     const claimed = await this.persistence.beginInstallationRefresh(
       installationId,
       appId,
-      attemptId,
+      claimId,
       expected,
     );
     if (!claimed) return this.awaitRotatedToken(installation, app);
-    return this.performRefresh(claimed, claimed.app, attemptId, expected);
+    return this.performRefresh(claimed, claimed.app, claimId, expected);
   }
 
   /**
-   * LOSER path: poll the durable attempt (bounded ≈3s) and adopt only a fully
-   * committed replacement. An incomplete or repair-required attempt fails
+   * LOSER path: poll the durable refresh claim (bounded ≈3s) and adopt only a fully
+   * committed replacement. An incomplete or repair-required refresh fails
    * closed so the durable event worker can retry later.
    */
   private async awaitRotatedToken(
@@ -1712,7 +1712,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   /**
    * Perform the Slack token refresh and atomically persist the rotated grant.
    * NEVER mutates or primes caches before the durable commit. If commit fails,
-   * a second transaction attempts to retain the returned grant while marking
+   * a second transaction tries to retain the returned grant while marking
    * the installation REPAIR_REQUIRED; the token is still not published.
    *
    *   POST https://slack.com/api/oauth.v2.access
@@ -1722,7 +1722,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async performRefresh(
     installation: any,
     app: any,
-    attemptId: string,
+    claimId: string,
     expected: {
       tokenGeneration: number;
       credentialId: string;
@@ -1737,7 +1737,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         `[channel-apps] token near expiry but no refresh token installation=${installationId}`,
       );
-      await this.markRefreshRepair(installationId, appId, attemptId, expected, "REFRESH_TOKEN_MISSING");
+      await this.markRefreshRepair(installationId, appId, claimId, expected, "REFRESH_TOKEN_MISSING");
       throw new Error("channel installation token repair required");
     }
     const clientId = typeof app?.clientId === "string" ? app.clientId : "";
@@ -1746,7 +1746,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh blocked — app credentials unavailable installation=${installationId}`,
       );
-      await this.markRefreshRepair(installationId, appId, attemptId, expected, "APP_CREDENTIALS_MISSING");
+      await this.markRefreshRepair(installationId, appId, claimId, expected, "APP_CREDENTIALS_MISSING");
       throw new Error("channel installation token repair required");
     }
 
@@ -1769,7 +1769,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh request failed installation=${installationId}`,
       );
-      await this.markRefreshRepair(installationId, appId, attemptId, expected, "SLACK_REFRESH_UNKNOWN");
+      await this.markRefreshRepair(installationId, appId, claimId, expected, "SLACK_REFRESH_UNKNOWN");
       throw new Error("channel installation token repair required");
     }
     if (
@@ -1781,7 +1781,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh rejected installation=${installationId} error=${json?.error ?? "unknown"}`,
       );
-      await this.markRefreshRepair(installationId, appId, attemptId, expected, "SLACK_REFRESH_REJECTED");
+      await this.markRefreshRepair(installationId, appId, claimId, expected, "SLACK_REFRESH_REJECTED");
       throw new Error("channel installation token repair required");
     }
 
@@ -1801,7 +1801,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       rotated = await this.persistence.finalizeInstallationRefresh(
         installationId,
         appId,
-        attemptId,
+        claimId,
         expected,
         {
           botToken: newBotToken,
@@ -1819,7 +1819,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       const preserved = await this.persistence.preserveInstallationRefreshGrantForRepair(
         installationId,
         appId,
-        attemptId,
+        claimId,
         expected,
         {
           botToken: newBotToken,
@@ -1832,7 +1832,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         await this.markRefreshRepair(
           installationId,
           appId,
-          attemptId,
+          claimId,
           expected,
           "REFRESH_COMMIT_FAILED",
         );
@@ -1852,7 +1852,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async markRefreshRepair(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: {
       tokenGeneration: number;
       credentialId: string;
@@ -1864,7 +1864,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       await this.persistence.markInstallationRefreshRepairRequired(
         installationId,
         appId,
-        attemptId,
+        claimId,
         expected,
         repairCode,
       );

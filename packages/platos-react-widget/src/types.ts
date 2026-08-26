@@ -23,13 +23,6 @@ export interface PerTurnOptions {
   contextId?: string;
   /** Pre-uploaded MinIO attachment ids to attach to this turn. */
   attachmentIds?: string[];
-  /**
-   * Postman-mode session-context override. Lets you replace the agent's
-   * resolved sessionContext for this single turn (e.g. force `entity_ids`
-   * narrowing or override a `user.*` key). Server-side this lands at
-   * `connections.gateway.ts` as `sessionContextOverride`.
-   */
-  sessionContextOverride?: Record<string, unknown>;
 }
 
 export interface ThemeTokens {
@@ -87,7 +80,7 @@ export interface OtpEndpoints {
 }
 
 export interface PlatosFabProps {
-  /** Required: the Platos deployment URL. e.g. https://play.platos.dev */
+  /** Required: the Platos service URL. e.g. https://platos.example.com */
   baseUrl: string;
   /** Required: the agent id. */
   agentId: string;

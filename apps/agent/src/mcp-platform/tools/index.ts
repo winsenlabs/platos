@@ -38,6 +38,7 @@ import type { SkillRegistryService } from "../../skills/skill-registry.service";
 import type { SkillImporterService } from "../../skills/skill-importer.service";
 import type { MemoryService } from "../../memory/memory.service";
 import type { MemoryExtractionService } from "../../memory/memory-extraction.service";
+import type { MemoryImportService } from "../../memory/memory-import.service";
 import type { KnowledgeGraphService } from "../../memory/knowledge-graph.service";
 import type { ProviderRegistryService } from "../../providers/provider-registry.service";
 import type { ProviderKeyService } from "../../providers/provider-key.service";
@@ -71,10 +72,10 @@ import { buildReflectionToolHandlers } from "./reflection";
 import { buildProviderToolHandlers } from "./providers";
 import { buildOAuthToolHandlers } from "./oauth";
 import { buildMcpToolHandlers } from "./mcp";
-// MCPF-W4 — PlatosTask + alert channel tools (re-scoped from 37 to 16; the
+// MCPF-W4 — Job + alert channel tools (re-scoped from 37 to 16; the
 // 2 forms tools + 19 phantom-feature tools were dropped — see THEME_MCPF.md
 // §3 Wave 4 re-scope log for the full list of deferred features).
-import { buildPlatosTaskToolHandlers } from "./platos_tasks";
+import { buildJobToolHandlers } from "./jobs";
 import { buildAlertChannelToolHandlers } from "./alert_channels";
 // MCPF-W5 — Knowledge Graph (8 tools) + Skills extensions (4 tools, wired
 // into the existing buildSkillToolHandlers builder).
@@ -117,7 +118,8 @@ export function buildPlatformToolHandlers(deps: {
   skillRegistry: SkillRegistryService;
   skillImporter: SkillImporterService;
   memory: MemoryService;
-  // MCPF-W2 — memories.extract_now wraps the manual-trigger path.
+  memoryImport: MemoryImportService;
+  // MCPF-W2 — memories.extract_now wraps the manual-dispatch path.
   memoryExtraction: MemoryExtractionService;
   graph: KnowledgeGraphService;
   providers: ProviderRegistryService;
@@ -609,8 +611,8 @@ export function buildPlatformToolHandlers(deps: {
       name: "threads.fork",
       description:
         "Branch a new thread from an existing one at a specific message. " +
-        "Clones every active message up to (and including) `upToMessageId` " +
-        "into the new thread. Scope is preserved. Soft cap: 10 active forks " +
+        "References every active message up to (and including) `upToMessageId` through ordered non-billable ancestry pointers; " +
+        "Turn, Step, and ToolCall ledger rows are never cloned. Scope is preserved. Soft cap: 10 active forks " +
         "per parent — archive an existing fork before exceeding the cap. " +
         "Returns the new Thread row.",
       inputSchema: {
@@ -838,6 +840,7 @@ export function buildPlatformToolHandlers(deps: {
   handlers.push(
     ...buildPlatosControlToolHandlers({
       memory: deps.memory,
+      memoryImport: deps.memoryImport,
       // MCPF-W2 — memories.extract_now.
       memoryExtraction: deps.memoryExtraction,
       conversation: deps.conversation,
@@ -849,6 +852,7 @@ export function buildPlatformToolHandlers(deps: {
       cost: deps.cost,
       toolAudit: deps.toolAudit,
       safetyEvents: deps.safetyEvents,
+      prisma: deps.prisma,
     }),
   );
 
@@ -935,12 +939,11 @@ export function buildPlatformToolHandlers(deps: {
     }),
   );
 
-  // ── MCPF-W4 platos_tasks.* (10 tools) ─────────────────────────────
-  // Wraps PlatosTask CRUD + run dispatch + run history. PlatosTasksController
-  // already exposes these over REST; this surface fan-outs to the same
-  // Prisma model + the trigger.dev `platos-custom-task` execution path.
+  // ── MCPF-W4 jobs.* (8 tools) ──────────────────────────────
+  // Wraps Job CRUD + dispatch. JobsController already exposes these over
+  // REST; this surface fans out to the same persistence and durable adapter.
   handlers.push(
-    ...buildPlatosTaskToolHandlers({
+    ...buildJobToolHandlers({
       toolAudit: deps.toolAudit,
       prisma: deps.prisma,
     }),

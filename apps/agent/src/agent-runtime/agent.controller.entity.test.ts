@@ -19,7 +19,7 @@ function harness() {
   };
   const authService = {
     getEntity: vi.fn().mockResolvedValue({ id: "entity_pk", entityId: "support-core" }),
-    listEntities: vi.fn(),
+    listEntitiesPage: vi.fn(),
     registerEntity: vi.fn(),
   };
   const controller: any = Object.create(AgentController.prototype);
@@ -64,10 +64,12 @@ describe("AgentController clean Entity transport routes", () => {
 
   it("filters MCP navigation data without exposing Entity secrets", async () => {
     const h = harness();
-    h.authService.listEntities.mockResolvedValue([
-      { id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp", serviceSecret: "sentinel" },
-      { id: "wire-1", entityId: "wire-source", connectionKind: "wire", serviceSecretHash: "sentinel-hash" },
-    ]);
+    h.authService.listEntitiesPage.mockResolvedValue({
+      entities: [
+        { id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp", serviceSecret: "sentinel" },
+      ],
+      total: 1,
+    });
 
     const result = await h.controller.listEntities(h.req, "mcp");
 
@@ -75,7 +77,11 @@ describe("AgentController clean Entity transport routes", () => {
       expect.objectContaining({ id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp" }),
     ]);
     expect(JSON.stringify(result)).not.toContain("sentinel");
-    expect(h.authService.listEntities).toHaveBeenCalledWith(scope.organizationId, scope.projectId);
+    expect(h.authService.listEntitiesPage).toHaveBeenCalledWith(
+      scope.organizationId,
+      scope.projectId,
+      expect.objectContaining({ connectionKind: "mcp", limit: 25, offset: 0 }),
+    );
   });
 
   it("returns clean MCP config defaults and counts active bearer rows", async () => {
@@ -137,18 +143,20 @@ describe("AgentController clean Entity transport routes", () => {
       toolAllowlist: ["tickets.list"],
       redirectUriAllowlist: ["https://client.example/callback"],
       rateLimitPerMinute: 120,
+      injectMcpContext: true,
     });
     h.prisma.mcpBearerToken.count.mockResolvedValue(2);
 
     const result = await h.controller.patchEntityMcpConfig(h.req, "support-core", {
       enabled: true,
-      identityMode: "oidc",
-      identityProviders: { type: "oidc" },
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
       branding: { name: "Support" },
       toolAllowlist: ["tickets.list"],
       consentCopy: "retired field",
       redirectUriAllowlist: ["https://client.example/callback"],
       rateLimitPerMinute: 120,
+      injectMcpContext: true,
     });
 
     const upsert = h.prisma.entityMcpConfig.upsert.mock.calls[0][0];
@@ -156,7 +164,7 @@ describe("AgentController clean Entity transport routes", () => {
     expect(upsert.create).toMatchObject({
       entityId: "entity_pk",
       enabled: true,
-      identityMode: "oidc",
+      identityMode: "bearer+oidc",
       branding: { name: "Support" },
     });
     expect(upsert.create).not.toHaveProperty("entityPk");
@@ -168,7 +176,23 @@ describe("AgentController clean Entity transport routes", () => {
       bearerTokenCount: 2,
       consentCopy: null,
       exists: true,
+      injectMcpContext: true,
     });
+    expect(upsert.update).toMatchObject({
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
+      injectMcpContext: true,
+    });
+  });
+
+  it("rejects an object-root identityProviders payload before persistence", async () => {
+    const h = harness();
+
+    await expect(h.controller.patchEntityMcpConfig(h.req, "support-core", {
+      identityProviders: { type: "oidc" },
+    })).rejects.toMatchObject({ status: 400 });
+
+    expect(h.prisma.entityMcpConfig.upsert).not.toHaveBeenCalled();
   });
 
   it("rejects legacy linked-agent and test-credential mutations", async () => {

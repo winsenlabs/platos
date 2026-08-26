@@ -119,7 +119,7 @@ Both still work. `@trigger.dev/sdk` is kept as a dev dependency so existing impo
 
 ### Step 4 — (Optional) Start building agents
 
-Once the agent service is up and reachable from your UI or apps, follow [quickstart.md](./quickstart.md) from step 3 onward to create your first agent. You can mix freely: tasks you already have (`fetch_and_summarize`, `send_email`, etc.) are instantly callable from agents via the `spawn_bgo` meta-tool (formerly `spawn_task` — kept as a deprecated alias; see [BGO_RENAME.md](./BGO_RENAME.md)).
+Once the agent service is up and reachable from your UI or apps, follow [quickstart.md](./quickstart.md) from step 3 onward to create your first agent. You can mix freely: tasks you already have (`fetch_and_summarize`, `send_email`, etc.) are callable from agents via `spawn_job`.
 
 ### Step 5 — (Optional) Deprecate direct `@trigger.dev/sdk` use
 
@@ -150,11 +150,9 @@ await tasks.trigger<typeof fetchAndSummarize>("fetch_and_summarize", { query: "q
 Not possible before. Now:
 
 ```ts
-// The agent calls spawn_bgo as a meta-tool during a user turn (the old
-// name spawn_task is kept as a deprecated alias for one release — see
-// docs/BGO_RENAME.md).
-// No code change needed in your task — just add spawn_bgo to the agent's
-// tool list (either name works during the compat window).
+// The agent calls spawn_job as a runtime tool during a user Turn.
+// No code change needed in your task — just add spawn_job to the agent's
+// tool list.
 ```
 
 ### Schedules

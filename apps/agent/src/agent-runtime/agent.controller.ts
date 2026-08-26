@@ -26,9 +26,21 @@ import {
   CONVERSATION_REVISION_NOT_SUPPORTED,
   ConversationRevisionNotSupportedError,
   ConversationService,
+  ThreadForkLimitError,
+  ThreadMessageNotFoundError,
+  ThreadNotFoundError,
 } from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
-import { TurnDispatchService } from "./turn-dispatch.service";
+import {
+  AttachmentIdsInvalidError,
+  CollectedTurnPersistenceError,
+  TurnDispatchService,
+} from "./turn-dispatch.service";
+import {
+  POSTMAN_CONTEXT_TTL_SECONDS,
+  postmanContextRedisKey,
+  storePostmanContext,
+} from "./postman-context-handle";
 import { withHeartbeat } from "../shared/async-heartbeat";
 import { AgentService } from "./agent.service";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
@@ -64,16 +76,20 @@ import {
 import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
+import {
+  validateIdentityProviders,
+  validateMcpIdentityMode,
+} from "../mcp-platform/mcp-management.validation";
 import type { SessionScope } from "./session-scope";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { BudgetService, type BudgetPeriod, type BudgetScopeType } from "../monitoring/budget.service";
 import type { BudgetAlertPayload } from "../monitoring/budget-alert.types";
-import { SafetyEventService, type DetectorKind, type DetectorAction } from "../monitoring/safety-event.service";
+import { SafetyEventService } from "../monitoring/safety-event.service";
 import { GovernanceService } from "../monitoring/governance.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
-import { RatingService } from "../evals/rating.service";
+import { RatingMutationForbiddenError, RatingService, RatingTargetNotFoundError } from "../evals/rating.service";
 import {
   CriterionService,
   type CreateCriterionDto,
@@ -91,6 +107,14 @@ import {
   type ControlDatabaseClient,
   environmentScopeWhere,
 } from "../shared/database.provider";
+import {
+  isUuid,
+  pageMetadata,
+  parseBooleanFilter,
+  parseEnumFilter,
+  parsePageRequest,
+  parsePositiveIntegerFilter,
+} from "../shared/pagination";
 
 const EXTERNAL_END_USER_IDENTITY = {
   issuer: "platos:external",
@@ -107,6 +131,47 @@ function currentEnvironmentEndUserPresence(environmentId: string) {
       { toolCallAudits: { some: { environmentId } } },
       { safetyEvents: { some: { environmentId } } },
     ],
+  };
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (!isJsonObject(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonicalJson(value[key])]),
+  );
+}
+
+function postmanRequestFingerprint(
+  message: string,
+  override: Record<string, unknown>,
+): string {
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ message, sessionContextOverride: canonicalJson(override) }))
+    .digest("hex");
+}
+
+export function internalChatTurnOptions(body: {
+  agentId: string;
+  threadId: string;
+  attachmentIds?: string[];
+  replyToMessageId?: string | null;
+  clientMessageId?: string | null;
+}, abortSignal: AbortSignal) {
+  return {
+    agentId: body.agentId,
+    threadId: body.threadId,
+    attachmentIds: body.attachmentIds,
+    replyToMessageId: body.replyToMessageId ?? undefined,
+    idempotencyKey: body.clientMessageId ?? undefined,
+    abortSignal,
   };
 }
 
@@ -170,6 +235,31 @@ export class AgentController {
     @Optional() private readonly entityMcpDiscovery?: EntityMcpDiscoveryService,
   ) {}
 
+  private canonicalAttachmentIds(value: unknown): string[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > 100) {
+      throw new BadRequestException({ code: "ATTACHMENT_IDS_INVALID", message: "Attachment IDs are invalid" });
+    }
+    const ids = [...new Set(value)];
+    if (ids.some((id) => typeof id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(id))) {
+      throw new BadRequestException({ code: "ATTACHMENT_IDS_INVALID", message: "Attachment IDs are invalid" });
+    }
+    return ids as string[];
+  }
+
+  private collectedTurnFailure(error: unknown): never {
+    if (error instanceof AttachmentIdsInvalidError) {
+      throw new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error instanceof CollectedTurnPersistenceError) {
+      throw new HttpException(
+        { code: error.code, message: error.message },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+    throw error;
+  }
+
   private getScope(req: Request): RequestScope {
     return (
       (req as any).scope || {
@@ -200,6 +290,7 @@ export class AgentController {
    * already stores it), so — mirroring executeStreamingTurn's own resolution —
    * fall back to the thread row's agentId when none is passed. Resolved through
    * ConversationService.getThread, which is scope + ownership gated (IDOR-safe);
+   * operators may resolve any EndUser Thread in their verified Environment;
    * a thread the caller can't see resolves to the "default" fallback (a durable
    * turn's own getOrCreateThread then re-gates on dispatch). Last resort:
    * "default" — identical to the runtime's own agentId fallback.
@@ -212,7 +303,9 @@ export class AgentController {
     if (explicit) return explicit;
     if (threadId) {
       try {
-        const thread = await this.conversationService.getThread(threadId, scope);
+        const thread = await this.conversationService.getThread(threadId, scope, {
+          allUsers: scope.principal === "operator",
+        });
         if ((thread as { agentId?: string } | null)?.agentId) {
           return (thread as { agentId: string }).agentId;
         }
@@ -379,27 +472,38 @@ export class AgentController {
     @Query("archived") archived?: string,
     // Operator view: skip userId filter, return all threads in scope.
     @Query("allUsers") allUsers?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
     const pinnedFlag = pinned === "true" || pinned === "1" ? true : undefined;
     let archivedFlag: boolean | "only" | undefined;
     if (archived === "only") archivedFlag = "only";
     else if (archived === "true" || archived === "1") archivedFlag = true;
     else archivedFlag = undefined; // default — hide archived
-    return this.conversationService.listThreads(scope, {
+    const result = await this.conversationService.listThreads(scope, {
       agentId,
       status,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      limit: request.pageSize,
+      offset: request.offset,
       tag,
       pinned: pinnedFlag,
       archived: archivedFlag,
-      // SECURITY (audit authz-2026-07-22 F1/F6) — `allUsers` drops the per-user
-      // ownership filter; it is an operator-only capability. Honor the flag ONLY
-      // for operator principals (mirror connections.gateway.ts:1073). A
-      // non-operator passing allUsers is scoped to their own userId, not 403'd.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
+      // Operators see the Environment-wide ledger by default and may opt back
+      // into their own EndUser projection with allUsers=false. End users can
+      // never bypass canonical ownership.
+      allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
     });
+    const pagination = pageMetadata(result.total, request);
+    return {
+      ...result,
+      items: result.threads,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { agentId: agentId ?? null, status: status ?? null, tag: tag ?? null, pinned: pinnedFlag ?? null, archived: archivedFlag ?? null },
+    };
   }
 
   @Get("threads/:threadId")
@@ -414,7 +518,7 @@ export class AgentController {
     const thread = await this.conversationService.getThread(threadId, scope, {
       // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
       // non-operators fall back to their own-thread ownership check.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
+      allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
     });
     if (!thread) throw new NotFoundException("Thread not found");
     return thread;
@@ -599,13 +703,16 @@ export class AgentController {
     // as before (collectTurn's direct arm returns the same {text, threadId,
     // events, costCents} shape as executeNonStreamingTurn, plus messageId).
     const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
-    const result = await this.dispatch.collectTurn(agentId, {
-      scope,
-      message: body.message,
-      threadId,
-      attachmentIds: body.attachmentIds,
-    });
-    return result;
+    try {
+      return await this.dispatch.collectTurn(agentId, {
+        scope,
+        message: body.message,
+        threadId,
+        attachmentIds: this.canonicalAttachmentIds(body.attachmentIds),
+      });
+    } catch (error) {
+      this.collectedTurnFailure(error);
+    }
   }
 
   @Get("threads/:threadId/messages")
@@ -616,15 +723,34 @@ export class AgentController {
     @Query("offset") offset?: string,
     // Operator view: read messages of any in-scope thread (see getThread).
     @Query("allUsers") allUsers?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
-    return this.conversationService.getMessages(threadId, scope, {
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
-      // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
-      // non-operators fall back to their own-thread ownership check.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
-    });
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
+    try {
+      const result = await this.conversationService.getMessages(threadId, scope, {
+        limit: request.pageSize,
+        offset: request.offset,
+        // Operators see all in-scope EndUsers by default. Non-operators always
+        // retain the canonical EndUser ownership predicate.
+        allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
+      });
+      const pagination = pageMetadata(result.total, request);
+      return {
+        ...result,
+        items: result.messages,
+        limit: request.pageSize,
+        offset: request.offset,
+        hasMore: pagination.hasNext,
+        pagination,
+        filters: {},
+      };
+    } catch (error) {
+      if (error instanceof ThreadNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -662,9 +788,9 @@ export class AgentController {
   /**
    * Fork a thread at a specific message.
    *
-   * The new thread shares history through `upToMessageId` (inclusive) and
-   * inherits the parent's scope — every row carries the same (org, project,
-   * env) tuple per the Theme A invariant + Theme F §5.1.
+   * The new thread references canonical history through `upToMessageId`
+   * (inclusive) and inherits the parent's scope. Turn/Step/ToolCall ledger rows
+   * are never cloned or billed again.
    */
   @Post("threads/:threadId/fork")
   async forkThread(
@@ -680,10 +806,17 @@ export class AgentController {
       const fork = await this.conversationService.forkThread(threadId, scope, {
         upToMessageId: body.upToMessageId,
         title: body.title,
+        allUsers: scope.principal === "operator",
       });
       return fork;
     } catch (err: any) {
-      throw new BadRequestException(err?.message || "Fork failed");
+      if (err instanceof ThreadNotFoundError || err instanceof ThreadMessageNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
+      if (err instanceof ThreadForkLimitError) {
+        throw new HttpException({ code: err.code, message: err.message }, HttpStatus.CONFLICT);
+      }
+      throw new ServiceUnavailableException({ code: "THREAD_FORK_UNAVAILABLE", message: "Thread fork is unavailable" });
     }
   }
 
@@ -765,17 +898,31 @@ export class AgentController {
     @Req() req: Request,
     @Param("threadId") threadId: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
     try {
-      const artifacts = await this.conversationService.listThreadArtifacts(
+      const result = await this.conversationService.listThreadArtifactsPage(
         threadId,
         scope,
-        { limit: limit ? parseInt(limit, 10) : undefined },
+        { limit: request.pageSize, offset: request.offset, allUsers: scope.principal === "operator" },
       );
-      return { artifacts };
+      const pagination = pageMetadata(result.total, request);
+      return {
+        ...result,
+        items: result.artifacts,
+        limit: request.pageSize,
+        offset: request.offset,
+        hasMore: pagination.hasNext,
+        pagination,
+      };
     } catch (err: any) {
-      throw new NotFoundException(err?.message || "Failed to list artifacts");
+      if (err instanceof ThreadNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
+      throw new ServiceUnavailableException({ code: "ARTIFACTS_UNAVAILABLE", message: "Thread artifacts are unavailable" });
     }
   }
 
@@ -920,7 +1067,7 @@ export class AgentController {
         respondedAt: new Date().toISOString(),
       });
     } catch (err: any) {
-      return { resolved: false, error: err?.message || "Failed to complete waitpoint" };
+      return { resolved: false, error: err?.message || "Failed to complete approval pause" };
     }
     // Mirror the approvals ledger so the dashboard transitions immediately —
     // the task's own `approvalsService.resolve` call is idempotent so this
@@ -987,7 +1134,7 @@ export class AgentController {
       });
     }
     // Idempotency boundary: an approval that already has a persisted outcome
-    // must never wake the runtime waitpoint a second time. Return the canonical
+    // must never wake the runtime approval pause a second time. Return the canonical
     // decision instead of replaying Redis side effects.
     if ((found as any).status !== "pending") {
       return {
@@ -1022,7 +1169,7 @@ export class AgentController {
       respondedBy: scope.userId,
       respondedAt: new Date().toISOString(),
       // Wave 2 — surface the edited-args presence on the Redis wake
-      // payload so any future runtime branch (e.g. waitpoint flow that
+      // payload so any future runtime branch (e.g. approval-pause flow that
       // wants to react to edits) can see the marker without re-reading
       // the DB row.
       ...(validatedEditedArgs ? { editedArgsApplied: true } : {}),
@@ -1112,7 +1259,14 @@ export class AgentController {
   }
 
   @Get("agents")
-  async listAgents(@Req() req: Request) {
+  async listAgents(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+    @Query("status") statusRaw?: string,
+  ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — `agentCrud.list` returns the FULL
     // AgentRecord (systemPrompt, promptBlocks, toolsBlockConfig) for every agent
@@ -1120,8 +1274,25 @@ export class AgentController {
     // an end-user/guest reads every agent's config via the list sibling, defeating
     // the getAgent gate. Operator/dashboard-only.
     requireOperator(scope);
-    const agents = await this.agentCrud.list(scope);
-    return { agents, total: agents.length };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const status = parseEnumFilter(statusRaw, "status", ["active", "paused"] as const);
+    const result = await this.agentCrud.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+      status,
+    });
+    const pagination = pageMetadata(result.total, request);
+    return {
+      agents: result.agents,
+      items: result.agents,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { search: request.search, status },
+    };
   }
 
   @Get("agents/:agentId")
@@ -1161,16 +1332,19 @@ export class AgentController {
     // on a Trigger SESSION, reply accumulated off its durable .out. Same option
     // forwarding as before (outputSchema is intentionally still not forwarded
     // here, matching prior behavior — zero behavior change for direct agents).
-    const result = await this.dispatch.collectTurn(agentId, {
-      scope,
-      message: body.message,
-      threadId: body.threadId,
-      attachmentIds: body.attachmentIds,
-      ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
-      modelLabel: body.modelLabel,
-      ...(agentConfigOverride ? { agentConfigOverride } : {}),
-    });
-    return result;
+    try {
+      return await this.dispatch.collectTurn(agentId, {
+        scope,
+        message: body.message,
+        threadId: body.threadId,
+        attachmentIds: this.canonicalAttachmentIds(body.attachmentIds),
+        ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
+        modelLabel: body.modelLabel,
+        ...(agentConfigOverride ? { agentConfigOverride } : {}),
+      });
+    } catch (error) {
+      this.collectedTurnFailure(error);
+    }
   }
 
   /**
@@ -1227,6 +1401,10 @@ export class AgentController {
   async getAgentToolMappings(
     @Req() req: Request,
     @Param("agentId") agentId: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — per-agent tool matrix + param
@@ -1250,26 +1428,41 @@ export class AgentController {
 
     // Pull the full matrix + health so the UI can render the same summary
     // row it gets from `/tools/matrix` — saves a second RTT on tab load.
-    // Pass agentId so linkedAgentIds allow-list filter runs — UI and
-    // runtime find_tools now show exactly the same tool set.
-    const tools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
-      enabledOnly: false,
-      agentId,
-    });
+    // Load every Environment mapping, including policies currently denied for
+    // this Agent, so the same AgentToolPolicy row can be enabled again. The
+    // Agent-specific enabled state is projected from allowedAgentIds below;
+    // EnvironmentEntityTool.enabled remains a separate dispatch prerequisite.
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const tools = this.toolRegistry
+      .getScopedTools(this.scopeTuple(scope), {
+        enabledOnly: false,
+      })
+      .filter((tool) => !request.search || [tool.toolName, tool.description, tool.sourceEntityId, tool.category]
+        .some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      .sort((left, right) => left.toolName.localeCompare(right.toolName)
+        || String(left.sourceEntityId ?? "").localeCompare(String(right.sourceEntityId ?? ""))
+        || left.toolId.localeCompare(right.toolId));
+    const total = tools.length;
+    const pageTools = tools.slice(request.offset, request.offset + request.pageSize);
     const healthRows: Array<{
       toolId: string;
       entityExternalId: string | null;
       environmentId: string;
       lastStatus: string | null;
-    }> = await this.prisma.toolHealth.findMany({
-      where: { environmentId: scope.environmentId },
-    });
+    }> = pageTools.length
+      ? await this.prisma.toolHealth.findMany({
+          where: {
+            environmentId: scope.environmentId,
+            OR: pageTools.map((tool) => ({ toolId: tool.toolId, entityExternalId: tool.sourceEntityId })),
+          },
+        })
+      : [];
     const healthByKey = new Map<string, string | null>();
     for (const h of healthRows) {
       healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h.lastStatus);
     }
 
-    const rows = tools.map((t) => {
+    const rows = pageTools.map((t) => {
       const resolved = resolveToolMappings(
         { name: t.toolName, inputSchema: t.paramSchema },
         {
@@ -1284,11 +1477,16 @@ export class AgentController {
       const mapped = resolved.params.filter(
         (p) => p.resolution.source !== "llm",
       ).length;
+      const enabled = t.allowedAgentIds.includes(agentId);
       return {
+        agentId,
+        agentVersionId: (agent as { currentVersionId?: string | null }).currentVersionId ?? null,
+        toolId: t.toolId,
         toolName: t.toolName,
         sourceEntity: t.sourceEntityId,
-        enabled: t.enabled,
-        dispatchable: t.dispatchable,
+        enabled,
+        environmentEnabled: t.enabled,
+        dispatchable: enabled && t.enabled && t.dispatchable,
         health: healthByKey.get(`${t.toolId}:${t.sourceEntityId}`) ?? "unknown",
         params: resolved.params,
         mapped,
@@ -1304,9 +1502,46 @@ export class AgentController {
           ? "direct"
           : "meta",
       agentId,
-      total: rows.length,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + rows.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { search: request.search },
       fetchedAt: new Date().toISOString(),
     };
+  }
+
+  /** Replace one Agent-owned Tool policy without mutating Environment exposure. */
+  @Patch("agents/:agentId/tool-mappings/:toolId")
+  async setAgentToolEnabled(
+    @Req() req: Request,
+    @Param("agentId") agentId: string,
+    @Param("toolId") toolId: string,
+    @Body() body: { enabled?: unknown },
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    if (!isUuid(agentId) || !isUuid(toolId) || typeof body?.enabled !== "boolean") {
+      throw new BadRequestException({
+        code: "invalid_agent_tool_mapping_request",
+        error: "Agent ID, Tool ID, and boolean enabled are required",
+      });
+    }
+    const updated = await this.agentCrud.setToolEnabled(
+      agentId,
+      toolId,
+      scope,
+      body.enabled,
+    );
+    if (!updated) {
+      throw new NotFoundException({
+        code: "agent_tool_mapping_not_found",
+        error: "Agent tool mapping not found in this scope",
+      });
+    }
+    await this.toolRegistry.refreshEnvironmentPolicies(this.scopeTuple(scope));
+    return { ok: true, ...updated };
   }
 
   /**
@@ -1410,66 +1645,79 @@ export class AgentController {
   /**
    * List saved versions of an agent, newest first.
    *
-   * PPR-44 — paginated. `?cursor=<id>` walks older pages; `?take=N` selects
-   * the page size (default 50, max 200). The response carries `nextCursor`
-   * for the UI to request the next page. `total` is intentionally omitted —
-   * computing it on top of pagination is an expensive COUNT on a growing
-   * table with no user-visible value. Callers that need a full count can
-   * raise it as a separate request.
+   * PPR-44 / WIN-236 — paginated. Existing `cursor`/`nextCursor` callers stay
+   * compatible; offset callers additionally receive a truthful scoped total
+   * and range metadata. `take` remains the page-size parameter.
    */
-  @Get("agents/:agentId/versions")
+  @Get("agent-versions")
   async listAgentVersions(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Query("agentId") agentId: string,
     @Query("cursor") cursor?: string,
     @Query("take") take?: string,
+    @Query("offset") offsetRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version history exposes full config; operator-only.
     requireOperator(scope);
+    if (!agentId) throw new BadRequestException("agentId is required");
+    const request = parsePageRequest({ limit: take, offset: offsetRaw }, { defaultPageSize: 50 });
     try {
-      const parsedTake = take ? Number.parseInt(take, 10) : undefined;
       const result = await this.agentCrud.listVersions(agentId, scope, {
         cursor: cursor || null,
-        take: Number.isFinite(parsedTake) ? parsedTake : undefined,
+        take: request.pageSize,
+        offset: request.offset,
       });
+      const pagination = cursor
+        ? undefined
+        : pageMetadata(result.total, { pageSize: result.limit, offset: result.offset });
       return {
-        versions: result.versions,
+        agentVersions: result.versions,
+        items: result.versions,
         nextCursor: result.nextCursor,
         pageSize: result.versions.length,
+        total: result.total,
+        limit: result.limit,
+        offset: cursor ? null : result.offset,
+        hasMore: cursor ? Boolean(result.nextCursor) : pagination!.hasNext,
+        pagination,
+        filters: {},
       };
     } catch (err: any) {
-      throw new NotFoundException(err?.message || "List versions failed");
+      throw new NotFoundException(err?.message || "List Agent Versions failed");
     }
   }
 
   /** Fetch a single version — used by diff + rollback confirmation. */
-  @Get("agents/:agentId/versions/:versionId")
+  @Get("agent-versions/:versionId")
   async getAgentVersion(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Query("agentId") agentId: string,
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version config read; operator-only.
     requireOperator(scope);
+    if (!agentId) throw new BadRequestException("agentId is required");
     const version = await this.agentCrud.getVersion(agentId, versionId, scope);
-    if (!version) throw new NotFoundException("Version not found");
-    return version;
+    if (!version) throw new NotFoundException("Agent Version not found");
+    return { agentVersion: version };
   }
 
   /** Roll back to an older version. See AgentCrudService.rollbackToVersion. */
-  @Post("agents/:agentId/versions/:versionId/rollback")
+  @Post("agent-versions/:versionId/rollback")
   async rollbackAgentVersion(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Body() body: { agentId?: string },
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version rollback is operator-only.
     requireOperator(scope);
+    if (!body.agentId) throw new BadRequestException("agentId is required");
     try {
-      const agent = await this.agentCrud.rollbackToVersion(agentId, versionId, scope);
+      const agent = await this.agentCrud.rollbackToVersion(body.agentId, versionId, scope);
+      await this.toolRegistry.refreshEnvironmentPolicies(this.scopeTuple(scope));
       return { agent };
     } catch (err: any) {
       throw new BadRequestException(err?.message || "Rollback failed");
@@ -1727,15 +1975,43 @@ export class AgentController {
    * per tool from the loader. Theme B.8.
    */
   @Get("tools/matrix")
-  async toolMatrix(@Req() req: Request) {
+  async toolMatrix(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+    @Query("category") category?: string,
+    @Query("status") status?: string,
+    @Query("entityId") entityId?: string,
+  ) {
     const scope = this.getScope(req);
-    const tools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const allTools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
       enabledOnly: false,
     });
-
-    const healthRows = await this.prisma.toolHealth.findMany({
-      where: { environmentId: scope.environmentId },
-    });
+    const normalizedStatus = parseEnumFilter(status?.trim().toLowerCase(), "status", ["dispatchable", "disabled", "unavailable"] as const);
+    const matchingTools = allTools
+      .filter((tool) => !entityId || tool.sourceEntityId === entityId || tool.entityPk === entityId)
+      .filter((tool) => !request.search || [tool.toolName, tool.description, tool.sourceEntityId, tool.category].some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      .filter((tool) => !category || (tool.category ?? "uncategorized") === category)
+      .sort((left, right) => left.toolName.localeCompare(right.toolName) || String(left.sourceEntityId ?? "").localeCompare(String(right.sourceEntityId ?? "")) || left.toolId.localeCompare(right.toolId));
+    const aggregates = {
+      dispatchable: matchingTools.filter((tool) => tool.dispatchable).length,
+      unavailable: matchingTools.filter((tool) => !tool.dispatchable).length,
+      disabled: matchingTools.filter((tool) => !tool.enabled).length,
+    };
+    const tools = matchingTools.filter((tool) => !normalizedStatus || (normalizedStatus === "dispatchable" ? tool.dispatchable : normalizedStatus === "disabled" ? !tool.enabled : normalizedStatus === "unavailable" ? !tool.dispatchable : true));
+    const total = tools.length;
+    const pageTools = tools.slice(request.offset, request.offset + request.pageSize);
+    const healthRows = pageTools.length
+      ? await this.prisma.toolHealth.findMany({
+          where: {
+            environmentId: scope.environmentId,
+            OR: pageTools.map((tool) => ({ toolId: tool.toolId, entityExternalId: tool.sourceEntityId })),
+          },
+        })
+      : [];
     const healthByKey = new Map<string, any>();
     for (const h of healthRows as Array<{
       toolId: string;
@@ -1753,36 +2029,42 @@ export class AgentController {
       healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h);
     }
 
+    const rows = pageTools.map((t) => {
+      const health = healthByKey.get(`${t.toolId}:${t.sourceEntityId}`);
+      return {
+        toolId: t.toolId,
+        toolName: t.toolName,
+        description: t.description,
+        category: t.category ?? "uncategorized",
+        paramSchema: t.paramSchema,
+        entityId: t.sourceEntityId,
+        entityPk: t.entityPk,
+        callbackUrl: t.callbackUrl,
+        enabled: t.enabled,
+        dispatchable: t.dispatchable,
+        health: {
+          lastStatus: health?.lastStatus ?? null,
+          failCount: health?.failCount ?? 0,
+          totalCalls: health?.totalCalls ?? 0,
+          totalFailures: health?.totalFailures ?? 0,
+          avgLatencyMs: health?.avgLatencyMs ?? null,
+          p95LatencyMs: health?.p95LatencyMs ?? null,
+          lastCalledAt: health?.lastCalledAt?.toISOString?.() ?? null,
+        },
+      };
+    });
+    const pagination = pageMetadata(total, request);
     return {
       environmentId: scope.environmentId,
-      rows: tools.map((t) => {
-        const health = healthByKey.get(`${t.toolId}:${t.sourceEntityId}`);
-        return {
-          toolId: t.toolId,
-          toolName: t.toolName,
-          description: t.description,
-          // TL.1 — always emit a string so downstream (TL.2 display modes,
-          // TL.3 category UI, TL.5 Tools tab) never has to guard for null.
-          // Falls back to "uncategorized" when neither the SDK nor the
-          // inference chain produced a value.
-          category: t.category ?? "uncategorized",
-          paramSchema: t.paramSchema,
-          entityId: t.sourceEntityId,
-          entityPk: t.entityPk,
-          callbackUrl: t.callbackUrl,
-          enabled: t.enabled,
-          dispatchable: t.dispatchable,
-          health: {
-            lastStatus: health?.lastStatus ?? null,
-            failCount: health?.failCount ?? 0,
-            totalCalls: health?.totalCalls ?? 0,
-            totalFailures: health?.totalFailures ?? 0,
-            avgLatencyMs: health?.avgLatencyMs ?? null,
-            p95LatencyMs: health?.p95LatencyMs ?? null,
-            lastCalledAt: health?.lastCalledAt?.toISOString?.() ?? null,
-          },
-        };
-      }),
+      rows,
+      items: rows,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      aggregates,
+      filters: { search: request.search, category: category ?? null, status: normalizedStatus, entityId: entityId ?? null },
       fetchedAt: new Date().toISOString(),
     };
   }
@@ -1919,7 +2201,7 @@ export class AgentController {
     }
 
     // Optionally scope-narrow by sourceEntityId (caller validates they mean
-    // this entity — cross-scope attempt returns 404 same as above).
+    // this entity — cross-scope request returns 404 same as above).
     if (
       body.sourceEntityId &&
       toolEntry.sourceEntityId !== body.sourceEntityId
@@ -2408,20 +2690,37 @@ export class AgentController {
   }
 
   @Get("entities")
-  async listEntities(@Req() req: Request, @Query("connectionKind") connectionKind?: string) {
+  async listEntities(
+    @Req() req: Request,
+    @Query("connectionKind") connectionKind?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
-    const entities = await this.authService.listEntities(scope.organizationId, scope.projectId);
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.authService.listEntitiesPage(scope.organizationId, scope.projectId, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+      connectionKind,
+    });
     const connectedIds = new Set(this.toolSync.getConnectedEntitiesInEnv(scope.environmentId));
-    const filteredEntities = connectionKind === "mcp"
-      ? entities.filter((entity: any) => entity.connectionKind === "mcp")
-      : entities;
+    const entities = result.entities.map((e: any) => {
+      const { serviceSecret, serviceSecretHash, ...safe } = e;
+      return { ...safe, liveConnected: connectedIds.has(e.entityId) };
+    });
+    const pagination = pageMetadata(result.total, request);
     return {
-      // BUG-2: defense-in-depth — strip serviceSecret/serviceSecretHash even
-      // though authService.listEntities now selects safe columns.
-      entities: filteredEntities.map((e: any) => {
-        const { serviceSecret, serviceSecretHash, ...safe } = e;
-        return { ...safe, liveConnected: connectedIds.has(e.entityId) };
-      }),
+      entities,
+      items: entities,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { search: request.search, connectionKind: connectionKind ?? null },
     };
   }
 
@@ -2608,6 +2907,7 @@ export class AgentController {
     @Param("entityId") entityId: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2639,6 +2939,7 @@ export class AgentController {
         consentCopy: null,
         redirectUriAllowlist: [],
         rateLimitPerMinute: 60,
+        injectMcpContext: false,
         exists: false,
       };
     }
@@ -2654,6 +2955,7 @@ export class AgentController {
       consentCopy: null,
       redirectUriAllowlist: config.redirectUriAllowlist,
       rateLimitPerMinute: config.rateLimitPerMinute,
+      injectMcpContext: config.injectMcpContext,
       exists: true,
     };
   }
@@ -2665,16 +2967,18 @@ export class AgentController {
     @Body()
     body: {
       enabled?: boolean;
-      identityMode?: "anonymous" | "oidc" | "bearer";
-      identityProviders?: Record<string, unknown> | null;
+      identityMode?: string;
+      identityProviders?: unknown;
       branding?: Record<string, unknown> | null;
       toolAllowlist?: string[];
       consentCopy?: string | null;
       redirectUriAllowlist?: string[];
       rateLimitPerMinute?: number;
+      injectMcpContext?: boolean;
     },
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2689,15 +2993,9 @@ export class AgentController {
 
     const update: Record<string, unknown> = {};
     if (typeof body.enabled === "boolean") update.enabled = body.enabled;
-    if (
-      body.identityMode === "anonymous" ||
-      body.identityMode === "oidc" ||
-      body.identityMode === "bearer"
-    ) {
-      update.identityMode = body.identityMode;
-    }
+    if (body.identityMode !== undefined) update.identityMode = validateMcpIdentityMode(body.identityMode);
     if (body.identityProviders !== undefined) {
-      update.identityProviders = body.identityProviders ?? [];
+      update.identityProviders = validateIdentityProviders(body.identityProviders);
     }
     if (body.branding !== undefined) update.branding = body.branding ?? {};
     if (Array.isArray(body.toolAllowlist)) {
@@ -2712,6 +3010,9 @@ export class AgentController {
     }
     if (typeof body.rateLimitPerMinute === "number") {
       update.rateLimitPerMinute = Math.max(1, Math.min(10000, Math.floor(body.rateLimitPerMinute)));
+    }
+    if (typeof body.injectMcpContext === "boolean") {
+      update.injectMcpContext = body.injectMcpContext;
     }
 
     // Upsert so the first PATCH auto-creates the row.
@@ -2728,6 +3029,7 @@ export class AgentController {
         redirectUriAllowlist:
           (update.redirectUriAllowlist as string[] | undefined) ?? [],
         rateLimitPerMinute: (update.rateLimitPerMinute as number | undefined) ?? 60,
+        injectMcpContext: (update.injectMcpContext as boolean | undefined) ?? false,
       },
       update,
     });
@@ -2753,6 +3055,7 @@ export class AgentController {
       consentCopy: null,
       redirectUriAllowlist: fresh.redirectUriAllowlist,
       rateLimitPerMinute: fresh.rateLimitPerMinute,
+      injectMcpContext: fresh.injectMcpContext,
       exists: true,
     };
   }
@@ -2833,14 +3136,23 @@ export class AgentController {
     @Req() req: Request,
     @Query("days") days?: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const rows = await this.costService.getCostByModel(this.scopeTuple(scope), {
-      days: days ? parseInt(days, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedDays = parsePositiveIntegerFilter(days, "days", { defaultValue: 30, maximum: 3650 });
+    const allRows = await this.costService.getCostByModel(this.scopeTuple(scope), {
+      days: parsedDays,
+      limit: 1_000_000,
     });
-    return { rows, fetchedAt: new Date().toISOString() };
+    const matchingRows = request.search
+      ? allRows.filter((row) => row.model.toLowerCase().includes(request.search!.toLowerCase()))
+      : allRows;
+    const rows = matchingRows.slice(request.offset, request.offset + request.pageSize);
+    const pagination = pageMetadata(matchingRows.length, request);
+    return { rows, items: rows, total: matchingRows.length, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { days: parsedDays, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
@@ -2851,14 +3163,23 @@ export class AgentController {
     @Req() req: Request,
     @Query("days") days?: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const rows = await this.costService.getCostByAgent(this.scopeTuple(scope), {
-      days: days ? parseInt(days, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedDays = parsePositiveIntegerFilter(days, "days", { defaultValue: 30, maximum: 3650 });
+    const allRows = await this.costService.getCostByAgent(this.scopeTuple(scope), {
+      days: parsedDays,
+      limit: 1_000_000,
     });
-    return { rows, fetchedAt: new Date().toISOString() };
+    const matchingRows = request.search
+      ? allRows.filter((row) => [row.agentId, row.agentName].some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      : allRows;
+    const rows = matchingRows.slice(request.offset, request.offset + request.pageSize);
+    const pagination = pageMetadata(matchingRows.length, request);
+    return { rows, items: rows, total: matchingRows.length, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { days: parsedDays, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
@@ -4080,8 +4401,8 @@ Write the summary now:`;
    *   - sinceDays (default 30) — time window
    *   - limit (default 50, max 200) / offset — pagination
    */
-  @Get("monitoring/tool-audit")
-  async listToolAudit(
+  @Get("tool-calls")
+  async listToolCalls(
     @Req() req: Request,
     @Query("threadId") threadId?: string,
     @Query("agentId") agentId?: string,
@@ -4091,31 +4412,37 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
+    const parsedStatus = parseEnumFilter(status, "status", ["success", "failed", "timeout"] as const);
     const page = await this.toolAuditService.list(this.scopeTuple(scope), {
       threadId,
       agentId,
       toolName,
-      status,
+      status: parsedStatus ?? undefined,
       entityId,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, hasMore: pagination.hasNext, pagination, filters: { threadId, agentId, toolName, status: parsedStatus, entityId, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
    * Fetch a single tool-call audit row for drilldown. Scope-gated.
    * Theme E.5.
    */
-  @Get("monitoring/tool-audit/:callId")
-  async getToolAudit(@Req() req: Request, @Param("callId") callId: string) {
+  @Get("tool-calls/:toolCallId")
+  async getToolCall(@Req() req: Request, @Param("toolCallId") toolCallId: string) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const row = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
+    const row = await this.toolAuditService.getById(this.scopeTuple(scope), toolCallId);
     if (!row) throw new NotFoundException("Tool call not found");
     return row;
   }
@@ -4132,10 +4459,10 @@ Write the summary now:`;
    * Response shape is `{ original, replay }` so the UI can diff the two
    * results side by side. The replay itself appends its own audit row.
    */
-  @Post("monitoring/tool-audit/:callId/replay")
-  async replayToolAudit(
+  @Post("tool-calls/:toolCallId/replay")
+  async replayToolCall(
     @Req() req: Request,
-    @Param("callId") callId: string,
+    @Param("toolCallId") toolCallId: string,
   ): Promise<any> {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
@@ -4160,7 +4487,7 @@ Write the summary now:`;
       }, HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    const original = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
+    const original = await this.toolAuditService.getById(this.scopeTuple(scope), toolCallId);
     if (!original) throw new NotFoundException("Tool call not found");
 
     // Replay uses the SAME scope from the current request — not the original
@@ -4199,7 +4526,7 @@ Write the summary now:`;
   /**
    * HITL approval queue. Theme E.6.
    *
-   * Lists every `request_approval` / `cancel_run` waitpoint the agent
+   * Lists every `request_approval` / vendor `cancel_run` approval pause the agent
    * runtime opened in the current (org, project, env) scope — including
    * pending, approved, rejected, timed_out. Each row carries its SLA
    * clock (`secondsRemaining`, `expired`, `deadlineAt`) computed
@@ -4226,10 +4553,15 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const scopeTuple = this.scopeTuple(scope);
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
+    const parsedStatus = parseEnumFilter(status, "status", ["pending", "approved", "rejected", "timed_out"] as const);
+    const parsedSource = parseEnumFilter(source, "source", ["request_approval", "cancel_run", "mcp_tool_call"] as const);
     // Note: previously this called `sweepExpired` synchronously on every
     // request. The webapp polls this endpoint every ~2s for the pending-
     // approvals badge — under concurrent polls the per-call UPDATE caused
@@ -4241,13 +4573,15 @@ Write the summary now:`;
     const page = await this.approvalsService.list(scopeTuple, {
       threadId,
       agentId,
-      status,
-      source,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      status: parsedStatus ?? undefined,
+      source: parsedSource ?? undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, hasMore: pagination.hasNext, pagination, filters: { threadId, agentId, status: parsedStatus, source: parsedSource, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /** Fetch a single approval row — scope-gated. Theme E.6. */
@@ -4268,7 +4602,7 @@ Write the summary now:`;
    *
    * Gated by `X-Platos-Internal-Auth` (same gate as other internal callbacks).
    * The task already verified the token at dispatch time but we re-verify
-   * here so a leaked URL alone can't trigger compactions.
+   * here so a leaked URL alone can't dispatch compactions.
    */
   @Post("internal/compaction")
   async internalCompaction(
@@ -4501,6 +4835,7 @@ Write the summary now:`;
       threadId: string;
       agentId: string;
       message: string;
+      attachmentIds?: string[];
       replyToMessageId?: string | null;
       clientMessageId?: string | null;
       // The session worker reconstructs the turn scope from clientData
@@ -4537,13 +4872,14 @@ Write the summary now:`;
     };
     req.on("close", onClose);
     res.on("close", onClose);
-    const rawEvents = this.agentTaskService.executeStreamingTurn(body.message, body.scope as any, {
-      agentId: body.agentId,
-      threadId: body.threadId,
-      replyToMessageId: body.replyToMessageId ?? undefined,
-      idempotencyKey: body.clientMessageId ?? undefined,
-      abortSignal: ac.signal,
-    });
+    const rawEvents = this.agentTaskService.executeStreamingTurn(
+      body.message,
+      body.scope as any,
+      internalChatTurnOptions(
+        { ...body, attachmentIds: this.canonicalAttachmentIds(body.attachmentIds) },
+        ac.signal,
+      ),
+    );
     const heartbeatMs = Math.max(1000, env.PLATOS_STREAM_HEARTBEAT_MS ?? 15_000);
     const events = withHeartbeat(rawEvents, { intervalMs: heartbeatMs, signal: ac.signal });
     await this.streamingService.streamToSSE(events, res);
@@ -4552,7 +4888,7 @@ Write the summary now:`;
   /**
    * REFACTOR — AI-employee run callback. Invoked by the
    * `platos.agent.employee-run` trigger task. Multi-step autonomous
-   * orchestration (sub-turns, tools, waitpoints) is a follow-up; this initial
+   * orchestration (sub-turns, tools, approval pauses) is a follow-up; this initial
    * implementation runs a single durable turn seeded with the goal — a
    * correct (if degenerate) employee run that unblocks the task path.
    * Admin-token gated.
@@ -4825,9 +5161,9 @@ Write the summary now:`;
   /**
    * EOBD.100 — DLQ drain endpoint. Scheduled
    * `platos.observability.dlq_drain` task POSTs here every 2 min. We
-   * pop up to `maxBatch` entries off the Redis list, attempt re-insert,
+   * pop up to `maxBatch` entries off the Redis list, request re-insert,
    * and count per-DLQ successes + permanent failures. Permanent
-   * failures (after N internal attempts) move to a `:dead` list for
+   * failures (after N internal requests) move to a `:dead` list for
    * manual operator review.
    *
    * WIN-133 — this endpoint now also drains the durable observability outbox.
@@ -5146,22 +5482,49 @@ Write the summary now:`;
     @Query("userId") userId?: string,
     @Query("severity") severity?: string,
     @Query("sinceDays") sinceDays?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    return this.safetyEventService.list(this.scopeTuple(scope), {
-      detector: detector as DetectorKind | undefined,
-      action: action as DetectorAction | undefined,
+    const request = parsePageRequest(
+      { page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw },
+      { defaultPageSize: 50 },
+    );
+    const parsedDetector = parseEnumFilter(detector, "detector", ["pii", "injection", "grounded", "exfiltration", "tool_param", "rate_limit", "budget", "dispatcher_permission_gate"] as const);
+    const parsedAction = parseEnumFilter(action, "action", ["flag", "redact", "block", "warn"] as const);
+    const parsedSeverity = parseEnumFilter(severity, "severity", ["low", "medium", "high"] as const);
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { defaultValue: 30, maximum: 365 });
+    const result = await this.safetyEventService.list(this.scopeTuple(scope), {
+      detector: parsedDetector ?? undefined,
+      action: parsedAction ?? undefined,
       threadId,
       agentId,
       userId,
-      severity: severity as "low" | "medium" | "high" | undefined,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      severity: parsedSeverity ?? undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
     });
+    return {
+      ...result,
+      items: result.rows,
+      hasMore: request.offset + result.rows.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: {
+        detector: parsedDetector,
+        action: parsedAction,
+        severity: parsedSeverity,
+        sinceDays: parsedSinceDays,
+        threadId: threadId ?? null,
+        agentId: agentId ?? null,
+        userId: userId ?? null,
+        search: request.search,
+      },
+    };
   }
 
   // ── Activity feed ─────────────────────────────────────
@@ -5347,12 +5710,30 @@ Write the summary now:`;
 
   /** List every budget cap configured for the current scope. */
   @Get("budgets")
-  async listBudgets(@Req() req: Request) {
+  async listBudgets(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+  ) {
     const scope = this.getScope(req);
     // SECURITY (audit H16 — budget data is operator-only financial metadata).
     requireOperator(scope);
-    const caps = await this.budgetService.list(this.scopeTuple(scope));
-    return { caps };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw });
+    const result = await this.budgetService.listPage(this.scopeTuple(scope), {
+      limit: request.pageSize,
+      offset: request.offset,
+    });
+    return {
+      caps: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: {},
+    };
   }
 
   /**
@@ -5365,14 +5746,31 @@ Write the summary now:`;
     @Req() req: Request,
     @Query("agentId") agentId?: string,
     @Query("userId") userId?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit H16 — budget status is operator-only financial metadata).
     requireOperator(scope);
-    return this.budgetService.evaluate(this.scopeTuple(scope), {
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw });
+    const result = await this.budgetService.evaluate(this.scopeTuple(scope), {
       agentId: agentId || undefined,
       userId: userId || scope.userId,
     });
+    const total = result.caps.length;
+    const caps = result.caps.slice(request.offset, request.offset + request.pageSize);
+    return {
+      ...result,
+      caps,
+      items: caps,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + caps.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { agentId: agentId ?? null, userId: userId ?? null },
+    };
   }
 
   /** Create or update a budget cap (upsert on scope+target+period). */
@@ -5610,8 +6008,9 @@ Write the summary now:`;
 
   /**
    * Theme J.1 — upsert thumbs vote. Body: `{ messageId, rating: 1|-1, comment? }`.
-   * Idempotent per (messageId, scope.userId). Rating must be ±1; zero is not a
-   * valid vote — use DELETE to remove the rating.
+   * EndUser-only and idempotent per canonical (messageId, EndUser). Operator
+   * principals receive RATING_ACTOR_FORBIDDEN so they cannot replace the
+   * EndUser's row. Rating must be ±1; zero is not a valid vote — use DELETE.
    */
   @Post("messages/:messageId/rating")
   async rateMessage(
@@ -5631,16 +6030,32 @@ Write the summary now:`;
       });
       return { rating: row };
     } catch (err: any) {
+      if (err instanceof RatingMutationForbiddenError) {
+        throw new ForbiddenException({ code: err.code, message: err.message });
+      }
+      if (err instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
       throw new BadRequestException(err?.message || "Rating failed");
     }
   }
 
-  /** Theme J.1 — remove the current user's rating on a message. */
+  /** Theme J.1 — remove the canonical EndUser rating; operators are denied. */
   @Delete("messages/:messageId/rating")
   async unrateMessage(@Req() req: Request, @Param("messageId") messageId: string) {
     const scope = this.getScope(req);
-    const removed = await this.ratingService.remove(scope, messageId);
-    return { removed };
+    try {
+      const removed = await this.ratingService.remove(scope, messageId);
+      return { removed };
+    } catch (error) {
+      if (error instanceof RatingMutationForbiddenError) {
+        throw new ForbiddenException({ code: error.code, message: error.message });
+      }
+      if (error instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   /** Theme J.1 — fetch the current user's vote + aggregate counts. */
@@ -5650,7 +6065,14 @@ Write the summary now:`;
     @Param("messageId") messageId: string,
   ) {
     const scope = this.getScope(req);
-    return this.ratingService.getForMessage(scope, messageId);
+    try {
+      return await this.ratingService.getForMessage(scope, messageId);
+    } catch (error) {
+      if (error instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   /**
@@ -5690,13 +6112,31 @@ Write the summary now:`;
     @Req() req: Request,
     @Query("agentId") agentId?: string,
     @Query("activeOnly") activeOnly?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
-    const criteria = await this.criterionService.list(this.scopeTuple(scope), {
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedActiveOnly = parseBooleanFilter(activeOnly, "activeOnly") ?? false;
+    const result = await this.criterionService.listPage(this.scopeTuple(scope), {
       agentId: agentId ?? undefined,
-      activeOnly: activeOnly === "true" || activeOnly === "1",
+      activeOnly: parsedActiveOnly,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
     });
-    return { criteria, total: criteria.length };
+    const pagination = pageMetadata(result.total, request);
+    return {
+      criteria: result.criteria,
+      items: result.criteria,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { agentId: agentId ?? null, activeOnly: parsedActiveOnly, search: request.search },
+    };
   }
 
   @Get("eval-criteria/:criterionId")
@@ -5746,8 +6186,8 @@ Write the summary now:`;
    * Self-evaluation is blocked: if the judge model equals the agent's model
    * the request is rejected with status 409.
    */
-  @Post("evals/run")
-  async runEval(
+  @Post("evals/dispatch")
+  async dispatchEval(
     @Req() req: Request,
     @Body() body: {
       agentId: string;
@@ -5766,7 +6206,7 @@ Write the summary now:`;
       if (err instanceof SelfEvaluationError) {
         throw new HttpException(err.message, HttpStatus.CONFLICT);
       }
-      throw new BadRequestException(err?.message || "Eval run failed");
+      throw new BadRequestException(err?.message || "Eval dispatch failed");
     }
   }
 
@@ -5787,19 +6227,24 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
     const page = await this.evalService.list(this.scopeTuple(scope), {
       agentId,
       agentVersionId,
       criterionId,
       threadId,
       runId,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, evals: page.rows, hasMore: pagination.hasNext, pagination, filters: { agentId, agentVersionId, criterionId, threadId, runId, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   @Get("evals/:evalId")
@@ -5949,15 +6394,18 @@ Write the summary now:`;
       typeof body !== "object" ||
       body === null ||
       Array.isArray(body) ||
-      Object.keys(body).length !== 2 ||
+      Object.keys(body).length !== 3 ||
+      !Object.hasOwn(body, "requestId") ||
       !Object.hasOwn(body, "keyHash") ||
       !Object.hasOwn(body, "keyPrefix")
     ) {
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    const { keyHash, keyPrefix } = body as Record<string, unknown>;
+    const { requestId, keyHash, keyPrefix } = body as Record<string, unknown>;
     if (
+      typeof requestId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId) ||
       typeof keyHash !== "string" ||
       !/^[a-f0-9]{64}$/.test(keyHash) ||
       typeof keyPrefix !== "string" ||
@@ -5966,10 +6414,20 @@ Write the summary now:`;
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    return this.authService.createOrRotateAccessKey(
+    const result = await this.authService.createOrRotateAccessKey(
       scope,
       { keyHash, keyPrefix },
     );
+    if (
+      !result?.key ||
+      typeof result.key.id !== "string" ||
+      result.key.id.trim() === "" ||
+      result.key.keyPrefix !== keyPrefix ||
+      result.key.environmentId !== scope.environmentId
+    ) {
+      throw new ServiceUnavailableException("access_key_persistence_mismatch");
+    }
+    return { requestId, ...result };
   }
 
   @Post("access-key/origins")
@@ -5992,19 +6450,50 @@ Write the summary now:`;
   // ── Postman Templates ─────────────────────────────────────────────────────
 
   @Get("postman-templates")
-  async listPostmanTemplates(@Req() req: Request, @Query("agentId") agentId?: string) {
+  async listPostmanTemplates(
+    @Req() req: Request,
+    @Query("agentId") agentId?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
     const prisma = this.prisma;
-    if (!prisma) return { templates: [] };
-    const templates = await prisma.postmanTemplate.findMany({
-      where: {
-        ...environmentScopeWhere(scope),
-        ...(agentId ? { agentId } : {}),
-      },
-      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
-      select: { id: true, agentId: true, name: true, simulateUserId: true, sessionContext: true, isDefault: true, createdAt: true, updatedAt: true },
-    });
-    return { templates };
+    if (!prisma) throw new ServiceUnavailableException("Postman templates unavailable");
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const where = {
+      ...environmentScopeWhere(scope),
+      ...(agentId ? { agentId } : {}),
+      ...(request.search
+        ? {
+            OR: [
+              { name: { contains: request.search, mode: "insensitive" as const } },
+              { simulateUserId: { contains: request.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [templates, total] = await Promise.all([
+      prisma.postmanTemplate.findMany({
+        where,
+        orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+        select: { id: true, agentId: true, name: true, simulateUserId: true, sessionContext: true, isDefault: true, createdAt: true, updatedAt: true },
+        take: request.pageSize,
+        skip: request.offset,
+      }),
+      prisma.postmanTemplate.count({ where }),
+    ]);
+    return {
+      templates,
+      items: templates,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + templates.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { agentId: agentId ?? null, search: request.search },
+    };
   }
 
   @Post("postman-templates")
@@ -6099,6 +6588,337 @@ Write the summary now:`;
     return { ok: true };
   }
 
+  @Post("postman-templates/:id/execute")
+  async executePostmanTemplate(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: unknown,
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    const prisma = this.prisma;
+    if (!prisma) {
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution is unavailable",
+      });
+    }
+
+    // Authorization intentionally precedes template and EndUser lookup. A
+    // MEMBER must not be able to use response differences as a scoped ID
+    // oracle, even when they guess a valid template UUID.
+    const actorUserId = scope.operatorUserId || scope.userId;
+    let role: string | undefined;
+    try {
+      role = (await prisma.organizationMembership.findFirst({
+        where: {
+          organizationId: scope.organizationId,
+          userId: actorUserId,
+          deactivatedAt: null,
+        },
+        select: { role: true },
+      }))?.role;
+    } catch {
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution authorization is temporarily unavailable",
+      });
+    }
+    if (role !== "OWNER" && role !== "ADMIN") {
+      throw new ForbiddenException({
+        code: "POSTMAN_EXECUTION_FORBIDDEN",
+        message: "Postman execution requires an Organization OWNER or ADMIN",
+      });
+    }
+
+    if (!isUuid(id) || !isJsonObject(body)) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "A canonical template ID and request body are required",
+      });
+    }
+    const allowedFields = new Set(["message", "sessionContextOverride", "requestId"]);
+    if (Object.keys(body).some((field) => !allowedFields.has(field))) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "Postman execution contains unsupported fields",
+      });
+    }
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
+    const override = body.sessionContextOverride;
+    if (!message || message.length > 20_000 || !isUuid(requestId) || !isJsonObject(override)) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "message, requestId, and a JSON object sessionContextOverride are required",
+      });
+    }
+
+    try {
+      const template = await prisma.postmanTemplate.findFirst({
+        where: {
+          id,
+          ...environmentScopeWhere(scope),
+          agent: { projectId: scope.projectId },
+        },
+        select: {
+          id: true,
+          agentId: true,
+          simulateUserId: true,
+          sessionContext: true,
+        },
+      });
+      if (!template || !isUuid(template.simulateUserId)) {
+        throw new NotFoundException({
+          code: "POSTMAN_EXECUTION_NOT_FOUND",
+          message: "Postman execution target was not found in scope",
+        });
+      }
+
+      const simulatedEndUser = await prisma.endUser.findFirst({
+        where: {
+          id: template.simulateUserId,
+          organizationId: scope.organizationId,
+          disabledAt: null,
+          ...currentEnvironmentEndUserPresence(scope.environmentId),
+        },
+        select: {
+          id: true,
+          identities: {
+            where: {
+              ...EXTERNAL_END_USER_IDENTITY,
+              verifiedAt: { not: null },
+            },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { subject: true },
+          },
+        },
+      });
+      const externalSubject = simulatedEndUser?.identities[0]?.subject;
+      if (!simulatedEndUser || !externalSubject) {
+        throw new NotFoundException({
+          code: "POSTMAN_EXECUTION_NOT_FOUND",
+          message: "Postman execution target was not found in scope",
+        });
+      }
+
+      const idempotencyKey = `postman:${template.id}:${requestId}`;
+      const requestFingerprint = postmanRequestFingerprint(message, override);
+      const readEvidence = async (execution: any, threadId: string, recovered: boolean) => {
+        const thread = await prisma.thread.findFirst({
+          where: {
+            id: threadId,
+            environmentId: scope.environmentId,
+            agentId: template.agentId,
+            endUserId: simulatedEndUser.id,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+          },
+          select: { id: true },
+        });
+        const turns = thread
+          ? await prisma.turn.findMany({
+              where: { threadId: thread.id },
+              orderBy: { sequence: "asc" },
+              select: {
+                id: true,
+                threadId: true,
+                sequence: true,
+                status: true,
+                idempotencyKey: true,
+                inputText: true,
+                outputText: true,
+                createdAt: true,
+                completedAt: true,
+              },
+            })
+          : [];
+        const turn = turns[0];
+        if (
+          !thread ||
+          turns.length !== 1 ||
+          !turn ||
+          turn.sequence !== 1 ||
+          turn.idempotencyKey !== idempotencyKey
+        ) {
+          throw new ServiceUnavailableException({
+            code: "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE",
+            message: "Persisted Postman execution evidence is unavailable",
+          });
+        }
+        await prisma.postmanExecution.update({
+          where: { id: execution.id },
+          data: {
+            threadId: thread.id,
+            turnId: turn.id,
+            status: turn.status,
+            completedAt: turn.completedAt,
+          },
+        });
+        return {
+          execution: {
+            executionId: execution.id,
+            requestId,
+            templateId: template.id,
+            agentId: template.agentId,
+            simulatedEndUserId: simulatedEndUser.id,
+            threadId: thread.id,
+            turnId: turn.id,
+            turnCount: turns.length,
+            status: turn.status,
+            inputText: turn.inputText,
+            outputText: turn.outputText,
+            createdAt: turn.createdAt,
+            completedAt: turn.completedAt,
+            recovered,
+          },
+        };
+      };
+
+      const recover = async (execution: any) => {
+        if (
+          execution.requestFingerprint !== requestFingerprint ||
+          execution.actorUserId !== actorUserId ||
+          execution.agentId !== template.agentId ||
+          execution.simulatedEndUserId !== simulatedEndUser.id
+        ) {
+          throw new BadRequestException({
+            code: "POSTMAN_EXECUTION_REQUEST_MISMATCH",
+            message: "requestId is already reserved for a different Postman execution",
+          });
+        }
+        if (execution.threadId && execution.turnId) {
+          return readEvidence(execution, execution.threadId, true);
+        }
+        const persisted = await prisma.turn.findMany({
+          where: {
+            idempotencyKey,
+            thread: {
+              environmentId: scope.environmentId,
+              agentId: template.agentId,
+              endUserId: simulatedEndUser.id,
+              environment: {
+                projectId: scope.projectId,
+                project: { organizationId: scope.organizationId },
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+          take: 2,
+          select: { threadId: true },
+        });
+        if (persisted.length === 1) {
+          return readEvidence(execution, persisted[0]!.threadId, true);
+        }
+        if (persisted.length > 1) {
+          throw new ServiceUnavailableException({
+            code: "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE",
+            message: "Persisted Postman execution evidence is unavailable",
+          });
+        }
+        throw new ServiceUnavailableException({
+          code: "POSTMAN_EXECUTION_IN_PROGRESS",
+          message: "Postman execution is reserved or still running; retry with the same requestId",
+        });
+      };
+
+      const existing = await prisma.postmanExecution.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          templateId: template.id,
+          requestId,
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+      });
+      if (existing) return recover(existing);
+
+      const templateContext = isJsonObject(template.sessionContext) ? template.sessionContext : {};
+      const contextHandle = crypto.randomUUID();
+      const contextExpiresAt = new Date(Date.now() + POSTMAN_CONTEXT_TTL_SECONDS * 1000);
+      await storePostmanContext(this.redis, {
+        handle: contextHandle,
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+        userId: externalSubject,
+        actorUserId,
+        idempotencyKey,
+        context: { ...templateContext, ...override },
+      });
+
+      let execution: any;
+      try {
+        execution = await prisma.postmanExecution.create({
+          data: {
+            environmentId: scope.environmentId,
+            agentId: template.agentId,
+            templateId: template.id,
+            requestId,
+            requestFingerprint,
+            actorUserId,
+            simulatedEndUserId: simulatedEndUser.id,
+            contextHandle,
+            contextExpiresAt,
+            status: "ACTIVE",
+          },
+        });
+      } catch (error: any) {
+        await this.redis.del(postmanContextRedisKey(contextHandle)).catch(() => undefined);
+        if (error?.code === "P2002") {
+          const raced = await prisma.postmanExecution.findFirst({
+            where: {
+              environmentId: scope.environmentId,
+              templateId: template.id,
+              requestId,
+            },
+          });
+          if (raced) return recover(raced);
+        }
+        throw error;
+      }
+
+      try {
+        const result = await this.dispatch.collectTurn(template.agentId, {
+          scope: {
+            ...scope,
+            agentId: template.agentId,
+            userId: externalSubject,
+            userIdentities: undefined,
+            signedUserMeta: undefined,
+            operatorUserId: actorUserId,
+            sessionContext: undefined,
+            sessionContextHandle: contextHandle,
+          },
+          message,
+          idempotencyKey,
+        });
+        if (!result.threadId) throw new Error("missing persisted thread");
+        return readEvidence(execution, result.threadId, false);
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        // The durable reservation remains ACTIVE because the dispatch boundary
+        // may already have committed. A retry with this same requestId can only
+        // recover the matching persisted Turn; it can never dispatch again.
+        throw new ServiceUnavailableException({
+          code: "POSTMAN_EXECUTION_UNAVAILABLE",
+          message: "Postman execution is unavailable; retry with the same requestId",
+        });
+      }
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution is unavailable; retry with the same requestId",
+      });
+    }
+  }
+
   // ═══════════════════════════════════════════════════════
   // PRA-AC — Agent Cluster endpoints
   // ═══════════════════════════════════════════════════════
@@ -6115,9 +6935,30 @@ Write the summary now:`;
   }
 
   @Get("clusters")
-  async listClusters(@Req() req: Request) {
+  async listClusters(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
-    return { clusters: await this.clusterService.list(scope) };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.clusterService.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
+    return {
+      clusters: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
+    };
   }
 
   @Get("clusters/:clusterId")

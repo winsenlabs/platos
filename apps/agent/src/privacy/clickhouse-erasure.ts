@@ -24,7 +24,7 @@
  * erasure tables — and `notProvisioned()` below hard-zeroes the deletion
  * counters and records `not_applicable` so no reader, and no later aggregation,
  * can mistake it for erasure. An unreachable, unauthorized or erroring
- * ClickHouse is `failed`/`unknown`, NEVER not_provisioned: the deployment has
+ * ClickHouse is `failed`/`unknown`, NEVER not_provisioned: the installation has
  * one and we could not prove anything about it.
  *
  * WHAT IS ERASED, AND WHY THE TWO SHAPES DIFFER
@@ -47,6 +47,7 @@
 
 import { pendingStore, type StoreOutcome } from "./erasure-receipt";
 import type { SubjectKeys } from "./subject-graph";
+import { TELEMETRY_DATABASE } from "../shared/telemetry-namespace";
 import {
   clickhouseArrayParam,
   parseTabSeparated,
@@ -56,7 +57,7 @@ import {
 /** Turn-shaped analytical projection (docs/observability-model.md). */
 export const OBSERVABILITY_DATABASE = "platos_observability";
 /** Legacy span projection, still the table holding plaintext identity today. */
-export const SPAN_DATABASE = "trigger_dev";
+export const SPAN_DATABASE = TELEMETRY_DATABASE;
 
 /** A column the mutation empties. `NULL` for Nullable columns, `''` otherwise. */
 export interface ClearedColumn {
@@ -232,7 +233,7 @@ export function subjectAddress(
   };
 }
 
-/** Table restricted to the columns this deployment actually has. */
+/** Table restricted to the columns this installation actually has. */
 interface EffectiveTable extends ClickhouseErasureTable {
   addressable: boolean;
 }
@@ -450,7 +451,7 @@ export async function eraseClickhouseSubject(args: ClickhouseErasureArgs): Promi
   if (runs.length === 0) {
     if (drifted === 0) {
       return notProvisioned(
-        `no erasure tables present in this deployment (probed ${plan.length}); not evidence of deletion`,
+        `no erasure tables present in this installation (probed ${plan.length}); not evidence of deletion`,
       );
     }
     // Tables are here, and erasure cannot address any of them. Absent is not

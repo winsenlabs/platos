@@ -52,7 +52,7 @@ describe("an unsettled store is resumable, and the resume does not redo settled 
 
   beforeEach(() => {
     process.env.PLATOS_ERASURE_HASH_SALT = "resume-test-salt";
-    delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+    delete process.env.PLATOS_ERASURE_MAX_RETRIES;
     db = database();
     redis = redisDouble();
     seed(db);
@@ -91,7 +91,7 @@ describe("an unsettled store is resumable, and the resume does not redo settled 
       threadIds: ["thread_1"],
       scopes: [{ organizationId: ORG, projectId: "project_1", environmentId: "env_1" }],
     });
-    expect(row.nextAttemptAt).toBeInstanceOf(Date);
+    expect(row.nextRetryAt).toBeInstanceOf(Date);
     expect(row.retryCount).toBe(1);
     // Lease released, so the queue can pick it up rather than waiting it out.
     expect(row.leaseToken).toBeNull();
@@ -124,7 +124,7 @@ describe("an unsettled store is resumable, and the resume does not redo settled 
   it("finds the operation from the queue with no identifier in hand", async () => {
     await sweepWithBrokenRedis();
     // Backdate the schedule the way the passage of time would.
-    operationRow().nextAttemptAt = new Date(Date.now() - 1000);
+    operationRow().nextRetryAt = new Date(Date.now() - 1000);
 
     const resumed = await erasure.resumeDueErasures({ organizationId: ORG, actor });
 
@@ -134,7 +134,7 @@ describe("an unsettled store is resumable, and the resume does not redo settled 
   });
 
   it("does not offer a settled operation to the queue", async () => {
-    // A clean sweep clears nextAttemptAt, which is what takes the row out of
+    // A clean sweep clears nextRetryAt, which is what takes the row out of
     // the selection — there is no separate "done" flag to fall out of sync.
     await erasure.requestErasure({
       externalUserId: REQUESTED_EXTERNAL_ID,
@@ -143,7 +143,7 @@ describe("an unsettled store is resumable, and the resume does not redo settled 
       actor,
     });
 
-    expect(operationRow().nextAttemptAt).toBeNull();
+    expect(operationRow().nextRetryAt).toBeNull();
     await expect(erasure.resumeDueErasures({ organizationId: ORG, actor })).resolves.toEqual([]);
   });
 });
@@ -178,7 +178,7 @@ describe("a second pass cannot overlap the first", () => {
   it("refuses to start while another pass holds the lease", async () => {
     await sweep();
     const row = db.erasureOperation.rows[0]!;
-    const attemptsBefore = row.retryCount;
+    const retriesBefore = row.retryCount;
     row.leaseToken = "held-by-another-pass";
     row.leaseExpiresAt = new Date(Date.now() + LEASE_TTL_MS);
 
@@ -186,7 +186,7 @@ describe("a second pass cannot overlap the first", () => {
 
     // Nothing swept, nothing recorded, nothing overwritten.
     expect(redis.store.size).toBe(1);
-    expect(row.retryCount).toBe(attemptsBefore);
+    expect(row.retryCount).toBe(retriesBefore);
     expect(row.leaseToken).toBe("held-by-another-pass");
   });
 
@@ -250,7 +250,7 @@ describe("a second pass cannot overlap the first", () => {
     // And the settled receipt is not overwritten with this pass's account of
     // work it did not do, nor re-armed for a queue that would keep demoting it.
     expect(row.status).toBe("SUCCEEDED");
-    expect(row.nextAttemptAt).toBeNull();
+    expect(row.nextRetryAt).toBeNull();
     expect(row.leaseToken).toBeNull();
   });
 });
@@ -262,7 +262,7 @@ describe("a pass that claims the lease and cannot proceed gives it back", () => 
 
   beforeEach(async () => {
     process.env.PLATOS_ERASURE_HASH_SALT = "resume-test-salt";
-    delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+    delete process.env.PLATOS_ERASURE_MAX_RETRIES;
     delete process.env.PLATOS_LEGAL_HOLD_USER_IDS;
     db = database();
     redis = redisDouble();
@@ -282,9 +282,9 @@ describe("a pass that claims the lease and cannot proceed gives it back", () => 
 
   const operationRow = () => db.erasureOperation.rows[0]!;
 
-  it("releases the lease and counts the attempt when it cannot record its intent", async () => {
+  it("releases the lease and counts the retry when it cannot record its intent", async () => {
     const row = operationRow();
-    const attemptsBefore = row.retryCount;
+    const retriesBefore = row.retryCount;
     // The intent record raises rather than degrading: if we cannot record who
     // asked for an irreversible deletion, we do not perform it. That is
     // correct, and it happens AFTER the lease is taken — so the failure has to
@@ -301,10 +301,10 @@ describe("a pass that claims the lease and cannot proceed gives it back", () => 
     // during which an operator's retry returns a 200 and a shrug.
     expect(row.leaseToken).toBeNull();
     expect(row.leaseExpiresAt).toBeNull();
-    // And the attempt counts, so a permanently unhealthy sink eventually parks
+    // And the retry counts, so a permanently unhealthy sink eventually parks
     // the operation for a human instead of re-driving it forever.
-    expect(row.retryCount).toBe(attemptsBefore + 1);
-    expect(row.nextAttemptAt).toBeInstanceOf(Date);
+    expect(row.retryCount).toBe(retriesBefore + 1);
+    expect(row.nextRetryAt).toBeInstanceOf(Date);
   });
 
   it("releases the lease when the barrier cannot be written either", async () => {
@@ -324,19 +324,19 @@ describe("a pass that claims the lease and cannot proceed gives it back", () => 
 
   it("stops re-driving a pass that keeps failing before it starts", async () => {
     const row = operationRow();
-    // One attempt already spent on the sweep, and a ceiling of two.
-    process.env.PLATOS_ERASURE_MAX_ATTEMPTS = "2";
+    // One retry already spent on the sweep, and a ceiling of two.
+    process.env.PLATOS_ERASURE_MAX_RETRIES = "2";
     db.adminAudit.create = async () => {
       throw new Error("audit sink unavailable");
     };
 
     await expect(erasure.resumeErasure(row.id, actor)).rejects.toThrow(/audit sink unavailable/);
-    delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+    delete process.env.PLATOS_ERASURE_MAX_RETRIES;
 
     // Exhausted rather than pinned: the row keeps its receipt and its plan and
-    // waits for an operator, which is what the attempt budget is for.
+    // waits for an operator, which is what the retry budget is for.
     expect(row.retryCount).toBe(2);
-    expect(row.nextAttemptAt).toBeNull();
+    expect(row.nextRetryAt).toBeNull();
     expect(row.leaseToken).toBeNull();
   });
 });
@@ -394,7 +394,7 @@ describe("a resume without the identifier may delete but may not certify", () =>
     // the caller supplies the legacy id.
     expect(retried!.status).toBe("completed");
     expect(retried!.stores.find((s) => s.store === "redis")!.verificationStatus).toBe("passed");
-    expect(row.nextAttemptAt).toBeNull();
+    expect(row.nextRetryAt).toBeNull();
   });
 
   it("stops re-driving an operation with no plan to resume from", async () => {
@@ -404,7 +404,7 @@ describe("a resume without the identifier may delete but may not certify", () =>
 
     await erasure.resumeErasure(row.id, actor);
 
-    expect(row.nextAttemptAt).toBeNull();
+    expect(row.nextRetryAt).toBeNull();
     // Nothing swept against an empty subject.
     expect(redis.store.size).toBe(1);
   });
@@ -487,7 +487,7 @@ describe("every erasure lands in the admin audit log", () => {
     // Nothing ran, so there is nothing to resume and no plan to leave lying
     // around for a subject we have been told not to touch.
     expect(db.erasureOperation.rows[0]!.resumePlan).toBeUndefined();
-    expect(db.erasureOperation.rows[0]!.nextAttemptAt).toBeNull();
+    expect(db.erasureOperation.rows[0]!.nextRetryAt).toBeNull();
   });
 
   it("records the refusal when a key is reused against another subject", async () => {
@@ -556,7 +556,7 @@ describe("crash recovery", () => {
     // The row was never in the state the old code left behind — PENDING with no
     // schedule and no lease, indistinguishable from an erasure never started.
     expect(midSweep!.status).toBe("PENDING");
-    expect(midSweep!.nextAttemptAt).toBeInstanceOf(Date);
+    expect(midSweep!.nextRetryAt).toBeInstanceOf(Date);
     expect(midSweep!.leaseExpiresAt).toBeInstanceOf(Date);
     expect(midSweep!.resumePlan).toMatchObject({ platosEndUserIds: ["end_user_1"] });
   });

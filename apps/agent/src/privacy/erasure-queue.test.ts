@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  BASE_BACKOFF_MS, DEFAULT_MAX_ATTEMPTS, LEASE_TTL_MS, MAX_BACKOFF_MS,
+  BASE_BACKOFF_MS, DEFAULT_MAX_RETRIES, LEASE_TTL_MS, MAX_BACKOFF_MS,
   backoffMs, buildResumePlan, demoteForCoverage, isExhausted, isLeaseFree,
-  leaseUntil, maxAttempts, objectMapLost, preserveVerificationFailure,
-  resumePlanFrom, scheduleAfterAttempt, subjectFromResumePlan,
+  leaseUntil, maxRetries, objectMapLost, preserveVerificationFailure,
+  resumePlanFrom, scheduleAfterRetry, subjectFromResumePlan,
 } from "./erasure-queue";
 import { pendingStore, type ErasureReceipt, type StoreOutcome } from "./erasure-receipt";
 import type { SubjectKeys } from "./subject-graph";
@@ -13,7 +13,7 @@ const store = (o: Partial<StoreOutcome> & { store: StoreOutcome["store"] }): Sto
 
 const receipt = (over: Partial<ErasureReceipt> = {}): ErasureReceipt => ({
   operationId: "op1", subjectKeyHash: "h", requestedAt: "t0", status: "partial_failure",
-  scopes: [], stores: [], policyVersion: "v1", attempts: 1, ...over,
+  scopes: [], stores: [], policyVersion: "v1", retryCount: 1, ...over,
 });
 
 const subject: SubjectKeys = {
@@ -25,7 +25,7 @@ const subject: SubjectKeys = {
 const T0 = new Date("2026-08-20T00:00:00.000Z");
 
 afterEach(() => {
-  delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+  delete process.env.PLATOS_ERASURE_MAX_RETRIES;
 });
 
 describe("an unsettled store is scheduled, not abandoned", () => {
@@ -36,47 +36,47 @@ describe("an unsettled store is scheduled, not abandoned", () => {
     expect(backoffMs(99)).toBe(MAX_BACKOFF_MS);
   });
 
-  it("does not overflow into NaN at absurd attempt counts", () => {
+  it("does not overflow into NaN at absurd retry counts", () => {
     // 2 ** 1024 is Infinity and Infinity * 0 is NaN; a NaN delay would produce
     // an Invalid Date and silently drop the operation out of the queue.
     expect(Number.isFinite(backoffMs(100_000))).toBe(true);
   });
 
-  it("schedules the next attempt for an operation that did not settle", () => {
-    const s = scheduleAfterAttempt(receipt({ attempts: 1 }), T0);
+  it("schedules the next retry for an operation that did not settle", () => {
+    const s = scheduleAfterRetry(receipt({ retryCount: 1 }), T0);
     expect(s.reason).toBe("scheduled");
-    expect(s.nextAttemptAt?.toISOString()).toBe("2026-08-20T00:01:00.000Z");
+    expect(s.nextRetryAt?.toISOString()).toBe("2026-08-20T00:01:00.000Z");
   });
 
   it("stops scheduling once it settles", () => {
-    expect(scheduleAfterAttempt(receipt({ status: "completed" }), T0)).toEqual({
-      nextAttemptAt: null, reason: "settled",
+    expect(scheduleAfterRetry(receipt({ status: "completed" }), T0)).toEqual({
+      nextRetryAt: null, reason: "settled",
     });
   });
 
   it("never re-drives a held operation", () => {
     // Automatically retrying an erasure a legal hold refused would be the queue
     // quietly overriding the hold.
-    expect(scheduleAfterAttempt(receipt({ status: "blocked_legal_hold" }), T0)).toEqual({
-      nextAttemptAt: null, reason: "blocked",
+    expect(scheduleAfterRetry(receipt({ status: "blocked_legal_hold" }), T0)).toEqual({
+      nextRetryAt: null, reason: "blocked",
     });
   });
 
   it("hands a repeatedly failing operation to an operator rather than churning", () => {
-    const s = scheduleAfterAttempt(receipt({ attempts: DEFAULT_MAX_ATTEMPTS }), T0);
-    expect(s).toEqual({ nextAttemptAt: null, reason: "exhausted" });
+    const s = scheduleAfterRetry(receipt({ retryCount: DEFAULT_MAX_RETRIES }), T0);
+    expect(s).toEqual({ nextRetryAt: null, reason: "exhausted" });
     // Exhausted is not abandoned: the row keeps its receipt and its plan, and
     // the retry route still works.
-    expect(isExhausted(DEFAULT_MAX_ATTEMPTS - 1)).toBe(false);
+    expect(isExhausted(DEFAULT_MAX_RETRIES - 1)).toBe(false);
   });
 
-  it("takes the attempt ceiling from the deployment", () => {
-    process.env.PLATOS_ERASURE_MAX_ATTEMPTS = "2";
-    expect(maxAttempts()).toBe(2);
-    process.env.PLATOS_ERASURE_MAX_ATTEMPTS = "nonsense";
-    expect(maxAttempts()).toBe(DEFAULT_MAX_ATTEMPTS);
-    process.env.PLATOS_ERASURE_MAX_ATTEMPTS = "0";
-    expect(maxAttempts()).toBe(DEFAULT_MAX_ATTEMPTS);
+  it("takes the retry ceiling from the deployment", () => {
+    process.env.PLATOS_ERASURE_MAX_RETRIES = "2";
+    expect(maxRetries()).toBe(2);
+    process.env.PLATOS_ERASURE_MAX_RETRIES = "nonsense";
+    expect(maxRetries()).toBe(DEFAULT_MAX_RETRIES);
+    process.env.PLATOS_ERASURE_MAX_RETRIES = "0";
+    expect(maxRetries()).toBe(DEFAULT_MAX_RETRIES);
   });
 });
 

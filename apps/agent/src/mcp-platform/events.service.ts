@@ -71,11 +71,11 @@ export interface PendingDelivery {
   subjectId: string | null;
   payload: unknown;
   delivery: RuleDelivery;
-  attempt: number;
+  retryCount: number;
 }
 
 const PENDING_LIST_KEY = "mcp:notifications:pending";
-const MAX_ATTEMPTS = 3;
+const MAX_RETRIES = 3;
 
 function scopeChannel(scope: EventScope): string {
   return `mcp:events:${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
@@ -216,7 +216,7 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
             subjectId,
             payload,
             delivery: rule.delivery as RuleDelivery,
-            attempt: 0,
+            retryCount: 0,
           };
           try {
             await this.redis.rpush(PENDING_LIST_KEY, JSON.stringify(pending));
@@ -412,7 +412,7 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
       subjectId: null,
       payload: { ruleId: rule.id, ruleName: rule.name, synthetic: true },
       delivery: rule.delivery as RuleDelivery,
-      attempt: 0,
+      retryCount: 0,
     };
     try {
       await this.redis.rpush(PENDING_LIST_KEY, JSON.stringify(pending));
@@ -493,23 +493,23 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
           break;
       }
     } catch (err) {
-      const attempt = (p.attempt ?? 0) + 1;
-      if (attempt >= MAX_ATTEMPTS) {
+      const retryCount = (p.retryCount ?? 0) + 1;
+      if (retryCount >= MAX_RETRIES) {
         this.logger.warn(
-          `[K.15] delivery failed permanently rule=${p.ruleId} event=${p.eventType} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+          `[K.15] delivery failed permanently rule=${p.ruleId} event=${p.eventType} retryCount=${retryCount}: ${err instanceof Error ? err.message : String(err)}`,
         );
         return;
       }
       // Phase-3 N2 — exponential backoff before re-enqueue. Without this
-      // a transient webhook failure tight-loops through MAX_ATTEMPTS in
-      // milliseconds. Formula: min(2^attempt * 1000 ms, 30 000 ms).
-      const backoffMs = Math.min(2 ** attempt * 1000, 30000);
+      // a transient webhook failure tight-loops through MAX_RETRIES in
+      // milliseconds. Formula: min(2^retryCount * 1000 ms, 30 000 ms).
+      const backoffMs = Math.min(2 ** retryCount * 1000, 30000);
       this.logger.warn(
-        `[K.15] delivery failed (will retry in ${backoffMs}ms) rule=${p.ruleId} event=${p.eventType} attempt=${attempt}: ${err instanceof Error ? err.message : String(err)}`,
+        `[K.15] delivery failed (will retry in ${backoffMs}ms) rule=${p.ruleId} event=${p.eventType} retryCount=${retryCount}: ${err instanceof Error ? err.message : String(err)}`,
       );
       setTimeout(() => {
         this.redis
-          .rpush(PENDING_LIST_KEY, JSON.stringify({ ...p, attempt }))
+          .rpush(PENDING_LIST_KEY, JSON.stringify({ ...p, retryCount }))
           .catch(() => {
             /* bounded — if redis is down we drop */
           });

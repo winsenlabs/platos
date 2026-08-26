@@ -42,7 +42,7 @@ type InstallRow = {
   lastEventAt: Date | null;
   tokenGeneration: number;
   tokenRefreshState: string;
-  tokenRefreshAttemptId: string | null;
+  tokenRefreshClaimId: string | null;
   tokenRefreshStartedAt: Date | null;
   tokenRefreshRepairCode: string | null;
   createdAt: Date;
@@ -147,6 +147,8 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
           .filter((candidate) => candidate.environmentId === where.environmentId)
           .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
           .map(hydrateApp),
+      count: async ({ where }: any) =>
+        apps.filter((candidate) => candidate.environmentId === where.environmentId).length,
       create: async ({ data }: any) => {
         const row: AppRow = {
           id: nextId("app"),
@@ -200,7 +202,9 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
       },
       findMany: async ({ where }: any) =>
         installs
-          .filter((candidate) => candidate.appId === where.appId)
+          .filter((candidate) => typeof where.appId === "string"
+            ? candidate.appId === where.appId
+            : where.appId?.in?.includes(candidate.appId))
           .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
           .map(hydrateInstall),
       upsert: async ({ where, update, create }: any) => {
@@ -227,7 +231,7 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
             lastEventAt: null,
             tokenGeneration: 1,
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
             createdAt: new Date(Date.now() + sequence),
@@ -251,7 +255,7 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
           lastEventAt: null,
           tokenGeneration: 1,
           tokenRefreshState: "IDLE",
-          tokenRefreshAttemptId: null,
+          tokenRefreshClaimId: null,
           tokenRefreshStartedAt: null,
           tokenRefreshRepairCode: null,
           createdAt: new Date(Date.now() + sequence),
@@ -429,6 +433,7 @@ describe("ChannelAppsController clean app management", () => {
     });
     const listed = await controller.list(req(SCOPE));
     const projected = listed.apps.find((app: any) => app.id === created.app.id);
+    expect(listed.installationStatuses[created.app.id]).toEqual({ installations: [] });
     expect(projected).toMatchObject({
       hasClientSecret: true,
       hasSigningSecret: true,

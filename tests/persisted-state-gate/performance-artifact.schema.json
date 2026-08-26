@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win235-performance-artifact-v1.schema.json",
+  "title": "WIN-235 measured candidate performance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "gate",
+    "status",
+    "commitSha",
+    "budgetContract",
+    "fixture",
+    "images",
+    "runtime",
+    "measurements"
+  ],
+  "properties": {
+    "$schema": { "const": "./performance-artifact.schema.json" },
+    "schemaVersion": { "const": 1 },
+    "gate": { "const": "win235-measured-performance" },
+    "status": { "const": "measured" },
+    "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "budgetContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "schemaVersion", "sha256"],
+      "properties": {
+        "file": { "const": "tests/persisted-state-gate/budgets.v1.json" },
+        "schemaVersion": { "const": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "sha256", "counts", "turnsPerThread"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "turnsPerThread": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "images": { "$ref": "#/$defs/images" },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "chromium",
+        "platform",
+        "architecture",
+        "serial",
+        "startedAt",
+        "candidates"
+      ],
+      "properties": {
+        "node": { "type": "string", "minLength": 1 },
+        "chromium": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "serial": { "const": true },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "candidates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agent", "webapp"],
+          "properties": {
+            "agent": { "$ref": "#/$defs/runtimeCandidate" },
+            "webapp": { "$ref": "#/$defs/runtimeCandidate" }
+          }
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latency", "browser", "bundles", "memory", "queries", "plans"],
+      "properties": {
+        "latency": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/latency" }
+        },
+        "browser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["memories", "agentsInteraction"],
+          "properties": {
+            "memories": { "$ref": "#/$defs/memoriesBrowser" },
+            "agentsInteraction": { "$ref": "#/$defs/agentsInteraction" }
+          }
+        },
+        "bundles": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/bundle" }
+        },
+        "memory": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/memory" }
+        },
+        "queries": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/queryMeasurement" }
+        },
+        "plans": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/plan" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "digest": {
+      "type": "string",
+      "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$"
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "webapp", "migrations"],
+      "properties": {
+        "agent": { "$ref": "#/$defs/digest" },
+        "webapp": { "$ref": "#/$defs/digest" },
+        "migrations": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "runtimeConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecture",
+        "os",
+        "entrypoint",
+        "command",
+        "workingDirectory",
+        "user",
+        "revision"
+      ],
+      "properties": {
+        "architecture": { "type": "string", "minLength": 1 },
+        "os": { "type": "string", "minLength": 1 },
+        "entrypoint": { "type": "array", "items": { "type": "string" } },
+        "command": { "type": "array", "items": { "type": "string" } },
+        "workingDirectory": { "type": "string" },
+        "user": { "type": "string" },
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+      }
+    },
+    "runtimeCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "containerId",
+        "runtimeReference",
+        "imageId",
+        "manifestDigest",
+        "revision",
+        "config",
+        "configSha256"
+      ],
+      "properties": {
+        "containerId": { "type": "string", "pattern": "^[a-f0-9]{12,64}$" },
+        "runtimeReference": {
+          "type": "string",
+          "pattern": "^win235\\.local/.+:sha256-[a-f0-9]{64}$"
+        },
+        "imageId": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "manifestDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "config": { "$ref": "#/$defs/runtimeConfig" },
+        "configSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50", "p95"],
+      "properties": {
+        "p50": { "type": "number", "minimum": 0 },
+        "p95": { "type": "number", "minimum": 0 }
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "warmupSamples", "samples", "summary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "unit": { "const": "ms" },
+        "warmupSamples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 10,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "summary": { "$ref": "#/$defs/summary" }
+      }
+    },
+    "cwvSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fcpMs", "lcpMs", "cls", "inpMs", "interactionLatencyMs", "renderedRows"],
+      "properties": {
+        "fcpMs": { "type": "number", "exclusiveMinimum": 0 },
+        "lcpMs": { "type": "number", "exclusiveMinimum": 0 },
+        "cls": { "type": "number", "minimum": 0 },
+        "inpMs": { "type": "number", "exclusiveMinimum": 0 },
+        "interactionLatencyMs": { "type": "number", "exclusiveMinimum": 0 },
+        "renderedRows": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "interactionSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inpMs", "interactionLatencyMs"],
+      "properties": {
+        "inpMs": { "type": "number", "exclusiveMinimum": 0 },
+        "interactionLatencyMs": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "memoriesBrowser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "engine", "navigation", "warmupSamples", "samples", "summary"],
+      "properties": {
+        "id": { "const": "memories.dense-route" },
+        "engine": { "const": "chromium" },
+        "navigation": { "const": "fresh-context-direct" },
+        "warmupSamples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/cwvSample" }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "$ref": "#/$defs/cwvSample" }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fcpMs", "lcpMs", "cls", "inpMs", "interactionLatencyMs", "renderedRows"],
+          "properties": {
+            "fcpMs": { "$ref": "#/$defs/summary" },
+            "lcpMs": { "$ref": "#/$defs/summary" },
+            "cls": { "$ref": "#/$defs/summary" },
+            "inpMs": { "$ref": "#/$defs/summary" },
+            "interactionLatencyMs": { "$ref": "#/$defs/summary" },
+            "renderedRows": { "$ref": "#/$defs/summary" }
+          }
+        }
+      }
+    },
+    "agentsInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "engine", "warmupSamples", "samples", "summary"],
+      "properties": {
+        "id": { "const": "agents.detail-interaction" },
+        "engine": { "const": "chromium" },
+        "warmupSamples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/interactionSample" }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "$ref": "#/$defs/interactionSample" }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inpMs", "interactionLatencyMs"],
+          "properties": {
+            "inpMs": { "$ref": "#/$defs/summary" },
+            "interactionLatencyMs": { "$ref": "#/$defs/summary" }
+          }
+        }
+      }
+    },
+    "bundleResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "bodyBytes"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "bodyBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "bundleSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loadedBytes", "resources"],
+      "properties": {
+        "loadedBytes": { "type": "integer", "minimum": 1 },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/bundleResource" }
+        }
+      }
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "warmupSamples", "samples", "summary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "unit": { "const": "bytes" },
+        "warmupSamples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/bundleSample" }
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "$ref": "#/$defs/bundleSample" }
+        },
+        "summary": { "$ref": "#/$defs/summary" }
+      }
+    },
+    "memorySample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["containerBytes", "processRssBytes", "runtimeImageId"],
+      "properties": {
+        "containerBytes": { "type": "integer", "minimum": 1 },
+        "processRssBytes": { "type": "integer", "minimum": 1 },
+        "runtimeImageId": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "unit",
+        "containerId",
+        "candidateImage",
+        "runtimeImageId",
+        "samples",
+        "summary"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "unit": { "const": "bytes" },
+        "containerId": { "type": "string", "pattern": "^[a-f0-9]{12,64}$" },
+        "candidateImage": { "$ref": "#/$defs/digest" },
+        "runtimeImageId": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "samples": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "$ref": "#/$defs/memorySample" }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["containerBytes", "processRssBytes"],
+          "properties": {
+            "containerBytes": { "$ref": "#/$defs/summary" },
+            "processRssBytes": { "$ref": "#/$defs/summary" }
+          }
+        }
+      }
+    },
+    "safeParameter": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        { "type": "array", "items": { "$ref": "#/$defs/safeParameter" } }
+      ]
+    },
+    "capturedQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "durationMs",
+        "normalizedSql",
+        "normalizedSqlSha256",
+        "parameters",
+        "parametersSha256",
+        "parameterMetadata",
+        "replayable",
+        "correlation"
+      ],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "durationMs": { "type": "number", "minimum": 0 },
+        "normalizedSql": { "type": "string", "minLength": 8 },
+        "normalizedSqlSha256": { "$ref": "#/$defs/sha256" },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/safeParameter" } },
+        "parametersSha256": { "$ref": "#/$defs/sha256" },
+        "parameterMetadata": { "type": "array", "items": { "type": "object" } },
+        "replayable": { "const": true },
+        "correlation": { "const": "request-bound-prisma-extension" }
+      }
+    },
+    "candidateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "method",
+        "path",
+        "statusCode",
+        "durationMs",
+        "correlationStatus",
+        "queryCount",
+        "queries"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "requestId": { "type": "string", "format": "uuid" },
+        "method": { "const": "GET" },
+        "path": { "type": "string", "pattern": "^/api/v1/" },
+        "statusCode": { "const": 200 },
+        "durationMs": { "type": "number", "exclusiveMinimum": 0 },
+        "correlationStatus": { "const": "bound" },
+        "queryCount": { "type": "integer", "minimum": 1 },
+        "queries": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/capturedQuery" }
+        }
+      }
+    },
+    "queryMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "requestPath",
+        "fixtureRows",
+        "smallPageSize",
+        "densePageSize",
+        "smallRequest",
+        "denseRequest",
+        "nPlusOneGrowth",
+        "denseResultRows",
+        "denseTotalRows",
+        "fullDatasetHydration"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "requestPath": { "type": "string", "pattern": "^/api/v1/" },
+        "fixtureRows": { "type": "integer", "minimum": 1 },
+        "smallPageSize": { "type": "integer", "minimum": 1 },
+        "densePageSize": { "type": "integer", "minimum": 2 },
+        "smallRequest": { "$ref": "#/$defs/candidateRequest" },
+        "denseRequest": { "$ref": "#/$defs/candidateRequest" },
+        "nPlusOneGrowth": { "type": "integer", "minimum": 0 },
+        "denseResultRows": { "type": "integer", "minimum": 1 },
+        "denseTotalRows": { "type": "integer", "minimum": 2 },
+        "fullDatasetHydration": { "const": false },
+        "smallResultComposition": { "$ref": "#/$defs/agentResultComposition" },
+        "denseResultComposition": { "$ref": "#/$defs/agentResultComposition" }
+      }
+    },
+    "agentResultComposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clustered", "unclustered"],
+      "properties": {
+        "clustered": { "type": "integer", "minimum": 1 },
+        "unclustered": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "queryId",
+        "requestId",
+        "requestPath",
+        "querySequence",
+        "source",
+        "candidateDurationMs",
+        "normalizedSql",
+        "normalizedSqlSha256",
+        "parameters",
+        "parametersSha256",
+        "parameterMetadata",
+        "correlation",
+        "options",
+        "settings",
+        "plan"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "queryId": { "type": "string", "minLength": 1 },
+        "requestId": { "type": "string", "format": "uuid" },
+        "requestPath": { "type": "string", "pattern": "^/api/v1/" },
+        "querySequence": { "type": "integer", "minimum": 1 },
+        "source": { "const": "candidate-request-prisma-query" },
+        "candidateDurationMs": { "type": "number", "minimum": 0 },
+        "normalizedSql": { "type": "string", "minLength": 8 },
+        "normalizedSqlSha256": { "$ref": "#/$defs/sha256" },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/safeParameter" } },
+        "parametersSha256": { "$ref": "#/$defs/sha256" },
+        "parameterMetadata": { "type": "array", "items": { "type": "object" } },
+        "correlation": { "const": "request-bound-prisma-extension" },
+        "options": {
+          "type": "array",
+          "prefixItems": [
+            { "const": "ANALYZE" },
+            { "const": "BUFFERS" },
+            { "const": "FORMAT JSON" }
+          ],
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statementTimeoutMs", "enableSeqscan"],
+          "properties": {
+            "statementTimeoutMs": { "const": 15000 },
+            "enableSeqscan": { "const": false }
+          }
+        },
+        "plan": {}
+      }
+    }
+  }
+}

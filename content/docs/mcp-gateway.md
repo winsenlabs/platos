@@ -1,11 +1,9 @@
 ---
 slug: mcp-gateway
 title: MCP gateway
-description: Universal MCP endpoint that federates entity tools, trigger meta-tools, Platos skills, and the control plane.
+description: Universal MCP endpoint that federates entity tools, start meta-tools, Platos skills, and the control plane.
 category: dx
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the Platos MCP gateway?"
   - "Which four tool families does it federate?"
@@ -19,22 +17,11 @@ related:
   - tools
   - connected-entities
   - auth-modes
-source_files_referenced:
-  - apps/agent/src/mcp-platform/mcp-platform.controller.ts
-  - apps/agent/src/mcp-platform/mcp-router.ts
-  - apps/agent/src/mcp-platform/mcp-entity.controller.ts
-  - apps/agent/src/mcp-platform/permission-gateway.service.ts
-  - apps/agent/src/mcp-platform/identity-resolver.service.ts
-  - apps/agent/src/mcp-platform/mcp-tool-acl.service.ts
-  - apps/agent/src/mcp-platform/events.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx
-  - docs/themes/THEME_K.md
 ---
 
 # MCP gateway
 
-The MCP gateway is the universal Model Context Protocol surface in front of Platos. One endpoint federates four tool families: entity-pushed tools, trigger.dev meta-tools, Platos skills, and the Platos control plane. Any MCP client (Claude Desktop, OpenAI's agents, your own) gets one tool catalogue keyed off the caller's identity, scope, and ACLs.
+The MCP gateway is the universal Model Context Protocol surface in front of Platos. One endpoint federates four tool families: entity-pushed tools, Platos meta-tools, Platos skills, and the Platos control plane. Any MCP client (Claude Desktop, OpenAI's agents, your own) gets one tool catalogue keyed off the caller's identity, scope, and ACLs.
 
 ## What it is
 
@@ -50,7 +37,7 @@ A single MCP endpoint at `/mcp` plus per-entity endpoints at `/mcp/entity/{slug}
 The four tool families:
 
 1. **Entity tools** mirrored from connected entities. The gateway reuses the registry; no double-registration.
-2. **Trigger meta-tools** (`spawn_bgo`, `list_bgos`, `schedule_bgo`, `agent_batch`).
+2. **start meta-tools** (`spawn_job`, `list_bgos`, `schedule_bgo`, `agent_batch`).
 3. **Platos skills** (`platos-rag`, `platos-code-runner`, etc.).
 4. **Control plane** (`agents.create`, `threads.list`, etc.). The Platos-as-a-product surface, useful for ops automation.
 
@@ -96,7 +83,7 @@ Per-entity endpoints expose `serverInfo` (name, description, logo, support URL) 
 
 ### Effective tools view
 
-`GET /agent/v1/entities/:entityId/mcp/effective-tools?identity=...` returns the resolved tool list for a given identity. Useful for "did Acme's user really see this tool?" debugging.
+`GET /api/v1/agent/entities/{entityId}/mcp/config` returns the Environment-scoped MCP connection configuration. Use the Tool matrix and audit views to verify what a particular identity could invoke.
 
 ## Common pitfalls
 
@@ -105,7 +92,7 @@ Per-entity endpoints expose `serverInfo` (name, description, logo, support URL) 
 - Never depend on project creation order to select an environment. Supply `?environmentId=<canonical-id>` for anonymous and entity OAuth discovery/authorization. Bearer routes validate the token first, load its authoritative entity and environment, then compare the requested slug.
 - External tool arguments cannot set Platos transport authority. The gateway recursively removes reserved `_context`, `__platos`, `_platos`, `platos_context`, `platosContext`, and `__platosContext` envelopes before MCP or wire dispatch, then adds server-derived context only when the entity enables it.
 - OIDC federation requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL` env vars. Misconfigured OIDC silently rejects valid tokens.
-- The Settings -> Integrations route exists in two scopes (project and org) with similar names (drift D-006). The org-scoped page is for OAuth-style integrations like Slack; the project-scoped page is for MCP and webhook config. Cross-link from this doc to disambiguate.
+- The Settings -> Integrations route exists in two scopes (Project and Organization) with similar names. Use the Environment's MCP configuration for MCP clients; Organization integrations cover external channel adapters such as Slack.
 
 ## Related
 

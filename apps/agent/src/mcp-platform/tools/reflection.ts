@@ -612,7 +612,7 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
             { role: "user", content: userMessage },
             { role: "assistant", content: result.text },
           ],
-          toolCallsAttempted: [],
+          toolCallsExecuted: [],
           requestedButUnavailable,
           finalAssistantMessage: result.text,
           // PRELAUNCH-A2-2 — surface v6 token names on the simulate_turn

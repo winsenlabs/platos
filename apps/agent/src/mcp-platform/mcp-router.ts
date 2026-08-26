@@ -647,7 +647,18 @@ export class McpRouter {
             },
           };
       }
-    } catch {
+    } catch (error: any) {
+      if (error?.code === "MEMORY_NOT_FOUND") {
+        return {
+          jsonrpc: "2.0",
+          id,
+          error: {
+            code: 404,
+            message: "memory not found",
+            data: { code: "MEMORY_NOT_FOUND", status: 404 },
+          },
+        };
+      }
       this.logger.error("Platform MCP request failed");
       return {
         jsonrpc: "2.0",

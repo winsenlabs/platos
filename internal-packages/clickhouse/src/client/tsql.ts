@@ -154,8 +154,8 @@ export type TSQLQueryResult<T> = [QueryError, null] | [null, TSQLQuerySuccess<T>
  * @example
  * ```typescript
  * const [error, rows] = await executeTSQL(reader, {
- *   name: "get_task_runs",
- *   query: "SELECT id, status FROM task_runs WHERE status = 'completed' ORDER BY created_at DESC LIMIT 100",
+ *   name: "get_runtime_runs",
+ *   query: "SELECT id, status FROM runtime_runs WHERE status = 'completed' ORDER BY created_at DESC LIMIT 100",
  *   schema: z.object({ id: z.string(), status: z.string() }),
  *   tableSchema: [taskRunsSchema],
  *   enforcedWhereClause: {
@@ -323,8 +323,8 @@ export async function executeTSQL<TOut extends z.ZodSchema>(
  * const tsqlExecutor = createTSQLExecutor(reader, [taskRunsSchema, taskEventsSchema]);
  *
  * const [error, rows] = await tsqlExecutor.execute({
- *   name: "get_task_runs",
- *   query: "SELECT * FROM task_runs LIMIT 10",
+ *   name: "get_runtime_runs",
+ *   query: "SELECT * FROM runtime_runs LIMIT 10",
  *   schema: taskRunRowSchema,
  *   enforcedWhereClause: {
  *     organization_id: { op: "eq", value: "org_123" },

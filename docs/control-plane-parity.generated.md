@@ -6,11 +6,11 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 ## Summary
 
-- MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **290** unique method/path pairs from **290** route bindings.
+- MCP tools: **202** across **35** namespaces (24 admin-tier).
+- REST operations: **297** unique method/path pairs from **297** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
-- MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=137.
+- MCP classifications: MAPPED=82, MCP_ONLY=120.
+- REST classifications: DEPRECATED=15, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=142.
 
 ## REST inventory
 
@@ -29,6 +29,9 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/admin/privacy/erasures/:operationId/retry` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#retry` |
 | `POST /api/v1/agent/admin/privacy/erasures/resume-due` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#resumeDue` |
 | `GET /api/v1/agent/admin/privacy/subjects/:externalUserId/inventory` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#inventory` |
+| `GET /api/v1/agent/agent-versions` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listAgentVersions` |
+| `GET /api/v1/agent/agent-versions/:versionId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentVersion` |
+| `POST /api/v1/agent/agent-versions/:versionId/rollback` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#rollbackAgentVersion` |
 | `GET /api/v1/agent/agents` | MAPPED | `agents.list` | Reviewed behavioral equivalence: the REST adapter and agents.list invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listAgents` |
 | `POST /api/v1/agent/agents` | MAPPED | `agents.create` | Reviewed behavioral equivalence: the REST adapter and agents.create invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#createAgent` |
 | `DELETE /api/v1/agent/agents/:agentId` | MAPPED | `agents.delete` | Reviewed behavioral equivalence: the REST adapter and agents.delete invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#deleteAgent` |
@@ -44,9 +47,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/agents/:agentId/messages` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentMessages` |
 | `GET /api/v1/agent/agents/:agentId/satisfaction` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentSatisfaction` |
 | `GET /api/v1/agent/agents/:agentId/tool-mappings` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentToolMappings` |
-| `GET /api/v1/agent/agents/:agentId/versions` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listAgentVersions` |
-| `GET /api/v1/agent/agents/:agentId/versions/:versionId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentVersion` |
-| `POST /api/v1/agent/agents/:agentId/versions/:versionId/rollback` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#rollbackAgentVersion` |
+| `PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAgentToolEnabled` |
 | `POST /api/v1/agent/approvals/:approvalId/resolve` | MAPPED | `approvals.resolve` | Reviewed behavioral equivalence: the REST adapter and approvals.resolve invoke the same scope-pinned MonitoringApprovalsService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#resolveApproval` |
 | `GET /api/v1/agent/budgets` | MAPPED | `budgets.list` | Reviewed behavioral equivalence: the REST adapter and budgets.list invoke the same scope-pinned BudgetService cap operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listBudgets` |
 | `POST /api/v1/agent/budgets` | MAPPED | `budgets.upsert` | Reviewed behavioral equivalence: the REST adapter and budgets.upsert invoke the same scope-pinned BudgetService cap operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#upsertBudget` |
@@ -98,7 +99,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `PATCH /api/v1/agent/eval-criteria/:criterionId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#updateCriterion` |
 | `GET /api/v1/agent/evals` | MAPPED | `evals.list` | Reviewed behavioral equivalence: the REST adapter and evals.list invoke the same scope-pinned EvalService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listEvals` |
 | `GET /api/v1/agent/evals/:evalId` | MAPPED | `evals.get` | Reviewed behavioral equivalence: the REST adapter and evals.get invoke the same scope-pinned EvalService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#getEval` |
-| `POST /api/v1/agent/evals/run` | MAPPED | `evals.run` | Reviewed behavioral equivalence: the REST adapter and evals.run invoke the same scope-pinned EvalService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#runEval` |
+| `POST /api/v1/agent/evals/dispatch` | MAPPED | `evals.dispatch` | Reviewed behavioral equivalence: the REST adapter and evals.dispatch invoke the same scope-pinned EvalService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#dispatchEval` |
 | `GET /api/v1/agent/feature-flags` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listFeatureFlags` |
 | `GET /api/v1/agent/files/agents` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/files/files.controller.ts#listAgents` |
 | `GET /api/v1/agent/files/agents/:agentId/users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/files/files.controller.ts#listUsers` |
@@ -116,9 +117,15 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/internal/compaction` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalCompaction` |
 | `POST /api/v1/agent/internal/durable-turn` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalDurableTurn` |
 | `POST /api/v1/agent/internal/employee-run` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalEmployeeRun` |
-| `POST /api/v1/agent/internal/platos-tasks/execute` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/platos-task-execution.controller.ts#execute` |
+| `POST /api/v1/agent/internal/jobs/execute` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/job-execution.controller.ts#execute` |
 | `POST /api/v1/agent/internal/skill-run` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalSkillRun` |
 | `POST /api/v1/agent/internal/subagent-report` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalSubagentReport` |
+| `GET /api/v1/agent/jobs` | MAPPED | `jobs.list` | Reviewed behavioral equivalence: the REST adapter and jobs.list invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#list` |
+| `POST /api/v1/agent/jobs` | MAPPED | `jobs.create` | Reviewed behavioral equivalence: the REST adapter and jobs.create invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#create` |
+| `DELETE /api/v1/agent/jobs/:id` | MAPPED | `jobs.delete` | Reviewed behavioral equivalence: the REST adapter and jobs.delete invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#remove` |
+| `GET /api/v1/agent/jobs/:id` | MAPPED | `jobs.get` | Reviewed behavioral equivalence: the REST adapter and jobs.get invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#getOne` |
+| `PATCH /api/v1/agent/jobs/:id` | MAPPED | `jobs.update` | Reviewed behavioral equivalence: the REST adapter and jobs.update invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#update` |
+| `POST /api/v1/agent/jobs/:id/dispatch` | MAPPED | `jobs.dispatch` | Reviewed behavioral equivalence: the REST adapter and jobs.dispatch invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#dispatch` |
 | `DELETE /api/v1/agent/messages/:messageId/rating` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#unrateMessage` |
 | `GET /api/v1/agent/messages/:messageId/rating` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getMessageRating` |
 | `POST /api/v1/agent/messages/:messageId/rating` | MAPPED | `messages.rate` | Reviewed behavioral equivalence: the REST adapter and messages.rate invoke the same scope-pinned conversation/rating operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#rateMessage` |
@@ -146,27 +153,19 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/agent/monitoring/observability/status` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#observabilityStatus` |
 | `GET /api/v1/agent/monitoring/safety-events` | MAPPED | `audit.safety_events.query` | Reviewed behavioral equivalence: the REST adapter and audit.safety_events.query invoke the same scope-pinned monitoring audit query; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listSafetyEvents` |
 | `GET /api/v1/agent/monitoring/summary` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringSummary` |
-| `GET /api/v1/agent/monitoring/tool-audit` | MAPPED | `audit.tool_calls.query` | Reviewed behavioral equivalence: the REST adapter and audit.tool_calls.query invoke the same scope-pinned monitoring audit query; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listToolAudit` |
-| `GET /api/v1/agent/monitoring/tool-audit/:callId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getToolAudit` |
-| `POST /api/v1/agent/monitoring/tool-audit/:callId/replay` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#replayToolAudit` |
 | `GET /api/v1/agent/monitoring/top-users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#topUsers` |
-| `GET /api/v1/agent/monitoring/trace/:threadId` | MAPPED | `traces.get`, `runs.get_trace` | Reviewed behavioral equivalence: the REST adapter and traces.get, runs.get_trace invoke the same scope-pinned TraceService thread trace operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#getThreadTrace` |
+| `GET /api/v1/agent/monitoring/trace/:threadId` | MAPPED | `traces.get` | Reviewed behavioral equivalence: the REST adapter and traces.get invoke the same scope-pinned TraceService thread trace operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#getThreadTrace` |
 | `GET /api/v1/agent/monitoring/users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringUsers` |
 | `GET /api/v1/agent/monitoring/users/:userId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringUserDetail` |
 | `GET /api/v1/agent/monitoring/users/:userId/consumption` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringUserConsumption` |
 | `POST /api/v1/agent/monitoring/users/:userId/summary` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringUserSummary` |
 | `GET /api/v1/agent/monitoring/utilization` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#utilization` |
 | `GET /api/v1/agent/openapi.json` | PUBLIC_TRANSPORT | — | `generated-api-description` | `apps/agent/src/openapi/openapi.controller.ts#getSpec` |
-| `GET /api/v1/agent/platos-tasks` | MAPPED | `platos_tasks.list` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.list invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#list` |
-| `POST /api/v1/agent/platos-tasks` | MAPPED | `platos_tasks.create` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.create invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#create` |
-| `DELETE /api/v1/agent/platos-tasks/:id` | MAPPED | `platos_tasks.delete` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.delete invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#remove` |
-| `GET /api/v1/agent/platos-tasks/:id` | MAPPED | `platos_tasks.get` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.get invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#getOne` |
-| `PATCH /api/v1/agent/platos-tasks/:id` | MAPPED | `platos_tasks.update` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.update invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#update` |
-| `POST /api/v1/agent/platos-tasks/:id/run` | MAPPED | `platos_tasks.run` | Reviewed behavioral equivalence: the REST adapter and platos_tasks.run invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/platos-tasks.controller.ts#run` |
 | `GET /api/v1/agent/postman-templates` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listPostmanTemplates` |
 | `POST /api/v1/agent/postman-templates` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#createPostmanTemplate` |
 | `DELETE /api/v1/agent/postman-templates/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#deletePostmanTemplate` |
 | `PUT /api/v1/agent/postman-templates/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#updatePostmanTemplate` |
+| `POST /api/v1/agent/postman-templates/:id/execute` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#executePostmanTemplate` |
 | `POST /api/v1/agent/prompt/assemble` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#assemblePrompt` |
 | `GET /api/v1/agent/prompt/defaults` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getDefaultBlocks` |
 | `POST /api/v1/agent/prompt/preview` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#previewPrompt` |
@@ -212,6 +211,9 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/threads/:threadId/stream` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#streamMessage` |
 | `POST /api/v1/agent/threads/:threadId/tags` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setTags` |
 | `POST /api/v1/agent/threads/:threadId/unarchive` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#unarchiveThread` |
+| `GET /api/v1/agent/tool-calls` | MAPPED | `tool_calls.list` | Reviewed behavioral equivalence: the REST adapter and tool_calls.list invoke the same scope-pinned ToolCall query; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listToolCalls` |
+| `GET /api/v1/agent/tool-calls/:toolCallId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getToolCall` |
+| `POST /api/v1/agent/tool-calls/:toolCallId/replay` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#replayToolCall` |
 | `GET /api/v1/agent/tools` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listTools` |
 | `PATCH /api/v1/agent/tools/:entityId/:toolName/enabled` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setToolEnabled` |
 | `POST /api/v1/agent/tools/:toolId/test` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#testTool` |
@@ -231,6 +233,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/memory` | MAPPED | `memories.upsert` | Reviewed behavioral equivalence: the REST adapter and memories.upsert invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/memory/:id` | MAPPED | `memories.delete` | Reviewed behavioral equivalence: the REST adapter and memories.delete invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
 | `POST /api/v1/memory/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
+| `POST /api/v1/memory/:id/archive` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
+| `POST /api/v1/memory/:id/restore` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
 | `POST /api/v1/memory/admin/extraction-sweep` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
 | `GET /api/v1/memory/export` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
 | `POST /api/v1/memory/extract` | MAPPED | `memories.extract_now` | Reviewed behavioral equivalence: the REST adapter and memories.extract_now invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#manualExtract` |
@@ -244,6 +248,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
 | `POST /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
+| `POST /api/v1/platos/memory/:id/archive` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
+| `POST /api/v1/platos/memory/:id/restore` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
 | `POST /api/v1/platos/memory/admin/extraction-sweep` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
 | `GET /api/v1/platos/memory/export` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
 | `POST /api/v1/platos/memory/extract` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#manualExtract` |
@@ -268,6 +274,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /mcp/entity/:entityId` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#jsonRpc` |
 | `PATCH /mcp/entity/:entityId/branding` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#updateBranding` |
 | `GET /mcp/entity/:entityId/config` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#getMcpConfig` |
+| `PATCH /mcp/entity/:entityId/config` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#patchMcpConfig` |
 | `PATCH /mcp/entity/:entityId/enabled` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#setEnabled` |
 | `GET /mcp/entity/:entityId/events/subscribe` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#eventsSubscribe` |
 | `PATCH /mcp/entity/:entityId/identity` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#updateIdentityMode` |
@@ -331,9 +338,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `approvals.list` | MAPPED | `GET /api/v1/agent/monitoring/approvals` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `approvals.resolve` | MAPPED | `POST /api/v1/agent/approvals/:approvalId/resolve` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `artifacts.list` | MAPPED | `GET /api/v1/agent/threads/:threadId/artifacts` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
-| `audit.cross_scope_tool_calls` | MCP_ONLY | — | admin | `apps/agent/src/mcp-platform/tools/admin.ts` |
 | `audit.safety_events.query` | MAPPED | `GET /api/v1/agent/monitoring/safety-events` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
-| `audit.tool_calls.query` | MAPPED | `GET /api/v1/agent/monitoring/tool-audit` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `budgets.delete` | MAPPED | `DELETE /api/v1/agent/budgets/:capId` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `budgets.get` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `budgets.list` | MAPPED | `GET /api/v1/agent/budgets` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
@@ -389,10 +394,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `environments.list` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
 | `environments.list_secrets` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
 | `environments.set_secret` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
+| `evals.dispatch` | MAPPED | `POST /api/v1/agent/evals/dispatch` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `evals.get` | MAPPED | `GET /api/v1/agent/evals/:evalId` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `evals.list` | MAPPED | `GET /api/v1/agent/evals` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `evals.regression_sweep` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/orchestration.ts` |
-| `evals.run` | MAPPED | `POST /api/v1/agent/evals/run` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `events.recent` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/events.ts` |
 | `events.subscribe` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/events.ts` |
 | `gdpr.export` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
@@ -400,6 +405,14 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `gdpr.import` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `gdpr.purge` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `health.check` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/monitoring.ts` |
+| `jobs.create` | MAPPED | `POST /api/v1/agent/jobs` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.delete` | MAPPED | `DELETE /api/v1/agent/jobs/:id` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.dispatch` | MAPPED | `POST /api/v1/agent/jobs/:id/dispatch` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.get` | MAPPED | `GET /api/v1/agent/jobs/:id` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.list` | MAPPED | `GET /api/v1/agent/jobs` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.set_enabled` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.update` | MAPPED | `PATCH /api/v1/agent/jobs/:id` | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
+| `jobs.validate_handler` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/jobs.ts` |
 | `kg.create_node` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/kg.ts` |
 | `kg.delete_node` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/kg.ts` |
 | `kg.discover_links` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/kg.ts` |
@@ -450,16 +463,6 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `org.remove_member` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
 | `org.set_member_role` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
 | `org.update` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/settings.ts` |
-| `platos_tasks.create` | MAPPED | `POST /api/v1/agent/platos-tasks` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.delete` | MAPPED | `DELETE /api/v1/agent/platos-tasks/:id` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.get` | MAPPED | `GET /api/v1/agent/platos-tasks/:id` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.get_run` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.get_runs` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.list` | MAPPED | `GET /api/v1/agent/platos-tasks` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.run` | MAPPED | `POST /api/v1/agent/platos-tasks/:id/run` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.set_enabled` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.update` | MAPPED | `PATCH /api/v1/agent/platos-tasks/:id` | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
-| `platos_tasks.validate_handler` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/platos_tasks.ts` |
 | `platos.diff_agents` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/reflection.ts` |
 | `platos.explain_turn` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/reflection.ts` |
 | `platos.list_accessible_scopes` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/index.ts` |
@@ -477,8 +480,6 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `providers.set_routes` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/providers.ts` |
 | `providers.test_credentials` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/providers.ts` |
 | `providers.unlink` | MAPPED | `DELETE /api/v1/agent/providers/:provider/link` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
-| `runs.get_trace` | MAPPED | `GET /api/v1/agent/monitoring/trace/:threadId` | scope | `apps/agent/src/mcp-platform/tools/monitoring.ts` |
-| `runs.list_all` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/monitoring.ts` |
 | `scopes.bootstrap_demo_data` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/orchestration.ts` |
 | `scopes.list_all` | MCP_ONLY | — | admin | `apps/agent/src/mcp-platform/tools/admin.ts` |
 | `skills.disable` | MAPPED | `DELETE /api/v1/agent/skills/agent/:agentId/:id` | scope | `apps/agent/src/mcp-platform/tools/skills.ts` |
@@ -497,6 +498,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `threads.get` | MAPPED | `GET /api/v1/agent/threads/:threadId` | scope | `apps/agent/src/mcp-platform/tools/index.ts` |
 | `threads.list` | MAPPED | `GET /api/v1/agent/threads` | scope | `apps/agent/src/mcp-platform/tools/index.ts` |
 | `threads.update` | MAPPED | `PATCH /api/v1/agent/threads/:threadId` | scope | `apps/agent/src/mcp-platform/tools/index.ts` |
+| `tool_calls.cross_scope_audit` | MCP_ONLY | — | admin | `apps/agent/src/mcp-platform/tools/admin.ts` |
+| `tool_calls.list` | MAPPED | `GET /api/v1/agent/tool-calls` | scope | `apps/agent/src/mcp-platform/tools/platos-control.ts` |
 | `traces.get` | MAPPED | `GET /api/v1/agent/monitoring/trace/:threadId` | scope | `apps/agent/src/mcp-platform/tools/monitoring.ts` |
 | `traces.list` | MCP_ONLY | — | scope | `apps/agent/src/mcp-platform/tools/monitoring.ts` |
 | `trigger.batches.get` | MCP_ONLY | — | admin | `apps/agent/src/mcp-platform/tools/trigger.ts` |

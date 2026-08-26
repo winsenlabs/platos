@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win235-gate-artifact.schema.json",
+  "title": "WIN-235 persisted-state gate result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "gate",
+    "commitSha",
+    "fixture",
+    "images",
+    "status",
+    "assertions",
+    "measurements"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "gate": { "const": "win235-persisted-state" },
+    "commitSha": { "type": "string", "minLength": 7 },
+    "fixture": {
+      "type": "object",
+      "required": ["schemaVersion", "sha256", "counts"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "counts": { "type": "object" }
+      }
+    },
+    "images": {
+      "type": "object",
+      "required": ["agent", "webapp", "migrations"],
+      "properties": {
+        "agent": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
+        "webapp": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
+        "migrations": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "status": { "enum": ["passed", "failed"] },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["passed", "failed"] },
+          "httpStatus": { "type": "integer" },
+          "errorCode": { "type": "string" },
+          "readBack": { "type": "object" }
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "required": ["status", "budgetsFile", "performanceArtifact", "performanceReceipt"],
+      "properties": {
+        "status": { "enum": ["unmeasured", "measured", "enforced"] },
+        "budgetsFile": { "const": "tests/persisted-state-gate/budgets.v1.json" },
+        "performanceArtifact": { "const": "performance-results.json" },
+        "performanceReceipt": { "const": "performance-verification-receipt.json" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

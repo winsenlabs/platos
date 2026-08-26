@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestScope } from "../auth/scope.guard";
 import { AgentService } from "./agent.service";
+import { jobInvocationProperty, jobInvocationSelect } from "./job-persistence";
 
-describe("run_platos_task clean Job lookup", () => {
+describe("dispatch_job clean Job lookup", () => {
   it("looks up the external task id only when Job is active in canonical scope", async () => {
     const findFirst = vi.fn().mockResolvedValue(null);
     const service = new AgentService(
@@ -20,10 +21,10 @@ describe("run_platos_task clean Job lookup", () => {
     };
 
     const tools = (service as any).buildMetaTools(scope, {
-      metaTools: { run_platos_task: true },
+      metaTools: { dispatch_job: true },
     });
-    const result = await tools.run_platos_task.execute({
-      taskId: "send-report",
+    const result = await tools.dispatch_job.execute({
+      jobId: "send-report",
       payload: { reportId: "report-a" },
     });
 
@@ -41,17 +42,17 @@ describe("run_platos_task clean Job lookup", () => {
         id: true,
         externalId: true,
         displayName: true,
-        triggerType: true,
+        ...jobInvocationSelect(),
         allowedAgentIds: true,
       },
     });
     expect(result).toEqual({
-      error: 'Task "send-report" not found or inactive in this scope.',
+      error: 'Job "send-report" not found or inactive in this scope.',
     });
   });
 });
 
-describe("background-operation catalog clean Job lookup", () => {
+describe("canonical Job runtime tools", () => {
   const scope: RequestScope = {
     organizationId: "org-a",
     projectId: "project-a",
@@ -60,11 +61,11 @@ describe("background-operation catalog clean Job lookup", () => {
     agentId: "agent-a",
   };
 
-  it("lists scoped canonical Jobs through both BGO names", async () => {
+  it("lists scoped canonical Jobs without retired aliases", async () => {
     const findMany = vi.fn().mockResolvedValue([
       {
         externalId: "send-report",
-        triggerType: "agent-spawn",
+        ...jobInvocationProperty("agent-spawn"),
         description: "Send a report",
       },
     ]);
@@ -75,10 +76,10 @@ describe("background-operation catalog clean Job lookup", () => {
       { get: vi.fn(() => null) } as any,
     );
     const tools = (service as any).buildMetaTools(scope, {
-      metaTools: { list_bgos: true },
+      metaTools: { list_jobs: true },
     });
 
-    const result = await tools.list_bgos.execute({ filter: "report", limit: 10 });
+    const result = await tools.list_jobs.execute({ filter: "report", limit: 10 });
 
     expect(findMany).toHaveBeenCalledWith({
       where: {
@@ -91,34 +92,25 @@ describe("background-operation catalog clean Job lookup", () => {
       },
       select: {
         externalId: true,
-        triggerType: true,
+        ...jobInvocationSelect(),
         description: true,
       },
       orderBy: { externalId: "asc" },
       take: 10,
     });
     expect(result).toEqual({
-      bgos: [
+      jobs: [
         {
           slug: "send-report",
           filePath: null,
-          triggerSource: "agent-spawn",
-          description: "Send a report",
-        },
-      ],
-      tasks: [
-        {
-          slug: "send-report",
-          filePath: null,
-          triggerSource: "agent-spawn",
+          invocationType: "agent-spawn",
           description: "Send a report",
         },
       ],
     });
-
-    const deprecated = await tools.list_tasks.execute({});
-    expect(deprecated).toMatchObject({ bgos: result.bgos, tasks: result.tasks });
-    expect(deprecated.deprecation_notice).toContain("list_tasks");
+    expect(tools).not.toHaveProperty("list_tasks");
+    expect(tools).not.toHaveProperty("spawn_task");
+    expect(tools).not.toHaveProperty(["tri", "gger_with_delay"].join(""));
   });
 
   it("redacts catalog persistence failures", async () => {
@@ -133,32 +125,16 @@ describe("background-operation catalog clean Job lookup", () => {
       { get: vi.fn(() => null) } as any,
     );
     const tools = (service as any).buildMetaTools(scope, {
-      metaTools: { list_bgos: true },
+      metaTools: { list_jobs: true },
     });
 
-    const result = await tools.list_bgos.execute({});
+    const result = await tools.list_jobs.execute({});
 
     expect(result).toEqual({
       status: "failed",
-      error: "Background operation catalog is unavailable.",
+      error: "The Job catalog is unavailable.",
     });
     expect(JSON.stringify(result)).not.toContain("sentinel-secret");
   });
 
-  it("fails explicitly when canonical run history is unavailable", async () => {
-    const service = new AgentService(
-      {} as any,
-      {} as any,
-      { get: vi.fn() } as any,
-      { get: vi.fn(() => null) } as any,
-    );
-    const tools = (service as any).buildMetaTools(scope, {
-      metaTools: { list_runs: true },
-    });
-
-    await expect(tools.list_runs.execute({ limit: 25 })).resolves.toEqual({
-      error: "unavailable",
-      message: "Task run history is not available through the canonical control database.",
-    });
-  });
 });

@@ -1,0 +1,14 @@
+{
+  "name": "@platos/tenancy-migration-image",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.23.0",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.14.0",
+    "pg": "8.15.6",
+    "prisma": "6.14.0"
+  }
+}

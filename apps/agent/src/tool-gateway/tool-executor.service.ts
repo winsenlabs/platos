@@ -13,6 +13,7 @@ import { SpansService } from "../monitoring/spans.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { SafetyService } from "../monitoring/safety.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
+import { traceSessionContext } from "../agent-runtime/postman-context-handle";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 // Issue #1 — per-tool approval policy gate. The MCP path already
 // consults the 4-tier resolver before forwarding; the agent-runtime
@@ -186,7 +187,7 @@ export class ToolExecutorService {
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1 is set in the env.
     @Optional() private readonly permissionGateway?: MCPPermissionGatewayService,
     // Issue #1 (full pause flow) — optional. When both are wired AND
-    // the gate flag is set, `require_approval` triggers a real
+    // the gate flag is set, `require_approval` starts a real
     // persisted approval + Socket.IO event + BLPOP wait.
     @Optional() private readonly approvalsService?: MonitoringApprovalsService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: Redis,
@@ -291,6 +292,7 @@ export class ToolExecutorService {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        operatorUserId: scope.operatorUserId,
       },
       {
         detector: "dispatcher_permission_gate",
@@ -589,6 +591,7 @@ export class ToolExecutorService {
             organizationId: scope.organizationId,
             projectId: scope.projectId,
             environmentId: scope.environmentId,
+            operatorUserId: scope.operatorUserId,
           },
           {
             detector: "tool_param",
@@ -616,6 +619,7 @@ export class ToolExecutorService {
             organizationId: scope.organizationId,
             projectId: scope.projectId,
             environmentId: scope.environmentId,
+            operatorUserId: scope.operatorUserId,
           },
           {
             detector: "tool_param",
@@ -654,6 +658,7 @@ export class ToolExecutorService {
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              operatorUserId: scope.operatorUserId,
             },
             {
               detector: "rate_limit",
@@ -715,10 +720,7 @@ export class ToolExecutorService {
           agentId: scope.agentId,
           threadId: scope.sessionId,
           userId: scope.userId,
-          sessionContext: (scope as any).sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId: scope.traceId,
@@ -759,6 +761,7 @@ export class ToolExecutorService {
         agentId: scope.agentId ?? null,
         threadId: scope.sessionId ?? null,
         userId: scope.userId ?? null,
+        actorUserId: scope.operatorUserId ?? null,
         traceId: scope.traceId ?? null,
         spanId: spanId ?? null,
         parentSpanId: scope.parentSpanId ?? null,
@@ -852,7 +855,7 @@ export class ToolExecutorService {
       // call fell straight through to the error below.
       //
       // Measured on the live deployment before this fix: 13 distinct slugs, 28
-      // failed attempts across Slack, Gmail, Google Calendar, Notion and Tavily,
+      // failed calls across Slack, Gmail, Google Calendar, Notion and Tavily,
       // spanning at least three days. `findDynamicExecutor` still prefers the
       // explicit marker but now also infers the executor from its shape, so a
       // correctly-shaped gateway works on registration.
@@ -1148,7 +1151,7 @@ export class ToolExecutorService {
     // The entity backend validates this token with its own auth system —
     // it knows who the real user is without trusting Platos' claim.
     // Fail-open: a missing/expired token means the entity sees no token
-    // header and must handle that gracefully (e.g. 401 → trigger re-auth).
+        // header and must handle that gracefully (e.g. 401 → require re-auth).
     let entityAccessToken: string | undefined;
     if (origin?.mcpUserId && origin.mcpUserId.startsWith("mcp:oidc:")) {
       try {

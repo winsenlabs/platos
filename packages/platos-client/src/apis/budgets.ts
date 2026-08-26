@@ -16,7 +16,7 @@ export interface PlatosBudgetCap {
   targetId?: string | null;
   period: "hour" | "day" | "week" | "month";
   limitCents: number;
-  runsLimit?: number | null;
+  turnsLimit?: number | null;
   alertThresholds: number[];
   alertWebhookUrl?: string | null;
   alertEmails?: string[];
@@ -26,7 +26,7 @@ export interface PlatosBudgetStatus {
   cap: PlatosBudgetCap;
   spentCents: number;
   reservedCents: number;
-  runs: number;
+  turns: number;
   windowKey: string;
   crossedThresholds: number[];
 }
@@ -36,7 +36,7 @@ export class BudgetsApi {
 
   async list(scope?: PlatosScope): Promise<PlatosBudgetCap[]> {
     const res = await this.client._fetch<{ caps: PlatosBudgetCap[] }>(
-      "/api/v1/agent/monitoring/budget/caps",
+      "/api/v1/agent/budgets",
       { method: "GET" },
       scope,
     );
@@ -52,7 +52,7 @@ export class BudgetsApi {
     if (options.userId) qs.set("userId", options.userId);
     const tail = qs.toString() ? `?${qs}` : "";
     return this.client._fetch<{ caps: PlatosBudgetStatus[] }>(
-      `/api/v1/agent/monitoring/budget/status${tail}`,
+      `/api/v1/agent/budgets/status${tail}`,
       { method: "GET" },
       scope,
     );

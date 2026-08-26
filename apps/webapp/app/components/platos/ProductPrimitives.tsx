@@ -1,4 +1,4 @@
-import { Form, Link } from "@remix-run/react";
+import { Form, Link, useSearchParams } from "@remix-run/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
 
@@ -50,9 +50,68 @@ export function PanelFailure({ error, retry = true }: { error: { code: string; m
   return <Alert title="Panel unavailable" tone="danger"><p>{error.message}</p><div className="mt-3 flex flex-wrap items-center gap-3"><code className="text-xs">{error.code}</code>{retry && <Form method="get"><Button type="submit" tone="danger" className="min-h-8 py-1 text-xs">Retry</Button></Form>}</div></Alert>;
 }
 
-export function DataTable({ headers, rows, empty }: { headers: string[]; rows: ReactNode[][]; empty?: ReactNode }) {
+export function DataTable({ headers, rows, empty, rowKeys }: { headers: string[]; rows: ReactNode[][]; empty?: ReactNode; rowKeys?: string[] }) {
   if (!rows.length && empty) return <>{empty}</>;
-  return <div className="overflow-x-auto rounded-lg border border-grid-bright bg-background-bright"><table className="w-full text-left text-sm"><thead className="sticky top-0 z-[1] bg-background-bright text-xs uppercase tracking-wide text-text-dimmed"><tr>{headers.map((header) => <th key={header} className="border-b border-grid-bright px-3 py-2 font-medium">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index} className="border-b border-grid-dimmed last:border-0 hover:bg-[var(--surface-2)]">{row.map((cell, cellIndex) => <td key={cellIndex} className="px-3 py-[var(--pad-row)] align-top text-text-bright">{cell}</td>)}</tr>)}</tbody></table></div>;
+  return <div className="max-h-[70vh] overflow-auto rounded-lg border border-grid-bright bg-background-bright"><table className="w-full min-w-max text-left text-sm"><thead className="sticky top-0 z-[1] bg-background-bright text-xs uppercase tracking-wide text-text-dimmed"><tr>{headers.map((header) => <th key={header} scope="col" className="border-b border-grid-bright px-3 py-2 font-medium">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={rowKeys?.[index] ?? index} className="border-b border-grid-dimmed last:border-0 hover:bg-[var(--surface-2)]">{row.map((cell, cellIndex) => <td key={cellIndex} className="px-3 py-[var(--pad-row)] align-top text-text-bright">{cell}</td>)}</tr>)}</tbody></table></div>;
+}
+
+type PaginationShape = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  from: number;
+  to: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+};
+
+function paginationShape(value: unknown): PaginationShape | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const root = value as Record<string, unknown>;
+  const raw = root.pagination;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const page = raw as Record<string, unknown>;
+  const numbers = ["page", "pageSize", "total", "totalPages", "from", "to"] as const;
+  if (numbers.some((key) => typeof page[key] !== "number" || !Number.isFinite(page[key] as number))) return null;
+  if (typeof page.hasPrevious !== "boolean" || typeof page.hasNext !== "boolean") return null;
+  return page as unknown as PaginationShape;
+}
+
+export function CollectionSearch({ label = "Search all results", placeholder = "Search", searchParam = "search", pageParam = "page" }: { label?: string; placeholder?: string; searchParam?: string; pageParam?: string }) {
+  const [searchParams] = useSearchParams();
+  const preserved = Array.from(searchParams.entries()).filter(([name]) => name !== searchParam && name !== pageParam);
+  return <Form method="get" role="search" className="flex min-w-0 flex-1 flex-wrap gap-2">
+    {preserved.map(([name, value]) => <input key={`${name}-${value}`} type="hidden" name={name} value={value} />)}
+    <label className="min-w-[12rem] flex-1 text-xs text-text-dimmed"><span className="sr-only">{label}</span><input name={searchParam} defaultValue={searchParams.get(searchParam) ?? ""} placeholder={placeholder} className="min-h-9 w-full rounded-md border border-grid-bright bg-background-bright px-3 text-sm text-text-bright" /></label>
+    <Button type="submit">Search</Button>
+    {searchParams.get(searchParam) && <Link to={preserved.length ? `?${new URLSearchParams(preserved).toString()}` : "?"} className="inline-flex min-h-9 items-center px-2 text-xs text-text-dimmed hover:text-text-bright">Clear</Link>}
+  </Form>;
+}
+
+export function PaginationRange({ data, label = "Collection pagination", pageParam = "page", pageSizeParam = "pageSize" }: { data: unknown; label?: string; pageParam?: string; pageSizeParam?: string }) {
+  const pagination = paginationShape(data);
+  const [searchParams] = useSearchParams();
+  if (!pagination) {
+    const root = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+    return root && Object.prototype.hasOwnProperty.call(root, "pagination")
+      ? <Alert tone="danger" title="Pagination unavailable">The server returned malformed range metadata. Results are not presented as complete.</Alert>
+      : null;
+  }
+  const pageHref = (page: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set(pageParam, String(page));
+    next.set(pageSizeParam, String(pagination.pageSize));
+    return `?${next.toString()}`;
+  };
+  const range = pagination.total === 0 ? "No results" : `${pagination.from.toLocaleString()}–${pagination.to.toLocaleString()} of ${pagination.total.toLocaleString()}`;
+  return <nav aria-label={label} className="mt-3 flex flex-col gap-2 border-t border-grid-dimmed pt-3 text-xs text-text-dimmed sm:flex-row sm:items-center sm:justify-between">
+    <p role="status" aria-live="polite">{range}{pagination.totalPages > 0 ? ` · Page ${pagination.page} of ${pagination.totalPages}` : ""}</p>
+    <div className="flex gap-2">
+      {pagination.hasPrevious ? <Link rel="prev" to={pageHref(pagination.page - 1)} className="inline-flex min-h-9 items-center rounded-md border border-grid-bright px-3 font-medium text-text-bright hover:bg-[var(--surface-2)]">Previous</Link> : <span aria-disabled="true" className="inline-flex min-h-9 items-center rounded-md border border-grid-dimmed px-3 opacity-50">Previous</span>}
+      {pagination.hasNext ? <Link rel="next" to={pageHref(pagination.page + 1)} className="inline-flex min-h-9 items-center rounded-md border border-grid-bright px-3 font-medium text-text-bright hover:bg-[var(--surface-2)]">Next</Link> : <span aria-disabled="true" className="inline-flex min-h-9 items-center rounded-md border border-grid-dimmed px-3 opacity-50">Next</span>}
+    </div>
+  </nav>;
 }
 
 export function StatTile({ title, value, hint }: { title: string; value: ReactNode; hint?: string }) {

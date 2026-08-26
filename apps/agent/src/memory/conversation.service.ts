@@ -10,6 +10,7 @@ import { buildTurnProjection } from "../observability/turn-projection";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import {
   modelPriceSnapshotStepData,
+  Prisma,
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
@@ -47,6 +48,8 @@ export interface Thread {
   pinnedAt: Date | null;
   archivedAt: Date | null;
   parentThreadId: string | null;
+  forkedUpToTurnId: string | null;
+  forkedTurnIds: string[];
   clusterId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -69,6 +72,30 @@ export class ConversationRevisionNotSupportedError extends Error {
   constructor() {
     super(CONVERSATION_REVISION_NOT_SUPPORTED.message);
     this.name = "ConversationRevisionNotSupportedError";
+  }
+}
+
+export class ThreadNotFoundError extends Error {
+  readonly code = "THREAD_NOT_FOUND";
+  constructor() {
+    super("Thread not found");
+    this.name = "ThreadNotFoundError";
+  }
+}
+
+export class ThreadMessageNotFoundError extends Error {
+  readonly code = "MESSAGE_NOT_FOUND";
+  constructor() {
+    super("Message not found");
+    this.name = "ThreadMessageNotFoundError";
+  }
+}
+
+export class ThreadForkLimitError extends Error {
+  readonly code = "THREAD_FORK_LIMIT";
+  constructor() {
+    super("This Thread already has the maximum number of active forks");
+    this.name = "ThreadForkLimitError";
   }
 }
 
@@ -318,7 +345,7 @@ export class ConversationService {
       endUserId: row.endUserId,
       title: row.title,
       status: row.archivedAt ? "archived" : publicStatus(row.status),
-      turnCount: row._count?.turns ?? 0,
+      turnCount: (row.forkedTurnIds?.length ?? 0) + (row._count?.turns ?? 0),
       compactedSummary: row.summary,
       compactedUpToTurnId: row.compactedUpToTurnId,
       compactionState: row.compactionState,
@@ -326,6 +353,8 @@ export class ConversationService {
       pinnedAt: row.pinnedAt,
       archivedAt: row.archivedAt,
       parentThreadId: row.parentThreadId,
+      forkedUpToTurnId: row.forkedUpToTurnId,
+      forkedTurnIds: row.forkedTurnIds ?? [],
       clusterId: row.clusterId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -425,7 +454,11 @@ export class ConversationService {
         id: threadId,
         ...this.environmentWhere(scope),
         ...this.ownershipWhere(scope, options.allUsers),
-        ...(scope.clusteringId ? { OR: [{ clusterId: scope.clusteringId }, { agentId: scope.agentId }] } : {}),
+        ...(scope.clusteringId
+          ? { OR: [{ clusterId: scope.clusteringId }, { agentId: scope.agentId }] }
+          : scope.agentId
+            ? { agentId: scope.agentId }
+            : {}),
       },
       include: this.threadInclude(),
     });
@@ -453,7 +486,7 @@ export class ConversationService {
       this.prisma.thread.findMany({
         where,
         include: this.threadInclude(),
-        orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }],
+        orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }, { id: "desc" }],
         take: options.limit ?? 20,
         skip: options.offset ?? 0,
       }),
@@ -489,10 +522,33 @@ export class ConversationService {
     return { threadId, title, updatedAt: row.updatedAt.toISOString() };
   }
 
-  private async findScopedThread(threadId: string, scope: RequestScope): Promise<Thread> {
-    const thread = await this.getThread(threadId, scope);
-    if (!thread) throw new Error("Thread not found or access denied");
+  private async findScopedThread(threadId: string, scope: RequestScope, options: { allUsers?: boolean } = {}): Promise<Thread> {
+    const thread = await this.getThread(threadId, scope, options);
+    if (!thread) throw new ThreadNotFoundError();
     return thread;
+  }
+
+  private async threadScope(scope: RequestScope, agentId: string): Promise<RequestScope> {
+    if (scope.clusteringId) return { ...scope, agentId };
+    try {
+      const binding = await this.prisma.agentBinding.findFirst({
+        where: {
+          agentId,
+          environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { clusterId: true },
+      });
+      return binding?.clusterId
+        ? { ...scope, agentId, clusteringId: binding.clusterId }
+        : { ...scope, agentId };
+    } catch {
+      return { ...scope, agentId };
+    }
   }
 
   async setThreadTags(threadId: string, scope: RequestScope, tags: unknown): Promise<Thread> {
@@ -599,18 +655,21 @@ export class ConversationService {
       idempotencyKey?: string;
     },
   ): Promise<StoredMessage> {
-    const thread = await this.findScopedThread(threadId, scope);
+    const thread = await this.findScopedThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     if (message.role === "user") {
       if (!message.agentVersionId) throw new Error("Durable turn persistence requires selected AgentVersion");
       if (!message.versionBucket) throw new Error("Durable turn persistence requires selected version bucket");
+      const executingAgentId = scope.agentId ?? thread.agentId;
       const selectedVersion = await this.prisma.agentVersion.findFirst({
-        where: { id: message.agentVersionId, agentId: thread.agentId },
+        where: { id: message.agentVersionId, agentId: executingAgentId },
         select: { id: true },
       });
-      if (!selectedVersion) throw new Error("Selected AgentVersion does not belong to the thread Agent");
+      if (!selectedVersion) throw new Error("Selected AgentVersion does not belong to the executing Agent");
       const versionBucket = await this.versionBucket(
         threadId,
-        thread.agentId,
+        executingAgentId,
         message.agentVersionId,
         message.versionBucket,
       );
@@ -900,7 +959,9 @@ export class ConversationService {
     error: unknown,
     model = "unknown",
   ): Promise<void> {
-    const thread = await this.findScopedThread(threadId, scope);
+    const thread = await this.findScopedThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     const detail = error instanceof Error ? error.message : String(error);
     const errorClass = error instanceof Error ? error.name : "Error";
     const completedAt = new Date();
@@ -1047,14 +1108,34 @@ export class ConversationService {
     };
   }
 
+  private async visibleTurnReferences(thread: Thread): Promise<Array<{ id: string; status: string }>> {
+    const inheritedIds = thread.forkedTurnIds ?? [];
+    const [inheritedRows, localRows] = await Promise.all([
+      inheritedIds.length
+        ? this.prisma.turn.findMany({
+            where: { id: { in: inheritedIds } },
+            select: { id: true, status: true },
+          })
+        : [],
+      this.prisma.turn.findMany({
+        where: { threadId: thread.id },
+        select: { id: true, status: true },
+        orderBy: { sequence: "asc" },
+      }),
+    ]);
+    const inheritedById = new Map(inheritedRows.map((turn: any) => [turn.id, turn]));
+    const inherited = inheritedIds.flatMap((id) => {
+      const turn = inheritedById.get(id);
+      return turn ? [turn as { id: string; status: string }] : [];
+    });
+    if (inherited.length !== inheritedIds.length) throw new ThreadMessageNotFoundError();
+    return [...inherited, ...localRows];
+  }
+
   async getMessages(threadId: string, scope: RequestScope, options: { limit?: number; offset?: number; allUsers?: boolean } = {}) {
     const thread = await this.getThread(threadId, scope, { allUsers: options.allUsers });
-    if (!thread) return { messages: [], total: 0 };
-    const sides = (await this.prisma.turn.findMany({
-      where: { threadId },
-      select: { id: true, status: true },
-      orderBy: { sequence: "asc" },
-    })).flatMap((turn) => [
+    if (!thread) throw new ThreadNotFoundError();
+    const sides = (await this.visibleTurnReferences(thread)).flatMap((turn) => [
       { turnId: turn.id, role: "user" as const },
       ...(turn.status === "SUCCEEDED"
         ? [{ turnId: turn.id, role: "assistant" as const }]
@@ -1066,7 +1147,7 @@ export class ConversationService {
     const turnIds = Array.from(new Set(page.map((side) => side.turnId)));
     const turns = turnIds.length
       ? await this.prisma.turn.findMany({
-          where: { id: { in: turnIds }, threadId },
+          where: { id: { in: turnIds } },
           include: {
             steps: {
               include: { toolCalls: { orderBy: { sequence: "asc" } } },
@@ -1084,13 +1165,15 @@ export class ConversationService {
   }
 
   async loadHistory(threadId: string, scope: RequestScope, limit = 20, replyToMessageId?: string | null) {
-    const thread = await this.getThread(threadId, scope);
+    const thread = await this.getThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     if (!thread) return [];
     const cursor = thread.compactedUpToTurnId
       ? await this.prisma.turn.findUnique({ where: { id: thread.compactedUpToTurnId }, select: { sequence: true } })
       : null;
     const turnLimit = Math.max(1, Math.ceil(limit / 2));
-    const main = await this.prisma.turn.findMany({
+    const local = await this.prisma.turn.findMany({
       where: {
         threadId,
         status: "SUCCEEDED",
@@ -1103,13 +1186,30 @@ export class ConversationService {
       orderBy: { sequence: "desc" },
       take: cursor ? Math.max(turnLimit * 4, turnLimit + 20) : turnLimit,
     });
-    const ordered = main.reverse();
+    const inheritedIds = thread.forkedTurnIds ?? [];
+    const inherited = !cursor && inheritedIds.length
+      ? await this.prisma.turn.findMany({
+          where: { id: { in: inheritedIds }, status: "SUCCEEDED" },
+        })
+      : [];
+    const inheritedById = new Map(inherited.map((turn: any) => [turn.id, turn]));
+    const orderedInherited = inheritedIds.flatMap((id) => {
+      const turn = inheritedById.get(id);
+      return turn ? [turn] : [];
+    });
+    if (!cursor && orderedInherited.length !== inheritedIds.length) {
+      throw new ThreadMessageNotFoundError();
+    }
+    const ordered = [...orderedInherited, ...local.reverse()].slice(-Math.max(turnLimit * 4, turnLimit + 20));
     const history = ordered.flatMap((turn) => [
       ...(turn.inputText ? [{ role: "user" as const, content: turn.inputText }] : []),
       ...(turn.outputText ? [{ role: "assistant" as const, content: turn.outputText }] : []),
     ]);
     if (!replyToMessageId) return history;
-    const parent = await this.prisma.turn.findFirst({ where: { id: replyToMessageId, threadId }, select: { outputText: true, inputText: true } });
+    const visibleIds = new Set([...(thread.forkedTurnIds ?? []), ...local.map((turn: any) => turn.id)]);
+    const parent = visibleIds.has(replyToMessageId)
+      ? await this.prisma.turn.findFirst({ where: { id: replyToMessageId }, select: { outputText: true, inputText: true } })
+      : null;
     return [
       ...history,
       { role: "user" as const, content: `[Sub-thread context: You are replying to this turn: "${parent?.outputText ?? parent?.inputText ?? ""}". Stay focused on this sub-topic.]` },
@@ -1128,59 +1228,51 @@ export class ConversationService {
     return new Map(grouped.filter((row) => row.parentTurnId).map((row) => [row.parentTurnId!, row._count]));
   }
 
-  async getOrCreateThread(scope: RequestScope, agentId: string, threadId?: string, opts?: { singleEndUser?: boolean }): Promise<Thread> {
+  async getOrCreateThread(
+    scope: RequestScope,
+    agentId: string,
+    threadId?: string,
+    opts?: { singleEndUser?: boolean },
+  ): Promise<Thread> {
+    const resolvedScope = await this.threadScope(scope, agentId);
     if (threadId) {
-      const existing = await this.getThread(threadId, scope);
-      if (existing) return existing;
+      const existing = await this.getThread(
+        threadId,
+        resolvedScope,
+        { allUsers: scope.principal === "operator" },
+      );
+      if (!existing) throw new ThreadNotFoundError();
+
+      const sameAgent = existing.agentId === agentId;
+      const sameCluster = Boolean(
+        resolvedScope.clusteringId && existing.clusterId === resolvedScope.clusteringId,
+      );
+      if (!sameAgent && !sameCluster) throw new ThreadNotFoundError();
+      return existing;
     }
-    return this.createThread(scope, agentId, undefined, opts);
+    return this.createThread(resolvedScope, agentId, undefined, {
+      singleEndUser: opts?.singleEndUser,
+    });
   }
 
-  async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string }): Promise<Thread> {
-    const parent = await this.findScopedThread(threadId, scope);
-    const upTo = await this.prisma.turn.findFirst({ where: { id: options.upToMessageId, threadId }, select: { sequence: true } });
-    if (!upTo) throw new Error(`Turn ${options.upToMessageId} not found in thread ${threadId}`);
+  async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string; allUsers?: boolean }): Promise<Thread> {
+    const parent = await this.findScopedThread(threadId, scope, { allUsers: options.allUsers });
+    const visibleTurns = await this.visibleTurnReferences(parent);
+    const boundaryIndex = visibleTurns.findIndex((turn) => turn.id === options.upToMessageId);
+    if (boundaryIndex < 0) throw new ThreadMessageNotFoundError();
     const forkCount = await this.prisma.thread.count({ where: { parentThreadId: threadId, archivedAt: null, ...this.environmentWhere(scope) } });
-    if (forkCount >= 10) throw new Error(`Thread ${threadId} already has ${forkCount} forks (max 10). Archive an existing fork first.`);
-    const history = await this.prisma.turn.findMany({ where: { threadId, sequence: { lte: upTo.sequence } }, include: { steps: { include: { toolCalls: true } } }, orderBy: { sequence: "asc" } });
+    if (forkCount >= 10) throw new ThreadForkLimitError();
+    const forkedTurnIds = visibleTurns.slice(0, boundaryIndex + 1).map((turn) => turn.id);
     const row = await this.prisma.$transaction(async (tx) => {
       const created = await tx.thread.create({ data: {
         environmentId: parent.environmentId, agentId: parent.agentId, endUserId: parent.endUserId,
         clusterId: parent.clusterId, parentThreadId: threadId, title: options.title ?? (parent.title ? `${parent.title} (fork)` : "Fork"),
-        // A copied summary without a remapped cursor would overlap the cloned
-        // live turns. Start the fork uncompacted and let its own cursor advance.
+        forkedUpToTurnId: options.upToMessageId,
+        forkedTurnIds,
+        // Ordered ancestry pointers preserve history without cloning any
+        // billable Turn, Step, ToolCall, or observability ledger row.
         summary: null,
       }});
-      for (const turn of history) {
-        await tx.turn.create({ data: {
-          threadId: created.id, agentVersionId: turn.agentVersionId, versionBucket: turn.versionBucket,
-          sequence: turn.sequence, inputText: turn.inputText, outputText: turn.outputText, input: turn.input as any,
-          output: turn.output as any, thinkingContent: turn.thinkingContent, status: turn.status,
-          externalRuntimeId: turn.externalRuntimeId, costCents: turn.costCents, latencyMs: turn.latencyMs,
-          startedAt: turn.startedAt, completedAt: turn.completedAt, createdAt: turn.createdAt,
-          steps: { create: turn.steps.map((step) => ({
-            sequence: step.sequence, model: step.model, status: step.status, retryCount: step.retryCount,
-            inputTokens: step.inputTokens, outputTokens: step.outputTokens,
-            cacheCreationInputTokens: step.cacheCreationInputTokens, cacheReadInputTokens: step.cacheReadInputTokens,
-            reasoningTokens: step.reasoningTokens, costCents: step.costCents, latencyMs: step.latencyMs,
-            modelPriceId: step.modelPriceId,
-            inputRate: step.inputRate, outputRate: step.outputRate,
-            cacheReadRate: step.cacheReadRate, cacheWriteRate: step.cacheWriteRate,
-            inputRateSource: step.inputRateSource, outputRateSource: step.outputRateSource,
-            cacheReadRateSource: step.cacheReadRateSource, cacheWriteRateSource: step.cacheWriteRateSource,
-            inputRateObservedAt: step.inputRateObservedAt, outputRateObservedAt: step.outputRateObservedAt,
-            cacheReadRateObservedAt: step.cacheReadRateObservedAt, cacheWriteRateObservedAt: step.cacheWriteRateObservedAt,
-            inputRateSourceRef: step.inputRateSourceRef, outputRateSourceRef: step.outputRateSourceRef,
-            cacheReadRateSourceRef: step.cacheReadRateSourceRef, cacheWriteRateSourceRef: step.cacheWriteRateSourceRef,
-            error: step.error, startedAt: step.startedAt, completedAt: step.completedAt, createdAt: step.createdAt,
-            toolCalls: { create: step.toolCalls.map((call) => ({
-              toolId: call.toolId, sequence: call.sequence, toolName: call.toolName, arguments: call.arguments as any,
-              result: call.result as any, status: call.status, retryCount: call.retryCount, error: call.error,
-              latencyMs: call.latencyMs, startedAt: call.startedAt, completedAt: call.completedAt, createdAt: call.createdAt,
-            })) },
-          })) },
-        }});
-      }
       return tx.thread.findUniqueOrThrow({ where: { id: created.id }, include: this.threadInclude() });
     });
     return this.projectThread(row, scope.userId);
@@ -1203,16 +1295,83 @@ export class ConversationService {
     throw new ConversationRevisionNotSupportedError();
   }
 
-  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number }) {
-    await this.findScopedThread(threadId, scope);
-    const rows = await this.prisma.artifact.findMany({ where: { threadId, environmentId: scope.environmentId }, orderBy: [{ artifactKey: "asc" }, { revision: "desc" }] });
-    const byKey = new Map<string, any>();
-    for (const row of rows) {
-      const current = byKey.get(row.artifactKey);
-      if (current) current.revisionCount += 1;
-      else byKey.set(row.artifactKey, { ...row, language: objectValue(row.metadata).language ?? null, revisionCount: 1 });
-    }
-    return Array.from(byKey.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, Math.max(1, Math.min(options?.limit ?? 100, 500)));
+  async listThreadArtifactsPage(threadId: string, scope: RequestScope, options?: { limit?: number; offset?: number; allUsers?: boolean }) {
+    await this.findScopedThread(threadId, scope, { allUsers: options?.allUsers });
+    const limit = Math.max(1, Math.min(options?.limit ?? 25, 100));
+    const offset = Math.max(0, options?.offset ?? 0);
+    const where = { threadId, ...this.environmentWhere(scope) };
+    const { total, groups, latestRows, revisionGroups } = await this.prisma.$transaction(async (tx) => {
+      const [logicalTotal, logicalGroups] = await Promise.all([
+        tx.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+          SELECT COUNT(DISTINCT artifact."artifactKey")::bigint AS total
+          FROM "Artifact" AS artifact
+          INNER JOIN "Environment" AS environment
+            ON environment.id = artifact."environmentId"
+          INNER JOIN "Project" AS project
+            ON project.id = environment."projectId"
+          WHERE artifact."threadId" = ${threadId}::uuid
+            AND artifact."environmentId" = ${scope.environmentId}::uuid
+            AND environment."projectId" = ${scope.projectId}::uuid
+            AND project."organizationId" = ${scope.organizationId}::uuid
+        `),
+        tx.artifact.groupBy({
+          by: ["artifactKey"],
+          where,
+          _max: { createdAt: true },
+          orderBy: [{ _max: { createdAt: "desc" } }, { artifactKey: "desc" }],
+          skip: offset,
+          take: limit,
+        }),
+      ]);
+      const artifactKeys = logicalGroups.map((group) => group.artifactKey);
+      if (artifactKeys.length === 0) {
+        return { total: Number(logicalTotal[0]?.total ?? 0), groups: logicalGroups, latestRows: [], revisionGroups: [] };
+      }
+      const [rows, counts] = await Promise.all([
+        tx.artifact.findMany({
+          where: { ...where, artifactKey: { in: artifactKeys } },
+          distinct: ["artifactKey"],
+          select: {
+            id: true,
+            artifactKey: true,
+            revision: true,
+            kind: true,
+            title: true,
+            mimeType: true,
+            content: true,
+            metadata: true,
+            producedByTurnId: true,
+            createdAt: true,
+          },
+          orderBy: [{ artifactKey: "asc" }, { revision: "desc" }],
+        }),
+        tx.artifact.groupBy({
+          by: ["artifactKey"],
+          where: { ...where, artifactKey: { in: artifactKeys } },
+          _count: { _all: true },
+        }),
+      ]);
+      return { total: Number(logicalTotal[0]?.total ?? 0), groups: logicalGroups, latestRows: rows, revisionGroups: counts };
+    });
+    const latestByKey = new Map(latestRows.map((row) => [row.artifactKey, row]));
+    const revisionsByKey = new Map(
+      revisionGroups.map((group) => [group.artifactKey, group._count._all]),
+    );
+    const artifacts = groups.flatMap((group) => {
+      const row = latestByKey.get(group.artifactKey);
+      return row
+        ? [{
+            ...row,
+            language: objectValue(row.metadata).language ?? null,
+            revisionCount: revisionsByKey.get(group.artifactKey) ?? 1,
+          }]
+        : [];
+    });
+    return { artifacts, total };
+  }
+
+  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number; offset?: number; allUsers?: boolean }) {
+    return (await this.listThreadArtifactsPage(threadId, scope, options)).artifacts;
   }
 
   async reapChatSessions(): Promise<{ scanned: number; closed: number; skippedActive: number; errors: number }> {

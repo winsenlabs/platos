@@ -155,7 +155,7 @@ export interface ClickhouseReader {
     /**
      * The initial select clause
      *
-     * @example SELECT run_id from trigger_dev.task_runs_v1
+     * @example SELECT run_id from platos_telemetry.runtime_runs_v1
      */
     baseQuery: string;
     /**
@@ -179,7 +179,7 @@ export interface ClickhouseReader {
     /**
      * The table to query
      *
-     * @example trigger_dev.task_runs_v1
+     * @example platos_telemetry.runtime_runs_v1
      */
     table: string;
     /**

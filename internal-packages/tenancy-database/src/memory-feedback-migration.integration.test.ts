@@ -48,10 +48,16 @@ describe("memory feedback migration", () => {
       },
       select: { id: true },
     });
-    const environment = await prisma.environment.create({
-      data: { projectId: project.id, slug: "development", name: "Development" },
-      select: { id: true },
-    });
+    // This fixture intentionally stops before later additive migrations. Insert
+    // through the legacy physical contract so the current generated client does
+    // not project fields that do not exist at this historical migration point.
+    const [environment] = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `INSERT INTO "Environment" ("id", "projectId", "slug", "name", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1::uuid, 'development', 'Development', NOW(), NOW())
+       RETURNING "id"`,
+      project.id
+    );
+    if (!environment) throw new Error("Failed to seed legacy Environment fixture");
     const agent = await prisma.agent.create({
       data: { projectId: project.id, slug: "feedback-migration", name: "Feedback migration" },
       select: { id: true },

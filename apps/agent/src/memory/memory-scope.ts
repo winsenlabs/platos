@@ -64,7 +64,7 @@ export async function resolveEndUser(
 
   // EndUser.id is UUID-backed, while verified external identity subjects are
   // intentionally opaque and may be arbitrary strings. Do not pass an
-  // external subject to the UUID column before attempting identity lookup.
+  // external subject to the UUID column before resolving identity.
   if (UUID_OR_URN_UUID.test(userId)) {
     const direct = await prisma.endUser.findFirst({
       where: { id: userId, organizationId: scope.organizationId, disabledAt: null },
@@ -124,8 +124,9 @@ export async function resolveOperatorSelectedEndUser(
   endUserId: string,
 ): Promise<ResolvedEndUser> {
   if (!endUserId) throw new MemoryEndUserContextError();
-  await assertEnvironmentScope(prisma, scope);
 
+  // EndUsers are Organization-owned. Environment ancestry is authorized by
+  // the Memory/Knowledge Graph operation service after this selection step.
   const endUser = await prisma.endUser.findFirst({
     where: {
       id: endUserId,
@@ -215,6 +216,20 @@ export async function resolveReadAgentIds(
   requestedAgentId?: string | null,
   requestedAgentIds?: string[],
 ): Promise<string[]> {
+  return (await resolveReadAgentBindings(
+    prisma,
+    scope,
+    requestedAgentId,
+    requestedAgentIds,
+  )).map(({ agentId }) => agentId);
+}
+
+export async function resolveReadAgentBindings(
+  prisma: ControlDatabaseClient,
+  scope: MemoryScope,
+  requestedAgentId?: string | null,
+  requestedAgentIds?: string[],
+): Promise<ResolvedAgentBinding[]> {
   const actingAgentId = scope.agentId || null;
   const requested = Array.from(
     new Set(
@@ -235,14 +250,14 @@ export async function resolveReadAgentIds(
       },
       select: { agentId: true, clusterId: true },
     });
-    if (persisted.length === 1) return [persisted[0]!.agentId];
+    if (persisted.length === 1) return persisted;
     const clusterId = persisted[0]?.clusterId;
     if (
       persisted.length > 1 &&
       clusterId &&
       persisted.every((binding) => binding.clusterId === clusterId)
     ) {
-      return persisted.map((binding) => binding.agentId);
+      return persisted;
     }
     throw new Error("Memory reads require one persisted Agent or AgentCluster scope");
   }
@@ -278,7 +293,7 @@ export async function resolveReadAgentIds(
       throw new Error("Cross-Agent memory access requires one shared AgentCluster");
     }
   }
-  return targetIds;
+  return targetIds.map((agentId) => bindings.find((binding) => binding.agentId === agentId)!);
 }
 
 export function canShareAgentScope(

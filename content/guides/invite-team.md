@@ -4,8 +4,6 @@ title: Invite a teammate to a project
 description: Add a collaborator to your Platos project and pick their role.
 category: getting-started
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I invite someone to my Platos org?"
   - "What roles are available?"
@@ -13,8 +11,6 @@ questions:
   - "How do I revoke an invite?"
 related:
   - quickstart
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx
 ---
 
 # Invite a teammate to a project
@@ -63,5 +59,5 @@ If the invite has not been accepted, the members list shows "Pending"; click the
 
 ## Next steps
 
-- [Quickstart](/guides/quickstart) for the new teammate's first run.
+- [Quickstart](/guides/quickstart) for the new teammate's first Turn.
 - [Set a per-agent budget cap](/guides/set-budget-cap) before exposing prod agents to a wider team.

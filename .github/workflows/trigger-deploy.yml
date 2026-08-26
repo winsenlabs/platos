@@ -1,12 +1,9 @@
-name: Deploy Trigger.dev tasks
+name: Validate and deploy Trigger.dev tasks
 
-# Builds an immutable external Trigger deployment without promoting it. The
-# emitted deployment-contract artifact records the exact source-compatible and
-# target-compatible versions used by the WIN-132 cutover/rollback runbook.
-# Promotion is an explicit workflow_dispatch choice and always targets the
-# version emitted by this deploy job; production pause/drain remains a separate
-# authorized operator action.
-
+# Main pushes validate the external Trigger deployment boundary only. Creating
+# an immutable deployment requires an explicit dispatch and approval through the
+# trigger-deployment environment. Promotion is a second explicit choice guarded
+# independently by the trigger-promotion environment.
 on:
   push:
     branches: [main]
@@ -23,7 +20,7 @@ on:
         required: true
         type: string
       promote_target:
-        description: "Explicitly promote the newly deployed target version"
+        description: "Explicitly promote the newly deployed target version after separate approval"
         required: true
         default: false
         type: boolean
@@ -32,19 +29,21 @@ on:
         required: true
         type: string
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    outputs:
-      deployment_version: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
-    steps:
-      - uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - uses: pnpm/action-setup@v4
+jobs:
+  validate-contract:
+    name: validate-external-trigger-contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
         with:
           version: 10.23.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
@@ -55,13 +54,35 @@ jobs:
         working-directory: apps/agent
         run: pnpm exec vitest run src/trigger-tasks/deployment-boundary-manifest.test.ts
 
-      - name: Deploy immutable Trigger.dev version
+  deploy:
+    name: deploy-authorized-immutable-trigger-version
+    needs: validate-contract
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: trigger-deployment
+    outputs:
+      deployment_version: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Deploy immutable Trigger.dev version without promotion
         id: deploy-trigger
         working-directory: apps/agent
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
           TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
-          TRIGGER_API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger_api_url || vars.TRIGGER_API_URL }}
+          TRIGGER_API_URL: ${{ inputs.trigger_api_url }}
         run: |
           test -n "$TRIGGER_API_URL"
           pnpm dlx trigger.dev@4.5.4 deploy --skip-promotion
@@ -76,7 +97,7 @@ jobs:
           SOURCE_DEPLOYMENT_VERSION: ${{ inputs.source_deployment_version }}
           TARGET_DEPLOYMENT_VERSION: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
           PROMOTION_REQUESTED: ${{ inputs.promote_target }}
-          TRIGGER_API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger_api_url || vars.TRIGGER_API_URL }}
+          TRIGGER_API_URL: ${{ inputs.trigger_api_url }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           node -e '
@@ -84,7 +105,7 @@ jobs:
             const contract = {
               schemaVersion: 1,
               commitSha: process.env.COMMIT_SHA,
-              sourceDeploymentVersion: process.env.SOURCE_DEPLOYMENT_VERSION || null,
+              sourceDeploymentVersion: process.env.SOURCE_DEPLOYMENT_VERSION,
               targetDeploymentVersion: process.env.TARGET_DEPLOYMENT_VERSION,
               triggerApiUrl: process.env.TRIGGER_API_URL,
               promotionRequested: process.env.PROMOTION_REQUESTED === "true",
@@ -93,9 +114,9 @@ jobs:
           '
 
       - name: Upload deployment contract
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: trigger-deployment-contract-${{ github.run_id }}
+          name: trigger-deployment-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: trigger-deployment-contract.json
           if-no-files-found: error
           retention-days: 90
@@ -107,27 +128,29 @@ jobs:
         run: |
           {
             echo "## External Trigger deployment"
-            echo "- Source-compatible version: ${SOURCE_DEPLOYMENT_VERSION:-not supplied on push}"
+            echo "- Source-compatible version: ${SOURCE_DEPLOYMENT_VERSION}"
             echo "- Target-compatible version: ${TARGET_DEPLOYMENT_VERSION}"
             echo "- Target promoted by deploy job: no"
           } >> "$GITHUB_STEP_SUMMARY"
 
   promote:
+    name: promote-explicit-pinned-trigger-version
     needs: deploy
-    if: github.event_name == 'workflow_dispatch' && inputs.promote_target
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_target == true
     runs-on: ubuntu-latest
+    environment: trigger-promotion
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
         with:
           version: 10.23.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
-      - name: Promote exact pinned target
+      - name: Promote exact pinned target after separate approval
         working-directory: apps/agent
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
@@ -136,4 +159,5 @@ jobs:
           TARGET_DEPLOYMENT_VERSION: ${{ needs.deploy.outputs.deployment_version }}
         run: |
           test -n "$TRIGGER_API_URL"
+          test -n "$TARGET_DEPLOYMENT_VERSION"
           pnpm dlx trigger.dev@4.5.4 promote "$TARGET_DEPLOYMENT_VERSION"

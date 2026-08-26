@@ -575,6 +575,28 @@ CREATE TABLE "public"."PostmanTemplate" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."PostmanExecution" (
+    "id" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "templateId" UUID,
+    "requestId" UUID NOT NULL,
+    "requestFingerprint" TEXT NOT NULL,
+    "actorUserId" UUID NOT NULL,
+    "simulatedEndUserId" UUID,
+    "contextHandle" TEXT NOT NULL,
+    "contextExpiresAt" TIMESTAMP(3) NOT NULL,
+    "status" "public"."WorkStatus" NOT NULL DEFAULT 'PENDING',
+    "threadId" UUID,
+    "turnId" UUID,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PostmanExecution_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."Thread" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
@@ -582,6 +604,8 @@ CREATE TABLE "public"."Thread" (
     "endUserId" UUID NOT NULL,
     "clusterId" UUID,
     "parentThreadId" UUID,
+    "forkedUpToTurnId" UUID,
+    "forkedTurnIds" UUID[] DEFAULT ARRAY[]::UUID[],
     "compactedUpToTurnId" UUID,
     "title" TEXT,
     "status" "public"."WorkStatus" NOT NULL DEFAULT 'ACTIVE',
@@ -754,6 +778,8 @@ CREATE TABLE "public"."MessageAttachment" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
     "endUserId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "threadId" UUID NOT NULL,
     "turnId" UUID,
     "kind" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
@@ -1449,6 +1475,7 @@ CREATE TABLE "public"."McpOidcSession" (
 -- CreateTable
 CREATE TABLE "public"."EntityToolPolicy" (
     "id" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
     "entityId" UUID NOT NULL,
     "toolId" UUID NOT NULL,
     "effect" "public"."PolicyEffect" NOT NULL,
@@ -1800,6 +1827,24 @@ CREATE INDEX "PostmanTemplate_agentId_idx" ON "public"."PostmanTemplate"("agentI
 CREATE UNIQUE INDEX "PostmanTemplate_environmentId_agentId_name_key" ON "public"."PostmanTemplate"("environmentId", "agentId", "name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_contextHandle_key" ON "public"."PostmanExecution"("contextHandle");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_turnId_key" ON "public"."PostmanExecution"("turnId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_templateId_requestId_key" ON "public"."PostmanExecution"("templateId", "requestId");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_environmentId_createdAt_idx" ON "public"."PostmanExecution"("environmentId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_actorUserId_createdAt_idx" ON "public"."PostmanExecution"("actorUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_threadId_idx" ON "public"."PostmanExecution"("threadId");
+
+-- CreateIndex
 CREATE INDEX "Thread_environmentId_endUserId_updatedAt_idx" ON "public"."Thread"("environmentId", "endUserId", "updatedAt");
 
 -- CreateIndex
@@ -1810,6 +1855,9 @@ CREATE INDEX "Thread_clusterId_idx" ON "public"."Thread"("clusterId");
 
 -- CreateIndex
 CREATE INDEX "Thread_parentThreadId_idx" ON "public"."Thread"("parentThreadId");
+
+-- CreateIndex
+CREATE INDEX "Thread_forkedUpToTurnId_idx" ON "public"."Thread"("forkedUpToTurnId");
 
 -- CreateIndex
 CREATE INDEX "Thread_compactionState_compactedAt_idx" ON "public"."Thread"("compactionState", "compactedAt");
@@ -1864,6 +1912,12 @@ CREATE UNIQUE INDEX "Artifact_threadId_artifactKey_revision_key" ON "public"."Ar
 
 -- CreateIndex
 CREATE INDEX "MessageAttachment_environmentId_endUserId_createdAt_idx" ON "public"."MessageAttachment"("environmentId", "endUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "MessageAttachment_agentId_threadId_createdAt_idx" ON "public"."MessageAttachment"("agentId", "threadId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "MessageAttachment_threadId_turnId_idx" ON "public"."MessageAttachment"("threadId", "turnId");
 
 -- CreateIndex
 CREATE INDEX "MessageAttachment_turnId_idx" ON "public"."MessageAttachment"("turnId");
@@ -2106,7 +2160,7 @@ CREATE UNIQUE INDEX "McpOidcSession_environmentId_entityId_provider_externalSubj
 CREATE INDEX "EntityToolPolicy_toolId_idx" ON "public"."EntityToolPolicy"("toolId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EntityToolPolicy_entityId_toolId_key" ON "public"."EntityToolPolicy"("entityId", "toolId");
+CREATE UNIQUE INDEX "EntityToolPolicy_environmentId_entityId_toolId_key" ON "public"."EntityToolPolicy"("environmentId", "entityId", "toolId");
 
 -- CreateIndex
 CREATE INDEX "ErasureOperation_organizationId_subjectKeyHash_requestedAt_idx" ON "public"."ErasureOperation"("organizationId", "subjectKeyHash", "requestedAt");
@@ -2316,6 +2370,27 @@ ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_environme
 ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "public"."PostmanTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_simulatedEndUserId_fkey" FOREIGN KEY ("simulatedEndUserId") REFERENCES "public"."EndUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "public"."Thread"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2329,6 +2404,9 @@ ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_clusterId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_parentThreadId_fkey" FOREIGN KEY ("parentThreadId") REFERENCES "public"."Thread"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_forkedUpToTurnId_fkey" FOREIGN KEY ("forkedUpToTurnId") REFERENCES "public"."Turn"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_compactedUpToTurnId_fkey" FOREIGN KEY ("compactedUpToTurnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -2371,6 +2449,12 @@ ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_envir
 
 -- AddForeignKey
 ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_endUserId_fkey" FOREIGN KEY ("endUserId") REFERENCES "public"."EndUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "public"."Thread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2691,6 +2775,9 @@ ALTER TABLE "public"."McpOidcSession" ADD CONSTRAINT "McpOidcSession_credentialI
 ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "public"."Entity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "public"."Tool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2809,6 +2896,8 @@ ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_modelRoutes_jso
 ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_memoryConfig_json_root" CHECK (jsonb_typeof("memoryConfig") = 'object');
 ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_outputSchema_json_root" CHECK ("outputSchema" IS NULL OR jsonb_typeof("outputSchema") = 'object');
 ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_sessionContext_json_root" CHECK ("sessionContext" IS NULL OR jsonb_typeof("sessionContext") = 'object');
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_requestFingerprint_check" CHECK ("requestFingerprint" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_contextHandle_check" CHECK ("contextHandle" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_sessionContext_json_root" CHECK ("sessionContext" IS NULL OR jsonb_typeof("sessionContext") = 'object');
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_input_json_root" CHECK ("input" IS NULL OR jsonb_typeof("input") = 'object');
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_output_json_root" CHECK ("output" IS NULL OR jsonb_typeof("output") = 'object');
@@ -2866,6 +2955,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE FUNCTION "public"."prevent_postman_execution_attribution_mutation"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW."environmentId" IS DISTINCT FROM OLD."environmentId"
+     OR NEW."agentId" IS DISTINCT FROM OLD."agentId"
+     OR NEW."requestId" IS DISTINCT FROM OLD."requestId"
+     OR NEW."requestFingerprint" IS DISTINCT FROM OLD."requestFingerprint"
+     OR NEW."actorUserId" IS DISTINCT FROM OLD."actorUserId"
+     OR NEW."contextHandle" IS DISTINCT FROM OLD."contextHandle"
+     OR NEW."createdAt" IS DISTINCT FROM OLD."createdAt" THEN
+    RAISE EXCEPTION 'PostmanExecution forensic attribution is immutable'
+      USING ERRCODE = '55000';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER "Project_owner_immutable" BEFORE UPDATE ON "public"."Project" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('organizationId');
 CREATE TRIGGER "Environment_owner_immutable" BEFORE UPDATE ON "public"."Environment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
 CREATE TRIGGER "EndUser_owner_immutable" BEFORE UPDATE ON "public"."EndUser" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('organizationId');
@@ -2873,7 +2979,7 @@ CREATE TRIGGER "Agent_owner_immutable" BEFORE UPDATE ON "public"."Agent" FOR EAC
 CREATE TRIGGER "AgentVersion_owner_immutable" BEFORE UPDATE ON "public"."AgentVersion" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('agentId');
 CREATE TRIGGER "AgentCluster_owner_immutable" BEFORE UPDATE ON "public"."AgentCluster" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Credential_owner_immutable" BEFORE UPDATE ON "public"."Credential" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'kind', 'name', 'provider');
-CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
+CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'parentThreadId', 'forkedUpToTurnId', 'forkedTurnIds');
 CREATE TRIGGER "Turn_owner_immutable" BEFORE UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('threadId', 'agentVersionId', 'versionBucket');
 CREATE TRIGGER "Step_owner_immutable" BEFORE UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('turnId');
 CREATE TRIGGER "Entity_owner_immutable" BEFORE UPDATE ON "public"."Entity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
@@ -2887,7 +2993,7 @@ CREATE TRIGGER "MemoryEntity_owner_immutable" BEFORE UPDATE ON "public"."MemoryE
 CREATE TRIGGER "MemoryRelationship_owner_immutable" BEFORE UPDATE ON "public"."MemoryRelationship" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'clusterId', 'fromEntityId', 'toEntityId');
 CREATE TRIGGER "EndUserIdentity_owner_immutable" BEFORE UPDATE ON "public"."EndUserIdentity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId', 'organizationId');
 CREATE TRIGGER "Thread_subject_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId');
-CREATE TRIGGER "MessageAttachment_owner_immutable" BEFORE UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId');
+CREATE TRIGGER "MessageAttachment_owner_immutable" BEFORE UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'threadId');
 CREATE TRIGGER "ChannelInstallation_owner_immutable" BEFORE UPDATE ON "public"."ChannelInstallation" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('appId');
 CREATE TRIGGER "OAuthClient_owner_immutable" BEFORE UPDATE ON "public"."OAuthClient" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('organizationId');
 CREATE TRIGGER "MemoryEntity_subject_immutable" BEFORE UPDATE ON "public"."MemoryEntity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId');
@@ -2900,6 +3006,21 @@ CREATE TRIGGER "OAuthConsentTransaction_owner_immutable" BEFORE UPDATE ON "publi
 CREATE TRIGGER "OAuthAccessToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
 CREATE TRIGGER "OAuthRefreshToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthRefreshToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId', 'rotationFamilyId', 'parentRefreshTokenId');
 CREATE TRIGGER "McpBearerToken_owner_immutable" BEFORE UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('entityId', 'environmentId', 'createdByUserId');
+
+CREATE FUNCTION "public"."enforce_message_attachment_binding_transition"()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD."turnId" IS NOT NULL AND NEW."turnId" IS DISTINCT FROM OLD."turnId" THEN
+    RAISE EXCEPTION 'MessageAttachment turn binding is one-way and immutable'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "MessageAttachment_binding_one_way"
+BEFORE UPDATE ON "public"."MessageAttachment"
+FOR EACH ROW EXECUTE FUNCTION "public"."enforce_message_attachment_binding_transition"();
 
 -- A Redis thread lock may select any historical version of an Environment-bound
 -- agent. All of those versions are therefore executable, including their
@@ -3003,6 +3124,26 @@ BEGIN
       ) INTO valid;
     WHEN 'PostmanTemplate' THEN
       SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Agent" a ON a."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND a.id = NEW."agentId") INTO valid;
+    WHEN 'PostmanExecution' THEN
+      SELECT EXISTS (
+        SELECT 1 FROM "Environment" e
+        JOIN "Project" p ON p.id = e."projectId"
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        JOIN "User" actor ON actor.id = NEW."actorUserId"
+        LEFT JOIN "PostmanTemplate" template ON template.id = NEW."templateId"
+          AND template."environmentId" = e.id AND template."agentId" = a.id
+        LEFT JOIN "EndUser" simulated ON simulated.id = NEW."simulatedEndUserId"
+          AND simulated."organizationId" = p."organizationId"
+        LEFT JOIN "Thread" thread ON thread.id = NEW."threadId"
+          AND thread."environmentId" = e.id AND thread."agentId" = a.id
+          AND (NEW."simulatedEndUserId" IS NULL OR thread."endUserId" = NEW."simulatedEndUserId")
+        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId" AND turn."threadId" = thread.id
+        WHERE e.id = NEW."environmentId"
+          AND (NEW."templateId" IS NULL OR template.id IS NOT NULL)
+          AND (NEW."simulatedEndUserId" IS NULL OR simulated.id IS NOT NULL)
+          AND (NEW."threadId" IS NULL OR thread.id IS NOT NULL)
+          AND (NEW."turnId" IS NULL OR turn.id IS NOT NULL)
+      ) INTO valid;
     WHEN 'Thread' THEN
       SELECT EXISTS (
         SELECT 1 FROM "Environment" e
@@ -3010,11 +3151,30 @@ BEGIN
         JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
         JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
         LEFT JOIN "AgentCluster" c ON c.id = NEW."clusterId" AND c."environmentId" = e.id
-        LEFT JOIN "Thread" parent ON parent.id = NEW."parentThreadId" AND parent."environmentId" = e.id AND parent."endUserId" = u.id
+        LEFT JOIN "Thread" parent ON parent.id = NEW."parentThreadId" AND parent."environmentId" = e.id AND parent."endUserId" = u.id AND parent."agentId" = a.id
+        LEFT JOIN "Turn" fork_boundary ON fork_boundary.id = NEW."forkedUpToTurnId"
+          AND (fork_boundary."threadId" = parent.id OR fork_boundary.id = ANY(parent."forkedTurnIds"))
         LEFT JOIN "Turn" cursor ON cursor.id = NEW."compactedUpToTurnId" AND cursor."threadId" = NEW.id
         WHERE e.id = NEW."environmentId"
           AND (NEW."clusterId" IS NULL OR c.id IS NOT NULL)
           AND (NEW."parentThreadId" IS NULL OR parent.id IS NOT NULL)
+          AND (
+            cardinality(NEW."forkedTurnIds") = 0 AND NEW."forkedUpToTurnId" IS NULL
+            OR parent.id IS NOT NULL
+              AND fork_boundary.id IS NOT NULL
+              AND NEW."forkedUpToTurnId" = NEW."forkedTurnIds"[cardinality(NEW."forkedTurnIds")]
+              AND cardinality(NEW."forkedTurnIds") = (
+                SELECT count(DISTINCT forked_id)
+                FROM unnest(NEW."forkedTurnIds") AS forked_id
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM unnest(NEW."forkedTurnIds") AS forked_id
+                LEFT JOIN "Turn" inherited_turn ON inherited_turn.id = forked_id
+                  AND (inherited_turn."threadId" = parent.id OR inherited_turn.id = ANY(parent."forkedTurnIds"))
+                WHERE inherited_turn.id IS NULL
+              )
+          )
           AND (NEW."compactedUpToTurnId" IS NULL OR cursor.id IS NOT NULL)
       ) INTO valid;
     WHEN 'Turn' THEN
@@ -3037,9 +3197,10 @@ BEGIN
         SELECT 1 FROM "Environment" e
         JOIN "Project" p ON p.id = e."projectId"
         JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
-        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId"
-        LEFT JOIN "Thread" t ON t.id = turn."threadId" AND t."environmentId" = e.id AND t."endUserId" = u.id
-        WHERE e.id = NEW."environmentId" AND (NEW."turnId" IS NULL OR t.id IS NOT NULL)
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        JOIN "Thread" t ON t.id = NEW."threadId" AND t."environmentId" = e.id AND t."endUserId" = u.id AND t."agentId" = a.id
+        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId" AND turn."threadId" = t.id
+        WHERE e.id = NEW."environmentId" AND (NEW."turnId" IS NULL OR turn.id IS NOT NULL)
       ) INTO valid;
     WHEN 'ChannelConnection' THEN
       SELECT EXISTS (
@@ -3080,6 +3241,8 @@ BEGIN
         WHERE entity.id = NEW."entityId" AND entity."projectId" = e."projectId"
       ) INTO valid;
     WHEN 'EnvironmentEntityTool' THEN
+      SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Entity" entity ON entity."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND entity.id = NEW."entityId") INTO valid;
+    WHEN 'EntityToolPolicy' THEN
       SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Entity" entity ON entity."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND entity.id = NEW."entityId") INTO valid;
     WHEN 'ToolCallAudit' THEN
       SELECT EXISTS (
@@ -3332,6 +3495,8 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER "EndUserSession_ancestry" BEFORE INSERT OR UPDATE ON "public"."EndUserSession" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "AgentBinding_ancestry" BEFORE INSERT OR UPDATE ON "public"."AgentBinding" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "PostmanTemplate_ancestry" BEFORE INSERT OR UPDATE ON "public"."PostmanTemplate" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "PostmanExecution_ancestry" BEFORE INSERT OR UPDATE ON "public"."PostmanExecution" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "PostmanExecution_attribution_immutable" BEFORE UPDATE ON "public"."PostmanExecution" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_postman_execution_attribution_mutation"();
 CREATE TRIGGER "Thread_ancestry" BEFORE INSERT OR UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Turn_ancestry" BEFORE INSERT OR UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Artifact_ancestry" BEFORE INSERT OR UPDATE ON "public"."Artifact" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
@@ -3343,6 +3508,7 @@ CREATE TRIGGER "ChannelInstallation_ancestry" BEFORE INSERT OR UPDATE ON "public
 CREATE TRIGGER "ChannelAppThread_ancestry" BEFORE INSERT OR UPDATE ON "public"."ChannelAppThread" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "EntityMcpClient_ancestry" BEFORE INSERT OR UPDATE ON "public"."EntityMcpClient" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "EnvironmentEntityTool_ancestry" BEFORE INSERT OR UPDATE ON "public"."EnvironmentEntityTool" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "EntityToolPolicy_ancestry" BEFORE INSERT OR UPDATE ON "public"."EntityToolPolicy" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "ToolCallAudit_ancestry" BEFORE INSERT OR UPDATE ON "public"."ToolCallAudit" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "AgentApproval_ancestry" BEFORE INSERT OR UPDATE ON "public"."AgentApproval" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Budget_ancestry" BEFORE INSERT OR UPDATE ON "public"."Budget" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();

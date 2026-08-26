@@ -5,6 +5,10 @@ import compression from "compression";
 import express from "express";
 import path from "node:path";
 const app = express();
+// Remix derives Request.url from Express' protocol and host. The deployed
+// topology has one release/edge proxy, so trust that hop to preserve HTTPS
+// origins inside actions.
+app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(compression());
 app.use("/build", express.static("public/build", { immutable: true, maxAge: "1y" }));

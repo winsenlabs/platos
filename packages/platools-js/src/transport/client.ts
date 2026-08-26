@@ -6,7 +6,7 @@
  *
  *   - Heartbeat every 30s (`HEARTBEAT_INTERVAL`), per PRD §5.2.
  *   - Exponential backoff on reconnect starting at `BACKOFF_BASE`
- *     (1s), doubling every attempt, capped at `BACKOFF_MAX` (60s).
+ *     (1s), doubling with every retry, capped at `BACKOFF_MAX` (60s).
  *   - JWT auth via the `Authorization: Bearer <secret>` header.
  *   - Outbound only — the SDK connects to the platform, the
  *     platform never calls the SDK (PRD §5.7).
@@ -49,20 +49,20 @@ export const BACKOFF_BASE_MS = 1_000;
 export const BACKOFF_MAX_MS = 60_000;
 
 /**
- * Compute the next reconnect delay given the attempt number
+ * Compute the next reconnect delay given the retry count
  * (1-indexed). Pure function so unit tests can lock the curve down.
  *
- * The curve is `base * 2^(attempt - 1)` capped at `max`, identical
+ * The curve is `base * 2^(retryCount - 1)` capped at `max`, identical
  * to `platools/transport/client.py` — regression-tested in
  * `tests/backoff.test.ts`.
  */
 export function backoffDelayMs(
-  attempt: number,
+  retryCount: number,
   base: number = BACKOFF_BASE_MS,
   max: number = BACKOFF_MAX_MS,
 ): number {
-  if (attempt < 1) return 0;
-  const raw = base * 2 ** (attempt - 1);
+  if (retryCount < 1) return 0;
+  const raw = base * 2 ** (retryCount - 1);
   return Math.min(raw, max);
 }
 
@@ -169,19 +169,19 @@ export class PlatoolsClient {
    * task or the platform closes the connection.
    */
   public async runForever(): Promise<void> {
-    let attempt = 0;
+    let retryCount = 0;
     while (!this.stopController.signal.aborted) {
       try {
         await this.runSession();
-        attempt = 0; // reset after a clean session
+        retryCount = 0; // reset after a clean session
       } catch (err) {
         this.logger.warn("platools ws session ended:", formatError(err));
       }
       if (this.stopController.signal.aborted) return;
-      attempt += 1;
-      const delay = backoffDelayMs(attempt, this.backoffBaseMs, this.backoffMaxMs);
+      retryCount += 1;
+      const delay = backoffDelayMs(retryCount, this.backoffBaseMs, this.backoffMaxMs);
       this.logger.info(
-        `platools reconnect in ${(delay / 1000).toFixed(1)}s (attempt ${attempt})`,
+        `platools reconnect in ${(delay / 1000).toFixed(1)}s (retry ${retryCount})`,
       );
       await this.sleeper(delay, this.stopController.signal);
     }

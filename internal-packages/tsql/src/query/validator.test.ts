@@ -5,7 +5,7 @@ import { column, type TableSchema } from "./schema.js";
 
 const runsSchema: TableSchema = {
   name: "runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+  clickhouseName: "platos_telemetry.runtime_runs_v2",
   columns: {
     id: { name: "id", ...column("String") },
     status: {

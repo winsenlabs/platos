@@ -9,17 +9,17 @@ import {
 } from "./m4Mutation.server";
 
 export function parseJobForm(form: FormData, mode: "create" | "update") {
-  const triggerType = enumField(form, "triggerType", ["manual", "schedule", "webhook"] as const, "manual");
+  const invocationType = enumField(form, "invocationType", ["manual", "schedule", "webhook"] as const, "manual");
   const handler = mode === "create" ? requiredText(form, "handler", "Handler source") : optionalText(form, "handler");
   return {
-    ...(mode === "create" ? { taskId: requiredText(form, "taskId", "Job ID") } : {}),
+    ...(mode === "create" ? { jobId: requiredText(form, "jobId", "Job ID") } : {}),
     ...(mode === "create"
       ? { displayName: requiredText(form, "displayName", "Display name") }
       : { displayName: optionalText(form, "displayName") }),
     description: optionalText(form, "description"),
-    triggerType,
-    scheduleCron: triggerType === "schedule" ? optionalText(form, "scheduleCron") : undefined,
-    scheduleTimezone: triggerType === "schedule" ? optionalText(form, "scheduleTimezone") : undefined,
+    invocationType,
+    scheduleCron: invocationType === "schedule" ? optionalText(form, "scheduleCron") : undefined,
+    scheduleTimezone: invocationType === "schedule" ? optionalText(form, "scheduleTimezone") : undefined,
     allowedAgentIds: stringList(form, "allowedAgentIds"),
     payloadSchema: jsonObject(form, "payloadSchema"),
     ...(handler !== undefined ? { handler } : {}),

@@ -28,7 +28,7 @@ export interface ConversionResult {
 /**
  * Convert a schema from various validation libraries to JSON Schema
  *
- * This function attempts to convert schemas without requiring external dependencies to be bundled.
+ * This function tries to convert schemas without requiring external dependencies to be bundled.
  * It will only succeed if:
  * 1. The schema has built-in JSON Schema conversion (ArkType, Zod 4, TypeBox)
  * 2. The required conversion library is available at runtime (zod-to-json-schema, @sodaru/yup-to-json-schema, etc.)

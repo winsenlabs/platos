@@ -5,6 +5,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelEventCryptoService } from "./channel-event-crypto.service";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
+import { isUuid } from "../shared/pagination";
 
 export interface ChannelOwnerScope {
   organizationId: string;
@@ -62,9 +63,42 @@ export class ChannelPersistenceService {
         credential: true,
         environment: { include: { project: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((row: any) => this.normalizeApp(row));
+  }
+
+  async listAppsPage(
+    scope: ChannelOwnerScope,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: any[]; total: number }> {
+    await this.requireEnvironmentScope(scope);
+    const where = {
+      environmentId: scope.environmentId,
+      ...(options.search
+        ? {
+            OR: [
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+              { provider: { contains: options.search, mode: "insensitive" as const } },
+              { clientId: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.channelApp.findMany({
+        where,
+        include: {
+          credential: true,
+          environment: { include: { project: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.channelApp.count({ where }),
+    ]);
+    return { items: rows.map((row: any) => this.normalizeApp(row)), total };
   }
 
   async loadScopedApp(scope: ChannelOwnerScope, appId: string): Promise<any | null> {
@@ -234,6 +268,28 @@ export class ChannelPersistenceService {
     return rows.map((row: any) => this.normalizeInstallation(row));
   }
 
+  async listInstallationsForApps(scope: ChannelOwnerScope, appIds: string[]): Promise<any[]> {
+    await this.requireEnvironmentScope(scope);
+    if (appIds.length === 0) return [];
+    const rows = await this.prisma.channelInstallation.findMany({
+      where: {
+        appId: { in: appIds },
+        app: { environmentId: scope.environmentId },
+      },
+      include: {
+        credential: true,
+        app: {
+          include: {
+            credential: true,
+            environment: { include: { project: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    return rows.map((row: any) => this.normalizeInstallation(row));
+  }
+
   async updateInstallationBinding(
     scope: ChannelOwnerScope,
     appId: string,
@@ -288,9 +344,43 @@ export class ChannelPersistenceService {
         entity: true,
         environment: { include: { project: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((row: any) => this.normalizeConnection(row));
+  }
+
+  async listConnectionsPage(
+    scope: ChannelOwnerScope,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: any[]; total: number }> {
+    await this.requireEnvironmentScope(scope);
+    const where = {
+      environmentId: scope.environmentId,
+      ...(options.search
+        ? {
+            OR: [
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+              { provider: { contains: options.search, mode: "insensitive" as const } },
+              ...(isUuid(options.search) ? [{ defaultAgentId: options.search }] : []),
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.channelConnection.findMany({
+        where,
+        include: {
+          credential: true,
+          entity: true,
+          environment: { include: { project: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.channelConnection.count({ where }),
+    ]);
+    return { items: rows.map((row: any) => this.normalizeConnection(row)), total };
   }
 
   async loadScopedConnection(scope: ChannelOwnerScope, connectionId: string): Promise<any | null> {
@@ -562,7 +652,7 @@ export class ChannelPersistenceService {
             revokedAt: null,
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
             ...(grant.defaultAgentId !== undefined ? { defaultAgentId: grant.defaultAgentId } : {}),
@@ -680,7 +770,7 @@ export class ChannelPersistenceService {
   async beginInstallationRefresh(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
   ): Promise<any | null> {
     try {
@@ -696,7 +786,7 @@ export class ChannelPersistenceService {
           },
           data: {
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
             tokenRefreshStartedAt: new Date(),
             tokenRefreshRepairCode: null,
           },
@@ -705,7 +795,7 @@ export class ChannelPersistenceService {
         const canonical = await this.loadInstallationWith(tx, installationId, appId);
         if (
           !canonical ||
-          canonical.tokenRefreshAttemptId !== attemptId ||
+          canonical.tokenRefreshClaimId !== claimId ||
           canonical.credentialId !== expected.credentialId ||
           canonical.credentialRevision !== expected.credentialRevision ||
           Number(canonical.tokenGeneration) !== expected.tokenGeneration
@@ -730,7 +820,7 @@ export class ChannelPersistenceService {
       !current?.credentialId ||
       current.credentialId !== expected.credentialId ||
       current.credentialRevision !== expected.credentialRevision ||
-      current.tokenRefreshAttemptId !== null ||
+      current.tokenRefreshClaimId !== null ||
       current.tokenRefreshState !== refreshState ||
       Number(current.tokenGeneration) !== nextGeneration
     ) {
@@ -747,13 +837,13 @@ export class ChannelPersistenceService {
   }
 
   /**
-   * Commit the returned rotating grant and clear its durable attempt in one
+   * Commit the returned rotating grant and clear its durable refresh claim in one
    * transaction. Until this commits, callers must not use the returned token.
    */
   async finalizeInstallationRefresh(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null }
   ): Promise<any | null> {
@@ -768,12 +858,12 @@ export class ChannelPersistenceService {
             credentialId: expected.credentialId,
             tokenGeneration: expected.tokenGeneration,
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
           },
           data: {
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
           },
@@ -830,7 +920,7 @@ export class ChannelPersistenceService {
   async preserveInstallationRefreshGrantForRepair(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null },
     repairCode: string
@@ -844,12 +934,12 @@ export class ChannelPersistenceService {
             credentialId: expected.credentialId,
             tokenGeneration: expected.tokenGeneration,
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
           },
           data: {
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "REPAIR_REQUIRED",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: repairCode,
           },
@@ -896,7 +986,7 @@ export class ChannelPersistenceService {
   async markInstallationRefreshRepairRequired(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     repairCode: string
   ): Promise<boolean> {
@@ -907,7 +997,7 @@ export class ChannelPersistenceService {
         credentialId: expected.credentialId,
         tokenGeneration: expected.tokenGeneration,
         tokenRefreshState: "REFRESHING",
-        tokenRefreshAttemptId: attemptId,
+        tokenRefreshClaimId: claimId,
       },
       data: {
         tokenRefreshState: "REPAIR_REQUIRED",
@@ -967,7 +1057,7 @@ export class ChannelPersistenceService {
       },
       data: {
         status: "PROCESSING",
-        attempts: { increment: 1 },
+        retryCount: { increment: 1 },
         leaseGeneration: { increment: 1 },
         leaseOwner,
         leaseExpiresAt: new Date(now.getTime() + leaseMs),

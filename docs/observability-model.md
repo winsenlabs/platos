@@ -12,7 +12,7 @@ This is the question WIN-133 was asked to settle explicitly, and the answer is n
 
 ### Why not ClickHouse today
 
-Two datastores is a real operational cost, and Platos has already paid it once without getting anything back: the existing `trigger_dev` span pipeline has been broken in production and nothing said so (WIN-150). A second store that no one is watching is worse than no second store, because it converts a visible gap into an invisible one.
+Two datastores is a real operational cost, and Platos has already paid it once without getting anything back: the inherited span pipeline was broken in production and nothing said so (WIN-150). A second store that no one is watching is worse than no second store, because it converts a visible gap into an invisible one.
 
 At current volume the analytical questions Platos actually asks — cost by model, by agent, by user, over a day or a month — are aggregations over thousands of `Step` rows, not billions. Postgres answers them with an index. ClickHouse's advantage begins where a scan stops fitting in a query budget, and Platos is not there.
 
@@ -41,7 +41,7 @@ Until then `platos_observability` exists as schema and as code paths, and is not
 
 ### Naming
 
-The ClickHouse database is `platos_observability`. No table, column, or client API uses `trigger_dev`, task-run, queue, attempt, waitpoint, worker, or deployment vocabulary. `observability-erasure-contract.test.ts` enforces this against the committed DDL.
+The ClickHouse database is `platos_observability`. No table, column, or client API uses inherited runtime vocabulary. `observability-erasure-contract.test.ts` enforces this against the committed DDL.
 
 ## Event hierarchy
 
@@ -467,7 +467,7 @@ External durable execution correlation is limited to nullable `runtime_provider`
 
 ## Migration and verification constraints
 
-This is a clean-slate schema: no historical ClickHouse data is migrated. Existing `trigger_dev.platos_spans_v1`, `llm_metrics_v1`, task-event tables, and their current breakage are not repaired by this work.
+This is a clean-slate projection schema: no historical ClickHouse data is copied into it. Existing telemetry adapter tables remain in `platos_telemetry` and are migrated in place by WIN-144 rather than being duplicated here.
 
 Implementation verification must prove:
 
@@ -488,4 +488,4 @@ Per project instruction, these paths are wired and compiled without standing up 
 - **Steps are still one-per-Turn.** `ConversationService.storeMessage` writes exactly one `Step` per assistant turn (`sequence: 1`), collapsing a multi-step turn into a single row. The schema and the projection both handle N steps correctly; the Postgres write path does not yet produce them. Until it does, `steps_v1` and `turns_v1` carry the same token totals.
 - **Only the `inference` usage lane is routed into the ClickHouse projection.** Each projected `Step` emits one `inference` usage event. The `embedding`, `extraction`, `judge` and `skill` lanes are produced by `CostService.recordAuxiliaryCost` and `recordSkillUsage` and are not wired to the projection yet. They ARE accounted for in the Redis/Postgres usage ledger and appear in the per-lane breakdown described above; it is only the analytical projection that does not carry them.
 - **No read surface consumes the projection.** `TraceService` and the monitoring endpoints still read Postgres and Redis. Nothing degrades, because nothing depends on the projection yet.
-- **The legacy `trigger_dev.platos_spans_v1` pipeline is untouched.** Its breakage is WIN-150 and is explicitly out of scope here.
+- **The legacy span pipeline remains separate.** WIN-144 moves its database namespace to `platos_telemetry`; this projection does not rewrite its physical adapter tables.

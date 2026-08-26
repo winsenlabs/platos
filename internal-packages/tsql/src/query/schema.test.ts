@@ -462,8 +462,8 @@ describe("Error message sanitization", () => {
   // Test schema mimicking the real runs schema
   const runsSchema: TableSchema = {
     name: "runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
-    description: "Task runs table",
+    clickhouseName: "platos_telemetry.runtime_runs_v2",
+    description: "Runtime runs table",
     tenantColumns: {
       organizationId: "organization_id",
       projectId: "project_id",
@@ -500,13 +500,13 @@ describe("Error message sanitization", () => {
 
   describe("sanitizeErrorMessage", () => {
     it("should replace fully qualified table.column references", () => {
-      const error = "Missing column trigger_dev.task_runs_v2.friendly_id in query";
+      const error = "Missing column platos_telemetry.runtime_runs_v2.friendly_id in query";
       const sanitized = sanitizeErrorMessage(error, [runsSchema]);
       expect(sanitized).toBe("Missing column runs.run_id in query");
     });
 
     it("should replace standalone table names", () => {
-      const error = "Table trigger_dev.task_runs_v2 does not exist";
+      const error = "Table platos_telemetry.runtime_runs_v2 does not exist";
       const sanitized = sanitizeErrorMessage(error, [runsSchema]);
       expect(sanitized).toBe("Table runs does not exist");
     });
@@ -519,7 +519,7 @@ describe("Error message sanitization", () => {
 
     it("should replace multiple occurrences in the same message", () => {
       const error =
-        "Cannot compare friendly_id with created_at: incompatible types in trigger_dev.task_runs_v2";
+        "Cannot compare friendly_id with created_at: incompatible types in platos_telemetry.runtime_runs_v2";
       const sanitized = sanitizeErrorMessage(error, [runsSchema]);
       expect(sanitized).toBe("Cannot compare run_id with triggered_at: incompatible types in runs");
     });
@@ -550,9 +550,9 @@ describe("Error message sanitization", () => {
     });
 
     it("should return original message if no schemas provided", () => {
-      const error = "Some error with trigger_dev.task_runs_v2";
+      const error = "Some error with platos_telemetry.runtime_runs_v2";
       const sanitized = sanitizeErrorMessage(error, []);
-      expect(sanitized).toBe("Some error with trigger_dev.task_runs_v2");
+      expect(sanitized).toBe("Some error with platos_telemetry.runtime_runs_v2");
     });
 
     it("should return original message if no matches found", () => {
@@ -564,7 +564,7 @@ describe("Error message sanitization", () => {
     it("should handle multiple tables", () => {
       const eventsSchema: TableSchema = {
         name: "events",
-        clickhouseName: "trigger_dev.task_events",
+        clickhouseName: "platos_telemetry.task_events",
         description: "Task events table",
         tenantColumns: {
           organizationId: "organization_id",
@@ -581,7 +581,7 @@ describe("Error message sanitization", () => {
       };
 
       const error =
-        "Cannot join trigger_dev.task_runs_v2 with trigger_dev.task_events on internal_event_id";
+        "Cannot join platos_telemetry.runtime_runs_v2 with platos_telemetry.task_events on internal_event_id";
       const sanitized = sanitizeErrorMessage(error, [runsSchema, eventsSchema]);
       expect(sanitized).toBe("Cannot join runs with events on event_id");
     });
@@ -627,9 +627,9 @@ describe("Error message sanitization", () => {
     });
 
     it("should prioritize longer matches (table.column before standalone column)", () => {
-      // This tests that we replace "trigger_dev.task_runs_v2.friendly_id" as a unit,
-      // not "trigger_dev.task_runs_v2" and then "friendly_id" separately
-      const error = "Error in trigger_dev.task_runs_v2.friendly_id";
+      // This tests that we replace "platos_telemetry.runtime_runs_v2.friendly_id" as a unit,
+      // not "platos_telemetry.runtime_runs_v2" and then "friendly_id" separately
+      const error = "Error in platos_telemetry.runtime_runs_v2.friendly_id";
       const sanitized = sanitizeErrorMessage(error, [runsSchema]);
       expect(sanitized).toBe("Error in runs.run_id");
     });
@@ -687,8 +687,8 @@ describe("Error message sanitization", () => {
       // Schema with required filters
       const schemaWithRequiredFilters: TableSchema = {
         name: "runs",
-        clickhouseName: "trigger_dev.task_runs_v2",
-        description: "Task runs table",
+        clickhouseName: "platos_telemetry.runtime_runs_v2",
+        description: "Runtime runs table",
         tenantColumns: {
           organizationId: "organization_id",
           projectId: "project_id",
@@ -716,8 +716,8 @@ describe("Error message sanitization", () => {
       // The schema uses 'project' and 'environment' as column names with field mappings
       const schemaWithFieldMappedTenants: TableSchema = {
         name: "runs",
-        clickhouseName: "trigger_dev.task_runs_v2",
-        description: "Task runs table",
+        clickhouseName: "platos_telemetry.runtime_runs_v2",
+        description: "Runtime runs table",
         tenantColumns: {
           organizationId: "organization_id",
           projectId: "project",
@@ -760,8 +760,8 @@ describe("Error message sanitization", () => {
     it("should handle queries with only automatic filters including engine filter", () => {
       const schemaWithEngine: TableSchema = {
         name: "runs",
-        clickhouseName: "trigger_dev.task_runs_v2",
-        description: "Task runs table",
+        clickhouseName: "platos_telemetry.runtime_runs_v2",
+        description: "Runtime runs table",
         tenantColumns: {
           organizationId: "organization_id",
           projectId: "project_id",

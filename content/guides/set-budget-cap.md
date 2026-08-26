@@ -4,8 +4,6 @@ title: Set a per-agent budget cap
 description: Cap daily or monthly spend per agent and decide what happens when the cap hits.
 category: recipes
 order: 80
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I set a daily cap on an agent?"
   - "What happens when the cap is reached?"
@@ -13,9 +11,6 @@ questions:
   - "How do I get an alert when an agent gets close to its cap?"
 related:
   - debug-cost-spike
-source_files_referenced:
-  - apps/agent/src/monitoring/budget.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx
 ---
 
 # Set a per-agent budget cap
@@ -47,13 +42,13 @@ A budget that fails loud and (optionally) refuses new turns when the cap is exce
 
 4. **Wire alerts (optional).**
 
-   Subscribe a webhook to `budget.soft_warn` and `budget.exceeded`. Tie to your alerting channel.
+   Poll budget status from your operator-owned alerting adapter and notify on the warning or hard-cap threshold.
 
 ## Verify
 
 - The agent's header shows the budget pill.
-- Crossing the soft warn produces a `budget.soft_warn` webhook.
-- Crossing the cap produces a `budget.exceeded` webhook; with hard cap on, the next turn returns `BUDGET_CAP_EXCEEDED` plus the reset time.
+- Crossing the soft warning changes the budget status while Turns continue.
+- Crossing the hard cap makes the next Turn return `BUDGET_CAP_EXCEEDED` plus the reset time.
 
 ## Bypass during incident
 

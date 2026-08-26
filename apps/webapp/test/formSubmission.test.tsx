@@ -4,9 +4,10 @@ import { json } from "@remix-run/node";
 import { createRemixStub } from "@remix-run/testing";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { M4Surface, type SurfaceData } from "../app/components/platos/M4Surface";
 import { Button } from "../app/components/platos/ProductPrimitives";
+import ApiKeysRoute from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route";
 import ProvidersRoute from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route";
 
 const mountedRoots: Array<ReturnType<typeof createRoot>> = [];
@@ -26,7 +27,7 @@ async function mount(element: React.ReactNode) {
 }
 
 async function findButton(container: HTMLElement, text: string) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let retry = 0; retry < 50; retry += 1) {
     const button = [...container.querySelectorAll("button")]
       .find((candidate) => candidate.textContent === text);
     if (button) return button;
@@ -132,5 +133,70 @@ describe("shared Button form semantics", () => {
     const form = new FormData(capture.form);
     expect(form.get("name")).toBe("support-agent");
     expect(form.get("model")).toBe("openai:gpt-4.1");
+  });
+
+  it("blocks AccessKey rotation and revoke before submission when confirmation is declined", async () => {
+    const action = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const Stub = createRemixStub([{
+      path: "/",
+      Component: ApiKeysRoute,
+      loader: () => json({
+        panel: {
+          ok: true,
+          data: {
+            key: { id: "key-1", keyPrefix: "platos_live_active", createdAt: "2026-08-25T00:00:00.000Z" },
+            retiringKey: null,
+          },
+        },
+      }),
+      action,
+    }]);
+    const container = await mount(<Stub initialEntries={["/"]} />);
+    const rotate = await findButton(container, "Rotate key");
+    const revoke = await findButton(container, "Revoke");
+
+    rotate?.click();
+    revoke?.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("blocks Postman template deletion before submission when confirmation is declined", async () => {
+    const action = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const data: SurfaceData = {
+      surface: "postman",
+      title: "Postman templates",
+      description: "Debug templates",
+      panel: {
+        ok: true,
+        data: {
+          templates: [{
+            id: "template-1",
+            name: "Support flow",
+            simulateUserId: "user-1",
+            sessionContext: {},
+            isDefault: false,
+          }],
+          pagination: { total: 1 },
+        },
+      },
+    };
+    const Stub = createRemixStub([{
+      path: "/",
+      Component: () => <M4Surface data={data} />,
+      action,
+    }]);
+    const container = await mount(<Stub initialEntries={["/"]} />);
+    const remove = await findButton(container, "Delete");
+
+    remove?.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(confirm).toHaveBeenCalledWith("Delete Support flow?");
+    expect(action).not.toHaveBeenCalled();
   });
 });

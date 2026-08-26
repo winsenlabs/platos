@@ -26,6 +26,6 @@
     "prebuild": "pnpm run generate",
     "build": "pnpm run clean && tsc --project tsconfig.build.json",
     "pretest": "pnpm run generate",
-    "test": "vitest --sequence.concurrent=false --no-file-parallelism"
+    "test": "vitest src --sequence.concurrent=false --no-file-parallelism"
   }
 }

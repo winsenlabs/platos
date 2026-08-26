@@ -134,7 +134,8 @@ class ThreadsApi:
         context_id: str | None = None,
         dynamic_blocks: dict[str, str] | None = None,
         attachment_ids: list[str] | None = None,
-        max_reconnect_attempts: int = _DEFAULT_MAX_RECONNECT,
+        model_label: str | None = None,
+        max_reconnect_retries: int = _DEFAULT_MAX_RECONNECT,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Send a message on a thread and stream events back.
 
@@ -145,7 +146,7 @@ class ThreadsApi:
         """
         url = self._ws_url()
         sent_initial = False
-        reconnect_attempt = 0
+        reconnect_retry_count = 0
 
         async def _emit_ready(ws: ClientConnection) -> None:
             # Socket.IO EIO=4 "connect" frame to the /agent namespace.
@@ -166,6 +167,8 @@ class ThreadsApi:
                 payload["dynamicBlocks"] = dynamic_blocks
             if attachment_ids:
                 payload["attachmentIds"] = attachment_ids
+            if model_label:
+                payload["modelLabel"] = model_label
             frame = f'42{self._client.socket_namespace},["message",{json.dumps(payload)}]'
             await ws.send(frame)
 
@@ -189,7 +192,7 @@ class ThreadsApi:
                         sent_initial = True
                     else:
                         await _emit_resume(ws)
-                    reconnect_attempt = 0
+                    reconnect_retry_count = 0
                     async for raw in ws:
                         event = _parse_socketio_frame(raw)
                         if event is None:
@@ -205,15 +208,15 @@ class ThreadsApi:
             except OSError as exc:
                 yield {"type": "disconnected", "reason": str(exc)}
 
-            if reconnect_attempt >= max_reconnect_attempts:
+            if reconnect_retry_count >= max_reconnect_retries:
                 raise PlatosNetworkError(
                     RuntimeError(
-                        f"platos-client: exhausted {max_reconnect_attempts} reconnection attempts"
+                        f"platos-client: exhausted {max_reconnect_retries} reconnection retries"
                     )
                 )
-            reconnect_attempt += 1
-            delay = min(_RECONNECT_MAX_S, _RECONNECT_BASE_S * (2 ** (reconnect_attempt - 1)))
-            yield {"type": "reconnecting", "attempt": reconnect_attempt}
+            reconnect_retry_count += 1
+            delay = min(_RECONNECT_MAX_S, _RECONNECT_BASE_S * (2 ** (reconnect_retry_count - 1)))
+            yield {"type": "reconnecting", "retryCount": reconnect_retry_count}
             await asyncio.sleep(delay)
 
     def _ws_url(self) -> str:

@@ -1,17 +1,15 @@
 /**
- * Theme MCPF-W6 — Monitoring MCP tools (5 tools).
+ * Theme MCPF-W6 — Monitoring MCP tools (3 tools).
  *
  * Wraps the read-only monitoring surface so an operator can drive the
  * trace viewer + cost rollups + provider health entirely via MCP.
  *
  * Tools:
- *   • `runs.list_all`   — stable unavailable response until canonical run history exists
- *   • `runs.get_trace`  — fetch full thread trace (messages + spans + rollup)
  *   • `traces.list`     — list threads with cost rollups (lightweight sibling)
- *   • `traces.get`      — alias for `runs.get_trace` (operator-friendly name)
+ *   • `traces.get`      — fetch full thread trace (messages + spans + rollup)
  *   • `health.check`    — provider health probe (single or all-in-scope)
  *
- * All five are read-only. No approval gates. No audit rows (audit
+ * All three are read-only. No approval gates. No audit rows (audit
  * pipeline is for mutations only — Wave 1-5 lesson).
  */
 
@@ -40,54 +38,10 @@ export function buildMonitoringToolHandlers(deps: {
 
   return [
     {
-      name: "runs.list_all",
-      description:
-        "Task run history is unavailable until a canonical run-history " +
-        "model is added to the control database.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          taskIdentifier: { type: "string" },
-          status: { type: "string" },
-          since: { type: "string", format: "date-time" },
-          limit: { type: "integer", minimum: 1, maximum: 200 },
-          offset: { type: "integer", minimum: 0, maximum: 10000 },
-        },
-        additionalProperties: false,
-      },
-      async execute() {
-        return {
-          error: "unavailable",
-          message: "Task run history is not available through the canonical control database.",
-        };
-      },
-    },
-    {
-      name: "runs.get_trace",
-      description:
-        "Fetch the full trace for a thread — messages + spans + " +
-        "interleaved timeline + cost / token rollup. Mirrors the " +
-        "monitoring trace viewer payload. Cross-scope thread ids " +
-        "return `null`.",
-      inputSchema: {
-        type: "object",
-        required: ["threadId"],
-        properties: { threadId: { type: "string" } },
-        additionalProperties: false,
-      },
-      async execute(params, scope) {
-        const threadId = String(params["threadId"]);
-        const trace = await traces.buildThreadTrace(tuple(scope as RequestScope), threadId);
-        if (!trace) return { error: "not_found", threadId };
-        return trace;
-      },
-    },
-    {
       name: "traces.list",
       description:
         "List threads with cost / token / tool-call rollups. " +
-        "Lightweight sibling of `runs.get_trace` — one row per thread, " +
-        "no spans, no message text. Useful for 'show me the most " +
+        "One row per thread, with no spans or message text. Useful for 'show me the most " +
         "expensive threads in the last 24h' or 'list active threads " +
         "for agent X'. Filters by optional `agentId` + `since`.",
       inputSchema: {
@@ -116,8 +70,7 @@ export function buildMonitoringToolHandlers(deps: {
     {
       name: "traces.get",
       description:
-        "Alias for `runs.get_trace` — operator-friendly name. Same " +
-        "behaviour: full thread trace including messages, spans, " +
+        "Fetch a full thread trace including messages, spans, " +
         "timeline, and rollup. Cross-scope ids return `null`.",
       inputSchema: {
         type: "object",

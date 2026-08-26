@@ -23,7 +23,7 @@
  * Cost-accounting safety: every retry is a FRESH provider call. The
  * caller records cost ONCE after this wrapper resolves, so a retry
  * chain can't double-charge. Make sure the caller only records cost
- * after this function returns — don't record inside the attempt
+ * after this function returns — don't record inside the retry loop
  * closure.
  */
 
@@ -33,7 +33,7 @@ export interface LlmRetryOptions {
   maxDelayMs?: number;
   jitter?: number;
   signal?: AbortSignal;
-  onRetry?: (ctx: { attempt: number; delayMs: number; error: unknown }) => void;
+  onRetry?: (ctx: { retryNumber: number; delayMs: number; error: unknown }) => void;
 }
 
 const DEFAULT: Required<Omit<LlmRetryOptions, "signal" | "onRetry">> = {
@@ -76,8 +76,8 @@ function isRetryableLlmError(err: unknown): { retry: boolean; retryAfterMs?: num
   return { retry: false };
 }
 
-function backoffMs(attempt: number, opts: Required<Omit<LlmRetryOptions, "signal" | "onRetry">>): number {
-  const base = opts.baseDelayMs * Math.pow(2, attempt);
+function backoffMs(retryIndex: number, opts: Required<Omit<LlmRetryOptions, "signal" | "onRetry">>): number {
+  const base = opts.baseDelayMs * Math.pow(2, retryIndex);
   const capped = Math.min(base, opts.maxDelayMs);
   const rand = 1 + (Math.random() * 2 - 1) * opts.jitter;
   return Math.max(0, Math.floor(capped * rand));
@@ -111,7 +111,7 @@ export async function withLlmRetry<T>(
 ): Promise<T> {
   const cfg = { ...DEFAULT, ...options };
   let lastError: unknown;
-  for (let attempt = 0; attempt <= cfg.maxRetries; attempt++) {
+  for (let retryIndex = 0; retryIndex <= cfg.maxRetries; retryIndex++) {
     if (options.signal?.aborted) {
       throw new DOMException("aborted", "AbortError");
     }
@@ -120,11 +120,11 @@ export async function withLlmRetry<T>(
     } catch (err) {
       lastError = err;
       if (options.signal?.aborted) throw err;
-      if (attempt >= cfg.maxRetries) throw err;
+      if (retryIndex >= cfg.maxRetries) throw err;
       const decision = isRetryableLlmError(err);
       if (!decision.retry) throw err;
-      const delay = decision.retryAfterMs ?? backoffMs(attempt, cfg);
-      options.onRetry?.({ attempt, delayMs: delay, error: err });
+      const delay = decision.retryAfterMs ?? backoffMs(retryIndex, cfg);
+      options.onRetry?.({ retryNumber: retryIndex + 1, delayMs: delay, error: err });
       await sleep(delay, options.signal);
     }
   }

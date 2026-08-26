@@ -214,7 +214,7 @@ describe("a replayed request returns the original receipt", () => {
 
     const replay = await request(ALICE.external, "key_1");
 
-    // The ORIGINAL receipt, down to the attempt count and the completion time:
+    // The ORIGINAL receipt, down to the retry count and the completion time:
     // a replay that re-swept would report a second pass's counts for work that
     // finished the first time round.
     expect(replay).toEqual<ErasureReceipt>(first);
@@ -420,7 +420,7 @@ describe("a hold filed after the operation exists still stops the queue", () => 
     });
 
     expect(resumed).toEqual([
-      { operationId: row.id, status: "blocked_legal_hold", attempts: 0 },
+      { operationId: row.id, status: "blocked_legal_hold", retryCount: 0 },
     ]);
     // The register is consulted on every pass, not once at request time: an
     // automated drain has no human in it to notice a hold nobody re-checked.
@@ -447,7 +447,7 @@ describe("a hold filed after the operation exists still stops the queue", () => 
 
     const row = db.erasureOperation.rows[0]!;
     expect(row.legalHoldPolicyId).toMatch(/^legal-hold-register#2:[0-9a-f]{12}$/);
-    expect(row.nextAttemptAt).toBeNull();
+    expect(row.nextRetryAt).toBeNull();
     // Recorded, and content-free: the entry matched a disabled email identity,
     // and the row that documents the refusal must not become the last place
     // that address survives.

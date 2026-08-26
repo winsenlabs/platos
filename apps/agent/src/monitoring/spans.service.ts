@@ -4,6 +4,12 @@ import type Redis from "ioredis";
 import * as crypto from "crypto";
 import type { RequestScope } from "../auth/scope.guard";
 import { env } from "../shared/env";
+import { TELEMETRY_DATABASE } from "../shared/telemetry-namespace";
+import {
+  MAX_SPAN_DLQ_RETRIES,
+  spanDlqRetryCount,
+  withSpanDlqRetryCount,
+} from "./span-dlq";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -49,7 +55,7 @@ export class SpansService {
   /**
    * PPR-15 — ClickHouse HTTP endpoint for persistent span storage.
    * When unset, we remain Redis-only (pre-PPR-15 behaviour). When set,
-   * we dual-write every sampled span to `trigger_dev.platos_spans_v1`
+   * we dual-write every sampled span to the configured telemetry database
    * via the HTTP JSONEachRow interface. No new dep — node's `fetch`.
    *
    * Format: `http://default:pwd@host:8123` (basic-auth credentials baked
@@ -212,7 +218,7 @@ export class SpansService {
         record,
         error: error?.slice(0, 400),
         enqueuedAt: Date.now(),
-        attempts: 0,
+        retryCount: 0,
       });
       await this.redis.lpush("platos:dlq:spans", payload);
       await this.redis.ltrim("platos:dlq:spans", 0, 50_000 - 1);
@@ -225,7 +231,7 @@ export class SpansService {
   /**
    * EOBD.100 — DLQ drain. Called by the scheduled
    * `platos.observability.dlq_drain` task. Pops up to `maxBatch` entries,
-   * retries the CH insert. Entries that fail after MAX_ATTEMPTS (5)
+   * retries the CH insert. Entries that fail after MAX_SPAN_DLQ_RETRIES (5)
    * move to `platos:dlq:spans:dead` for manual review — typically
    * indicates a schema migration drift or a permanently-malformed row.
    */
@@ -233,7 +239,6 @@ export class SpansService {
     if (!this.redis || !this.clickhouseBaseUrl) {
       return { retried: 0, dead: 0 };
     }
-    const MAX_ATTEMPTS = 5;
     let retried = 0;
     let dead = 0;
     for (let i = 0; i < maxBatch; i++) {
@@ -242,7 +247,8 @@ export class SpansService {
       let entry: {
         scope: any;
         record: PlatosSpan;
-        attempts?: number;
+        retryCount?: number;
+        [key: string]: unknown;
       } | null = null;
       try {
         entry = JSON.parse(raw);
@@ -250,18 +256,17 @@ export class SpansService {
         continue;
       }
       if (!entry) continue;
-      const attempts = (entry.attempts ?? 0) + 1;
+      const retryCount = spanDlqRetryCount(entry) + 1;
       try {
         await this.writeSpanToClickhouse(entry.scope, entry.record);
         retried++;
       } catch (err: any) {
-        if (attempts >= MAX_ATTEMPTS) {
+        if (retryCount >= MAX_SPAN_DLQ_RETRIES) {
           await this.redis
             .lpush(
               "platos:dlq:spans:dead",
               JSON.stringify({
-                ...entry,
-                attempts,
+                ...withSpanDlqRetryCount(entry, retryCount),
                 lastError: err?.message?.slice(0, 400),
               }),
             )
@@ -272,7 +277,10 @@ export class SpansService {
           dead++;
         } else {
           await this.redis
-            .lpush("platos:dlq:spans", JSON.stringify({ ...entry, attempts }))
+            .lpush(
+              "platos:dlq:spans",
+              JSON.stringify(withSpanDlqRetryCount(entry, retryCount)),
+            )
             .catch(() => undefined);
         }
       }
@@ -281,7 +289,7 @@ export class SpansService {
   }
 
   /**
-   * PPR-15 — JSONEachRow insert into `trigger_dev.platos_spans_v1`.
+   * PPR-15 — JSONEachRow insert into the configured telemetry database.
    * Uses node's built-in `fetch` so we avoid adding a new dependency; the
    * ClickHouse HTTP interface accepts basic-auth credentials out of band
    * via the `Authorization` header.
@@ -363,7 +371,7 @@ export class SpansService {
           : {}),
       }),
     };
-    const query = "INSERT INTO trigger_dev.platos_spans_v1 FORMAT JSONEachRow";
+    const query = `INSERT INTO ${TELEMETRY_DATABASE}.platos_spans_v1 FORMAT JSONEachRow`;
     const url = `${this.clickhouseBaseUrl}/?query=${encodeURIComponent(query)}`;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.clickhouseAuth) {
@@ -396,7 +404,7 @@ export class SpansService {
       SELECT
         trace_id, span_id, parent_span_id, name, kind,
         start_ns, end_ns, duration_ms, status, error_message, attrs
-      FROM trigger_dev.platos_spans_v1
+      FROM ${TELEMETRY_DATABASE}.platos_spans_v1
       WHERE organization_id = {org:String}
         AND project_id = {project:String}
         AND environment_id = {env:String}

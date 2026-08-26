@@ -1,8 +1,9 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { requireEnvironmentScope } from "./auth.server";
-import { agentPanel } from "./platosAgent.server";
+import { agentPanel, mcpManagementPanel } from "./platosAgent.server";
 import type { SurfaceName } from "~/components/platos/surfaces/SurfaceCommon";
+import { parseCollectionQuery, withCollectionQuery, type CollectionConfig } from "./pagination.server";
 
 export type SurfaceConfig = {
   surface: SurfaceName;
@@ -11,11 +12,17 @@ export type SurfaceConfig = {
   endpoint: string | ((params: Record<string, string | undefined>, url: URL) => string);
   secondaryEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
   supportingEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
+  selectionEndpoint?: string;
+  supportingUsesPinnedScope?: boolean;
   provenance?: string;
   notFoundAsResponse?: boolean;
   parameterAliases?: Record<string, string>;
   agentPinQueryParam?: string;
   requireAgentPin?: boolean;
+  collection?: CollectionConfig;
+  secondaryCollection?: CollectionConfig;
+  supportingCollection?: CollectionConfig;
+  transport?: "agent" | "mcp-management";
 };
 
 function interpolate(
@@ -39,21 +46,46 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
   if (!organizationSlug || !projectSlug || !environmentSlug) throw new Response("Invalid scope", { status: 400 });
   const { scope: environmentScope } = await requireEnvironmentScope({ request: args.request, organizationSlug, projectSlug, environmentSlug });
   const url = new URL(args.request.url);
+  const collectionQuery = config.collection ? parseCollectionQuery(url, config.collection) : undefined;
+  const secondaryCollectionQuery = config.secondaryCollection ? parseCollectionQuery(url, config.secondaryCollection) : undefined;
+  const supportingCollectionQuery = config.supportingCollection ? parseCollectionQuery(url, config.supportingCollection) : undefined;
   const agentId = config.agentPinQueryParam
     ? url.searchParams.get(config.agentPinQueryParam)?.trim()
     : undefined;
   const scope = agentId ? { ...environmentScope, agentId } : environmentScope;
+  const panelRequest = config.transport === "mcp-management" ? mcpManagementPanel : agentPanel;
   const panel = config.requireAgentPin && !agentId
     ? { ok: true as const, data: { requiresAgentContext: true } }
-    : await agentPanel(endpoint(config.endpoint, args.params, url, config.parameterAliases), scope);
+    : await panelRequest(
+        collectionQuery
+          ? withCollectionQuery(endpoint(config.endpoint, args.params, url, config.parameterAliases), collectionQuery, config.collection!)
+          : endpoint(config.endpoint, args.params, url, config.parameterAliases),
+        scope,
+      );
   if (!panel.ok && config.notFoundAsResponse && panel.error.status === 404) {
     throw new Response(panel.error.message, { status: 404, statusText: "Not Found" });
   }
   const secondary = config.secondaryEndpoint
-    ? await agentPanel(endpoint(config.secondaryEndpoint, args.params, url, config.parameterAliases), environmentScope)
+    ? await panelRequest(
+        secondaryCollectionQuery
+          ? withCollectionQuery(endpoint(config.secondaryEndpoint, args.params, url, config.parameterAliases), secondaryCollectionQuery, config.secondaryCollection!)
+          : endpoint(config.secondaryEndpoint, args.params, url, config.parameterAliases),
+        environmentScope,
+      )
     : undefined;
   const supporting = config.supportingEndpoint
-    ? await agentPanel(endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases), environmentScope)
+    ? await panelRequest(
+        supportingCollectionQuery
+          ? withCollectionQuery(endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases), supportingCollectionQuery, config.supportingCollection!)
+          : endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases),
+        config.supportingUsesPinnedScope ? scope : environmentScope,
+      )
     : undefined;
-  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, panel, secondary, supporting });
+  const selection = config.selectionEndpoint && agentId
+    ? await panelRequest(
+        interpolate(config.selectionEndpoint, { ...args.params, selectedAgentId: agentId }, config.parameterAliases),
+        environmentScope,
+      )
+    : undefined;
+  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, selectionEndpoint: undefined, supportingUsesPinnedScope: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, transport: undefined, collection: collectionQuery, secondaryCollection: secondaryCollectionQuery, supportingCollection: supportingCollectionQuery, panel, secondary, supporting, selection });
 }

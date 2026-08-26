@@ -60,13 +60,22 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(91);
-    expect(domainModelNames).toHaveLength(75);
-    expect(new Set(domainModelNames).size).toBe(75);
+    expect(models).toHaveLength(92);
+    expect(domainModelNames).toHaveLength(76);
+    expect(new Set(domainModelNames).size).toBe(76);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
-    expect(schema).not.toContain("@@map(");
-    expect(schema).not.toContain("@map(");
+    expect(schema.match(/@@map\("[^"]+"\)/g) ?? []).toEqual(['@@map("AlertDeliveryAttempt")']);
+    expect((schema.match(/(?<!@)@map\("[^"]+"\)/g) ?? []).sort()).toEqual([
+      '@map("attempts")',
+      '@map("attempts")',
+      '@map("tokenRefreshAttemptId")',
+      '@map("attemptCount")',
+      '@map("lastAttemptAt")',
+      '@map("attemptNumber")',
+      '@map("triggerType")',
+      '@map("nextAttemptAt")',
+    ].sort());
   });
 
   test("states an onDelete policy for every Prisma-owned foreign key", () => {
@@ -95,7 +104,7 @@ describe("clean-slate domain schema", () => {
       expect(entry.targets.length).toBeGreaterThan(0);
       for (const target of entry.targets) expect(controlModels.has(target)).toBe(true);
     }
-    expect(new Set(sourceModelManifest.flatMap((entry) => entry.targets)).size).toBe(59);
+    expect(new Set(sourceModelManifest.flatMap((entry) => entry.targets)).size).toBe(60);
     expect(legacyTenancyRelationCounts).toEqual({
       RuntimeEnvironment: 30,
       Organization: 6,
@@ -123,6 +132,7 @@ describe("clean-slate domain schema", () => {
     const fields = (name: string) => new Set(model(name).fields.map((field) => field.name));
 
     for (const [name, expected] of Object.entries({
+      Environment: ["accessKeyRevocationVersion"],
       AccessKey: ["environmentId", "keyPrefix", "keyHash", "allowedOrigins"],
       ProviderKey: ["environmentId", "credentialId", "provider", "environmentKeyName", "isDefault"],
       Credential: ["environmentId", "activeSecretVersionId"],
@@ -133,7 +143,7 @@ describe("clean-slate domain schema", () => {
       AlertChannelConfiguration: ["channelId", "environmentId", "type", "credentialId"],
       BudgetThresholdEvent: ["environmentId", "budgetId", "windowKey", "threshold"],
       AlertDelivery: ["environmentId", "channelId", "budgetThresholdEventId", "status", "idempotencyKey"],
-      AlertDeliveryAttempt: ["environmentId", "deliveryId", "attemptNumber", "status"],
+      AlertDeliveryRetry: ["environmentId", "deliveryId", "retryNumber", "status"],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -141,8 +151,10 @@ describe("clean-slate domain schema", () => {
       OAuthAccessToken: ["clientId", "userId", "scopeKind", "scopes"],
       OAuthRefreshToken: ["accessTokenId", "rotationFamilyId", "parentRefreshTokenId", "consumedAt", "replayDetectedAt"],
       McpBearerToken: ["entityId", "environmentId", "mcpUserId", "createdByUserId", "scopes"],
-      Thread: ["compactedUpToTurnId", "compactionState", "compactedAt"],
+      Thread: ["parentThreadId", "forkedUpToTurnId", "forkedTurnIds", "compactedUpToTurnId", "compactionState", "compactedAt"],
+      MessageAttachment: ["environmentId", "endUserId", "agentId", "threadId", "turnId"],
       Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
+      PostmanExecution: ["requestId", "requestFingerprint", "actorUserId", "contextHandle", "turnId"],
       Model: ["key", "provider", "name", "sourceUpdatedAt"],
       ModelPrice: [
         "modelId",
@@ -225,6 +237,14 @@ describe("clean-slate domain schema", () => {
       kind: "object",
       type: "Memory",
     });
+    expect(field("PostmanExecution", "actor")).toMatchObject({
+      kind: "object",
+      type: "User",
+    });
+    expect(field("PostmanExecution", "turn")).toMatchObject({
+      kind: "object",
+      type: "Turn",
+    });
 
     for (const expected of [
       'CREATE EXTENSION IF NOT EXISTS "vector"',
@@ -238,6 +258,10 @@ describe("clean-slate domain schema", () => {
       'CREATE TRIGGER "Step_price_snapshot"',
       'CREATE TRIGGER "Turn_ancestry"',
       'CREATE TRIGGER "MemoryRelationship_owner_immutable"',
+      'CREATE TRIGGER "PostmanExecution_ancestry"',
+      'CREATE TRIGGER "PostmanExecution_attribution_immutable"',
+      'CONSTRAINT "PostmanExecution_requestFingerprint_check"',
+      'CONSTRAINT "PostmanExecution_contextHandle_check"',
     ]) {
       expect(migration).toContain(expected);
     }
@@ -261,13 +285,28 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("keeps the complete disposable schema in one initial migration", () => {
+  test("keeps the disposable schema rooted in initial plus additive production evolution", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+    expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
       "00000000000000_initial",
+      "20260824010000_win144_observability_retry_vocabulary",
+      "20260824111500_memory_profile_key_and_source_contract",
+      "20260824233000_m4_forward_upgrade_contract",
+      "20260825070000_access_key_revocation_fence",
     ]);
+
+    const observabilityVocabularyMigration = readFileSync(
+      resolve(
+        packageRoot,
+        "prisma/migrations/20260824010000_win144_observability_retry_vocabulary/migration.sql"
+      ),
+      "utf8"
+    );
+    expect(observabilityVocabularyMigration).toContain(
+      'RENAME COLUMN "attempts" TO "retryCount"'
+    );
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
       "migrate",
@@ -346,6 +385,7 @@ describe("clean-slate domain schema", () => {
       "EndUserIdentity_owner_immutable",
       "Thread_subject_immutable",
       "MessageAttachment_owner_immutable",
+      "MessageAttachment_binding_one_way",
       "ChannelInstallation_owner_immutable",
       "OAuthClient_owner_immutable",
       "MemoryEntity_subject_immutable",
@@ -378,7 +418,7 @@ describe("clean-slate domain schema", () => {
       "AlertChannelConfiguration",
       "BudgetThresholdEvent",
       "AlertDelivery",
-      "AlertDeliveryAttempt",
+      "AlertDeliveryRetry",
       "Entity",
       "Tool",
       "AdminAudit",

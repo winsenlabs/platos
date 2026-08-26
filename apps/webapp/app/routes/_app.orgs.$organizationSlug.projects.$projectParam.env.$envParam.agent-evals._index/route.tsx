@@ -3,11 +3,11 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, m4Mutation, optionalText, requiredText } from "~/services/m4Mutation.server";
-const config = { surface: "evals" as const, title: "Evaluations", description: "Regression sweeps, criterion outcomes and judge-lane cost.", endpoint: "/api/v1/agent/evals", secondaryEndpoint: "/api/v1/agent/eval-criteria", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "evals" as const, title: "Evaluations", description: "Regression sweeps, criterion outcomes and judge-lane cost.", endpoint: "/api/v1/agent/evals", secondaryEndpoint: "/api/v1/agent/eval-criteria?limit=25", collection: { defaultPageSize: 50, maxPageSize: 100, search: true, filters: ["agentId", "agentVersionId", "criterionId", "threadId", "sinceDays"] }, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Evaluation run", async ({ scope, form }) => agentRequest(
-    "/api/v1/agent/evals/run",
+    "/api/v1/agent/evals/dispatch",
     scope,
     {
       method: "POST",

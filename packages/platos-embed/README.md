@@ -19,7 +19,7 @@ import "@platosdev/embed";
 
 ### 2. Single-script CDN tag (plain HTML, no build)
 
-Self-host the bundled output from your Platos deployment, or use any CDN:
+Self-host the bundled output from your Platos service, or use any CDN:
 
 ```html
 <script type="module" src="https://platos.example.com/embed/v1.js"></script>
@@ -42,7 +42,7 @@ The script auto-registers `<platos-agent>` on load.
 
 | Attribute | Required | Default | Description |
 |---|---|---|---|
-| `base-url` | ✅ | — | The Platos deployment hosting your agent. |
+| `base-url` | ✅ | — | The Platos service hosting your agent. |
 | `agent-id` | ✅ | — | Public agent id. The agent must have `visibility: "public-guest"` (set via the Share page in the dashboard). |
 | `theme` | | `auto` | `light`, `dark`, or `auto` (follows `prefers-color-scheme`). |
 | `width` | | `400px` | Any CSS-compatible string. |

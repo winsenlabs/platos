@@ -18,7 +18,7 @@ export type PanelResult =
 export type SurfaceName =
   | "home" | "agents" | "agent-create" | "agent-config" | "context" | "agent-tools"
   | "versions" | "canary" | "conversations" | "thread" | "trace" | "tools"
-  | "entities" | "entity-create" | "entity-secret" | "wire-test" | "mcp-config"
+  | "entities" | "entity-create" | "entity-secret" | "wire-test" | "mcp-platform" | "mcp-config"
   | "skills" | "postman" | "monitoring" | "monitoring-users" | "cost" | "budgets"
   | "governance" | "evals" | "audit" | "clusters" | "jobs" | "channels" | "accounts"
   | "files" | "files-users" | "files-conversations" | "files-attachments" | "memories"
@@ -31,6 +31,7 @@ export type SurfaceData = {
   panel: PanelResult;
   secondary?: PanelResult;
   supporting?: PanelResult;
+  selection?: PanelResult;
   provenance?: string;
 };
 
@@ -44,7 +45,9 @@ export type SurfaceProps = {
   data: unknown;
   secondary?: unknown;
   supporting?: unknown;
+  selection?: unknown;
   title: string;
+  mutation?: MutationData;
 };
 
 export const fieldClass =

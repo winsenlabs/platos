@@ -95,7 +95,7 @@ multi-turn tool-calling loop via internal-turn callbacks, child thread with
 `parentThreadId`) + report-back that WAKES the parent (`subagent_report` message →
 durable parent turn). Guardrails: scope inherited never chosen, depth ≤2, children
 cap, budget shared pool, tool-ACL narrowing, spawn dedupe, `parentRunId` tags.
-Existing `delegate_to_sub_agent` / `spawn_bgo` / `agent_batch` stay.
+Existing `delegate_to_sub_agent` / `spawn_job` / `agent_batch` stay.
 
 ## ③ Authz security fixes
 

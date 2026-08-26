@@ -282,7 +282,7 @@ describe("WIN-124 canonical persistence", () => {
     ).rejects.toThrow();
   });
 
-  test("durably deduplicates budget events and channel deliveries and keeps attempts append-only", async () => {
+  test("durably deduplicates budget events and channel deliveries and keeps retries append-only", async () => {
     const channel = await database.alertChannel.create({
       data: {
         environmentId,
@@ -345,11 +345,11 @@ describe("WIN-124 canonical persistence", () => {
       }),
     ).rejects.toMatchObject({ code: "P2002" });
 
-    const attempt = await database.alertDeliveryAttempt.create({
+    const retry = await database.alertDeliveryRetry.create({
       data: {
         environmentId,
         deliveryId: delivery.id,
-        attemptNumber: 1,
+        retryNumber: 1,
         status: "FAILED",
         errorCode: "adapter_unavailable",
         errorMessage: "Email adapter is unavailable",
@@ -357,12 +357,12 @@ describe("WIN-124 canonical persistence", () => {
       },
     });
     await expect(
-      database.alertDeliveryAttempt.update({
-        where: { id: attempt.id },
+      database.alertDeliveryRetry.update({
+        where: { id: retry.id },
         data: { errorCode: "altered" },
       }),
     ).rejects.toThrow(/immutable/);
-    await expect(database.alertDeliveryAttempt.delete({ where: { id: attempt.id } })).rejects.toThrow(
+    await expect(database.alertDeliveryRetry.delete({ where: { id: retry.id } })).rejects.toThrow(
       /immutable/,
     );
     await expect(
@@ -394,8 +394,8 @@ describe("WIN-124 canonical persistence", () => {
       data: { enabled: false, deletedAt: new Date() },
     });
     await expect(
-      database.alertDeliveryAttempt.findUnique({ where: { id: attempt.id } }),
-    ).resolves.toMatchObject({ id: attempt.id, deliveryId: delivery.id });
+      database.alertDeliveryRetry.findUnique({ where: { id: retry.id } }),
+    ).resolves.toMatchObject({ id: retry.id, deliveryId: delivery.id });
   });
 
   test("CRUDs EMAIL, SLACK, and WEBHOOK channels and revokes deleted linked credentials", async () => {

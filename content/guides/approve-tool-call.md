@@ -1,11 +1,9 @@
 ---
 slug: approve-tool-call
 title: Add a human approval gate to a tool
-description: Mark a tool as needing approval, then approve or reject from the inbox or via webhook.
+description: Mark a tool as needing approval, then approve or reject it through the documented approval API.
 category: recipes
 order: 70
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I require approval for a destructive tool?"
   - "How is request_durable_approval different from a regular approval?"
@@ -13,16 +11,13 @@ questions:
   - "Can I auto-approve based on the args?"
   - "How do I expire an unapproved request?"
 related:
-  - spawn-bgo
+  - spawn-job
   - filter-pii
-source_files_referenced:
-  - apps/agent/src/monitoring/approvals.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals._index/route.tsx
 ---
 
 # Add a human approval gate to a tool
 
-Pause a tool call until a human approves. Two flavours: inline (chat waits a few minutes) and durable (run waits hours-to-days).
+Pause a tool call until a human approves. Two flavours: inline (chat waits a few minutes) and durable (Job waits hours-to-days).
 
 ## The goal
 
@@ -54,7 +49,7 @@ request_durable_approval({
 })
 ```
 
-The runtime opens a [waitpoint](/docs/waitpoints), sends a notification (Slack DM, email, dashboard alert), and the run pauses. Resumes when an approver clicks the link or hits `POST /agent/v1/durable-approvals/:token/resolve`.
+The runtime opens a [waiting state](/docs/approvals-and-hitl), sends a notification (Slack DM, email, dashboard alert), and the execution pauses. Resumes when an approver clicks the link or hits `POST /api/v1/agent/durable-approvals/:token/resolve`.
 
 ## Verify
 
@@ -64,9 +59,9 @@ The runtime opens a [waitpoint](/docs/waitpoints), sends a notification (Slack D
 
 ## Auto-approve based on args
 
-Wire a webhook on `approval.requested`. Your handler reads the args, decides, and calls `POST /approvals/:approvalId/resolve` automatically when the conditions match. The dashboard shows the auto-approval was machine-driven via the actor field.
+An operator-owned automation may poll the approval queue, read the safe argument summary, and call `POST /api/v1/agent/approvals/{approvalId}/resolve` when its policy matches. The dashboard records the machine actor.
 
 ## Next steps
 
 - [Filter PII](/guides/filter-pii) to redact args before they hit the approval card.
-- [Spawn a BGO](/guides/spawn-bgo) -> approval pattern: BGO does the work, approval gates the publish step.
+- [Spawn a Job](/guides/spawn-job) -> approval pattern: Job does the work, approval gates the publish step.

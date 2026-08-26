@@ -1,6 +1,7 @@
 import { ClickHouseSettings } from "@clickhouse/client";
 import { z } from "zod";
 import { ClickhouseReader, ClickhouseWriter } from "./client/types.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 export const TaskRunV2 = z.object({
   environment_id: z.string(),
@@ -196,8 +197,8 @@ export function getTaskRunField<K extends TaskRunColumnName>(
 
 export function insertTaskRunsCompactArrays(ch: ClickhouseWriter, settings?: ClickHouseSettings) {
   return ch.insertCompactRaw({
-    name: "insertTaskRunsCompactArrays",
-    table: "trigger_dev.task_runs_v2",
+    name: "insertRuntimeRunsCompactArrays",
+    table: `${TELEMETRY_DATABASE}.task_runs_v2`,
     columns: TASK_RUN_COLUMNS,
     settings: {
       enable_json_type: 1,
@@ -210,8 +211,8 @@ export function insertTaskRunsCompactArrays(ch: ClickhouseWriter, settings?: Cli
 // Object-based insert function for tests and non-performance-critical code
 export function insertTaskRuns(ch: ClickhouseWriter, settings?: ClickHouseSettings) {
   return ch.insert({
-    name: "insertTaskRuns",
-    table: "trigger_dev.task_runs_v2",
+    name: "insertRuntimeRuns",
+    table: `${TELEMETRY_DATABASE}.task_runs_v2`,
     schema: TaskRunV2,
     settings: {
       enable_json_type: 1,
@@ -327,8 +328,8 @@ export function insertRawTaskRunPayloadsCompactArrays(
   settings?: ClickHouseSettings
 ) {
   return ch.insertCompactRaw({
-    name: "insertRawTaskRunPayloadsCompactArrays",
-    table: "trigger_dev.raw_task_runs_payload_v1",
+    name: "insertExternalRuntimePayloadsCompactArrays",
+    table: `${TELEMETRY_DATABASE}.raw_task_runs_payload_v1`,
     columns: PAYLOAD_COLUMNS,
     settings: {
       async_insert: 1,
@@ -345,8 +346,8 @@ export function insertRawTaskRunPayloadsCompactArrays(
 // Object-based insert function for tests and non-performance-critical code
 export function insertRawTaskRunPayloads(ch: ClickhouseWriter, settings?: ClickHouseSettings) {
   return ch.insert({
-    name: "insertRawTaskRunPayloads",
-    table: "trigger_dev.raw_task_runs_payload_v1",
+    name: "insertExternalRuntimePayloads",
+    table: `${TELEMETRY_DATABASE}.raw_task_runs_payload_v1`,
     schema: RawTaskRunPayloadV1,
     settings: {
       async_insert: 1,
@@ -368,8 +369,8 @@ export type TaskRunV2QueryResult = z.infer<typeof TaskRunV2QueryResult>;
 
 export function getTaskRunsQueryBuilder(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.queryBuilder({
-    name: "getTaskRuns",
-    baseQuery: "SELECT run_id FROM trigger_dev.task_runs_v2 FINAL",
+    name: "getRuntimeRuns",
+    baseQuery: `SELECT run_id FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL`,
     schema: TaskRunV2QueryResult,
     settings,
   });
@@ -377,8 +378,8 @@ export function getTaskRunsQueryBuilder(ch: ClickhouseReader, settings?: ClickHo
 
 export function getTaskRunsCountQueryBuilder(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.queryBuilder({
-    name: "getTaskRunsCount",
-    baseQuery: "SELECT count() as count FROM trigger_dev.task_runs_v2 FINAL",
+    name: "getRuntimeRunsCount",
+    baseQuery: `SELECT count() as count FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL`,
     schema: z.object({
       count: z.number().int(),
     }),
@@ -394,8 +395,8 @@ export type TaskRunTagsQueryResult = z.infer<typeof TaskRunTagsQueryResult>;
 
 export function getTaskRunTagsQueryBuilder(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.queryBuilder({
-    name: "getTaskRunTags",
-    baseQuery: "SELECT DISTINCT arrayJoin(tags) as tag FROM trigger_dev.task_runs_v2",
+    name: "getRuntimeRunTags",
+    baseQuery: `SELECT DISTINCT arrayJoin(tags) as tag FROM ${TELEMETRY_DATABASE}.task_runs_v2`,
     schema: TaskRunTagsQueryResult,
     settings,
   });
@@ -419,14 +420,14 @@ export const TaskActivityQueryParams = z.object({
 
 export function getTaskActivityQueryBuilder(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.query({
-    name: "getTaskActivity",
+    name: "getRuntimeActivity",
     query: `
       SELECT
           task_identifier,
           status,
           toDate(created_at) as day,
           count() as count
-      FROM trigger_dev.task_runs_v2 FINAL
+      FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
       WHERE
           organization_id = {organizationId: String}
           AND project_id = {projectId: String}
@@ -471,7 +472,7 @@ export function getCurrentRunningStats(ch: ClickhouseReader, settings?: ClickHou
         task_identifier,
         status,
         count() as count
-    FROM trigger_dev.task_runs_v2 FINAL
+    FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
     WHERE
         organization_id = {organizationId: String}
         AND project_id = {projectId: String}
@@ -512,7 +513,7 @@ export function getAverageDurations(ch: ClickhouseReader, settings?: ClickHouseS
     SELECT
         task_identifier,
         avg(toUnixTimestamp(completed_at) - toUnixTimestamp(started_at)) as duration
-    FROM trigger_dev.task_runs_v2 FINAL
+    FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
     WHERE
         organization_id = {organizationId: String}
         AND project_id = {projectId: String}
@@ -549,7 +550,7 @@ export const TaskUsageByOrganizationQueryParams = z.object({
 
 export function getTaskUsageByOrganization(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.query({
-    name: "getTaskUsageByOrganization",
+    name: "getRuntimeUsageByOrganization",
     query: `
       SELECT
       task_identifier,
@@ -559,7 +560,7 @@ export function getTaskUsageByOrganization(ch: ClickhouseReader, settings?: Clic
       avg(cost_in_cents) / 100.0 AS average_cost,
       sum(cost_in_cents) / 100.0 AS total_cost,
       sum(base_cost_in_cents) / 100.0 AS total_base_cost
-  FROM trigger_dev.task_runs_v2 FINAL
+  FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
   WHERE
       environment_type != 'DEVELOPMENT'
       AND created_at >= fromUnixTimestamp64Milli({startTime: Int64})

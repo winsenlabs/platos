@@ -4,8 +4,6 @@ title: Monitoring
 description: Per-agent and per-user monitoring dashboards with cost, request volume, and ratings.
 category: observability
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Where do I see usage per user across all agents?"
   - "How is the 7-day cost calculated?"
@@ -17,11 +15,6 @@ related:
   - costs
   - traces
   - metrics
-source_files_referenced:
-  - apps/agent/src/monitoring/monitoring.module.ts
-  - apps/agent/src/agent-runtime/agent.controller.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring.users._index/route.tsx
 ---
 
 # Monitoring
@@ -62,7 +55,7 @@ Click a user, scroll the threads list, click a thread. Lands on the chat panel w
 
 ### Manual summary
 
-User detail page has a "Generate summary" button. Calls `POST /monitoring/users/:userId/summary` which runs a cheap-model summarisation over the user's messages and stores the result. Useful for pre-shift briefings; cost lands in the auto-name lane on [Costs](/docs/costs).
+User detail has a "Generate summary" action backed by `POST /api/v1/agent/monitoring/users/{userId}/summary`. It uses a low-cost model and records its cost in a separate observability lane.
 
 ## Common pitfalls
 

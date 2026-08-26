@@ -4,8 +4,6 @@ title: Connect an entity (Python)
 description: Same as the TypeScript guide, but using the platools Python package.
 category: integrations
 order: 20
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I install platools in Python?"
   - "How do I declare a tool with type hints?"
@@ -14,8 +12,6 @@ questions:
 related:
   - connect-entity-platools-ts
   - consume-platos-mcp
-source_files_referenced:
-  - packages/platools-py
 ---
 
 # Connect an entity (Python)
@@ -45,31 +41,20 @@ A Python `asyncio` service that connects to Platos and serves tool calls. Same a
    ```python
    import asyncio
    import os
-   from platools import connect
+   from platools import Platools
 
    async def main():
-       conn = connect(
-           url=os.environ.get("PLATOS_URL", "wss://platos.example.com/connections"),
-           service_secret=os.environ["PLATOS_SERVICE_SECRET"],
+       platools = Platools(
+           url=os.environ.get("PLATOS_URL", "wss://platos.example.com/tools/sync?entity=my-entity"),
+           secret=os.environ["PLATOS_SERVICE_SECRET"],
        )
 
-       @conn.tool(
-           "send_email",
-           input_schema={
-               "type": "object",
-               "properties": {
-                   "to": {"type": "string", "format": "email"},
-                   "body": {"type": "string"},
-               },
-               "required": ["to", "body"],
-           },
-       )
-       async def send_email(args, ctx):
-           # ctx.user_token is X-Platos-User-Token, opaque to us.
-           await mailer.send(args)
+       @platools.tool(name="send_email", auth="user")
+       async def send_email(to: str, body: str, ctx=None) -> dict[str, bool]:
+           await mailer.send({"to": to, "body": body})
            return {"ok": True}
 
-       await conn.start()
+       await platools.connect()
 
    asyncio.run(main())
    ```
@@ -96,7 +81,7 @@ The Python SDK signs `{ts}.{nonce}.{body}` with the service secret and keeps an 
 
 ## Asyncio integration
 
-The SDK is asyncio-native. To run alongside an existing event loop (FastAPI, aiohttp), `await conn.start()` inside a long-lived task; do not block the loop.
+The SDK is asyncio-native. To run alongside an existing event loop (FastAPI, aiohttp), `await platools.connect()` inside a long-lived coroutine; do not block the loop.
 
 ## Next steps
 

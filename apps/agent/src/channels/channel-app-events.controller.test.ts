@@ -315,7 +315,7 @@ describe("ChannelAppEventsController — durable inbox", () => {
       claimChannelEvent: vi.fn().mockResolvedValue({
         id: "inbox-1",
         appId: APP,
-        attempts: 1,
+        retryCount: 1,
         eventId: "Ev1",
         leaseGeneration: 1,
         envelope,

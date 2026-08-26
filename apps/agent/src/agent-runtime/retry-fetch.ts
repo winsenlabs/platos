@@ -7,7 +7,7 @@
  * custom `fetch` via their `create*({ fetch })` constructor; we pass the
  * factory result there.
  *
- * Behavior matrix (from RetryRule.trigger):
+ * Behavior matrix (from RetryRule.cause):
  *
  *   "rate-limit"        → HTTP 429
  *   "temporary-error"   → HTTP 408 / 500 / 502 / 503 / 504
@@ -34,7 +34,7 @@
  * Capped at 30s to avoid pathological waits (some hosts return 86400).
  */
 
-export type RetryTrigger =
+export type RetryCause =
   | "rate-limit"
   | "temporary-error"
   | "auth-error"
@@ -43,9 +43,9 @@ export type RetryTrigger =
 export type RetryAction = "fail" | "retry" | "fallback";
 
 export interface RetryRule {
-  trigger: RetryTrigger;
+  cause: RetryCause;
   action: RetryAction;
-  /** Number of retry attempts before giving up. Ignored if action !== "retry". */
+  /** Number of retries before giving up. Ignored if action !== "retry". */
   retryCount?: number;
   /** Initial backoff in ms. Doubled on each retry up to 30s. */
   backoffMs?: number;
@@ -68,7 +68,7 @@ export interface RetryConfig {
 /** Default policy applied when an agent has no `retryConfig` set. */
 export const DEFAULT_RETRY_RULES: RetryRule[] = [
   {
-    trigger: "rate-limit",
+    cause: "rate-limit",
     action: "retry",
     retryCount: 2,
     backoffMs: 500,
@@ -76,7 +76,7 @@ export const DEFAULT_RETRY_RULES: RetryRule[] = [
     waitForRetryAfter: true,
   },
   {
-    trigger: "temporary-error",
+    cause: "temporary-error",
     action: "retry",
     retryCount: 2,
     backoffMs: 500,
@@ -84,11 +84,11 @@ export const DEFAULT_RETRY_RULES: RetryRule[] = [
     waitForRetryAfter: true,
   },
   {
-    trigger: "auth-error",
+    cause: "auth-error",
     action: "fail",
   },
   {
-    trigger: "network-error",
+    cause: "network-error",
     action: "retry",
     retryCount: 1,
     backoffMs: 250,
@@ -101,19 +101,19 @@ const RETRYABLE_TEMPORARY_STATUSES = new Set([408, 500, 502, 503, 504]);
 const AUTH_ERROR_STATUSES = new Set([401, 403]);
 
 /**
- * Classify an HTTP status code against our trigger taxonomy. Network errors
+ * Classify an HTTP status code against our cause taxonomy. Network errors
  * (no response at all) are classified separately by the caller via try/catch.
  */
-function classifyStatus(status: number): RetryTrigger | null {
+function classifyStatus(status: number): RetryCause | null {
   if (status === 429) return "rate-limit";
   if (RETRYABLE_TEMPORARY_STATUSES.has(status)) return "temporary-error";
   if (AUTH_ERROR_STATUSES.has(status)) return "auth-error";
   return null;
 }
 
-/** Find the first rule matching this trigger. Returns null if no rule covers it. */
-function findRule(rules: RetryRule[], trigger: RetryTrigger): RetryRule | null {
-  return rules.find((r) => r.trigger === trigger) ?? null;
+/** Find the first rule matching this cause. Returns null if no rule covers it. */
+function findRule(rules: RetryRule[], cause: RetryCause): RetryRule | null {
+  return rules.find((r) => r.cause === cause) ?? null;
 }
 
 /**
@@ -140,10 +140,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function backoffFor(rule: RetryRule, attemptNumber: number): number {
+function backoffFor(rule: RetryRule, retryNumber: number): number {
   const base = rule.backoffMs ?? 500;
   const mult = rule.backoffMultiplier ?? 2;
-  return Math.min(base * Math.pow(mult, attemptNumber - 1), MAX_BACKOFF_MS);
+  return Math.min(base * Math.pow(mult, retryNumber - 1), MAX_BACKOFF_MS);
 }
 
 /**
@@ -151,7 +151,7 @@ function backoffFor(rule: RetryRule, attemptNumber: number): number {
  * replacement for global fetch — same input/output types — so it slots into
  * any AI-SDK provider's `create*({ fetch })` option.
  *
- * The factory captures `rules` once; each call gets independent attempt
+ * The factory captures `rules` once; each call gets independent retry
  * counters. Safe for concurrent invocations across providers.
  */
 export function makeRetryFetch(
@@ -162,7 +162,7 @@ export function makeRetryFetch(
     let lastResponse: Response | null = null;
     let lastError: unknown = null;
 
-    for (let attempt = 1; ; attempt++) {
+    for (let passNumber = 1; ; passNumber++) {
       let res: Response | null = null;
       let networkError: unknown = null;
       try {
@@ -173,46 +173,46 @@ export function makeRetryFetch(
 
       if (res && res.ok) return res;
 
-      let trigger: RetryTrigger | null;
+      let cause: RetryCause | null;
       if (networkError) {
-        trigger = "network-error";
+        cause = "network-error";
       } else if (res) {
-        trigger = classifyStatus(res.status);
+        cause = classifyStatus(res.status);
       } else {
         // Should never happen — defensive.
         throw new Error("retryFetch: no response and no error");
       }
 
-      if (!trigger) {
+      if (!cause) {
         // 4xx that isn't auth + isn't 408 → not retryable. Hand back the
         // response unchanged so the SDK surfaces the error.
         if (res) return res;
         throw networkError ?? new Error("retryFetch: unclassified failure");
       }
 
-      const rule = findRule(rules, trigger);
-      // No rule for this trigger — preserve current behavior: surface the
+      const rule = findRule(rules, cause);
+      // No rule for this cause — preserve current behavior: surface the
       // error/response immediately.
       if (!rule || rule.action === "fail") {
         if (res) return res;
-        throw networkError ?? new Error(`retryFetch: rule=fail trigger=${trigger}`);
+        throw networkError ?? new Error(`retryFetch: rule=fail cause=${cause}`);
       }
 
       // action === "fallback" — provider-resolver (LAUNCH-4) handles this by
       // observing the failed response. Hand it back so it can walk the chain.
       if (rule.action === "fallback") {
         if (res) return res;
-        throw networkError ?? new Error(`retryFetch: rule=fallback trigger=${trigger}`);
+        throw networkError ?? new Error(`retryFetch: rule=fallback cause=${cause}`);
       }
 
       // action === "retry"
-      const maxAttempts = (rule.retryCount ?? 2) + 1; // initial + retries
-      if (attempt >= maxAttempts) {
+      const maxTries = (rule.retryCount ?? 2) + 1; // initial + retries
+      if (passNumber >= maxTries) {
         if (res) return res;
-        throw networkError ?? new Error(`retryFetch: exhausted retries trigger=${trigger}`);
+        throw networkError ?? new Error(`retryFetch: exhausted retries cause=${cause}`);
       }
 
-      let waitMs = backoffFor(rule, attempt);
+      let waitMs = backoffFor(rule, passNumber);
       if (rule.waitForRetryAfter && res) {
         const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
         if (retryAfter !== null) waitMs = retryAfter;

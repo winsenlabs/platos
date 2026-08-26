@@ -60,7 +60,7 @@ If you're running Platos in production, at minimum:
 
 - [ ] Rotate `PLATOS_ENCRYPTION_KEY` from the default
 - [ ] Set `SESSION_SECRET` to a strong unique value shared by the webapp and agent
-- [ ] Set `TRIGGER_INTERNAL_SECRET` (HMAC signing for durable task callbacks)
+- [ ] Set `PLATOS_COMPONENT_AUTH_SECRET` (HMAC signing for durable task callbacks)
 - [ ] Put TLS in front (reverse proxy / load balancer)
 - [ ] Restrict CORS origin from `*` to your actual frontend domain
 - [ ] Enable rate limiting (reverse proxy or Platos-native limits)

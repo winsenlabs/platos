@@ -48,6 +48,15 @@ export const processRefund = platools.tool(
 await platools.connect();
 ```
 
+## Complete tool declarations
+
+Every `tool_register` frame is the complete current declaration for the Entity,
+not an incremental update. The platform removes tools omitted from a later
+declaration. An empty declaration removes all tools. Reconnects always replay
+the registry's current complete declaration, so use `platools.registry.remove()`
+or `clear()` before reconnecting when a service intentionally shrinks its
+surface.
+
 ## Reading the caller's scope inside a handler
 
 Every `tool_call` the Platos platform dispatches carries a `__platos`

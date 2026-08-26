@@ -89,8 +89,8 @@ for (const path of [
 }
 for (const path of [
   "apps/agent/src/agent-runtime/agent-task.service.ts",
-  "apps/agent/src/agent-runtime/platos-tasks.controller.ts",
-  "apps/agent/src/mcp-platform/tools/platos_tasks.ts",
+  "apps/agent/src/agent-runtime/jobs.controller.ts",
+  "apps/agent/src/mcp-platform/tools/jobs.ts",
   "apps/agent/src/skills/official/skill-handlers.ts",
 ]) {
   const source = read(path);

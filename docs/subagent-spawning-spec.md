@@ -12,12 +12,12 @@ parent reasons over the result":
 | Exists | Shape | Gap |
 |---|---|---|
 | `delegate_to_sub_agent` (toolMode "sub-agent") | real multi-step tool loop via `runSubAgent` (subAgentConfig: model/maxSteps/systemPrompt), abort cascades | synchronous, inline in the parent turn, non-durable, one-at-a-time |
-| `spawn_bgo` (agent-tool-block.task) | ONE tool call made durable on Trigger via HMAC `/internal/execute-tool` | a tool call, not an agent loop |
+| `spawn_job` (agent-tool-block.task) | ONE tool call made durable on Trigger via HMAC `/internal/execute-tool` | a tool call, not an agent loop |
 | `agent_batch` (agent-batch.task) | durable parallel fan-out: N items × one tool-calling TURN each; `allowedTools`, `maxConcurrency`, `parentThreadId`; progress streamed to parent room | items are single turns, not autonomous agents; results stream PAST the parent instead of waking it |
 
 ## The primitive
 
-**`spawn_agent` meta-tool** (registered beside `spawn_bgo`):
+**`spawn_agent` runtime tool** (registered beside `spawn_job`):
 
 ```jsonc
 {
@@ -77,7 +77,7 @@ callback. `spawn_agent` is a composition of owned rails, not new infra.
 
 - `delegate_to_sub_agent` stays: the low-latency inline path for small
   delegations within a turn.
-- `spawn_bgo` stays: single durable tool call.
+- `spawn_job` stays: single durable tool call.
 - `agent_batch` stays: homogeneous fan-out over items.
 - `spawn_agent` is for heterogeneous, autonomous, multi-turn work — research
   a topic, fix a bug, verify a claim — where the parent needs the RESULT as

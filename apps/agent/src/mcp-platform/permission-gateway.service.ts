@@ -15,7 +15,7 @@ import type { RequestScope } from "../auth/scope.guard";
  *
  * States:
  *   auto_allow       → handler runs, audit written, result streamed.
- *   require_approval → fire `PlatosAgentApproval`, block turn on waitpoint.
+ *   require_approval → fire `PlatosAgentApproval`, pause the Turn for a decision.
  *   block            → immediate error, no approval, no retry.
  */
 
@@ -109,13 +109,13 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   // tools themselves are only mounted on the router when the caller has
   // a tier="admin" token (router-level gate in handler.execute).
   //   - scopes.list_all              — walks every (org, project, env).
-  //   - audit.cross_scope_tool_calls — reads audit across scopes.
+  //   - tool_calls.cross_scope_audit — reads ToolCalls across scopes.
   //   - budgets.rollup_org_wide      — aggregates spend across scopes.
   //   - agents.census                — counts agents across scopes.
   //   - entities.census              — counts entities across scopes.
   //   - gdpr.export_user_everywhere  — cross-scope GDPR export (destructive).
   { pattern: "scopes.list_all", min: "require_approval" },
-  { pattern: "audit.cross_scope_tool_calls", min: "require_approval" },
+  { pattern: "tool_calls.cross_scope_audit", min: "require_approval" },
   { pattern: "budgets.rollup_org_wide", min: "require_approval" },
   { pattern: "agents.census", min: "require_approval" },
   { pattern: "entities.census", min: "require_approval" },
@@ -144,7 +144,7 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "oauth.create_client", min: "require_approval" },
   { pattern: "oauth.delete_client", min: "require_approval" },
   { pattern: "oauth.rotate_secret", min: "require_approval" },
-  // MCPF-W4 — PlatosTask mutations execute operator-authored JS in a
+  // MCPF-W4 — Job mutations execute operator-authored JS in a
   // sandboxed trigger.dev context. Every write surface is gated:
   //   - create / update              register or replace executable code
   //   - delete                       irreversible row removal
@@ -152,11 +152,11 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   //   - set_enabled                  flips the dispatch gate
   // Read tools (list, get, get_runs, get_run, validate_handler) stay
   // auto-allow — they're inert.
-  { pattern: "platos_tasks.create", min: "require_approval" },
-  { pattern: "platos_tasks.update", min: "require_approval" },
-  { pattern: "platos_tasks.delete", min: "require_approval" },
-  { pattern: "platos_tasks.run", min: "require_approval" },
-  { pattern: "platos_tasks.set_enabled", min: "require_approval" },
+  { pattern: "jobs.create", min: "require_approval" },
+  { pattern: "jobs.update", min: "require_approval" },
+  { pattern: "jobs.delete", min: "require_approval" },
+  { pattern: "jobs.dispatch", min: "require_approval" },
+  { pattern: "jobs.set_enabled", min: "require_approval" },
   // MCPF-W4 — alert channel mutations register / mutate / remove
   // outbound notification destinations. Each create / update / delete
   // changes who receives PAGER-style notifications across env types in
@@ -293,11 +293,12 @@ const READ_ONLY_PATTERNS: ReadonlyArray<RegExp> = [
   /\.list_accessible_scopes$/,
   /\.test_credentials$/,        // health probe — does not mutate persistent state
   /\.test$/,                    // alert_channels.test, mcp.test, …
-  /\.validate_handler$/,        // platos_tasks.validate_handler — pure compile check
+  /\.validate_handler$/,        // jobs.validate_handler — pure compile check
   /^monitoring\./,              // every monitoring.* is read-only
   /^events\.recent$/,
   /^events\.subscribe$/,        // open a stream; doesn't write
-  /^audit\./,                   // audit.cross_scope_tool_calls is a read
+  /^audit\./,                   // remaining audit ledgers are read-only
+  /^tool_calls\./,              // ToolCall queries are read-only
   /^reflection\./,              // explain_turn / simulate_turn / diff_agents — read
   /^macros\.list$/,
   /^macros\.replay_log$/,

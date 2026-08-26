@@ -4,8 +4,6 @@ title: Connect an entity (TypeScript)
 description: Stand up an entity backend with @platosdev/platools-sdk, declare your tools, and wire it to Platos.
 category: integrations
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I install @platosdev/platools-sdk?"
   - "How do I declare a tool in TypeScript?"
@@ -16,10 +14,6 @@ related:
   - connect-entity-platools-py
   - consume-platos-mcp
   - chat-stream-disconnects
-source_files_referenced:
-  - packages/platools-ts
-  - references/entity-hello-world
-  - apps/agent/src/tool-gateway/tool-sync-ws.service.ts
 ---
 
 # Connect an entity (TypeScript)
@@ -45,22 +39,20 @@ A Node service that holds a long-lived WebSocket to Platos and serves tool calls
 3. **Connect.**
 
    ```ts
-   import { connect } from "@platosdev/platools-sdk";
+   import { Platools } from "@platosdev/platools-sdk";
+   import { z } from "zod";
 
-   const conn = connect({
-     url: process.env.PLATOS_URL ?? "wss://platos.example.com/connections",
-     serviceSecret: process.env.PLATOS_SERVICE_SECRET!,
+   const platools = new Platools({
+     url: process.env.PLATOS_URL ?? "wss://platos.example.com/tools/sync?entity=my-entity",
+     secret: process.env.PLATOS_SERVICE_SECRET!,
    });
 
-   conn.tool(
-     "send_email",
+   platools.tool(
      {
-       type: "object",
-       properties: {
-         to: { type: "string", format: "email" },
-         body: { type: "string" },
-       },
-       required: ["to", "body"],
+       name: "send_email",
+       input: z.object({ to: z.string().email(), body: z.string() }),
+       output: z.object({ ok: z.boolean() }),
+       auth: "user",
      },
      async (args, ctx) => {
        // ctx.userToken is X-Platos-User-Token, opaque to us, verified by our auth.
@@ -69,7 +61,7 @@ A Node service that holds a long-lived WebSocket to Platos and serves tool calls
      },
    );
 
-   await conn.start();
+   await platools.connect();
    console.log("entity connected");
    ```
 

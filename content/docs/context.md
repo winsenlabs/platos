@@ -4,8 +4,6 @@ title: Agent context
 description: The four-tier context resolver that injects user, session, agent, and project values into tool calls and prompts.
 category: platform
 order: 120
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the four-tier context resolver?"
   - "How do I inject a user-scoped value into a tool argument?"
@@ -17,10 +15,6 @@ related:
   - agents
   - tools
   - prompts
-source_files_referenced:
-  - apps/agent/src/agent-runtime/context-resolver.ts
-  - apps/agent/src/agent-runtime/context-automap.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.context/route.tsx
 ---
 
 # Agent context
@@ -84,10 +78,13 @@ Use `${key}` placeholders in any prompt block. The builder resolves at render ti
 Pass `sessionContext` on the chat or messages endpoint:
 
 ```ts
-await platos.threads.update({
-  threadId,
-  messages: [...],
-  sessionContext: { entity_ids: ["entity-1"], shipping_address_id: "addr-9" },
+await fetch("https://platos.example.com/api/v1/agent/threads/{threadId}/stream", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    message: "Ship this order.",
+    sessionContext: { entity_ids: ["entity-1"], shipping_address_id: "addr-9" },
+  }),
 });
 ```
 

@@ -1,0 +1,153 @@
+{
+  "$schema": "./budgets.schema.json",
+  "schemaVersion": 1,
+  "contract": "win235-measured-performance",
+  "measurementPolicy": {
+    "serial": true,
+    "latencyWarmupSamples": 3,
+    "latencyMeasuredSamples": 20,
+    "browserWarmupSamples": 1,
+    "browserMeasuredSamples": 5,
+    "memoryMeasuredSamples": 5
+  },
+  "fixture": {
+    "schemaVersion": 1,
+    "requiredCounts": {
+      "agents": 40,
+      "threads": 2,
+      "turns": 120,
+      "tools": 200,
+      "memories": 384,
+      "graphEntities": 141
+    },
+    "turnsPerThread": 60
+  },
+  "latency": [
+    {
+      "id": "agents.loader",
+      "unit": "ms",
+      "p50Maximum": 400,
+      "p95Maximum": 1000,
+      "rationale": "Local candidate-to-candidate loader SLO on a serial GitHub-hosted runner; leaves substantial scheduler variance while rejecting second-scale median regressions."
+    },
+    {
+      "id": "memory.list.api",
+      "unit": "ms",
+      "p50Maximum": 300,
+      "p95Maximum": 800,
+      "rationale": "Bounded 50-row Memory API page over the canonical 384-row fixture must remain comfortably sub-second at p95."
+    },
+    {
+      "id": "memory.graph-entities.api",
+      "unit": "ms",
+      "p50Maximum": 300,
+      "p95Maximum": 800,
+      "rationale": "Bounded graph page over 141 entities uses the same sub-second local API SLO as Memory pagination."
+    }
+  ],
+  "browser": {
+    "memories": {
+      "id": "memories.dense-route",
+      "minimumRenderedRows": 20,
+      "metrics": {
+        "fcpMs": { "p50Maximum": 1200, "p95Maximum": 1800 },
+        "lcpMs": { "p50Maximum": 1800, "p95Maximum": 2500 },
+        "cls": { "p50Maximum": 0.05, "p95Maximum": 0.1 },
+        "inpMs": { "p50Maximum": 150, "p95Maximum": 200 },
+        "interactionLatencyMs": { "p50Maximum": 180, "p95Maximum": 250 }
+      },
+      "rationale": "Every sample directly navigates a fresh Chromium context to the dense Memories route and enforces Google's good CWV boundaries."
+    },
+    "agentsInteraction": {
+      "id": "agents.detail-interaction",
+      "metrics": {
+        "inpMs": { "p50Maximum": 150, "p95Maximum": 200 },
+        "interactionLatencyMs": { "p50Maximum": 180, "p95Maximum": 250 }
+      },
+      "rationale": "A separate fresh Agents route sample measures trusted navigation to a persisted Agent detail and its next-paint latency."
+    }
+  },
+  "bundles": [
+    {
+      "id": "agents.initial-js",
+      "unit": "bytes",
+      "p95Maximum": 4194304,
+      "rationale": "Caps actual uncompressed JavaScript response bodies loaded for the authenticated shell and Agents route at 4 MiB."
+    },
+    {
+      "id": "agents.detail-route-js",
+      "unit": "bytes",
+      "p95Maximum": 1048576,
+      "rationale": "Caps additional JavaScript loaded by the persisted Agent detail interaction at 1 MiB."
+    }
+  ],
+  "memory": [
+    {
+      "id": "agent.candidate-memory",
+      "unit": "bytes",
+      "containerP95Maximum": 805306368,
+      "processRssP95Maximum": 671088640,
+      "rationale": "The Agent candidate is limited to 768 MiB container usage and 640 MiB largest-process RSS after representative traffic."
+    },
+    {
+      "id": "webapp.candidate-memory",
+      "unit": "bytes",
+      "containerP95Maximum": 805306368,
+      "processRssP95Maximum": 671088640,
+      "rationale": "The webapp candidate uses the same explicit 768 MiB container and 640 MiB largest-process RSS ceilings."
+    }
+  ],
+  "queries": [
+    {
+      "id": "agents.list.api",
+      "requestPath": "/api/v1/agent/agents",
+      "fixtureCountKey": "agents",
+      "smallPageSize": 5,
+      "densePageSize": 10,
+      "maximumQueryCount": 12,
+      "maximumNPlusOneGrowth": 0,
+      "maximumPlanActualRows": 100,
+      "maximumRowsRemovedByFilter": 100,
+      "maximumActualLoops": 100,
+      "maximumSharedReadBlocks": 4096,
+      "maximumPlanningTimeMs": 50,
+      "maximumExecutionTimeMs": 250,
+      "forbiddenScanNodeTypes": ["Seq Scan"],
+      "rationale": "The candidate Agent list request must remain index-backed and query-count stable when the requested page doubles from five to ten Agents."
+    },
+    {
+      "id": "memory.list.api",
+      "requestPath": "/api/v1/memory",
+      "fixtureCountKey": "memories",
+      "smallPageSize": 10,
+      "densePageSize": 50,
+      "maximumQueryCount": 8,
+      "maximumNPlusOneGrowth": 0,
+      "maximumPlanActualRows": 500,
+      "maximumRowsRemovedByFilter": 400,
+      "maximumActualLoops": 500,
+      "maximumSharedReadBlocks": 4096,
+      "maximumPlanningTimeMs": 50,
+      "maximumExecutionTimeMs": 250,
+      "forbiddenScanNodeTypes": ["Seq Scan"],
+      "rationale": "The candidate Memory list must page through the dense persisted fixture without sequential scans, unbounded filtering, or page-size-dependent query growth."
+    },
+    {
+      "id": "memory.graph-entities.api",
+      "requestPath": "/api/v1/memory/graph/entities",
+      "fixtureCountKey": "graphEntities",
+      "smallPageSize": 10,
+      "densePageSize": 50,
+      "maximumQueryCount": 8,
+      "maximumNPlusOneGrowth": 0,
+      "maximumPlanActualRows": 250,
+      "maximumRowsRemovedByFilter": 150,
+      "maximumActualLoops": 250,
+      "maximumSharedReadBlocks": 4096,
+      "maximumPlanningTimeMs": 50,
+      "maximumExecutionTimeMs": 250,
+      "forbiddenScanNodeTypes": ["Seq Scan"],
+      "rationale": "The candidate graph entity request must preserve indexed bounded pagination over all 141 fixture entities and avoid N+1 query growth."
+    }
+  ]
+}

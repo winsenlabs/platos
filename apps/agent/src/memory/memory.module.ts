@@ -11,6 +11,8 @@ import { MemoryFeedbackAdminController } from "./memory-feedback-admin.controlle
 import { ProfileCacheService } from "./profile-cache.service";
 import { MemorySchedulerService } from "./memory-scheduler.service";
 import { MemoryController } from "./memory.controller";
+import { MemoryImportService } from "./memory-import.service";
+import { MemoryProfileStartupVerifierService } from "./memory-profile-startup-verifier.service";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 import { ObservabilityModule } from "../observability/observability.module";
 import { ProvidersModule } from "../providers/providers.module";
@@ -36,6 +38,8 @@ import { AuthModule } from "../auth/auth.module";
     WorkingMemoryService,
     EmbeddingService,
     MemoryService,
+    MemoryImportService,
+    MemoryProfileStartupVerifierService,
     KnowledgeGraphService,
     MemoryExtractionService,
     MemoryFeedbackService,
@@ -50,6 +54,7 @@ import { AuthModule } from "../auth/auth.module";
     WorkingMemoryService,
     EmbeddingService,
     MemoryService,
+    MemoryImportService,
     KnowledgeGraphService,
     MemoryExtractionService,
     MemoryFeedbackService,

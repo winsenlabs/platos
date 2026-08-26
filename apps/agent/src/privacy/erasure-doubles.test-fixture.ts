@@ -196,7 +196,7 @@ export function table(name: string, rows: Row[] = []) {
  * as subject-graph.ts sets out. Those enumerations are declarative constants
  * that no executor consults, so the only thing standing between an operator's
  * account and a customer's erasure request is that postgresExecutor names its
- * models by hand. Here the attempt is both recorded (so a failing test can name
+ * models by hand. Here the retry is both recorded (so a failing test can name
  * the table) and refused (so the double cannot quietly carry out the deletion
  * the assertion is about to look for).
  */

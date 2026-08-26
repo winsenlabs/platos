@@ -184,7 +184,7 @@ export interface TurnProjectionInput {
   turn: ProjectionTurn;
   steps?: ProjectionStep[];
   toolCalls?: ProjectionToolCall[];
-  /** Overridable so a test does not depend on a deployment's salt. */
+  /** Overridable so a test does not depend on an installation's salt. */
   salt?: string;
 }
 

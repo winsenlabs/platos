@@ -25,6 +25,7 @@ export interface ToolSchemaPayload {
 
 export interface ToolRegisterMessage {
   readonly type: "tool_register";
+  /** Complete current declaration; omitted tools are pruned by the platform. */
   readonly tools: readonly ToolSchemaPayload[];
 }
 
@@ -103,6 +104,8 @@ export interface ToolsRegisteredMessage {
   readonly environment_id?: string;
   readonly count?: number;
   readonly new_tools?: readonly string[];
+  /** Number of mappings removed because they were absent from this declaration. */
+  readonly pruned?: number;
 }
 
 /** Registration rate limit hit; retry after the supplied delay. */
@@ -209,6 +212,7 @@ export function decodePlatformMessage(raw: string): PlatformToSdk | null {
         ...(Array.isArray(record.new_tools)
           ? { new_tools: record.new_tools.filter((t): t is string => typeof t === "string") }
           : {}),
+        ...(typeof record.pruned === "number" ? { pruned: record.pruned } : {}),
       };
     case "register_throttled":
       if (typeof record.error !== "string") return null;

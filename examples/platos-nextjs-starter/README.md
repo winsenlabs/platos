@@ -12,7 +12,7 @@ What's in here:
 ```bash
 cp .env.example .env.local
 # Fill in:
-#   PLATOS_BASE_URL           - your Platos deployment URL
+#   PLATOS_BASE_URL           - your Platos service URL
 #   PLATOS_ENTITY_ID          - the entity id you registered
 #   PLATOS_ENTITY_SERVICE_SECRET - the entity's serviceSecret
 #   PLATOS_AGENT_ID           - the agent to chat with

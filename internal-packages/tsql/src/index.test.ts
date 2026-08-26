@@ -12,9 +12,9 @@ import { column, type TableSchema } from "./query/schema.js";
 /**
  * Test table schema for enforcedWhereClause tests
  */
-const taskRunsSchema: TableSchema = {
-  name: "task_runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+const runtimeRunsSchema: TableSchema = {
+  name: "runtime_runs",
+  clickhouseName: "platos_telemetry.runtime_runs_v2",
   columns: {
     id: { name: "id", ...column("String") },
     status: { name: "status", ...column("String") },
@@ -38,7 +38,7 @@ const taskRunsSchema: TableSchema = {
  */
 const lookupTableSchema: TableSchema = {
   name: "lookup_table",
-  clickhouseName: "trigger_dev.lookup_table",
+  clickhouseName: "platos_telemetry.lookup_table",
   tenantColumns: {
     organizationId: "organization_id",
     projectId: "project_id",
@@ -55,7 +55,7 @@ const lookupTableSchema: TableSchema = {
  */
 const nonTenantTableSchema: TableSchema = {
   name: "reference_data",
-  clickhouseName: "trigger_dev.reference_data",
+  clickhouseName: "platos_telemetry.reference_data",
   // No tenantColumns - this is a global table
   columns: {
     id: { name: "id", ...column("String") },
@@ -74,7 +74,7 @@ const baseEnforcedWhereClause: Record<string, WhereClauseCondition> = {
 
 describe("isColumnReferencedInExpression", () => {
   it("should detect column in simple WHERE clause", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs WHERE time > '2024-01-01'");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs WHERE time > '2024-01-01'");
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
       expect(isColumnReferencedInExpression(ast.where, "status")).toBe(false);
@@ -83,7 +83,7 @@ describe("isColumnReferencedInExpression", () => {
 
   it("should detect column in AND expression", () => {
     const ast = parseTSQLSelect(
-      "SELECT * FROM task_runs WHERE time > '2024-01-01' AND status = 'completed'"
+      "SELECT * FROM runtime_runs WHERE time > '2024-01-01' AND status = 'completed'"
     );
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
@@ -94,7 +94,7 @@ describe("isColumnReferencedInExpression", () => {
 
   it("should detect column in OR expression", () => {
     const ast = parseTSQLSelect(
-      "SELECT * FROM task_runs WHERE time > '2024-01-01' OR status = 'completed'"
+      "SELECT * FROM runtime_runs WHERE time > '2024-01-01' OR status = 'completed'"
     );
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
@@ -104,7 +104,7 @@ describe("isColumnReferencedInExpression", () => {
 
   it("should detect column in BETWEEN expression", () => {
     const ast = parseTSQLSelect(
-      "SELECT * FROM task_runs WHERE time BETWEEN '2024-01-01' AND '2024-12-31'"
+      "SELECT * FROM runtime_runs WHERE time BETWEEN '2024-01-01' AND '2024-12-31'"
     );
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
@@ -114,7 +114,7 @@ describe("isColumnReferencedInExpression", () => {
 
   it("should detect column in qualified reference (table.column)", () => {
     const ast = parseTSQLSelect(
-      "SELECT * FROM task_runs WHERE task_runs.time > '2024-01-01'"
+      "SELECT * FROM runtime_runs WHERE runtime_runs.time > '2024-01-01'"
     );
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
@@ -122,14 +122,14 @@ describe("isColumnReferencedInExpression", () => {
   });
 
   it("should return false for empty WHERE clause", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs");
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(false);
     }
   });
 
   it("should detect column in nested NOT expression", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs WHERE NOT time > '2024-01-01'");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs WHERE NOT time > '2024-01-01'");
     if (ast.expression_type === "select_query") {
       expect(isColumnReferencedInExpression(ast.where, "time")).toBe(true);
     }
@@ -165,7 +165,7 @@ describe("createFallbackExpression", () => {
 
 describe("injectFallbackConditions", () => {
   it("should inject fallback when column is not in WHERE", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs WHERE status = 'completed'");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs WHERE status = 'completed'");
     const fallbacks: Record<string, WhereClauseCondition> = {
       time: { op: "gte", value: "2024-01-01" },
     };
@@ -179,7 +179,7 @@ describe("injectFallbackConditions", () => {
   });
 
   it("should NOT inject fallback when column is already in WHERE", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs WHERE time > '2024-06-01'");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs WHERE time > '2024-06-01'");
     const fallbacks: Record<string, WhereClauseCondition> = {
       time: { op: "gte", value: "2024-01-01" },
     };
@@ -193,7 +193,7 @@ describe("injectFallbackConditions", () => {
   });
 
   it("should inject fallback when query has no WHERE clause", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs LIMIT 10");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs LIMIT 10");
     const fallbacks: Record<string, WhereClauseCondition> = {
       time: { op: "gte", value: "2024-01-01" },
     };
@@ -206,7 +206,7 @@ describe("injectFallbackConditions", () => {
   });
 
   it("should inject multiple fallbacks", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs LIMIT 10");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs LIMIT 10");
     const fallbacks: Record<string, WhereClauseCondition> = {
       time: { op: "gte", value: "2024-01-01" },
       status: { op: "eq", value: "completed" },
@@ -221,7 +221,7 @@ describe("injectFallbackConditions", () => {
   });
 
   it("should only inject fallbacks for unreferenced columns", () => {
-    const ast = parseTSQLSelect("SELECT * FROM task_runs WHERE time > '2024-06-01'");
+    const ast = parseTSQLSelect("SELECT * FROM runtime_runs WHERE time > '2024-06-01'");
     const fallbacks: Record<string, WhereClauseCondition> = {
       time: { op: "gte", value: "2024-01-01" }, // Should NOT be injected
       status: { op: "eq", value: "completed" }, // Should be injected
@@ -237,13 +237,13 @@ describe("injectFallbackConditions", () => {
 
 describe("compileTSQL with whereClauseFallback", () => {
   const baseOptions = {
-    tableSchema: [taskRunsSchema],
+    tableSchema: [runtimeRunsSchema],
     enforcedWhereClause: baseEnforcedWhereClause,
   };
 
   describe("simple comparison fallbacks", () => {
     it("should apply gt fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT * FROM task_runs WHERE status = 'completed'", {
+      const { sql } = compileTSQL("SELECT * FROM runtime_runs WHERE status = 'completed'", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "gt", value: "2024-01-01" },
@@ -256,7 +256,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should apply gte fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "gte", value: "2024-01-01" },
@@ -267,7 +267,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should apply lt fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "lt", value: "2024-12-31" },
@@ -278,7 +278,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should apply lte fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "lte", value: "2024-12-31" },
@@ -289,7 +289,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should apply eq fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           status: { op: "eq", value: "completed" },
@@ -301,7 +301,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should apply neq fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           status: { op: "neq", value: "failed" },
@@ -315,7 +315,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
   describe("between fallback", () => {
     it("should apply BETWEEN fallback when column not in WHERE", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs WHERE status = 'completed'", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs WHERE status = 'completed'", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "between", low: "2024-01-01", high: "2024-12-31" },
@@ -329,7 +329,7 @@ describe("compileTSQL with whereClauseFallback", () => {
       const startDate = new Date("2024-01-01T00:00:00Z");
       const endDate = new Date("2024-12-31T23:59:59Z");
 
-      const { sql, params } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql, params } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "between", low: startDate, high: endDate },
@@ -346,7 +346,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
   describe("fallback NOT applied when column already filtered", () => {
     it("should NOT apply fallback when column is in simple WHERE", () => {
-      const { sql } = compileTSQL("SELECT * FROM task_runs WHERE time > '2024-06-01'", {
+      const { sql } = compileTSQL("SELECT * FROM runtime_runs WHERE time > '2024-06-01'", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "gte", value: "2024-01-01" },
@@ -361,7 +361,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
     it("should NOT apply fallback when column is in BETWEEN expression", () => {
       const { sql } = compileTSQL(
-        "SELECT * FROM task_runs WHERE time BETWEEN '2024-06-01' AND '2024-06-30'",
+        "SELECT * FROM runtime_runs WHERE time BETWEEN '2024-06-01' AND '2024-06-30'",
         {
           ...baseOptions,
           whereClauseFallback: {
@@ -377,7 +377,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
     it("should NOT apply fallback when column is in AND expression", () => {
       const { sql } = compileTSQL(
-        "SELECT * FROM task_runs WHERE status = 'completed' AND time > '2024-06-01'",
+        "SELECT * FROM runtime_runs WHERE status = 'completed' AND time > '2024-06-01'",
         {
           ...baseOptions,
           whereClauseFallback: {
@@ -393,7 +393,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
     it("should NOT apply fallback when column is in OR expression", () => {
       const { sql } = compileTSQL(
-        "SELECT * FROM task_runs WHERE status = 'completed' OR time > '2024-06-01'",
+        "SELECT * FROM runtime_runs WHERE status = 'completed' OR time > '2024-06-01'",
         {
           ...baseOptions,
           whereClauseFallback: {
@@ -409,7 +409,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
     it("should NOT apply fallback when column is in qualified reference", () => {
       const { sql } = compileTSQL(
-        "SELECT * FROM task_runs WHERE task_runs.time > '2024-06-01'",
+        "SELECT * FROM runtime_runs WHERE runtime_runs.time > '2024-06-01'",
         {
           ...baseOptions,
           whereClauseFallback: {
@@ -426,7 +426,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
   describe("multiple fallbacks", () => {
     it("should apply multiple fallbacks for different unreferenced columns", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "gte", value: "2024-01-01" },
@@ -441,7 +441,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should only apply fallbacks for unreferenced columns when some are filtered", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs WHERE time > '2024-06-01'", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs WHERE time > '2024-06-01'", {
         ...baseOptions,
         whereClauseFallback: {
           time: { op: "gte", value: "2024-01-01" }, // Should NOT be applied
@@ -461,7 +461,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
   describe("edge cases", () => {
     it("should handle empty whereClauseFallback", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {},
       });
@@ -472,7 +472,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should handle undefined whereClauseFallback", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         // whereClauseFallback is undefined
       });
@@ -484,7 +484,7 @@ describe("compileTSQL with whereClauseFallback", () => {
 
     it("should work with UNION queries", () => {
       const { sql } = compileTSQL(
-        "SELECT id FROM task_runs WHERE status = 'completed' UNION ALL SELECT id FROM task_runs WHERE status = 'failed'",
+        "SELECT id FROM runtime_runs WHERE status = 'completed' UNION ALL SELECT id FROM runtime_runs WHERE status = 'failed'",
         {
           ...baseOptions,
           whereClauseFallback: {
@@ -499,7 +499,7 @@ describe("compileTSQL with whereClauseFallback", () => {
     });
 
     it("should handle numeric values in fallback", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
         ...baseOptions,
         whereClauseFallback: {
           id: { op: "gt", value: 100 },
@@ -516,23 +516,23 @@ describe("compileTSQL with enforcedWhereClause", () => {
   describe("validation tests", () => {
     it("should throw error when required tenant column is missing", () => {
       expect(() =>
-        compileTSQL("SELECT id FROM task_runs", {
-          tableSchema: [taskRunsSchema],
+        compileTSQL("SELECT id FROM runtime_runs", {
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {}, // Missing organization_id
         })
-      ).toThrow("Table 'task_runs' requires 'organization_id' in enforcedWhereClause");
+      ).toThrow("Table 'runtime_runs' requires 'organization_id' in enforcedWhereClause");
     });
 
     it("should throw error when organization_id is missing but other tenant columns are present", () => {
       expect(() =>
-        compileTSQL("SELECT id FROM task_runs", {
-          tableSchema: [taskRunsSchema],
+        compileTSQL("SELECT id FROM runtime_runs", {
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             project_id: { op: "eq", value: "proj_123" },
             environment_id: { op: "eq", value: "env_456" },
           },
         })
-      ).toThrow("Table 'task_runs' requires 'organization_id' in enforcedWhereClause");
+      ).toThrow("Table 'runtime_runs' requires 'organization_id' in enforcedWhereClause");
     });
 
     it("should work with non-tenant table and empty enforcedWhereClause", () => {
@@ -546,8 +546,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should work with only organization_id (project and env are optional)", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
         },
@@ -561,8 +561,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
   describe("basic functionality", () => {
     it("should apply single enforced condition", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
         },
@@ -573,8 +573,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should apply multiple enforced conditions", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           project_id: { op: "eq", value: "proj_456" },
@@ -589,9 +589,9 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should apply enforced condition even when user filters on same field", () => {
       const { sql } = compileTSQL(
-        "SELECT id FROM task_runs WHERE triggered_at > '2025-01-01'",
+        "SELECT id FROM runtime_runs WHERE triggered_at > '2025-01-01'",
         {
-          tableSchema: [taskRunsSchema],
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_123" },
             triggered_at: { op: "gte", value: "2024-01-01" },
@@ -607,8 +607,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should apply different comparison operators", () => {
-      const { sql: sqlGt } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql: sqlGt } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           time: { op: "gt", value: "2024-01-01" },
@@ -616,8 +616,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
       });
       expect(sqlGt).toContain("greater(");
 
-      const { sql: sqlLt } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql: sqlLt } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           time: { op: "lt", value: "2024-12-31" },
@@ -625,8 +625,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
       });
       expect(sqlLt).toContain("less(");
 
-      const { sql: sqlNeq } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql: sqlNeq } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           status: { op: "neq", value: "deleted" },
@@ -636,8 +636,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should apply BETWEEN condition", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           time: { op: "between", low: "2024-01-01", high: "2024-12-31" },
@@ -649,8 +649,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should handle Date values in enforced conditions", () => {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const { sql, params } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql, params } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           triggered_at: { op: "gte", value: sevenDaysAgo },
@@ -664,8 +664,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
   describe("enforcedWhereClause + whereClauseFallback interaction", () => {
     it("should apply both enforced and fallback conditions when user doesn't filter", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           triggered_at: { op: "gte", value: "2024-01-01" },
@@ -682,9 +682,9 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should apply enforced but not fallback when user filters on fallback column", () => {
       const { sql, params } = compileTSQL(
-        "SELECT id FROM task_runs WHERE status = 'failed'",
+        "SELECT id FROM runtime_runs WHERE status = 'failed'",
         {
-          tableSchema: [taskRunsSchema],
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_123" },
             triggered_at: { op: "gte", value: "2024-01-01" },
@@ -705,8 +705,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should apply both enforced and fallback on same field (enforced always, fallback only if not filtered)", () => {
       // User doesn't filter on triggered_at, so BOTH enforced AND fallback apply
-      const { sql } = compileTSQL("SELECT id FROM task_runs WHERE status = 'completed'", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs WHERE status = 'completed'", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           triggered_at: { op: "gte", value: "2024-06-01" }, // Enforced: last 6 months
@@ -723,9 +723,9 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should skip fallback but keep enforced when user filters on same field", () => {
       const { sql } = compileTSQL(
-        "SELECT id FROM task_runs WHERE triggered_at > '2025-01-01'",
+        "SELECT id FROM runtime_runs WHERE triggered_at > '2025-01-01'",
         {
-          tableSchema: [taskRunsSchema],
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_123" },
             triggered_at: { op: "gte", value: "2024-06-01" }, // Enforced: always applied
@@ -748,9 +748,9 @@ describe("compileTSQL with enforcedWhereClause", () => {
   describe("security tests", () => {
     it("should apply enforced conditions to UNION queries", () => {
       const { sql } = compileTSQL(
-        "SELECT id FROM task_runs WHERE status = 'completed' UNION ALL SELECT id FROM task_runs WHERE status = 'failed'",
+        "SELECT id FROM runtime_runs WHERE status = 'completed' UNION ALL SELECT id FROM runtime_runs WHERE status = 'failed'",
         {
-          tableSchema: [taskRunsSchema],
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_123" },
             triggered_at: { op: "gte", value: "2024-01-01" },
@@ -768,9 +768,9 @@ describe("compileTSQL with enforcedWhereClause", () => {
 
     it("should NOT be bypassable via OR clause", () => {
       const { sql } = compileTSQL(
-        "SELECT id FROM task_runs WHERE status = 'completed' OR 1=1",
+        "SELECT id FROM runtime_runs WHERE status = 'completed' OR 1=1",
         {
-          tableSchema: [taskRunsSchema],
+          tableSchema: [runtimeRunsSchema],
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_123" },
             triggered_at: { op: "gte", value: "2024-01-01" },
@@ -786,8 +786,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should skip enforced conditions for columns that don't exist in table", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
           nonexistent_column: { op: "eq", value: "test" },
@@ -813,8 +813,8 @@ describe("compileTSQL with enforcedWhereClause", () => {
     });
 
     it("should properly format numeric values", () => {
-      const { sql } = compileTSQL("SELECT id FROM task_runs", {
-        tableSchema: [taskRunsSchema],
+      const { sql } = compileTSQL("SELECT id FROM runtime_runs", {
+        tableSchema: [runtimeRunsSchema],
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_123" },
         },

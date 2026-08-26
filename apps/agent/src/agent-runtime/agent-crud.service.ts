@@ -2,10 +2,12 @@ import { Injectable, Inject, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
+import { TOOL_POLICY_INVALIDATION_CHANNEL } from "../tool-gateway/tool-policy-invalidation";
 import type { RequestScope } from "../auth/scope.guard";
 import { AdminAuditService } from "../monitoring/admin-audit.service";
 import { addUsage, EMPTY_USAGE, roundCents, usageFromTurn } from "../monitoring/usage-ledger";
 import { serializePromptBlocksToSystemPrompt } from "./prompt-builder.service";
+import { isUuid } from "../shared/pagination";
 
 export interface PromptBlock {
   id: string;
@@ -260,7 +262,7 @@ export interface CreateAgentDto {
    * means "enabled with defaults" — see MemoryExtractionService.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
-  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  /** Anonymous embed access is opt-in and Environment specific. */
   visibility?: "private" | "public-guest";
 }
 
@@ -297,7 +299,7 @@ export interface UpdateAgentDto {
    * (falls back to defaults); undefined to leave unchanged.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
-  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  /** Anonymous embed access is opt-in and Environment specific. */
   visibility?: "private" | "public-guest";
   /**
    * Theme CTX.1 / CTX.6 — session-context mapping JSON. Extended shape in
@@ -372,7 +374,7 @@ export interface AgentVersionSnapshot {
   contextMapping?: Record<string, unknown> | null;
   providerKeyId?: string | null;
   visibility?: string | null;
-  maxBgosPerTurn?: number | null;
+  maxJobsPerTurn?: number | null;
   agentRetryConfig?: Record<string, unknown> | null;
 }
 
@@ -438,11 +440,11 @@ export interface AgentRecord {
   providerKeyId?: string | null;
   /** Per-request model routing table. Null = use legacy single-model config. */
   modelRoutes?: ModelRoute[] | null;
-  /** Environment-owned deployment state projected from AgentBinding. */
+  /** Environment-owned binding state projected from AgentBinding. */
   clusteringId?: string | null;
   /** Compatibility settings carried inside the active AgentVersion. */
   visibility?: string | null;
-  maxBgosPerTurn?: number | null;
+  maxJobsPerTurn?: number | null;
   agentRetryConfig?: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
@@ -475,8 +477,7 @@ export class AgentCrudService {
     list_memories: true,
     relate: true,
     memory_extract: false,
-    spawn_bgo: true,
-    spawn_task: true,
+    spawn_job: true,
     agent_batch: true,
   };
 
@@ -570,7 +571,7 @@ export class AgentCrudService {
       contextMapping: (source.contextMapping as Record<string, unknown> | null) ?? null,
       providerKeyId: source.providerKeyId ?? null,
       visibility: source.visibility ?? null,
-      maxBgosPerTurn: source.maxBgosPerTurn ?? null,
+      maxJobsPerTurn: source.maxJobsPerTurn ?? null,
       agentRetryConfig: (source.agentRetryConfig as Record<string, unknown> | null) ?? null,
     };
   }
@@ -602,12 +603,18 @@ export class AgentCrudService {
       contextMapping: runtime.contextMapping,
       providerKeyId: runtime.providerKeyId,
       visibility: runtime.visibility,
-      maxBgosPerTurn: runtime.maxBgosPerTurn,
+      maxJobsPerTurn: runtime.maxJobsPerTurn,
       agentRetryConfig: runtime.agentRetryConfig,
     });
   }
 
-  private versionData(snapshot: AgentVersionSnapshot, createdBy: string, versionNumber: number, note?: string | null) {
+  private versionData(
+    snapshot: AgentVersionSnapshot,
+    createdBy: string,
+    versionNumber: number,
+    note?: string | null,
+    toolDefaultPolicy: "NONE" | "ALL" = "ALL",
+  ) {
     const tools = snapshot.toolsBlockConfig && typeof snapshot.toolsBlockConfig === "object"
       ? { ...(snapshot.toolsBlockConfig as unknown as Record<string, unknown>) }
       : {};
@@ -634,7 +641,7 @@ export class AgentCrudService {
       contextMapping: snapshot.contextMapping ?? null,
       providerKeyId: snapshot.providerKeyId ?? null,
       visibility: snapshot.visibility ?? null,
-      maxBgosPerTurn: snapshot.maxBgosPerTurn ?? null,
+      maxJobsPerTurn: snapshot.maxJobsPerTurn ?? null,
       agentRetryConfig: snapshot.agentRetryConfig ?? null,
       ...(enabledTools ? { enabledTools } : {}),
     };
@@ -652,7 +659,7 @@ export class AgentCrudService {
       systemPrompt: snapshot.systemPrompt ?? null,
       maxSteps: snapshot.maxSteps ?? 20,
       contextLimit: snapshot.contextLimit ?? 20,
-      toolDefaultPolicy: "ALL",
+      toolDefaultPolicy,
       promptBlocks: coerceBlockList(snapshot.promptBlocks) ?? [],
       dynamicBlocks: coerceBlockList(snapshot.dynamicBlocks) ?? [],
       toolsBlockConfig: tools,
@@ -670,6 +677,7 @@ export class AgentCrudService {
     createdBy: string,
     snapshot: AgentVersionSnapshot,
     note?: string | null,
+    toolDefaultPolicy: "NONE" | "ALL" = "ALL",
   ): Promise<any> {
     const last = await tx.agentVersion.findFirst({
       where: { agentId },
@@ -679,7 +687,13 @@ export class AgentCrudService {
     return tx.agentVersion.create({
       data: {
         agentId,
-        ...this.versionData(snapshot, createdBy, (last?.versionNumber ?? 0) + 1, note),
+        ...this.versionData(
+          snapshot,
+          createdBy,
+          (last?.versionNumber ?? 0) + 1,
+          note,
+          toolDefaultPolicy,
+        ),
       },
     });
   }
@@ -710,6 +724,35 @@ export class AgentCrudService {
         environmentSkillId: skill.environmentSkillId,
         enabled: skill.enabled,
         config: skill.config,
+      })),
+    });
+  }
+
+  /** Copy immutable-version Tool policy state, optionally replacing one Tool. */
+  private async cloneVersionToolPolicies(
+    tx: any,
+    sourceAgentVersionId: string,
+    destinationAgentVersionId: string,
+    replacement?: { toolId: string; effect: "ALLOW" | "DENY" },
+  ): Promise<void> {
+    const policies = await tx.agentToolPolicy.findMany({
+      where: { agentVersionId: sourceAgentVersionId },
+      select: { toolId: true, effect: true, priority: true },
+    });
+    const byToolId = new Map<string, { toolId: string; effect: "ALLOW" | "DENY"; priority: number }>(
+      policies.map((policy: any) => [policy.toolId, policy]),
+    );
+    if (replacement) {
+      byToolId.set(replacement.toolId, {
+        ...replacement,
+        priority: byToolId.get(replacement.toolId)?.priority ?? 0,
+      });
+    }
+    if (byToolId.size === 0) return;
+    await tx.agentToolPolicy.createMany({
+      data: [...byToolId.values()].map((policy) => ({
+        agentVersionId: destinationAgentVersionId,
+        ...policy,
       })),
     });
   }
@@ -830,6 +873,42 @@ export class AgentCrudService {
     return bindings.map((binding: any) => this.projectBinding(binding));
   }
 
+  async listPage(
+    scope: RequestScope,
+    options: { limit: number; offset: number; search?: string | null; status?: "active" | "paused" | null },
+  ): Promise<{ agents: AgentRecord[]; total: number }> {
+    const where = {
+      ...this.scopeWhere(scope),
+      agent: {
+        projectId: scope.projectId,
+        ...(options.status ? { isActive: options.status === "active" } : {}),
+        ...(options.search
+          ? {
+              OR: [
+                { name: { contains: options.search, mode: "insensitive" as const } },
+                { slug: { contains: options.search, mode: "insensitive" as const } },
+                ...(isUuid(options.search) ? [{ id: { equals: options.search } }] : []),
+              ],
+            }
+          : {}),
+      },
+    };
+    const [bindings, total] = await Promise.all([
+      this.prisma.agentBinding.findMany({
+        where,
+        include: this.bindingInclude(scope),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: options.limit,
+        skip: options.offset,
+      }),
+      this.prisma.agentBinding.count({ where }),
+    ]);
+    return {
+      agents: bindings.map((binding: any) => this.projectBinding(binding)),
+      total,
+    };
+  }
+
   async update(agentId: string, scope: RequestScope, dto: UpdateAgentDto): Promise<AgentRecord> {
     const existingBinding = await this.findBinding(agentId, scope);
     if (!existingBinding) throw new Error("Agent not found");
@@ -896,8 +975,20 @@ export class AgentCrudService {
         });
       }
       if (changed) {
-        const version = await this.createVersion(tx, agentId, scope.userId, next, dto.versionNote ?? null);
+        const version = await this.createVersion(
+          tx,
+          agentId,
+          scope.userId,
+          next,
+          dto.versionNote ?? null,
+          existingBinding.activeAgentVersion.toolDefaultPolicy,
+        );
         await this.cloneVersionSkills(
+          tx,
+          existingBinding.activeAgentVersionId,
+          version.id,
+        );
+        await this.cloneVersionToolPolicies(
           tx,
           existingBinding.activeAgentVersionId,
           version.id,
@@ -916,22 +1007,29 @@ export class AgentCrudService {
   async listVersions(
     agentId: string,
     scope: RequestScope,
-    options: { cursor?: string | null; take?: number } = {},
-  ): Promise<{ versions: AgentVersionRecord[]; nextCursor: string | null }> {
+    options: { cursor?: string | null; take?: number; offset?: number } = {},
+  ): Promise<{ versions: AgentVersionRecord[]; nextCursor: string | null; total: number; offset: number; limit: number }> {
     const binding = await this.findBinding(agentId, scope);
     if (!binding) throw new Error("Agent not found");
     const take = Math.max(1, Math.min(200, Math.floor(options.take ?? 50)));
-    const rows = await this.prisma.agentVersion.findMany({
-      where: { agentId },
-      orderBy: { versionNumber: "desc" },
-      take: take + 1,
-      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
-    });
+    const offset = Math.max(0, Math.floor(options.offset ?? 0));
+    const [rows, total] = await Promise.all([
+      this.prisma.agentVersion.findMany({
+        where: { agentId },
+        orderBy: [{ versionNumber: "desc" }, { id: "desc" }],
+        take: take + 1,
+        ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : { skip: offset }),
+      }),
+      this.prisma.agentVersion.count({ where: { agentId } }),
+    ]);
     const hasMore = rows.length > take;
     const page = hasMore ? rows.slice(0, take) : rows;
     return {
       versions: page.map((row: any) => this.projectVersion(row, binding)),
       nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+      total,
+      offset: options.cursor ? 0 : offset,
+      limit: take,
     };
   }
 
@@ -995,15 +1093,100 @@ export class AgentCrudService {
         scope.userId,
         this.snapshotFromVersion(target),
         `Rollback to v${target.versionNumber}`,
+        target.toolDefaultPolicy,
       );
       await this.cloneVersionSkills(tx, target.id, version.id);
+      await this.cloneVersionToolPolicies(tx, target.id, version.id);
       await tx.agentBinding.update({
         where: { id: binding.id },
         data: { activeAgentVersionId: version.id },
       });
     });
     await this.invalidate(agentId, scope);
+    await this.publishToolPolicyInvalidation(scope);
     return (await this.findById(agentId, scope))!;
+  }
+
+  /**
+   * Replace one Tool policy on the active AgentVersion for this Environment.
+   * A new immutable version is created and only the scoped AgentBinding moves,
+   * so another Agent or another Environment binding cannot be changed by this
+   * dashboard mutation.
+   */
+  async setToolEnabled(
+    agentId: string,
+    toolId: string,
+    scope: RequestScope,
+    enabled: boolean,
+  ): Promise<{
+    agentId: string;
+    agentVersionId: string;
+    previousAgentVersionId: string;
+    toolId: string;
+    enabled: boolean;
+  } | null> {
+    const result = await this.prisma.$transaction(async (tx: any) => {
+      // Serialize version replacement for this scoped binding. The subsequent
+      // Prisma read derives all ancestry from canonical relations rather than
+      // trusting request-supplied organization/project ownership.
+      await tx.$queryRawUnsafe(
+        'SELECT "id" FROM "AgentBinding" WHERE "environmentId" = $1::uuid AND "agentId" = $2::uuid FOR UPDATE',
+        scope.environmentId,
+        agentId,
+      );
+      const binding = await tx.agentBinding.findFirst({
+        where: { agentId, ...this.scopeWhere(scope) },
+        include: this.bindingInclude(scope),
+      });
+      if (!binding || binding.activeAgentVersion.agentId !== agentId) return null;
+
+      const mapping = await tx.environmentEntityTool.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          toolId,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+          entity: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { toolId: true },
+      });
+      if (!mapping) return null;
+
+      const previousAgentVersionId = binding.activeAgentVersionId;
+      const version = await this.createVersion(
+        tx,
+        agentId,
+        scope.userId,
+        this.snapshotFromVersion(binding.activeAgentVersion),
+        `${enabled ? "Enable" : "Disable"} Agent Tool ${toolId}`,
+        binding.activeAgentVersion.toolDefaultPolicy,
+      );
+      await this.cloneVersionSkills(tx, previousAgentVersionId, version.id);
+      await this.cloneVersionToolPolicies(tx, previousAgentVersionId, version.id, {
+        toolId,
+        effect: enabled ? "ALLOW" : "DENY",
+      });
+      await tx.agentBinding.update({
+        where: { id: binding.id },
+        data: { activeAgentVersionId: version.id },
+      });
+      return {
+        agentId,
+        agentVersionId: version.id,
+        previousAgentVersionId,
+        toolId,
+        enabled,
+      };
+    });
+    if (result) {
+      await this.invalidate(agentId, scope);
+      await this.publishToolPolicyInvalidation(scope);
+    }
+    return result;
   }
 
   async setCanary(
@@ -1210,7 +1393,7 @@ export class AgentCrudService {
       versionNumber: versionId ? versionNumberById.get(versionId) ?? null : null,
       isCurrent: versionId === binding.activeAgentVersionId,
       isCanary: versionId === binding.canaryAgentVersionId,
-      // Turns attempted against this version, and completed turns among them.
+      // Turns started against this version, and completed turns among them.
       // A version that fails half its turns should not look half as expensive
       // AND half as busy at the same rate.
       turnCount: bucket.turnCount,
@@ -1242,5 +1425,16 @@ export class AgentCrudService {
       `agent:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${agentId}:config`,
     );
     this.promptCache?.invalidate(agentId).catch(() => undefined);
+  }
+
+  private async publishToolPolicyInvalidation(scope: RequestScope): Promise<void> {
+    await this.redis.publish(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify({
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      }),
+    );
   }
 }

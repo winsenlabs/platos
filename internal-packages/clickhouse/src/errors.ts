@@ -2,6 +2,7 @@ import { ClickHouseSettings } from "@clickhouse/client";
 import { z } from "zod";
 import { ClickhouseReader } from "./client/types.js";
 import { ClickhouseQueryBuilder } from "./client/queryBuilder.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 export const ErrorGroupsListQueryResult = z.object({
   error_fingerprint: z.string(),
@@ -38,7 +39,7 @@ export function getErrorGroupsListQueryBuilder(
         toUInt64(sumMerge(occurrence_count)) as occurrence_count,
         anyMerge(sample_run_id) as sample_run_id,
         anyMerge(sample_friendly_id) as sample_friendly_id
-      FROM trigger_dev.errors_v1
+      FROM ${TELEMETRY_DATABASE}.errors_v1
     `,
     schema: ErrorGroupsListQueryResult,
     settings,
@@ -88,7 +89,7 @@ export function getErrorGroups(ch: ClickhouseReader, settings?: ClickHouseSettin
         toUInt64(sumMerge(occurrence_count)) as occurrence_count,
         anyMerge(sample_run_id) as sample_run_id,
         anyMerge(sample_friendly_id) as sample_friendly_id
-      FROM trigger_dev.errors_v1
+      FROM ${TELEMETRY_DATABASE}.errors_v1
       WHERE
         organization_id = {organizationId: String}
         AND project_id = {projectId: String}
@@ -159,7 +160,7 @@ export function getErrorHourlyOccurrences(ch: ClickhouseReader, settings?: Click
         error_fingerprint,
         toUnixTimestamp(toStartOfHour(created_at)) as hour_epoch,
         count() as count
-      FROM trigger_dev.task_runs_v2 FINAL
+      FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
       WHERE
         organization_id = {organizationId: String}
         AND project_id = {projectId: String}
@@ -197,7 +198,7 @@ export function getErrorInstances(ch: ClickhouseReader, settings?: ClickHouseSet
         error_text,
         trace_id,
         task_version
-      FROM trigger_dev.task_runs_v2 FINAL
+      FROM ${TELEMETRY_DATABASE}.task_runs_v2 FINAL
       WHERE
         organization_id = {organizationId: String}
         AND project_id = {projectId: String}
@@ -237,7 +238,7 @@ export function getErrorAffectedVersionsQueryBuilder(
     name: "getErrorAffectedVersions",
     baseQuery: `
       SELECT DISTINCT task_version
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     schema: ErrorAffectedVersionsQueryResult,
     settings,
@@ -275,7 +276,7 @@ export function getErrorOccurrencesListQueryBuilder(
         any(error_type) as error_type,
         any(error_message) as error_message,
         sum(count) as occurrence_count
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     schema: ErrorOccurrencesListQueryResult,
     settings,
@@ -307,7 +308,7 @@ export function createErrorOccurrencesQueryBuilder(
         error_fingerprint,
         toUnixTimestamp(toStartOfInterval(minute, ${intervalExpr})) as bucket_epoch,
         sum(count) as count
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     ch,
     ErrorOccurrencesBucketQueryResult,
@@ -343,7 +344,7 @@ export function createErrorOccurrencesByVersionQueryBuilder(
         task_version,
         toUnixTimestamp(toStartOfInterval(minute, ${intervalExpr})) as bucket_epoch,
         sum(count) as count
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     ch,
     ErrorOccurrencesByVersionQueryResult,
@@ -391,7 +392,7 @@ export function getActiveErrorsSinceQueryBuilder(
         toString(toUnixTimestamp64Milli(min(first_seen))) as first_seen,
         toString(toUnixTimestamp64Milli(max(last_seen))) as last_seen,
         toUInt64(sumMerge(occurrence_count)) as occurrence_count
-      FROM trigger_dev.errors_v1
+      FROM ${TELEMETRY_DATABASE}.errors_v1
     `,
     schema: ActiveErrorsSinceQueryResult,
     settings,
@@ -423,7 +424,7 @@ export function getOccurrenceCountsSinceQueryBuilder(
         task_identifier,
         error_fingerprint,
         sum(count) as occurrences_since
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     schema: OccurrenceCountsSinceQueryResult,
     settings,
@@ -453,7 +454,7 @@ export function getOccurrenceCountSinceQueryBuilder(
     baseQuery: `
       SELECT
         sum(count) as total_count
-      FROM trigger_dev.error_occurrences_v1
+      FROM ${TELEMETRY_DATABASE}.error_occurrences_v1
     `,
     schema: ErrorOccurrenceTotalCountResult,
     settings,

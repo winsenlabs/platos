@@ -37,7 +37,7 @@
  * EOBD.94.
  */
 
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface MintSessionClaims {
   /** trigger.dev Organization.id — the tenant axis. */
@@ -48,8 +48,8 @@ export interface MintSessionClaims {
   environmentId: string;
   /** The acting user id. */
   userId: string;
-  /** Human-readable entity slug for this connection (Mode 2 label). */
-  entityId?: string;
+  /** Entity whose `serviceSecret` signs this token. */
+  entityId: string;
   /**
    * Opaque per-user token forwarded to tool backends as
    * `X-Platos-User-Token`. Customer-owned shape — can be their own JWT,
@@ -109,6 +109,9 @@ export function mintSessionToken(input: MintSessionTokenInput): string {
   }
   if (!input.claims.userId) {
     throw new Error("mintSessionToken: claims.userId is required");
+  }
+  if (!input.claims.entityId?.trim()) {
+    throw new Error("mintSessionToken: claims.entityId is required");
   }
 
   const ttl = input.ttlSeconds ?? 3600;
@@ -181,13 +184,4 @@ function base64UrlEncode(buf: Buffer): string {
 function base64UrlDecode(s: string): Buffer {
   const padded = s + "=".repeat((4 - (s.length % 4)) % 4);
   return Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-}
-
-// Constant-time compare for Buffers. Native `crypto.timingSafeEqual`
-// throws on length mismatch; we pre-check then delegate.
-function timingSafeEqual(a: Buffer, b: Buffer): boolean {
-  if (a.length !== b.length) return false;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { timingSafeEqual: tse } = require("node:crypto");
-  return tse(a, b);
 }

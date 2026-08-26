@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import type { FormEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Page } from "~/components/platos/DashboardShell";
 import {
   Alert,
@@ -19,7 +19,7 @@ import {
 } from "~/components/platos/ProductPrimitives";
 import { asArray, asNumber, asRecord, asString, stableJson } from "~/components/platos/safe";
 import { requireEnvironmentScope } from "~/services/auth.server";
-import { agentPanel, agentRequest, agentResponse } from "~/services/platosAgent.server";
+import { agentPanel, agentRequest, agentResponse, PlatosAgentApiError } from "~/services/platosAgent.server";
 
 async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs) {
   const organizationSlug = args.params.organizationSlug;
@@ -29,15 +29,131 @@ async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs) {
   return requireEnvironmentScope({ request: args.request, organizationSlug, projectSlug, environmentSlug });
 }
 
+type PersistedThreadState = {
+  threadId: string;
+  submittedMessage: string;
+  answer: string;
+  messageId: string | null;
+  attachmentIds: string;
+  uploadedAttachments: Array<{ id: string; name: string; mimeType: string; bytes: number }>;
+};
+
+export const CHAT_ROUTE_ID = "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat";
+
+export function chatActionPath(pathname: string, search = ""): string {
+  const params = new URLSearchParams(search);
+  params.set("_data", CHAT_ROUTE_ID);
+  return `${pathname}?${params.toString()}`;
+}
+
+function safeThreadId(value: string | null): string | null {
+  if (!value) return null;
+  return /^[A-Za-z0-9_-]{1,100}$/.test(value) ? value : null;
+}
+
+export function persistedThreadState(
+  threadId: string,
+  messagesPayload: unknown,
+  attachmentsPayload: unknown,
+): PersistedThreadState {
+  const messagesRecord = asRecord(messagesPayload);
+  const messages = asArray(messagesRecord.items ?? messagesRecord.messages).map(asRecord);
+  const userMessage = [...messages].reverse().find((message) => asString(message.role) === "user");
+  const turnId = asString(userMessage?.turnId, asString(userMessage?.id));
+  const assistantMessage = [...messages].reverse().find((message) =>
+    asString(message.role) === "assistant"
+    && (!turnId || asString(message.turnId, asString(message.id)) === turnId)
+  );
+  const attachmentRecord = asRecord(attachmentsPayload);
+  const uploadedAttachments = asArray(attachmentRecord.items ?? attachmentRecord.attachments)
+    .map(asRecord)
+    .filter((attachment) => !turnId || asString(attachment.turnId, asString(attachment.messageId)) === turnId)
+    .map((attachment) => ({
+      id: asString(attachment.id),
+      name: asString(attachment.filename, asString(attachment.originalName, asString(attachment.id))),
+      mimeType: asString(attachment.mimeType, "application/octet-stream"),
+      bytes: asNumber(attachment.bytes),
+    }))
+    .filter((attachment) => attachment.id !== "");
+  return {
+    threadId,
+    submittedMessage: asString(userMessage?.content),
+    answer: asString(assistantMessage?.content),
+    messageId: assistantMessage ? asString(assistantMessage.id) || null : null,
+    attachmentIds: uploadedAttachments.map((attachment) => attachment.id).join(","),
+    uploadedAttachments,
+  };
+}
+
+export function collectedResultThreadId(value: unknown, fallback = ""): string {
+  const payload = asRecord(value);
+  return asString(asRecord(payload.result).threadId, asString(payload.threadId, fallback));
+}
+
+async function loadPersistedThreadState(
+  threadId: string,
+  agentId: string,
+  scope: Awaited<ReturnType<typeof scoped>>["scope"],
+): Promise<PersistedThreadState> {
+  const thread = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/threads/${encodeURIComponent(threadId)}`,
+    scope,
+  );
+  if (thread.id !== threadId || thread.agentId !== agentId) {
+    throw new Response("Thread not found", { status: 404 });
+  }
+
+  const firstMessages = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/threads/${encodeURIComponent(threadId)}/messages?limit=100&offset=0`,
+    scope,
+  );
+  const firstItems = asArray(firstMessages.items ?? firstMessages.messages);
+  const total = Math.max(firstItems.length, Math.trunc(asNumber(firstMessages.total)));
+  const messages = total > firstItems.length
+    ? await agentRequest<Record<string, unknown>>(
+        `/api/v1/agent/threads/${encodeURIComponent(threadId)}/messages?limit=100&offset=${Math.max(0, total - 100)}`,
+        scope,
+      )
+    : firstMessages;
+  const attachments = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/files/threads/${encodeURIComponent(threadId)}/attachments?limit=100&offset=0`,
+    scope,
+  );
+  const attachmentItems = asArray(attachments.items ?? attachments.attachments).map(asRecord);
+  const attachmentTotal = Math.max(
+    attachmentItems.length,
+    Math.trunc(asNumber(attachments.total)),
+  );
+  const latestTurnId = asString(
+    [...asArray(messages.items ?? messages.messages).map(asRecord)]
+      .reverse()
+      .find((message) => asString(message.role) === "user")?.turnId,
+  );
+  if (
+    latestTurnId
+    && attachmentTotal > attachmentItems.length
+    && attachmentItems.every(
+      (attachment) => asString(attachment.turnId, asString(attachment.messageId)) === latestTurnId,
+    )
+  ) {
+    throw new Response("Latest Turn attachments exceed bounded read-back", { status: 409 });
+  }
+  return persistedThreadState(threadId, messages, attachments);
+}
+
 export async function loader(args: LoaderFunctionArgs) {
   const { scope } = await scoped(args);
   const agentId = args.params.agentId;
   if (!agentId) throw new Response("Agent not found", { status: 404 });
-  const [agent, templates] = await Promise.all([
+  const requestedThreadId = new URL(args.request.url).searchParams.get("threadId");
+  const threadId = safeThreadId(requestedThreadId);
+  if (requestedThreadId && !threadId) throw new Response("Invalid thread", { status: 400 });
+  const [agent, templates, persistedThread] = await Promise.all([
     agentPanel(`/api/v1/agent/agents/${encodeURIComponent(agentId)}`, scope),
     agentPanel(`/api/v1/agent/postman-templates?agentId=${encodeURIComponent(agentId)}`, scope),
+    threadId ? loadPersistedThreadState(threadId, agentId, scope) : null,
   ]);
-  return json({ agentId, agent, templates });
+  return json({ agentId, agent, templates, persistedThread });
 }
 
 function bodyRecord(value: unknown): Record<string, unknown> {
@@ -55,17 +171,68 @@ export async function action(args: ActionFunctionArgs) {
   const { scope } = await scoped(args);
   const agentId = args.params.agentId;
   if (!agentId) throw new Response("Agent not found", { status: 404 });
-  const body = bodyRecord(await args.request.json());
+  const agentScope = { ...scope, agentId };
+  let body: Record<string, unknown>;
+  try {
+    body = bodyRecord(await args.request.json());
+  } catch {
+    return json({ ok: false, error: "Invalid request" }, { status: 400 });
+  }
   const intent = typeof body.intent === "string" ? body.intent : "stream";
 
-  if (intent === "rate") {
-    const rating = body.rating === 1 ? 1 : body.rating === -1 ? -1 : null;
-    if (rating === null) return json({ ok: false, error: "Rating must be +1 or -1" }, { status: 400 });
-    const result = await agentRequest(`/api/v1/agent/messages/${encodeURIComponent(safeMessageId(body.messageId))}/rating`, scope, {
-      method: "POST",
-      body: { rating },
-    });
-    return json({ ok: true, result });
+  if (["rating-get", "rate", "rating-delete"].includes(intent)) {
+    const path = `/api/v1/agent/messages/${encodeURIComponent(safeMessageId(body.messageId))}/rating`;
+    if (intent !== "rating-get") {
+      return json({
+        ok: false,
+        error: "Operator principals cannot mutate EndUser ratings",
+        code: "RATING_ACTOR_FORBIDDEN",
+      }, { status: 403 });
+    }
+    try {
+      const ratingState = await agentRequest(path, agentScope);
+      return json({ ok: true, ratingState });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        return json({ ok: false, error: "Rating service is unavailable", code: error.code }, { status: error.status });
+      }
+      return json({ ok: false, error: "Rating service is unavailable" }, { status: 503 });
+    }
+  }
+
+  if (intent === "attachment-presign") {
+    const filename = typeof body.filename === "string" ? body.filename.trim() : "";
+    const mimeType = typeof body.mimeType === "string" ? body.mimeType.trim() : "";
+    const bytes = typeof body.bytes === "number" ? body.bytes : Number.NaN;
+    const suppliedThreadId = typeof body.threadId === "string" ? body.threadId.trim() : "";
+    if (!filename || filename.length > 256 || !mimeType || mimeType.length > 128 || !Number.isSafeInteger(bytes) || bytes <= 0) {
+      return json({ ok: false, error: "Attachment metadata is invalid" }, { status: 400 });
+    }
+    try {
+      let scopedThreadId = suppliedThreadId;
+      if (!scopedThreadId) {
+        const created = await agentRequest<Record<string, unknown>>("/api/v1/agent/threads", scope, {
+          method: "POST",
+          body: { agentId },
+        });
+        scopedThreadId = typeof created.id === "string" ? created.id : "";
+        if (!scopedThreadId) throw new PlatosAgentApiError(502, "THREAD_READ_BACK_FAILED", "Thread could not be read back");
+        const persisted = await agentRequest<Record<string, unknown>>(`/api/v1/agent/threads/${encodeURIComponent(scopedThreadId)}`, scope);
+        if (persisted.id !== scopedThreadId || persisted.agentId !== agentId) {
+          throw new PlatosAgentApiError(502, "THREAD_READ_BACK_FAILED", "Thread could not be read back");
+        }
+      }
+      const presign = await agentRequest<Record<string, unknown>>("/api/v1/agent/attachments/presigned", scope, {
+        method: "POST",
+        body: { agentId, threadId: scopedThreadId, filename, mimeType, bytes },
+      });
+      return json({ ok: true, threadId: scopedThreadId, presign });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        return json({ ok: false, error: "Attachment upload is unavailable", code: error.code }, { status: error.status });
+      }
+      return json({ ok: false, error: "Attachment upload is unavailable" }, { status: 503 });
+    }
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
@@ -76,12 +243,25 @@ export async function action(args: ActionFunctionArgs) {
     : undefined;
 
   if (intent === "collect") {
-    const result = await agentRequest(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/messages`, scope, {
-      method: "POST",
-      body: { message, ...(threadId ? { threadId } : {}), ...(attachmentIds?.length ? { attachmentIds } : {}) },
-      signal: args.request.signal,
-    });
-    return json({ ok: true, result });
+    try {
+      const result = await agentRequest(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/messages`, scope, {
+        method: "POST",
+        body: { message, ...(threadId ? { threadId } : {}), ...(attachmentIds?.length ? { attachmentIds } : {}) },
+        signal: args.request.signal,
+      });
+      return json({ ok: true, result });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        const message = error.code === "TURN_NOT_PERSISTED"
+          ? "The collected Turn did not persist"
+          : "The collected request failed";
+        return json(
+          { ok: false, error: message, code: error.code },
+          { status: error.status },
+        );
+      }
+      return json({ ok: false, error: "The collected Turn did not persist" }, { status: 503 });
+    }
   }
 
   const search = new URLSearchParams({ message });
@@ -89,7 +269,7 @@ export async function action(args: ActionFunctionArgs) {
   if (attachmentIds?.length) search.set("attachmentIds", attachmentIds.join(","));
   const upstream = await agentResponse(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream?${search}`, scope, { signal: args.request.signal });
   if (!upstream.ok || !upstream.body) {
-    return json({ ok: false, error: await upstream.text().catch(() => "Streaming failed") }, { status: upstream.status || 502 });
+    return json({ ok: false, error: "Streaming failed" }, { status: upstream.status || 502 });
   }
   return new Response(upstream.body, {
     status: upstream.status,
@@ -270,17 +450,27 @@ function RawInspector({ events }: { events: TimelineEvent[] }) {
     : <p className="text-sm text-text-dimmed">Raw transport events appear here after the Turn starts.</p>;
 }
 
+export function ratingValue(value: unknown): 1 | -1 | null {
+  const rating = asNumber(asRecord(asRecord(value).userRating).rating);
+  return rating === 1 ? 1 : rating === -1 ? -1 : null;
+}
+
 export default function ChatRoute() {
   const data = useLoaderData<typeof loader>();
+  const initialThread = data.persistedThread;
   const [message, setMessage] = useState("");
-  const [submittedMessage, setSubmittedMessage] = useState("");
-  const [threadId, setThreadId] = useState("");
-  const [attachments, setAttachments] = useState("");
+  const [submittedMessage, setSubmittedMessage] = useState(initialThread?.submittedMessage ?? "");
+  const [threadId, setThreadId] = useState(initialThread?.threadId ?? "");
+  const [attachments, setAttachments] = useState(initialThread?.attachmentIds ?? "");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ id: string; name: string; mimeType: string; bytes: number }>>(initialThread?.uploadedAttachments ?? []);
+  const [uploading, setUploading] = useState(false);
   const [transport, setTransport] = useState<"stream" | "collect">("stream");
   const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [answer, setAnswer] = useState("");
-  const [messageId, setMessageId] = useState<string | null>(null);
+  const [answer, setAnswer] = useState(initialThread?.answer ?? "");
+  const [messageId, setMessageId] = useState<string | null>(initialThread?.messageId ?? null);
   const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [ratingAggregate, setRatingAggregate] = useState({ ups: 0, downs: 0 });
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("assembly");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +483,35 @@ export default function ChatRoute() {
   const persistedData = persisted ? eventData(persisted) : {};
   const streamError = [...events].reverse().find((event) => event.type === "error");
 
+  function retainThreadInUrl(nextThreadId: string) {
+    const url = new URL(window.location.href);
+    if (nextThreadId) url.searchParams.set("threadId", nextThreadId);
+    else url.searchParams.delete("threadId");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  useEffect(() => {
+    if (!messageId) return;
+    let cancelled = false;
+    void fetch(chatActionPath(window.location.pathname, window.location.search), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "rating-get", messageId }),
+    }).then(async (response) => {
+      if (!response.ok) throw new Error(await response.text());
+      const payload = asRecord(await response.json());
+      const state = asRecord(payload.ratingState);
+      if (!cancelled) {
+        setRating(ratingValue(state));
+        const aggregate = asRecord(state.aggregate);
+        setRatingAggregate({ ups: asNumber(aggregate.ups), downs: asNumber(aggregate.downs) });
+      }
+    }).catch((caught) => {
+      if (!cancelled) setError(caught instanceof Error ? caught.message : "Rating read-back failed");
+    });
+    return () => { cancelled = true; };
+  }, [messageId]);
+
   async function send(event: FormEvent) {
     event.preventDefault();
     const userMessage = message.trim();
@@ -303,13 +522,14 @@ export default function ChatRoute() {
     setAnswer("");
     setMessageId(null);
     setRating(null);
+    setRatingAggregate({ ups: 0, downs: 0 });
     setSubmittedMessage(userMessage);
     const controller = new AbortController();
     abortRef.current = controller;
     const attachmentIds = attachments.split(",").map((id) => id.trim()).filter(Boolean);
 
     try {
-      const response = await fetch(window.location.pathname, {
+      const response = await fetch(chatActionPath(window.location.pathname, window.location.search), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: transport, message: userMessage, threadId: threadId || undefined, attachmentIds }),
@@ -322,6 +542,11 @@ export default function ChatRoute() {
         setEvents([{ type: "result", data: payload }]);
         setAnswer(collectedAnswer(payload) || "The collected Turn completed without a textual answer. Inspect Raw for the canonical response.");
         setMessageId(resultMessageId(payload));
+        const collectedThreadId = collectedResultThreadId(payload, threadId);
+        if (collectedThreadId) {
+          setThreadId(collectedThreadId);
+          retainThreadInUrl(collectedThreadId);
+        }
         return;
       }
 
@@ -356,7 +581,10 @@ export default function ChatRoute() {
           const persistedId = serverMessageId(timelineEvent);
           if (persistedId) setMessageId(persistedId);
           const emittedThreadId = asString(parsedRecord.threadId, asString(parsedRecord.thread_id, ""));
-          if (emittedThreadId) setThreadId(emittedThreadId);
+          if (emittedThreadId) {
+            setThreadId(emittedThreadId);
+            retainThreadInUrl(emittedThreadId);
+          }
         }
         if (nextEvents.length) {
           setEvents((current) => [...current, ...nextEvents]);
@@ -371,15 +599,52 @@ export default function ChatRoute() {
     }
   }
 
-  async function rate(nextRating: 1 | -1) {
-    if (!messageId) return;
-    const response = await fetch(window.location.pathname, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "rate", messageId, rating: nextRating }),
-    });
-    if (!response.ok) setError(await response.text());
-    else setRating(nextRating);
+  async function uploadAttachment() {
+    if (!selectedFile || uploading) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const response = await fetch(chatActionPath(window.location.pathname, window.location.search), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intent: "attachment-presign",
+          threadId: threadId || undefined,
+          filename: selectedFile.name,
+          mimeType: selectedFile.type || "application/octet-stream",
+          bytes: selectedFile.size,
+        }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const payload = asRecord(await response.json());
+      const presign = asRecord(payload.presign);
+      const attachmentId = asString(presign.attachmentId);
+      const uploadUrl = asString(presign.uploadUrl);
+      const headers = asRecord(presign.headers);
+      if (!attachmentId || !uploadUrl) throw new Error("Attachment presign response is incomplete");
+      const upload = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": asString(headers["Content-Type"], selectedFile.type || "application/octet-stream") },
+        body: selectedFile,
+      });
+      if (!upload.ok) throw new Error("Attachment upload failed");
+      const attachment = asRecord(presign.attachment);
+      const uploadedThreadId = asString(payload.threadId, threadId);
+      setThreadId(uploadedThreadId);
+      retainThreadInUrl(uploadedThreadId);
+      setAttachments((current) => [...current.split(",").map((id) => id.trim()).filter(Boolean), attachmentId].join(","));
+      setUploadedAttachments((current) => [...current, {
+        id: attachmentId,
+        name: asString(attachment.originalName, selectedFile.name),
+        mimeType: asString(attachment.mimeType, selectedFile.type || "application/octet-stream"),
+        bytes: asNumber(attachment.bytes, selectedFile.size),
+      }]);
+      setSelectedFile(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Attachment upload failed");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function resetThread() {
@@ -388,11 +653,15 @@ export default function ChatRoute() {
     setSubmittedMessage("");
     setThreadId("");
     setAttachments("");
+    setSelectedFile(null);
+    setUploadedAttachments([]);
     setEvents([]);
     setAnswer("");
     setMessageId(null);
     setRating(null);
+    setRatingAggregate({ ups: 0, downs: 0 });
     setError(null);
+    retainThreadInUrl("");
   }
 
   return (
@@ -454,8 +723,10 @@ export default function ChatRoute() {
                   <span>Persisted message <code>{messageId}</code></span>
                   {asNumber(persistedData.costCents) > 0 && <span>{(asNumber(persistedData.costCents) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>}
                   {asNumber(persistedData.totalTokens) > 0 && <span>{asNumber(persistedData.totalTokens).toLocaleString()} tokens</span>}
-                  <button type="button" onClick={() => rate(1)} className={`rounded border px-2 py-1 ${rating === 1 ? "border-[var(--good)] text-[var(--good)]" : "border-grid-bright"}`}>Useful</button>
-                  <button type="button" onClick={() => rate(-1)} className={`rounded border px-2 py-1 ${rating === -1 ? "border-[var(--danger)] text-[var(--danger)]" : "border-grid-bright"}`}>Not useful</button>
+                  <span className={`rounded border px-2 py-1 ${rating === 1 ? "border-[var(--good)] text-[var(--good)]" : "border-grid-bright"}`}>Useful</span>
+                  <span className={`rounded border px-2 py-1 ${rating === -1 ? "border-[var(--danger)] text-[var(--danger)]" : "border-grid-bright"}`}>Not useful</span>
+                  <span>{ratingAggregate.ups} useful · {ratingAggregate.downs} not useful</span>
+                  <span>EndUser rating · operator read-only</span>
                 </div>
               )}
             </>}
@@ -510,13 +781,21 @@ export default function ChatRoute() {
             </div>
           </Panel>
           <Panel>
-            <SectionHeader title="Thread and attachments" description="Optional canonical IDs are forwarded unchanged after validation." />
+            <SectionHeader title="Thread and attachments" description="Files upload directly through a short-lived scoped PUT URL; only the persisted attachment ID is retained." />
             <label className="block text-xs text-text-dimmed">
               Existing Thread ID
               <input value={threadId} onChange={(event) => setThreadId(event.target.value)} className="mt-1 w-full rounded-md border border-grid-bright bg-background-bright px-3 py-2 font-mono text-xs text-text-bright" />
             </label>
             <label className="mt-3 block text-xs text-text-dimmed">
-              Attachment IDs, comma-separated
+              Upload attachment
+              <input type="file" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} className="mt-1 block w-full text-xs text-text-bright" />
+            </label>
+            <Button type="button" onClick={uploadAttachment} disabled={!selectedFile || uploading} className="mt-2 w-full">
+              {uploading ? "Uploading…" : "Upload selected file"}
+            </Button>
+            {uploadedAttachments.length > 0 && <ul className="mt-3 space-y-2 text-xs text-text-dimmed">{uploadedAttachments.map((attachment) => <li key={attachment.id} className="rounded border border-grid-bright p-2"><span className="block text-text-bright">{attachment.name}</span><span>{attachment.mimeType} · {attachment.bytes.toLocaleString()} bytes</span><code className="mt-1 block break-all">{attachment.id}</code></li>)}</ul>}
+            <label className="mt-3 block text-xs text-text-dimmed">
+              Attachment IDs, comma-separated (advanced)
               <input value={attachments} onChange={(event) => setAttachments(event.target.value)} className="mt-1 w-full rounded-md border border-grid-bright bg-background-bright px-3 py-2 font-mono text-xs text-text-bright" />
             </label>
           </Panel>

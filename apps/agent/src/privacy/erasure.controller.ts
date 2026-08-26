@@ -132,7 +132,7 @@ export class ErasureController {
       throw error;
     }
     // 200 rather than 201 on a repeat: the caller did not create anything.
-    return res.status(receipt.attempts > 1 ? 200 : 201).json(receipt);
+    return res.status(receipt.retryCount > 1 ? 200 : 201).json(receipt);
   }
 
   @Get("erasures/:operationId")

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win236-win237-postgres-evidence.json",
+  "title": "WIN-236/WIN-237 PostgreSQL evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "gate",
+    "status",
+    "commitSha",
+    "command",
+    "suites",
+    "totals",
+    "evidence"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "gate": { "const": "win236-win237-postgres-evidence" },
+    "status": { "const": "passed" },
+    "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "command": { "const": "pnpm test:postgres-memory:evidence" },
+    "suites": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["slug", "file", "expectedTests", "passed", "failed", "skipped"]
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": ["tests", "failed", "skipped"],
+      "properties": {
+        "tests": { "const": 14 },
+        "failed": { "const": 0 },
+        "skipped": { "const": 0 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["queryCounts", "explains", "runtime"]
+    }
+  }
+}

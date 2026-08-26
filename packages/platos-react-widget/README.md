@@ -177,7 +177,8 @@ Note: `sessionToken` is short-lived (Platos default: 5 minutes). For long sessio
 
 ## Per-turn options
 
-Every variable the agent accepts on a Socket.IO turn is exposed via the `perTurn` prop. The same shape `client.threads.send()` accepts — passed unchanged on every message.
+Browser-safe Socket.IO options are exposed via the `perTurn` prop and passed on
+every message. Operator-only context overrides are intentionally unavailable.
 
 ```tsx
 <PlatosFab
@@ -197,12 +198,6 @@ Every variable the agent accepts on a Socket.IO turn is exposed via the `perTurn
     contextId: "shopify-store-acme",
     // Pre-uploaded MinIO attachment ids for this turn (multimodal).
     attachmentIds: ["att_123"],
-    // Postman-mode session-context override — replace the resolved
-    // sessionContext for this single turn.
-    sessionContextOverride: {
-      entity_ids: ["acme-prod"],
-      role: "manager",
-    },
   }}
 />
 ```

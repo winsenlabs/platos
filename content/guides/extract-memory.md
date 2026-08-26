@@ -4,8 +4,6 @@ title: Extract long-term memory from a conversation
 description: Configure the memory extractor to pull profile facts, preferences, and entities from a chat.
 category: recipes
 order: 30
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I enable memory extraction on an agent?"
   - "Which extractor model is used and how much does it cost?"
@@ -14,10 +12,6 @@ questions:
   - "How is the extractor scheduled?"
 related:
   - create-first-agent
-source_files_referenced:
-  - apps/agent/src/memory/memory-extraction.service.ts
-  - apps/agent/src/memory/memory-feedback.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx
 ---
 
 # Extract long-term memory from a conversation

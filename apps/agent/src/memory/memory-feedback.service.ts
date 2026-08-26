@@ -36,7 +36,7 @@ interface LockedMemory {
 /**
  * Reconciles memory state from authoritative, current MessageRating rows.
  *
- * The triggering rating is share-locked before its revision is checked. A
+ * The initiating rating is share-locked before its revision is checked. A
  * later upsert therefore either wins before this transaction (making this
  * job stale) or waits and schedules a newer revision after this job commits.
  * Each affected memory is update-locked while all current source-turn ratings

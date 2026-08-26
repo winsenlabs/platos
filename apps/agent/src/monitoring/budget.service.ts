@@ -147,9 +147,29 @@ export class BudgetService {
         ...environmentScopeWhere(scope),
         deletedAt: null,
       },
-      orderBy: [{ scope: "asc" }, { period: "asc" }],
+      orderBy: [{ scope: "asc" }, { period: "asc" }, { id: "asc" }],
     });
     return rows.map((row) => this.row(scope, row));
+  }
+
+  async listPage(
+    scope: ScopeTuple,
+    options: { limit: number; offset: number },
+  ): Promise<{ items: BudgetCap[]; total: number }> {
+    const where = {
+      ...environmentScopeWhere(scope),
+      deletedAt: null,
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.budget.findMany({
+        where,
+        orderBy: [{ scope: "asc" }, { period: "asc" }, { id: "asc" }],
+        take: options.limit,
+        skip: options.offset,
+      }),
+      this.prisma.budget.count({ where }),
+    ]);
+    return { items: rows.map((row) => this.row(scope, row)), total };
   }
 
   async getById(scope: ScopeTuple, id: string): Promise<BudgetCap | null> {
@@ -506,13 +526,13 @@ export class BudgetService {
       delivered: 0,
       failed: 0,
       skipped: 0,
-      attempts: [],
+      retries: [],
     };
 
     for (const delivery of deliveries) {
       if (delivery.status === "SUCCEEDED") {
         summary.skipped += 1;
-        summary.attempts.push({
+        summary.retries.push({
           deliveryId: delivery.id,
           channelId: delivery.channelId,
           type: delivery.channel.type,
@@ -538,15 +558,15 @@ export class BudgetService {
         data: {
           status: "PROCESSING",
           availableAt: new Date(now.getTime() + 2 * 60_000),
-          lastAttemptAt: now,
+          lastRetryAt: now,
           claimToken,
           claimGeneration: { increment: 1 },
-          attemptCount: { increment: 1 },
+          retryCount: { increment: 1 },
         },
       });
       if (claimed.count !== 1) {
         summary.skipped += 1;
-        summary.attempts.push({
+        summary.retries.push({
           deliveryId: delivery.id,
           channelId: delivery.channelId,
           type: delivery.channel.type,
@@ -559,20 +579,20 @@ export class BudgetService {
 
       const claim = await this.prisma.alertDelivery.findFirstOrThrow({
         where: { id: delivery.id, environmentId: payload.environmentId, claimToken },
-        select: { attemptCount: true, claimGeneration: true },
+        select: { retryCount: true, claimGeneration: true },
       });
       const result = await this.deliverChannel(delivery.id, delivery.channel, payload);
-      const finalized = await this.finishDeliveryAttempt(
+      const finalized = await this.finishDeliveryRetry(
         delivery.id,
         payload.environmentId,
         claimToken,
         claim.claimGeneration,
-        claim.attemptCount,
+        claim.retryCount,
         result,
       );
       if (!finalized) {
         summary.skipped += 1;
-        summary.attempts.push({
+        summary.retries.push({
           deliveryId: delivery.id,
           channelId: delivery.channelId,
           type: delivery.channel.type,
@@ -582,7 +602,7 @@ export class BudgetService {
         });
         continue;
       }
-      summary.attempts.push({
+      summary.retries.push({
         deliveryId: delivery.id,
         channelId: delivery.channelId,
         type: delivery.channel.type,
@@ -722,12 +742,12 @@ export class BudgetService {
     }
   }
 
-  private async finishDeliveryAttempt(
+  private async finishDeliveryRetry(
     deliveryId: string,
     environmentId: string,
     claimToken: string,
     claimGeneration: number,
-    attemptNumber: number,
+    retryNumber: number,
     result: AlertDeliveryResult,
   ): Promise<boolean> {
     const finishedAt = new Date();
@@ -739,13 +759,13 @@ export class BudgetService {
           status: "PROCESSING",
           claimToken,
           claimGeneration,
-          attemptCount: attemptNumber,
+          retryCount: retryNumber,
         },
         data: {
           status: result.ok ? "SUCCEEDED" : "FAILED",
           claimToken: null,
           availableAt: result.ok ? finishedAt : new Date(finishedAt.getTime() + 30_000),
-          lastAttemptAt: finishedAt,
+          lastRetryAt: finishedAt,
           deliveredAt: result.ok ? finishedAt : null,
           lastStatusCode: result.statusCode,
           lastErrorCode: result.errorCode,
@@ -753,11 +773,11 @@ export class BudgetService {
         },
       });
       if (finalized.count !== 1) return false;
-      await tx.alertDeliveryAttempt.create({
+      await tx.alertDeliveryRetry.create({
         data: {
           environmentId,
           deliveryId,
-          attemptNumber,
+          retryNumber,
           status: result.ok ? "SUCCEEDED" : "FAILED",
           responseStatus: result.statusCode,
           errorCode: result.errorCode,

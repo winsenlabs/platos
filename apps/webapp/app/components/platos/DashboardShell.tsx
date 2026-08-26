@@ -55,7 +55,7 @@ import {
   accountPath,
   memoriesPath,
   organizationTeamPath,
-  platosTasksPath,
+  jobsPath,
   skillsPath,
   threadsPath,
   v3ApiKeysPath,
@@ -105,7 +105,7 @@ const sections: Array<{ heading: string; items: NavigationItem[] }> = [
     { label: "Clusters", build: agentClustersPath, icon: Boxes },
   ] },
   { heading: "System", items: [
-    { label: "Background work", build: platosTasksPath, icon: Command },
+    { label: "Jobs", build: jobsPath, icon: Command },
     { label: "Memory", build: memoriesPath, icon: Brain },
     { label: "Files", build: agentFilesPath, icon: FolderOpen },
     { label: "Variables", build: v3EnvironmentVariablesPath, icon: Variable },

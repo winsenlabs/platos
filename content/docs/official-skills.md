@@ -4,8 +4,6 @@ title: Official skills catalog
 description: First-party skills shipped with Platos including code execution, csv-ops, and platos-rag.
 category: platform
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Which official skills ship with Platos?"
   - "How do I enable the code execution skill?"
@@ -17,11 +15,6 @@ related:
   - skills
   - artifacts
   - attachments-and-files
-source_files_referenced:
-  - apps/agent/src/skills/official
-  - apps/agent/src/skills/official/code_execution.skill.md
-  - apps/agent/src/skills/official/skill-handlers.ts
-  - apps/agent/src/skills/official-skills-seeder.service.ts
 ---
 
 # Official skills catalog
@@ -40,7 +33,7 @@ The official catalogue currently includes:
 - **parallel-web**: multi-result fetch with parallel requests, rate-limited.
 - **platos-rag**: retrieval over a project-scoped vector index, with a `retrieve` tool plus a prompt block that tells the model when to query.
 
-Each skill ships a `*.skill.md` manifest, a typed handler in `skill-handlers.ts`, and a token estimator. The `OfficialSkillsSeederService` reads the directory at boot and upserts a `PlatosSkill` row per slug for every project that does not already have one.
+Each skill ships a `*.skill.md` manifest, a typed handler in `skill-handlers.ts`, and a token estimator. The `OfficialSkillsSeederService` reads the directory at boot and upserts a `Skill` row per slug for every Organization that does not already have one.
 
 ## Why it matters
 

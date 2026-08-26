@@ -8,6 +8,12 @@ import {
 const PAT_SCOPE_PREFIX = "platos:pat:";
 const DEFAULT_SCOPE = "mcp:tools";
 
+function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
+  return Number.isInteger(value)
+    ? Math.max(minimum, Math.min(maximum, value as number))
+    : fallback;
+}
+
 export interface ToolAclRow {
   id: string;
   entityPk: string;
@@ -32,6 +38,7 @@ export interface ToolAclListRow extends Omit<ToolAclRow, "addedAt"> {
 
 interface PolicyWithTool {
   id: string;
+  environmentId: string;
   entityId: string;
   toolId: string;
   effect: PolicyEffect;
@@ -89,37 +96,60 @@ export class McpToolAclService {
 
   async list(
     entityPk: string,
+    environmentId: string,
     options: { exposed?: boolean; search?: string; limit?: number; offset?: number } = {},
-  ): Promise<ToolAclListRow[]> {
-    const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { entityId: entityPk, enabled: true },
-      select: {
-        id: true,
-        toolId: true,
-        tool: { select: { name: true } },
-      },
-      orderBy: { tool: { name: "asc" } },
-    });
-    if (mappings.length === 0) return [];
-
-    // EntityToolPolicy is entity-wide while EnvironmentEntityTool is
-    // environment-owned. De-duplicate the same canonical Tool across envs.
-    const mappingByToolId = new Map<string, (typeof mappings)[number]>();
-    for (const mapping of mappings) {
-      if (!mappingByToolId.has(mapping.toolId)) {
-        mappingByToolId.set(mapping.toolId, mapping);
-      }
-    }
-
-    const policies = await this.prisma.entityToolPolicy.findMany({
-      where: { entityId: entityPk, toolId: { in: [...mappingByToolId.keys()] } },
-      include: { tool: { select: { name: true } } },
+  ): Promise<{ tools: ToolAclListRow[]; total: number; limit: number; offset: number }> {
+    const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+    const limit = boundedInteger(options.limit, 200, 1, 200);
+    const policyScope = { environmentId, entityId: entityPk, effect: PolicyEffect.ALLOW };
+    const toolWhere = {
+      ...(options.search
+        ? { name: { contains: options.search, mode: "insensitive" as const } }
+        : {}),
+      ...(options.exposed === true
+        ? { entityPolicies: { some: policyScope } }
+        : options.exposed === false
+          ? { entityPolicies: { none: policyScope } }
+          : {}),
+    };
+    const where = {
+      entityId: entityPk,
+      environmentId,
+      enabled: true,
+      ...(Object.keys(toolWhere).length > 0 ? { tool: toolWhere } : {}),
+    };
+    const { mappings, policies, total } = await this.prisma.$transaction(async (tx) => {
+      const [count, page] = await Promise.all([
+        tx.environmentEntityTool.count({ where }),
+        tx.environmentEntityTool.findMany({
+          where,
+          select: {
+            id: true,
+            toolId: true,
+            tool: { select: { name: true } },
+          },
+          orderBy: [{ tool: { name: "asc" } }, { id: "asc" }],
+          skip: offset,
+          take: limit,
+        }),
+      ]);
+      const pagePolicies = page.length === 0
+        ? []
+        : await tx.entityToolPolicy.findMany({
+            where: {
+              environmentId,
+              entityId: entityPk,
+              toolId: { in: page.map((mapping) => mapping.toolId) },
+            },
+            include: { tool: { select: { name: true } } },
+          });
+      return { mappings: page, policies: pagePolicies, total: count };
     });
     const policyByToolId = new Map(
       policies.map((policy) => [policy.toolId, this.projectPolicy(policy)]),
     );
 
-    let merged: ToolAclListRow[] = [...mappingByToolId.values()].map((mapping) => {
+    const tools: ToolAclListRow[] = mappings.map((mapping) => {
       const policy = policyByToolId.get(mapping.toolId);
       if (!policy) {
         return {
@@ -139,22 +169,7 @@ export class McpToolAclService {
       // resolves it back to the canonical Tool id before mutation.
       return { ...policy, toolId: mapping.id };
     });
-
-    if (options.exposed !== undefined) {
-      merged = merged.filter((row) => row.exposed === options.exposed);
-    }
-    if (options.search) {
-      const query = options.search.toLowerCase();
-      merged = merged.filter((row) => row.toolName.toLowerCase().includes(query));
-    }
-    merged.sort((a, b) => {
-      if (a.exposed !== b.exposed) return a.exposed ? -1 : 1;
-      return a.toolName.localeCompare(b.toolName);
-    });
-
-    const offset = options.offset ?? 0;
-    const limit = options.limit ?? 200;
-    return merged.slice(offset, offset + limit);
+    return { tools, total, limit, offset };
   }
 
   async getExposedToolNames(entityPk: string): Promise<string[]> {
@@ -168,11 +183,13 @@ export class McpToolAclService {
   /** Load every effective allow policy for a name (normally exactly one). */
   async getExposedPoliciesByName(
     entityPk: string,
+    environmentId: string,
     toolName?: string,
   ): Promise<ToolAclRow[]> {
     const rows = await this.prisma.entityToolPolicy.findMany({
       where: {
         entityId: entityPk,
+        environmentId,
         effect: PolicyEffect.ALLOW,
         ...(toolName ? { tool: { name: toolName } } : {}),
       },
@@ -208,21 +225,23 @@ export class McpToolAclService {
 
   async upsert(
     entityPk: string,
+    environmentId: string,
     toolId: string,
-    _toolName: string,
+    toolName: string,
     addedBy: string,
     data: Partial<
       Pick<ToolAclRow, "exposed" | "minIdentityMode" | "allowedPatIds" | "scopeLabels">
     >,
   ): Promise<ToolAclRow> {
     const existing = await this.prisma.entityToolPolicy.findUnique({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       select: { scopeLabels: true },
     });
     const current = decodeLabels(existing?.scopeLabels ?? [DEFAULT_SCOPE]);
     const row = await this.prisma.entityToolPolicy.upsert({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       create: {
+        environmentId,
         entityId: entityPk,
         toolId,
         effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
@@ -247,21 +266,21 @@ export class McpToolAclService {
           ),
         }),
       },
-      include: { tool: { select: { name: true } } },
     });
     await this.syncAllowlist(entityPk);
-    return this.projectPolicy(row);
+    return this.projectPolicy({ ...row, tool: { name: toolName } });
   }
 
   async bulk(
     entityPk: string,
+    environmentId: string,
     mappingIds: string[],
     action: "expose" | "hide" | "set_identity",
     options: { minIdentityMode?: string; addedBy?: string } = {},
   ): Promise<number> {
     if (mappingIds.length === 0) return 0;
     const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { id: { in: mappingIds }, entityId: entityPk },
+      where: { id: { in: mappingIds }, entityId: entityPk, environmentId },
       select: { toolId: true },
     });
     const toolIds = Array.from(new Set(mappings.map((mapping) => mapping.toolId)));
@@ -270,8 +289,9 @@ export class McpToolAclService {
     await this.prisma.$transaction(
       toolIds.map((toolId) =>
         this.prisma.entityToolPolicy.upsert({
-          where: { entityId_toolId: { entityId: entityPk, toolId } },
+          where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
           create: {
+            environmentId,
             entityId: entityPk,
             toolId,
             effect:
@@ -299,12 +319,14 @@ export class McpToolAclService {
 
   async autoInsert(
     entityPk: string,
+    environmentId: string,
     toolId: string,
     _toolName: string,
   ): Promise<void> {
     await this.prisma.entityToolPolicy.upsert({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       create: {
+        environmentId,
         entityId: entityPk,
         toolId,
         effect: PolicyEffect.DENY,

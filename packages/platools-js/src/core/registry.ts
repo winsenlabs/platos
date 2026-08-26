@@ -24,6 +24,16 @@ export class ToolRegistry {
     return this.tools.get(name);
   }
 
+  /** Remove a tool from the next complete `tool_register` declaration. */
+  public remove(name: string): boolean {
+    return this.tools.delete(name);
+  }
+
+  /** Remove all tools; the next declaration prunes every server mapping. */
+  public clear(): void {
+    this.tools.clear();
+  }
+
   public all(): ToolDef[] {
     return Array.from(this.tools.values());
   }

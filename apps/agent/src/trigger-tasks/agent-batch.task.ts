@@ -6,7 +6,7 @@ const env = process.env;
  * W.1 — `agent_batch` durable executor.
  *
  * Fires when the LLM calls the `agent_batch` meta-tool (registered in
- * agent.service.ts next to `spawn_bgo`). The handler picks up
+ * agent.service.ts next to `spawn_job`). The handler picks up
  * `{ scope, parentThreadId, parentAgentId, items, perItemInstructions,
  *   allowedTools, maxConcurrency, label }` and loops over each item:
  *
@@ -127,12 +127,12 @@ export const agentBatch = task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const internalSecret = env.TRIGGER_INTERNAL_SECRET;
+    const internalSecret = env.PLATOS_COMPONENT_AUTH_SECRET;
     if (!internalSecret || internalSecret === "dev-internal-secret-change-me") {
       if (env.NODE_ENV === "production") {
-        throw new Error("TRIGGER_INTERNAL_SECRET must be set to a secure value in production (openssl rand -hex 32)");
+        throw new Error("PLATOS_COMPONENT_AUTH_SECRET must be set to a secure value in production (openssl rand -hex 32)");
       }
-      logger.warn("TRIGGER_INTERNAL_SECRET is using the insecure default — set it via env var before production deploy");
+      logger.warn("PLATOS_COMPONENT_AUTH_SECRET is using the insecure default — set it via env var before production deploy");
     }
     const resolvedInternalSecret = internalSecret || "dev-internal-secret-change-me";
 
@@ -324,7 +324,7 @@ export const agentBatch = task({
       successCount,
       failureCount,
       totalCostCents,
-      attempt: ctx?.attempt?.number ?? 1,
+      retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
     });
 
     return {

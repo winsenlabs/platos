@@ -94,7 +94,7 @@ Payload example:
 
 - `serviceSecret` must be ≥ 16 chars. Shorter secrets are refused because the downstream HMAC has no lower-bound enforcement and we don't want customers stumbling into dev sentinel values.
 - `ttlSeconds`: min 60s, max 7 days. The agent accepts longer-lived tokens but we refuse to mint them here — use `onTokenRefresh` instead.
-- The four scope fields (`organizationId`, `projectId`, `environmentId`, `userId`) are required.
+- The four scope fields (`organizationId`, `projectId`, `environmentId`, `userId`) and `entityId` are required. The agent resolves that Entity's `serviceSecret` and verifies the signature against it.
 
 ## Testing / introspection
 

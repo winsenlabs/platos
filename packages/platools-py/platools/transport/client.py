@@ -49,7 +49,7 @@ log = logging.getLogger("platools.transport")
 HEARTBEAT_INTERVAL = 30.0  # seconds — PRD §5.2
 BACKOFF_BASE = 1.0  # seconds
 BACKOFF_MAX = 60.0  # seconds
-MAX_BACKOFF_ATTEMPTS = 10
+MAX_BACKOFF_RETRIES = 10
 
 _platform_adapter: TypeAdapter[PlatformToSdk] = TypeAdapter(PlatformToSdk)
 
@@ -79,11 +79,11 @@ class PlatoolsClient:
 
         Exits cleanly when `stop()` is called from another task.
         """
-        attempt = 0
+        retry_count = 0
         while not self._stop.is_set():
             try:
                 await self._run_session()
-                attempt = 0  # reset after a successful session
+                retry_count = 0  # reset after a successful session
             except ConnectionClosed as exc:
                 log.warning("platools ws closed: %s", exc)
             except Exception as exc:  # noqa: BLE001
@@ -91,9 +91,9 @@ class PlatoolsClient:
 
             if self._stop.is_set():
                 return
-            attempt += 1
-            delay = min(BACKOFF_BASE * (2 ** (attempt - 1)), BACKOFF_MAX)
-            log.info("platools reconnect in %.1fs (attempt %d)", delay, attempt)
+            retry_count += 1
+            delay = min(BACKOFF_BASE * (2 ** (retry_count - 1)), BACKOFF_MAX)
+            log.info("platools reconnect in %.1fs (retry %d)", delay, retry_count)
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(self._stop.wait(), timeout=delay)
 

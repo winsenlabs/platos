@@ -1,12 +1,18 @@
-import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional } from "@nestjs/common";
 import { PolicyEffect, ToolKind } from "@platos/tenancy-database";
 import * as crypto from "node:crypto";
+import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
 import {
   PRISMA_TOKEN,
   type ControlDatabaseClient,
 } from "../shared/database.provider";
+import { REDIS_TOKEN } from "../shared/redis.provider";
 import { BM25Index } from "./bm25";
+import {
+  parseToolPolicyInvalidation,
+  TOOL_POLICY_INVALIDATION_SUBSCRIPTION_CHANNEL,
+} from "./tool-policy-invalidation";
 
 export interface ToolSchema {
   name: string;
@@ -101,21 +107,51 @@ function entryOrder(a: OrgToolEntry, b: OrgToolEntry): number {
  * registration, deletion, and rebuild instead of accumulating historical rows.
  */
 @Injectable()
-export class ToolRegistryService implements OnModuleInit {
+export class ToolRegistryService implements OnModuleInit, OnModuleDestroy {
   private bm25 = new BM25Index();
   private scopedToolCache = new Map<
     string,
     Map<string, OrgToolEntry>
   >();
   private cacheRevision = 0;
+  private policySubscriber?: Redis;
 
   constructor(
     @Inject(PRISMA_TOKEN)
     private readonly prisma: ControlDatabaseClient,
+    @Optional() @Inject(REDIS_TOKEN)
+    private readonly redis?: Redis,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.rebuildIndex();
+    await this.subscribeToPolicyInvalidations();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (!this.policySubscriber) return;
+    await this.policySubscriber.quit().catch(() => undefined);
+    this.policySubscriber = undefined;
+  }
+
+  private async subscribeToPolicyInvalidations(): Promise<void> {
+    const subscriber = this.redis?.duplicate?.();
+    if (!subscriber) return;
+    try {
+      await subscriber.subscribe(TOOL_POLICY_INVALIDATION_SUBSCRIPTION_CHANNEL);
+      subscriber.on("message", (channel, message) => {
+        if (channel !== TOOL_POLICY_INVALIDATION_SUBSCRIPTION_CHANNEL) return;
+        const scope = parseToolPolicyInvalidation(message);
+        if (!scope) return;
+        void this.refreshEnvironmentPolicies(scope).catch((error) => {
+          console.error("[Platos ToolRegistry] Tool policy refresh failed", error);
+        });
+      });
+      this.policySubscriber = subscriber;
+    } catch (error) {
+      await subscriber.quit().catch(() => undefined);
+      console.error("[Platos ToolRegistry] Tool policy subscription failed", error);
+    }
   }
 
   /** Replace the complete in-memory registry from clean tenancy rows. */

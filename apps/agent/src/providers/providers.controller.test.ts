@@ -31,7 +31,7 @@ function makeController() {
       projectId: "project-1",
       environmentId: "env-1",
     })),
-    list: vi.fn(async () => [key]),
+    listPage: vi.fn(async () => ({ items: [key], total: 1 })),
     createWithSecret: vi.fn(async () => key),
     rotateSecret: vi.fn(async () => key),
   };
@@ -65,7 +65,10 @@ describe("ProvidersController safe payloads", () => {
 
     expect(payload).toContain("credential-1");
     expect(payload).not.toMatch(/ciphertext|authTag|nonce|salt/i);
-    expect(providerKeys.list).toHaveBeenCalledTimes(1);
+    expect(providerKeys.listPage).toHaveBeenCalledWith(
+      request.scope,
+      expect.objectContaining({ limit: 25, offset: 0 }),
+    );
   });
 
   it("rejects end-user access before listing ProviderKey metadata", async () => {
@@ -75,7 +78,7 @@ describe("ProvidersController safe payloads", () => {
     } as any;
 
     await expect(controller.listKeys(endUserRequest)).rejects.toMatchObject({ status: 403 });
-    expect(providerKeys.list).not.toHaveBeenCalled();
+    expect(providerKeys.listPage).not.toHaveBeenCalled();
   });
 
   it("accepts fresh BYOK material but returns ProviderKey metadata only", async () => {

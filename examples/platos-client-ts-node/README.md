@@ -14,5 +14,5 @@ export PLATOS_AGENT_ID="<agent id from the dashboard>"
 node --loader tsx cli.ts "What can you help me with?"
 ```
 
-Works with both a hosted Platos deployment and local dev
+Works with both a hosted Platos service and local dev
 (`PLATOS_BASE_URL=http://localhost:3100`).

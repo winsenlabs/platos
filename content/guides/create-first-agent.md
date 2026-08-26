@@ -4,8 +4,6 @@ title: Create your first agent
 description: Walk through the agent creation wizard from name to first chat turn.
 category: getting-started
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What fields are required when I create an agent?"
   - "Which model should I pick first?"
@@ -15,8 +13,6 @@ related:
   - quickstart
   - add-provider-key
   - version-and-rollback
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx
 ---
 
 # Create your first agent
@@ -63,7 +59,7 @@ An agent named "Hello", built through the wizard, with a working chat turn. By t
 
 6. **Tools** (optional for first agent).
 
-   Skip for now. The wizard auto-enables the standard meta-tool set (`remember`, `recall`, `find_tools`, `execute_tools`, `spawn_bgo`, etc.). Tools come in once you connect an entity or enable a skill.
+   Skip for now. The wizard auto-enables the standard meta-tool set (`remember`, `recall`, `find_tools`, `execute_tools`, `spawn_job`, etc.). Tools come in once you connect an entity or enable a skill.
 
 7. **Save and chat.**
 
@@ -83,5 +79,5 @@ Use Postman mode in the chat panel to inspect the assembled prompt and any tool 
 
 - [Connect an entity (TypeScript)](/guides/connect-entity-platools-ts) to give the agent tools.
 - [Version, canary, and roll back an agent](/guides/version-and-rollback) for safe iteration.
-- [Run an A/B eval suite](/guides/run-an-eval-suite) to compare versions on a fixed set.
+- [Run a golden set](/guides/run-golden-set) to evaluate representative Threads against fixed criteria.
 - [Set a per-agent budget cap](/guides/set-budget-cap) before exposing the agent to traffic.

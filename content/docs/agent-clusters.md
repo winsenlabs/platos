@@ -4,34 +4,27 @@ title: Agent clusters
 description: Group agents that share memory, threads, and user identity so a chat agent and a background agent feel like one.
 category: platform
 order: 30
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is an agent cluster?"
   - "When should two agents share a cluster vs stay separate?"
   - "How is memory shared across agents in a cluster?"
-  - "Can a BGO agent post into a chat agent's thread?"
+  - "Can a Job agent post into a chat agent's thread?"
   - "How is cross-cluster access prevented?"
   - "How do I see which cluster an agent belongs to from the agent detail page?"
 related:
   - agents
   - memory
   - conversations-and-threads
-  - platos-tasks
-source_files_referenced:
-  - apps/agent/src/agent-runtime/agent-cluster.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters.$clusterId/route.tsx
-  - docs/pra/PRA_SPEC_AGENT_CLUSTER.md
+  - jobs
 ---
 
 # Agent clusters
 
-An agent cluster groups two or more agents that share user identity, memory, and threads. The classic case is "Wally Chat" plus "Wally BGO": one runs the conversation, the other runs background work, and from the user's perspective they are one agent that picks up where the other left off.
+An agent cluster groups two or more Agents that share user identity, Memory, and Threads. The classic case is "Wally Chat" plus "Wally Job": one handles the conversation while the other performs background work.
 
 ## What it is
 
-A `PlatosAgentCluster` row with N member agents. Members are linked through `PlatosAgentClusterMember`. The cluster owns:
+An `AgentCluster` row with member Agents linked through Environment bindings. The cluster owns:
 
 - A `slug` and `name` for routing and display.
 - Member agents (each member can belong to at most one cluster).
@@ -42,9 +35,9 @@ Cluster scope sits inside the project scope tuple. Cross-cluster reads are rejec
 
 ## Why it matters
 
-Without clusters, a chat agent and a background worker that "do the same job" each grow their own memory store, their own threads, and their own user profile. The same user repeats themselves and the BGO has no idea what was promised in chat thirty seconds ago.
+Without clusters, a chat agent and a Job executor that "do the same job" each grow their own memory store, their own threads, and their own user profile. The same user repeats themselves and the Job has no idea what was promised in chat thirty seconds ago.
 
-Clusters fix that by giving the two agents one identity to write into, while keeping their behaviour separate (different prompts, different tools, different models). The chat agent can hand off "summarise this PDF" to the BGO via `spawn_bgo`, and the BGO posts the summary back into the same thread.
+Clusters fix that by giving the two agents one identity to write into, while keeping their behaviour separate (different prompts, different tools, different models). The chat agent can hand off "summarise this PDF" to the Job via `spawn_job`, and the Job posts the summary back into the same thread.
 
 ## How to use it
 
@@ -64,17 +57,18 @@ const cluster = await platos.platos_call("clusters.create", {
 
 ### Spawn cross-agent work
 
-A cluster member's `spawn_bgo` call can target a sibling agent in the same cluster:
+A cluster member can describe a sibling handoff in the source-defined `spawn_job` instruction:
 
-```text
-spawn_bgo({
-  targetAgent: "wally-bgo",
-  prompt: "Render the slides into a PDF and reply in the thread when ready",
-  threadId: currentThread,
-})
+```json
+{
+  "jobType": "render-slides",
+  "instruction": "Have the wally-bgo Agent render the slides into a PDF and reply in the originating Thread.",
+  "tools": ["documents.render_pdf"],
+  "timeout": "10m"
+}
 ```
 
-The BGO inherits the cluster's user identity and writes its messages to the same `threadId`. The chat panel renders them with the BGO's avatar and a sub-label.
+The runtime tool does not accept `targetAgent`, `prompt`, or `threadId` fields. Cluster-aware routing must come from the Agent/runtime configuration and the instruction, not undocumented payload keys.
 
 ### Memory and thread isolation
 
@@ -85,11 +79,11 @@ When the chat agent calls `recall`, the runtime scopes the lookup to `(clusterId
 - An agent can only belong to one cluster at a time. Moving between clusters drops shared memory access from the old cluster.
 - Until the agent detail page surfaces a cluster tab (tracked in drift D-005), the cluster is only reachable from the top-level sidebar. Bookmark `/agent-clusters/{clusterId}` if you need fast access.
 - Memory written before a cluster was formed stays scoped to the original agent. Cluster scope kicks in on writes that happen after the link.
-- Cross-cluster `spawn_bgo` calls are rejected. If you need a cross-cluster handoff, run a tool call instead.
+- Do not add cross-cluster routing fields to `spawn_job`; its accepted keys are `jobType`, `instruction`, `tools`, and `timeout`.
 
 ## Related
 
 - [Agents](/docs/agents): the per-agent record; an agent does not need to belong to a cluster.
 - [Memory](/docs/memory): scoping rules for cluster-shared memory queries.
 - [Conversations and threads](/docs/conversations-and-threads): how `authorAgentId` attribution renders in the chat panel.
-- [Platos tasks](/docs/platos-tasks): `spawn_bgo` is the most common cross-member dispatch primitive.
+- [Jobs](/docs/jobs): `spawn_job` is the most common cross-member dispatch primitive.

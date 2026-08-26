@@ -48,7 +48,7 @@ from platools.core.schema import SchemaError
 from platools.transport import PlatoolsClient
 from platools.types import AuthLevel, ToolDef, ToolSchema
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "AuthLevel",

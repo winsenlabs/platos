@@ -5,7 +5,7 @@ const env = process.env;
  * Theme J.4 — scheduled judge-LLM eval sampler.
  *
  * Every 15 minutes, picks a small random sample of threads (per active
- * agent × active criterion) and fires their `POST /api/v1/agent/evals/run`
+ * agent × active criterion) and fires their `POST /api/v1/agent/evals/dispatch`
  * endpoint. Keeping this off the hot request path means the judge LLM call
  * latency + cost is absorbed durably by trigger.dev, not a user session.
  *

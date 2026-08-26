@@ -30,7 +30,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && cp src/styles.css dist/styles.css",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "NODE_ENV=test vitest run"
   },
   "dependencies": {
     "@platosdev/client": "workspace:*"
@@ -43,9 +44,12 @@
     "@types/node": "22.9.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@testing-library/react": "^16.1.0",
+    "jsdom": "^25.0.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "vitest": "^3.1.0"
   },
   "engines": {
     "node": ">=18.20.0"
