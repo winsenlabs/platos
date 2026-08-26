@@ -1206,8 +1206,30 @@ export async function performMutation(args: {
           canonicalName: "access-key-status",
         },
         mutate: async () => {
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           page.once("dialog", (dialog) => dialog.accept());
           await clickSubmit(page, /^revoke$/i);
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Access key revoke action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as {
+            ok?: boolean;
+            result?: { ok?: boolean };
+          };
+          expect(actionPayload.ok, "Access key revoke action returned a failure payload").toBe(true);
+          expect(
+            actionPayload.result?.ok,
+            "Access key revoke action omitted canonical persisted confirmation"
+          ).toBe(true);
+          await expect(
+            section.locator("span").filter({ hasText: /^Not configured$/ }).first(),
+            "Access key revoke did not revalidate the canonical status"
+          ).toBeVisible();
         },
       });
     }
