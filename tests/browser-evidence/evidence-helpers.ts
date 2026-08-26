@@ -703,6 +703,40 @@ async function existingTokenForm(page: Page, intent: "revoke" | "token-revoke") 
   return form;
 }
 
+async function revokeTokenForm(args: {
+  page: Page;
+  form: Locator;
+  intent: "revoke" | "token-revoke";
+  operation: string;
+}) {
+  const { page, form, intent, operation } = args;
+  const tokenId = await form.locator('input[name="tokenId"]').inputValue();
+  expect(tokenId, `${operation} had no canonical token id`).not.toBe("");
+  const actionPathname = new URL(page.url()).pathname;
+  const actionResponsePromise = page.waitForResponse((response) => {
+    const request = response.request();
+    return request.method() === "POST" && new URL(response.url()).pathname === actionPathname;
+  });
+  page.once("dialog", (dialog) => dialog.accept());
+  await submitForm(page, form, /^revoke$/i);
+  const actionResponse = await actionResponsePromise;
+  expect(actionResponse.status(), `${operation} action did not succeed`).toBe(200);
+  const actionPayload = (await actionResponse.json()) as {
+    ok?: boolean;
+    result?: { ok?: boolean };
+  };
+  expect(actionPayload.ok, `${operation} action returned a failure payload`).toBe(true);
+  expect(actionPayload.result?.ok, `${operation} action omitted persisted confirmation`).toBe(true);
+  const persistedForm = page
+    .locator(`form:has(input[name="intent"][value="${intent}"])`)
+    .filter({ has: page.locator(`input[name="tokenId"][value="${tokenId}"]`) })
+    .first();
+  await expect(
+    persistedForm.getByRole("button", { name: /^revoked$/i }),
+    `${operation} did not revalidate the canonical token row`
+  ).toBeVisible();
+}
+
 export async function performMutation(args: {
   page: Page;
   capability: BrowserCapability;
@@ -1292,10 +1326,13 @@ export async function performMutation(args: {
           source: "text",
           canonicalName: "platform-token-status",
         },
-        mutate: async () => {
-          page.once("dialog", (dialog) => dialog.accept());
-          await submitForm(page, form, /^revoke$/i);
-        },
+        mutate: () =>
+          revokeTokenForm({
+            page,
+            form,
+            intent: "revoke",
+            operation: "Platform token revoke",
+          }),
       });
     }
     case "entity-token-create":
@@ -1319,10 +1356,13 @@ export async function performMutation(args: {
           source: "text",
           canonicalName: "entity-token-status",
         },
-        mutate: async () => {
-          page.once("dialog", (dialog) => dialog.accept());
-          await submitForm(page, form, /^revoke$/i);
-        },
+        mutate: () =>
+          revokeTokenForm({
+            page,
+            form,
+            intent: "token-revoke",
+            operation: "Entity bearer token revoke",
+          }),
       });
     }
     case "mcp-config": {
