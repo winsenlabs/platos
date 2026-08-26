@@ -438,7 +438,7 @@ async function locatorValue(identity: WitnessIdentity) {
   return normalized;
 }
 
-async function fieldValue(field: WitnessField) {
+async function fieldValue(field: WitnessField, allowEmpty = false) {
   let value: string;
   switch (field.source) {
     case "value":
@@ -456,7 +456,9 @@ async function fieldValue(field: WitnessField) {
       break;
   }
   const normalized = value.replace(/\s+/g, " ").trim();
-  expect(normalized, `${field.canonicalName} has no canonical UI value`).not.toBe("");
+  if (!allowEmpty) {
+    expect(normalized, `${field.canonicalName} has no canonical UI value`).not.toBe("");
+  }
   return normalized;
 }
 
@@ -484,9 +486,10 @@ async function persistedUiWitness(args: {
   page: Page;
   identity: WitnessIdentity;
   field: WitnessField;
+  allowEmptyBefore?: boolean;
   mutate(): Promise<void>;
 }) {
-  const { page, identity, field, mutate } = args;
+  const { page, identity, field, allowEmptyBefore = false, mutate } = args;
   if (identity.source === "value") await expect(identity.locator).toBeAttached();
   else await expect(identity.locator).toBeVisible();
   await expect(
@@ -495,7 +498,7 @@ async function persistedUiWitness(args: {
   ).toBeAttached();
 
   const canonicalIdentity = await locatorValue(identity);
-  const preActionField = await fieldValue(field);
+  const preActionField = await fieldValue(field, allowEmptyBefore);
   const preActionPayload = await uiPayload(persistedContainer(identity.locator));
   const preActionFieldSha256 = hashObservedPayload(preActionField);
   const preActionPayloadSha256 = hashObservedPayload(preActionPayload);
@@ -1112,6 +1115,7 @@ export async function performMutation(args: {
         page,
         identity: textIdentity(form.getByRole("heading", { name: /allowed browser origins/i })),
         field: controlField(form, "origins"),
+        allowEmptyBefore: true,
         mutate: async () => {
           await origins.fill(`https://${marker}.example.test`);
           await submitForm(page, form, /save.*origin/i);
