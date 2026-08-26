@@ -42,6 +42,10 @@ const imageWorkflow = readFileSync(
   resolve(packageRoot, "../../.github/workflows/build-images.yml"),
   "utf8"
 );
+const publicationWorkflow = readFileSync(
+  resolve(packageRoot, "../../.github/workflows/publish-images.yml"),
+  "utf8"
+);
 
 const sha256 = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 
@@ -103,7 +107,6 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
     const evidenceStep = imageWorkflow.indexOf(
       "- name: Prove performance and evidence verifiers fail on mutation"
     );
-    const publicationJob = imageWorkflow.indexOf("  publish-images:");
     expect(persistedStateJob).toBeGreaterThanOrEqual(0);
     expect(rehearsalStep).toBeGreaterThan(persistedStateJob);
     expect(imageWorkflow.slice(rehearsalStep, evidenceStep)).toContain(
@@ -116,7 +119,12 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       "src/upgrade-rehearsal.integration.test.ts"
     );
     expect(evidenceStep).toBeGreaterThan(rehearsalStep);
-    expect(publicationJob).toBeGreaterThan(evidenceStep);
+    expect(imageWorkflow).not.toContain("  publish-images:");
+    expect(imageWorkflow).not.toContain("packages: write");
+    expect(publicationWorkflow).toContain("workflow_dispatch:");
+    expect(publicationWorkflow).toContain("environment: image-publication");
+    expect(publicationWorkflow).toContain("packages: write");
+    expect(publicationWorkflow).toContain('run-id: ${{ inputs.source_run_id }}');
   });
 
   test("covers every physical initial-migration addition absent from origin/main", () => {

@@ -180,7 +180,7 @@ async function bootstrapEmpty(client, config) {
     if (!validProfileIndexes(appliedCatalog)) {
       throw migrationError(
         "MEMORY_PROFILE_MIGRATION_CATALOG_INVALID",
-        "created profile indexes do not match the exact migration contract",
+        `created profile indexes do not match the exact migration contract: ${catalogDiagnostics(appliedCatalog)}`,
         67,
       );
     }
@@ -296,7 +296,7 @@ async function apply(client, config) {
     if (!validProfileIndexes(appliedCatalog)) {
       throw migrationError(
         "MEMORY_PROFILE_MIGRATION_CATALOG_INVALID",
-        "created profile indexes do not match the exact migration contract",
+        `created profile indexes do not match the exact migration contract: ${catalogDiagnostics(appliedCatalog)}`,
         67,
       );
     }
@@ -536,6 +536,29 @@ export function validProfileIndexes(indexes) {
       && JSON.stringify(index.columns) === JSON.stringify(expected.columns)
       && index.predicate === expected.predicate;
   });
+}
+
+function catalogDiagnostics(indexes) {
+  return JSON.stringify(indexes.map((index) => ({
+    name: index.name,
+    unique: index.unique,
+    valid: index.valid,
+    ready: index.ready,
+    live: index.live,
+    nullsNotDistinct: index.nullsNotDistinct,
+    hasExpressions: index.hasExpressions,
+    accessMethod: index.accessMethod,
+    keyColumns: Number(index.keyColumns),
+    totalColumns: Number(index.totalColumns),
+    profileKeyType: index.profileKeyType,
+    profileKeyNullable: index.profileKeyNullable,
+    profileKeyDefault: index.profileKeyDefault,
+    operatorClasses: index.operatorClasses,
+    indexCollations: index.indexCollations,
+    columnCollations: index.columnCollations,
+    columns: index.columns,
+    predicate: index.predicate,
+  })));
 }
 
 function decryptMetadata(envelope, env) {
