@@ -1,0 +1,1585 @@
+{
+  "version": 1,
+  "purpose": "One row per tracked file for the V1 refactor. Rules are evaluated first-match-wins in the declared array order within an area; the array order IS the precedence, and the safer disposition is always declared first.",
+  "precedence": "Within an area the first rule whose glob matches the path wins. A tracked file that matches no rule is a hard error, never a silent skip. Globs match dotfiles: the matcher in scripts/v1-ledger.mjs has no leading-dot special case.",
+  "baseline": {
+    "note": "Independently derived from git ls-files at 89c12b8. Any drift from these numbers is a finding to report, not a number to force.",
+    "totalFiles": 3373,
+    "areaCounts": {
+      "apps-agent": 507,
+      "apps-webapp": 180,
+      "packages": 550,
+      "internal-packages": 1268,
+      "docs-content": 674,
+      "root-infra": 194
+    }
+  },
+  "areas": {
+    "apps-agent": [
+      {
+        "id": "apps-agent.generated.contract-artifacts",
+        "match": [
+          "apps/agent/src/**/*.generated.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Control Plane",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "Emitted by the control-plane contract build and anchored as exact exclusions in docs/vocabulary-boundary-exceptions.json. Regenerate from source rather than hand-carrying the artifact."
+      },
+      {
+        "id": "apps-agent.test.suites",
+        "match": [
+          "apps/agent/src/**/*.test.ts",
+          "apps/agent/test/**"
+        ],
+        "kind": "test",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Collected by apps/agent/vitest.config.ts."
+      },
+      {
+        "id": "apps-agent.entry.process",
+        "match": [
+          "apps/agent/*.sh"
+        ],
+        "kind": "source",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "Container entry path named by apps/agent/Dockerfile."
+      },
+      {
+        "id": "apps-agent.infra.container",
+        "match": [
+          "apps/agent/Dockerfile",
+          "apps/agent/Dockerfile.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Builds the agent image referenced by the root compose stacks."
+      },
+      {
+        "id": "apps-agent.asset.brand",
+        "match": [
+          "apps/agent/*.png"
+        ],
+        "kind": "asset",
+        "owner_capability": "Agent Runtime",
+        "disposition": "unresolved",
+        "reached_via": [
+          "NONE"
+        ],
+        "evidence": "An exhaustive basename scan across all 3227 tracked text files finds no reference. A brand asset may still be consumed outside the repository, so reachability is not proven either way and an owner must decide."
+      },
+      {
+        "id": "apps-agent.fixture.sql",
+        "match": [
+          "apps/agent/src/**/*.sql"
+        ],
+        "kind": "fixture",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Loaded from the agent source tree at runtime."
+      },
+      {
+        "id": "apps-agent.doc.package",
+        "match": [
+          "apps/agent/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "apps-agent.config.package",
+        "match": [
+          "apps/agent/*.json",
+          "apps/agent/*.config.ts"
+        ],
+        "kind": "config",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package, compiler, and framework configuration read by the workspace scripts."
+      },
+      {
+        "id": "apps-agent.config.embedded-data",
+        "match": [
+          "apps/agent/src/**/*.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Static boundary and manifest data loaded by the module beside it, as opposed to the build-emitted artifacts caught by the generated rule declared above."
+      },
+      {
+        "id": "apps-agent.tooling.scripts",
+        "match": [
+          "apps/agent/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from apps/agent/package.json scripts."
+      },
+      {
+        "id": "apps-agent.source.runtime",
+        "match": [
+          "apps/agent/src/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "Agent Runtime",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Reached from the agent entry module through the import graph."
+      }
+    ],
+    "apps-webapp": [
+      {
+        "id": "apps-webapp.test.suites",
+        "match": [
+          "apps/webapp/test/**",
+          "apps/webapp/app/**/*.test.ts",
+          "apps/webapp/app/**/*.test.tsx"
+        ],
+        "kind": "test",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Collected by apps/webapp/vitest.config.ts."
+      },
+      {
+        "id": "apps-webapp.asset.public",
+        "match": [
+          "apps/webapp/public/**"
+        ],
+        "kind": "asset",
+        "owner_capability": "Webapp Experience",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "Served straight off the public directory by URL path. A static scan cannot see the request that reaches these, so absence of a basename match is not evidence of death."
+      },
+      {
+        "id": "apps-webapp.entry.server",
+        "match": [
+          "apps/webapp/server.ts",
+          "apps/webapp/start.sh"
+        ],
+        "kind": "source",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "Process entry named by the container image and the workspace start script."
+      },
+      {
+        "id": "apps-webapp.infra.container",
+        "match": [
+          "apps/webapp/Dockerfile.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Builds the webapp image referenced by the root compose stacks."
+      },
+      {
+        "id": "apps-webapp.doc.package",
+        "match": [
+          "apps/webapp/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "apps-webapp.tooling.scripts",
+        "match": [
+          "apps/webapp/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from apps/webapp/package.json scripts and from the container entry."
+      },
+      {
+        "id": "apps-webapp.config.dotfiles",
+        "match": [
+          "apps/webapp/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Webapp Experience",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "Tool configuration found by fixed filename. Declared explicitly so a dot-prefixed file can never fall through."
+      },
+      {
+        "id": "apps-webapp.source.instrumentation",
+        "match": [
+          "apps/webapp/sentry.server.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "Loaded before the server module so error reporting is installed first."
+      },
+      {
+        "id": "apps-webapp.config.build",
+        "match": [
+          "apps/webapp/*.json",
+          "apps/webapp/*.js",
+          "apps/webapp/*.cjs",
+          "apps/webapp/*.mjs",
+          "apps/webapp/*.config.ts",
+          "apps/webapp/*.d.ts"
+        ],
+        "kind": "config",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Build, compiler, and framework configuration read by the workspace scripts."
+      },
+      {
+        "id": "apps-webapp.tooling.shell",
+        "match": [
+          "apps/webapp/*.sh"
+        ],
+        "kind": "source",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Release-time shell helpers invoked from CI and the container image."
+      },
+      {
+        "id": "apps-webapp.style.sheet",
+        "match": [
+          "apps/webapp/app/**/*.css"
+        ],
+        "kind": "asset",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Imported by the root route module."
+      },
+      {
+        "id": "apps-webapp.source.remix",
+        "match": [
+          "apps/webapp/app/**/*.ts",
+          "apps/webapp/app/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Webapp Experience",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Reached from the framework route manifest and the import graph beneath it."
+      }
+    ],
+    "packages": [
+      {
+        "id": "packages.legal.attribution",
+        "match": [
+          "packages/*/LICENSE",
+          "packages/*/NOTICE",
+          "packages/*/NOTICE.md"
+        ],
+        "kind": "legal",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "license-obligation"
+        ],
+        "evidence": "Per-package license text. Declared first in this area so a legal obligation always beats a later archive or config rule in the first-match race.",
+        "protected": true
+      },
+      {
+        "id": "packages.pin.browser-entry",
+        "match": [
+          "packages/*-sdk/src/v3/index-browser.mts"
+        ],
+        "kind": "source",
+        "owner_capability": "Public SDKs",
+        "disposition": "archive",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Consumer: docs/vocabulary-boundary-exceptions.json line 19165 pins this file by exact path. Removing it on its own makes scripts/vocabulary-boundary.mjs report exception drift and reddens CI, so it may only leave the tree together with the whole package that holds it. The wildcard package segment is deliberate: the literal directory name carries a term the boundary gate reserves, and there is no sanctioned way to add a manifest exception for this file today."
+      },
+      {
+        "id": "packages.vendor.sdk.doc",
+        "match": [
+          "packages/*-sdk/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Public SDKs",
+        "disposition": "archive",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Upstream SDK prose. Its release history is an exact exclusion in docs/vocabulary-boundary-exceptions.json, so removal reddens the gate; archive the package as a unit instead."
+      },
+      {
+        "id": "packages.vendor.sdk.config",
+        "match": [
+          "packages/*-sdk/**/*.json",
+          "packages/*-sdk/**/*.toml",
+          "packages/*-sdk/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "archive",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Upstream SDK package and compiler configuration; archived with the package it belongs to."
+      },
+      {
+        "id": "packages.vendor.sdk.test",
+        "match": [
+          "packages/*-sdk/**/*.test.ts",
+          "packages/*-sdk/test/**",
+          "packages/*-sdk/tests/**"
+        ],
+        "kind": "test",
+        "owner_capability": "Public SDKs",
+        "disposition": "archive",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Upstream SDK suites; archived with the package they cover."
+      },
+      {
+        "id": "packages.vendor.sdk.source",
+        "match": [
+          "packages/*-sdk/**/*.ts",
+          "packages/*-sdk/**/*.cts",
+          "packages/*-sdk/**/*.mts",
+          "packages/*-sdk/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Public SDKs",
+        "disposition": "archive",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Upstream SDK surface archived as a unit so no single file is removed on its own."
+      },
+      {
+        "id": "packages.generated.release-history",
+        "match": [
+          "packages/*/CHANGELOG.md"
+        ],
+        "kind": "generated",
+        "owner_capability": "Runtime Integrations",
+        "disposition": "archive",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Written by the changeset release step. Seven of these are exact exclusions in docs/vocabulary-boundary-exceptions.json, so removing one makes the gate report a stale exclusion."
+      },
+      {
+        "id": "packages.test.suites",
+        "match": [
+          "packages/*/test/**",
+          "packages/*/tests/**",
+          "packages/*/src/**/*.test.ts",
+          "packages/*/**/test_*.py",
+          "packages/*/**/*_test.py"
+        ],
+        "kind": "test",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Collected by the per-package vitest or pytest configuration."
+      },
+      {
+        "id": "packages.python.sources",
+        "match": [
+          "packages/*/**/*.py"
+        ],
+        "kind": "source",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Reached from the Python package entry module."
+      },
+      {
+        "id": "packages.python.metadata",
+        "match": [
+          "packages/*/pyproject.toml",
+          "packages/*/**/*.typed",
+          "packages/*/**/py.typed"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Python packaging metadata read by the build and publish steps."
+      },
+      {
+        "id": "packages.doc.package",
+        "match": [
+          "packages/*/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "packages.style.sheet",
+        "match": [
+          "packages/*/**/*.css"
+        ],
+        "kind": "asset",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Imported by the widget bundle."
+      },
+      {
+        "id": "packages.config.build",
+        "match": [
+          "packages/*/*.json",
+          "packages/*/**/*.json",
+          "packages/*/*.config.ts",
+          "packages/*/.*",
+          "packages/*/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package, compiler, and bundler configuration read by the workspace scripts."
+      },
+      {
+        "id": "packages.tooling.scripts",
+        "match": [
+          "packages/*/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from the per-package scripts block."
+      },
+      {
+        "id": "packages.source.typescript",
+        "match": [
+          "packages/*/src/**/*.ts",
+          "packages/*/src/**/*.cts",
+          "packages/*/src/**/*.mts",
+          "packages/*/src/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Reached from the package entry module through the import graph."
+      }
+    ],
+    "internal-packages": [
+      {
+        "id": "internal-packages.legal.attribution",
+        "match": [
+          "internal-packages/*/LICENSE",
+          "internal-packages/*/NOTICE",
+          "internal-packages/*/NOTICE.md"
+        ],
+        "kind": "legal",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "license-obligation"
+        ],
+        "evidence": "PRECEDENCE: declared first in this area so legal retention always beats the later archive and config rules. internal-packages/tsql/NOTICE.md is the ONLY PostHog MIT attribution in the repository, verified by `grep -i posthog NOTICE LICENSE README.md` returning nothing: the root NOTICE credits only the upstream project. internal-packages/otlp-importer/LICENSE is the OpenTelemetry attribution and would otherwise have been swept up by a package-config rule and archived.",
+        "protected": true
+      },
+      {
+        "id": "internal-packages.migration.canonical",
+        "match": [
+          "internal-packages/*/prisma/migrations/**"
+        ],
+        "kind": "migration",
+        "owner_capability": "Database Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "Canonical migration history discovered by fixed directory path. Immutable once applied; never rewritten, never removed.",
+        "protected": true
+      },
+      {
+        "id": "internal-packages.fixture.upgrade-baseline",
+        "match": [
+          "internal-packages/*/prisma/upgrade-baselines/**"
+        ],
+        "kind": "fixture",
+        "owner_capability": "Database Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Byte-pinned forward-upgrade baseline, anchored as an exact exclusion in docs/vocabulary-boundary-exceptions.json; removal makes the gate report a stale exclusion."
+      },
+      {
+        "id": "internal-packages.generated.grammar",
+        "match": [
+          "internal-packages/*/src/grammar/*.interp",
+          "internal-packages/*/src/grammar/*.tokens"
+        ],
+        "kind": "generated",
+        "owner_capability": "Query Platform",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "PRECEDENCE: declared ahead of every archive rule so regenerate wins the first-match race for these four files. ANTLR emits them beside the .g4 grammar in the same directory; the grammar is the source of truth, so preserving a stale copy in an archive would be strictly worse than rebuilding."
+      },
+      {
+        "id": "internal-packages.infra.container",
+        "match": [
+          "internal-packages/*/Dockerfile",
+          "internal-packages/*/Dockerfile.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "compose"
+        ],
+        "evidence": "PRECEDENCE: declared ahead of any removal rule so retain wins the first-match race. internal-packages/clickhouse/Dockerfile builds the analytics store image the root compose stacks start, and the migration image builds the schema-upgrade container."
+      },
+      {
+        "id": "internal-packages.doc.diagram",
+        "match": [
+          "internal-packages/*/*.monojson"
+        ],
+        "kind": "doc",
+        "owner_capability": "Runtime Integrations",
+        "disposition": "retain",
+        "reached_via": [
+          "NONE"
+        ],
+        "evidence": "PRECEDENCE: declared ahead of the archive rules so retain wins the first-match race. An editable engine architecture diagram source. No tracked file names it, so it is unreachable by import; a diagram source is cheap to carry and expensive to redraw, so retain beats archive here."
+      },
+      {
+        "id": "internal-packages.lockfile.migration-image",
+        "match": [
+          "internal-packages/*/migration-image/pnpm-lock.yaml"
+        ],
+        "kind": "lockfile",
+        "owner_capability": "Database Platform",
+        "disposition": "regenerate",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Pinned dependency graph for the schema-upgrade image; regenerated by the package manager, not edited."
+      },
+      {
+        "id": "internal-packages.generated.release-history",
+        "match": [
+          "internal-packages/*/CHANGELOG.md"
+        ],
+        "kind": "generated",
+        "owner_capability": "Runtime Integrations",
+        "disposition": "archive",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Written by the changeset release step; historical value only once the package moves."
+      },
+      {
+        "id": "internal-packages.test.suites",
+        "match": [
+          "internal-packages/*/test/**",
+          "internal-packages/*/src/**/*.test.ts",
+          "internal-packages/*/**/*.test.ts",
+          "internal-packages/*/**/*.test.mjs"
+        ],
+        "kind": "test",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Collected by the per-package vitest or jest configuration."
+      },
+      {
+        "id": "internal-packages.fixture.snapshot",
+        "match": [
+          "internal-packages/*/**/*.snap",
+          "internal-packages/*/test-fixtures/**"
+        ],
+        "kind": "fixture",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Compared against by the suites in the same package."
+      },
+      {
+        "id": "internal-packages.fixture.compat-modules",
+        "match": [
+          "internal-packages/*/src/fixtures/**"
+        ],
+        "kind": "fixture",
+        "owner_capability": "Public SDKs",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Loaded at run time by the compatibility suites in the same package to prove that both module systems resolve the published entry points."
+      },
+      {
+        "id": "internal-packages.schema.prisma",
+        "match": [
+          "internal-packages/*/prisma/*.prisma"
+        ],
+        "kind": "migration",
+        "owner_capability": "Database Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Schema source the client generator reads on every install."
+      },
+      {
+        "id": "internal-packages.schema.analytics",
+        "match": [
+          "internal-packages/*/schema/*.sql"
+        ],
+        "kind": "migration",
+        "owner_capability": "Database Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Ordered analytics store schema steps applied by the package that owns the directory; the applied set is checksummed by a fixture in the same package."
+      },
+      {
+        "id": "internal-packages.migration.image",
+        "match": [
+          "internal-packages/*/migration-image/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Copied into the schema-upgrade image and run as its entry command."
+      },
+      {
+        "id": "internal-packages.email.templates",
+        "match": [
+          "internal-packages/*/emails/**/*.tsx",
+          "internal-packages/*/emails/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "Notifications",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Rendered by the mail sender in the same package."
+      },
+      {
+        "id": "internal-packages.doc.package",
+        "match": [
+          "internal-packages/*/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "internal-packages.grammar.source",
+        "match": [
+          "internal-packages/*/src/grammar/*.g4"
+        ],
+        "kind": "source",
+        "owner_capability": "Query Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "ANTLR grammar source; the parser and lexer in the same directory are built from it."
+      },
+      {
+        "id": "internal-packages.tooling.scripts",
+        "match": [
+          "internal-packages/*/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from the per-package scripts block. internal-packages/otlp-importer/scripts/submodule.mjs is the sole consumer of the repository submodule index."
+      },
+      {
+        "id": "internal-packages.config.package",
+        "match": [
+          "internal-packages/*/*.json",
+          "internal-packages/*/**/*.json",
+          "internal-packages/*/*.config.ts",
+          "internal-packages/*/*.config.js",
+          "internal-packages/*/**/*.toml",
+          "internal-packages/*/.*",
+          "internal-packages/*/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package, compiler, and test-runner configuration read by the workspace scripts."
+      },
+      {
+        "id": "internal-packages.source.typescript",
+        "match": [
+          "internal-packages/*/src/**/*.ts",
+          "internal-packages/*/src/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Database Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Reached from the package entry module through the import graph."
+      }
+    ],
+    "docs-content": [
+      {
+        "id": "docs-content.design.canvas-assets",
+        "match": [
+          "design/platos-ui-refactor/assets/**",
+          "design/platos-ui-refactor/uploads/**"
+        ],
+        "kind": "asset",
+        "owner_capability": "Design System",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Embedded by the refactor canvas pages in the same directory.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.design.canvas-style",
+        "match": [
+          "design/platos-ui-refactor/*.css",
+          "design/platos-ui-refactor/*.js"
+        ],
+        "kind": "asset",
+        "owner_capability": "Design System",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Loaded by the refactor canvas pages in the same directory.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.design.canvas",
+        "match": [
+          "design/platos-ui-refactor/*.html",
+          "design/platos-ui-refactor/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Design System",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "The V1 surface specification the refactor is being built against.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.design.index",
+        "match": [
+          "design/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Design System",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Index page for the design directory."
+      },
+      {
+        "id": "docs-content.pin.boundary-manifest",
+        "match": [
+          "docs/vocabulary-boundary-exceptions.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Vocabulary Gate",
+        "disposition": "retain",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Read on every CI run by scripts/vocabulary-boundary.mjs. Read-only to every refactor pass, and the single largest reachability anchor in the repository: it pins 1251 distinct tracked paths by exact path."
+      },
+      {
+        "id": "docs-content.generated.audit",
+        "match": [
+          "docs/*.generated.md",
+          "docs/audits/**"
+        ],
+        "kind": "generated",
+        "owner_capability": "Control Plane",
+        "disposition": "regenerate",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Written by the parity and completeness audit scripts under scripts/; regenerate rather than edit."
+      },
+      {
+        "id": "docs-content.pin.unreferenced-media",
+        "match": [
+          "docs/images/api-key-dev.png",
+          "docs/images/intro-mcp.jpg",
+          "docs/images/logo-nodejs-1.png",
+          "docs/images/recursive-task-deadlock-min.png",
+          "docs/images/run-in-progress.png",
+          "docs/images/supabase-logs.png",
+          "docs/images/supabase-*-screenshot.png"
+        ],
+        "kind": "asset",
+        "owner_capability": "Documentation",
+        "disposition": "delete",
+        "reached_via": [
+          "NONE"
+        ],
+        "evidence": "An exhaustive basename scan over all 3227 tracked text files finds no reference to any of these seven, and none is anchored in docs/vocabulary-boundary-exceptions.json. Documentation media is only ever reached by a literal path written in a page or in the site navigation, so zero literal references is a complete proof of unreachability for this file class. The last pattern uses a wildcard segment because the literal filename carries a term the boundary gate reserves."
+      },
+      {
+        "id": "docs-content.asset.media",
+        "match": [
+          "docs/**/*.png",
+          "docs/**/*.jpg",
+          "docs/**/*.jpeg",
+          "docs/**/*.svg",
+          "docs/**/*.ico"
+        ],
+        "kind": "asset",
+        "owner_capability": "Documentation",
+        "disposition": "archive",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Media for the upstream documentation site; archived with the pages that embed it."
+      },
+      {
+        "id": "docs-content.upstream.pages",
+        "match": [
+          "docs/**/*.mdx"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "archive",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Upstream product documentation carried over with the fork. Superseded by content/ for V1, so archive rather than move."
+      },
+      {
+        "id": "docs-content.upstream.site-config",
+        "match": [
+          "docs/docs.json",
+          "docs/package.json",
+          "docs/*.css",
+          "docs/*.yml",
+          "docs/*.yaml",
+          "docs/.*",
+          "docs/**/*.js",
+          "docs/**/*.ts"
+        ],
+        "kind": "config",
+        "owner_capability": "Documentation",
+        "disposition": "archive",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Documentation site configuration and helpers; archived with the pages they serve."
+      },
+      {
+        "id": "docs-content.notes.platos",
+        "match": [
+          "docs/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Platos-authored design notes, audits, and plans. Two of them, docs/security-audit-2026-07-16.md and docs/security-audit-authz-2026-07-22.md, cite hosting/Caddyfile.example by bare basename, which is why a path-prefix search misses that citation."
+      },
+      {
+        "id": "docs-content.reference.entity-dotfiles",
+        "match": [
+          "references/entity-*/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Declared as its own rule so the six dot-prefixed files under references/entity-* cannot fall through. Under the default minimatch and globby setting these match no pattern at all and would be silently skipped; the matcher in scripts/v1-ledger.mjs has no leading-dot special case, and a zero-match file is a hard error rather than a skip."
+      },
+      {
+        "id": "docs-content.reference.lockfile",
+        "match": [
+          "references/entity-*/package-lock.json"
+        ],
+        "kind": "lockfile",
+        "owner_capability": "Documentation",
+        "disposition": "regenerate",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Pinned dependency graph for a reference entity; regenerated by the package manager."
+      },
+      {
+        "id": "docs-content.reference.config",
+        "match": [
+          "references/entity-*/*.json",
+          "references/entity-*/*.yml",
+          "references/entity-*/Dockerfile"
+        ],
+        "kind": "config",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Build and container configuration for a runnable reference entity."
+      },
+      {
+        "id": "docs-content.reference.doc",
+        "match": [
+          "references/entity-*/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Walkthrough for a runnable reference entity."
+      },
+      {
+        "id": "docs-content.reference.source",
+        "match": [
+          "references/entity-*/src/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Runnable reference entity source cited from the connect documentation."
+      },
+      {
+        "id": "docs-content.upstream.agent-rules",
+        "match": [
+          "rules/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "archive",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Versioned upstream agent rule packs; superseded for V1."
+      },
+      {
+        "id": "docs-content.upstream.agent-rules-manifest",
+        "match": [
+          "rules/*.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Documentation",
+        "disposition": "archive",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Index for the versioned upstream agent rule packs."
+      },
+      {
+        "id": "docs-content.notes.ai-references",
+        "match": [
+          "ai/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Repository orientation notes written for agent readers."
+      },
+      {
+        "id": "docs-content.product.pages",
+        "match": [
+          "content/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Documentation",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Platos-native product documentation; the V1 documentation surface."
+      }
+    ],
+    "root-infra": [
+      {
+        "id": "root-infra.pin.submodule-index",
+        "match": [
+          ".gitmodules"
+        ],
+        "kind": "config",
+        "owner_capability": "Runtime Integrations",
+        "disposition": "unresolved",
+        "reached_via": [
+          "git-subcommand"
+        ],
+        "evidence": "Consumer: internal-packages/otlp-importer/scripts/submodule.mjs runs `git submodule sync` and `git submodule update` at lines 13 and 24. Git reads this file itself, so no tracked file ever names it and a literal search for the filename returns nothing. Confirmed: an exhaustive basename scan over all 3227 tracked text files finds zero references. Reachability is real but indirect, and whether the vendored proto submodule survives V1 is an open product question, so this stays unresolved rather than being guessed either way."
+      },
+      {
+        "id": "root-infra.pin.public-proxy-example",
+        "match": [
+          "hosting/Caddyfile.example"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Consumers: docs/security-audit-2026-07-16.md line 160 and docs/security-audit-authz-2026-07-22.md line 47 both cite it, and the second cites an exact line inside it. Both citations use the BARE BASENAME, so a search for the hosting/ path prefix finds neither. This is the documented public reverse-proxy configuration for self-hosting."
+      },
+      {
+        "id": "root-infra.legal.repository",
+        "match": [
+          "LICENSE",
+          "NOTICE"
+        ],
+        "kind": "legal",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "license-obligation"
+        ],
+        "evidence": "Repository license and attribution. The root NOTICE credits the upstream project only; the PostHog attribution lives separately in internal-packages/tsql/NOTICE.md.",
+        "protected": true
+      },
+      {
+        "id": "root-infra.governance.policy",
+        "match": [
+          "SECURITY.md",
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Community health files the hosting platform surfaces by fixed filename.",
+        "protected": true
+      },
+      {
+        "id": "root-infra.governance.git-hooks",
+        "match": [
+          "lefthook.yml"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Installed by the workspace prepare step and run on every commit.",
+        "protected": true
+      },
+      {
+        "id": "root-infra.lockfile.workspace",
+        "match": [
+          "pnpm-lock.yaml"
+        ],
+        "kind": "lockfile",
+        "owner_capability": "Build Platform",
+        "disposition": "regenerate",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Regenerated by the package manager and anchored as an exact exclusion in docs/vocabulary-boundary-exceptions.json."
+      },
+      {
+        "id": "root-infra.generated.browse-evidence",
+        "match": [
+          ".gstack/**"
+        ],
+        "kind": "generated",
+        "owner_capability": "Control Plane",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "Captured browser evidence output. Two of the four are exact exclusions in docs/vocabulary-boundary-exceptions.json, so removing them makes the gate report a stale exclusion; the whole directory is reproducible from the evidence run."
+      },
+      {
+        "id": "root-infra.archive.working-notes",
+        "match": [
+          ".server-changes/**"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "archive",
+        "reached_via": [
+          "NONE"
+        ],
+        "evidence": "An exhaustive basename scan over all 3227 tracked text files finds no reference to either note, and neither is anchored in docs/vocabulary-boundary-exceptions.json. Unreferenced working notes still carry decision history, so archive rather than remove."
+      },
+      {
+        "id": "root-infra.ci.workflows",
+        "match": [
+          ".github/workflows/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Build Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Run by the hosting platform on push and pull request."
+      },
+      {
+        "id": "root-infra.ci.repository-meta",
+        "match": [
+          ".github/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Issue templates, funding metadata, labeler configuration, and the compose file the release gate starts."
+      },
+      {
+        "id": "root-infra.release.changesets",
+        "match": [
+          ".changeset/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Build Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Pending release notes consumed by the version and publish steps."
+      },
+      {
+        "id": "root-infra.editor.workspace",
+        "match": [
+          ".vscode/**",
+          ".zed/**",
+          ".cursor/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "Editor and assistant configuration discovered by fixed directory name."
+      },
+      {
+        "id": "root-infra.infra.analytics-store",
+        "match": [
+          ".platos/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "compose"
+        ],
+        "evidence": "Analytics store configuration mounted by the root compose stacks."
+      },
+      {
+        "id": "root-infra.config.dotfiles",
+        "match": [
+          ".*"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "Root tool configuration found by fixed filename: ignore lists, the runtime version pin, and the environment template. Declared explicitly so a dot-prefixed root file can never fall through."
+      },
+      {
+        "id": "root-infra.compose.stacks",
+        "match": [
+          "docker-compose.*.yml"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "compose"
+        ],
+        "evidence": "The self-host and release compose stacks."
+      },
+      {
+        "id": "root-infra.deps.patches",
+        "match": [
+          "patches/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Build Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Applied on install through the workspace patchedDependencies block; removing one changes installed dependency behaviour."
+      },
+      {
+        "id": "root-infra.doc.self-host",
+        "match": [
+          "deploy/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Infrastructure",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Operator walkthrough for the reverse proxy in the same directory."
+      },
+      {
+        "id": "root-infra.infra.reverse-proxy",
+        "match": [
+          "deploy/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "compose"
+        ],
+        "evidence": "Reverse-proxy configuration mounted by the release compose stack."
+      },
+      {
+        "id": "root-infra.test.script-suites",
+        "match": [
+          "scripts/*.test.mjs"
+        ],
+        "kind": "test",
+        "owner_capability": "Build Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Covers the workspace tooling in the same directory; collected by the root test runner."
+      },
+      {
+        "id": "root-infra.tooling.scripts",
+        "match": [
+          "scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Build Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from the root package scripts and from CI."
+      },
+      {
+        "id": "root-infra.test.harness",
+        "match": [
+          "tests/**"
+        ],
+        "kind": "test",
+        "owner_capability": "Test Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Release-gate and end-to-end evidence suites named by the root runner configuration."
+      },
+      {
+        "id": "root-infra.examples.starters",
+        "match": [
+          "examples/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Documentation",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Runnable starters cited from the client documentation and checked by scripts/docs-examples.mjs."
+      },
+      {
+        "id": "root-infra.build.workspace",
+        "match": [
+          "turbo.json",
+          "package.json",
+          "pnpm-workspace.yaml",
+          "prettier.config.js",
+          "playwright.config.ts",
+          ".configs/**"
+        ],
+        "kind": "config",
+        "owner_capability": "Build Platform",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Workspace, pipeline, formatter, and browser-runner configuration read on every install and every CI run."
+      },
+      {
+        "id": "root-infra.doc.root-notes",
+        "match": [
+          "*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Root prose: the readme, the release and changeset guides, the container install guide, and the running progress log."
+      }
+    ]
+  },
+  "expected": {
+    "totalFiles": 3373,
+    "areaCounts": {
+      "apps-agent": 507,
+      "apps-webapp": 180,
+      "docs-content": 674,
+      "internal-packages": 1268,
+      "packages": 550,
+      "root-infra": 194
+    },
+    "kindCounts": {
+      "asset": 154,
+      "config": 248,
+      "doc": 556,
+      "fixture": 18,
+      "generated": 25,
+      "legal": 15,
+      "lockfile": 3,
+      "migration": 893,
+      "source": 1030,
+      "test": 431
+    },
+    "dispositionCounts": {
+      "archive": 511,
+      "delete": 7,
+      "move-refactor": 1695,
+      "regenerate": 16,
+      "retain": 1142,
+      "unresolved": 2
+    },
+    "protectedCount": 932,
+    "ruleCounts": {
+      "apps-agent.asset.brand": 1,
+      "apps-agent.config.embedded-data": 1,
+      "apps-agent.config.package": 6,
+      "apps-agent.doc.package": 10,
+      "apps-agent.entry.process": 1,
+      "apps-agent.generated.contract-artifacts": 2,
+      "apps-agent.infra.container": 1,
+      "apps-agent.source.runtime": 275,
+      "apps-agent.test.suites": 199,
+      "apps-agent.tooling.scripts": 11,
+      "apps-webapp.asset.public": 10,
+      "apps-webapp.config.build": 13,
+      "apps-webapp.config.dotfiles": 3,
+      "apps-webapp.doc.package": 1,
+      "apps-webapp.entry.server": 2,
+      "apps-webapp.infra.container": 1,
+      "apps-webapp.source.instrumentation": 1,
+      "apps-webapp.source.remix": 111,
+      "apps-webapp.style.sheet": 1,
+      "apps-webapp.test.suites": 29,
+      "apps-webapp.tooling.scripts": 7,
+      "apps-webapp.tooling.shell": 1,
+      "docs-content.asset.media": 125,
+      "docs-content.design.canvas": 48,
+      "docs-content.design.canvas-assets": 5,
+      "docs-content.design.canvas-style": 4,
+      "docs-content.design.index": 1,
+      "docs-content.generated.audit": 3,
+      "docs-content.notes.ai-references": 3,
+      "docs-content.notes.platos": 48,
+      "docs-content.pin.boundary-manifest": 1,
+      "docs-content.pin.unreferenced-media": 7,
+      "docs-content.product.pages": 81,
+      "docs-content.reference.config": 8,
+      "docs-content.reference.doc": 2,
+      "docs-content.reference.entity-dotfiles": 6,
+      "docs-content.reference.lockfile": 1,
+      "docs-content.reference.source": 2,
+      "docs-content.upstream.agent-rules": 10,
+      "docs-content.upstream.agent-rules-manifest": 1,
+      "docs-content.upstream.pages": 312,
+      "docs-content.upstream.site-config": 6,
+      "internal-packages.config.package": 72,
+      "internal-packages.doc.diagram": 1,
+      "internal-packages.doc.package": 13,
+      "internal-packages.email.templates": 15,
+      "internal-packages.fixture.compat-modules": 15,
+      "internal-packages.fixture.snapshot": 2,
+      "internal-packages.fixture.upgrade-baseline": 1,
+      "internal-packages.generated.grammar": 4,
+      "internal-packages.generated.release-history": 2,
+      "internal-packages.grammar.source": 3,
+      "internal-packages.infra.container": 2,
+      "internal-packages.legal.attribution": 2,
+      "internal-packages.lockfile.migration-image": 1,
+      "internal-packages.migration.canonical": 856,
+      "internal-packages.migration.image": 4,
+      "internal-packages.schema.analytics": 34,
+      "internal-packages.schema.prisma": 3,
+      "internal-packages.source.typescript": 149,
+      "internal-packages.test.suites": 80,
+      "internal-packages.tooling.scripts": 9,
+      "packages.config.build": 42,
+      "packages.doc.package": 13,
+      "packages.generated.release-history": 9,
+      "packages.legal.attribution": 11,
+      "packages.pin.browser-entry": 1,
+      "packages.python.metadata": 4,
+      "packages.python.sources": 36,
+      "packages.source.typescript": 327,
+      "packages.style.sheet": 1,
+      "packages.test.suites": 62,
+      "packages.tooling.scripts": 1,
+      "packages.vendor.sdk.config": 3,
+      "packages.vendor.sdk.doc": 2,
+      "packages.vendor.sdk.source": 36,
+      "packages.vendor.sdk.test": 2,
+      "root-infra.archive.working-notes": 2,
+      "root-infra.build.workspace": 6,
+      "root-infra.ci.repository-meta": 7,
+      "root-infra.ci.workflows": 4,
+      "root-infra.compose.stacks": 2,
+      "root-infra.config.dotfiles": 7,
+      "root-infra.deps.patches": 8,
+      "root-infra.doc.root-notes": 5,
+      "root-infra.doc.self-host": 1,
+      "root-infra.editor.workspace": 13,
+      "root-infra.examples.starters": 19,
+      "root-infra.generated.browse-evidence": 4,
+      "root-infra.governance.git-hooks": 1,
+      "root-infra.governance.policy": 3,
+      "root-infra.infra.analytics-store": 3,
+      "root-infra.infra.reverse-proxy": 1,
+      "root-infra.legal.repository": 2,
+      "root-infra.lockfile.workspace": 1,
+      "root-infra.pin.public-proxy-example": 1,
+      "root-infra.pin.submodule-index": 1,
+      "root-infra.release.changesets": 25,
+      "root-infra.test.harness": 54,
+      "root-infra.test.script-suites": 5,
+      "root-infra.tooling.scripts": 19
+    },
+    "classificationSha256": "d926fba6feaa140c0707cbcb3e11ba98868c7bd422d78bcccbee391b0d83e5e4"
+  }
+}
