@@ -791,13 +791,30 @@ export class ScopeGuard implements CanActivate {
           providedKey,
           origin
         );
-        if (keyResult === false) {
+        // WIN-293 — fail CLOSED on the unauthenticated direct-header operator
+        // path. Reaching here means the caller presented NO valid control-plane
+        // token (hasValidControlPlaneAuth already returned false above) and this
+        // is not an AccessKey lifecycle route, yet the scope block above already
+        // stamped principal: "operator". Confirm that promotion ONLY on a
+        // POSITIVE AccessKey match. verifyAccessKey returns `null` when no
+        // AccessKey is configured for the scope and `false` when one is
+        // configured but the presented key is missing/invalid — BOTH must reject
+        // here, so an anonymous caller can never be handed operator merely
+        // because no key exists. The trusted webapp reaches operator surfaces
+        // through the mandatory PLATOS_INTERNAL_AUTH_TOKEN (checked above), never
+        // through this branch. The session-token site keeps the opposite
+        // semantics: there `null` means "no optional gate configured" and
+        // correctly allows, because the token already authenticated the caller.
+        if (keyResult !== true) {
           const resp = context.switchToHttp().getResponse();
           resp
             .status(401)
             .json({
               error: "INVALID_ACCESS_KEY",
-              message: "X-Platos-Api-Key is missing or invalid for this scope.",
+              message:
+                keyResult === null
+                  ? "Operator access via direct scope headers requires a configured X-Platos-Api-Key or the internal control-plane token."
+                  : "X-Platos-Api-Key is missing or invalid for this scope.",
             });
           return false;
         }

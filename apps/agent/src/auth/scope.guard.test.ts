@@ -527,6 +527,90 @@ describe("ScopeGuard — Path 2 direct headers", () => {
   });
 });
 
+describe("ScopeGuard — WIN-293 direct-header operator fail-closed", () => {
+  // Guarantee these tests never inherit a control-plane token leaked from
+  // another suite's env mutation: the fail-open only reproduces when the
+  // trust anchor is genuinely absent.
+  let previousToken: string | undefined;
+  beforeEach(() => {
+    previousToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+  });
+  afterEach(() => {
+    if (previousToken === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previousToken;
+  });
+
+  const directHeaders = {
+    "x-platos-organization-id": "org_1",
+    "x-platos-project-id": "proj_1",
+    "x-platos-environment-id": "env_1",
+    "x-platos-user-id": "user_1",
+  };
+
+  // (a) THE VULNERABILITY. Unauthenticated direct-header caller, NO AccessKey
+  // configured for the scope (verifyAccessKey → null) and NO control-plane
+  // token. The old guard (`if (keyResult === false)`) skipped the reject on
+  // null and handed out `principal: "operator"` to a caller with no credential.
+  // Non-vacuity: against the OLD logic this resolves to TRUE (no 401), so every
+  // assertion below fails; against the fixed `if (keyResult !== true)` it
+  // resolves FALSE with a 401. Proven empirically by reverting the one-line
+  // condition — see the implementer's report.
+  it("rejects the direct-header operator path when no AccessKey is configured (null) and no control-plane token is present", async () => {
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(null) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(directHeaders, "/api/v1/agent/threads", undefined, "POST");
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(authService.verifyAccessKey).toHaveBeenCalledOnce();
+    const response = ctx.switchToHttp().getResponse() as any;
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "INVALID_ACCESS_KEY" })
+    );
+  });
+
+  // (b) DEFAULT-INSTALL COMPAT. The webapp presents the now-mandatory
+  // PLATOS_INTERNAL_AUTH_TOKEN, so hasValidControlPlaneAuth short-circuits the
+  // AccessKey block entirely: operator is granted and verifyAccessKey is never
+  // called — even though it would have returned null (no keys configured). This
+  // is the path every default install relies on now that the token is required.
+  it("grants operator via the mandatory control-plane token and skips the AccessKey check", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "win293-control-plane-trust-anchor-token";
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(null) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      { ...directHeaders, "x-platos-internal-auth": "win293-control-plane-trust-anchor-token" },
+      "/api/v1/agent/threads",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+    expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+  });
+
+  // (c) POSITIVE-KEY PATH. A runtime caller that presents a valid Environment
+  // AccessKey (verifyAccessKey → true) is still granted operator over the
+  // direct-header channel with no control-plane token — the one credential the
+  // fixed condition accepts.
+  it("grants operator on the direct-header path with a valid AccessKey (true)", async () => {
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(true) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      { ...directHeaders, "x-platos-api-key": "platos_live_valid" },
+      "/api/v1/agent/threads",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(authService.verifyAccessKey).toHaveBeenCalledOnce();
+    expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+  });
+});
+
 describe("ScopeGuard — Path 1 session token", () => {
   beforeEach(() => {
     vi.stubEnv("SESSION_SECRET", "scope-guard-platform-secret-32-chars");
@@ -711,6 +795,24 @@ describe("ScopeGuard — Path 1 session token", () => {
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     expect(h.prisma.mcpBearerToken.updateMany).toHaveBeenCalledOnce();
     expect(h.verifyAccessKey).toHaveBeenCalledOnce();
+  });
+
+  // WIN-293 regression guard for the OTHER verifyAccessKey call site (the
+  // session-token path). Here the caller is ALREADY authenticated by a valid
+  // X-Platos-Session-Token, so verifyAccessKey → null correctly means "no
+  // optional AccessKey gate configured" and MUST still allow. The harness
+  // default-mocks verifyAccessKey → null, so this proves the fail-closed change
+  // was confined to the direct-header site: if someone mirrored the fix onto
+  // this site (`!== true`), null would reject and this test would fail.
+  it("keeps the session-token path allowed when verifyAccessKey returns null (optional-gate semantics preserved)", async () => {
+    const h = makeAuthHarness();
+    expect(await h.auth.verifyAccessKey({} as any, undefined, undefined)).toBeNull();
+    const token = await h.auth.createEntitySessionToken(h.scope as any, "bearer_A", 300);
+    const ctx = mockExecutionContext({ "x-platos-session-token": token! });
+
+    await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+    expect(h.verifyAccessKey).toHaveBeenCalled();
+    expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("end-user");
   });
 
   it("rejects the removed legacy two-part token format", async () => {

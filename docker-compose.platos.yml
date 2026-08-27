@@ -445,9 +445,14 @@ services:
       PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS: "${PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS:-900}"
       PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
       PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: "${PLATOS_ATTACHMENT_ORG_QUOTA_BYTES:-10737418240}"
-      # Admin token — shared with the webapp so the scheduled retention
-      # task can POST /api/v1/agent/attachments/retention.
-      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
+      # Control-plane trust anchor — shared with the webapp. Authenticates
+      # trusted webapp→agent traffic (the ScopeGuard grants operator over the
+      # direct-header channel only for callers that present it) AND lets the
+      # scheduled retention task POST /api/v1/agent/attachments/retention.
+      # WIN-293 — REQUIRED: without it the agent's direct-header operator path
+      # would have to fall back to an unauthenticated grant. Same value in the
+      # webapp block below.
+      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:?required — 64 hex chars from openssl rand -hex 32}"
       PLATOS_ERASURE_HASH_SALT: "${PLATOS_ERASURE_HASH_SALT:?required — openssl rand -hex 32}"
       # Erased-subject write barrier retention. See docs/gdpr-erasure.md.
       PLATOS_ERASURE_TOMBSTONE_TTL_DAYS: "${PLATOS_ERASURE_TOMBSTONE_TTL_DAYS:-30}"
@@ -635,8 +640,11 @@ services:
       # attached uploads default to 30 days.
       PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
       PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
-      # Admin token shared with the agent's scheduled retention task.
-      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
+      # Control-plane trust anchor shared with the agent (must match the agent
+      # block's value). The webapp sends it as X-Platos-Internal-Auth on every
+      # server-to-server call so the agent authenticates the dashboard without a
+      # browser-generated AccessKey. WIN-293 — REQUIRED.
+      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:?required — 64 hex chars from openssl rand -hex 32}"
     healthcheck:
       test:
         [
