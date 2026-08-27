@@ -54,7 +54,7 @@ export const RULES = [
 
 const specificRuleIds = new Set(RULES.filter((rule) => rule.id !== "trigger").map((rule) => rule.id));
 
-function listRepositoryFiles(root) {
+export function listRepositoryFiles(root) {
   return execFileSync(
     "git",
     ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
@@ -65,7 +65,7 @@ function listRepositoryFiles(root) {
     .sort();
 }
 
-function decodeTextFile(path) {
+export function decodeTextFile(path) {
   const source = readFileSync(path);
   if (source.includes(0)) return null;
   try {
@@ -642,6 +642,35 @@ export function findForbiddenVocabulary(source, path, kind = "content") {
   return findings;
 }
 
+/**
+ * Walk the tracked tree and collect every finding, with collision anchors
+ * already applied. Deliberately free of manifest coupling so the manifest
+ * generator can scan a tree whose manifest is mid-regeneration (and therefore
+ * temporarily inconsistent) without tripping the manifest's own validators.
+ *
+ * `scanRepository` delegates here so both paths observe one implementation.
+ */
+export function collectFindings(root, excludedPaths = new Set(), knownTrackedFiles) {
+  const trackedFiles =
+    knownTrackedFiles ?? listRepositoryFiles(root).filter((path) => existsSync(join(root, path)));
+  const excludedFiles = trackedFiles.filter((path) => excludedPaths.has(path));
+  const textByPath = new Map();
+  const binaryFiles = [];
+  for (const path of trackedFiles) {
+    if (excludedPaths.has(path)) continue;
+    const source = decodeTextFile(join(root, path));
+    if (source === null) binaryFiles.push(path);
+    else textByPath.set(path, source);
+  }
+  const files = [...textByPath.keys()];
+  const findings = files.flatMap((path) => [
+    ...findForbiddenVocabulary(path, path, "path"),
+    ...findForbiddenVocabulary(textByPath.get(path), path),
+  ]);
+  const collisionErrors = applyCollisionAnchors(findings);
+  return { trackedFiles, excludedFiles, binaryFiles, files, findings, collisionErrors, textByPath };
+}
+
 export function scanRepository(root, manifest, options = {}) {
   const manifestErrors = validateManifest(manifest);
   if (manifestErrors.length) return { files: [], findings: [], violations: [], manifestErrors, exceptionDrift: [] };
@@ -667,21 +696,9 @@ export function scanRepository(root, manifest, options = {}) {
     return { trackedFiles, files: [], findings: [], violations: [], manifestErrors, exceptionDrift: [] };
   }
   const excludedPaths = new Set(manifest.exclusions.map((exclusion) => exclusion.path));
-  const excludedFiles = trackedFiles.filter((path) => excludedPaths.has(path));
-  const textByPath = new Map();
-  const binaryFiles = [];
-  for (const path of trackedFiles) {
-    if (excludedPaths.has(path)) continue;
-    const source = decodeTextFile(join(root, path));
-    if (source === null) binaryFiles.push(path);
-    else textByPath.set(path, source);
-  }
-  const files = [...textByPath.keys()];
-  const findings = files.flatMap((path) => [
-    ...findForbiddenVocabulary(path, path, "path"),
-    ...findForbiddenVocabulary(textByPath.get(path), path),
-  ]);
-  manifestErrors.push(...applyCollisionAnchors(findings));
+  const scan = collectFindings(root, excludedPaths, trackedFiles);
+  const { excludedFiles, binaryFiles, files, findings } = scan;
+  manifestErrors.push(...scan.collisionErrors);
   manifestErrors.push(...validateCollisionAnchors(findings, manifest.exceptions));
   if (manifestErrors.length) {
     return {
@@ -727,11 +744,11 @@ export function scanRepository(root, manifest, options = {}) {
   };
 }
 
-function anchorKey(entry) {
+export function anchorKey(entry) {
   return `${baseAnchorKey(entry)}\0${entry.collisionContextSha256 ?? ""}`;
 }
 
-function baseAnchorKey(entry) {
+export function baseAnchorKey(entry) {
   return `${entry.path}\0${entry.rule}\0${entry.matchedText}\0${entry.localContextSha256}\0${entry.semanticContextKind}\0${entry.semanticContextSha256}`;
 }
 
@@ -812,16 +829,113 @@ export function formatReport(result, manifestPath = defaultManifestPath) {
   return lines.join("\n");
 }
 
-function runCli() {
-  const argument = process.argv[2];
-  const manifestPath = argument?.startsWith("--manifest=")
-    ? argument.slice("--manifest=".length)
-    : defaultManifestPath;
-  const absoluteManifestPath = resolve(repositoryRoot, manifestPath);
-  const manifest = JSON.parse(readFileSync(absoluteManifestPath, "utf8"));
-  const result = scanRepository(repositoryRoot, manifest);
-  console.log(formatReport(result, manifestPath));
-  if (result.manifestErrors.length || result.violations.length || result.exceptionDrift.length) process.exitCode = 1;
+function parseCliOptions(argv) {
+  const flag = (name) => argv.find((entry) => entry.startsWith(`--${name}=`))?.slice(name.length + 3);
+  return {
+    manifestPath: flag("manifest") ?? defaultManifestPath,
+    revision: flag("since") ?? "HEAD",
+    ledgerPath: flag("ledger"),
+    receiptPath: flag("receipt"),
+    write: argv.includes("--write"),
+    check: argv.includes("--check"),
+  };
 }
 
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) runCli();
+/**
+ * Read-only classification appended to the legacy gate output.
+ *
+ * Deliberately lazy: on a clean tree the legacy gate reports no drift and this
+ * never runs, so the default CI invocation keeps its exact historical output
+ * and cost. It only speaks up when something actually moved or changed.
+ */
+async function reportRegeneration(options, { always = false } = {}) {
+  const { regenerate, formatClassification } = await import("./vocabulary/generate.mjs");
+  const { formatReceipt } = await import("./vocabulary/receipt.mjs");
+  const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
+  const result = regenerate(repositoryRoot, {
+    manifestPath: absoluteManifestPath,
+    manifestLabel: options.manifestPath,
+    revision: options.revision,
+  });
+  console.log(formatClassification(result, options.manifestPath));
+  if (always) console.log(formatReceipt(result.receipt));
+  if (options.ledgerPath) {
+    const { readLedger, verifyLedger, formatLedgerReport } = await import("./vocabulary/ledger.mjs");
+    const { ledger, errors } = readLedger(resolve(repositoryRoot, options.ledgerPath));
+    for (const error of errors) console.log(`LEDGER: ${error}`);
+    const verdict = verifyLedger({
+      ledger,
+      entries: result.classification.entries,
+      moves: result.moves,
+      trackedPaths: result.trackedSet,
+    });
+    console.log(formatLedgerReport(verdict));
+    if (errors.length || verdict.blocked.length) process.exitCode = 1;
+  }
+  return result;
+}
+
+async function runWrite(options) {
+  const { regenerate, formatClassification } = await import("./vocabulary/generate.mjs");
+  const { formatReceipt } = await import("./vocabulary/receipt.mjs");
+  const { writeFileSync } = await import("node:fs");
+  const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
+  const result = regenerate(repositoryRoot, {
+    manifestPath: absoluteManifestPath,
+    manifestLabel: options.manifestPath,
+    revision: options.revision,
+  });
+  console.log(formatClassification(result, options.manifestPath));
+
+  if (result.reviewRequired.length) {
+    console.log(
+      `refusing to write: ${result.reviewRequired.length} entr${result.reviewRequired.length === 1 ? "y" : "ies"} need human review.`,
+      "\n  --write may only remove or relocate reviewed exceptions. It never creates one,",
+      "\n  because creating one weakens the gate on code nobody has looked at."
+    );
+    process.exitCode = 1;
+    return result;
+  }
+  writeFileSync(absoluteManifestPath, result.manifestText);
+  console.log(`wrote ${options.manifestPath}`);
+  console.log(formatReceipt(result.receipt));
+  if (options.receiptPath) {
+    writeFileSync(resolve(repositoryRoot, options.receiptPath), `${JSON.stringify(result.receipt, null, 2)}\n`);
+  }
+  return result;
+}
+
+async function runCli() {
+  const options = parseCliOptions(process.argv.slice(2));
+  if (options.write) {
+    await runWrite(options);
+    return;
+  }
+
+  const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
+  const manifest = JSON.parse(readFileSync(absoluteManifestPath, "utf8"));
+  const result = scanRepository(repositoryRoot, manifest);
+  console.log(formatReport(result, options.manifestPath));
+  const failed =
+    result.manifestErrors.length || result.violations.length || result.exceptionDrift.length;
+  if (failed) process.exitCode = 1;
+
+  if (failed || options.check) {
+    const regeneration = await reportRegeneration(options, { always: options.check });
+    // An up-to-date manifest is part of the gate: relocations and resolved
+    // exceptions must be committed, not left for the next person to rediscover.
+    if (options.check && regeneration.manifestText !== readFileSync(absoluteManifestPath, "utf8")) {
+      console.log(`${options.manifestPath} is out of date; run with --write and commit the result.`);
+      process.exitCode = 1;
+    }
+  }
+}
+
+// Not a top-level await: `./vocabulary/generate.mjs` imports this module back,
+// and an unfinished top-level await here would deadlock that cycle.
+if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
+  runCli().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

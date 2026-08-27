@@ -5,12 +5,17 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 
 import {
+  anchorKey,
   applyCollisionAnchors,
   formatReport,
   scanRepository,
   sha256,
   validateManifest,
 } from "./vocabulary-boundary.mjs";
+import { createScenario, source, TOKEN } from "../tests/vocabulary-fixtures/scenarios.mjs";
+import { anchorIdentity, normalizeRepositoryPath, occurrenceId } from "./vocabulary/identity.mjs";
+import { serializeManifest } from "./vocabulary/manifest-io.mjs";
+import { formatLedgerReport, parseLedger, verifyLedger } from "./vocabulary/ledger.mjs";
 
 function fixture(files, exceptions = [], exclusions = []) {
   const root = mkdtempSync(join("/var/tmp", "platos-vocabulary-"));
@@ -528,4 +533,354 @@ test("non-debt exceptions require an event-bound removal condition", () => {
   const exception = exceptionFor(finding, vendorLifecycle);
   delete exception.removalEvent;
   assert.match(validateManifest({ ...manifest, exceptions: [exception] }).join("\n"), /removalEvent/u);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-292 -- stable identity across file moves, and deterministic regeneration.
+//
+// These scenarios are real temp git repositories with real commits and real
+// `git mv`; move detection reads git plumbing, so mocks would prove nothing.
+// Forbidden tokens come from TOKEN so this file stays clean under its own gate.
+// ---------------------------------------------------------------------------
+
+/** Run `body` against a scenario and always clean the temp directories up. */
+function withScenario(files, body) {
+  const scenario = createScenario(files);
+  try {
+    body(scenario);
+  } finally {
+    scenario.cleanup();
+  }
+}
+
+test("the split identity model reconstructs the gate's anchor byte for byte", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url), "utf8")
+  );
+  // Every one of the production entries, not a sample: the whole point of the
+  // split is that it is a re-description of the existing key, not a new one.
+  for (const exception of manifest.exceptions) {
+    assert.equal(anchorIdentity(exception), anchorKey(exception));
+  }
+  assert.equal(manifest.exceptions.length, 20349);
+});
+
+test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  withScenario({ [from]: source.vendorModule() }, (scenario) => {
+    const seeded = scenario.seedManifest();
+    assert.equal(seeded.exceptions.length, 2);
+    assert.deepEqual(scenario.counts(), {
+      unchanged: 2,
+      moved: 0,
+      "path-rebound": 0,
+      removed: 0,
+      added: 0,
+      "context-changed": 0,
+    });
+
+    const contentBefore = seeded.exceptions.find((e) => e.semanticContextKind === "source-scope-chain");
+    scenario.move(from, to);
+    const result = scenario.run();
+
+    assert.deepEqual(result.classification.counts, {
+      unchanged: 0,
+      moved: 1,
+      "path-rebound": 1,
+      removed: 0,
+      added: 0,
+      "context-changed": 0,
+    });
+    assert.equal(result.reviewRequired.length, 0, "a pure move needs no human review");
+    assert.deepEqual(
+      result.moves.map((move) => [move.from, move.to, move.identical, move.source]),
+      [[from, to, true, "git-rename"]]
+    );
+
+    // Identity preserved: the content occurrence is literally the same
+    // reviewed judgement, only relocated.
+    const contentAfter = result.nextManifest.exceptions.find(
+      (e) => e.semanticContextKind === "source-scope-chain"
+    );
+    assert.equal(occurrenceId(contentAfter), occurrenceId(contentBefore));
+    assert.equal(contentAfter.path, to);
+    assert.equal(contentAfter.localContextSha256, contentBefore.localContextSha256);
+    assert.equal(contentAfter.semanticContextSha256, contentBefore.semanticContextSha256);
+    assert.equal(contentAfter.classification, contentBefore.classification);
+    assert.equal(contentAfter.rationale, contentBefore.rationale);
+
+    // The path anchor is path-derived, so it is rebound rather than preserved.
+    const pathAfter = result.nextManifest.exceptions.find(
+      (e) => e.semanticContextKind === "repository-path"
+    );
+    assert.equal(pathAfter.path, to);
+    assert.equal(pathAfter.rule, TOKEN.vendorLower);
+
+    // And the tree is clean again once the manifest is written.
+    writeFileSync(scenario.manifestPath, result.manifestText);
+    assert.deepEqual(scenario.counts(), {
+      unchanged: 2,
+      moved: 0,
+      "path-rebound": 0,
+      removed: 0,
+      added: 0,
+      "context-changed": 0,
+    });
+  });
+});
+
+test("fixture: a content move into a different scope is never laundered as a file move", () => {
+  const from = "src/runtimes.ts";
+  const to = "src/legacy/runtimes.ts";
+  const original = [
+    "export class VendorRuntime {",
+    "  connect() {",
+    `    return "External ${TOKEN.vendor}";`,
+    "  }",
+    "}",
+    "export class ProductRuntime {",
+    "  connect() {",
+    '    return "ready";',
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+  withScenario({ [from]: original }, (scenario) => {
+    scenario.seedManifest();
+    scenario.move(from, to);
+    // The file moved AND the occurrence changed scope inside it.
+    scenario.write(
+      to,
+      original
+        .replace(`return "External ${TOKEN.vendor}";`, 'return "ready";')
+        .replace(
+          `export class ProductRuntime {\n  connect() {\n    return "ready";`,
+          `export class ProductRuntime {\n  connect() {\n    return "External ${TOKEN.vendor}";`
+        )
+    );
+    const result = scenario.run();
+    assert.equal(result.classification.counts.moved, 0, "scope change must not ride along on a move");
+    assert.equal(result.classification.counts.added, 1);
+    assert.equal(result.classification.counts.removed, 1);
+    assert(result.reviewRequired.length > 0, "this needs a human");
+  });
+});
+
+test("fixture: a line shift leaves every anchor and the manifest bytes untouched", () => {
+  const path = "src/vendor.ts";
+  withScenario({ [path]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    const before = readFileSync(scenario.manifestPath, "utf8");
+    scenario.write(path, `// Unrelated header.\nimport "node:assert";\n\n${source.vendorModule()}`);
+
+    const result = scenario.run();
+    assert.deepEqual(result.classification.counts, {
+      unchanged: 1,
+      moved: 0,
+      "path-rebound": 0,
+      removed: 0,
+      added: 0,
+      "context-changed": 0,
+    });
+    // Line and column are diagnostics, not identity: nothing to rewrite.
+    assert.equal(result.manifestText, before, "a pure line shift must not dirty the manifest");
+  });
+});
+
+test("fixture: a changed local context demands review and blocks the write", () => {
+  const path = "src/vendor.ts";
+  withScenario({ [path]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    scenario.write(
+      path,
+      source.vendorModule().replace(`"External ${TOKEN.vendor}"`, `"Product ${TOKEN.vendor}"`)
+    );
+    const result = scenario.run();
+    assert.equal(result.classification.counts["context-changed"], 1);
+    assert.equal(result.classification.counts.added, 0, "it is recognised as the same site, not a new one");
+    assert.equal(result.classification.counts.removed, 0);
+    assert(result.reviewRequired.length > 0);
+    // The refusal is what matters: the reviewed judgement is not carried over
+    // onto code nobody has looked at.
+    const rewritten = result.nextManifest.exceptions.find(
+      (e) => e.semanticContextKind === "source-scope-chain"
+    );
+    assert.equal(rewritten.matchedText, TOKEN.vendor);
+  });
+});
+
+test("fixture: duplicate occurrences keep their multiplicity across a pure move", () => {
+  const from = "docs/runtime.md";
+  const to = "docs/legacy/runtime.md";
+  const body = `External ${TOKEN.vendor}\nExternal ${TOKEN.vendor}`;
+  withScenario({ [from]: source.markdownSection(body) }, (scenario) => {
+    const seeded = scenario.seedManifest();
+    assert.equal(seeded.exceptions.length, 2, "two indistinguishable occurrences, two exceptions");
+    assert.equal(
+      new Set(seeded.exceptions.map((e) => anchorIdentity(e))).size,
+      1,
+      "they share one anchor and are separated only by multiplicity"
+    );
+
+    scenario.move(from, to);
+    const result = scenario.run();
+    assert.deepEqual(result.classification.counts, {
+      unchanged: 0,
+      moved: 2,
+      "path-rebound": 0,
+      removed: 0,
+      added: 0,
+      "context-changed": 0,
+    });
+    assert.equal(result.nextManifest.exceptions.length, 2);
+    for (const exception of result.nextManifest.exceptions) assert.equal(exception.path, to);
+  });
+});
+
+test("fixture: deleting a file resolves its exceptions and the write may apply that", () => {
+  const path = "src/vendor.ts";
+  withScenario({ [path]: source.vendorModule(), "src/keep.ts": "export const ok = 1;\n" }, (scenario) => {
+    scenario.seedManifest();
+    scenario.remove(path);
+    const result = scenario.run();
+    assert.deepEqual(result.classification.counts, {
+      unchanged: 0,
+      moved: 0,
+      "path-rebound": 0,
+      removed: 1,
+      added: 0,
+      "context-changed": 0,
+    });
+    // Removals never weaken the gate, so no review is required for them.
+    assert.equal(result.reviewRequired.length, 0);
+    assert.equal(result.nextManifest.exceptions.length, 0);
+  });
+});
+
+test("fixture: newly introduced vocabulary is reported as added and never auto-blessed", () => {
+  withScenario({ "src/keep.ts": "export const ok = 1;\n" }, (scenario) => {
+    const seeded = scenario.seedManifest();
+    assert.equal(seeded.exceptions.length, 0);
+    scenario.write("src/new-surface.ts", source.vendorModule());
+
+    const result = scenario.run();
+    assert.equal(result.classification.counts.added, 1);
+    assert.equal(result.reviewRequired.length, 1);
+    // The decisive property: the regenerated manifest does NOT contain it.
+    assert.equal(result.nextManifest.exceptions.length, 0);
+    assert.match(result.reviewRequired[0].finding.path, /new-surface\.ts/u);
+  });
+});
+
+test("regeneration is byte-for-byte deterministic across repeated runs", () => {
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  withScenario({ [from]: source.vendorModule(), "docs/a.md": source.markdownSection(`External ${TOKEN.vendor}`) }, (scenario) => {
+    scenario.seedManifest();
+    scenario.move(from, to);
+
+    const first = scenario.run();
+    writeFileSync(scenario.manifestPath, first.manifestText);
+    const second = scenario.run();
+    const third = scenario.run();
+
+    assert.equal(second.manifestText, third.manifestText);
+    assert.equal(second.receipt.outputSha256, third.receipt.outputSha256);
+    assert.equal(second.receipt.inputSha256, third.receipt.inputSha256);
+    assert.equal(second.receipt.rulesSha256, third.receipt.rulesSha256);
+    // Re-serializing a settled manifest is a fixed point.
+    assert.equal(second.manifestText, readFileSync(scenario.manifestPath, "utf8"));
+  });
+});
+
+test("the receipt reports input, rules, output and counts that a reviewer can recompute", () => {
+  withScenario({ "src/vendor.ts": source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    const { receipt, manifestText } = scenario.run();
+    assert.equal(receipt.outputSha256, sha256(manifestText));
+    assert.match(receipt.inputSha256, /^[a-f0-9]{64}$/u);
+    assert.match(receipt.rulesSha256, /^[a-f0-9]{64}$/u);
+    assert.equal(receipt.counts.exceptionsBefore, 1);
+    assert.equal(receipt.counts.exceptionsAfter, 1);
+    assert.equal(receipt.counts.unchanged, 1);
+    assert.equal(receipt.manifestPath, "manifest.json", "receipts must not embed machine paths");
+  });
+});
+
+test("the ledger verifies a move-refactor and an archive instead of blocking them", () => {
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  const archived = "src/retired.ts";
+  withScenario(
+    { [from]: source.vendorModule(), [archived]: source.vendorModule(), "src/keep.ts": "export const ok = 1;\n" },
+    (scenario) => {
+      scenario.seedManifest();
+      scenario.move(from, to);
+      scenario.remove(archived);
+      const result = scenario.run();
+
+      const { ledger, errors } = parseLedger(
+        JSON.stringify({
+          version: 1,
+          entries: [
+            { path: from, disposition: "move-refactor", target: to },
+            { path: archived, disposition: "archive" },
+            { path: "src/keep.ts", disposition: "keep" },
+          ],
+        })
+      );
+      assert.deepEqual(errors, []);
+      const verdict = verifyLedger({
+        ledger,
+        entries: result.classification.entries,
+        moves: result.moves,
+        trackedPaths: result.trackedSet,
+      });
+      assert.equal(verdict.blocked.length, 0, formatLedgerReport(verdict));
+      assert.equal(verdict.verified.length, 3);
+      assert.equal(verdict.verified[0].disposition, "move-refactor");
+      assert.equal(verdict.verified[0].target, to);
+    }
+  );
+});
+
+test("the ledger reports a move-refactor whose declared target is wrong as blocked", () => {
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  withScenario({ [from]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    scenario.move(from, to);
+    const result = scenario.run();
+    const { ledger } = parseLedger(
+      JSON.stringify({
+        version: 1,
+        entries: [{ path: from, disposition: "move-refactor", target: "src/somewhere-else.ts" }],
+      })
+    );
+    const verdict = verifyLedger({
+      ledger,
+      entries: result.classification.entries,
+      moves: result.moves,
+      trackedPaths: result.trackedSet,
+    });
+    assert.equal(verdict.verified.length, 0);
+    assert.equal(verdict.blocked.length, 1);
+    assert.match(verdict.blocked[0].reason, /ledger declares/u);
+  });
+});
+
+test("path normalization is the identity mapping on every production path", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url), "utf8")
+  );
+  for (const entry of [...manifest.exceptions, ...manifest.exclusions]) {
+    assert.equal(normalizeRepositoryPath(entry.path), entry.path);
+  }
+});
+
+test("the serializer reproduces the production manifest byte for byte", () => {
+  const path = new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url);
+  const original = readFileSync(path, "utf8");
+  assert.equal(serializeManifest(JSON.parse(original)), original);
 });
