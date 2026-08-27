@@ -40,14 +40,20 @@ export interface VerifiedToken {
   mintedByUserId: string;
   expiresAt: Date | null;
   tier: PlatosMCPTokenTier;
+  /** Opaque persisted credential reference used to revalidate long-lived
+   * transports without retaining the raw bearer in memory. */
+  credential?: { kind: "platform"; tokenId: string } | { kind: "oauth"; tokenHash: string };
 }
 
 const DEFAULT_TTL_SECONDS = 90 * 24 * 3600;
 
-function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
-  return Number.isInteger(value)
-    ? Math.max(minimum, Math.min(maximum, value as number))
-    : fallback;
+function boundedInteger(
+  value: number | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number
+): number {
+  return Number.isInteger(value) ? Math.max(minimum, Math.min(maximum, value as number)) : fallback;
 }
 const TOKEN_PREFIX = "plt_mcp_";
 
@@ -56,7 +62,7 @@ type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environme
 export class AdminMintForbiddenError extends Error {
   constructor(userId: string, organizationId: string) {
     super(
-      `user ${userId} is not an owner or admin of organization ${organizationId} — admin-tier MCP tokens are reserved for organization administrators`,
+      `user ${userId} is not an owner or admin of organization ${organizationId} — admin-tier MCP tokens are reserved for organization administrators`
     );
     this.name = "AdminMintForbiddenError";
   }
@@ -182,8 +188,21 @@ export class PlatosMCPTokenService {
       return null;
     }
     const tokenHash = this.hashToken(raw);
+    return this.verifyPersisted({ tokenHash }, tokenHash);
+  }
+
+  /** Revalidate an established SSE session without storing its raw bearer. */
+  async verifyById(id: string): Promise<VerifiedToken | null> {
+    if (!id) return null;
+    return this.verifyPersisted({ id });
+  }
+
+  private async verifyPersisted(
+    where: { id: string } | { tokenHash: string },
+    expectedHash?: string
+  ): Promise<VerifiedToken | null> {
     const row = await this.prisma.mcpToken.findUnique({
-      where: { tokenHash },
+      where,
       select: {
         id: true,
         tokenHash: true,
@@ -200,7 +219,12 @@ export class PlatosMCPTokenService {
         },
       },
     });
-    if (!row || !constantTimeHexEqual(row.tokenHash, tokenHash) || row.revokedAt) return null;
+    if (
+      !row ||
+      (expectedHash && !constantTimeHexEqual(row.tokenHash, expectedHash)) ||
+      row.revokedAt
+    )
+      return null;
     if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
 
     const updated = await this.prisma.mcpToken.updateMany({
@@ -224,16 +248,16 @@ export class PlatosMCPTokenService {
       mintedByUserId: row.mintedByUserId,
       expiresAt: row.expiresAt,
       tier: normalizeTier(row.tier),
+      credential: { kind: "platform", tokenId: row.id },
     };
   }
 
   /** List redacted token metadata for a canonically resolved Environment. */
   async list(
     scope: ScopeTuple,
-    options: { limit?: number; offset?: number } = {},
-  ): Promise<
-    {
-      tokens: Array<{
+    options: { limit?: number; offset?: number } = {}
+  ): Promise<{
+    tokens: Array<{
       id: string;
       name: string;
       permissions: string[];
@@ -243,12 +267,11 @@ export class PlatosMCPTokenService {
       lastUsedAt: Date | null;
       revokedAt: Date | null;
       createdAt: Date;
-      }>;
-      total: number;
-      limit: number;
-      offset: number;
-    }
-  > {
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
     const canonical = await this.resolveScope(scope);
     const limit = boundedInteger(options.limit, 50, 1, 100);
     const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
@@ -291,7 +314,7 @@ export class PlatosMCPTokenService {
   /** Idempotently revoke a token in the caller's canonical Environment. */
   async revoke(
     id: string,
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">
   ): Promise<boolean> {
     const canonical = await this.resolveScope(scope);
     if (!canonical) return false;

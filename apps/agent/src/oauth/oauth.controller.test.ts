@@ -23,11 +23,13 @@ const environment = {
   project: {
     id: "project_1",
     organizationId: "org_1",
-    entities: [{
-      id: "entity_1",
-      displayName: "Acme",
-      mcpConfig: { enabled: true, redirectUriAllowlist: [] },
-    }],
+    entities: [
+      {
+        id: "entity_1",
+        displayName: "Acme",
+        mcpConfig: { enabled: true, redirectUriAllowlist: [] },
+      },
+    ],
   },
 };
 
@@ -108,7 +110,7 @@ describe("OAuthController entity environment contract", () => {
     expect(h.prisma.environment.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: "env_1", archivedAt: null }),
-      }),
+      })
     );
   });
 
@@ -127,7 +129,7 @@ describe("OAuthController entity environment contract", () => {
       "state_1",
       "challenge_1",
       "S256",
-      "env_1",
+      "env_1"
     );
 
     const consent = new URL(res.redirect.mock.calls[0]![1]);
@@ -144,6 +146,7 @@ describe("OAuthController entity environment contract", () => {
         type: "oauth2_pkce",
         authorizationUrl: "https://identity.example/authorize",
         tokenUrl: "https://identity.example/token",
+        userInfoUrl: "https://identity.example/userinfo",
         clientId: "entity-client",
         clientSecret: "entity-client-secret",
         scopes: ["openid", "email"],
@@ -153,14 +156,16 @@ describe("OAuthController entity environment contract", () => {
       ...environment,
       project: {
         ...environment.project,
-        entities: [{
-          ...environment.project.entities[0],
-          mcpConfig: {
-            enabled: true,
-            identityMode: "bearer+oidc+anonymous",
-            identityProviders,
+        entities: [
+          {
+            ...environment.project.entities[0],
+            mcpConfig: {
+              enabled: true,
+              identityMode: "bearer+oidc+anonymous",
+              identityProviders,
+            },
           },
-        }],
+        ],
       },
     });
     const consent = {
@@ -185,12 +190,12 @@ describe("OAuthController entity environment contract", () => {
       "acme",
       {} as any,
       redirectRes as any,
-      "consent_transaction_1",
+      "consent_transaction_1"
     );
 
     const providerRedirect = new URL(redirectRes.redirect.mock.calls[0]![1]);
     expect(providerRedirect.origin + providerRedirect.pathname).toBe(
-      "https://identity.example/authorize",
+      "https://identity.example/authorize"
     );
     expect(providerRedirect.searchParams.get("client_id")).toBe("entity-client");
     expect(providerRedirect.searchParams.get("scope")).toBe("openid email");
@@ -198,21 +203,31 @@ describe("OAuthController entity environment contract", () => {
     const signedState = providerRedirect.searchParams.get("state");
     expect(signedState).toBeTruthy();
 
-    const idToken = [
-      Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-      Buffer.from(JSON.stringify({ sub: "user_1", email: "user@example.com" })).toString("base64url"),
-      "signature",
-    ].join(".");
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({
-        access_token: "provider_access_token",
-        refresh_token: "provider_refresh_token",
-        expires_in: 3600,
-        id_token: idToken,
-      }),
-      text: vi.fn(),
-    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          access_token: "provider_access_token",
+          refresh_token: "provider_refresh_token",
+          expires_in: 3600,
+          // Deliberately unsigned and contradictory: identity must come from
+          // the authenticated userinfo response, never this token's payload.
+          id_token: `${Buffer.from('{"alg":"none"}').toString("base64url")}.${Buffer.from(
+            '{"sub":"forged"}'
+          ).toString("base64url")}.signature`,
+        }),
+        text: vi.fn(),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          sub: "user_1",
+          email: "user@example.com",
+          email_verified: true,
+          name: "Test User",
+        }),
+      });
     vi.stubGlobal("fetch", fetchMock);
     const callbackRes = {
       status: vi.fn().mockReturnThis(),
@@ -225,12 +240,20 @@ describe("OAuthController entity environment contract", () => {
       callbackRes as any,
       "entity_authorization_code",
       signedState!,
-      undefined,
+      undefined
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://identity.example/token",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://identity.example/userinfo",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ Authorization: "Bearer provider_access_token" }),
+      })
     );
     const tokenRequest = new URLSearchParams(fetchMock.mock.calls[0]![1].body);
     expect(tokenRequest.get("client_id")).toBe("entity-client");
@@ -239,12 +262,21 @@ describe("OAuthController entity environment contract", () => {
     expect(tokenRequest.get("redirect_uri")).toContain("/oauth/entity/acme/oidc-callback");
     expect(h.secretStore.createInTransaction).toHaveBeenCalledWith(
       h.tx,
-      expect.objectContaining({ plaintext: expect.stringContaining("provider_access_token") }),
+      expect.objectContaining({ plaintext: expect.stringContaining("provider_access_token") })
     );
     expect(h.tx.mcpOidcSession.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ environmentId: "env_1", provider: "oauth2_pkce" }),
-      }),
+        where: expect.objectContaining({
+          environmentId_entityId_provider_externalSubject: expect.objectContaining({
+            externalSubject: "user_1",
+          }),
+        }),
+        create: expect.objectContaining({
+          environmentId: "env_1",
+          provider: "oauth2_pkce",
+          emailVerified: true,
+        }),
+      })
     );
     expect(h.oauth.issueAuthCode).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -254,11 +286,11 @@ describe("OAuthController entity environment contract", () => {
           environmentId: "env_1",
         },
         mcpIdentity: { kind: "oidc", sessionId: "oidc_session_1" },
-      }),
+      })
     );
     expect(callbackRes.redirect).toHaveBeenCalledWith(
       302,
-      "https://client.example/callback?code=plt_oauth_code&state=client_state",
+      "https://client.example/callback?code=plt_oauth_code&state=client_state"
     );
   });
 
@@ -275,43 +307,51 @@ describe("OAuthController entity environment contract", () => {
       ...environment,
       project: {
         ...environment.project,
-        entities: [{
-          ...environment.project.entities[0],
-          mcpConfig: {
-            enabled: true,
-            identityMode: "bearer+oidc",
-            identityProviders: {
-              type: "oauth2_pkce",
-              authorizationUrl: "https://identity.example/authorize",
-              tokenUrl: "https://identity.example/token",
-              clientId: "legacy-client",
+        entities: [
+          {
+            ...environment.project.entities[0],
+            mcpConfig: {
+              enabled: true,
+              identityMode: "bearer+oidc",
+              identityProviders: {
+                type: "oauth2_pkce",
+                authorizationUrl: "https://identity.example/authorize",
+                tokenUrl: "https://identity.example/token",
+                clientId: "legacy-client",
+              },
             },
           },
-        }],
+        ],
       },
     });
 
     await h.controller.entityOidcRedirect("acme", {} as any, res as any, "transaction_1");
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "oidc_not_configured" }));
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "oidc_not_configured" })
+    );
     expect(res.redirect).not.toHaveBeenCalled();
 
     h.prisma.environment.findFirst.mockResolvedValue({
       ...environment,
       project: {
         ...environment.project,
-        entities: [{
-          ...environment.project.entities[0],
-          mcpConfig: {
-            enabled: true,
-            identityMode: "bearer+oidc",
-            identityProviders: [{
-              type: "oidc",
-              authorizationUrl: "https://identity.example/authorize",
-              tokenUrl: "https://identity.example/token",
-            }],
+        entities: [
+          {
+            ...environment.project.entities[0],
+            mcpConfig: {
+              enabled: true,
+              identityMode: "bearer+oidc",
+              identityProviders: [
+                {
+                  type: "oidc",
+                  authorizationUrl: "https://identity.example/authorize",
+                  tokenUrl: "https://identity.example/token",
+                },
+              ],
+            },
           },
-        }],
+        ],
       },
     });
     res.status.mockClear();
@@ -319,7 +359,9 @@ describe("OAuthController entity environment contract", () => {
 
     await h.controller.entityOidcRedirect("acme", {} as any, res as any, "transaction_1");
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "oidc_not_configured" }));
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "oidc_not_configured" })
+    );
     expect(res.redirect).not.toHaveBeenCalled();
   });
 });

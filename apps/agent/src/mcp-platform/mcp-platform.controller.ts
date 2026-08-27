@@ -14,20 +14,13 @@ import {
   Res,
 } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import {
-  PLATOS_SECRET_STORE_TOKEN,
-  PRISMA_TOKEN,
-} from "../shared/database.provider";
+import { PLATOS_SECRET_STORE_TOKEN, PRISMA_TOKEN } from "../shared/database.provider";
 import type { PlatosSecretStore } from "@platos/tenancy-database";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
 import { PlatosMCPTokenService, AdminMintForbiddenError } from "./token.service";
 import type { VerifiedToken, PlatosMCPTokenTier } from "./token.service";
-import {
-  McpRouter,
-  type JsonRpcRequest,
-  type McpApprovalGate,
-} from "./mcp-router";
+import { McpRouter, type JsonRpcRequest, type McpApprovalGate } from "./mcp-router";
 import { MCPPermissionGatewayService } from "./permission-gateway.service";
 import { buildPlatformToolHandlers } from "./tools";
 import { MacroRecordingState } from "./tools/macros";
@@ -99,7 +92,6 @@ import type { McpStdioSession } from "./stdio-transport";
 @Controller("mcp/platform")
 export class McpPlatformController {
   private router: McpRouter | null = null;
-  private readonly sessions = new Map<string, SseSession>();
   /**
    * K.17 — in-memory macro recording state. Lives on the controller
    * singleton so the MCP router's record-hook + the `macros.*` tool
@@ -162,7 +154,7 @@ export class McpPlatformController {
     @Inject(PLATOS_SECRET_STORE_TOKEN) private readonly secretStore: PlatosSecretStore,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     // Lazy resolution of ChannelRuntimeService (see invalidateChannelRuntime).
-    private readonly moduleRef: ModuleRef,
+    private readonly moduleRef: ModuleRef
   ) {}
 
   private getRouter(): McpRouter {
@@ -177,7 +169,7 @@ export class McpPlatformController {
           principal: "operator",
         }),
       },
-      this.permissionGateway,
+      this.permissionGateway
     );
     router.registerAll(
       buildPlatformToolHandlers({
@@ -239,9 +231,7 @@ export class McpPlatformController {
         // resolution failure must never fail the tool call.
         invalidateChannelRuntime: (connectionId: string) => {
           try {
-            this.moduleRef
-              .get(ChannelRuntimeService, { strict: false })
-              ?.invalidate(connectionId);
+            this.moduleRef.get(ChannelRuntimeService, { strict: false })?.invalidate(connectionId);
           } catch {
             // ChannelsModule absent — the runtime TTL bounds staleness.
           }
@@ -252,14 +242,12 @@ export class McpPlatformController {
         // Same lazy ModuleRef pattern; best-effort.
         invalidateChannelApp: (appId: string) => {
           try {
-            this.moduleRef
-              .get(ChannelRuntimeService, { strict: false })
-              ?.invalidateApp(appId);
+            this.moduleRef.get(ChannelRuntimeService, { strict: false })?.invalidateApp(appId);
           } catch {
             // ChannelsModule absent — the runtime TTL bounds staleness.
           }
         },
-      }),
+      })
     );
     // K.17 — attach recorder so the router captures successful tool
     // calls into any in-progress recording for the token.
@@ -275,7 +263,7 @@ export class McpPlatformController {
     if (approvalsEnabled) {
       const ttlSeconds = Math.max(
         60,
-        Number.parseInt(process.env["MCP_APPROVAL_TTL_SECONDS"] ?? "3600", 10) || 3600,
+        Number.parseInt(process.env["MCP_APPROVAL_TTL_SECONDS"] ?? "3600", 10) || 3600
       );
       const approvals = this.approvals;
       const gate: McpApprovalGate = {
@@ -286,7 +274,7 @@ export class McpPlatformController {
               projectId: scope.projectId,
               environmentId: scope.environmentId,
             },
-            approvalId,
+            approvalId
           ),
         create: (input) =>
           approvals.createMcpApproval({
@@ -310,7 +298,7 @@ export class McpPlatformController {
               environmentId: scope.environmentId,
             },
             approvalId,
-            resolution,
+            resolution
           ),
         hash: (scope, toolName, args) =>
           MonitoringApprovalsService.computeRequestHash(
@@ -320,7 +308,7 @@ export class McpPlatformController {
               environmentId: scope.environmentId,
             },
             toolName,
-            args,
+            args
           ),
       };
       router.setApprovalGate(gate, ttlSeconds);
@@ -374,9 +362,49 @@ export class McpPlatformController {
         mintedByUserId: oa.userId,
         expiresAt: oa.expiresAt,
         tier: "scope",
+        credential: { kind: "oauth", tokenHash: oa.tokenHash },
       };
     }
     return this.tokenService.verify(raw);
+  }
+
+  /** Revalidate the non-secret credential reference persisted for an SSE session. */
+  private async verifySseCredential(
+    credential: VerifiedToken["credential"]
+  ): Promise<VerifiedToken | null> {
+    if (!credential) return null;
+    if (credential.kind === "platform") {
+      return this.tokenService.verifyById(credential.tokenId);
+    }
+    const oa = await this.oauth.verifyAccessTokenHash(credential.tokenHash);
+    if (!oa || oa.entityPk) return null;
+    return {
+      id: oa.tokenHash.slice(0, 16),
+      scope: {
+        organizationId: oa.scope.organizationId,
+        projectId: oa.scope.projectId,
+        environmentId: oa.scope.environmentId,
+      },
+      permissions: oa.scopes.includes("mcp:write")
+        ? ["*"]
+        : ["*.list", "*.get", "platos_whoami", "platos_list_accessible_scopes"],
+      mintedByUserId: oa.userId,
+      expiresAt: oa.expiresAt,
+      tier: "scope",
+      credential,
+    };
+  }
+
+  private parseSseCredential(value: unknown): VerifiedToken["credential"] {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    const candidate = value as Record<string, unknown>;
+    if (candidate["kind"] === "platform" && typeof candidate["tokenId"] === "string") {
+      return { kind: "platform", tokenId: candidate["tokenId"] };
+    }
+    if (candidate["kind"] === "oauth" && typeof candidate["tokenHash"] === "string") {
+      return { kind: "oauth", tokenHash: candidate["tokenHash"] };
+    }
+    return undefined;
   }
 
   /**
@@ -422,7 +450,7 @@ export class McpPlatformController {
             approvalId: typeof approvalId === "string" ? approvalId : null,
             dashboardOrigin:
               process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
-          },
+          }
         );
       },
     };
@@ -432,13 +460,13 @@ export class McpPlatformController {
   async jsonRpc(
     @Headers("authorization") authorization: string | undefined,
     @Headers("x-platos-approval-id") approvalIdHeader: string | undefined,
-    @Body() body: JsonRpcRequest,
+    @Body() body: JsonRpcRequest
   ): Promise<any> {
     const bearer = this.extractBearer(authorization);
     if (!bearer) {
       throw new HttpException(
         "Authorization: Bearer <PLATOS_MCP_TOKEN> required",
-        HttpStatus.UNAUTHORIZED,
+        HttpStatus.UNAUTHORIZED
       );
     }
     const token = await this.verifyAnyBearer(bearer);
@@ -448,7 +476,7 @@ export class McpPlatformController {
     if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
       throw new HttpException(
         "body must be a JSON-RPC 2.0 request with `method`",
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     return this.getRouter().handle(body, token, {
@@ -461,7 +489,7 @@ export class McpPlatformController {
   async sse(
     @Req() req: Request,
     @Res() res: Response,
-    @Headers("authorization") authorization: string | undefined,
+    @Headers("authorization") authorization: string | undefined
   ): Promise<void> {
     const bearer = this.extractBearer(authorization);
     if (!bearer) {
@@ -485,6 +513,47 @@ export class McpPlatformController {
     // the client should send JSON-RPC requests to; we tag the URL
     // with `sessionId` so we can route responses back on this stream.
     const sessionId = crypto.randomBytes(16).toString("hex");
+    if (!token.credential) {
+      res.write('event: error\ndata: {"message":"session credential unavailable"}\n\n');
+      res.end();
+      return;
+    }
+    const sessionKey = `platos:mcp:platform:session:${sessionId}`;
+    const sseChannel = `platos:mcp:platform:sse:${sessionId}`;
+    try {
+      await this.redis.set(
+        sessionKey,
+        JSON.stringify({ credential: token.credential }),
+        "EX",
+        3600
+      );
+    } catch {
+      res.write('event: error\ndata: {"message":"session store unavailable"}\n\n');
+      res.end();
+      return;
+    }
+
+    const sub = this.redis.duplicate();
+    try {
+      await sub.subscribe(sseChannel);
+    } catch {
+      await this.redis.del(sessionKey).catch(() => undefined);
+      await sub.quit().catch(() => undefined);
+      res.write('event: error\ndata: {"message":"session transport unavailable"}\n\n');
+      res.end();
+      return;
+    }
+    const onMessage = (_channel: string, message: string) => {
+      try {
+        res.write(`event: message\ndata: ${message}\n\n`);
+      } catch {
+        /* socket closed — cleanup fires */
+      }
+    };
+    sub.on("message", onMessage);
+
+    // Advertise the POST endpoint only after the shared session record and
+    // subscriber are ready; otherwise a fast client can race the Redis write.
     const endpointUrl = `/mcp/platform/messages?sessionId=${sessionId}`;
     res.write(`event: endpoint\ndata: ${endpointUrl}\n\n`);
 
@@ -500,16 +569,15 @@ export class McpPlatformController {
       }
     }, 30_000);
 
-    // BUG-18: sessions are stored in-memory on this controller instance.
-    // On agent restart all SSE sessions are lost and MCP clients must
-    // reconnect. TODO(redis-sessions): migrate to Redis-backed session
-    // store (same pattern as McpEntityController) for multi-replica safety.
-    // For now, ensure cleanup fires on disconnect so memory doesn't leak.
-    this.sessions.set(sessionId, { token, res, pingInterval });
-
+    let cleanedUp = false;
     const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
       clearInterval(pingInterval);
-      this.sessions.delete(sessionId);
+      sub.off("message", onMessage);
+      sub.unsubscribe(sseChannel).catch(() => undefined);
+      sub.quit().catch(() => undefined);
+      this.redis.del(sessionKey).catch(() => undefined);
       try {
         res.end();
       } catch {
@@ -525,15 +593,36 @@ export class McpPlatformController {
     @Query("sessionId") sessionId: string | undefined,
     @Headers("x-platos-approval-id") approvalIdHeader: string | undefined,
     @Body() body: JsonRpcRequest,
-    @Res() res: Response,
+    @Res() res: Response
   ): Promise<void> {
     if (!sessionId) {
       res.status(400).send("missing sessionId query param");
       return;
     }
-    const session = this.sessions.get(sessionId);
-    if (!session) {
+    const sessionKey = `platos:mcp:platform:session:${sessionId}`;
+    const rawSession = await this.redis.get(sessionKey).catch(() => null);
+    if (!rawSession) {
       res.status(404).send("unknown or expired sessionId");
+      return;
+    }
+    let credential: VerifiedToken["credential"];
+    try {
+      credential = this.parseSseCredential(
+        (JSON.parse(rawSession) as { credential?: unknown }).credential
+      );
+    } catch {
+      res.status(500).send("corrupt session record");
+      return;
+    }
+    if (!credential) {
+      await this.redis.del(sessionKey).catch(() => undefined);
+      res.status(500).send("corrupt session record");
+      return;
+    }
+    const token = await this.verifySseCredential(credential);
+    if (!token) {
+      await this.redis.del(sessionKey).catch(() => undefined);
+      res.status(401).send("session token revoked or expired");
       return;
     }
     if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
@@ -546,13 +635,11 @@ export class McpPlatformController {
     res.status(202).send();
 
     try {
-      const response = await this.getRouter().handle(body, session.token, {
+      const response = await this.getRouter().handle(body, token, {
         approvalId: approvalIdHeader ?? null,
-        dashboardOrigin:
-          process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
+        dashboardOrigin: process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
       });
-      const frame = `event: message\ndata: ${JSON.stringify(response)}\n\n`;
-      session.res.write(frame);
+      await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(response));
     } catch (err) {
       const rpcError = {
         jsonrpc: "2.0" as const,
@@ -562,7 +649,7 @@ export class McpPlatformController {
           message: err instanceof Error ? err.message : "internal error",
         },
       };
-      session.res.write(`event: message\ndata: ${JSON.stringify(rpcError)}\n\n`);
+      await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(rpcError));
     }
   }
 
@@ -582,7 +669,7 @@ export class McpPlatformController {
     @Req() req: Request,
     @Res() res: Response,
     @Query("token") tokenParam: string | undefined,
-    @Query("filters") filtersParam: string | undefined,
+    @Query("filters") filtersParam: string | undefined
   ): Promise<void> {
     if (!tokenParam) {
       res.status(401).send("token query param required");
@@ -635,7 +722,7 @@ export class McpPlatformController {
         scope: verified.scope,
         filters,
         channel: scopeChannel,
-      })}\n\n`,
+      })}\n\n`
     );
 
     const matchesType = (eventType: string) => {
@@ -662,7 +749,7 @@ export class McpPlatformController {
       res.write(
         `event: error\ndata: ${JSON.stringify({
           message: err instanceof Error ? err.message : String(err),
-        })}\n\n`,
+        })}\n\n`
       );
       try {
         await sub.quit();
@@ -729,7 +816,8 @@ export class McpPlatformController {
   @Post("tokens")
   async mintToken(
     @Req() req: Request,
-    @Body() body: {
+    @Body()
+    body: {
       name: string;
       permissions: string[];
       ttlSeconds?: number;
@@ -738,7 +826,7 @@ export class McpPlatformController {
        * caller to be an org ADMIN (enforced in TokenService.mint()).
        */
       tier?: PlatosMCPTokenTier;
-    },
+    }
   ) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
@@ -767,7 +855,7 @@ export class McpPlatformController {
   async listTokens(
     @Req() req: Request,
     @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
+    @Query("offset") offset?: string
   ) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
@@ -782,11 +870,7 @@ export class McpPlatformController {
   }
 
   @Post("tokens/:id/revoke")
-  async revokeToken(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() _body: unknown,
-  ) {
+  async revokeToken(@Req() req: Request, @Param("id") id: string, @Body() _body: unknown) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
     // SECURITY (audit authz-2026-07-22 F5) — token revocation is an operator
@@ -835,9 +919,7 @@ export class McpPlatformController {
       // ("platos.platform"), too broad for the picker, so the name
       // prefix wins; the stamped category is only a fallback for an
       // (unexpected) dotless name.
-      const category = h.name.includes(".")
-        ? h.name.split(".")[0]!
-        : h.category ?? "other";
+      const category = h.name.includes(".") ? h.name.split(".")[0]! : h.category ?? "other";
       const list = byCategory.get(category) ?? [];
       list.push({
         name: h.name,
@@ -868,10 +950,4 @@ export class McpPlatformController {
       categories,
     };
   }
-}
-
-interface SseSession {
-  token: VerifiedToken;
-  res: Response;
-  pingInterval: NodeJS.Timeout;
 }

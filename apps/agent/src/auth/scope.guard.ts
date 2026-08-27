@@ -1,4 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, Inject, Optional } from "@nestjs/common";
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  ForbiddenException,
+  Inject,
+  Optional,
+} from "@nestjs/common";
 import * as crypto from "node:crypto";
 import { AuthService } from "./auth.service";
 import { env } from "../shared/env";
@@ -37,7 +45,7 @@ export function isPublicMcpTransport(methodValue: unknown, urlValue: unknown): b
     return true;
   }
   const entityProtocol = pathname.match(
-    /^\/mcp\/entity\/[^/]+(?:\/(sse|messages|events\/subscribe))?$/,
+    /^\/mcp\/entity\/[^/]+(?:\/(sse|messages|events\/subscribe))?$/
   );
   if (!entityProtocol) return false;
   const suffix = entityProtocol[1];
@@ -47,6 +55,82 @@ export function isPublicMcpTransport(methodValue: unknown, urlValue: unknown): b
     (suffix === "messages" && method === "POST") ||
     (suffix === "events/subscribe" && method === "GET")
   );
+}
+
+/** Public, read-only Docs MCP transports. Keep this separate from the
+ * authenticated Platform/Entity MCP matcher: `/mcp` and `/mcp/docs` expose
+ * only the docs controller, while every sibling route remains deny-by-default.
+ */
+export function isPublicDocsMcpTransport(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  return (
+    ((pathname === "/mcp" || pathname === "/mcp/docs") &&
+      (method === "GET" || method === "POST")) ||
+    ((pathname === "/mcp/sse" || pathname === "/mcp/docs/sse") && method === "GET") ||
+    ((pathname === "/mcp/messages" || pathname === "/mcp/docs/messages") && method === "POST")
+  );
+}
+
+/** Public session-mint and guest-token endpoints authenticate in-controller.
+ * Match the registered verb and complete pathname so a future sibling under
+ * either prefix cannot accidentally inherit the bypass.
+ */
+export function isPublicTokenMintRoute(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  return (
+    method === "POST" &&
+    (pathname === "/api/v1/public/guest-token" ||
+      /^\/api\/v1\/entities\/[^/]+\/session-tokens$/.test(pathname))
+  );
+}
+
+/** Provider callbacks authenticate inside their controllers. Match only the
+ * currently registered public verbs and shapes; management siblings stay
+ * behind normal scoped authentication. */
+export function isPublicChannelCallback(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  return (
+    ((method === "GET" || method === "POST") &&
+      /^\/api\/v1\/channels\/inbound\/[^/]+\/[^/]+$/.test(pathname)) ||
+    (method === "GET" &&
+      /^\/api\/v1\/channels\/oauth\/[^/]+\/(install|callback)$/.test(pathname)) ||
+    (method === "POST" && /^\/api\/v1\/channels\/apps\/[^/]+\/events$/.test(pathname)) ||
+    (method === "GET" &&
+      (pathname === "/api/v1/channels/link/callback" ||
+        /^\/api\/v1\/channels\/link\/[^/]+$/.test(pathname)))
+  );
+}
+
+/** OAuth protocol entry points self-authenticate through client credentials,
+ * PKCE, signed consent state, or bearer revocation. Keep the allowlist in sync
+ * with OAuthController rather than granting its entire namespace. */
+export function isPublicOAuthRoute(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  if (
+    method === "GET" &&
+    (pathname === "/.well-known/oauth-authorization-server" ||
+      /^\/.well-known\/oauth-authorization-server\/entity\/[^/]+$/.test(pathname))
+  ) return true;
+  if (
+    (method === "GET" && (pathname === "/oauth/authorize" || pathname === "/oauth/consent")) ||
+    (method === "POST" &&
+      ["/oauth/register", "/oauth/authorize/callback", "/oauth/token", "/oauth/introspect", "/oauth/revoke"].includes(pathname))
+  ) return true;
+  const entityRoute = pathname.match(
+    /^\/oauth\/entity\/[^/]+\/(register|authorize|authorize\/anonymous|token|revoke|oidc-redirect|oidc-callback)$/,
+  );
+  if (!entityRoute) return false;
+  return entityRoute[1] === "authorize" || entityRoute[1]?.startsWith("oidc-")
+    ? method === "GET"
+    : method === "POST";
 }
 
 /**
@@ -60,7 +144,7 @@ export function isPublicMcpTransport(methodValue: unknown, urlValue: unknown): b
  * Format:  `00-<32-char-hex-trace-id>-<16-char-hex-span-id>-<2-char-hex-flags>`
  */
 function parseTraceparent(
-  header: string | string[] | undefined,
+  header: string | string[] | undefined
 ): { traceId: string; parentSpanId: string } | null {
   const raw = Array.isArray(header) ? header[0] : header;
   if (!raw || typeof raw !== "string") return null;
@@ -218,8 +302,8 @@ export class ScopeGuard implements CanActivate {
       typeof request.originalUrl === "string"
         ? request.originalUrl
         : typeof request.url === "string"
-          ? request.url
-          : "";
+        ? request.url
+        : "";
     const pathname = url.split("?", 1)[0];
 
     return (
@@ -260,24 +344,26 @@ export class ScopeGuard implements CanActivate {
 
     const url: string = request.url || "";
 
-    // Allow health and test endpoints without auth
-    if (url.startsWith("/api/health") || url.startsWith("/test/")) return true;
+    // The production graph intentionally excludes TestModule. Do not add a
+    // global `/test/*` bypass here: doing so would silently expose any future
+    // route mounted at that prefix if the module graph regressed.
+    const pathname = url.split("?", 1)[0];
+    if (request.method?.toUpperCase() === "GET" && pathname === "/api/health")
+      return true;
 
     // EOBD.41 — Prometheus scrape endpoint. Unauthenticated by design;
     // the operator fronts /metrics with a network-level ACL (Caddy,
     // firewall rule) rather than per-scope auth. Matches the pattern
     // used by the rate-limit guard which also exempts /metrics.
-    if (url.startsWith("/metrics")) return true;
+    if (request.method?.toUpperCase() === "GET" && pathname === "/metrics") return true;
 
     // Entity session-token mint endpoint. The controller validates the clean
     // `plt_ent_` McpBearerToken and canonical Entity ancestry itself.
-    if (url.startsWith("/api/v1/entities/") && url.includes("/session-tokens")) return true;
+    if (isPublicTokenMintRoute(request.method, url)) return true;
 
     // EOBD.89 — public guest-token mint. Unauthenticated by design;
     // the controller gates access by agent.visibility + per-IP +
     // per-agent rate limits.
-    if (url.startsWith("/api/v1/public/")) return true;
-
     // Connect reimagining — inbound channel webhooks (Slack / Telegram /
     // WhatsApp / Discord). No per-scope session context: the caller is the
     // provider, not a Platos user. Auth is TWO-FACTOR and happens IN the
@@ -286,7 +372,7 @@ export class ScopeGuard implements CanActivate {
     // adapter verifies the provider signature (Slack HMAC / WhatsApp
     // X-Hub-Signature-256 / Discord Ed25519 / Telegram secret_token) using the
     // decrypted connection credentials. ScopeGuard just lets the request land.
-    if (url.startsWith("/api/v1/channels/inbound/")) return true;
+    if (isPublicChannelCallback(request.method, url)) return true;
 
     // Connect v3 — marketplace channel apps (Slack-first). Two PUBLIC
     // surfaces, each self-authenticating IN the controller (never here):
@@ -310,14 +396,6 @@ export class ScopeGuard implements CanActivate {
     // land. (The operator-only MANAGEMENT surface lives at
     // /api/v1/agent/channel-apps and is NOT bypassed — it runs under normal
     // scope extraction below.)
-    if (
-      url.startsWith("/api/v1/channels/oauth/") ||
-      url.startsWith("/api/v1/channels/apps/") ||
-      url.startsWith("/api/v1/channels/link/")
-    ) {
-      return true;
-    }
-
     // Theme K — Platform MCP. Authed by `Authorization: Bearer
     // <PLATOS_MCP_TOKEN>` on every request; token verification + scope
     // pin happens inside McpPlatformController. Token CRUD sub-routes
@@ -336,17 +414,7 @@ export class ScopeGuard implements CanActivate {
     // `/mcp` (the user-facing install URL — `claude mcp add platos
     // https://mcp.platos.dev/mcp`). Bypass scope auth for both forms +
     // their sub-routes (`/sse`, `/messages?sessionId=...`).
-    if (url.startsWith("/mcp/docs")) return true;
-    if (
-      url === "/mcp" ||
-      url.startsWith("/mcp?") ||
-      url === "/mcp/sse" ||
-      url.startsWith("/mcp/sse?") ||
-      url === "/mcp/messages" ||
-      url.startsWith("/mcp/messages?")
-    ) {
-      return true;
-    }
+    if (isPublicDocsMcpTransport(request.method, url)) return true;
 
     // PIFSP-21 — per-entity MCP Gateway. Self-auths via OAuth 2.1 bearer
     // tokens minted at `/oauth/entity/:entityId/*`. Routes validate the
@@ -371,36 +439,51 @@ export class ScopeGuard implements CanActivate {
     // PIFSP-21 — per-entity OAuth endpoints (`/oauth/entity/:entityId/*`)
     // and their metadata (`/.well-known/oauth-authorization-server/entity/*`)
     // fall through the same bypass — every route self-auths.
-    if (url.startsWith("/oauth/") || url === "/oauth" || url.startsWith("/.well-known/")) {
+    if (isPublicOAuthRoute(request.method, url)) {
       return true;
     }
 
     // Theme I.10 — OpenAPI spec + Swagger UI are intentionally public so
     // the docs site / agent-connect page can render without auth. The
     // spec is static (no scope-dependent data).
-    if (url.startsWith("/api/v1/agent/openapi.json") || url === "/openapi" || url.startsWith("/openapi?")) return true;
+    if (
+      request.method?.toUpperCase() === "GET" &&
+      (pathname === "/api/v1/agent/openapi.json" ||
+        pathname === "/openapi" ||
+        pathname.startsWith("/openapi/"))
+    )
+      return true;
 
     // PPR-25 — `/internal/execute-tool` is called by trigger.dev tasks
     // running inside the worker sandbox. It carries no per-scope context
     // of its own; the HMAC signature + scope-in-body + ToolExecutorService
     // registry lookup is the scope gate. ScopeGuard just lets the call
     // land on the controller, which verifies the HMAC before dispatching.
-    if (url.startsWith("/internal/execute-tool")) return true;
+    if (
+      request.method?.toUpperCase() === "POST" &&
+      (pathname === "/internal/execute-tool" || pathname === "/internal/env/invalidate")
+    )
+      return true;
     // W.1 — `/internal/batch-turn` follows the same pattern: HMAC-signed
     // callback from the `platos-agent-batch` trigger.dev task so it can
     // invoke AgentTaskService.executeNonStreamingTurn once per batch item.
-    if (url.startsWith("/internal/batch-turn")) return true;
+    if (request.method?.toUpperCase() === "POST" && pathname === "/internal/batch-turn")
+      return true;
     // Subagent spawning — `/internal/subagent-turn` is the per-turn callback
     // from the `platos.agent.subrun` trigger.dev task. Same HMAC-signed,
     // scope-in-body pattern as batch-turn, but it threads the CHILD thread id
     // through so multi-turn history accumulates on one thread. The controller
     // verifies the HMAC before running the turn.
-    if (url.startsWith("/internal/subagent-turn")) return true;
+    if (request.method?.toUpperCase() === "POST" && pathname === "/internal/subagent-turn")
+      return true;
 
     // WIN-132 — callback-only custom task execution. This route has no user
     // session; its controller performs the timing-safe internal-token check and
     // rejects every other auth path before parsing or executing the body.
-    if (url.split("?", 1)[0] === "/api/v1/agent/internal/jobs/execute") {
+    if (
+      request.method?.toUpperCase() === "POST" &&
+      pathname === "/api/v1/agent/internal/jobs/execute"
+    ) {
       return true;
     }
 
@@ -412,24 +495,23 @@ export class ScopeGuard implements CanActivate {
     // admin-tier `plt_mcp_` credential in ErasureController. ScopeGuard must let
     // the request reach that controller, but it must not accept any deployment
     // secret as authorization for irreversible erasure.
-    if (url.startsWith("/api/v1/agent/admin/privacy")) return true;
-
-    if (url.startsWith("/api/v1/agent/monitoring/cost/catalog")) {
-      const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
-      const provided = request.headers["x-platos-internal-auth"];
-      // BUG-6: timing-safe comparison to prevent timing oracle attacks.
-      if (expected && typeof provided === "string" && provided.length === expected.length) {
-        try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
-        } catch { /* length mismatch handled above */ }
-      }
-    }
-    // Theme M.5 / O.1 — scheduled memory-extraction sweep admin endpoint.
-    // Cross-scope by design (scans every thread in the monorepo). The
-    // controller re-verifies the token with a timing-safe compare.
+    const privacyRoute = pathname.match(
+      /^\/api\/v1\/agent\/admin\/privacy\/(subjects\/[^/]+\/inventory|erasures|erasures\/[^/]+|erasures\/[^/]+\/retry|erasures\/resume-due)$/,
+    );
     if (
-      url.startsWith("/api/v1/memory/admin/extraction-sweep") ||
-      url.startsWith("/api/v1/platos/memory/admin/extraction-sweep")
+      privacyRoute &&
+      ((request.method?.toUpperCase() === "GET" &&
+        (privacyRoute[1]?.startsWith("subjects/") ||
+          /^erasures\/[^/]+$/.test(privacyRoute[1] ?? ""))) ||
+        (request.method?.toUpperCase() === "POST" &&
+          (privacyRoute[1] === "erasures" ||
+            privacyRoute[1] === "erasures/resume-due" ||
+            privacyRoute[1]?.endsWith("/retry"))))
+    ) return true;
+
+    if (
+      request.method?.toUpperCase() === "POST" &&
+      pathname === "/api/v1/agent/monitoring/cost/catalog"
     ) {
       const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
       const provided = request.headers["x-platos-internal-auth"];
@@ -437,7 +519,28 @@ export class ScopeGuard implements CanActivate {
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
           if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
-        } catch { /* length mismatch handled above */ }
+        } catch {
+          /* length mismatch handled above */
+        }
+      }
+    }
+    // Theme M.5 / O.1 — scheduled memory-extraction sweep admin endpoint.
+    // Cross-scope by design (scans every thread in the monorepo). The
+    // controller re-verifies the token with a timing-safe compare.
+    if (
+      request.method?.toUpperCase() === "POST" &&
+      (pathname === "/api/v1/memory/admin/extraction-sweep" ||
+        pathname === "/api/v1/platos/memory/admin/extraction-sweep")
+    ) {
+      const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+      const provided = request.headers["x-platos-internal-auth"];
+      // BUG-6: timing-safe comparison to prevent timing oracle attacks.
+      if (expected && typeof provided === "string" && provided.length === expected.length) {
+        try {
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+        } catch {
+          /* length mismatch handled above */
+        }
       }
     }
     // LAUNCH-11 — durable compaction callback. Trigger.dev worker POSTs
@@ -450,41 +553,43 @@ export class ScopeGuard implements CanActivate {
     // callbacks (durable-turn / employee-run / skill-run) use the same
     // admin-token gate + scope-in-body pattern as compaction.
     if (
-      url.startsWith("/api/v1/agent/internal/compaction") ||
-      url.startsWith("/api/v1/agent/internal/durable-turn") ||
-      url.startsWith("/api/v1/agent/internal/chat/stream-turn") ||
-      url.startsWith("/api/v1/agent/internal/chat/reap-sessions") ||
-      url.startsWith("/api/v1/agent/internal/employee-run") ||
-      url.startsWith("/api/v1/agent/internal/skill-run") ||
-      url.startsWith("/api/v1/agent/internal/budget-alert") ||
+      (request.method?.toUpperCase() === "POST" &&
+      (pathname === "/api/v1/agent/internal/compaction" ||
+      pathname === "/api/v1/agent/internal/durable-turn" ||
+      pathname === "/api/v1/agent/internal/chat/stream-turn" ||
+      pathname === "/api/v1/agent/internal/chat/reap-sessions" ||
+      pathname === "/api/v1/agent/internal/employee-run" ||
+      pathname === "/api/v1/agent/internal/skill-run" ||
+      pathname === "/api/v1/agent/internal/budget-alert" ||
       // Subagent report-back — the `platos.agent.subrun` task POSTs the child's
       // result here (admin-token gated + scope-in-body); the controller
       // re-verifies the token AND that the body's scope owns the parent
       // agent/thread before waking a durable parent turn.
-      url.startsWith("/api/v1/agent/internal/subagent-report") ||
+      pathname === "/api/v1/agent/internal/subagent-report" ||
       // Managed-cloud maintenance-task callbacks — same admin-token gate +
       // scope-in-body. These run as scheduled trigger.dev tasks on Trigger
       // Cloud and reach the agent through the public proxy; each controller
       // re-verifies the token with a timing-safe compare.
-      url.startsWith("/api/v1/agent/monitoring/dlq/drain") ||
-      url.startsWith("/api/v1/agent/monitoring/cost/reconcile") ||
-      url.startsWith("/api/v1/agent/monitoring/budget/email") ||
-      url.startsWith("/api/v1/agent/monitoring/approvals/expiry-sweep") ||
-      url.startsWith("/api/v1/agent/evals/sample") ||
-      url.startsWith("/api/v1/agent/evals/dispatch") ||
-      url.startsWith("/api/v1/agent/attachments/retention") ||
+      pathname === "/api/v1/agent/monitoring/dlq/drain" ||
+      pathname === "/api/v1/agent/monitoring/cost/reconcile" ||
+      pathname === "/api/v1/agent/monitoring/budget/email" ||
+      pathname === "/api/v1/agent/monitoring/approvals/expiry-sweep" ||
       // memory-extraction sweep callback (platos.memory.extract task). Note
       // the non-/agent prefix — served by the memory module's own controller;
       // needs its own Caddy route (/api/v1/memory/* → agent) or it lands on
       // the webapp and 401s with the callback-style problem+json.
-      url.startsWith("/api/v1/memory/admin/extraction-sweep")
+      pathname === "/api/v1/memory/admin/extraction-sweep")) ||
+      (request.method?.toUpperCase() === "GET" &&
+        pathname === "/api/v1/agent/monitoring/observability/status")
     ) {
       const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
       const provided = request.headers["x-platos-internal-auth"];
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
           if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
-        } catch { /* length mismatch handled above */ }
+        } catch {
+          /* length mismatch handled above */
+        }
       }
     }
 
@@ -529,7 +634,9 @@ export class ScopeGuard implements CanActivate {
                 ...(userMeta.email ? { email: userMeta.email } : {}),
               }
             : undefined;
-        const sessionContextFromToken = signedUserMeta ? { user: { ...signedUserMeta } } : undefined;
+        const sessionContextFromToken = signedUserMeta
+          ? { user: { ...signedUserMeta } }
+          : undefined;
 
         // Carry verified-identity claims onto the scope so downstream
         // ConversationService.resolveEndUser can link this turn to a canonical
@@ -564,9 +671,7 @@ export class ScopeGuard implements CanActivate {
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
           ...(tokenUserIdentities ? { userIdentities: tokenUserIdentities } : {}),
-          ...(sessionContextFromToken
-            ? { sessionContext: sessionContextFromToken }
-            : {}),
+          ...(sessionContextFromToken ? { sessionContext: sessionContextFromToken } : {}),
           // WIN-133 — the same values, kept apart from the prompt bag so the
           // analytical projection can tell a signature from a merge. See
           // RequestScope.signedUserMeta.
@@ -576,17 +681,28 @@ export class ScopeGuard implements CanActivate {
         // Access key check (if configured for this scope)
         if (this.authService) {
           const providedKey = request.headers["x-platos-api-key"] as string | undefined;
-          const origin = (request.headers["origin"] || request.headers["referer"]) as string | undefined;
+          const origin = (request.headers["origin"] || request.headers["referer"]) as
+            | string
+            | undefined;
           const scopeForCheck = {
             organizationId: request.scope.organizationId,
             projectId: request.scope.projectId,
             environmentId: request.scope.environmentId,
             userId: request.scope.userId,
           };
-          const keyResult = await this.authService.verifyAccessKey(scopeForCheck, providedKey, origin);
+          const keyResult = await this.authService.verifyAccessKey(
+            scopeForCheck,
+            providedKey,
+            origin
+          );
           if (keyResult === false) {
             const resp = context.switchToHttp().getResponse();
-            resp.status(401).json({ error: "INVALID_ACCESS_KEY", message: "X-Platos-Api-Key is missing or invalid for this scope." });
+            resp
+              .status(401)
+              .json({
+                error: "INVALID_ACCESS_KEY",
+                message: "X-Platos-Api-Key is missing or invalid for this scope.",
+              });
             return false;
           }
         }
@@ -617,14 +733,14 @@ export class ScopeGuard implements CanActivate {
         const validPin =
           controlPlaneAuthenticated &&
           this.authService &&
-          await this.authService.validateOperatorAgentPin(
+          (await this.authService.validateOperatorAgentPin(
             {
               organizationId: String(organizationId),
               projectId: String(projectId),
               environmentId: String(environmentId),
             },
-            String(requestedAgentId),
-          );
+            String(requestedAgentId)
+          ));
         if (!validPin) {
           const resp = context.switchToHttp().getResponse();
           resp.status(403).json({
@@ -661,17 +777,28 @@ export class ScopeGuard implements CanActivate {
         !this.hasValidControlPlaneAuth(request)
       ) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
-        const origin = (request.headers["origin"] || request.headers["referer"]) as string | undefined;
+        const origin = (request.headers["origin"] || request.headers["referer"]) as
+          | string
+          | undefined;
         const scopeForCheck = {
           organizationId: request.scope.organizationId,
           projectId: request.scope.projectId,
           environmentId: request.scope.environmentId,
           userId: request.scope.userId,
         };
-        const keyResult = await this.authService.verifyAccessKey(scopeForCheck, providedKey, origin);
+        const keyResult = await this.authService.verifyAccessKey(
+          scopeForCheck,
+          providedKey,
+          origin
+        );
         if (keyResult === false) {
           const resp = context.switchToHttp().getResponse();
-          resp.status(401).json({ error: "INVALID_ACCESS_KEY", message: "X-Platos-Api-Key is missing or invalid for this scope." });
+          resp
+            .status(401)
+            .json({
+              error: "INVALID_ACCESS_KEY",
+              message: "X-Platos-Api-Key is missing or invalid for this scope.",
+            });
           return false;
         }
       }
