@@ -889,7 +889,9 @@ async function runWrite(options) {
 
   if (result.reviewRequired.length) {
     console.log(
-      `refusing to write: ${result.reviewRequired.length} entr${result.reviewRequired.length === 1 ? "y" : "ies"} need human review.`,
+      result.reviewRequired.length === 1
+        ? "refusing to write: 1 entry needs human review."
+        : `refusing to write: ${result.reviewRequired.length} entries need human review.`,
       "\n  --write may only remove or relocate reviewed exceptions. It never creates one,",
       "\n  because creating one weakens the gate on code nobody has looked at."
     );
