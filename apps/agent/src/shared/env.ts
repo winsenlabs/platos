@@ -20,6 +20,12 @@ const DEV_SENTINEL_SESSION_SECRET = "dev-session-secret-rotate-before-prod";
 const DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const DEV_COMPONENT_AUTH_SECRET = "dev-internal-secret-change-me";
+// WIN-293 — the `.env.example` placeholder for the control-plane trust anchor.
+// A distinct value (not reused from the encryption-key sentinel) so a copied
+// `.env` is recognizable, and rejected in production below: shipping a public
+// value here would hand every reader the operator credential.
+const DEV_SENTINEL_INTERNAL_AUTH_TOKEN =
+  "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface";
 const COMPONENT_AUTH_PLACEHOLDERS = new Set([
   "",
   DEV_COMPONENT_AUTH_SECRET,
@@ -486,6 +492,25 @@ export const AgentEnvSchema = z
           path: ["PLATOS_COMPONENT_AUTH_SECRET"],
           message:
             "PLATOS_COMPONENT_AUTH_SECRET must be set to a strong random value in production",
+        });
+      }
+      // WIN-293 — the control-plane trust anchor is the ONLY credential that
+      // grants the operator tier over the direct-header channel. It must be
+      // present and must not be the public `.env.example` placeholder, or the
+      // fail-closed guard is defeated by a well-known token.
+      if (!data.PLATOS_INTERNAL_AUTH_TOKEN) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_INTERNAL_AUTH_TOKEN"],
+          message: "PLATOS_INTERNAL_AUTH_TOKEN is required in production",
+        });
+      }
+      if (data.PLATOS_INTERNAL_AUTH_TOKEN === DEV_SENTINEL_INTERNAL_AUTH_TOKEN) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_INTERNAL_AUTH_TOKEN"],
+          message:
+            "PLATOS_INTERNAL_AUTH_TOKEN is the .env.example sentinel value — rotate before going to production",
         });
       }
     }

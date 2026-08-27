@@ -19,6 +19,23 @@ const schema = z.object({
   BACKDOOR_PLATOS_DEV: z.string().optional(),
   BACKDOOR_PLATOS_DEV_EMAIL: z.string().email().optional(),
   PLATOS_TEST_MODE: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // WIN-293 — the webapp SENDS this token to the agent, so a webapp running the
+  // public `.env.example` placeholder leaks the operator credential regardless
+  // of which agent it points at. Reject the placeholder in production, matching
+  // the agent's own sentinel check.
+  if (
+    data.NODE_ENV === "production" &&
+    data.PLATOS_INTERNAL_AUTH_TOKEN ===
+      "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface"
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["PLATOS_INTERNAL_AUTH_TOKEN"],
+      message:
+        "PLATOS_INTERNAL_AUTH_TOKEN is the .env.example sentinel value — rotate before going to production",
+    });
+  }
 });
 
 export const env = schema.parse(process.env);
