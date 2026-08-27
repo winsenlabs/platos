@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
-- REST operations: **297** unique method/path pairs from **297** route bindings.
+- REST operations: **300** unique method/path pairs from **300** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=142.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=144.
 
 ## REST inventory
 
@@ -24,6 +24,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/access-key` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#createOrRotateAccessKey` |
 | `POST /api/v1/agent/access-key/origins` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAllowedOrigins` |
 | `GET /api/v1/agent/activity/recent` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#recentActivity` |
+| `POST /api/v1/agent/admin/memory-feedback/backfill` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory-feedback-admin.controller.ts#runBackfill` |
 | `POST /api/v1/agent/admin/privacy/erasures` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#create` |
 | `GET /api/v1/agent/admin/privacy/erasures/:operationId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#get` |
 | `POST /api/v1/agent/admin/privacy/erasures/:operationId/retry` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#retry` |
@@ -49,6 +50,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/agent/agents/:agentId/tool-mappings` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentToolMappings` |
 | `PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAgentToolEnabled` |
 | `POST /api/v1/agent/approvals/:approvalId/resolve` | MAPPED | `approvals.resolve` | Reviewed behavioral equivalence: the REST adapter and approvals.resolve invoke the same scope-pinned MonitoringApprovalsService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#resolveApproval` |
+| `POST /api/v1/agent/attachments/presigned` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/attachment-upload.controller.ts#presign` |
 | `GET /api/v1/agent/budgets` | MAPPED | `budgets.list` | Reviewed behavioral equivalence: the REST adapter and budgets.list invoke the same scope-pinned BudgetService cap operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listBudgets` |
 | `POST /api/v1/agent/budgets` | MAPPED | `budgets.upsert` | Reviewed behavioral equivalence: the REST adapter and budgets.upsert invoke the same scope-pinned BudgetService cap operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#upsertBudget` |
 | `DELETE /api/v1/agent/budgets/:capId` | MAPPED | `budgets.delete` | Reviewed behavioral equivalence: the REST adapter and budgets.delete invoke the same scope-pinned BudgetService cap operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#deleteBudget` |
@@ -118,6 +120,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/internal/durable-turn` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalDurableTurn` |
 | `POST /api/v1/agent/internal/employee-run` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalEmployeeRun` |
 | `POST /api/v1/agent/internal/jobs/execute` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/job-execution.controller.ts#execute` |
+| `GET /api/v1/agent/internal/performance-evidence/:requestId` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/performance-evidence/performance-evidence.controller.ts#consume` |
 | `POST /api/v1/agent/internal/skill-run` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalSkillRun` |
 | `POST /api/v1/agent/internal/subagent-report` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalSubagentReport` |
 | `GET /api/v1/agent/jobs` | MAPPED | `jobs.list` | Reviewed behavioral equivalence: the REST adapter and jobs.list invoke the same Environment-owned Job operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/jobs.controller.ts#list` |

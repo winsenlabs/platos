@@ -6909,6 +6909,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/admin/memory-feedback/backfill",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/memory-feedback/backfill",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "MemoryFeedbackAdminController",
+            "handler": "runBackfill",
+            "source": "apps/agent/src/memory/memory-feedback-admin.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/agent/admin/privacy/erasures",
         "method": "POST",
         "path": "/api/v1/agent/admin/privacy/erasures",
@@ -7345,6 +7362,23 @@
             "controller": "AgentController",
             "handler": "resolveApproval",
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/agent/attachments/presigned",
+        "method": "POST",
+        "path": "/api/v1/agent/attachments/presigned",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "AttachmentUploadController",
+            "handler": "presign",
+            "source": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
             "requiresOperator": false
           }
         ]
@@ -8595,6 +8629,23 @@
         ]
       },
       {
+        "id": "GET /api/v1/agent/internal/performance-evidence/:requestId",
+        "method": "GET",
+        "path": "/api/v1/agent/internal/performance-evidence/:requestId",
+        "classification": "INTERNAL",
+        "policyRule": "agent-internal-prefix",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "PerformanceEvidenceController",
+            "handler": "consume",
+            "source": "apps/agent/src/performance-evidence/performance-evidence.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/agent/internal/skill-run",
         "method": "POST",
         "path": "/api/v1/agent/internal/skill-run",
@@ -9606,7 +9657,7 @@
             "controller": "ProvidersController",
             "handler": "listKeys",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9625,7 +9676,7 @@
             "controller": "ProvidersController",
             "handler": "createKey",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9644,7 +9695,7 @@
             "controller": "ProvidersController",
             "handler": "deleteKey",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9661,7 +9712,7 @@
             "controller": "ProvidersController",
             "handler": "updateKey",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9678,7 +9729,7 @@
             "controller": "ProvidersController",
             "handler": "rotateKeySecret",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9695,7 +9746,7 @@
             "controller": "ProvidersController",
             "handler": "createKeyWithSecret",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -12010,15 +12061,15 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 297,
-    "restRouteBindings": 297,
+    "restOperations": 300,
+    "restRouteBindings": 300,
     "ambiguousRestOperations": 0,
     "restClassifications": {
       "DEPRECATED": 15,
-      "INTERNAL": 13,
+      "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 142
+      "REST_ONLY": 144
     }
   }
 }
