@@ -27,15 +27,31 @@ upgrades transparently, so the only requirement is that the path points at `:310
 
 ### Apply / update
 
-```bash
-# Requires PLATOS_EDGE_HOST and PLATOS_EDGE_USER to be exported.
-# Access is key-only (WIN-291); password authentication is disabled on the edge host.
-: "${PLATOS_EDGE_HOST:?set PLATOS_EDGE_HOST — see the private operator runbook}"
-: "${PLATOS_EDGE_USER:=root}"
+Access is key-only (WIN-291) — password authentication is disabled on the edge
+host. The normal path runs as the **unprivileged `ubuntu` account** with
+`NOPASSWD` sudo. **Direct `root` login is recovery-only and must not be used
+here.**
 
-scp deploy/Caddyfile "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST:/etc/caddy/Caddyfile"
-ssh "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST" \
-  'caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl reload caddy'
+```bash
+: "${PLATOS_EDGE_HOST:?set PLATOS_EDGE_HOST — see the private operator runbook}"
+: "${PLATOS_EDGE_USER:=ubuntu}"
+
+# 1. Upload the candidate to a location the unprivileged account can write.
+scp deploy/Caddyfile "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST:/tmp/Caddyfile.new"
+
+# 2. Validate the CANDIDATE before it replaces the live file, back up, install,
+#    reload. Ordering matters: validating after the copy would mean an invalid
+#    config is already live by the time the check fails.
+ssh "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST" '
+  set -eu
+  sudo caddy validate --config /tmp/Caddyfile.new --adapter caddyfile
+  sudo cp -a /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak.$(date +%Y%m%d%H%M%S)"
+  sudo install -o root -g root -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile
+  sudo systemctl reload caddy
+  rm -f /tmp/Caddyfile.new
+'
 ```
 
-`systemctl reload caddy` is zero-downtime. Back up the existing file first.
+`systemctl reload caddy` is zero-downtime. The backup is taken automatically by
+step 2 above; timestamped copies accumulate in `/etc/caddy/` and should be pruned
+periodically.
