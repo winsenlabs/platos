@@ -1,6 +1,10 @@
 # Deploy config — test.platos.dev edge
 
-Host-level infra config for the `test.platos.dev` VPS (`srv1549678`, `187.127.142.170`).
+Host-level infra config for the `test.platos.dev` edge VPS.
+
+> **Host details are deliberately not committed.** Set `PLATOS_EDGE_HOST` in your shell
+> (see the private operator runbook for the current value). This repository is public;
+> host addresses, hostnames and root-shell runbooks must not be published here.
 These files live on the host **outside** `/opt/platos`, so they are NOT part of the
 `docker compose` tar-deploy — they are tracked here so the edge routing survives a
 box rebuild and is reviewable.
@@ -24,8 +28,14 @@ upgrades transparently, so the only requirement is that the path points at `:310
 ### Apply / update
 
 ```bash
-scp deploy/Caddyfile root@187.127.142.170:/etc/caddy/Caddyfile
-ssh root@187.127.142.170 'caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl reload caddy'
+# Requires PLATOS_EDGE_HOST and PLATOS_EDGE_USER to be exported.
+# Access is key-only (WIN-291); password authentication is disabled on the edge host.
+: "${PLATOS_EDGE_HOST:?set PLATOS_EDGE_HOST — see the private operator runbook}"
+: "${PLATOS_EDGE_USER:=root}"
+
+scp deploy/Caddyfile "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST:/etc/caddy/Caddyfile"
+ssh "$PLATOS_EDGE_USER@$PLATOS_EDGE_HOST" \
+  'caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl reload caddy'
 ```
 
 `systemctl reload caddy` is zero-downtime. Back up the existing file first.
