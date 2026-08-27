@@ -942,12 +942,16 @@ async function loadLedger(options, result) {
   if (parsed.errors.length || verdict.blocked.length) process.exitCode = 1;
 }
 
-async function runWrite(options) {
-  const { regenerate, formatClassification } = await import("./vocabulary/generate.mjs");
+// `root` is injectable so the write path -- including its self-gating -- can be
+// exercised against a temp repository, not only against this checkout.
+export async function runWrite(options, root = repositoryRoot) {
+  const { regenerate, formatClassification, validateRegeneratedManifest } = await import(
+    "./vocabulary/generate.mjs"
+  );
   const { formatReceipt } = await import("./vocabulary/receipt.mjs");
   const { writeFileSync } = await import("node:fs");
-  const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
-  const result = regenerate(repositoryRoot, {
+  const absoluteManifestPath = resolve(root, options.manifestPath);
+  const result = regenerate(root, {
     manifestPath: absoluteManifestPath,
     manifestLabel: options.manifestPath,
     revision: options.revision,
@@ -962,31 +966,30 @@ async function runWrite(options) {
     );
     console.log(REFUSAL_EXPLANATION);
     process.exitCode = 1;
-    return result;
+    return { ...result, wrote: false, refused: "review-required" };
   }
 
   // Never hand back a manifest this tool's own gate would reject. Without this
   // the tool can tell you to commit something that fails CI on a rule the
   // author never touched.
-  const { validateRegeneratedManifest } = await import("./vocabulary/generate.mjs");
-  const gate = validateRegeneratedManifest(repositoryRoot, result.nextManifest);
+  const gate = validateRegeneratedManifest(root, result.nextManifest);
   if (!gate.ok) {
     console.log("refusing to write: the regenerated manifest does not pass the gate.");
     for (const error of gate.errors.slice(0, 20)) console.log(`  ${error}`);
     if (gate.errors.length > 20) console.log(`  ...and ${gate.errors.length - 20} more`);
     console.log("  A relocation rewrote a path that a lifecycle rule constrains. Resolve by hand.");
     process.exitCode = 1;
-    return result;
+    return { ...result, wrote: false, refused: "gate-rejected", gate };
   }
 
   writeFileSync(absoluteManifestPath, result.manifestText);
   console.log(`wrote ${options.manifestPath}`);
   console.log(formatReceipt(result.receipt));
   if (options.receiptPath) {
-    writeFileSync(resolve(repositoryRoot, options.receiptPath), `${JSON.stringify(result.receipt, null, 2)}\n`);
+    writeFileSync(resolve(root, options.receiptPath), `${JSON.stringify(result.receipt, null, 2)}\n`);
   }
   if (options.ledgerPath) await loadLedger(options, result);
-  return result;
+  return { ...result, wrote: true, refused: null };
 }
 
 async function runCli() {

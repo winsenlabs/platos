@@ -9,6 +9,7 @@ import {
   applyCollisionAnchors,
   formatReport,
   parseCliOptions,
+  runWrite,
   scanRepository,
   sha256,
   validateManifest,
@@ -1229,4 +1230,79 @@ test("argument parsing accepts both flag forms and rejects anything unknown", ()
   assert.match(parseCliOptions(["--since"]).errors.join(), /requires a value/u);
   assert.match(parseCliOptions(["--since", "--check"]).errors.join(), /requires a value/u);
   assert.match(parseCliOptions(["--check=yes"]).errors.join(), /does not take a value/u);
+});
+
+test("fix-H: a committed pure rename is detected via the v1 merge-base without --since", () => {
+  // The committed-move fallback. On a real pull request the rename is already
+  // in HEAD by the time CI runs, so HEAD-vs-worktree shows nothing and the
+  // feature only engages if it falls back to the merge base with an upstream.
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  withScenario({ [from]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    scenario.branch("v1"); // the baseline the fallback resolves to
+    scenario.move(from, to);
+    scenario.commit("rename into legacy/"); // the move now lives in HEAD, not the worktree
+
+    // No --since: revision defaults to HEAD. This can only classify as a move
+    // if merge-base(HEAD, v1) is consulted.
+    const result = scenario.run();
+    assert.equal(
+      result.classification.counts.moved,
+      1,
+      "a committed content move must not degrade to removed+added"
+    );
+    assert.equal(result.classification.counts["path-rebound"], 1, "the path anchor rides along");
+    assert.equal(result.classification.counts.removed, 0);
+    assert.equal(result.classification.counts.added, 0);
+    assert.deepEqual(
+      result.moves.map((move) => [move.from, move.to, move.identical]),
+      [[from, to, true]]
+    );
+    assert(
+      result.moveRevisions.length >= 2,
+      "the fallback must have added a revision beyond HEAD"
+    );
+  });
+});
+
+test("fix-I: runWrite refuses a gate-rejecting candidate and leaves the manifest byte-identical", async () => {
+  // MAJOR-3 at the CLI boundary, not just in the helper. migration-archaeology
+  // is legal only on an immutable Prisma migration.sql; relocating one out of
+  // prisma/migrations yields a manifest the gate rejects, and the write path
+  // itself must catch that.
+  const from = "db/prisma/migrations/20260101000000_example/migration.sql";
+  const to = "db/archive/migration.sql";
+  const scenario = createScenario({ [from]: `CREATE ${TOKEN.vendor.toUpperCase()} "example";\n` });
+  const savedExit = process.exitCode;
+  try {
+    scenario.seedManifest({
+      classification: "migration-archaeology",
+      owner: "Data Platform",
+      rationale: "Preserves immutable SQL migration syntax byte-for-byte.",
+      removalPolicy: "Remove only with its database lineage.",
+      removalEvent: "The immutable migration and every lineage that applied it are retired.",
+    });
+    scenario.move(from, to); // out of prisma/migrations -> the gate will reject it
+    const before = sha256(readFileSync(scenario.manifestPath, "utf8"));
+
+    const outcome = await runWrite(
+      { manifestPath: scenario.manifestPath, revision: "HEAD", write: true },
+      scenario.root
+    );
+
+    assert.equal(outcome.wrote, false, "runWrite must not write a manifest its own gate rejects");
+    assert.equal(outcome.refused, "gate-rejected");
+    assert.match(outcome.gate.errors.join("\n"), /restricted to immutable Prisma migration\.sql files/u);
+    assert.equal(
+      sha256(readFileSync(scenario.manifestPath, "utf8")),
+      before,
+      "the manifest bytes must be untouched after a refusal"
+    );
+  } finally {
+    scenario.cleanup();
+    // runWrite sets process.exitCode on a refusal; don't let that leak into the
+    // test runner's own exit status.
+    process.exitCode = savedExit;
+  }
 });

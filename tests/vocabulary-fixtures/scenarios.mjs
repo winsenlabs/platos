@@ -84,6 +84,17 @@ export function createScenario(files) {
       git(root, ["mv", from, to]);
     },
 
+    /** Point a named branch at the current HEAD, e.g. the pre-move baseline. */
+    branch(name) {
+      git(root, ["branch", "-f", name, "HEAD"]);
+    },
+
+    /** Commit whatever is staged, so a move can be tested as already committed. */
+    commit(message = "change") {
+      git(root, ["add", "--all"]);
+      git(root, ["commit", "-q", "-m", message]);
+    },
+
     remove(path) {
       git(root, ["rm", "-q", path]);
     },

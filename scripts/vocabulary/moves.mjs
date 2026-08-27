@@ -32,7 +32,13 @@ const NUL = String.fromCharCode(0);
 
 function git(root, args, { allowFailure = false, encoding = "utf8" } = {}) {
   try {
-    return execFileSync("git", args, { cwd: root, encoding, maxBuffer: 1024 * 1024 * 256 });
+    // A tolerated probe (allowFailure) must be silent: the merge-base fallback
+    // asks about upstream refs that a fresh clone need not have, and git writes
+    // "fatal: Not a valid object name" to stderr for each absent one. Inheriting
+    // that stderr would spray fatal: lines across every clean CI run. Capture it
+    // instead so only genuine, non-tolerated failures surface it (re-thrown).
+    const stdio = allowFailure ? ["ignore", "pipe", "pipe"] : ["ignore", "pipe", "inherit"];
+    return execFileSync("git", args, { cwd: root, encoding, maxBuffer: 1024 * 1024 * 256, stdio });
   } catch (error) {
     if (allowFailure) return null;
     throw error;
