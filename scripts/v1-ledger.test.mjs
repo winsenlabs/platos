@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
@@ -17,6 +20,7 @@ import {
   gateSafeJson,
   globToRegExp,
   listTrackedFiles,
+  looksLikeLedgerArtifact,
   measureFile,
   readVocabularyPinnedPaths,
   referenceNeedles,
@@ -288,6 +292,86 @@ test("referenceNeedles covers the path, the site-root path, and the basename", (
     "/docs/images/x.png",
     "x.png",
   ]);
+});
+
+// Builds a throwaway git repository on disk and stages files, so buildLedger
+// runs its REAL enumeration and file-reading corpus path with no injected
+// corpus or measure -- the code that mutation N4 disabled while all the
+// injected-corpus tests above stayed green.
+function realRepoFixture(files) {
+  const root = mkdtempSync(join(tmpdir(), "platos-ledger-"));
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  for (const [path, content] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), content);
+  }
+  execFileSync("git", ["add", "--all"], { cwd: root });
+  return root;
+}
+
+const orphanRulesDoc = docWithArea("docs-content", [
+  { ...goodRule, id: "orphan-delete", match: ["docs/img/orphan.png"], kind: "asset", disposition: "delete", reached_via: ["NONE"] },
+  { ...goodRule, id: "docs-catch-all", match: ["docs/**"], kind: "doc", disposition: "retain", reached_via: ["docs-reference"] },
+]);
+
+test("the live build reads files and catches a real reference to a delete candidate", () => {
+  // Same tree twice, differing only in whether a page cites the orphan. This
+  // exercises the real readFileSync corpus population: disabling it (N4) makes
+  // both cases report zero references and this assertion fails.
+  const referenced = realRepoFixture({
+    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
+    "docs/page.md": "gallery: ![shot](./img/orphan.png)\n",
+  });
+  try {
+    const result = buildLedger(referenced, orphanRulesDoc);
+    assert.equal(result.deleteReferences.length, 1);
+    assert.equal(result.deleteReferences[0].path, "docs/img/orphan.png");
+    assert.ok(result.deleteReferences[0].referencedBy.includes("docs/page.md"));
+    const failures = checkInvariants(result, listTrackedFiles(referenced), new Set());
+    assert.ok(failures.some((f) => f.includes("docs/img/orphan.png is classified delete but is referenced by")));
+  } finally {
+    rmSync(referenced, { recursive: true, force: true });
+  }
+
+  const clean = realRepoFixture({
+    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
+    "docs/page.md": "gallery: no image here\n",
+  });
+  try {
+    const result = buildLedger(clean, orphanRulesDoc);
+    assert.deepEqual(result.deleteReferences, []);
+    assert.deepEqual(checkInvariants(result, listTrackedFiles(clean), new Set()), []);
+  } finally {
+    rmSync(clean, { recursive: true, force: true });
+  }
+});
+
+test("corpus exclusion of the rules file is independent of argument spelling", () => {
+  // A committed rules file lists every delete candidate; it must stay out of the
+  // corpus however --rules is spelled. With a string-equality exclusion the "./"
+  // form leaks the rules file in and the seven real deletes falsely fail.
+  const result = buildLedger(repositoryRoot, rulesDocument, { rulesPath: "./docs/v1-ledger-rules.json" });
+  assert.deepEqual(result.deleteReferences, []);
+});
+
+test("an emitted ledger artifact is excluded from the corpus by its shape", () => {
+  const artifact = JSON.stringify({
+    version: 1,
+    summary: { classificationSha256: "0".repeat(64) },
+    rows: [{ path: "docs/img/orphan.png", disposition: "delete" }],
+  });
+  // The artifact names the orphan, but as ledger data, so it is not a reference.
+  assert.equal(looksLikeLedgerArtifact(artifact), true);
+  const repo = realRepoFixture({
+    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
+    "docs/v1-ledger.json": artifact,
+  });
+  try {
+    const result = buildLedger(repo, orphanRulesDoc);
+    assert.deepEqual(result.deleteReferences, []);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
 
 // ---------------------------------------------------------------------------

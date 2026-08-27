@@ -11,7 +11,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { RULES as VOCABULARY_RULES } from "./vocabulary-boundary.mjs";
@@ -407,6 +407,35 @@ export function referenceNeedles(path) {
   return [...new Set([path, `/${path}`, basename])];
 }
 
+// Normalise a caller-supplied path to the repository-relative form that corpus
+// keys use, so an exclusion works regardless of how the argument was spelled
+// (`./docs/x.json`, `docs/x.json`, or an absolute path all collapse to the same
+// key). A path outside the repository yields a `..`-prefixed string that can
+// never collide with a tracked file, which is harmless.
+export function toRepoRelative(root, candidate) {
+  if (candidate === null || candidate === undefined) return null;
+  return relative(root, resolve(root, candidate));
+}
+
+// A committed or pointed-at emitted ledger lists every delete candidate as data,
+// not as a reference, so it must never enter the reachability corpus whatever it
+// is named. Detected by shape rather than by path: a JSON object with a rows
+// array and a summary.classificationSha256 string is one of our artifacts.
+export function looksLikeLedgerArtifact(text) {
+  if (!text.includes("classificationSha256")) return false;
+  try {
+    const parsed = JSON.parse(text);
+    return (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      Array.isArray(parsed.rows) &&
+      typeof parsed.summary?.classificationSha256 === "string"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function scanReachability(deletePaths, corpus) {
   const references = [];
   for (const path of deletePaths) {
@@ -436,8 +465,14 @@ export function buildLedger(root, document, options = {}) {
   const injectedMeasure = options.measure;
   // The rules document names every delete candidate as a disposition decision;
   // that is not a reachability reference, so it is kept out of the corpus. So is
-  // any emitted ledger artifact the caller points at.
-  const corpusExclude = new Set(options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out]);
+  // any emitted ledger artifact (excluded by shape below). Exclusions are
+  // resolved to repo-relative real paths so the result never depends on how the
+  // --rules or --out argument was spelled.
+  const corpusExclude = new Set(
+    (options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out])
+      .map((candidate) => toRepoRelative(root, candidate))
+      .filter((candidate) => candidate !== null)
+  );
   const corpus = options.corpus ?? new Map();
   const readCorpus = options.corpus === undefined && injectedMeasure === undefined;
 
@@ -462,7 +497,14 @@ export function buildLedger(root, document, options = {}) {
     } else {
       const measured = measureBuffer(readFileSync(join(root, path)));
       size = { bytes: measured.bytes, lines: measured.lines, binary: measured.binary };
-      if (readCorpus && measured.text !== null && !corpusExclude.has(path)) corpus.set(path, measured.text);
+      if (
+        readCorpus &&
+        measured.text !== null &&
+        !corpusExclude.has(path) &&
+        !looksLikeLedgerArtifact(measured.text)
+      ) {
+        corpus.set(path, measured.text);
+      }
     }
     rows.push({
       path,
