@@ -12,7 +12,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnauthorizedException } from "@nestjs/common";
 import { mintSessionToken } from "@platosdev/token-mint";
-import { isPublicMcpTransport, ScopeGuard } from "./scope.guard";
+import {
+  isPublicDocsMcpTransport,
+  isPublicChannelCallback,
+  isPublicMcpTransport,
+  isPublicOAuthRoute,
+  isPublicTokenMintRoute,
+  ScopeGuard,
+} from "./scope.guard";
 import { AuthService } from "./auth.service";
 import { AgentController } from "../agent-runtime/agent.controller";
 import type { ExecutionContext } from "@nestjs/common";
@@ -23,7 +30,7 @@ function mockExecutionContext(
   headers: HeaderMap = {},
   url = "/api/v1/agent/threads",
   preScoped?: Record<string, unknown>,
-  method = "GET",
+  method = "GET"
 ): ExecutionContext {
   const request: Record<string, unknown> = { headers, url, method };
   if (preScoped) request.scope = preScoped;
@@ -123,15 +130,17 @@ describe("ScopeGuard — pre-scoped short-circuit", () => {
   });
 });
 
-describe("ScopeGuard — health/test allowlist", () => {
+describe("ScopeGuard — health allowlist", () => {
   it("allows /api/health without auth", async () => {
     const guard = new ScopeGuard();
     await expect(guard.canActivate(mockExecutionContext({}, "/api/health"))).resolves.toBe(true);
   });
 
-  it("allows /test/* without auth", async () => {
+  it("does not reserve a public /test/* prefix in the global guard", async () => {
     const guard = new ScopeGuard();
-    await expect(guard.canActivate(mockExecutionContext({}, "/test/ping"))).resolves.toBe(true);
+    await expect(guard.canActivate(mockExecutionContext({}, "/test/ping"))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });
 
@@ -156,6 +165,99 @@ describe("ScopeGuard — exact MCP protocol isolation", () => {
   });
 });
 
+describe("ScopeGuard — exact public self-auth route isolation", () => {
+  it.each([
+    ["GET", "/mcp"],
+    ["POST", "/mcp?client=inspector"],
+    ["GET", "/mcp/docs"],
+    ["GET", "/mcp/docs/sse?sessionId=one"],
+    ["POST", "/mcp/messages?sessionId=one"],
+    ["POST", "/mcp/docs/messages?sessionId=one"],
+  ])("recognizes public Docs MCP %s %s", (method, url) => {
+    expect(isPublicDocsMcpTransport(method, url)).toBe(true);
+  });
+
+  it.each([
+    ["DELETE", "/mcp"],
+    ["POST", "/mcp/sse"],
+    ["GET", "/mcp/messages"],
+    ["GET", "/mcp/docs-admin"],
+    ["POST", "/mcp/docs/tokens"],
+    ["POST", "/mcp/docs/messages/extra"],
+  ])("keeps Docs MCP near-miss %s %s behind normal scope auth", (method, url) => {
+    expect(isPublicDocsMcpTransport(method, url)).toBe(false);
+  });
+
+  it.each([
+    ["POST", "/api/v1/public/guest-token"],
+    ["POST", "/api/v1/entities/walle-mcp/session-tokens?ttl=300"],
+  ])("recognizes public token mint %s %s", (method, url) => {
+    expect(isPublicTokenMintRoute(method, url)).toBe(true);
+  });
+
+  it.each([
+    ["GET", "/api/v1/public/guest-token"],
+    ["POST", "/api/v1/public/guest-token/rotate"],
+    ["POST", "/api/v1/publicity/guest-token"],
+    ["GET", "/api/v1/entities/walle-mcp/session-tokens"],
+    ["POST", "/api/v1/entities/walle-mcp/session-tokens/rotate"],
+    ["POST", "/api/v1/entities/walle-mcp/not-session-tokens"],
+  ])("keeps token-mint near-miss %s %s behind normal scope auth", (method, url) => {
+    expect(isPublicTokenMintRoute(method, url)).toBe(false);
+  });
+});
+
+describe("ScopeGuard — exact channel callback isolation", () => {
+  it.each([
+    ["POST", "/api/v1/channels/inbound/connection_1/secret_1"],
+    ["GET", "/api/v1/channels/inbound/connection_1/secret_1"],
+    ["GET", "/api/v1/channels/oauth/app_1/install"],
+    ["GET", "/api/v1/channels/oauth/app_1/callback?code=one"],
+    ["POST", "/api/v1/channels/apps/app_1/events"],
+    ["GET", "/api/v1/channels/link/callback?code=one"],
+    ["GET", "/api/v1/channels/link/nonce_1"],
+  ])("recognizes provider callback %s %s", (method, url) => {
+    expect(isPublicChannelCallback(method, url)).toBe(true);
+  });
+
+  it.each([
+    ["GET", "/api/v1/channels/apps/app_1"],
+    ["POST", "/api/v1/channels/oauth/app_1/install"],
+    ["GET", "/api/v1/channels/oauth/app_1/callback/admin"],
+    ["POST", "/api/v1/channels/apps/app_1/events/replay"],
+    ["POST", "/api/v1/channels/link/callback"],
+    ["GET", "/api/v1/channels/inbound/connection_1"],
+  ])("keeps non-callback sibling %s %s scoped", (method, url) => {
+    expect(isPublicChannelCallback(method, url)).toBe(false);
+  });
+});
+
+describe("ScopeGuard — exact OAuth protocol isolation", () => {
+  it.each([
+    ["GET", "/.well-known/oauth-authorization-server"],
+    ["POST", "/oauth/token"],
+    ["GET", "/oauth/authorize?client_id=one"],
+    ["POST", "/oauth/entity/entity_1/register"],
+    ["GET", "/oauth/entity/entity_1/authorize"],
+    ["POST", "/oauth/entity/entity_1/authorize/anonymous"],
+    ["GET", "/oauth/entity/entity_1/oidc-callback?code=one"],
+  ])("recognizes OAuth endpoint %s %s", (method, url) => {
+    expect(isPublicOAuthRoute(method, url)).toBe(true);
+  });
+
+  it.each([
+    ["GET", "/oauth"],
+    ["GET", "/oauth/token"],
+    ["POST", "/oauth/entity/entity_1/authorize"],
+    ["GET", "/oauth/entity/entity_1/token"],
+    ["POST", "/oauth/entity/entity_1/oidc-callback"],
+    ["GET", "/oauth/admin/tokens"],
+    ["GET", "/.well-known/private-config"],
+  ])("keeps OAuth near-miss %s %s scoped", (method, url) => {
+    expect(isPublicOAuthRoute(method, url)).toBe(false);
+  });
+});
+
 describe("ScopeGuard — Path 2 direct headers", () => {
   it("accepts 4-header scope from trusted internal origin (no X-Forwarded-For)", async () => {
     const guard = new ScopeGuard();
@@ -166,7 +268,7 @@ describe("ScopeGuard — Path 2 direct headers", () => {
       "x-platos-user-id": "user_1",
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    const req = (ctx.switchToHttp().getRequest() as any);
+    const req = ctx.switchToHttp().getRequest() as any;
     expect(req.scope.organizationId).toBe("org_1");
     expect(req.scope.projectId).toBe("proj_1");
     expect(req.scope.environmentId).toBe("env_1");
@@ -207,7 +309,7 @@ describe("ScopeGuard — Path 2 direct headers", () => {
       "x-platos-user-token": "opaque.user.jwt",
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    const req = (ctx.switchToHttp().getRequest() as any);
+    const req = ctx.switchToHttp().getRequest() as any;
     expect(req.scope.entityId).toBe("fandesk-main");
     expect(req.scope.userToken).toBe("opaque.user.jwt");
   });
@@ -231,13 +333,13 @@ describe("ScopeGuard — Path 2 direct headers", () => {
         },
         url,
         undefined,
-        method,
+        method
       );
 
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
       expect(authService.verifyAccessKey).not.toHaveBeenCalled();
       expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
-    },
+    }
   );
 
   it.each([
@@ -247,39 +349,42 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     ["POST", "/api/v1/agent/access-key/"],
     ["POST", "/api/v1/agent/access-key/rotate"],
     ["POST", "/api/v1/agent/access-key/origins/extra?from=dashboard"],
-  ])("rejects trusted direct-header %s %s when the AccessKey is missing or invalid", async (method, url) => {
-    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
-    const guard = new ScopeGuard(authService as any);
-    const ctx = mockExecutionContext(
-      {
-        "x-platos-organization-id": "org_1",
-        "x-platos-project-id": "proj_1",
-        "x-platos-environment-id": "env_1",
-        "x-platos-user-id": "user_1",
-      },
-      url,
-      undefined,
-      method,
-    );
+  ])(
+    "rejects trusted direct-header %s %s when the AccessKey is missing or invalid",
+    async (method, url) => {
+      const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext(
+        {
+          "x-platos-organization-id": "org_1",
+          "x-platos-project-id": "proj_1",
+          "x-platos-environment-id": "env_1",
+          "x-platos-user-id": "user_1",
+        },
+        url,
+        undefined,
+        method
+      );
 
-    await expect(guard.canActivate(ctx)).resolves.toBe(false);
-    expect(authService.verifyAccessKey).toHaveBeenCalledWith(
-      {
-        organizationId: "org_1",
-        projectId: "proj_1",
-        environmentId: "env_1",
-        userId: "user_1",
-      },
-      undefined,
-      undefined,
-    );
-    const response = ctx.switchToHttp().getResponse() as any;
-    expect(response.status).toHaveBeenCalledWith(401);
-    expect(response.json).toHaveBeenCalledWith({
-      error: "INVALID_ACCESS_KEY",
-      message: "X-Platos-Api-Key is missing or invalid for this scope.",
-    });
-  });
+      await expect(guard.canActivate(ctx)).resolves.toBe(false);
+      expect(authService.verifyAccessKey).toHaveBeenCalledWith(
+        {
+          organizationId: "org_1",
+          projectId: "proj_1",
+          environmentId: "env_1",
+          userId: "user_1",
+        },
+        undefined,
+        undefined
+      );
+      const response = ctx.switchToHttp().getResponse() as any;
+      expect(response.status).toHaveBeenCalledWith(401);
+      expect(response.json).toHaveBeenCalledWith({
+        error: "INVALID_ACCESS_KEY",
+        message: "X-Platos-Api-Key is missing or invalid for this scope.",
+      });
+    }
+  );
 
   it("allows an arbitrary trusted direct-header route with a valid AccessKey", async () => {
     const authService = { verifyAccessKey: vi.fn().mockResolvedValue(true) };
@@ -295,7 +400,7 @@ describe("ScopeGuard — Path 2 direct headers", () => {
       },
       "/api/v1/agent/threads?agentId=agent_1",
       undefined,
-      "POST",
+      "POST"
     );
 
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
@@ -307,7 +412,7 @@ describe("ScopeGuard — Path 2 direct headers", () => {
         userId: "user_1",
       },
       "platos_live_valid",
-      "https://app.example",
+      "https://app.example"
     );
   });
 
@@ -317,13 +422,16 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     try {
       const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
       const guard = new ScopeGuard(authService as any);
-      const ctx = mockExecutionContext({
-        "x-platos-organization-id": "org_1",
-        "x-platos-project-id": "proj_1",
-        "x-platos-environment-id": "env_1",
-        "x-platos-user-id": "user_1",
-        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
-      }, "/api/v1/agent/entities/entity_1");
+      const ctx = mockExecutionContext(
+        {
+          "x-platos-organization-id": "org_1",
+          "x-platos-project-id": "proj_1",
+          "x-platos-environment-id": "env_1",
+          "x-platos-user-id": "user_1",
+          "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+        },
+        "/api/v1/agent/entities/entity_1"
+      );
 
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
       expect(authService.verifyAccessKey).not.toHaveBeenCalled();
@@ -338,23 +446,31 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
     try {
       const h = makeAuthHarness();
-      const ctx = mockExecutionContext({
-        "x-platos-organization-id": h.scope.organizationId,
-        "x-platos-project-id": h.scope.projectId,
-        "x-platos-environment-id": h.scope.environmentId,
-        "x-platos-user-id": h.scope.userId,
-        "x-platos-agent-id": "agent_A",
-        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
-      }, "/api/v1/memory");
+      const ctx = mockExecutionContext(
+        {
+          "x-platos-organization-id": h.scope.organizationId,
+          "x-platos-project-id": h.scope.projectId,
+          "x-platos-environment-id": h.scope.environmentId,
+          "x-platos-user-id": h.scope.userId,
+          "x-platos-agent-id": "agent_A",
+          "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+        },
+        "/api/v1/memory"
+      );
 
       await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
       expect((ctx.switchToHttp().getRequest() as any).scope).toMatchObject({
         principal: "operator",
         agentId: "agent_A",
       });
-      expect(h.prisma.agentBinding.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ agentId: "agent_A", environmentId: h.scope.environmentId }),
-      }));
+      expect(h.prisma.agentBinding.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            agentId: "agent_A",
+            environmentId: h.scope.environmentId,
+          }),
+        })
+      );
     } finally {
       if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
       else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
@@ -366,19 +482,24 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
     try {
       const h = makeAuthHarness();
-      const ctx = mockExecutionContext({
-        "x-platos-organization-id": h.scope.organizationId,
-        "x-platos-project-id": h.scope.projectId,
-        "x-platos-environment-id": h.scope.environmentId,
-        "x-platos-user-id": h.scope.userId,
-        "x-platos-agent-id": "agent_foreign",
-        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
-      }, "/api/v1/memory");
+      const ctx = mockExecutionContext(
+        {
+          "x-platos-organization-id": h.scope.organizationId,
+          "x-platos-project-id": h.scope.projectId,
+          "x-platos-environment-id": h.scope.environmentId,
+          "x-platos-user-id": h.scope.userId,
+          "x-platos-agent-id": "agent_foreign",
+          "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+        },
+        "/api/v1/memory"
+      );
 
       await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(false);
       const response = ctx.switchToHttp().getResponse() as any;
       expect(response.status).toHaveBeenCalledWith(403);
-      expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ error: "INVALID_AGENT_SCOPE" }));
+      expect(response.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "INVALID_AGENT_SCOPE" })
+      );
       expect((ctx.switchToHttp().getRequest() as any).scope).toBeUndefined();
     } finally {
       if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
@@ -388,13 +509,16 @@ describe("ScopeGuard — Path 2 direct headers", () => {
 
   it("rejects an otherwise valid Agent pin without server control-plane authentication", async () => {
     const h = makeAuthHarness();
-    const ctx = mockExecutionContext({
-      "x-platos-organization-id": h.scope.organizationId,
-      "x-platos-project-id": h.scope.projectId,
-      "x-platos-environment-id": h.scope.environmentId,
-      "x-platos-user-id": h.scope.userId,
-      "x-platos-agent-id": "agent_A",
-    }, "/api/v1/memory");
+    const ctx = mockExecutionContext(
+      {
+        "x-platos-organization-id": h.scope.organizationId,
+        "x-platos-project-id": h.scope.projectId,
+        "x-platos-environment-id": h.scope.environmentId,
+        "x-platos-user-id": h.scope.userId,
+        "x-platos-agent-id": "agent_A",
+      },
+      "/api/v1/memory"
+    );
 
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(false);
     expect(h.prisma.agentBinding.findFirst).not.toHaveBeenCalled();
@@ -420,7 +544,7 @@ describe("ScopeGuard — Path 1 session token", () => {
       "x-platos-session-token": token!,
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    const req = (ctx.switchToHttp().getRequest() as any);
+    const req = ctx.switchToHttp().getRequest() as any;
     expect(req.scope).toMatchObject({
       organizationId: h.scope.organizationId,
       entityId: h.scope.entityId,
@@ -464,10 +588,7 @@ describe("ScopeGuard — Path 1 session token", () => {
       claims: h.scope,
       ttlSeconds: 300,
     });
-    const ctx = mockExecutionContext(
-      { "x-platos-session-token": token },
-      "/api/v1/agent/budgets",
-    );
+    const ctx = mockExecutionContext({ "x-platos-session-token": token }, "/api/v1/agent/budgets");
 
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     const req = ctx.switchToHttp().getRequest() as any;
@@ -486,11 +607,12 @@ describe("ScopeGuard — Path 1 session token", () => {
     const calls = [
       () => controller.listBudgets(req),
       () => controller.budgetStatus(req),
-      () => controller.upsertBudget(req, {
-        scopeType: "environment",
-        period: "monthly",
-        limitCents: 10_000,
-      }),
+      () =>
+        controller.upsertBudget(req, {
+          scopeType: "environment",
+          period: "monthly",
+          limitCents: 10_000,
+        }),
       () => controller.deleteBudget(req, "cap-1"),
       () => controller.overrideBudget(req, "cap-1", { minutes: 60 }),
     ];
@@ -518,10 +640,7 @@ describe("ScopeGuard — Path 1 session token", () => {
       userId: h.scope.userId,
       extraClaims: { isGuest: true },
     });
-    const ctx = mockExecutionContext(
-      { "x-platos-session-token": token! },
-      "/api/v1/agent/budgets",
-    );
+    const ctx = mockExecutionContext({ "x-platos-session-token": token! }, "/api/v1/agent/budgets");
 
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     const req = ctx.switchToHttp().getRequest() as any;
@@ -540,11 +659,12 @@ describe("ScopeGuard — Path 1 session token", () => {
     const calls = [
       () => controller.listBudgets(req),
       () => controller.budgetStatus(req),
-      () => controller.upsertBudget(req, {
-        scopeType: "environment",
-        period: "monthly",
-        limitCents: 10_000,
-      }),
+      () =>
+        controller.upsertBudget(req, {
+          scopeType: "environment",
+          period: "monthly",
+          limitCents: 10_000,
+        }),
       () => controller.deleteBudget(req, "cap-1"),
       () => controller.overrideBudget(req, "cap-1", { minutes: 60 }),
     ];
@@ -578,9 +698,9 @@ describe("ScopeGuard — Path 1 session token", () => {
 
       const ctx = mockExecutionContext({ "x-platos-session-token": token! });
       await expect(new ScopeGuard(h.auth).canActivate(ctx)).rejects.toBeInstanceOf(
-        UnauthorizedException,
+        UnauthorizedException
       );
-    },
+    }
   );
 
   it("runs the AccessKey check only after session validation succeeds", async () => {
@@ -597,7 +717,7 @@ describe("ScopeGuard — Path 1 session token", () => {
     const h = makeAuthHarness();
     const ctx = mockExecutionContext({ "x-platos-session-token": "payload.signature" });
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).rejects.toBeInstanceOf(
-      UnauthorizedException,
+      UnauthorizedException
     );
   });
 });
@@ -617,6 +737,8 @@ describe("ScopeGuard — admin token path", () => {
       const ctx = mockExecutionContext(
         { "x-platos-internal-auth": "admin-secret-for-test" },
         "/api/v1/agent/monitoring/cost/catalog",
+        undefined,
+        "POST"
       );
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
     } finally {
@@ -632,11 +754,59 @@ describe("ScopeGuard — admin token path", () => {
       const ctx = mockExecutionContext(
         { "x-platos-internal-auth": "WRONG" },
         "/api/v1/agent/monitoring/cost/catalog",
+        undefined,
+        "POST"
       );
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
       process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
+  });
+
+  it("allows only the registered verb for internal callbacks and observability status", async () => {
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
+    const headers = { "x-platos-internal-auth": "admin-secret-for-test" };
+    try {
+      const guard = new ScopeGuard();
+      await expect(
+        guard.canActivate(
+          mockExecutionContext(
+            headers,
+            "/api/v1/agent/monitoring/observability/status",
+            undefined,
+            "GET"
+          )
+        )
+      ).resolves.toBe(true);
+      await expect(
+        guard.canActivate(
+          mockExecutionContext(
+            headers,
+            "/api/v1/agent/monitoring/observability/status",
+            undefined,
+            "POST"
+          )
+        )
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(
+        guard.canActivate(
+          mockExecutionContext(headers, "/api/v1/agent/internal/compaction/extra", undefined, "POST")
+        )
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    } finally {
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
+    }
+  });
+
+  it("lets the HMAC-authenticated env invalidation callback reach its controller", async () => {
+    const guard = new ScopeGuard();
+    await expect(
+      guard.canActivate(mockExecutionContext({}, "/internal/env/invalidate", undefined, "POST"))
+    ).resolves.toBe(true);
+    await expect(
+      guard.canActivate(mockExecutionContext({}, "/internal/env/invalidate/extra", undefined, "POST"))
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   // LAUNCH-11 — durable compaction callback.
@@ -648,6 +818,8 @@ describe("ScopeGuard — admin token path", () => {
       const ctx = mockExecutionContext(
         { "x-platos-internal-auth": "admin-secret-for-test" },
         "/api/v1/agent/internal/compaction",
+        undefined,
+        "POST"
       );
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
     } finally {
@@ -663,6 +835,8 @@ describe("ScopeGuard — admin token path", () => {
       const ctx = mockExecutionContext(
         { "x-platos-internal-auth": "WRONG" },
         "/api/v1/agent/internal/compaction",
+        undefined,
+        "POST"
       );
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
@@ -675,7 +849,7 @@ describe("ScopeGuard — admin token path", () => {
     process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
-      const ctx = mockExecutionContext({}, "/api/v1/agent/internal/compaction");
+      const ctx = mockExecutionContext({}, "/api/v1/agent/internal/compaction", undefined, "POST");
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
       process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
@@ -698,6 +872,8 @@ describe("ScopeGuard — admin token path", () => {
         const ctx = mockExecutionContext(
           { "x-platos-internal-auth": "admin-secret-for-test" },
           path,
+          undefined,
+          "POST"
         );
         await expect(guard.canActivate(ctx)).resolves.toBe(true);
       } finally {
@@ -710,7 +886,12 @@ describe("ScopeGuard — admin token path", () => {
       process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
       try {
         const guard = new ScopeGuard();
-        const ctx = mockExecutionContext({ "x-platos-internal-auth": "WRONG" }, path);
+        const ctx = mockExecutionContext(
+          { "x-platos-internal-auth": "WRONG" },
+          path,
+          undefined,
+          "POST"
+        );
         await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
       } finally {
         process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
@@ -722,7 +903,7 @@ describe("ScopeGuard — admin token path", () => {
       process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
       try {
         const guard = new ScopeGuard();
-        const ctx = mockExecutionContext({}, path);
+        const ctx = mockExecutionContext({}, path, undefined, "POST");
         await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
       } finally {
         process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;

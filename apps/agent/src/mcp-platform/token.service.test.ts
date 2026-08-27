@@ -67,7 +67,7 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
         scope: { ...scope, organizationId: "forged_org" },
         name: "automation",
         permissions: ["agents.read"],
-      }),
+      })
     ).rejects.toThrow("Environment not found in scope");
     expect(prisma.mcpToken.create).not.toHaveBeenCalled();
   });
@@ -113,11 +113,32 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
     await expect(service.verify("plt_mcp_valid")).resolves.toBeNull();
   });
 
+  it("revalidates an established transport by opaque row id without a raw bearer", async () => {
+    prisma.mcpToken.findUnique.mockResolvedValue({
+      id: "token_1",
+      tokenHash: tokenHash("plt_mcp_valid"),
+      permissions: ["agents.read"],
+      mintedByUserId: "user_1",
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      tier: "scope",
+      environment: { id: "env_1", project: { id: "proj_1", organizationId: "org_1" } },
+    });
+
+    await expect(service.verifyById("token_1")).resolves.toMatchObject({
+      id: "token_1",
+      credential: { kind: "platform", tokenId: "token_1" },
+    });
+    expect(prisma.mcpToken.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "token_1" } })
+    );
+  });
+
   it("uses canonical organization ancestry for the admin-tier role gate", async () => {
     prisma.organizationMembership.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.mint({ ...({ scope, name: "admin", permissions: ["*"] }), tier: "admin" }),
+      service.mint({ ...{ scope, name: "admin", permissions: ["*"] }, tier: "admin" })
     ).rejects.toBeInstanceOf(AdminMintForbiddenError);
     expect(prisma.organizationMembership.findFirst).toHaveBeenCalledWith({
       where: {
@@ -134,11 +155,33 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
     const createdAt = new Date("2026-08-14T00:00:00.000Z");
     prisma.mcpToken.count.mockResolvedValue(3);
     prisma.mcpToken.findMany.mockResolvedValue([
-      { id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", mintedByUserId: "user_1", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
+      {
+        id: "token_2",
+        name: "two",
+        permissions: ["agents.read"],
+        tier: "scope",
+        mintedByUserId: "user_1",
+        expiresAt: null,
+        lastUsedAt: null,
+        revokedAt: null,
+        createdAt,
+      },
     ]);
 
     await expect(service.list(scope, { limit: 1, offset: 1 })).resolves.toEqual({
-      tokens: [{ id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", mintedByUserId: "user_1", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt }],
+      tokens: [
+        {
+          id: "token_2",
+          name: "two",
+          permissions: ["agents.read"],
+          tier: "scope",
+          mintedByUserId: "user_1",
+          expiresAt: null,
+          lastUsedAt: null,
+          revokedAt: null,
+          createdAt,
+        },
+      ],
       total: 3,
       limit: 1,
       offset: 1,
@@ -149,9 +192,11 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: 1,
         take: 1,
-      }),
+      })
     );
-    await expect(service.list(scope, { limit: Number.NaN, offset: Number.NaN })).resolves.toMatchObject({
+    await expect(
+      service.list(scope, { limit: Number.NaN, offset: Number.NaN })
+    ).resolves.toMatchObject({
       total: 3,
       limit: 50,
       offset: 0,
@@ -179,10 +224,9 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
       return { count: 1 };
     });
 
-    await expect(Promise.all([
-      service.revoke("token_1", scope),
-      service.revoke("token_1", scope),
-    ])).resolves.toEqual([true, true]);
+    await expect(
+      Promise.all([service.revoke("token_1", scope), service.revoke("token_1", scope)])
+    ).resolves.toEqual([true, true]);
     await expect(service.revoke("token_1", scope)).resolves.toBe(true);
 
     expect(row).toMatchObject({ revokedAt: expect.any(Date), revokedBy: "user_1" });
