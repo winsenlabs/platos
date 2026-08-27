@@ -19,6 +19,7 @@ import {
   listTrackedFiles,
   measureFile,
   readVocabularyPinnedPaths,
+  referenceNeedles,
   summarize,
   validateRulesDocument,
 } from "./v1-ledger.mjs";
@@ -169,12 +170,18 @@ test("validation rejects a duplicate rule identifier and an empty match list", (
 // First-match-wins precedence
 // ---------------------------------------------------------------------------
 
-function tinyLedger(rules, paths) {
-  const areas = Object.fromEntries(AREAS.map((area) => [area, [{ ...goodRule, id: `${area}.base` }]]));
-  areas["root-infra"] = rules;
-  return buildLedger(repositoryRoot, { version: 1, areas }, {
+function docWithArea(area, rules) {
+  const areas = Object.fromEntries(AREAS.map((name) => [name, [{ ...goodRule, id: `${name}.base` }]]));
+  areas[area] = rules;
+  return { version: 1, areas };
+}
+
+function tinyLedger(rules, paths, extra = {}) {
+  return buildLedger(repositoryRoot, docWithArea("root-infra", rules), {
     trackedFiles: paths,
     measure: () => ({ bytes: 1, lines: 1, binary: false }),
+    corpus: extra.corpus ?? new Map(),
+    ...extra,
   });
 }
 
@@ -211,6 +218,76 @@ test("a path no area claims is reported rather than absorbed into a row", () => 
   assert.deepEqual(result.unassigned, ["brand-new-root/b.txt"]);
   const failures = checkInvariants(result, ["scripts/a.txt", "brand-new-root/b.txt"], new Set());
   assert.ok(failures.some((f) => f.includes("no area claims brand-new-root/b.txt")));
+});
+
+// A behavioural reorder test, not a comparison of declared indices: the SAME
+// two overlapping rules produce a different disposition purely by swapping their
+// order, which is what first-match-wins means. A delete pin ahead of an archive
+// bucket yields delete; behind it, archive.
+test("swapping two overlapping rules changes the winning disposition", () => {
+  const pin = { ...goodRule, id: "pin", match: ["scripts/orphan.png"], disposition: "delete", reached_via: ["NONE"] };
+  const bucket = { ...goodRule, id: "bucket", match: ["scripts/**"], disposition: "archive", reached_via: ["CI"] };
+
+  const pinFirst = tinyLedger([pin, bucket], ["scripts/orphan.png"]);
+  assert.equal(pinFirst.rows[0].disposition, "delete");
+  assert.equal(pinFirst.rows[0].rule_id, "pin");
+
+  const bucketFirst = tinyLedger([bucket, pin], ["scripts/orphan.png"]);
+  assert.equal(bucketFirst.rows[0].disposition, "archive");
+  assert.equal(bucketFirst.rows[0].rule_id, "bucket");
+});
+
+test("a delete rule may not carry a wildcard match", () => {
+  const wildcard = documentWith({ disposition: "delete", reached_via: ["NONE"], match: ["scripts/*.png"] });
+  assert.ok(
+    validateRulesDocument(wildcard).some((e) => e.includes("must be a literal path") && e.includes("may not contain a wildcard"))
+  );
+  const literal = documentWith({ disposition: "delete", reached_via: ["NONE"], match: ["scripts/one.png"] });
+  assert.equal(validateRulesDocument(literal).some((e) => e.includes("literal path")), false);
+});
+
+test("an invalid character-class glob is a validation error, not an uncaught throw", () => {
+  const bad = documentWith({ match: ["scripts/[z-a].txt"] });
+  const errors = validateRulesDocument(bad);
+  assert.ok(errors.some((e) => e.includes("invalid glob") && e.includes("[z-a]")));
+  // An out-of-order range would make the RegExp constructor throw; the guard
+  // converts it into a labelled error naming the glob.
+  assert.throws(() => globToRegExp("scripts/[z-a].txt"), /invalid glob .*\[z-a\]/);
+  // An escaped bracket inside a class is handled without throwing.
+  assert.doesNotThrow(() => globToRegExp("scripts/[[]].txt"));
+});
+
+// ---------------------------------------------------------------------------
+// Computed reachability for the destructive case (D1)
+// ---------------------------------------------------------------------------
+
+test("a delete candidate referenced anywhere in the corpus is a hard failure", () => {
+  const del = { ...goodRule, id: "del", match: ["scripts/orphan.png"], disposition: "delete", reached_via: ["NONE"] };
+  const consumer = { ...goodRule, id: "keep", match: ["scripts/page.md"], disposition: "retain", reached_via: ["CI"] };
+
+  const clean = tinyLedger([del, consumer], ["scripts/orphan.png", "scripts/page.md"], {
+    corpus: new Map([["scripts/page.md", "nothing to see here\n"]]),
+  });
+  assert.deepEqual(clean.deleteReferences, []);
+  assert.deepEqual(checkInvariants(clean, ["scripts/orphan.png", "scripts/page.md"], new Set()), []);
+
+  // Now the same tree, but a page embeds the orphan by its bare basename.
+  const referenced = tinyLedger([del, consumer], ["scripts/orphan.png", "scripts/page.md"], {
+    corpus: new Map([["scripts/page.md", 'see <img src="/x/orphan.png">\n']]),
+  });
+  assert.equal(referenced.deleteReferences.length, 1);
+  assert.equal(referenced.deleteReferences[0].path, "scripts/orphan.png");
+  assert.deepEqual(referenced.deleteReferences[0].referencedBy, ["scripts/page.md"]);
+  const failures = checkInvariants(referenced, ["scripts/orphan.png", "scripts/page.md"], new Set());
+  assert.ok(failures.some((f) => f.includes("is classified delete but is referenced by scripts/page.md")));
+});
+
+test("referenceNeedles covers the path, the site-root path, and the basename", () => {
+  assert.deepEqual(referenceNeedles("docs/images/x.png"), [
+    "docs/images/x.png",
+    "/docs/images/x.png",
+    "x.png",
+  ]);
 });
 
 // ---------------------------------------------------------------------------
@@ -324,8 +401,10 @@ test("the committed fingerprint is current", () => {
 });
 
 // Six files matched contradictory rules in the prior analysis. Ordering now
-// decides each one, and in every case the safer disposition is declared first.
-test("the six formerly contradictory files resolve to the safer disposition", () => {
+// decides each one deterministically, to the disposition the charter names as
+// safer for that file. These are concrete outcome assertions: a reorder of the
+// live document that flipped any of them would fail here.
+test("the six formerly contradictory files resolve as the charter requires", () => {
   assert.equal(liveByPath.get("internal-packages/clickhouse/Dockerfile").disposition, "retain");
   assert.equal(liveByPath.get("internal-packages/run-engine/runengine-diagram.monojson").disposition, "retain");
   for (const grammar of ["TSQLLexer", "TSQLParser"]) {
@@ -341,13 +420,39 @@ test("the six formerly contradictory files resolve to the safer disposition", ()
   assert.equal(license.protected, true);
 });
 
-test("the safer rule is declared earlier than the rule it beats", () => {
-  const order = (id) =>
-    rulesDocument.areas["internal-packages"].findIndex((rule) => rule.id === id);
-  assert.ok(order("internal-packages.legal.attribution") < order("internal-packages.config.package"));
-  assert.ok(order("internal-packages.generated.grammar") < order("internal-packages.generated.release-history"));
-  assert.ok(order("internal-packages.infra.container") < order("internal-packages.config.package"));
-  assert.ok(order("internal-packages.doc.diagram") < order("internal-packages.doc.package"));
+test("the live delete candidates all pass the computed reachability scan", () => {
+  // Reachability for deletes is computed, not asserted: if any of the live
+  // delete candidates were referenced, this would be non-empty and --check red.
+  assert.deepEqual(live.deleteReferences, []);
+  assert.ok(live.rows.some((row) => row.disposition === "delete"));
+});
+
+// PROTECTED_GLOBS is a hard-coded floor independent of the rules document, so
+// protection cannot be removed by editing the rules alone. This proves it fires
+// even when the matching rule does NOT set protected:true.
+test("PROTECTED_GLOBS protects a file whose rule omits the protected flag", () => {
+  const doc = docWithArea("root-infra", [
+    { ...goodRule, id: "unflagged-license", match: ["LICENSE"], kind: "legal", disposition: "retain" },
+  ]);
+  const result = buildLedger(repositoryRoot, doc, {
+    trackedFiles: ["LICENSE"],
+    measure: () => ({ bytes: 1, lines: 1, binary: false }),
+    corpus: new Map(),
+  });
+  assert.equal(result.rows[0].protected, true);
+  // And a non-protected path with the same shaped rule stays unprotected.
+  const other = buildLedger(repositoryRoot, doc, {
+    trackedFiles: ["scripts/ordinary.txt"],
+    measure: () => ({ bytes: 1, lines: 1, binary: false }),
+    corpus: new Map(),
+  });
+  assert.equal(other.unmatched.length, 1);
+});
+
+test("the ledger classifies its own three files", () => {
+  assert.equal(liveByPath.get("scripts/v1-ledger.mjs").rule_id, "root-infra.tooling.scripts");
+  assert.equal(liveByPath.get("scripts/v1-ledger.test.mjs").rule_id, "root-infra.test.script-suites");
+  assert.equal(liveByPath.get("docs/v1-ledger-rules.json").rule_id, "docs-content.pin.ledger-rules");
 });
 
 test("the three falsified files are never proposed for removal", () => {
@@ -360,7 +465,8 @@ test("the three falsified files are never proposed for removal", () => {
   assert.deepEqual(submodules.reached_via, ["git-subcommand"]);
   assert.ok(submodules.evidence.includes("submodule.mjs"));
 
-  // Named without the literal directory, which carries a reserved term.
+  // Matched by suffix here only to avoid writing the reserved directory name in
+  // this test's source; the live rule pins it by exact literal path.
   const browserEntry = live.rows.filter((row) => row.path.endsWith("/src/v3/index-browser.mts"));
   assert.equal(browserEntry.length, 1);
   assert.equal(browserEntry[0].disposition, "archive");

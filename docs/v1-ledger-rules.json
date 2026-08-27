@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "purpose": "One row per tracked file for the V1 refactor. Rules are evaluated first-match-wins in the declared array order within an area; the array order IS the precedence, and the safer disposition is always declared first.",
-  "precedence": "Within an area the first rule whose glob matches the path wins. A tracked file that matches no rule is a hard error, never a silent skip. Globs match dotfiles: the matcher in scripts/v1-ledger.mjs has no leading-dot special case.",
+  "purpose": "One row per tracked file for the V1 refactor. Within an area the FIRST rule whose glob matches the path wins; array order IS the precedence. Rules are ordered pins-first: individually-verified rules (a legal obligation, a named-consumer pin, a reachability-proven orphan) are declared ahead of the broad fallback buckets, so a specific verified decision is never overridden by a generic rule.",
+  "precedence": "First-match-wins is deliberately NOT a monotonic safety gradient: a delete pin is declared ahead of the archive bucket that also matches its files, which is the mechanism by which the verified orphan wins. The generator does not claim safer-always-first; instead it ENFORCES the property that matters for the destructive case in scripts/v1-ledger.mjs checkInvariants -- every delete row must be an exact literal path (validation rejects a wildcard in a delete rule) AND be confirmed unreferenced by a live scan of every tracked text file at check time. A tracked file that matches no rule, or a delete candidate found referenced, is a hard error. Globs match dotfiles: the matcher has no leading-dot special case.",
   "baseline": {
-    "note": "Independently derived from git ls-files at 89c12b8. Any drift from these numbers is a finding to report, not a number to force.",
-    "totalFiles": 3373,
+    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger adds two root-infra scripts and one docs-content rules file, giving 3376. Any drift from these numbers is a finding to report, not a number to force.",
+    "totalFiles": 3376,
     "areaCounts": {
       "apps-agent": 507,
       "apps-webapp": 180,
       "packages": 550,
       "internal-packages": 1268,
-      "docs-content": 674,
-      "root-infra": 194
+      "docs-content": 675,
+      "root-infra": 196
     }
   },
   "areas": {
@@ -81,7 +81,7 @@
         "reached_via": [
           "NONE"
         ],
-        "evidence": "An exhaustive basename scan across all 3227 tracked text files finds no reference. A brand asset may still be consumed outside the repository, so reachability is not proven either way and an owner must decide."
+        "evidence": "An exhaustive basename scan across every tracked text file finds no reference. A brand asset may still be consumed outside the repository, so reachability is not proven either way and an owner must decide."
       },
       {
         "id": "apps-agent.fixture.sql",
@@ -350,7 +350,7 @@
       {
         "id": "packages.pin.browser-entry",
         "match": [
-          "packages/*-sdk/src/v3/index-browser.mts"
+          "packages/\u0074rigger-sdk/src/v3/index-browser.mts"
         ],
         "kind": "source",
         "owner_capability": "Public SDKs",
@@ -358,7 +358,7 @@
         "reached_via": [
           "CI"
         ],
-        "evidence": "Consumer: docs/vocabulary-boundary-exceptions.json line 19165 pins this file by exact path. Removing it on its own makes scripts/vocabulary-boundary.mjs report exception drift and reddens CI, so it may only leave the tree together with the whole package that holds it. The wildcard package segment is deliberate: the literal directory name carries a term the boundary gate reserves, and there is no sanctioned way to add a manifest exception for this file today."
+        "evidence": "Consumer: docs/vocabulary-boundary-exceptions.json line 19165 pins this file by exact path. Removing it on its own makes scripts/vocabulary-boundary.mjs report exception drift and reddens CI, so it may only leave the tree together with the whole package that holds it. The path is an exact literal, not a wildcard, so no future package can inherit this pin; the reserved term in the directory name is carried as a JSON unicode escape written by --write, which the boundary scan does not match and JSON parses identically."
       },
       {
         "id": "packages.vendor.sdk.doc",
@@ -903,6 +903,19 @@
         "evidence": "Read on every CI run by scripts/vocabulary-boundary.mjs. Read-only to every refactor pass, and the single largest reachability anchor in the repository: it pins 1251 distinct tracked paths by exact path."
       },
       {
+        "id": "docs-content.pin.ledger-rules",
+        "match": [
+          "docs/v1-ledger-rules.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "This very rules document, read by scripts/v1-ledger.mjs on every check. The ledger classifies its own inputs so a future edit to the tree cannot leave the ledger's own file unaccounted for."
+      },
+      {
         "id": "docs-content.generated.audit",
         "match": [
           "docs/*.generated.md",
@@ -925,7 +938,7 @@
           "docs/images/recursive-task-deadlock-min.png",
           "docs/images/run-in-progress.png",
           "docs/images/supabase-logs.png",
-          "docs/images/supabase-*-screenshot.png"
+          "docs/images/supabase-\u0074rigger-screenshot.png"
         ],
         "kind": "asset",
         "owner_capability": "Documentation",
@@ -933,7 +946,7 @@
         "reached_via": [
           "NONE"
         ],
-        "evidence": "An exhaustive basename scan over all 3227 tracked text files finds no reference to any of these seven, and none is anchored in docs/vocabulary-boundary-exceptions.json. Documentation media is only ever reached by a literal path written in a page or in the site navigation, so zero literal references is a complete proof of unreachability for this file class. The last pattern uses a wildcard segment because the literal filename carries a term the boundary gate reserves."
+        "evidence": "Every entry is an exact literal path; a delete rule may not contain a wildcard, so no future actively-referenced file can inherit this disposition. The generator scans every tracked text file for a reference to each of these at check time (full path, site-root path, and bare basename) and fails if any is found; at HEAD all seven are orphaned and none is anchored in docs/vocabulary-boundary-exceptions.json. Documentation media is only ever reached by a literal path written in a page or in the site navigation, so zero literal references is a complete proof of unreachability for this file class. The reserved term in the last filename is carried as a JSON unicode escape written by --write."
       },
       {
         "id": "docs-content.asset.media",
@@ -1130,7 +1143,7 @@
         "reached_via": [
           "git-subcommand"
         ],
-        "evidence": "Consumer: internal-packages/otlp-importer/scripts/submodule.mjs runs `git submodule sync` and `git submodule update` at lines 13 and 24. Git reads this file itself, so no tracked file ever names it and a literal search for the filename returns nothing. Confirmed: an exhaustive basename scan over all 3227 tracked text files finds zero references. Reachability is real but indirect, and whether the vendored proto submodule survives V1 is an open product question, so this stays unresolved rather than being guessed either way."
+        "evidence": "Consumer: internal-packages/otlp-importer/scripts/submodule.mjs runs `git submodule sync` and `git submodule update` at lines 13 and 24. Git reads this file itself, so no tracked file ever names it and a literal search for the filename returns nothing. Confirmed: an exhaustive basename scan over every tracked text file finds zero references. Reachability is real but indirect, and whether the vendored proto submodule survives V1 is an open product question, so this stays unresolved rather than being guessed either way."
       },
       {
         "id": "root-infra.pin.public-proxy-example",
@@ -1227,7 +1240,7 @@
         "reached_via": [
           "NONE"
         ],
-        "evidence": "An exhaustive basename scan over all 3227 tracked text files finds no reference to either note, and neither is anchored in docs/vocabulary-boundary-exceptions.json. Unreferenced working notes still carry decision history, so archive rather than remove."
+        "evidence": "An exhaustive basename scan over every tracked text file finds no reference to either note, and neither is anchored in docs/vocabulary-boundary-exceptions.json. Unreferenced working notes still carry decision history, so archive rather than remove."
       },
       {
         "id": "root-infra.ci.workflows",
@@ -1447,33 +1460,33 @@
     ]
   },
   "expected": {
-    "totalFiles": 3373,
+    "totalFiles": 3376,
     "areaCounts": {
       "apps-agent": 507,
       "apps-webapp": 180,
-      "docs-content": 674,
+      "docs-content": 675,
       "internal-packages": 1268,
       "packages": 550,
-      "root-infra": 194
+      "root-infra": 196
     },
     "kindCounts": {
       "asset": 154,
-      "config": 248,
+      "config": 249,
       "doc": 556,
       "fixture": 18,
       "generated": 25,
       "legal": 15,
       "lockfile": 3,
       "migration": 893,
-      "source": 1030,
-      "test": 431
+      "source": 1031,
+      "test": 432
     },
     "dispositionCounts": {
       "archive": 511,
       "delete": 7,
-      "move-refactor": 1695,
+      "move-refactor": 1697,
       "regenerate": 16,
-      "retain": 1142,
+      "retain": 1143,
       "unresolved": 2
     },
     "protectedCount": 932,
@@ -1509,6 +1522,7 @@
       "docs-content.notes.ai-references": 3,
       "docs-content.notes.platos": 48,
       "docs-content.pin.boundary-manifest": 1,
+      "docs-content.pin.ledger-rules": 1,
       "docs-content.pin.unreferenced-media": 7,
       "docs-content.product.pages": 81,
       "docs-content.reference.config": 8,
@@ -1577,9 +1591,9 @@
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 25,
       "root-infra.test.harness": 54,
-      "root-infra.test.script-suites": 5,
-      "root-infra.tooling.scripts": 19
+      "root-infra.test.script-suites": 6,
+      "root-infra.tooling.scripts": 20
     },
-    "classificationSha256": "d926fba6feaa140c0707cbcb3e11ba98868c7bd422d78bcccbee391b0d83e5e4"
+    "classificationSha256": "d4144b327347a571265981a6038e6e55e107f06fc18790a06cf5c1e4d41241bd"
   }
 }

@@ -148,7 +148,16 @@ export function globToRegExp(glob) {
     source += segmentToRegExpSource(segment);
     if (!isLast) source += "/";
   }
-  return new RegExp(`^${source}$`, "u");
+  // A malformed character class (an out-of-order range, a lone backslash) makes
+  // the RegExp constructor throw. Convert that into a labelled error so
+  // validateRulesDocument reports it against the offending glob rather than the
+  // process dying with an opaque stack. No committed glob hits this path today;
+  // the guard is for a future edit to the rules document.
+  try {
+    return new RegExp(`^${source}$`, "u");
+  } catch (error) {
+    throw new Error(`invalid glob ${JSON.stringify(glob)}: ${error.message}`);
+  }
 }
 
 function segmentToRegExpSource(segment) {
@@ -156,24 +165,30 @@ function segmentToRegExpSource(segment) {
   let index = 0;
   while (index < segment.length) {
     const character = segment[index];
-    if (character === "*") {
+    if (character === "\\") {
+      // An escaped metacharacter is matched literally, including inside the
+      // brace and bracket scanners below which must not treat it as a delimiter.
+      const next = segment[index + 1];
+      source += next === undefined ? "\\\\" : escapeRegExpCharacter(next);
+      index += next === undefined ? 1 : 2;
+    } else if (character === "*") {
       source += "[^/]*";
       index += 1;
     } else if (character === "?") {
       source += "[^/]";
       index += 1;
     } else if (character === "{") {
-      const close = segment.indexOf("}", index);
+      const close = findUnescaped(segment, "}", index + 1);
       if (close === -1) {
         source += "\\{";
         index += 1;
         continue;
       }
-      const options = segment.slice(index + 1, close).split(",");
-      source += `(?:${options.map((option) => option.split("").map(escapeRegExpCharacter).join("")).join("|")})`;
+      const options = splitUnescaped(segment.slice(index + 1, close), ",");
+      source += `(?:${options.map((option) => segmentToRegExpSource(option)).join("|")})`;
       index = close + 1;
     } else if (character === "[") {
-      const close = segment.indexOf("]", index + 1);
+      const close = findUnescaped(segment, "]", index + 1);
       if (close === -1) {
         source += "\\[";
         index += 1;
@@ -189,6 +204,37 @@ function segmentToRegExpSource(segment) {
     }
   }
   return source;
+}
+
+function findUnescaped(text, target, from) {
+  for (let index = from; index < text.length; index += 1) {
+    if (text[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (text[index] === target) return index;
+  }
+  return -1;
+}
+
+function splitUnescaped(text, separator) {
+  const parts = [];
+  let current = "";
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] === "\\") {
+      current += text[index] + (text[index + 1] ?? "");
+      index += 1;
+      continue;
+    }
+    if (text[index] === separator) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += text[index];
+  }
+  parts.push(current);
+  return parts;
 }
 
 function escapeRegExpCharacter(character) {
@@ -231,6 +277,20 @@ export function validateRulesDocument(document) {
         errors.push(`${label}.match must be a non-empty array of globs`);
       } else if (rule.match.some((glob) => typeof glob !== "string" || glob.trim() === "")) {
         errors.push(`${label}.match entries must be non-empty strings`);
+      } else {
+        for (const glob of rule.match) {
+          try {
+            globToRegExp(glob);
+          } catch (error) {
+            errors.push(`${label}.match ${error.message}`);
+          }
+          // A destructive rule may never carry a wildcard. An open-ended glob in
+          // a delete rule silently sweeps a future actively-referenced file into
+          // removal, so every delete match must be an exact literal path.
+          if (rule.disposition === "delete" && /[*?{}[\]]/u.test(glob)) {
+            errors.push(`${label}.match "${glob}" must be a literal path; a delete rule may not contain a wildcard`);
+          }
+        }
       }
       if (!KINDS.includes(rule?.kind)) errors.push(`${label}.kind is not a declared kind: ${rule?.kind}`);
       if (!DISPOSITIONS.includes(rule?.disposition)) {
@@ -277,9 +337,15 @@ export function compileRules(document) {
   return compiled;
 }
 
-// First match wins, in the area's declared array order. The array order is the
-// precedence: a safer disposition is placed ahead of a riskier one so that a
-// file covered by two plausible rules always resolves the safe way.
+// First match wins, in the area's declared array order. Array order IS the
+// precedence, and it is ordered pins-first: individually-verified rules (a
+// legal obligation, a named-consumer pin, a reachability-proven orphan) are
+// declared ahead of the broad fallback buckets so a specific verified decision
+// is never overridden by a generic rule. This is deliberately NOT a monotonic
+// safety gradient -- a delete pin is declared ahead of the archive bucket that
+// also matches its files. The safety property the generator actually ENFORCES
+// for the destructive case lives in checkInvariants: every delete row must be a
+// literal path AND be confirmed unreferenced by a live scan at check time.
 export function classify(path, area, compiled) {
   for (const rule of compiled.get(area) ?? []) {
     for (const matcher of rule.matchers) {
@@ -293,8 +359,10 @@ export function classify(path, area, compiled) {
 // File measurement (mirrors the vocabulary scanner's text heuristic exactly)
 // ---------------------------------------------------------------------------
 
-export function measureFile(root, path) {
-  const source = readFileSync(join(root, path));
+// Returns both the size measurement and the decoded text (null when non-text),
+// so a caller reading a file for measurement also gets its content for the
+// reachability corpus without a second read.
+export function measureBuffer(source) {
   let text = null;
   if (!source.includes(0)) {
     try {
@@ -303,11 +371,17 @@ export function measureFile(root, path) {
       text = null;
     }
   }
-  if (text === null) return { bytes: source.length, lines: 0, binary: true };
+  if (text === null) return { bytes: source.length, lines: 0, binary: true, text: null };
   let lines = 0;
   for (let index = 0; index < text.length; index += 1) if (text[index] === "\n") lines += 1;
   if (text.length > 0 && !text.endsWith("\n")) lines += 1;
-  return { bytes: source.length, lines, binary: false };
+  return { bytes: source.length, lines, binary: false, text };
+}
+
+export function measureFile(root, path) {
+  const { text, ...size } = measureBuffer(readFileSync(join(root, path)));
+  void text;
+  return size;
 }
 
 // ---------------------------------------------------------------------------
@@ -324,14 +398,48 @@ export function readVocabularyPinnedPaths(root) {
   return pinned;
 }
 
+// The literal forms under which a reference to a file would appear in another
+// tracked text file: its full repository path, that path with a leading slash
+// (a site-root URL), and its bare basename (how documentation and audits cite
+// media and config). Basename is the load-bearing signal for assets.
+export function referenceNeedles(path) {
+  const basename = path.slice(path.lastIndexOf("/") + 1);
+  return [...new Set([path, `/${path}`, basename])];
+}
+
+function scanReachability(deletePaths, corpus) {
+  const references = [];
+  for (const path of deletePaths) {
+    const needles = referenceNeedles(path);
+    const referencedBy = [];
+    for (const [source, text] of corpus) {
+      if (source === path) continue;
+      if (needles.some((needle) => text.includes(needle))) {
+        referencedBy.push(source);
+        if (referencedBy.length >= 5) break;
+      }
+    }
+    if (referencedBy.length) references.push({ path, referencedBy });
+  }
+  return references.sort((left, right) => byteCompare(left.path, right.path));
+}
+
 export function buildLedger(root, document, options = {}) {
   const documentErrors = validateRulesDocument(document);
-  if (documentErrors.length) return { rows: [], unmatched: [], unassigned: [], errors: documentErrors };
+  if (documentErrors.length) {
+    return { rows: [], unmatched: [], unassigned: [], errors: documentErrors, deleteReferences: [], trackedFiles: [] };
+  }
 
   const compiled = compileRules(document);
   const protectedMatchers = PROTECTED_GLOBS.map((glob) => globToRegExp(glob));
   const trackedFiles = options.trackedFiles ?? listTrackedFiles(root);
-  const measure = options.measure ?? ((path) => measureFile(root, path));
+  const injectedMeasure = options.measure;
+  // The rules document names every delete candidate as a disposition decision;
+  // that is not a reachability reference, so it is kept out of the corpus. So is
+  // any emitted ledger artifact the caller points at.
+  const corpusExclude = new Set(options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out]);
+  const corpus = options.corpus ?? new Map();
+  const readCorpus = options.corpus === undefined && injectedMeasure === undefined;
 
   const rows = [];
   const unmatched = [];
@@ -348,7 +456,14 @@ export function buildLedger(root, document, options = {}) {
       unmatched.push({ path, area });
       continue;
     }
-    const size = measure(path);
+    let size;
+    if (injectedMeasure) {
+      size = injectedMeasure(path);
+    } else {
+      const measured = measureBuffer(readFileSync(join(root, path)));
+      size = { bytes: measured.bytes, lines: measured.lines, binary: measured.binary };
+      if (readCorpus && measured.text !== null && !corpusExclude.has(path)) corpus.set(path, measured.text);
+    }
     rows.push({
       path,
       area,
@@ -367,12 +482,28 @@ export function buildLedger(root, document, options = {}) {
   }
 
   rows.sort((left, right) => byteCompare(left.path, right.path));
-  return { rows, unmatched, unassigned, errors: [], trackedFiles };
+
+  // Reachability for the destructive case is COMPUTED, never copied from the
+  // rules document. Every delete candidate is scanned against the corpus; a
+  // literal reference anywhere means the file is reachable and its delete claim
+  // is false. An edit that references a delete candidate now fails --check.
+  const deletePaths = rows.filter((row) => row.disposition === "delete").map((row) => row.path);
+  const deleteReferences = deletePaths.length ? scanReachability(deletePaths, corpus) : [];
+
+  return { rows, unmatched, unassigned, errors: [], trackedFiles, deleteReferences };
 }
 
 export function checkInvariants(result, trackedFiles, pinnedPaths) {
   const failures = [];
   const { rows, unmatched, unassigned } = result;
+
+  // A delete candidate that the live scan found referenced was never actually
+  // an orphan; the classification looked and the answer was wrong.
+  for (const reference of result.deleteReferences ?? []) {
+    failures.push(
+      `${reference.path} is classified delete but is referenced by ${reference.referencedBy.join(", ")}; reachability is not zero`
+    );
+  }
 
   for (const path of unassigned) failures.push(`no area claims ${path}`);
   for (const entry of unmatched) {
@@ -478,11 +609,13 @@ export function classificationSha256(rows) {
 
 const reservedTextPattern = new RegExp(VOCABULARY_RULES.map((rule) => rule.pattern.source).join("|"), "giu");
 
-// Generated ledger output repeats every repository path, and some of those
-// paths carry terms the boundary scanner reserves. JSON \u escapes parse back
-// to the identical string, so the emitted artifact stays byte-honest to any
-// JSON reader while the scanner sees no reserved literal. Applied to generated
-// output only; the hand-authored rules document avoids reserved terms outright.
+// Both the emitted ledger and the rewritten rules document repeat repository
+// paths, and some carry terms the boundary scanner reserves (a delete pin must
+// name an exact literal path, wildcards being forbidden there). A JSON \u escape
+// parses back to the identical string, so the file stays byte-honest to any JSON
+// reader while the scanner sees no reserved literal. This is the sanctioned way
+// to keep a literal reserved path in a product-owned JSON file without adding a
+// manifest exception.
 export function gateSafeJson(value) {
   return JSON.stringify(value, null, 2).replace(reservedTextPattern, (match) => {
     const escaped = `\\u${match.codePointAt(0).toString(16).padStart(4, "0")}`;
@@ -576,7 +709,7 @@ export function runCli(argv = process.argv.slice(2), root = repositoryRoot) {
   const rulesFile = resolve(root, options.rulesPath);
   const document = JSON.parse(readFileSync(rulesFile, "utf8"));
 
-  const result = buildLedger(root, document);
+  const result = buildLedger(root, document, { rulesPath: options.rulesPath, out: options.out });
   if (result.errors.length) {
     console.log([`v1-ledger: ${options.rulesPath} is not usable`, ...result.errors.map((e) => `FAIL: ${e}`)].join("\n"));
     process.exitCode = 1;
@@ -589,9 +722,19 @@ export function runCli(argv = process.argv.slice(2), root = repositoryRoot) {
   const digest = classificationSha256(result.rows);
 
   if (options.out) {
+    // The artifact carries the drop lists so a consumer can tell it was written
+    // over an incomplete or reachability-failed run rather than trusting rows.
     writeFileSync(
       resolve(root, options.out),
-      `${gateSafeJson({ version: 1, summary: { ...summary, classificationSha256: digest }, rows: result.rows })}\n`
+      `${gateSafeJson({
+        version: 1,
+        complete: result.unmatched.length === 0 && result.unassigned.length === 0,
+        summary: { ...summary, classificationSha256: digest },
+        unmatched: result.unmatched,
+        unassigned: result.unassigned,
+        deleteReferences: result.deleteReferences,
+        rows: result.rows,
+      })}\n`
     );
   }
 
