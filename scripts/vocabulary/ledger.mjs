@@ -142,9 +142,13 @@ export function verifyLedger({ ledger, entries, moves = [], trackedPaths = new S
 }
 
 export function formatLedgerReport({ verified, blocked }) {
-  const lines = [`ledger: ${verified.length} verified, ${blocked.length} blocked`];
+  // Deliberately provisional wording. No real V1 ledger exists yet, so this
+  // must not read as an authoritative sign-off on a schema nobody has agreed.
+  const lines = [
+    `ledger (PROVISIONAL -- schema not yet agreed): ${verified.length} supported, ${blocked.length} blocked`,
+  ];
   for (const record of verified) {
-    lines.push(`  VERIFIED  ${record.disposition} ${record.path}${record.target ? ` -> ${record.target}` : ""} (${record.evidence}, ${record.exceptions} exception(s))`);
+    lines.push(`  boundary-evidence-ok  ${record.disposition} ${record.path}${record.target ? ` -> ${record.target}` : ""} (${record.evidence}, ${record.exceptions} exception(s))`);
   }
   for (const record of blocked) {
     lines.push(`  BLOCKED   ${record.disposition} ${record.path}: ${record.reason}`);

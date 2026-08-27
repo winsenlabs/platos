@@ -4,7 +4,7 @@
  * The production manifest was assembled by hand over time, not emitted by one
  * serializer: its 20,349 entries carry four different key orders and an entry
  * order that is not the scan order. A generator that "canonicalized" it would
- * rewrite all 20,349 lines and produce an unreviewable diff, and 1,400 of the
+ * rewrite all 20,349 lines and produce an unreviewable diff, and 1,460 of the
  * stored line/column diagnostics are already stale, so refreshing those
  * unconditionally would rewrite them too.
  *
@@ -55,12 +55,6 @@ function serializeSection(name, entries, last = false) {
   }
   lines.push(`  ]${last ? "" : ","}`);
   return lines;
-}
-
-export function writeManifest(path, manifest) {
-  const text = serializeManifest(manifest);
-  writeFileSync(path, text);
-  return text;
 }
 
 /**

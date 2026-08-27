@@ -25,6 +25,7 @@
  * a human has not yet judged the code in front of them.
  */
 
+import { findForbiddenVocabulary } from "../vocabulary-boundary.mjs";
 import {
   anchorIdentity,
   groupBy,
@@ -35,8 +36,19 @@ import {
 
 const NUL = String.fromCharCode(0);
 
-export const AUTO_APPLIED = Object.freeze(["unchanged", "moved", "path-rebound", "removed"]);
-export const REVIEW_REQUIRED = Object.freeze(["added", "context-changed"]);
+export const AUTO_APPLIED = Object.freeze([
+  "unchanged",
+  "moved",
+  "path-rebound",
+  "removed",
+  "exclusion-unchanged",
+  "exclusion-stale",
+]);
+export const REVIEW_REQUIRED = Object.freeze([
+  "added",
+  "context-changed",
+  "exclusion-relocated",
+]);
 
 /** Fields the scanner derives; lifecycle metadata is never taken from a finding. */
 const ANCHOR_FIELDS = Object.freeze([
@@ -50,6 +62,38 @@ const ANCHOR_FIELDS = Object.freeze([
   "semanticContextSha256",
   "collisionContextSha256",
 ]);
+
+/**
+ * The forbidden vocabulary a path carries, as `rule|spelling|segment` entries.
+ * Two paths are equivalent when these multisets are equal: the same words, in
+ * the same named segments, however the surrounding directories were rearranged.
+ */
+export function pathVocabularyProfile(path) {
+  const canonical = normalizeRepositoryPath(path);
+  const segments = canonical.split("/");
+  const starts = [];
+  let offset = 0;
+  for (const segment of segments) {
+    starts.push(offset);
+    offset += segment.length + 1;
+  }
+  return findForbiddenVocabulary(canonical, canonical, "path")
+    .map((finding) => {
+      const column = finding.column - 1;
+      let index = 0;
+      for (let candidate = 0; candidate < starts.length; candidate += 1) {
+        if (column >= starts[candidate]) index = candidate;
+      }
+      return `${finding.rule}|${finding.matchedText}|${segments[index]}`;
+    })
+    .sort();
+}
+
+export function pathVocabularyEquivalent(fromPath, toPath) {
+  const before = pathVocabularyProfile(fromPath);
+  const after = pathVocabularyProfile(toPath);
+  return before.length === after.length && before.every((entry, index) => entry === after[index]);
+}
 
 function anchorPatchFrom(finding) {
   const patch = {};
@@ -100,28 +144,12 @@ export function classifyRegeneration({ exceptions, findings, moves = [] }) {
     movesByFrom.set(move.from, bucket);
   }
 
-  // How many path-derived exceptions each moving file carried, per rule. A pure
-  // move must reproduce that exact profile at the destination, otherwise the new
-  // location has introduced or dropped path vocabulary and needs a human.
-  const pathProfileFrom = new Map();
-  for (const { exception } of unmatched) {
-    if (!isPathBound(exception)) continue;
-    const key = normalizeRepositoryPath(exception.path);
-    const profile = pathProfileFrom.get(key) ?? new Map();
-    profile.set(exception.rule, (profile.get(exception.rule) ?? 0) + 1);
-    pathProfileFrom.set(key, profile);
-  }
-
-  function pathProfileMatches(fromPath, toPath) {
-    const before = pathProfileFrom.get(fromPath) ?? new Map();
-    const after = new Map();
-    for (const finding of pathBoundAt.get(toPath) ?? []) {
-      after.set(finding.rule, (after.get(finding.rule) ?? 0) + 1);
-    }
-    if (before.size !== after.size) return false;
-    for (const [rule, count] of before) if (after.get(rule) !== count) return false;
-    return true;
-  }
+  // Counting rule ids is not enough: a move into a brand-new directory whose
+  // own name carries the forbidden word still counts as "one of that rule", so
+  // a bare tally would rebind it. What must be preserved is the forbidden
+  // vocabulary *and the path segment it sits in*, so the only thing that
+  // changed is which directories the file hangs under -- never the words a
+  // reviewer actually approved.
 
   const stillUnmatched = [];
   for (const { index, exception } of unmatched) {
@@ -133,7 +161,7 @@ export function classifyRegeneration({ exceptions, findings, moves = [] }) {
       if (isPathBound(exception)) {
         // Path-derived identity cannot survive verbatim. Rebind it only when the
         // move is byte-pure and the destination carries the same rule profile.
-        if (!move.identical || !pathProfileMatches(fromPath, move.to)) continue;
+        if (!move.identical || !pathVocabularyEquivalent(fromPath, move.to)) continue;
         const bucket = pathBoundAt.get(move.to) ?? [];
         const matchIndex = bucket.findIndex((candidate) => candidate.rule === exception.rule);
         if (matchIndex < 0) continue;
@@ -204,7 +232,7 @@ export function classifyRegeneration({ exceptions, findings, moves = [] }) {
   }
 
   results.sort((left, right) => left.index - right.index);
-  return { entries: results, counts: countDispositions(results) };
+  return { entries: results, counts: countDispositions(results, EXCEPTION_DISPOSITIONS) };
 }
 
 function removeFromList(list, item) {
@@ -219,10 +247,61 @@ function removeFromGroup(groups, key, item) {
   if (index >= 0) bucket.splice(index, 1);
 }
 
-export function countDispositions(entries) {
-  const counts = Object.fromEntries([...AUTO_APPLIED, ...REVIEW_REQUIRED].map((name) => [name, 0]));
+/**
+ * Classify exclusions, which the exception classifier never sees.
+ *
+ * An exclusion is strictly stronger than an exception: it suppresses an entire
+ * file rather than one occurrence. So relocating one is the single most
+ * dangerous edit this tool could make -- follow a rename far enough and an
+ * arbitrary source file becomes permanently unscanned. Git's rename detection
+ * tolerates substantial content change, so "it was a rename" is not evidence
+ * that the destination deserves the same blanket suppression.
+ *
+ * Relocation is therefore always review-required, never applied automatically.
+ * Dropping a stale exclusion is safe in the opposite direction: it widens what
+ * gets scanned, so it can only make the gate stricter.
+ */
+export function classifyExclusions({ exclusions = [], trackedSet = new Set(), moves = [] }) {
+  const movesByFrom = new Map(moves.map((move) => [move.from, move]));
+  const entries = [];
+  for (const [index, exclusion] of exclusions.entries()) {
+    const path = normalizeRepositoryPath(exclusion.path);
+    if (trackedSet.has(path)) {
+      entries.push({ index, disposition: "exclusion-unchanged", exclusion });
+      continue;
+    }
+    const move = movesByFrom.get(path);
+    if (move) entries.push({ index, disposition: "exclusion-relocated", exclusion, move });
+    else entries.push({ index, disposition: "exclusion-stale", exclusion });
+  }
+  return entries;
+}
+
+/** Dispositions an exception can take; exclusions have their own set. */
+export const EXCEPTION_DISPOSITIONS = Object.freeze([
+  "unchanged",
+  "moved",
+  "path-rebound",
+  "removed",
+  "added",
+  "context-changed",
+]);
+
+export const EXCLUSION_DISPOSITIONS = Object.freeze([
+  "exclusion-unchanged",
+  "exclusion-relocated",
+  "exclusion-stale",
+]);
+
+export function countDispositions(entries, names = EXCEPTION_DISPOSITIONS) {
+  const counts = Object.fromEntries(names.map((name) => [name, 0]));
   for (const entry of entries) counts[entry.disposition] = (counts[entry.disposition] ?? 0) + 1;
   return counts;
+}
+
+/** Dispositions that must never be applied without a human looking first. */
+export function isReviewRequired(disposition) {
+  return REVIEW_REQUIRED.includes(disposition);
 }
 
 /** Entries a human must look at before the manifest may be rewritten. */

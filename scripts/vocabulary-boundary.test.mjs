@@ -8,14 +8,24 @@ import {
   anchorKey,
   applyCollisionAnchors,
   formatReport,
+  parseCliOptions,
   scanRepository,
   sha256,
   validateManifest,
 } from "./vocabulary-boundary.mjs";
 import { createScenario, source, TOKEN } from "../tests/vocabulary-fixtures/scenarios.mjs";
-import { anchorIdentity, normalizeRepositoryPath, occurrenceId } from "./vocabulary/identity.mjs";
+import { pathVocabularyEquivalent, pathVocabularyProfile } from "./vocabulary/classify.mjs";
+import { validateRegeneratedManifest } from "./vocabulary/generate.mjs";
+import {
+  anchorIdentity,
+  compareUtf8,
+  normalizeRepositoryPath,
+  occurrenceId,
+  rulesFingerprint,
+} from "./vocabulary/identity.mjs";
 import { serializeManifest } from "./vocabulary/manifest-io.mjs";
 import { formatLedgerReport, parseLedger, verifyLedger } from "./vocabulary/ledger.mjs";
+import { inputFingerprint } from "./vocabulary/receipt.mjs";
 
 function fixture(files, exceptions = [], exclusions = []) {
   const root = mkdtempSync(join("/var/tmp", "platos-vocabulary-"));
@@ -870,7 +880,21 @@ test("the ledger reports a move-refactor whose declared target is wrong as block
   });
 });
 
-test("path normalization is the identity mapping on every production path", () => {
+test("path normalization actually canonicalizes non-canonical spellings", () => {
+  // The previous version of this test only asserted that production paths are
+  // already canonical, which is a property of the DATA -- it passed with a
+  // `return input` stub. These inputs exercise the code.
+  assert.equal(normalizeRepositoryPath("src\\alpha.ts"), "src/alpha.ts");
+  assert.equal(normalizeRepositoryPath("src//alpha.ts"), "src/alpha.ts");
+  assert.equal(normalizeRepositoryPath("./src/alpha.ts"), "src/alpha.ts");
+  assert.equal(normalizeRepositoryPath("a\\\\b//c/./d.ts"), "a/b/c/./d.ts");
+  assert.notEqual(normalizeRepositoryPath("src\\alpha.ts"), "src\\alpha.ts");
+  // Idempotent, so applying it twice cannot drift.
+  for (const input of ["src\\alpha.ts", "src//alpha.ts", "./src/alpha.ts"]) {
+    const once = normalizeRepositoryPath(input);
+    assert.equal(normalizeRepositoryPath(once), once);
+  }
+  // And it must still leave real production paths alone.
   const manifest = JSON.parse(
     readFileSync(new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url), "utf8")
   );
@@ -879,8 +903,330 @@ test("path normalization is the identity mapping on every production path", () =
   }
 });
 
+test("the gate anchor and the identity anchor agree on non-canonical paths", () => {
+  // MAJOR-5: these two agreeing only on today's tidy data is not agreement.
+  // Divergence here deadlocks the tool: the gate fails, --write reports success
+  // and changes nothing, and the gate fails again with nothing actionable.
+  const base = {
+    rule: TOKEN.vendorLower,
+    matchedText: TOKEN.vendor,
+    localContextSha256: sha256("local"),
+    semanticContextKind: "source-scope-chain",
+    semanticContextSha256: sha256("semantic"),
+  };
+  for (const spelling of ["./src/alpha.ts", "src//alpha.ts", "src\\alpha.ts", "src/alpha.ts"]) {
+    const entry = { ...base, path: spelling };
+    assert.equal(anchorIdentity(entry), anchorKey(entry), `disagreed on ${spelling}`);
+  }
+  // All spellings of one path must collapse to one anchor.
+  const anchors = new Set(
+    ["./src/alpha.ts", "src//alpha.ts", "src\\alpha.ts", "src/alpha.ts"].map((path) =>
+      anchorKey({ ...base, path })
+    )
+  );
+  assert.equal(anchors.size, 1);
+});
+
+test("a non-canonical manifest path is rejected with an actionable message", () => {
+  const { root, manifest } = fixture({ "src/external.ts": `External ${TOKEN.vendor}\n` });
+  const [finding] = findingsWithoutExceptions(root, manifest);
+  const exception = { ...exceptionFor(finding), path: "./src/external.ts" };
+  const errors = validateManifest({ ...manifest, exceptions: [exception] }).join("\n");
+  assert.match(errors, /must be canonical/u);
+  assert.match(errors, /src\/external\.ts/u);
+});
+
+test("occurrence identity separates genuinely different occurrences", () => {
+  // Kills a constant-returning occurrenceId: if everything hashes the same,
+  // any exception could relocate onto any other occurrence.
+  const base = {
+    rule: TOKEN.vendorLower,
+    matchedText: TOKEN.vendor,
+    localContextSha256: sha256("local"),
+    semanticContextKind: "source-scope-chain",
+    semanticContextSha256: sha256("semantic"),
+  };
+  const ids = new Set([
+    occurrenceId(base),
+    occurrenceId({ ...base, rule: TOKEN.retry }),
+    occurrenceId({ ...base, matchedText: TOKEN.vendorLower }),
+    occurrenceId({ ...base, localContextSha256: sha256("other") }),
+    occurrenceId({ ...base, semanticContextSha256: sha256("other") }),
+    occurrenceId({ ...base, semanticContextKind: "markdown-breadcrumb" }),
+    occurrenceId({ ...base, collisionContextSha256: sha256("collision") }),
+  ]);
+  assert.equal(ids.size, 7, "every identity-bearing field must change the occurrence id");
+  // Path is deliberately NOT part of it -- that is the whole model.
+  assert.equal(occurrenceId({ ...base, path: "a.ts" }), occurrenceId({ ...base, path: "b.ts" }));
+});
+
+test("ordering compares UTF-8 bytes, not UTF-16 code units", () => {
+  // Kills a compareUtf8 that delegates to < / >: these two disagree exactly on
+  // astral-plane characters, which is the classic "regenerated on another
+  // machine and the diff moved" bug.
+  const astral = String.fromCodePoint(0x1f600); // UTF-8: f0 9f 98 80
+  const highBmp = String.fromCodePoint(0xffff); // UTF-8: ef bf bf
+  assert.equal(Math.sign(compareUtf8(highBmp, astral)), -1, "ef bf bf sorts before f0 9f 98 80");
+  assert.equal(highBmp < astral, false, "UTF-16 ordering disagrees here, which is the point");
+  assert.equal(compareUtf8("a", "a"), 0);
+  assert.equal(Math.sign(compareUtf8("a", "b")), -1);
+});
+
 test("the serializer reproduces the production manifest byte for byte", () => {
   const path = new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url);
   const original = readFileSync(path, "utf8");
   assert.equal(serializeManifest(JSON.parse(original)), original);
+});
+
+// --- Safety properties, each written to fail if its guard is removed. --------
+
+test("relocating an EXCLUSION always demands review and is never applied", () => {
+  // The critical one. An exclusion suppresses a whole file, and git rename
+  // detection tolerates large content changes, so following a rename here can
+  // put an arbitrary source file permanently out of scope.
+  const from = "generated/artifact.txt";
+  const to = "apps/routes/product-runtime.ts";
+  // Large on purpose, mirroring the real attack against a lockfile: git rename
+  // detection tolerates a small append into a big file, so the destination is
+  // still reported as a rename of the excluded path.
+  const bulk = Array.from({ length: 400 }, (_, index) => `generated line ${index}`).join("\n");
+  withScenario({ [from]: `${bulk}\n`, "src/keep.ts": "export const ok = 1;\n" }, (scenario) => {
+    const manifest = scenario.seedManifest();
+    manifest.exclusions = [
+      {
+        path: from,
+        classification: "generated",
+        owner: "Build Platform",
+        rationale: "Generated artifact.",
+        removalPolicy: "Remove when no longer generated.",
+        removalEvent: "The generated artifact is retired.",
+      },
+    ];
+    writeFileSync(scenario.manifestPath, serializeManifest(manifest));
+
+    scenario.move(from, to);
+    scenario.write(to, `${bulk}\n${TOKEN.retiredTool}();\nconst s = ${TOKEN.secret};\n`);
+    const result = scenario.run();
+
+    const relocated = result.exclusionEntries.filter((e) => e.disposition === "exclusion-relocated");
+    assert.equal(relocated.length, 1, "the relocation must be recognised");
+    assert(
+      result.reviewRequired.some((entry) => entry.disposition === "exclusion-relocated"),
+      "and must be review-required"
+    );
+    // It must NOT be applied: the exclusion still names the old path.
+    assert.equal(result.nextManifest.exclusions.length, 1);
+    assert.equal(result.nextManifest.exclusions[0].path, from);
+    // And because the scan honours the manifest as written, the smuggled
+    // vocabulary at the destination is reported rather than suppressed.
+    const added = result.classification.entries.filter((e) => e.disposition === "added");
+    assert(added.some((e) => e.finding.rule === "spawn-bgo"), "the hidden payload must surface");
+  });
+});
+
+test("a stale exclusion whose file simply vanished is dropped, which only widens scanning", () => {
+  const gone = "generated/artifact.txt";
+  withScenario({ [gone]: "generated payload\n", "src/keep.ts": "export const ok = 1;\n" }, (scenario) => {
+    const manifest = scenario.seedManifest();
+    manifest.exclusions = [
+      {
+        path: gone,
+        classification: "generated",
+        owner: "Build Platform",
+        rationale: "Generated artifact.",
+        removalPolicy: "Remove when no longer generated.",
+        removalEvent: "The generated artifact is retired.",
+      },
+    ];
+    writeFileSync(scenario.manifestPath, serializeManifest(manifest));
+    scenario.remove(gone);
+
+    const result = scenario.run();
+    assert.equal(result.exclusionEntries.filter((e) => e.disposition === "exclusion-stale").length, 1);
+    assert.equal(result.reviewRequired.length, 0, "dropping an exclusion cannot weaken the gate");
+    assert.equal(result.nextManifest.exclusions.length, 0);
+  });
+});
+
+test("a path anchor is not rebound when the move is not byte-pure", () => {
+  // Kills removal of the `move.identical` check.
+  const from = `src/${TOKEN.vendorLower}-client.ts`;
+  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
+  withScenario({ [from]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    scenario.move(from, to);
+    scenario.write(to, `${source.vendorModule()}export const extra = 1;\n`);
+
+    const result = scenario.run();
+    assert.equal(result.classification.counts["path-rebound"], 0, "impure move must not rebind a path anchor");
+    assert(result.reviewRequired.length > 0);
+  });
+});
+
+test("a path anchor is not rebound when the destination carries the word in a new segment", () => {
+  // Kills `pathVocabularyEquivalent` -> always true. The rule-id multiset is
+  // identical here (one match either side) but the word now lives in a
+  // different directory name that nobody approved.
+  const from = `src/${TOKEN.vendorLower}-tasks/client.ts`;
+  const to = `packages/vendor-${TOKEN.vendorLower}-archive/client.ts`;
+  withScenario({ [from]: source.vendorModule() }, (scenario) => {
+    scenario.seedManifest();
+    scenario.move(from, to);
+
+    const result = scenario.run();
+    assert.equal(
+      result.classification.counts["path-rebound"],
+      0,
+      "a new segment carrying the forbidden word needs a human"
+    );
+    assert(result.reviewRequired.length > 0);
+  });
+});
+
+test("path vocabulary equivalence compares words and segments, not counts", () => {
+  const inDir = `src/${TOKEN.vendorLower}-tasks/client.ts`;
+  assert.equal(pathVocabularyEquivalent(inDir, `apps/${TOKEN.vendorLower}-tasks/client.ts`), true);
+  assert.equal(pathVocabularyEquivalent(inDir, `a/b/c/${TOKEN.vendorLower}-tasks/client.ts`), true);
+  // Same rule, same count, different segment -> not equivalent.
+  assert.equal(pathVocabularyEquivalent(inDir, `src/vendor-${TOKEN.vendorLower}-archive/client.ts`), false);
+  // Renaming the file itself into the forbidden word is not equivalent either.
+  assert.equal(pathVocabularyEquivalent("src/plain/client.ts", `src/plain/${TOKEN.vendorLower}.ts`), false);
+  assert.equal(pathVocabularyProfile("src/plain/client.ts").length, 0);
+  assert.equal(pathVocabularyProfile(inDir).length, 1);
+});
+
+test("a move git never recorded is still corroborated by exact content digest", () => {
+  // Kills disabling digestPairings. The destination is untracked, so git rename
+  // detection reports nothing and only the digest can pair them.
+  const from = "src/vendor.ts";
+  const to = "src/relocated/vendor.ts";
+  withScenario({ [from]: source.vendorModule(), "src/keep.ts": "export const ok = 1;\n" }, (scenario) => {
+    scenario.seedManifest();
+    scenario.copyOutsideGit(from, to);
+
+    const result = scenario.run();
+    assert.equal(result.moves.length, 1, "the digest must find what git rename detection missed");
+    assert.equal(result.moves[0].source, "content-digest");
+    assert.equal(result.moves[0].from, from);
+    assert.equal(result.moves[0].to, to);
+    assert.equal(result.classification.counts.moved, 1);
+    assert.equal(result.reviewRequired.length, 0);
+  });
+});
+
+test("an ambiguous digest pairing is refused rather than guessed", () => {
+  // Kills removal of the 1:1 guard. Two identical files vanish and two
+  // identical files appear; nothing says which became which.
+  const body = source.vendorModule();
+  withScenario(
+    { "src/one.ts": body, "src/two.ts": body, "src/keep.ts": "export const ok = 1;\n" },
+    (scenario) => {
+      scenario.seedManifest();
+      scenario.remove("src/one.ts");
+      scenario.remove("src/two.ts");
+      scenario.copyOutsideGit(null, "src/moved/one.ts", body);
+      scenario.copyOutsideGit(null, "src/moved/two.ts", body);
+
+      const result = scenario.run();
+      assert.equal(result.moves.length, 0, "an ambiguous pairing must not be invented");
+      assert.equal(result.classification.counts.moved, 0);
+      assert(result.reviewRequired.length > 0);
+    }
+  );
+});
+
+test("the write path refuses a regenerated manifest its own gate would reject", () => {
+  // MAJOR-3. migration-archaeology is only legal on an immutable Prisma
+  // migration.sql, and 2,172 production entries carry it. Relocating one out of
+  // prisma/migrations produces a manifest the gate rejects.
+  const from = "db/prisma/migrations/20260101000000_example/migration.sql";
+  const to = "db/archive/migration.sql";
+  withScenario({ [from]: `CREATE ${TOKEN.vendor.toUpperCase()} "example";\n` }, (scenario) => {
+    scenario.seedManifest({
+      classification: "migration-archaeology",
+      owner: "Data Platform",
+      rationale: "Preserves immutable SQL migration syntax byte-for-byte.",
+      removalPolicy: "Remove only with its database lineage.",
+      removalEvent: "The immutable migration and every lineage that applied it are retired.",
+    });
+    scenario.move(from, to);
+
+    const result = scenario.run();
+    assert.equal(result.classification.counts.moved, 1, "the occurrence itself does relocate");
+    assert.equal(result.reviewRequired.length, 0, "the classifier alone sees nothing wrong");
+
+    // ...but the regenerated manifest does not pass the gate, and the write
+    // path is what must catch it.
+    const gate = validateRegeneratedManifest(scenario.root, result.nextManifest, {
+      now: new Date("2026-08-24T12:00:00Z"),
+    });
+    assert.equal(gate.ok, false);
+    assert.match(gate.errors.join("\n"), /restricted to immutable Prisma migration\.sql files/u);
+  });
+});
+
+test("a fingerprint changes when its input changes", () => {
+  // The old test only checked the shape /^[a-f0-9]{64}$/, which a constant
+  // satisfies. These assertions fail if the fingerprints stop reading input.
+  const first = inputFingerprint({
+    textByPath: new Map([["a.ts", "alpha"]]),
+    binaryFiles: [],
+    excludedFiles: [],
+  });
+  const changedContent = inputFingerprint({
+    textByPath: new Map([["a.ts", "beta"]]),
+    binaryFiles: [],
+    excludedFiles: [],
+  });
+  const changedPath = inputFingerprint({
+    textByPath: new Map([["b.ts", "alpha"]]),
+    binaryFiles: [],
+    excludedFiles: [],
+  });
+  const extraFile = inputFingerprint({
+    textByPath: new Map([["a.ts", "alpha"]]),
+    binaryFiles: ["c.png"],
+    excludedFiles: [],
+  });
+  assert.equal(new Set([first, changedContent, changedPath, extraFile]).size, 4);
+  // Order of insertion must NOT matter; content must.
+  assert.equal(
+    inputFingerprint({ textByPath: new Map([["a.ts", "x"], ["b.ts", "y"]]), binaryFiles: [], excludedFiles: [] }),
+    inputFingerprint({ textByPath: new Map([["b.ts", "y"], ["a.ts", "x"]]), binaryFiles: [], excludedFiles: [] })
+  );
+
+  const rules = [{ id: "one", pattern: /alpha/giu }];
+  const renamed = [{ id: "two", pattern: /alpha/giu }];
+  const repatterned = [{ id: "one", pattern: /beta/giu }];
+  const reflagged = [{ id: "one", pattern: /alpha/gu }];
+  assert.equal(
+    new Set([
+      rulesFingerprint(rules),
+      rulesFingerprint(renamed),
+      rulesFingerprint(repatterned),
+      rulesFingerprint(reflagged),
+    ]).size,
+    4
+  );
+});
+
+test("argument parsing accepts both flag forms and rejects anything unknown", () => {
+  const inline = parseCliOptions(["--since=abc123", "--manifest=m.json", "--check"]);
+  assert.deepEqual(inline.errors, []);
+  assert.equal(inline.revision, "abc123");
+  assert.equal(inline.manifestPath, "m.json");
+  assert.equal(inline.check, true);
+
+  // Previously silently ignored, so --since <rev> appeared to work and did not.
+  const spaced = parseCliOptions(["--since", "abc123", "--manifest", "m.json", "--write"]);
+  assert.deepEqual(spaced.errors, []);
+  assert.equal(spaced.revision, "abc123");
+  assert.equal(spaced.manifestPath, "m.json");
+  assert.equal(spaced.write, true);
+
+  assert.match(parseCliOptions(["--nonsense"]).errors.join(), /unknown option/u);
+  assert.match(parseCliOptions(["stray"]).errors.join(), /unexpected argument/u);
+  assert.match(parseCliOptions(["--since"]).errors.join(), /requires a value/u);
+  assert.match(parseCliOptions(["--since", "--check"]).errors.join(), /requires a value/u);
+  assert.match(parseCliOptions(["--check=yes"]).errors.join(), /does not take a value/u);
 });

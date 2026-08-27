@@ -6,6 +6,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { normalizeRepositoryPath } from "./vocabulary/identity.mjs";
+
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const defaultManifestPath = "docs/vocabulary-boundary-exceptions.json";
 
@@ -129,6 +131,11 @@ export function validateManifest(manifest) {
     if ((exception.path ?? "").startsWith("/") || (exception.path ?? "").split("/").includes("..")) {
       errors.push(`${label}.path must be repository-relative`);
     }
+    if (typeof exception.path === "string" && normalizeRepositoryPath(exception.path) !== exception.path) {
+      errors.push(
+        `${label}.path must be canonical: write ${normalizeRepositoryPath(exception.path)} (forward slashes, no "./", no repeated "/")`
+      );
+    }
     if (!ruleIds.has(exception.rule)) errors.push(`${label}.rule is unknown: ${exception.rule}`);
     validateLifecycle(exception, label, errors);
   }
@@ -149,6 +156,11 @@ export function validateManifest(manifest) {
     }
     if ((exclusion.path ?? "").startsWith("/") || (exclusion.path ?? "").split("/").includes("..")) {
       errors.push(`${label}.path must be repository-relative`);
+    }
+    if (typeof exclusion.path === "string" && normalizeRepositoryPath(exclusion.path) !== exclusion.path) {
+      errors.push(
+        `${label}.path must be canonical: write ${normalizeRepositoryPath(exclusion.path)} (forward slashes, no "./", no repeated "/")`
+      );
     }
     if (exclusionPaths.has(exclusion.path)) errors.push(`${label}.path duplicates an existing exclusion`);
     exclusionPaths.add(exclusion.path);
@@ -738,6 +750,9 @@ export function scanRepository(root, manifest, options = {}) {
     binaryFiles,
     excludedFiles,
     findings,
+    // Carried so the regeneration pass can reuse this walk instead of
+    // repeating it; the receipt fingerprints the scanned text from here.
+    textByPath: scan.textByPath,
     violations,
     manifestErrors,
     exceptionDrift,
@@ -749,7 +764,12 @@ export function anchorKey(entry) {
 }
 
 export function baseAnchorKey(entry) {
-  return `${entry.path}\0${entry.rule}\0${entry.matchedText}\0${entry.localContextSha256}\0${entry.semanticContextKind}\0${entry.semanticContextSha256}`;
+  // Normalized here, not just in identity.mjs. Without this the two spellings
+  // of one path disagree, and the failure mode is a deadlock: the gate rejects
+  // the entry, --write reports success and changes nothing, and the gate
+  // rejects it again with no actionable message.
+  const path = normalizeRepositoryPath(entry.path ?? "");
+  return `${path}\0${entry.rule}\0${entry.matchedText}\0${entry.localContextSha256}\0${entry.semanticContextKind}\0${entry.semanticContextSha256}`;
 }
 
 export function applyCollisionAnchors(findings) {
@@ -829,50 +849,97 @@ export function formatReport(result, manifestPath = defaultManifestPath) {
   return lines.join("\n");
 }
 
-function parseCliOptions(argv) {
-  const flag = (name) => argv.find((entry) => entry.startsWith(`--${name}=`))?.slice(name.length + 3);
+const VALUE_FLAGS = ["manifest", "since", "ledger", "receipt"];
+const BOOLEAN_FLAGS = ["write", "check", "help"];
+
+/**
+ * Parse argv accepting both `--flag=value` and `--flag value`, and reject
+ * anything unrecognised. Silently ignoring `--since <rev>` meant the committed
+ * move workflow appeared to run and quietly did nothing.
+ */
+export function parseCliOptions(argv) {
+  const values = new Map();
+  const flags = new Set();
+  const errors = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const entry = argv[index];
+    if (!entry.startsWith("--")) {
+      errors.push(`unexpected argument: ${entry}`);
+      continue;
+    }
+    const separator = entry.indexOf("=");
+    const name = (separator === -1 ? entry.slice(2) : entry.slice(2, separator)).trim();
+    if (VALUE_FLAGS.includes(name)) {
+      const inline = separator === -1 ? undefined : entry.slice(separator + 1);
+      const value = inline ?? argv[++index];
+      if (value === undefined || value.startsWith("--")) errors.push(`--${name} requires a value`);
+      else values.set(name, value);
+    } else if (BOOLEAN_FLAGS.includes(name)) {
+      if (separator !== -1) errors.push(`--${name} does not take a value`);
+      flags.add(name);
+    } else {
+      errors.push(`unknown option: --${name}`);
+    }
+  }
   return {
-    manifestPath: flag("manifest") ?? defaultManifestPath,
-    revision: flag("since") ?? "HEAD",
-    ledgerPath: flag("ledger"),
-    receiptPath: flag("receipt"),
-    write: argv.includes("--write"),
-    check: argv.includes("--check"),
+    manifestPath: values.get("manifest") ?? defaultManifestPath,
+    revision: values.get("since") ?? "HEAD",
+    ledgerPath: values.get("ledger"),
+    receiptPath: values.get("receipt"),
+    write: flags.has("write"),
+    check: flags.has("check"),
+    help: flags.has("help"),
+    errors,
   };
 }
 
-/**
- * Read-only classification appended to the legacy gate output.
- *
- * Deliberately lazy: on a clean tree the legacy gate reports no drift and this
- * never runs, so the default CI invocation keeps its exact historical output
- * and cost. It only speaks up when something actually moved or changed.
- */
-async function reportRegeneration(options, { always = false } = {}) {
-  const { regenerate, formatClassification } = await import("./vocabulary/generate.mjs");
-  const { formatReceipt } = await import("./vocabulary/receipt.mjs");
-  const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
-  const result = regenerate(repositoryRoot, {
-    manifestPath: absoluteManifestPath,
-    manifestLabel: options.manifestPath,
-    revision: options.revision,
-  });
-  console.log(formatClassification(result, options.manifestPath));
-  if (always) console.log(formatReceipt(result.receipt));
-  if (options.ledgerPath) {
-    const { readLedger, verifyLedger, formatLedgerReport } = await import("./vocabulary/ledger.mjs");
-    const { ledger, errors } = readLedger(resolve(repositoryRoot, options.ledgerPath));
-    for (const error of errors) console.log(`LEDGER: ${error}`);
-    const verdict = verifyLedger({
-      ledger,
-      entries: result.classification.entries,
-      moves: result.moves,
-      trackedPaths: result.trackedSet,
-    });
-    console.log(formatLedgerReport(verdict));
-    if (errors.length || verdict.blocked.length) process.exitCode = 1;
+const USAGE = [
+  "usage: node scripts/vocabulary-boundary.mjs [--check | --write] [options]",
+  "",
+  "  --check              read-only; classify the regeneration diff and print the receipt",
+  "  --write              apply relocations and resolved exceptions; refuses anything needing review",
+  "  --since <revision>   revision to detect file moves against (default: HEAD plus upstream merge bases)",
+  "  --manifest <path>    manifest to read (default: docs/vocabulary-boundary-exceptions.json)",
+  "  --ledger <path>      verify repository ledger dispositions against the boundary evidence",
+  "  --receipt <path>     also write the receipt as JSON to this path",
+  "",
+  "With no mode flag the gate runs read-only and still fails on an out-of-date manifest.",
+].join("\n");
+
+const REFUSAL_EXPLANATION = [
+  "  --write may remove a resolved exception, relocate one whose reviewed context is",
+  "  unchanged, and rebind a path anchor only when the destination carries exactly the",
+  "  same forbidden words in the same path segments. It never approves an occurrence",
+  "  nobody has reviewed, and it never relocates an exclusion, because an exclusion",
+  "  suppresses an entire file.",
+].join("\n");
+
+async function loadLedger(options, result) {
+  const { existsSync } = await import("node:fs");
+  const absolute = resolve(repositoryRoot, options.ledgerPath);
+  if (!existsSync(absolute)) {
+    console.log(`LEDGER: no such file: ${options.ledgerPath}`);
+    process.exitCode = 1;
+    return;
   }
-  return result;
+  const { readLedger, verifyLedger, formatLedgerReport } = await import("./vocabulary/ledger.mjs");
+  let parsed;
+  try {
+    parsed = readLedger(absolute);
+  } catch (error) {
+    console.log(`LEDGER: cannot read ${options.ledgerPath}: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  for (const error of parsed.errors) console.log(`LEDGER: ${error}`);
+  const verdict = verifyLedger({
+    ledger: parsed.ledger,
+    entries: result.entries,
+    moves: result.moves,
+    trackedPaths: result.trackedSet,
+  });
+  console.log(formatLedgerReport(verdict));
+  if (parsed.errors.length || verdict.blocked.length) process.exitCode = 1;
 }
 
 async function runWrite(options) {
@@ -891,29 +958,56 @@ async function runWrite(options) {
     console.log(
       result.reviewRequired.length === 1
         ? "refusing to write: 1 entry needs human review."
-        : `refusing to write: ${result.reviewRequired.length} entries need human review.`,
-      "\n  --write may only remove or relocate reviewed exceptions. It never creates one,",
-      "\n  because creating one weakens the gate on code nobody has looked at."
+        : `refusing to write: ${result.reviewRequired.length} entries need human review.`
     );
+    console.log(REFUSAL_EXPLANATION);
     process.exitCode = 1;
     return result;
   }
+
+  // Never hand back a manifest this tool's own gate would reject. Without this
+  // the tool can tell you to commit something that fails CI on a rule the
+  // author never touched.
+  const { validateRegeneratedManifest } = await import("./vocabulary/generate.mjs");
+  const gate = validateRegeneratedManifest(repositoryRoot, result.nextManifest);
+  if (!gate.ok) {
+    console.log("refusing to write: the regenerated manifest does not pass the gate.");
+    for (const error of gate.errors.slice(0, 20)) console.log(`  ${error}`);
+    if (gate.errors.length > 20) console.log(`  ...and ${gate.errors.length - 20} more`);
+    console.log("  A relocation rewrote a path that a lifecycle rule constrains. Resolve by hand.");
+    process.exitCode = 1;
+    return result;
+  }
+
   writeFileSync(absoluteManifestPath, result.manifestText);
   console.log(`wrote ${options.manifestPath}`);
   console.log(formatReceipt(result.receipt));
   if (options.receiptPath) {
     writeFileSync(resolve(repositoryRoot, options.receiptPath), `${JSON.stringify(result.receipt, null, 2)}\n`);
   }
+  if (options.ledgerPath) await loadLedger(options, result);
   return result;
 }
 
 async function runCli() {
   const options = parseCliOptions(process.argv.slice(2));
+  if (options.errors.length) {
+    for (const error of options.errors) console.log(`argument error: ${error}`);
+    console.log(USAGE);
+    process.exitCode = 1;
+    return;
+  }
+  if (options.help) {
+    console.log(USAGE);
+    return;
+  }
   if (options.write) {
     await runWrite(options);
     return;
   }
 
+  const { regenerate, formatClassification } = await import("./vocabulary/generate.mjs");
+  const { formatReceipt } = await import("./vocabulary/receipt.mjs");
   const absoluteManifestPath = resolve(repositoryRoot, options.manifestPath);
   const manifest = JSON.parse(readFileSync(absoluteManifestPath, "utf8"));
   const result = scanRepository(repositoryRoot, manifest);
@@ -922,15 +1016,32 @@ async function runCli() {
     result.manifestErrors.length || result.violations.length || result.exceptionDrift.length;
   if (failed) process.exitCode = 1;
 
-  if (failed || options.check) {
-    const regeneration = await reportRegeneration(options, { always: options.check });
-    // An up-to-date manifest is part of the gate: relocations and resolved
-    // exceptions must be committed, not left for the next person to rediscover.
-    if (options.check && regeneration.manifestText !== readFileSync(absoluteManifestPath, "utf8")) {
-      console.log(`${options.manifestPath} is out of date; run with --write and commit the result.`);
-      process.exitCode = 1;
-    }
+  // The default invocation is check-only: an out-of-date manifest and anything
+  // awaiting review fail the gate too, so CI does not need a separate command.
+  // Reuse the walk the gate just did so a check costs one tree scan, not two.
+  const regeneration = regenerate(repositoryRoot, {
+    manifestPath: absoluteManifestPath,
+    manifestLabel: options.manifestPath,
+    revision: options.revision,
+    scan: result.manifestErrors.length ? undefined : result,
+  });
+  const classification = formatClassification(regeneration, options.manifestPath);
+  const quiet =
+    !options.check &&
+    !failed &&
+    regeneration.reviewRequired.length === 0 &&
+    regeneration.manifestText === readFileSync(absoluteManifestPath, "utf8");
+  if (!quiet) console.log(classification);
+  if (options.check) console.log(formatReceipt(regeneration.receipt));
+
+  if (regeneration.reviewRequired.length) process.exitCode = 1;
+  // An up-to-date manifest is part of the gate: relocations and resolved
+  // exceptions must be committed, not left for the next person to rediscover.
+  if (regeneration.manifestText !== readFileSync(absoluteManifestPath, "utf8")) {
+    console.log(`${options.manifestPath} is out of date; run with --write and commit the result.`);
+    process.exitCode = 1;
   }
+  if (options.ledgerPath) await loadLedger(options, regeneration);
 }
 
 // Not a top-level await: `./vocabulary/generate.mjs` imports this module back,

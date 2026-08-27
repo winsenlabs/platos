@@ -12,7 +12,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -28,6 +28,8 @@ export const TOKEN = Object.freeze({
   vendorLower: assemble("tri", "gger"),
   retry: assemble("att", "empt"),
   rollout: assemble("deploy", "ment"),
+  retiredTool: assemble("spawn", "_bgo"),
+  secret: assemble("TRI", "GGER_INTERNAL_SECRET"),
 });
 
 export const VENDOR_LIFECYCLE = Object.freeze({
@@ -84,6 +86,18 @@ export function createScenario(files) {
 
     remove(path) {
       git(root, ["rm", "-q", path]);
+    },
+
+    /**
+     * Place content at `to` WITHOUT telling git it is a rename, leaving the
+     * destination untracked. Git rename detection reports nothing here, so only
+     * the content digest can pair the two -- which is exactly what this
+     * exercises. Pass `body` to synthesize content instead of copying `from`.
+     */
+    copyOutsideGit(from, to, body) {
+      const content = body ?? readFileSync(join(root, from), "utf8");
+      if (from) git(root, ["rm", "-q", from]);
+      writeFileAt(root, to, content);
     },
 
     /**

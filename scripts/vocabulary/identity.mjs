@@ -59,14 +59,6 @@ export function normalizeRepositoryPath(input) {
   return path;
 }
 
-/** True when `path` is safe to record: relative, no traversal, no drive letter. */
-export function isRepositoryRelative(path) {
-  if (typeof path !== "string" || path === "") return false;
-  if (path.startsWith("/") || /^[A-Za-z]:/u.test(path)) return false;
-  if (path.split("/").includes("..")) return false;
-  return true;
-}
-
 /**
  * Deterministic, locale-independent ordering: compare UTF-8 bytes.
  *
@@ -126,18 +118,6 @@ export function rulesFingerprint(rules) {
     .sort(compareUtf8)
     .join("\n");
   return createHash("sha256").update(canonical, "utf8").digest("hex");
-}
-
-/**
- * Order anchor-bearing records deterministically and totally. The ordinal
- * tiebreak makes ties impossible, so the result is stable regardless of input
- * order or the engine's sort implementation.
- */
-export function sortByAnchor(entries) {
-  return entries
-    .map((entry, ordinal) => ({ entry, ordinal, key: anchorIdentity(entry) }))
-    .sort((left, right) => compareUtf8(left.key, right.key) || left.ordinal - right.ordinal)
-    .map((wrapped) => wrapped.entry);
 }
 
 /**

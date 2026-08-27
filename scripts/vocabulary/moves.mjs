@@ -134,47 +134,79 @@ export function digestPairings(root, revision, disappeared, appeared) {
 }
 
 /**
+ * Revisions worth comparing against, in order.
+ *
+ * `HEAD` alone only finds moves that are still uncommitted. By the time CI runs
+ * a pull request the move is normally already *in* HEAD, so HEAD-vs-worktree
+ * shows nothing and the headline feature silently fails to engage. Falling back
+ * to the merge base with the upstream branch is what makes it work on a real PR.
+ *
+ * An explicitly supplied revision is honoured on its own and never widened.
+ */
+export function candidateRevisions(root, explicit) {
+  if (explicit && explicit !== "HEAD") return [explicit];
+  const revisions = ["HEAD"];
+  for (const upstream of ["origin/HEAD", "origin/v1", "origin/main", "v1", "main"]) {
+    const base = git(root, ["merge-base", "HEAD", upstream], { allowFailure: true });
+    if (base) revisions.push(base.trim());
+  }
+  return [...new Set(revisions.filter(Boolean))];
+}
+
+/**
  * Resolve the full set of corroborated moves, each annotated with whether the
  * content is byte-identical (`identical: true` => pure move).
  *
  * `disappeared` / `appeared` narrow the digest search to paths the classifier
  * actually cares about; git rename detection is unconditional.
  */
-export function detectFileMoves(root, { revision = "HEAD", disappeared = [], appeared = [] } = {}) {
-  if (!revisionExists(root, revision)) return { revision, moves: [], available: false };
+export function detectFileMoves(root, { revision = "HEAD", revisions, disappeared = [], appeared = [] } = {}) {
+  const candidates = (revisions ?? candidateRevisions(root, revision)).filter((entry) =>
+    revisionExists(root, entry)
+  );
+  if (candidates.length === 0) {
+    return { revisions: [], moves: [], available: false, unexplained: [...disappeared] };
+  }
 
   const moves = new Map();
-  for (const rename of gitRenames(root, revision)) {
-    moves.set(`${rename.from}${NUL}${rename.to}`, rename);
-  }
-  const known = new Set([...moves.values()].map((move) => move.from));
-  const stillMissing = disappeared.filter((path) => !known.has(path));
-  const knownTargets = new Set([...moves.values()].map((move) => move.to));
-  const stillNew = appeared.filter((path) => !knownTargets.has(path));
-  for (const pairing of digestPairings(root, revision, stillMissing, stillNew)) {
-    moves.set(`${pairing.from}${NUL}${pairing.to}`, pairing);
+  const originOf = new Map();
+  for (const candidate of candidates) {
+    for (const rename of gitRenames(root, candidate)) {
+      const key = `${rename.from}${NUL}${rename.to}`;
+      if (moves.has(key)) continue;
+      moves.set(key, rename);
+      originOf.set(key, candidate);
+    }
+    const known = new Set([...moves.values()].map((move) => move.from));
+    const knownTargets = new Set([...moves.values()].map((move) => move.to));
+    const stillMissing = disappeared.filter((path) => !known.has(path));
+    const stillNew = appeared.filter((path) => !knownTargets.has(path));
+    if (stillMissing.length === 0) continue;
+    for (const pairing of digestPairings(root, candidate, stillMissing, stillNew)) {
+      const key = `${pairing.from}${NUL}${pairing.to}`;
+      if (moves.has(key)) continue;
+      moves.set(key, pairing);
+      originOf.set(key, candidate);
+    }
   }
 
   const resolved = [];
-  for (const move of moves.values()) {
-    const beforeDigest = digestBlobAt(root, revision, move.from);
+  for (const [key, move] of moves) {
+    const revisionForMove = originOf.get(key);
+    const beforeDigest = digestBlobAt(root, revisionForMove, move.from);
     const afterDigest = digestFile(root, move.to);
     resolved.push({
       ...move,
+      revision: revisionForMove,
       identical: Boolean(beforeDigest && afterDigest && beforeDigest === afterDigest),
     });
   }
   resolved.sort((left, right) => (left.from < right.from ? -1 : left.from > right.from ? 1 : 0));
-  return { revision, moves: resolved, available: true };
-}
-
-/** Index moves by their source path for O(1) lookup during classification. */
-export function indexMovesByFrom(moves) {
-  const index = new Map();
-  for (const move of moves) {
-    const bucket = index.get(move.from) ?? [];
-    bucket.push(move);
-    index.set(move.from, bucket);
-  }
-  return index;
+  const explained = new Set(resolved.map((move) => move.from));
+  return {
+    revisions: candidates,
+    moves: resolved,
+    available: true,
+    unexplained: disappeared.filter((path) => !explained.has(path)),
+  };
 }
