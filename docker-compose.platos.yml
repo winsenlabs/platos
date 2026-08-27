@@ -21,8 +21,10 @@
 # the public internet. To expose them externally (e.g. for a developer tool
 # running off-host), set the corresponding *_PUBLIC_BIND env to `0.0.0.0`:
 #   POSTGRES_PUBLIC_BIND=0.0.0.0 REDIS_PUBLIC_BIND=0.0.0.0 docker compose up -d
-# The webapp (3030) and agent (3100) remain bound to 0.0.0.0 — they're
-# designed to sit behind Caddy or a similar reverse proxy.
+# The webapp (3030) and agent (3100) are bound to 127.0.0.1 — they sit behind
+# Caddy (or a similar reverse proxy) on the host, which reaches them over
+# localhost. Set WEBAPP_PUBLIC_BIND / the agent's bind to 0.0.0.0 only for a
+# deliberately public single-host install without a fronting proxy.
 #
 # ─── Log rotation + mem limits (EOBD.54) ──────────────────────────────────
 # Every service ships with a json-file log driver capped at 50MB × 5 files
@@ -504,7 +506,13 @@ services:
     logging: *default-logging
     mem_limit: ${WEBAPP_MEM_LIMIT:-2g}
     ports:
-      - "3030:3000"
+      # WIN-291 — loopback-bound, matching the agent (127.0.0.1:3100). The webapp
+      # exposes the operator dashboard + BFF; publishing on 0.0.0.0 put it on the
+      # public internet with only an undocumented provider-side filter in front.
+      # Caddy reaches it via host localhost:3030, so proxied access is unaffected;
+      # direct external access is removed. Override with WEBAPP_PUBLIC_BIND for a
+      # deliberately public single-host install.
+      - "${WEBAPP_PUBLIC_BIND:-127.0.0.1}:3030:3000"
     depends_on:
       postgres:
         condition: service_healthy
