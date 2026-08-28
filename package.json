@@ -87,7 +87,8 @@
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
     "test:arch-boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
-    "audit:contract-map": "node scripts/arch/contract-map.mjs"
+    "audit:contract-map": "node scripts/arch/contract-map.mjs",
+    "audit:capability-matrix": "node scripts/capability-matrix.mjs --check"
   },
   "devDependencies": {
     "@manypkg/cli": "^0.19.2",
