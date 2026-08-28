@@ -84,7 +84,10 @@
     "audit:sbom": "node scripts/audit-sbom.mjs generate",
     "audit:sbom:check": "node scripts/audit-sbom.mjs check",
     "audit:sbom:nonvacuity": "node scripts/verify-sbom-nonvacuity.mjs",
-    "test:sbom": "node --test scripts/audit-sbom.test.mjs"
+    "test:sbom": "node --test scripts/audit-sbom.test.mjs",
+    "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
+    "test:arch-boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
+    "audit:contract-map": "node scripts/arch/contract-map.mjs"
   },
   "devDependencies": {
     "@manypkg/cli": "^0.19.2",
