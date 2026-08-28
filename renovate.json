@@ -1,0 +1,152 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
+  "description": "Platos update governance. Ecosystem-grouped, lockfile-driven, changelog-linked, and aligned with the pnpm minimumReleaseAge cooldown in pnpm-workspace.yaml. Derived from docs/audits/M0.5-dependency-sbom.md §5.",
+  "timezone": "Etc/UTC",
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency governance (M0.5)",
+  "configMigration": true,
+  "rangeStrategy": "update-lockfile",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 8,
+  "prHourlyLimit": 4,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "groupName": "security",
+    "labels": ["dependencies", "security"],
+    "minimumReleaseAge": "0 days",
+    "schedule": ["at any time"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "description": "Weekly relock so silent in-range resolution drift (e.g. lodash.omit 4.5.0 -> 4.18.0 within ^4.5.0) surfaces as a reviewable PR rather than floating in on the next build.",
+    "schedule": ["before 6am on monday"],
+    "minimumReleaseAge": "7 days"
+  },
+  "ignorePaths": [
+    "**/node_modules/**",
+    "examples/**",
+    "references/**",
+    "internal-packages/tenancy-database/migration-image/**"
+  ],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "packageRules": [
+    {
+      "description": "GLOBAL: majors never auto-open; they wait behind an explicit migration decision on the dashboard (M0.5 §5.2 gate 5). Standing majors: NestJS 11->12, Prisma 6->7, Sentry 8/9->10, OTel core 1.x->2.x, React 18->19, zod 3->4, Express 4->5.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "major"]
+    },
+    {
+      "groupName": "ai-sdk",
+      "description": "Vercel AI SDK. Cross-package invariants; the glob deliberately covers the undeclared-but-shipping @ai-sdk/provider, @ai-sdk/gateway, @ai-sdk/provider-utils and @ai-sdk/openai-compatible. Gate: per-provider generateText/streamText fixture + single-@ai-sdk/provider-major assertion.",
+      "matchPackageNames": ["ai", "@ai-sdk/**"],
+      "schedule": ["before 6am on monday"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "groupName": "chat-sdk",
+      "description": "Chat SDK. `chat` is a 13-year-old transferred npm name republished under a bot account and dynamic-imported at runtime — soak it. @chat-adapter/state-pg carries a persistence schema, so the group gate includes a Postgres migration test.",
+      "matchPackageNames": ["chat", "@chat-adapter/**"],
+      "schedule": ["before 6am on monday"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "groupName": "trigger",
+      "description": "Trigger SDK + Sessions. sdk and core must move in lockstep (assert identical resolution). Patch releases carry session-lifecycle fixes, so this group keeps the shorter cooldown the pnpm exclude intended — but through a reviewed PR, not an install-time bypass.",
+      "matchPackageNames": ["@trigger.dev/**"],
+      "schedule": ["before 6am on monday"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "groupName": "mcp",
+      "description": "MCP SDK + its optional JSON-Schema validator peer. Protocol boundary — treat 1.x minors as breaking; gate on list_tools/call_tool round trip over stdio and HTTP plus argument-schema validation.",
+      "matchPackageNames": ["@modelcontextprotocol/sdk", "@cfworker/json-schema"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "nestjs",
+      "description": "NestJS core + the Express/multer/cors surface it pulls transitively. express is currently UNDECLARED yet shipping (5.2.1 agent, 4.20.0 webapp); declare express/multer/cors in apps/agent so this group governs them. Gate pins the Express major.",
+      "matchPackageNames": ["@nestjs/**", "express", "multer", "cors", "reflect-metadata", "rxjs"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "prisma",
+      "description": "Prisma client + CLI + engines + instrumentation + config. Move all locations atomically, INCLUDING the `pnpx prisma@X generate` literal in apps/webapp/Dockerfile.platos. Never resolve prisma@latest — npm `latest` is an 8.x RC; target 7.10.0 explicitly. CI must assert no Prisma spec resolves to a prerelease.",
+      "matchPackageNames": ["prisma", "@prisma/**"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "otel-sentry",
+      "description": "OpenTelemetry + Sentry, deliberately ONE group: @sentry/* pins @opentelemetry/{core,resources,sdk-trace-base,context-async-hooks}@1.30.1, so no OTel 2.x consolidation is possible until Sentry is unified. Every 0.x OTel minor is breaking. Gate: spans+logs+metrics reach an in-test OTLP receiver from both apps.",
+      "matchPackageNames": ["@opentelemetry/**", "@sentry/**"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "aws-sdk",
+      "description": "AWS SDK v3 + Smithy runtime. Predictable weekly cadence; safe to auto-merge non-major on green because these are leaf clients. Most are repo-wide orphans in webapp and should be dropped rather than upgraded.",
+      "matchPackageNames": ["@aws-sdk/**", "@smithy/**"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "7 days",
+      "automerge": true,
+      "matchUpdateTypes": ["patch", "minor"]
+    },
+    {
+      "groupName": "store-clients",
+      "description": "Datastore clients: Postgres (pg, @types/pg), Redis (ioredis, redis, @upstash/*), ClickHouse (@clickhouse/*), MinIO/S3 object store (minio). @upstash/ratelimit's caret must become an exact pin — the patch key is exact @1.1.3 and any relock floats it to 1.2.1 and fails the build (ERR_PNPM_UNUSED_PATCH).",
+      "matchPackageNames": ["pg", "@types/pg", "pg-*", "ioredis", "redis", "@upstash/**", "@clickhouse/**", "minio", "graphile-worker"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "socketio",
+      "description": "Socket.IO / Engine.IO realtime stack + ws. engine.io-parser carries a committed patch (patches/engine.io-parser@5.2.2.patch) that must be rebased in the same PR as any bump. Multiple builds ship (socket.io 4.7.4/4.8.3, engine.io 6.5.4/6.6.6).",
+      "matchPackageNames": ["socket.io", "socket.io-client", "socket.io-adapter", "engine.io", "engine.io-client", "engine.io-parser", "ws", "@socket.io/**"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "groupName": "auth-crypto",
+      "description": "Auth + crypto + cookie/session. cookie@0.4.2 ships in BOTH images below the 0.7.0 CVE-2024-47764 fix line and has no override despite overrides existing for js-yaml/qs/jws/etc. Adding `cookie` here plus a session round-trip test is the tracked remediation.",
+      "matchPackageNames": ["jose", "jsonwebtoken", "jws", "jwa", "cookie", "universal-cookie", "cookie-signature", "@node-rs/**", "bcrypt", "bcryptjs", "remix-auth", "remix-auth-**"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "7 days",
+      "prPriority": 5,
+      "labels": ["dependencies", "auth"]
+    },
+    {
+      "groupName": "build-test",
+      "description": "Build + test tooling (devDependencies; do not ship). typescript and @types/node are also pinned via pnpm.overrides, so bumps here must move the override in lockstep.",
+      "matchPackageNames": ["turbo", "esbuild", "tsx", "vite", "vite-*", "vitest", "@vitest/**", "@playwright/test", "playwright", "prettier", "eslint", "eslint-*", "@typescript-eslint/**", "typescript", "@swc/**", "lefthook", "@manypkg/cli"],
+      "matchDepTypes": ["devDependencies"],
+      "schedule": ["before 6am on the first day of the month"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchPackageNames": ["agentcrumbs"],
+      "description": "MANUAL REVIEW ONLY. Brand-new (created 2026-03-10), single-maintainer, sole root-dependency that ships in the webapp runner and is bundled server-side. No discoverable changelog. Never auto-merge; always soak; pin exact.",
+      "dependencyDashboardApproval": true,
+      "minimumReleaseAge": "14 days",
+      "rangeStrategy": "pin",
+      "labels": ["dependencies", "supply-chain-review"]
+    },
+    {
+      "matchDatasources": ["npm"],
+      "matchCurrentVersion": "!/^v?\\d/",
+      "description": "Refuse promotion of anything whose changelog cannot be resolved (agentcrumbs, @jsonhero/*, intl-parse-accept-language, tailwindcss-textshadow): route to manual review. That inability is itself the signal (M0.5 §5.2 gate 2).",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchPackageNames": ["@changesets/**", "@remix-run/changelog-github"],
+      "description": "Release tooling. @changesets/cli currently sits in root `dependencies` and drags GPL-2.0 breakword into the webapp runner; it belongs in devDependencies. @changesets/assemble-release-plan carries a committed patch that must be rebased on bump.",
+      "dependencyDashboardApproval": true,
+      "labels": ["dependencies", "release-tooling"]
+    }
+  ]
+}

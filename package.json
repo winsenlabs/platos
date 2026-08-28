@@ -78,7 +78,13 @@
     "changeset:v4": "changeset pre enter v4",
     "changeset:normal": "changeset pre exit",
     "clean:sourcemaps": "turbo run clean:sourcemaps",
-    "storybook": "turbo run storybook"
+    "storybook": "turbo run storybook",
+    "audit:advisory": "node scripts/audit-advisory.mjs",
+    "audit:licenses": "node scripts/audit-licenses.mjs",
+    "audit:sbom": "node scripts/audit-sbom.mjs generate",
+    "audit:sbom:check": "node scripts/audit-sbom.mjs check",
+    "audit:sbom:nonvacuity": "node scripts/verify-sbom-nonvacuity.mjs",
+    "test:sbom": "node --test scripts/audit-sbom.test.mjs"
   },
   "devDependencies": {
     "@manypkg/cli": "^0.19.2",
