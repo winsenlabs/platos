@@ -572,7 +572,10 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   for (const exception of manifest.exceptions) {
     assert.equal(anchorIdentity(exception), anchorKey(exception));
   }
-  assert.equal(manifest.exceptions.length, 20349);
+  // Full-set canary (not a sample). M0 integration added 62 exact context-bound
+  // exceptions for the accepted, immutable M0 ADRs' external-vendor references
+  // (WIN-248/WIN-250, #132), lifting the production set 20349 -> 20411.
+  assert.equal(manifest.exceptions.length, 20411);
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {

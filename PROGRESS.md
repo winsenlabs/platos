@@ -399,7 +399,7 @@ is present, `input_cached_tokens: 1e-8` is present, and the old `2.5e-8` appears
 | | |
 |---|---|
 | Branch | `feat/prompt-caching-and-serving-research` @ `20b2fc5`, pushed to origin |
-| Deployed | test.platos.dev (187.127.142.170), agent + webapp, sequentially |
+| Deployed | test.platos.dev, agent + webapp, sequentially |
 | Rollback | previous tree preserved at `/opt/platos-prev` |
 | Services | all six healthy; agent healthy in 20s, webapp in 20s |
 | Live gate | **PASSED** — 98% steady-state cache read, 99% cross-turn |

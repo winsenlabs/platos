@@ -34,6 +34,7 @@ const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
 
 const PRODUCTION_MOUNTED_CONTROLLERS = {
   AgentController: "agent-runtime/agent-runtime.module.ts",
+  AttachmentUploadController: "agent-runtime/agent-runtime.module.ts",
   ChannelAppsController: "agent-runtime/agent-runtime.module.ts",
   ChannelsController: "agent-runtime/agent-runtime.module.ts",
   JobExecutionController: "agent-runtime/agent-runtime.module.ts",
@@ -50,9 +51,11 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
   McpEntityController: "mcp-platform/mcp-platform.module.ts",
   McpPlatformController: "mcp-platform/mcp-platform.module.ts",
   MemoryController: "memory/memory.module.ts",
+  MemoryFeedbackAdminController: "memory/memory.module.ts",
   MetricsController: "monitoring/monitoring.module.ts",
   OAuthController: "oauth/oauth.module.ts",
   OpenApiController: "openapi/openapi.module.ts",
+  PerformanceEvidenceController: "performance-evidence/performance-evidence.module.ts",
   ErasureController: "privacy/privacy.module.ts",
   ProvidersController: "providers/providers.module.ts",
   SkillsController: "skills/skills.module.ts",
@@ -496,6 +499,27 @@ function classifyRest(method, path) {
   };
 }
 
+/**
+ * A route enforces operator scope when its body calls requireOperator/
+ * getOperatorScope directly, OR when it delegates to a same-class helper method
+ * whose own body makes one of those calls (e.g. `this.operatorScope(req)` in
+ * providers.controller.ts). `operatorHelpers` is the set of such helper method
+ * names collected from the enclosing controller class. The trailing `(` guards
+ * against a helper name being a prefix of an unrelated method call.
+ */
+function enforcesOperatorScope(memberText, operatorHelpers) {
+  if (
+    memberText.includes("requireOperator(") ||
+    memberText.includes("getOperatorScope(")
+  ) {
+    return true;
+  }
+  for (const helper of operatorHelpers) {
+    if (memberText.includes(`this.${helper}(`)) return true;
+  }
+  return false;
+}
+
 function extractRestOperations() {
   assertMountedControllerPolicy();
   const implementations = [];
@@ -516,6 +540,20 @@ function extractRestOperations() {
       if (!controller) continue;
       if (!Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, statement.name.text)) continue;
       const bases = decoratorPaths(controller, sf);
+      // Collect same-class helper methods that themselves enforce operator scope
+      // so a route delegating to one (e.g. `this.operatorScope(req)`) is not read
+      // as unguarded. See enforcesOperatorScope.
+      const operatorHelpers = new Set();
+      for (const candidate of statement.members) {
+        if (!ts.isMethodDeclaration(candidate) || !candidate.name) continue;
+        const text = candidate.getText(sf);
+        if (
+          text.includes("requireOperator(") ||
+          text.includes("getOperatorScope(")
+        ) {
+          operatorHelpers.add(candidate.name.getText(sf));
+        }
+      }
       for (const member of statement.members) {
         if (!ts.isMethodDeclaration(member) || !member.name) continue;
         for (const [decorator, method] of verbs) {
@@ -530,9 +568,10 @@ function extractRestOperations() {
                 controller: statement.name.text,
                 handler: member.name.getText(sf),
                 source: relative(repoDir, path).replaceAll("\\", "/"),
-                requiresOperator:
-                  member.getText(sf).includes("requireOperator(") ||
-                  member.getText(sf).includes("getOperatorScope("),
+                requiresOperator: enforcesOperatorScope(
+                  member.getText(sf),
+                  operatorHelpers,
+                ),
               });
             }
           }

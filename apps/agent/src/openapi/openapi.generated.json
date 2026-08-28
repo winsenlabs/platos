@@ -263,6 +263,32 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/admin/memory-feedback/backfill": {
+      "post": {
+        "operationId": "post__api_v1_agent_admin_memory_feedback_backfill",
+        "summary": "MemoryFeedbackAdminController.runBackfill",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/admin/privacy/erasures": {
       "post": {
         "operationId": "post__api_v1_agent_admin_privacy_erasures",
@@ -1114,6 +1140,32 @@
         "x-platos-mcp-tools": [
           "approvals.resolve"
         ]
+      }
+    },
+    "/api/v1/agent/attachments/presigned": {
+      "post": {
+        "operationId": "post__api_v1_agent_attachments_presigned",
+        "summary": "AttachmentUploadController.presign",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
       }
     },
     "/api/v1/agent/budgets": {
@@ -3353,6 +3405,39 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/internal/performance-evidence/{requestId}": {
+      "get": {
+        "operationId": "get__api_v1_agent_internal_performance_evidence_by_requestId",
+        "summary": "PerformanceEvidenceController.consume",
+        "tags": [
+          "internal"
+        ],
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "internalAuth": []
+          }
+        ],
+        "x-platos-classification": "INTERNAL",
+        "x-platos-auth-class": "INTERNAL_SHARED_SECRET",
+        "x-platos-policy-rule": "agent-internal-prefix",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/internal/skill-run": {
       "post": {
         "operationId": "post__api_v1_agent_internal_skill_run",
@@ -5075,7 +5160,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "providers.list_keys"
@@ -5101,7 +5186,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "providers.add_key"
@@ -5139,7 +5224,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "providers.delete_key"
@@ -5175,7 +5260,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -5211,7 +5296,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -5237,7 +5322,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -9232,6 +9317,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 297,
+  "x-platos-rest-operation-count": 300,
   "x-platos-mcp-tool-count": 202
 }

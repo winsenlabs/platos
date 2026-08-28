@@ -61,3 +61,14 @@ CHANGESETS.md
 CONTRIBUTING.md
 README.md
 LICENSE
+
+# WIN-291 — host-level edge/runbook material must never enter the build context.
+# apps/agent/Dockerfile uses `COPY . .`, so anything not excluded here is shipped
+# into the image builder. /deploy and /hosting hold edge routing + runbooks.
+/deploy
+/hosting
+/.server-changes
+
+# Agent worktrees are created INSIDE the repo at .claude/worktrees/. Without this
+# they re-enter the build context carrying a full second copy of the tree.
+/.claude

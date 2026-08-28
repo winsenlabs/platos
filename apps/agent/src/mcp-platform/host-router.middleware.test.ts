@@ -68,7 +68,7 @@ describe("isPublicMcpHost", () => {
     expect(isPublicMcpHost("platos.dev")).toBe(false);
     expect(isPublicMcpHost("localhost")).toBe(false);
     expect(isPublicMcpHost("127.0.0.1")).toBe(false);
-    expect(isPublicMcpHost("187.127.142.170")).toBe(false);
+    expect(isPublicMcpHost("203.0.113.10")).toBe(false);
   });
   it("ignores case", () => {
     expect(isPublicMcpHost("MCP.Platos.Dev")).toBe(true);
