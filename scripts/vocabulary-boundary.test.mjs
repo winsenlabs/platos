@@ -25,7 +25,6 @@ import {
   rulesFingerprint,
 } from "./vocabulary/identity.mjs";
 import { serializeManifest } from "./vocabulary/manifest-io.mjs";
-import { formatLedgerReport, parseLedger, verifyLedger } from "./vocabulary/ledger.mjs";
 import { inputFingerprint } from "./vocabulary/receipt.mjs";
 
 function fixture(files, exceptions = [], exclusions = []) {
@@ -819,67 +818,12 @@ test("the receipt reports input, rules, output and counts that a reviewer can re
   });
 });
 
-test("the ledger verifies a move-refactor and an archive instead of blocking them", () => {
-  const from = `src/${TOKEN.vendorLower}-client.ts`;
-  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
-  const archived = "src/retired.ts";
-  withScenario(
-    { [from]: source.vendorModule(), [archived]: source.vendorModule(), "src/keep.ts": "export const ok = 1;\n" },
-    (scenario) => {
-      scenario.seedManifest();
-      scenario.move(from, to);
-      scenario.remove(archived);
-      const result = scenario.run();
-
-      const { ledger, errors } = parseLedger(
-        JSON.stringify({
-          version: 1,
-          entries: [
-            { path: from, disposition: "move-refactor", target: to },
-            { path: archived, disposition: "archive" },
-            { path: "src/keep.ts", disposition: "keep" },
-          ],
-        })
-      );
-      assert.deepEqual(errors, []);
-      const verdict = verifyLedger({
-        ledger,
-        entries: result.classification.entries,
-        moves: result.moves,
-        trackedPaths: result.trackedSet,
-      });
-      assert.equal(verdict.blocked.length, 0, formatLedgerReport(verdict));
-      assert.equal(verdict.verified.length, 3);
-      assert.equal(verdict.verified[0].disposition, "move-refactor");
-      assert.equal(verdict.verified[0].target, to);
-    }
-  );
-});
-
-test("the ledger reports a move-refactor whose declared target is wrong as blocked", () => {
-  const from = `src/${TOKEN.vendorLower}-client.ts`;
-  const to = `src/legacy/${TOKEN.vendorLower}-client.ts`;
-  withScenario({ [from]: source.vendorModule() }, (scenario) => {
-    scenario.seedManifest();
-    scenario.move(from, to);
-    const result = scenario.run();
-    const { ledger } = parseLedger(
-      JSON.stringify({
-        version: 1,
-        entries: [{ path: from, disposition: "move-refactor", target: "src/somewhere-else.ts" }],
-      })
-    );
-    const verdict = verifyLedger({
-      ledger,
-      entries: result.classification.entries,
-      moves: result.moves,
-      trackedPaths: result.trackedSet,
-    });
-    assert.equal(verdict.verified.length, 0);
-    assert.equal(verdict.blocked.length, 1);
-    assert.match(verdict.blocked[0].reason, /ledger declares/u);
-  });
-});
+// The ledger CONSUMER (scripts/vocabulary/ledger.mjs) is now proven against the
+// REAL generator output in its own suite, scripts/vocabulary/ledger.test.mjs.
+// The speculative-schema tests that lived here (a hand-authored
+// { version, entries:[...], target, "keep" } container) were removed when the
+// consumer was reconciled to the real ledger; a synthetic ledger schema no
+// longer exists anywhere in the tests.
 
 test("path normalization actually canonicalizes non-canonical spellings", () => {
   // The previous version of this test only asserted that production paths are

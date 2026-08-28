@@ -939,7 +939,7 @@ async function loadLedger(options, result) {
     trackedPaths: result.trackedSet,
   });
   console.log(formatLedgerReport(verdict));
-  if (parsed.errors.length || verdict.blocked.length) process.exitCode = 1;
+  if (parsed.errors.length || verdict.flagged.length) process.exitCode = 1;
 }
 
 // `root` is injectable so the write path -- including its self-gating -- can be
