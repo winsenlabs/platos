@@ -3,15 +3,15 @@
   "purpose": "One row per tracked file for the V1 refactor. Within an area the FIRST rule whose glob matches the path wins; array order IS the precedence. Rules are ordered pins-first: individually-verified rules (a legal obligation, a named-consumer pin, a reachability-proven orphan) are declared ahead of the broad fallback buckets, so a specific verified decision is never overridden by a generic rule.",
   "precedence": "First-match-wins is deliberately NOT a monotonic safety gradient: a delete pin is declared ahead of the archive bucket that also matches its files, which is the mechanism by which the verified orphan wins. The generator does not claim safer-always-first; instead it ENFORCES the property that matters for the destructive case in scripts/v1-ledger.mjs checkInvariants -- every delete row must be an exact literal path (validation rejects a wildcard in a delete rule) AND be confirmed unreferenced by a live scan of every tracked text file at check time. A tracked file that matches no rule, or a delete candidate found referenced, is a hard error. Globs match dotfiles: the matcher has no leading-dot special case.",
   "baseline": {
-    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger adds two root-infra scripts and one docs-content rules file, giving 3376. Any drift from these numbers is a finding to report, not a number to force.",
-    "totalFiles": 3376,
+    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force.",
+    "totalFiles": 3385,
     "areaCounts": {
       "apps-agent": 507,
       "apps-webapp": 180,
       "packages": 550,
       "internal-packages": 1268,
       "docs-content": 675,
-      "root-infra": 196
+      "root-infra": 205
     }
   },
   "areas": {
@@ -1460,14 +1460,14 @@
     ]
   },
   "expected": {
-    "totalFiles": 3376,
+    "totalFiles": 3385,
     "areaCounts": {
       "apps-agent": 507,
       "apps-webapp": 180,
       "docs-content": 675,
       "internal-packages": 1268,
       "packages": 550,
-      "root-infra": 196
+      "root-infra": 205
     },
     "kindCounts": {
       "asset": 154,
@@ -1478,13 +1478,13 @@
       "legal": 15,
       "lockfile": 3,
       "migration": 893,
-      "source": 1031,
-      "test": 432
+      "source": 1039,
+      "test": 433
     },
     "dispositionCounts": {
       "archive": 511,
       "delete": 7,
-      "move-refactor": 1697,
+      "move-refactor": 1706,
       "regenerate": 16,
       "retain": 1143,
       "unresolved": 2
@@ -1590,10 +1590,10 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 25,
-      "root-infra.test.harness": 54,
+      "root-infra.test.harness": 55,
       "root-infra.test.script-suites": 6,
-      "root-infra.tooling.scripts": 20
+      "root-infra.tooling.scripts": 28
     },
-    "classificationSha256": "d4144b327347a571265981a6038e6e55e107f06fc18790a06cf5c1e4d41241bd"
+    "classificationSha256": "0c8b8ad75be3a50d774c74b17d1b49c7795cbc032c766478d0b68f0e125cc044"
   }
 }
