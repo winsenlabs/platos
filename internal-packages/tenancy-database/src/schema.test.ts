@@ -22,6 +22,7 @@ const migration = readFileSync(
   "utf8"
 );
 const tenancyOnlyModels = [
+  "AccessKeyBootstrapGrant",
   "User",
   "OperatorSession",
   "OperatorIdentity",
@@ -60,7 +61,7 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(92);
+    expect(models).toHaveLength(93);
     expect(domainModelNames).toHaveLength(76);
     expect(new Set(domainModelNames).size).toBe(76);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
@@ -295,6 +296,7 @@ describe("clean-slate domain schema", () => {
       "20260824111500_memory_profile_key_and_source_contract",
       "20260824233000_m4_forward_upgrade_contract",
       "20260825070000_access_key_revocation_fence",
+      "20260828120000_win296_access_key_bootstrap_grant",
     ]);
 
     const observabilityVocabularyMigration = readFileSync(

@@ -440,7 +440,6 @@ model Environment {
   mcpAnonymousSessions    McpAnonymousSession[]
   mcpOidcSessions         McpOidcSession[]
   accessKeys              AccessKey[]
-  accessKeyBootstrapGrant AccessKeyBootstrapGrant?
   providerKeys            ProviderKey[]
   mcpTokens               McpToken[]
   personalAccessTokens    PersonalAccessToken[]
@@ -809,7 +808,11 @@ model AccessKeyBootstrapGrant {
   consumedAt       DateTime @default(now())
   createdAt        DateTime @default(now())
 
-  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  // environmentId is an unmanaged scalar FK (enforced by the migration's
+  // AccessKeyBootstrapGrant_environmentId_fkey). It is intentionally NOT a
+  // Prisma @relation: the frozen 00000000000000_initial migration is hash-pinned,
+  // so post-initial additions carry their FK in SQL only (same pattern the
+  // access_key_revocation_fence used). See WIN-296.
 
   @@index([organizationId, projectId])
 }
