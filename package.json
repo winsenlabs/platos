@@ -29,7 +29,7 @@
     "audit:route-parity:completion:evidence": "node scripts/route-capability-completion-audit.mjs",
     "generate:route-parity": "node scripts/route-capability-parity.mjs --write",
     "audit:vocabulary": "node scripts/vocabulary-boundary.mjs",
-    "test:vocabulary": "node --test scripts/vocabulary-boundary.test.mjs",
+    "test:vocabulary": "node --test scripts/vocabulary-boundary.test.mjs scripts/vocabulary/ledger.test.mjs",
     "audit:docs-examples": "node scripts/docs-examples.mjs",
     "test:docs-examples": "node --test scripts/docs-examples.test.mjs",
     "docker": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml up -d --build --remove-orphans",
