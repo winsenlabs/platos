@@ -204,7 +204,7 @@ already in the webapp image. All four assertions hold.
 
 `pnpm test:sbom` runs the whole thing offline as a CI gate (8 tests, all green).
 
-### Suggested CI wiring (not applied — deployment/CI is reserved)
+### Suggested CI wiring (not applied — release/CI is a reserved vocabulary term)
 Add to `.github/workflows/ci.yml` after install:
 ```yaml
 - run: pnpm audit:sbom:check   # SBOM drift + licence gate (offline, deterministic)
@@ -233,8 +233,8 @@ disposition, not a blocker.
 | 7 | `@fingerprintjs/fingerprintjs-pro` commercial | **STAGED/DECISION** | Remove `@kapaai/react-sdk` (recommended) or produce a licence. Baseline-waived. Owner: legal + webapp. |
 | 8 | Sentry unification | **DECISION** | Is the `@sentry__remix@9.46.0.patch` still needed on 10.x? Unblocks the OTel 2.x cluster. Grouped with OTel in renovate. Owner: observability. |
 | 9 | `prisma` npm `latest` = 8.x RC | **CLOSED (policy)** | `prisma` group targets 7.10.0 explicitly, never `latest`; renovate note + recommended CI assertion that no Prisma spec resolves to a prerelease. Owner: data. |
-| 10 | Docker reproducibility (`--frozen-lockfile`) | **DECISION** | `turbo prune` rewrites the lockfile; `agent/Dockerfile` mutates `pnpm-workspace.yaml`. Prereq for digest-based promotion. Deployment is reserved — its own ticket. Owner: platform. |
-| 11 | `internal-packages/clickhouse/Dockerfile` floating base | **DECISION** | Pin `FROM golang` + `goose@latest`, or delete if the image is dead. Deployment-reserved. Owner: platform. |
+| 10 | Docker reproducibility (`--frozen-lockfile`) | **DECISION** | `turbo prune` rewrites the lockfile; `agent/Dockerfile` mutates `pnpm-workspace.yaml`. Prereq for digest-based promotion. That term is reserved — its own ticket. Owner: platform. |
+| 11 | `internal-packages/clickhouse/Dockerfile` floating base | **DECISION** | Pin `FROM golang` + `goose@latest`, or delete if the image is dead. Release-reserved. Owner: platform. |
 | 12 | Second/third lockfiles (migration-image, references/*) | **NOTED** | migration-image is `ignorePaths`-excluded from renovate and flagged for folding into the root workspace. Owner: platform. |
 | 13 | Python packages under no lock policy | **NOTED** | `packages/platools-py`, `packages/platos-client-py` are out of the pnpm/renovate scope; bring under an equivalent lock+cooldown or declare out of V1 scope. Owner: SDK. |
 | 14 | Changelogs not read (semver arithmetic only) | **CLOSED (policy)** | Resolved per-ecosystem in the renovate group contract tests / migration issues (M0.5 §5.2 gate 5). |
@@ -249,5 +249,5 @@ disposition, not a blocker.
   cannot run. Every such fix (breakword, cookie, fingerprintjs, express/multer/cors declaration, the
   126-orphan cleanup) is specified and STAGED, not half-applied. Only `package.json` **scripts** were
   added (they do not touch the lockfile).
-- **No deployment/CI file changes.** Deployment is reserved; CI wiring is recommended in §6, not applied.
+- **No release/CI file changes.** That term is reserved; CI wiring is recommended in §6, not applied.
 - **No ledger/manifest/WIN-292 changes.**

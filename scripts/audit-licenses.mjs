@@ -54,7 +54,7 @@ function normalizeLicense(meta, version) {
 
 async function fetchLicense(name, version) {
   const url = `${REGISTRY}/${name.replace('/', '%2f')}`;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let tryIndex = 0; tryIndex < 3; tryIndex++) {
     try {
       const res = await fetch(url, { headers: { accept: 'application/json' } });
       if (res.status === 404) return { license: null, resolvedFrom: 'not-found', status: 404 };
@@ -63,8 +63,8 @@ async function fetchLicense(name, version) {
       const { license, resolvedFrom } = normalizeLicense(meta, version);
       return { license, resolvedFrom, status: 200 };
     } catch (err) {
-      if (attempt === 2) return { license: null, resolvedFrom: 'error', error: String(err) };
-      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      if (tryIndex === 2) return { license: null, resolvedFrom: 'error', error: String(err) };
+      await new Promise((r) => setTimeout(r, 400 * (tryIndex + 1)));
     }
   }
 }

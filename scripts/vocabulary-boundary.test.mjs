@@ -572,10 +572,13 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   for (const exception of manifest.exceptions) {
     assert.equal(anchorIdentity(exception), anchorKey(exception));
   }
-  // Full-set canary (not a sample). M0 integration added 62 exact context-bound
-  // exceptions for the accepted, immutable M0 ADRs' external-vendor references
-  // (WIN-248/WIN-250, #132), lifting the production set 20349 -> 20411.
-  assert.equal(manifest.exceptions.length, 20411);
+  // Full-set canary (not a sample). M0 integration exceptions:
+  //   20349 baseline
+  //   +62  M0 ADR vendor references (WIN-248/250, #132) -> 20411
+  //   +33  vendor/machine references newly SURFACED by the WIN-295 scanner fix
+  //        in the SBOM/advisory/governance evidence + rewritten NOTICE, minus
+  //        6 stale NOTICE exceptions re-anchored after the NOTICE rewrite -> 20438
+  assert.equal(manifest.exceptions.length, 20438);
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {
