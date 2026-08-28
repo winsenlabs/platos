@@ -1389,6 +1389,16 @@ async function seedEveryModel(control: PrismaClient) {
       allowedOrigins: ["https://example.test"],
     },
   }));
+  track("AccessKeyBootstrapGrant", await control.accessKeyBootstrapGrant.create({
+    data: {
+      environmentId: environment.id,
+      organizationId: organization.id,
+      projectId: project.id,
+      actorUserId: user.id,
+      tokenFingerprint: "bootstrap-grant-fingerprint",
+      source: "integration-seed",
+    },
+  }));
   track("ProviderKey", await control.providerKey.create({
     data: {
       environmentId: environment.id,
