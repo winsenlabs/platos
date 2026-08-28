@@ -320,25 +320,37 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     ["DELETE", "/api/v1/agent/access-key"],
     ["POST", "/api/v1/agent/access-key/origins?from=dashboard"],
   ])(
-    "allows trusted direct-header AccessKey lifecycle %s %s without raw bearer material",
+    "allows control-plane-authenticated direct-header AccessKey lifecycle %s %s without raw bearer material",
     async (method, url) => {
-      const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
-      const guard = new ScopeGuard(authService as any);
-      const ctx = mockExecutionContext(
-        {
-          "x-platos-organization-id": "org_1",
-          "x-platos-project-id": "proj_1",
-          "x-platos-environment-id": "env_1",
-          "x-platos-user-id": "user_1",
-        },
-        url,
-        undefined,
-        method
-      );
+      // WIN-296 — these lifecycle routes no longer grant operator with no
+      // credential. The dashboard reaches them over the trusted internal
+      // network WITH the mandatory control-plane token, so they are authorized
+      // by hasValidControlPlaneAuth, not by a credential-free bypass.
+      const previous = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
+      try {
+        const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
+        const guard = new ScopeGuard(authService as any);
+        const ctx = mockExecutionContext(
+          {
+            "x-platos-organization-id": "org_1",
+            "x-platos-project-id": "proj_1",
+            "x-platos-environment-id": "env_1",
+            "x-platos-user-id": "user_1",
+            "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+          },
+          url,
+          undefined,
+          method
+        );
 
-      await expect(guard.canActivate(ctx)).resolves.toBe(true);
-      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
-      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+        await expect(guard.canActivate(ctx)).resolves.toBe(true);
+        expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+        expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+      } finally {
+        if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+        else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
+      }
     }
   );
 
@@ -1013,3 +1025,262 @@ describe("ScopeGuard — admin token path", () => {
     });
   }
 });
+
+describe("ScopeGuard — WIN-296 AccessKey lifecycle is control-plane-only", () => {
+  const scopeHeaders = {
+    "x-platos-organization-id": "org_1",
+    "x-platos-project-id": "proj_1",
+    "x-platos-environment-id": "env_1",
+    "x-platos-user-id": "user_1",
+  };
+
+  let previousInternal: string | undefined;
+  beforeEach(() => {
+    previousInternal = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
+  });
+  afterEach(() => {
+    if (previousInternal === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previousInternal;
+  });
+
+  // FAIL-CLOSED. No internal token, no bootstrap → every lifecycle route is
+  // rejected. This is the exact hole WIN-296 closes: previously these returned
+  // operator with NO credential from any internal-network caller.
+  it.each([
+    ["GET", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key"],
+    ["DELETE", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key/origins"],
+  ])(
+    "rejects direct-header AccessKey lifecycle %s %s with NO control-plane credential (fail-closed)",
+    async (method, url) => {
+      const authService = {
+        verifyAccessKey: vi.fn().mockResolvedValue(null),
+        // disabled: no install secret configured, so even the create route
+        // cannot bootstrap.
+        tryConsumeAccessKeyBootstrap: vi.fn().mockResolvedValue({ ok: false, reason: "disabled" }),
+      };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext({ ...scopeHeaders }, url, undefined, method);
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(false);
+      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+      const response = ctx.switchToHttp().getResponse() as any;
+      expect(response.status).toHaveBeenCalledWith(401);
+      expect(response.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "CONTROL_PLANE_AUTH_REQUIRED" })
+      );
+      // The request never becomes an operator.
+      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+      // ...but canActivate returned false, so the handler never runs.
+    }
+  );
+
+  // The three non-create lifecycle routes are NEVER bootstrappable, even in
+  // zero-key state: bootstrap is not consulted for them at all.
+  it.each([
+    ["GET", "/api/v1/agent/access-key"],
+    ["DELETE", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key/origins"],
+  ])(
+    "never consults the bootstrap for non-create lifecycle route %s %s",
+    async (method, url) => {
+      const tryConsumeAccessKeyBootstrap = vi
+        .fn()
+        .mockResolvedValue({ ok: true, grantId: "should-not-be-used" });
+      const authService = { verifyAccessKey: vi.fn(), tryConsumeAccessKeyBootstrap };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext({ ...scopeHeaders }, url, undefined, method);
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(false);
+      expect(tryConsumeAccessKeyBootstrap).not.toHaveBeenCalled();
+      const response = ctx.switchToHttp().getResponse() as any;
+      expect(response.status).toHaveBeenCalledWith(401);
+    }
+  );
+
+  // NORMAL PATH — internal control-plane token present. Every lifecycle route
+  // is authorized as operator, bootstrap is never consulted, and no Environment
+  // AccessKey is demanded.
+  it.each([
+    ["GET", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key"],
+    ["DELETE", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key/origins"],
+  ])(
+    "allows lifecycle %s %s with a valid internal control-plane token",
+    async (method, url) => {
+      const tryConsumeAccessKeyBootstrap = vi.fn();
+      const authService = {
+        verifyAccessKey: vi.fn().mockResolvedValue(false),
+        tryConsumeAccessKeyBootstrap,
+      };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext(
+        { ...scopeHeaders, "x-platos-internal-auth": "dashboard-control-plane-token-32chars" },
+        url,
+        undefined,
+        method
+      );
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(tryConsumeAccessKeyBootstrap).not.toHaveBeenCalled();
+      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+    }
+  );
+
+  // ZERO-KEY STATE — the create route, no internal token, but a valid one-use
+  // install secret. The guard consumes the bootstrap and authorizes operator.
+  it("allows POST create via the first-install bootstrap in zero-key state", async () => {
+    const tryConsumeAccessKeyBootstrap = vi
+      .fn()
+      .mockResolvedValue({ ok: true, grantId: "grant_1" });
+    const authService = { verifyAccessKey: vi.fn(), tryConsumeAccessKeyBootstrap };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-bootstrap-token": "install-secret-token-value" },
+      "/api/v1/agent/access-key",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(tryConsumeAccessKeyBootstrap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        userId: "user_1",
+        providedToken: "install-secret-token-value",
+      })
+    );
+    expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+  });
+
+  // Each bootstrap refusal reason (existing-key/self-disabled, replay,
+  // invalid, expired, disabled) maps to a 401 rejection of the create route.
+  it.each([
+    ["not_zero_state (a key already exists — self-disabled)", "not_zero_state"],
+    ["already_consumed (replay / concurrent race loser)", "already_consumed"],
+    ["invalid_token (wrong install secret)", "invalid_token"],
+    ["expired (install window elapsed)", "expired"],
+    ["disabled (no install secret configured)", "disabled"],
+  ])(
+    "rejects POST create when bootstrap returns %s",
+    async (_label, reason) => {
+      const tryConsumeAccessKeyBootstrap = vi.fn().mockResolvedValue({ ok: false, reason });
+      const authService = { verifyAccessKey: vi.fn(), tryConsumeAccessKeyBootstrap };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext(
+        { ...scopeHeaders, "x-platos-bootstrap-token": "whatever" },
+        "/api/v1/agent/access-key",
+        undefined,
+        "POST"
+      );
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(false);
+      expect(tryConsumeAccessKeyBootstrap).toHaveBeenCalledTimes(1);
+      const response = ctx.switchToHttp().getResponse() as any;
+      expect(response.status).toHaveBeenCalledWith(401);
+      expect(response.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "CONTROL_PLANE_AUTH_REQUIRED" })
+      );
+    }
+  );
+
+  // POST-BOOTSTRAP — once a key exists the bootstrap self-disables. A second
+  // create with the same install secret is refused; ONLY the internal token
+  // works afterwards. Modeled here by the service returning not_zero_state.
+  it("is inert after init: a second create with the install secret is rejected", async () => {
+    const tryConsumeAccessKeyBootstrap = vi
+      .fn()
+      .mockResolvedValue({ ok: false, reason: "not_zero_state" });
+    const authService = { verifyAccessKey: vi.fn(), tryConsumeAccessKeyBootstrap };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-bootstrap-token": "install-secret-token-value" },
+      "/api/v1/agent/access-key",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    const response = ctx.switchToHttp().getResponse() as any;
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
+
+  it("is inert after init: a second create WITH the internal token still works", async () => {
+    const tryConsumeAccessKeyBootstrap = vi.fn();
+    const authService = {
+      verifyAccessKey: vi.fn().mockResolvedValue(false),
+      tryConsumeAccessKeyBootstrap,
+    };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      {
+        ...scopeHeaders,
+        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+        "x-platos-bootstrap-token": "install-secret-token-value",
+      },
+      "/api/v1/agent/access-key",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    // Control-plane token wins before the bootstrap is ever consulted.
+    expect(tryConsumeAccessKeyBootstrap).not.toHaveBeenCalled();
+  });
+
+  // PROXY / EXTERNAL — a lifecycle request arriving through Caddy (stamped
+  // X-Forwarded-For) is rejected outright: neither control-plane auth nor the
+  // bootstrap is even reachable on the external path.
+  it("rejects a lifecycle create that arrives through the public proxy", async () => {
+    const tryConsumeAccessKeyBootstrap = vi.fn();
+    const authService = { verifyAccessKey: vi.fn(), tryConsumeAccessKeyBootstrap };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      {
+        ...scopeHeaders,
+        "x-forwarded-for": "203.0.113.7",
+        "x-platos-bootstrap-token": "install-secret-token-value",
+        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+      },
+      "/api/v1/agent/access-key",
+      undefined,
+      "POST"
+    );
+
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(tryConsumeAccessKeyBootstrap).not.toHaveBeenCalled();
+  });
+
+  // SESSION-TOKEN — a platform-signed operator session token authorizes the
+  // lifecycle create through Path 1 (no direct headers, no bootstrap needed).
+  it("allows a lifecycle create via an operator session token (Path 1)", async () => {
+    vi.stubEnv("SESSION_SECRET", "scope-guard-platform-secret-32-chars");
+    try {
+      const h = makeAuthHarness();
+      const token = await h.auth.createPlatformSessionToken({
+        organizationId: h.scope.organizationId,
+        projectId: h.scope.projectId,
+        environmentId: h.scope.environmentId,
+        userId: h.scope.userId,
+      });
+      const ctx = mockExecutionContext(
+        { "x-platos-session-token": token! },
+        "/api/v1/agent/access-key",
+        undefined,
+        "POST"
+      );
+
+      await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+

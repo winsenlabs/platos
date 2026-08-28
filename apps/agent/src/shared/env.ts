@@ -246,6 +246,16 @@ export const AgentEnvSchema = z
     APP_ORIGIN: z.string().url().optional(),
     PLATOS_WEBAPP_ADMIN_URL: z.string().url().optional(),
     PLATOS_INTERNAL_AUTH_TOKEN: optTrimmedString,
+    // WIN-296 — narrow, one-use first-install secret. When set, it authorizes
+    // exactly one `POST /api/v1/agent/access-key` per Environment over the
+    // trusted direct-header channel, gated on a genuine zero-key state and
+    // consumed atomically. Leave UNSET after the first key exists; the
+    // AccessKey lifecycle otherwise requires PLATOS_INTERNAL_AUTH_TOKEN.
+    // (Read via process.env directly in AuthService so the guard and service
+    // observe the same value in lightweight test harnesses.)
+    PLATOS_BOOTSTRAP_TOKEN: optTrimmedString,
+    // Optional ISO-8601 expiry that time-limits the install secret above.
+    PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT: optTrimmedString,
     PLATOS_ERASURE_HASH_SALT: z.string().min(32).optional(),
 
     // Test mode (EOBD.4). Belt-and-braces production guard below.

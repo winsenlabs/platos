@@ -286,11 +286,13 @@ export class ScopeGuard implements CanActivate {
   constructor(@Optional() @Inject(AuthService) private readonly authService?: AuthService) {}
 
   /**
-   * Access-key lifecycle is a control-plane operation. The webapp sends it
-   * over the trusted direct-header channel and deliberately never retains the
-   * raw bearer after its one-time browser reveal. Keep this exception exact:
-   * it applies only to the lifecycle routes and only from Path 2 below, which
-   * rejects requests that arrived through the public proxy.
+   * Access-key lifecycle is a control-plane operation reachable over the
+   * trusted direct-header channel (webapp→agent, never through Caddy). WIN-296:
+   * these four routes are NO LONGER credential-free. On Path 2 below they now
+   * require the internal control-plane token; the sole exception is the safe
+   * first-install bootstrap of the create route (see
+   * `isDirectAccessKeyBootstrapRoute`). Keep the matcher exact — it applies
+   * only to these routes and only after the public-proxy rejection.
    */
   private isDirectAccessKeyLifecycleRequest(request: {
     method?: unknown;
@@ -311,6 +313,29 @@ export class ScopeGuard implements CanActivate {
         (method === "GET" || method === "POST" || method === "DELETE")) ||
       (pathname === "/api/v1/agent/access-key/origins" && method === "POST")
     );
+  }
+
+  /**
+   * WIN-296 — the ONLY lifecycle route the first-install bootstrap may
+   * authorize: `POST /api/v1/agent/access-key`, i.e. minting the first key.
+   * Read (GET), delete (DELETE), and origins (POST /origins) are never
+   * bootstrappable — they are not needed to establish the first operator/key
+   * and always require the internal control-plane token.
+   */
+  private isDirectAccessKeyBootstrapRoute(request: {
+    method?: unknown;
+    originalUrl?: unknown;
+    url?: unknown;
+  }): boolean {
+    const method = typeof request.method === "string" ? request.method.toUpperCase() : "";
+    const url =
+      typeof request.originalUrl === "string"
+        ? request.originalUrl
+        : typeof request.url === "string"
+        ? request.url
+        : "";
+    const pathname = url.split("?", 1)[0];
+    return method === "POST" && pathname === "/api/v1/agent/access-key";
   }
 
   /**
@@ -767,15 +792,50 @@ export class ScopeGuard implements CanActivate {
         // path too (webapp → agent over the Docker network).
         ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
       } satisfies RequestScope;
-      // Access key checks protect ordinary direct-header runtime requests. The
-      // exact AccessKey lifecycle routes are operator-authorized by their
-      // controller/service and cannot require raw bearer material that the
-      // dashboard intentionally discards after the one-time reveal.
-      if (
-        this.authService &&
-        !this.isDirectAccessKeyLifecycleRequest(request) &&
-        !this.hasValidControlPlaneAuth(request)
-      ) {
+      // WIN-296 — the AccessKey lifecycle routes are control-plane-only. They
+      // were previously exempted from BOTH the token check and the key check,
+      // which granted operator with NO credential to anything that could reach
+      // the agent on the internal network (read metadata, delete keys for DoS,
+      // or install a known key). They now require the internal control-plane
+      // token, with ONE safe exception: the first-install bootstrap of the
+      // create route.
+      if (this.isDirectAccessKeyLifecycleRequest(request)) {
+        // Normal path: the webapp always sends the internal control-plane token
+        // (X-Platos-Internal-Auth), which WIN-293 made mandatory.
+        if (this.hasValidControlPlaneAuth(request)) {
+          return true;
+        }
+        // Safe first-install bootstrap — create route ONLY, genuine zero-key
+        // state, one-use, non-replayable, atomically consumed, and audited. Any
+        // other lifecycle route, or a create without a valid one-use install
+        // secret, falls through to the rejection below.
+        if (this.authService && this.isDirectAccessKeyBootstrapRoute(request)) {
+          const outcome = await this.authService.tryConsumeAccessKeyBootstrap({
+            organizationId: request.scope.organizationId,
+            projectId: request.scope.projectId,
+            environmentId: request.scope.environmentId,
+            userId: request.scope.userId,
+            providedToken: request.headers["x-platos-bootstrap-token"] as string | undefined,
+            source: "scope-guard-first-install",
+          });
+          if (outcome.ok) {
+            return true;
+          }
+        }
+        const resp = context.switchToHttp().getResponse();
+        resp.status(401).json({
+          error: "CONTROL_PLANE_AUTH_REQUIRED",
+          message:
+            "AccessKey lifecycle requires the internal control-plane credential (X-Platos-Internal-Auth). A one-use first-install bootstrap authorizes only the initial key.",
+        });
+        return false;
+      }
+
+      // Access key checks protect ordinary direct-header runtime requests. A
+      // server-authenticated control-plane call (internal token) is trusted
+      // without an Environment AccessKey; every other runtime caller must
+      // present a valid key when one is configured for the scope.
+      if (this.authService && !this.hasValidControlPlaneAuth(request)) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
         const origin = (request.headers["origin"] || request.headers["referer"]) as
           | string

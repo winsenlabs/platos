@@ -118,6 +118,25 @@ export type AccessKeyOperatorScope = Pick<
 >;
 
 /**
+ * WIN-296 — outcome of a first-install AccessKey bootstrap consume.
+ * `ok:true` means the one-use grant was atomically claimed and audited; the
+ * caller may authorize the FIRST create. Every failure names why the
+ * first-install path refused so the guard can respond precisely without
+ * leaking whether the environment already holds a key.
+ */
+export type AccessKeyBootstrapOutcome =
+  | { ok: true; grantId: string }
+  | {
+      ok: false;
+      reason:
+        | "disabled" // no install secret configured — path is off
+        | "invalid_token" // presented secret missing or wrong
+        | "expired" // install window has elapsed
+        | "not_zero_state" // an active key already exists — path self-disabled
+        | "already_consumed"; // one-use grant already claimed (replay / race loser)
+    };
+
+/**
  * AuthService — handles session tokens, HMAC verification, and entity registry.
  *
  * Session tokens are short-lived platform-signed JWTs. Entity end-user mints
@@ -1159,6 +1178,125 @@ export class AuthService {
     await revokeAccessKeys(this.prisma, {
       environmentId: authorization.environmentId,
     });
+  }
+
+  /**
+   * WIN-296 — one-use first-install grant for the AccessKey lifecycle.
+   *
+   * The direct-header AccessKey lifecycle routes now require the internal
+   * control-plane token (`hasValidControlPlaneAuth`). This method is the ONLY
+   * other way the FIRST `POST /api/v1/agent/access-key` on an Environment may
+   * be authorized, and only when an operator has explicitly enabled it by
+   * setting the narrow install secret `PLATOS_BOOTSTRAP_TOKEN`. It is:
+   *
+   *   - narrowly scoped: the caller must gate this to the create route only;
+   *   - self-disabling: refused the moment any active AccessKey exists;
+   *   - one-use / non-replayable: consumed by inserting a row whose
+   *     `environmentId` is UNIQUE, so a concurrent or later writer collides
+   *     (P2002) and is refused — a single-winner guarantee with no
+   *     check-then-set race;
+   *   - time-limited: refused past `PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT`;
+   *   - auditable: the consume and an AdminAudit row commit together.
+   *
+   * Env is read from `process.env` directly (not the cached config proxy) so
+   * the guard and this method observe the same values in lightweight test
+   * harnesses, matching `ScopeGuard.hasValidControlPlaneAuth`.
+   */
+  async tryConsumeAccessKeyBootstrap(params: {
+    organizationId: string;
+    projectId: string;
+    environmentId: string;
+    userId: string;
+    providedToken: string | undefined;
+    source?: string;
+  }): Promise<AccessKeyBootstrapOutcome> {
+    const expected = process.env.PLATOS_BOOTSTRAP_TOKEN?.trim();
+    // No install secret configured → the first-install path is OFF entirely.
+    // The lifecycle routes then require the internal control-plane token, with
+    // no zero-state exception at all.
+    if (!expected) return { ok: false, reason: "disabled" };
+
+    const provided = params.providedToken;
+    if (
+      typeof provided !== "string" ||
+      provided.length !== expected.length ||
+      !this.timingSafeStringEqual(provided, expected)
+    ) {
+      return { ok: false, reason: "invalid_token" };
+    }
+
+    const expiresRaw = process.env.PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT?.trim();
+    if (expiresRaw) {
+      const expiresAt = Date.parse(expiresRaw);
+      if (!Number.isNaN(expiresAt) && Date.now() > expiresAt) {
+        return { ok: false, reason: "expired" };
+      }
+    }
+
+    // Self-disable once initialization has produced an active key. This is the
+    // "not re-enterable after init" property: after the first key exists the
+    // install path is closed and normal control-plane auth is mandatory.
+    const existingKeys = await this.prisma.accessKey.count({
+      where: { environmentId: params.environmentId, revokedAt: null },
+    });
+    if (existingKeys > 0) return { ok: false, reason: "not_zero_state" };
+
+    const tokenFingerprint = crypto.createHash("sha256").update(provided).digest("hex");
+    try {
+      const grant = await this.prisma.$transaction(async (tx) => {
+        // ATOMIC one-use consume. The UNIQUE(environmentId) constraint is the
+        // single-winner gate: two first-install writers cannot both insert, so
+        // a replay or a concurrent race resolves to exactly one success.
+        const created = await tx.accessKeyBootstrapGrant.create({
+          data: {
+            environmentId: params.environmentId,
+            organizationId: params.organizationId,
+            projectId: params.projectId,
+            actorUserId: params.userId,
+            tokenFingerprint,
+            source: params.source ?? "scope-guard",
+          },
+          select: { id: true },
+        });
+        // Audit row committed WITH the consume so a granted first-install is
+        // always recorded, or rolled back together with the grant.
+        await tx.adminAudit.create({
+          data: {
+            environmentId: params.environmentId,
+            actorUserId: params.userId,
+            action: "access_key.bootstrap.consumed",
+            subjectType: "AccessKeyBootstrapGrant",
+            subjectId: created.id,
+            after: { tokenFingerprint, source: params.source ?? "scope-guard" },
+            reason: "first-install access-key bootstrap",
+            source: params.source ?? "scope-guard",
+          },
+        });
+        return created;
+      });
+      return { ok: true, grantId: grant.id };
+    } catch (err: unknown) {
+      // P2002 = unique violation on environmentId → already consumed (replay
+      // or the losing side of a concurrent race).
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        (err as { code?: unknown }).code === "P2002"
+      ) {
+        return { ok: false, reason: "already_consumed" };
+      }
+      throw err;
+    }
+  }
+
+  /** Length-checked, timing-safe string comparison. */
+  private timingSafeStringEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    } catch {
+      return false;
+    }
   }
 
   /**
