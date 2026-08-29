@@ -66,6 +66,27 @@ function specialRule(rule) {
     case "cross-context-dag":
       // Expanded per-context below (needs the allow-list data); nothing here.
       return null;
+    case "same-adapter-only":
+      // (j2) group reference: the adapter name captured on the from side is
+      // excluded on the to side, so an adapter may import only itself.
+      return {
+        name: rule.id,
+        comment: rule.comment,
+        severity: rule.severity,
+        from: { path: "^packages/adapters/([^/]+)/" },
+        to: { path: "^packages/adapters/", pathNot: "^packages/adapters/$1/" },
+      };
+    case "context-registry":
+      // (l) any directory under packages/contexts/ that is not one of the 17.
+      // dependency-cruiser evaluates `from` on its own when `to` is empty, which
+      // is the per-file semantics this rule needs.
+      return {
+        name: rule.id,
+        comment: rule.comment,
+        severity: rule.severity,
+        from: { path: `^packages/contexts/(?!(${CONTEXT_NAMES.join("|")})/)` },
+        to: {},
+      };
     case "acyclic":
       return {
         name: rule.id,

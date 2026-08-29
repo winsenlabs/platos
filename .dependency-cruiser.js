@@ -62,200 +62,189 @@ module.exports = {
     },
     {
       "name": "context-dag-identity-access",
-      "comment": "ADR M0.3 §1 domainDeps: identity-access may not depend on tenancy, secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: identity-access may not depend on tenancy, secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/identity-access/"
       },
       "to": {
-        "path": "^packages/contexts/(tenancy|secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(tenancy|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-tenancy",
-      "comment": "ADR M0.3 §1 domainDeps: tenancy may not depend on secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: tenancy may not depend on secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/tenancy/"
       },
       "to": {
-        "path": "^packages/contexts/(secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-secrets",
-      "comment": "ADR M0.3 §1 domainDeps: secrets may not depend on identity-access, tenancy, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: secrets may not depend on identity-access, tenancy, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/secrets/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|tenancy|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|tenancy|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-providers",
-      "comment": "ADR M0.3 §1 domainDeps: providers may not depend on identity-access, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: providers may not depend on identity-access, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/providers/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-agents",
-      "comment": "ADR M0.3 §1 domainDeps: agents may not depend on identity-access, secrets, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: agents may not depend on identity-access, secrets, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/agents/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-skills",
-      "comment": "ADR M0.3 §1 domainDeps: skills may not depend on identity-access, secrets, providers, agents, tools, memory, channels, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: skills may not depend on identity-access, secrets, providers, agents, tools, memory, channels, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/skills/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|tools|memory|channels|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|tools|memory|channels|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-tools",
-      "comment": "ADR M0.3 §1 domainDeps: tools may not depend on agents, skills, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: tools may not depend on agents, skills, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/tools/"
       },
       "to": {
-        "path": "^packages/contexts/(agents|skills|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(agents|skills|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-memory",
-      "comment": "ADR M0.3 §1 domainDeps: memory may not depend on identity-access, secrets, agents, skills, tools, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: memory may not depend on identity-access, secrets, agents, skills, tools, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/memory/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|agents|skills|tools|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|agents|skills|tools|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-channels",
-      "comment": "ADR M0.3 §1 domainDeps: channels may not depend on secrets, providers, agents, skills, tools, memory, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: channels may not depend on secrets, providers, agents, skills, tools, memory, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/channels/"
       },
       "to": {
-        "path": "^packages/contexts/(secrets|providers|agents|skills|tools|memory|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(secrets|providers|agents|skills|tools|memory|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-files",
-      "comment": "ADR M0.3 §1 domainDeps: files may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: files may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/files/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
-      }
-    },
-    {
-      "name": "context-dag-durable-runtime",
-      "comment": "ADR M0.3 §1 domainDeps: durable-runtime may not depend on identity-access, tenancy, secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
-      "severity": "error",
-      "from": {
-        "path": "^packages/contexts/durable-runtime/"
-      },
-      "to": {
-        "path": "^packages/contexts/(identity-access|tenancy|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-observability",
-      "comment": "ADR M0.3 §1 domainDeps: observability may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: observability may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, cost-monitoring, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/observability/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|cost-monitoring|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-cost-monitoring",
-      "comment": "ADR M0.3 §1 domainDeps: cost-monitoring may not depend on identity-access, secrets, agents, skills, tools, memory, channels, files, durable-runtime, observability, governance, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: cost-monitoring may not depend on identity-access, secrets, agents, skills, tools, memory, channels, files, observability, governance, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/cost-monitoring/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|agents|skills|tools|memory|channels|files|durable-runtime|observability|governance|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|agents|skills|tools|memory|channels|files|observability|governance|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-governance",
-      "comment": "ADR M0.3 §1 domainDeps: governance may not depend on identity-access, secrets, providers, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, jobs, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: governance may not depend on identity-access, secrets, providers, skills, tools, memory, channels, files, observability, cost-monitoring, jobs, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/governance/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|jobs|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|skills|tools|memory|channels|files|observability|cost-monitoring|jobs|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-jobs",
-      "comment": "ADR M0.3 §1 domainDeps: jobs may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, conversations, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: jobs may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, conversations, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/jobs/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|conversations|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|conversations|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-conversations",
-      "comment": "ADR M0.3 §1 domainDeps: conversations may not depend on identity-access, channels, durable-runtime, observability, governance, eventing, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: conversations may not depend on identity-access, channels, observability, governance, eventing, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/conversations/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|channels|durable-runtime|observability|governance|eventing|privacy)/"
+        "path": "^packages/contexts/(identity-access|channels|observability|governance|eventing|privacy)/"
       }
     },
     {
       "name": "context-dag-eventing",
-      "comment": "ADR M0.3 §1 domainDeps: eventing may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, privacy.",
+      "comment": "ADR M0.3 §1 domainDeps: eventing may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, privacy.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/eventing/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|privacy)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|privacy)/"
       }
     },
     {
       "name": "context-dag-privacy",
-      "comment": "ADR M0.3 §1 domainDeps: privacy may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, durable-runtime, observability, cost-monitoring, governance, jobs, conversations, eventing.",
+      "comment": "ADR M0.3 §1 domainDeps: privacy may not depend on identity-access, secrets, providers, agents, skills, tools, memory, channels, files, observability, cost-monitoring, governance, jobs, conversations, eventing.",
       "severity": "error",
       "from": {
         "path": "^packages/contexts/privacy/"
       },
       "to": {
-        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|durable-runtime|observability|cost-monitoring|governance|jobs|conversations|eventing)/"
+        "path": "^packages/contexts/(identity-access|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing)/"
       }
     },
     {
@@ -300,13 +289,25 @@ module.exports = {
     },
     {
       "name": "adapters-only-from-core",
-      "comment": "only the composition root apps/core-api may import packages/adapters/*.",
+      "comment": "only the composition root apps/core-api may import packages/adapters/*; an adapter may import its own modules.",
       "severity": "error",
       "from": {
-        "pathNot": "^apps/core-api/"
+        "pathNot": "^(apps/core-api/|packages/adapters/)"
       },
       "to": {
         "path": "^packages/adapters/"
+      }
+    },
+    {
+      "name": "adapter-is-self-contained",
+      "comment": "an adapter may import only its own modules; adapters are composed in apps/core-api, never chained.",
+      "severity": "error",
+      "from": {
+        "path": "^packages/adapters/([^/]+)/"
+      },
+      "to": {
+        "path": "^packages/adapters/",
+        "pathNot": "^packages/adapters/$1/"
       }
     },
     {
@@ -319,6 +320,15 @@ module.exports = {
       "to": {
         "path": "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)"
       }
+    },
+    {
+      "name": "unknown-context-directory",
+      "comment": "packages/contexts/<name>/ must be one of the 17 contexts named in ADR M0.3 §4; an adapter belongs under packages/adapters/.",
+      "severity": "error",
+      "from": {
+        "path": "^packages/contexts/(?!(identity-access|tenancy|secrets|providers|agents|skills|tools|memory|channels|files|observability|cost-monitoring|governance|jobs|conversations|eventing|privacy)/)"
+      },
+      "to": {}
     },
     {
       "name": "mcp-sdk-only-in-tools",

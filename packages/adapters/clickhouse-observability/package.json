@@ -1,0 +1,10 @@
+{
+  "name": "@platos/adapter-clickhouse-observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Implements the kernel ObservabilitySink port.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

@@ -85,6 +85,7 @@ jobs:
           node --test scripts/webapp-bff-matrix.test.mjs
           node scripts/operator-operations.mjs --check
           node --test scripts/license-distribution.test.mjs
+          node scripts/arch/gen-v1-skeleton.mjs --check
           pnpm audit:arch-boundaries
           pnpm test:arch-boundaries
           node scripts/arch/contract-map.mjs --check

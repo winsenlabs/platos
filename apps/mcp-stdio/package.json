@@ -1,0 +1,10 @@
+{
+  "name": "@platos/mcp-stdio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Thin stdio binary; reuses the tools context transport.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

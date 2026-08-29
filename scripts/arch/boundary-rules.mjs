@@ -94,6 +94,17 @@ export const SDK_CONTAINMENT = [
 // encoded edge-for-edge. `kernel` is implicitly importable by every context and
 // is not listed. A context importing any context NOT in its allow-list is a
 // violation. This is the single source of truth referenced by §5.1 rule (d).
+//
+// THE KEY SET IS THE CONTEXT REGISTRY. These 17 keys are exactly the 17 domain
+// contexts enumerated in ADR M0.3 §4, and rule (l) below rejects any directory
+// under packages/contexts/ that is not one of them. `durable-runtime` is
+// deliberately ABSENT: ADR M0.3 §1 counts it as "17 domain contexts + 1
+// infrastructure adapter-context", §4 lists it under adapters/ and not under
+// contexts/, and §7 decision 10 puts the whole vendor database behind the one
+// kernel DurableRuntime port. A packages/contexts/durable-runtime/ would also be
+// uninhabitable: rule (a) bans the vendor SDK from its domain+application and
+// rule (h) pins that SDK to DURABLE_RUNTIME_ADAPTER, so no layer of it could do
+// its one declared job.
 // ---------------------------------------------------------------------------
 export const CONTEXT_DEPENDS_ON = {
   "identity-access": [],
@@ -106,7 +117,6 @@ export const CONTEXT_DEPENDS_ON = {
   memory: ["tenancy", "providers"],
   channels: ["tenancy", "identity-access"],
   files: ["tenancy"],
-  "durable-runtime": [],
   observability: ["tenancy"],
   "cost-monitoring": ["tenancy", "providers"],
   governance: ["tenancy", "agents"],
@@ -262,12 +272,31 @@ export const RULES = [
 
   // (j) COMPOSITION ROOT ONLY — only apps/core-api may import adapters
   // (ADR M0.3 §5.1 rule (j)).
+  //
+  // The ADR spells the from side as `pathNot: '^apps/core-api/'`, which also
+  // catches an adapter importing its OWN sibling module: under that literal a
+  // package with a barrel plus one implementation file is impossible. ADR M0.3
+  // §13 records the correction. The rule is split in two so the composition-root
+  // property is kept exactly and the intra-package case is judged separately.
   {
     id: "adapters-only-from-core",
     severity: "error",
-    comment: "only the composition root apps/core-api may import packages/adapters/*.",
-    from: { path: "", pathNot: "^apps/core-api/" },
+    comment:
+      "only the composition root apps/core-api may import packages/adapters/*; an adapter may import its own modules.",
+    from: { path: "", pathNot: "^(apps/core-api/|packages/adapters/)" },
     to: { path: "^packages/adapters/" },
+  },
+
+  // (j2) ONE ADAPTER PER PORT — an adapter is self-contained (ADR M0.3 §4
+  // "each implements ONE port; sole holder of its vendor SDK"). Adapter A may
+  // not import adapter B; composition happens in apps/core-api, never by
+  // chaining adapters. Needs a capture group on the from side, so it carries a
+  // `kind` and is judged by a specialised evaluator in both enforcers.
+  {
+    id: "adapter-is-self-contained",
+    severity: "error",
+    comment: "an adapter may import only its own modules; adapters are composed in apps/core-api, never chained.",
+    kind: "same-adapter-only",
   },
 
   // (k) M2.2 — webapp may not touch Prisma (ADR M0.3 §5.1 rule (k)).
@@ -279,6 +308,20 @@ export const RULES = [
     to: {
       path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
     },
+  },
+
+  // (l) CONTEXT REGISTRY — packages/contexts/<name>/ must be one of the 17
+  // contexts named in ADR M0.3 §4. Judged per FILE, not per import edge, so a
+  // rogue package with no imports at all still fails. Without it, the DAG rule
+  // (d) silently ignores an unknown from-context ("unknown context: not our
+  // concern", arch-boundaries.mjs), which would leave any invented or misspelled
+  // context directory unpoliced on its outbound side.
+  {
+    id: "unknown-context-directory",
+    severity: "error",
+    comment:
+      "packages/contexts/<name>/ must be one of the 17 contexts named in ADR M0.3 §4; an adapter belongs under packages/adapters/.",
+    kind: "context-registry",
   },
 ];
 

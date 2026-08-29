@@ -1,0 +1,10 @@
+{
+  "name": "@platos/context-channels",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ADR M0.3 bounded context: channels.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "contracts/index.ts",
+  "types": "contracts/index.ts"
+}

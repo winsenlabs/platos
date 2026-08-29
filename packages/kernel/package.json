@@ -1,0 +1,10 @@
+{
+  "name": "@platos/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Port interfaces and pure value objects. Zero runtime dependencies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
