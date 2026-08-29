@@ -69,6 +69,11 @@ COPY --from=builder /build/apps/agent/dist ./dist
 COPY --from=builder /build/content ./content
 ENV PLATOS_DOCS_CONTENT_ROOT=/app
 
+# Apache-2.0 s4(a)/s4(d) — the License and the NOTICE attributions must travel
+# with every distributed copy of the work. A shipped image IS a distribution.
+COPY --from=builder /build/LICENSE ./LICENSE
+COPY --from=builder /build/NOTICE ./NOTICE
+
 # Entrypoint + platos-specific init SQL
 COPY apps/agent/entrypoint.sh ./entrypoint.sh
 # prisma-init.sql removed — migrations handle table creation now

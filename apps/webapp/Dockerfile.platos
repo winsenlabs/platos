@@ -131,6 +131,10 @@ COPY --from=builder --chown=node:node /platos/internal-packages/clickhouse/schem
 # it directly from the pruner's pre-prune working tree where the
 # original repo is still intact.
 COPY --from=pruner --chown=node:node /platos/content /platos/content
+
+# Apache-2.0 s4(a)/s4(d) — License + NOTICE attributions travel with the image.
+COPY --from=pruner --chown=node:node /platos/LICENSE /platos/LICENSE
+COPY --from=pruner --chown=node:node /platos/NOTICE /platos/NOTICE
 ENV PLATOS_DOCS_CONTENT_ROOT=/platos
 
 # Build info

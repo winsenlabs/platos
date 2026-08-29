@@ -60,7 +60,11 @@ out
 CHANGESETS.md
 CONTRIBUTING.md
 README.md
-LICENSE
+# LICENSE and NOTICE are deliberately NOT excluded: Apache-2.0 s4(a) requires
+# every recipient of a distributed work to receive a copy of the License, and
+# s4(d) requires the NOTICE attributions to travel with it. Shipped images are a
+# distribution, so both files must reach the build context and be COPYed into
+# the final stage of every image.
 
 # WIN-291 — host-level edge/runbook material must never enter the build context.
 # apps/agent/Dockerfile uses `COPY . .`, so anything not excluded here is shipped
