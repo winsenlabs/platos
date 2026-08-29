@@ -55,13 +55,14 @@ test('agent closure reproduces the M0.5 audit (718 nodes / 657 names)', () => {
   assert.ok(!hasPkg(comps, '@changesets/cli'), 'agent must not carry root-only @changesets/cli');
 });
 
-test('webapp closure carries the root prod deps and the M0.5 licence findings', () => {
+test('webapp closure excludes root tooling and removed orphan dependencies', () => {
   const { parsed } = loadLockfile(LOCK);
   const comps = componentsFromSnapshots(computeClosure(IMAGES.webapp.roots, parsed));
-  assert.ok(comps.length > 1800, 'webapp node count in expected range');
-  // Root deps DO ship in webapp (turbo prune keeps the root manifest)
-  assert.ok(hasPkg(comps, 'breakword', '1.0.5'), 'webapp carries GPL breakword@1.0.5 via @changesets/cli');
-  assert.ok(hasPkg(comps, '@fingerprintjs/fingerprintjs-pro', '3.11.9'), 'webapp carries commercial fingerprintjs-pro');
+  assert.ok(comps.length > 1600, 'webapp node count in expected range');
+  assert.ok(!hasPkg(comps, 'breakword'), 'webapp must not ship root-only GPL tooling');
+  assert.ok(!hasPkg(comps, '@changesets/cli'), 'webapp must not ship root release tooling');
+  assert.ok(!hasPkg(comps, '@fingerprintjs/fingerprintjs-pro'), 'removed fingerprint SDK stays absent');
+  assert.ok(!hasPkg(comps, 'posthog-js'), 'removed analytics SDK stays absent');
   assert.ok(hasPkg(comps, 'express', '4.20.0'), 'webapp ships express 4.20.0');
 });
 
@@ -79,7 +80,7 @@ test('committed SBOMs match the lockfile closure (no drift) + licence gate passe
   assert.match(res.stdout, /audit:sbom check PASSED/);
 });
 
-test('licence gate is non-vacuous (injected GPL fails, disposition passes, real GPL fires)', () => {
+test('licence gate is non-vacuous for copyleft and commercial canaries', () => {
   const res = spawnSync('node', [path.join(ROOT, 'scripts/verify-sbom-nonvacuity.mjs')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(res.status, 0, `non-vacuity proof must hold\n${res.stdout}\n${res.stderr}`);
   assert.match(res.stdout, /NON-VACUITY PROVEN/);

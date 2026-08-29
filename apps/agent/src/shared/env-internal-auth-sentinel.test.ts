@@ -60,3 +60,44 @@ describe("PLATOS_INTERNAL_AUTH_TOKEN production sentinel", () => {
     expect(tokenIssue).toBe(false);
   });
 });
+
+describe("PLATOS_BOOTSTRAP_TOKEN expiry contract", () => {
+  const bootstrapBase = {
+    ...PROD_BASE,
+    PLATOS_INTERNAL_AUTH_TOKEN: "aa".repeat(32),
+    PLATOS_BOOTSTRAP_TOKEN: "bootstrap-secret-long-enough",
+  };
+
+  it("rejects an absent or malformed expiry when bootstrap is enabled", () => {
+    for (const expiry of [undefined, "not-a-date"]) {
+      const result = validateAgentEnv({
+        ...bootstrapBase,
+        ...(expiry ? { PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT: expiry } : {}),
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(JSON.stringify(result)).toContain("PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT");
+      }
+    }
+  });
+
+  it("rejects an expired bootstrap window", () => {
+    const result = validateAgentEnv({
+      ...bootstrapBase,
+      PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT: "2000-01-01T00:00:00.000Z",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(JSON.stringify(result)).toContain("must be in the future");
+  });
+
+  it("accepts a future bootstrap expiry", () => {
+    const result = validateAgentEnv({
+      ...bootstrapBase,
+      PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const expiryIssue = result.ok
+      ? false
+      : JSON.stringify(result).includes("PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT");
+    expect(expiryIssue).toBe(false);
+  });
+});

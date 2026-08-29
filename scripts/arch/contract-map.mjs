@@ -364,7 +364,6 @@ function renderMarkdown(model) {
   for (const u of model.undemandedScreens) L.push(`| \`${u.id}\` | ${u.reason} |`);
   L.push("");
   L.push("Legend: **[E]** existing contract · **[N]** new contract · **[E-stream]** existing stream needing versioning · **[E-partial]** partial today.");
-  L.push("");
   return L.join("\n");
 }
 

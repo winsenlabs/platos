@@ -25,11 +25,11 @@
       },
       {
         "name": "platos:closureRoots",
-        "value": "apps/webapp,."
+        "value": "apps/webapp"
       },
       {
         "name": "platos:componentCount",
-        "value": "1845"
+        "value": "1637"
       },
       {
         "name": "platos:derivation",
@@ -4178,546 +4178,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fapply-release-plan@6.1.4",
-      "name": "@changesets/apply-release-plan",
-      "version": "6.1.4",
-      "purl": "pkg:npm/@changesets%2Fapply-release-plan@6.1.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "14ca4a1757d1949c82655607af709b8a7a5967ee8cc2f3ad594b8ef2ea3eb2f7004c4a1cd73443723db7a40bab2764d9fee573d701471fa2b7365002cb43cb7b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fassemble-release-plan@5.2.4",
-      "name": "@changesets/assemble-release-plan",
-      "version": "5.2.4",
-      "purl": "pkg:npm/@changesets%2Fassemble-release-plan@5.2.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c499165fed7f09468e5164e0b9711b0834f258914408486676d6e48e19f9195046c5d3ff27068704853db16dc547a803d3b53067ba2fa623dc95066cfa3fa6be"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fchangelog-git@0.1.14",
-      "name": "@changesets/changelog-git",
-      "version": "0.1.14",
-      "purl": "pkg:npm/@changesets%2Fchangelog-git@0.1.14",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "faf45f9cab57556b030f119cb4e7f326c3e1682757458a1ef8ac96628ab95ff1aaa084911226add25dcbf01d1ae39dc1d81e1d7c719c65a1b2a301dba7d05268"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fcli@2.26.2",
-      "name": "@changesets/cli",
-      "version": "2.26.2",
-      "purl": "pkg:npm/@changesets%2Fcli@2.26.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7675ab25399147c6c21e29091e5f5bf475b781700209e873e0e6acad7a4ca7bb31f7b102b811863632618cf85d64d0af332f669f8056769948df6dc86eab118a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fconfig@2.3.1",
-      "name": "@changesets/config",
-      "version": "2.3.1",
-      "purl": "pkg:npm/@changesets%2Fconfig@2.3.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3d05da265f3609f21775d50ea698f8cd6bbef7cec60b0d8cf9e41c39ea71379b3e92f9ec64ec231093b70c7f5e572f8e3fa3e0fca14459db040851184ed6e0eb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Ferrors@0.1.4",
-      "name": "@changesets/errors",
-      "version": "0.1.4",
-      "purl": "pkg:npm/@changesets%2Ferrors@0.1.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1c072a3c5eec9ec509fd0ce45a829f45f5eeb211d3bbe2b92992c958f6f7e2ce1e0994a121ff0114eddfc2ae8a53cf86ecbe4a76d3760734005ce497132898f5"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fget-dependents-graph@1.3.6",
-      "name": "@changesets/get-dependents-graph",
-      "version": "1.3.6",
-      "purl": "pkg:npm/@changesets%2Fget-dependents-graph@1.3.6",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "43fb0b80100d9a4bd49b4f46811b00bc4b58de9d7fe4e0b3801139bd7def81be42bd6d23ec21258e8731e683d779048da61e855ee94995757745efefdcadcfdd"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fget-github-info@0.5.2",
-      "name": "@changesets/get-github-info",
-      "version": "0.5.2",
-      "purl": "pkg:npm/@changesets%2Fget-github-info@0.5.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "269a6178bbbb4b5d78684b35e7b7ce6438c5a940e99bb78776ae44f12491d205014c42b470d487b2b491e5aebac6cd33dd15aea38e90bc0def6b0a7c0710c7be"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fget-release-plan@3.0.17",
-      "name": "@changesets/get-release-plan",
-      "version": "3.0.17",
-      "purl": "pkg:npm/@changesets%2Fget-release-plan@3.0.17",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "e88c0a4ee6cd120a0e6700e89ed61cdb1d9c5977ebe882b13f722129e2be5a3c83eb2dcce0697f8dd42f070fa6ff9cd620b48e0806862eed9917a43e5a23e78b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fget-version-range-type@0.3.2",
-      "name": "@changesets/get-version-range-type",
-      "version": "0.3.2",
-      "purl": "pkg:npm/@changesets%2Fget-version-range-type@0.3.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "495ab062ce6950b623613e28a76d45da955b72b71ae2a03f6c003716615728c37b63e1dc3bcb1b6544f1dd3032d955ee94fd85002775682edfda74eea923dbaa"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fgit@2.0.0",
-      "name": "@changesets/git",
-      "version": "2.0.0",
-      "purl": "pkg:npm/@changesets%2Fgit@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7a75151166e2a944f1a929e67acc891967f3779d4f6381fb987f72530d213d5a59049ead41914c537177993fedf4e27f1a3ca2338efbd22fac7a1027eb29b1e8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Flogger@0.0.5",
-      "name": "@changesets/logger",
-      "version": "0.0.5",
-      "purl": "pkg:npm/@changesets%2Flogger@0.0.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "809c991e89aef270121e968037373a6e440c3bd814fe26f6d25a9ec35ad5c7be7714ec5f7e70ab2651887905713560aa33ea3a38e95e0a8fe2bcbf1400ee6217"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fparse@0.3.16",
-      "name": "@changesets/parse",
-      "version": "0.3.16",
-      "purl": "pkg:npm/@changesets%2Fparse@0.3.16",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "d76ec928d775ebb6b202e0635208190649834b97c82acb619ebf63afa6dd9ee5258eba221115bb1414c3367355c89e25ebd3f3479ee993a99741db49c810892a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fpre@1.0.14",
-      "name": "@changesets/pre",
-      "version": "1.0.14",
-      "purl": "pkg:npm/@changesets%2Fpre@1.0.14",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "753b079b14161107a41d81db83e33598355816f7a00e1f63fe4c9236e0ca7729707cc11ebd3783a2e47b21f1cdc95a1dc595eed7bb17a09b9fd83d2f8b9e451d"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fread@0.5.9",
-      "name": "@changesets/read",
-      "version": "0.5.9",
-      "purl": "pkg:npm/@changesets%2Fread@0.5.9",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4fc049e894ba8f581f3b51c5ab9d24537a9ac18c5ae0d4db23f012355542053b0aaaecb61d8c0cf6bed99f392231ef0810e6c026d515192ade3c23b100ada169"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Ftypes@4.1.0",
-      "name": "@changesets/types",
-      "version": "4.1.0",
-      "purl": "pkg:npm/@changesets%2Ftypes@4.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2c342f543bf929be749f2dacdb91619b777d4126629aca14181b148a88fa302dea6cc502b82f063c8be4fcce88bd7c77958840b3497059440b6fe5481140840b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Ftypes@5.2.1",
-      "name": "@changesets/types",
-      "version": "5.2.1",
-      "purl": "pkg:npm/@changesets%2Ftypes@5.2.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9b22df1db54ea9aabd52d50aa91fe7640fce63bc458d031d7e07ea7992012b8774840ea983102bbddbfc33ee8d533cc1b2358b3adbc0a6ff181ebe2a33e2a97e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@changesets%2Fwrite@0.2.3",
-      "name": "@changesets/write",
-      "version": "0.2.3",
-      "purl": "pkg:npm/@changesets%2Fwrite@0.2.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0db6a6afb00832fb252a7358b0b15a7da54e471e07d29bc2036307aa0b4d0b248c7b56e52261320043b30e6720280920cf8faec282f3edd7a622b5fe241aff5f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@chevrotain%2Fcst-dts-gen@11.0.3",
       "name": "@chevrotain/cst-dts-gen",
       "version": "11.0.3",
@@ -5866,96 +5326,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro@3.11.9",
-      "name": "@fingerprintjs/fingerprintjs-pro",
-      "version": "3.11.9",
-      "purl": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro@3.11.9",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "193a30e3d23cead06557f53e79d0532c0d9d3c20d7adf1d5b0db9357b6b99d98d6155dd0e384e3eb26f93b419c193fc41f06d2cb752608ef7e3d2d44451f9bda"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "name": "SEE LICENSE IN LICENSE"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro-react@2.6.3",
-      "name": "@fingerprintjs/fingerprintjs-pro-react",
-      "version": "2.6.3",
-      "purl": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro-react@2.6.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fdac42abf71f8d990833e58564cff4e4542faad35f74a6c814a53a6f6cabc0f2a5813f01a96900abc5ef157e8908f96af3fb9d54b2631440c22bed49421d4bea"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro-spa@1.3.2",
-      "name": "@fingerprintjs/fingerprintjs-pro-spa",
-      "version": "1.3.2",
-      "purl": "pkg:npm/@fingerprintjs%2Ffingerprintjs-pro-spa@1.3.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b35606b31d5740b9a353e6afe14ad41cdc72cf03c7c99441d065c94053892bc64709873648dba4c67266640fbe6cd05af2dc14df05be420489840e0fae39ddd2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@floating-ui%2Fcore@0.7.3",
       "name": "@floating-ui/core",
       "version": "0.7.3",
@@ -6676,66 +6046,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@hcaptcha%2Floader@2.0.0",
-      "name": "@hcaptcha/loader",
-      "version": "2.0.0",
-      "purl": "pkg:npm/@hcaptcha%2Floader@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7c5407e80a54ff308297a6356e76ecc6ca7512bfe5297faa960963ae958378571e9e912da0febc844c652925c40a8b29cca2de49672bd3a71b4e3951ff1dc824"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@hcaptcha%2Freact-hcaptcha@1.12.0",
-      "name": "@hcaptcha/react-hcaptcha",
-      "version": "1.12.0",
-      "purl": "pkg:npm/@hcaptcha%2Freact-hcaptcha@1.12.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4221e7410e7693c4892521e473772ae13958cda83ba0f7787f966a9e35527b87c90d295968e405b6ee45e40622b15b25c1a8ad74310b3d52d1b112718a223403"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@headlessui%2Freact@1.7.8",
       "name": "@headlessui/react",
       "version": "1.7.8",
@@ -7336,36 +6646,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@kapaai%2Freact-sdk@0.1.3",
-      "name": "@kapaai/react-sdk",
-      "version": "0.1.3",
-      "purl": "pkg:npm/@kapaai%2Freact-sdk@0.1.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8dbc3ec110c0d12e4b3292866cfb2a850333074e17bda58f5d602aa7361eb8b4574df88b30db0aa08b87f74f8c5f7bb3563bf0e40b1dd0492f619ae0f525dad5"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@lezer%2Fcommon@1.3.0",
       "name": "@lezer/common",
       "version": "1.3.0",
@@ -7504,66 +6784,6 @@
         {
           "alg": "SHA-512",
           "content": "c9e9cde52a80c403effea327a565b4013ee5f92c55ae01bebb4b4db11416a9baf3eba1c897c0e711b04e6efcb6d49e4aefe235bfb82c027944d95439c9855278"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@manypkg%2Ffind-root@1.1.0",
-      "name": "@manypkg/find-root",
-      "version": "1.1.0",
-      "purl": "pkg:npm/@manypkg%2Ffind-root@1.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9a48b9b81be11f33bc918622c7f591cb6597f12dc1e7075549cf43e8a714e6540d8253f6cade7cfd57cbb802b8f609515c2868b18f1aa76a09d6a8266b719454"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@manypkg%2Fget-packages@1.1.3",
-      "name": "@manypkg/get-packages",
-      "version": "1.1.3",
-      "purl": "pkg:npm/@manypkg%2Fget-packages@1.1.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7e8f9086e537a84ff64d031099b54ca9a43a1166cc862e000563fe3b800cd4da8f06ecb43ab0295792cee81aeb82786d0074b6347e91ad593d38bd7cd6d4e2f0"
         }
       ],
       "licenses": [
@@ -8656,36 +7876,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fapi-logs@0.208.0",
-      "name": "@opentelemetry/api-logs",
-      "version": "0.208.0",
-      "purl": "pkg:npm/@opentelemetry%2Fapi-logs@0.208.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0a3aee298f55e8d32cb0bfd3d64005833a2c175bfda3aa1e37e697e4907f0bfc4f36d9a0209a9c5c71bb7c0f363aed730a958697895139050ac14344d69302ca"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@opentelemetry%2Fapi-logs@0.57.2",
       "name": "@opentelemetry/api-logs",
       "version": "0.57.2",
@@ -8836,66 +8026,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fcore@2.2.0",
-      "name": "@opentelemetry/core",
-      "version": "2.2.0",
-      "purl": "pkg:npm/@opentelemetry%2Fcore@2.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "16e69b9e7526f0b7e59e2795c6ce9e3fb677f37860414e16d5edca252e9a386dd1c56c5c1f20711fc7c3307360bbf805c7f3368ef4ce5bfe3f3c784bcfa6e35b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fcore@2.6.1",
-      "name": "@opentelemetry/core",
-      "version": "2.6.1",
-      "purl": "pkg:npm/@opentelemetry%2Fcore@2.6.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "f311d2196a493fdc01c600699ea18bd11dcf6dd5909dd2f5429e74aab83bd7e076f332b939099481c0ca2c9833c80015dfcb78b4ec8b3060c3eb42e7791e56f2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@opentelemetry%2Fexporter-logs-otlp-grpc@0.203.0",
       "name": "@opentelemetry/exporter-logs-otlp-grpc",
       "version": "0.203.0",
@@ -8944,36 +8074,6 @@
         {
           "alg": "SHA-512",
           "content": "b34872b35963aa53136d7c765e2a6598c260f701b9ef4679947ef032fad95fa95c383239eac1b81cbd378e4945eb7b417b23702b6455d7f9ed5c6a371e01b843"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fexporter-logs-otlp-http@0.208.0",
-      "name": "@opentelemetry/exporter-logs-otlp-http",
-      "version": "0.208.0",
-      "purl": "pkg:npm/@opentelemetry%2Fexporter-logs-otlp-http@0.208.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8cebf8d01b3d8f2f5b6552e8fe2f05c148ae0af6e358323e656d77c229899b82e39e5c09c46801f8dfd558e6544e933e6a1fdac17790a8a74d9692dfd848ef62"
         }
       ],
       "licenses": [
@@ -10126,36 +9226,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fotlp-exporter-base@0.208.0",
-      "name": "@opentelemetry/otlp-exporter-base",
-      "version": "0.208.0",
-      "purl": "pkg:npm/@opentelemetry%2Fotlp-exporter-base@0.208.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "80c777f6021f55bd8e83195dc54b4ec06258487f0fd6454516524bbaeb77d8be8a8140b8825d5d3219fe602da61a7d1b0ce89061293fb8739d4a3b8aa79f2fbc"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@opentelemetry%2Fotlp-grpc-exporter-base@0.203.0",
       "name": "@opentelemetry/otlp-grpc-exporter-base",
       "version": "0.203.0",
@@ -10204,36 +9274,6 @@
         {
           "alg": "SHA-512",
           "content": "63c23a1a0a029dad2a0d0d96e86091b5a176e129efaaf03c39f7938bb7ea8a00f6deef09a5be11e4a16ffe946fae519a81c08b202308ca1f7089e8e9e135eefc"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fotlp-transformer@0.208.0",
-      "name": "@opentelemetry/otlp-transformer",
-      "version": "0.208.0",
-      "purl": "pkg:npm/@opentelemetry%2Fotlp-transformer@0.208.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0c214f63c0ba94040750d93370d4fd47ea98131bec93a0b906da36a5b37182272971259b7b65874a12f190ec4874d7018983dd547bff7bbbc7ecae9323e0be7d"
         }
       ],
       "licenses": [
@@ -10456,66 +9496,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fresources@2.2.0",
-      "name": "@opentelemetry/resources",
-      "version": "2.2.0",
-      "purl": "pkg:npm/@opentelemetry%2Fresources@2.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "d693507ff25acd04cc0340623b9348354cc7d1c6cb6db97b9a7b4b6b86893660825d28f4ab4dd3e595d72f4cf0e06e794e374bf53cf7d9cce718295ffbccebe4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fresources@2.6.1",
-      "name": "@opentelemetry/resources",
-      "version": "2.6.1",
-      "purl": "pkg:npm/@opentelemetry%2Fresources@2.6.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9480ffbf14ae2965cce795e100a368617bbd0aeb68ab98457646d3748ff30ca424b57cdc58156136c3a4899153314f54b445ae19135ed075209ac16574877154"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@opentelemetry%2Fsdk-logs@0.203.0",
       "name": "@opentelemetry/sdk-logs",
       "version": "0.203.0",
@@ -10546,36 +9526,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fsdk-logs@0.208.0",
-      "name": "@opentelemetry/sdk-logs",
-      "version": "0.208.0",
-      "purl": "pkg:npm/@opentelemetry%2Fsdk-logs@0.208.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4250322f58d1a4e79aab1eff95e1b5bc9329f38834c4a3fa80999f10b0699c8e0effdc4f5fe1eee66d4f3a4f4a97ebde364cad879b75f6146537ab4d635b236c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@opentelemetry%2Fsdk-metrics@2.0.1",
       "name": "@opentelemetry/sdk-metrics",
       "version": "2.0.1",
@@ -10594,36 +9544,6 @@
         {
           "alg": "SHA-512",
           "content": "c1ff0e689a129ee8cc007591de0fbf846bcd72c0b5eab7fdb354a8e0994c8856851e21381e9200de8521fae59943b08db8af20556fe9412920a1ae479243a5d2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fsdk-metrics@2.2.0",
-      "name": "@opentelemetry/sdk-metrics",
-      "version": "2.2.0",
-      "purl": "pkg:npm/@opentelemetry%2Fsdk-metrics@2.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1b92983faf9524c673a468a9430ec68a27f8f21e92190d8f14a1180b26de5c9b0e081e1fa7c6b3a8c000cc4e659e71cadd9570610ae09856ec5093bfcce9f01b"
         }
       ],
       "licenses": [
@@ -10714,36 +9634,6 @@
         {
           "alg": "SHA-512",
           "content": "c582e5be4ff1752706c75684aafc4bc1feac5d02d70a3937ff54904fd5fd028379ad746191dbc815286e34d9ad4c43d106a72c31b4b8a7f8092cd236c17683b9"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@opentelemetry%2Fsdk-trace-base@2.2.0",
-      "name": "@opentelemetry/sdk-trace-base",
-      "version": "2.2.0",
-      "purl": "pkg:npm/@opentelemetry%2Fsdk-trace-base@2.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c564202f406672db1a960e8f6971319b375e752a77832295f26401c0afe3f5519d083bb67e65c86f68007a104a6e45c2a49e073e482fdd07e8256453e1d1d66f"
         }
       ],
       "licenses": [
@@ -10924,66 +9814,6 @@
         {
           "alg": "SHA-512",
           "content": "3f5b2dd1a92c0ab9fdb06661a7c18c63006742c6ef016b19017e38a1734dbcb1c6a8039ca15c668d98a886cb7043b4aa2a76d1e3b6a474d8beba57960fcfa0e8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@posthog%2Fcore@1.25.2",
-      "name": "@posthog/core",
-      "version": "1.25.2",
-      "purl": "pkg:npm/@posthog%2Fcore@1.25.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "87614eeeeb7f05b7f0a405d6a707431d3cd0814a3d89b0c512ce993beddc23728f590b795f07332b538b02e3e9adc8e6f13fe3974487f23485a395dd53845b4e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@posthog%2Ftypes@1.369.0",
-      "name": "@posthog/types",
-      "version": "1.369.0",
-      "purl": "pkg:npm/@posthog%2Ftypes@1.369.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "88590bae0ffe41140773c2928cef696ab37a1f7adfb4cda5776b0227f19e05144ef4c25809d73a8d748546017b68624fcdbefdb32aa4b33f82ae70737599c12a"
         }
       ],
       "licenses": [
@@ -16754,36 +15584,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@remix-run%2Fchangelog-github@0.0.5",
-      "name": "@remix-run/changelog-github",
-      "version": "0.0.5",
-      "purl": "pkg:npm/@remix-run%2Fchangelog-github@0.0.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "e37b6ac14a96aa2adbbfa0fdbb3a39e4048fb0227ad448a7d64fccf2a9fe429ae8b343266e6bb38cb54f9ad6b17f17ded80357d0b79f2ef083d29020af5b69e2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@remix-run%2Fexpress@2.1.0",
       "name": "@remix-run/express",
       "version": "2.1.0",
@@ -21224,66 +20024,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@tanstack%2Fquery-core@5.76.0",
-      "name": "@tanstack/query-core",
-      "version": "5.76.0",
-      "purl": "pkg:npm/@tanstack%2Fquery-core@5.76.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "14ddfbe616fc72dcdf34095ec7980723af960d74cda5ed276f1a7f776609b673fe20133a3949bbcdc6a8096e93eb705ac063986416ca0b488fbebe354ed78d56"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@tanstack%2Freact-query@5.76.1",
-      "name": "@tanstack/react-query",
-      "version": "5.76.1",
-      "purl": "pkg:npm/@tanstack%2Freact-query@5.76.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "63174b65518de10913e584f51ca6505a22257206ae217108b0c3934a3bf20f9c0b60af1856f29950f032b0caa8b2c14925f0e9256de9167ed6359b8f3aaabe7f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@tanstack%2Freact-table@8.21.3",
       "name": "@tanstack/react-table",
       "version": "8.21.3",
@@ -22844,36 +21584,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@types%2Fis-ci@3.0.0",
-      "name": "@types/is-ci",
-      "version": "3.0.0",
-      "purl": "pkg:npm/@types%2Fis-ci@3.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4343a9d217566d877589a841f8814d41c59716ae0ed10e4cc103fbb8dd2ca2eb90e2b3e0d6f11872720e7ebd6063e33eeab73c146a116813b598e3af2f6f6c11"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@types%2Fjs-cookie@2.2.7",
       "name": "@types/js-cookie",
       "version": "2.2.7",
@@ -22994,36 +21704,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/@types%2Fminimist@1.2.2",
-      "name": "@types/minimist",
-      "version": "1.2.2",
-      "purl": "pkg:npm/@types%2Fminimist@1.2.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8e1b8a2c846b86f08f2eac0f731e8836a98a7a2039116aec08e3e1ae5152adbae653864c3e38f9525fe82c23033bdf17454230566efcc480b3e043c27a4b7379"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/@types%2Fms@0.7.31",
       "name": "@types/ms",
       "version": "0.7.31",
@@ -23102,36 +21782,6 @@
         {
           "alg": "SHA-512",
           "content": "77ae1fd34f7cd9f4bd6283a026400ca252bb30df08ab74c37558dc85b6077449a3b61fc31e8c31f361a7a00fad55400dfbbbf17d85200338be2576ca35dd920d"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/@types%2Fnormalize-package-data@2.4.1",
-      "name": "@types/normalize-package-data",
-      "version": "2.4.1",
-      "purl": "pkg:npm/@types%2Fnormalize-package-data@2.4.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1a3edc23bcfef7c336f364ea9a9d8ae4422ca28b941336c1261410cc31378d221193aafd82ccf4a14a24a88511e2ed51ddd307a34a431cceec34e1f286e972a7"
         }
       ],
       "licenses": [
@@ -24494,36 +23144,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/agentcrumbs@0.5.0",
-      "name": "agentcrumbs",
-      "version": "0.5.0",
-      "purl": "pkg:npm/agentcrumbs@0.5.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fb527bc3ec7dfc33fca05f9931591e5e296477cd727728043445702c92b0840dee190f78ec3151c2577d846a80a1c39cb94e036902887714f3282b0586957512"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/aggregate-error@3.1.0",
       "name": "aggregate-error",
       "version": "3.1.0",
@@ -24632,36 +23252,6 @@
         {
           "alg": "SHA-512",
           "content": "f2252a979d04511fae51c7514371c3a9ae84572a3776870bf20e5627714d7169aeeb621b90652e7bfa44c8b056f1518a2ae7133e0a9e92ce1f214d43038ca8c1"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/ansi-colors@4.1.3",
-      "name": "ansi-colors",
-      "version": "4.1.3",
-      "purl": "pkg:npm/ansi-colors@4.1.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ffac3f0b6d4f9b503b6998ad948e4d8bfd89e8515037c8b50afcf79070010006f0f77bff365bca7553aacfb0825b3ff78affc9a6545210467cdd720e375e68bf"
         }
       ],
       "licenses": [
@@ -24914,36 +23504,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/argparse@1.0.10",
-      "name": "argparse",
-      "version": "1.0.10",
-      "purl": "pkg:npm/argparse@1.0.10",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a39468cbab4d1b848bfc53a408037a4738e26a4652db944b605adc32db49a9b75df015ab9c0f9f1b3e7b88de4f6f4ea9bc11af979810d01e3c74996c957be84e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/argparse@2.0.1",
       "name": "argparse",
       "version": "2.0.1",
@@ -25034,36 +23594,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/array-buffer-byte-length@1.0.1",
-      "name": "array-buffer-byte-length",
-      "version": "1.0.1",
-      "purl": "pkg:npm/array-buffer-byte-length@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6a10b95b5c60a2ef8a4d78b1e2c00ef0a8b5d90fa37f88b4fad9a4dec0bece07329ec8641f1ce95dd22605e86251828a283c2f7c5889975b59b7a7b0b1c4b532"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/array-flatten@1.1.1",
       "name": "array-flatten",
       "version": "1.1.1",
@@ -25082,126 +23612,6 @@
         {
           "alg": "SHA-512",
           "content": "3c254042cc167a6bba51dc6c0c5157ffe815798a8a0287770f75159bdd631f0ca782e3b002f60f871f2736533ef8da9170ae82c71a5469f8e684874a88789baa"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/array-union@2.1.0",
-      "name": "array-union",
-      "version": "2.1.0",
-      "purl": "pkg:npm/array-union@2.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1c6cb1a0e4d853208ceacb547ba1098277781287b0008ef331d7ea3be9068e79599810f3fdc479a5ff2bfdc4785aaeb4b0bfe9d0891c8d41043f04b7185ac8cb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/array.prototype.flat@1.3.2",
-      "name": "array.prototype.flat",
-      "version": "1.3.2",
-      "purl": "pkg:npm/array.prototype.flat@1.3.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "763601f99c76bcb7b063c45694d0947478c35ecd973a09bad364bd13b3ff5291e07de1cbd3471188817e20dfc6fda509ee418f6fac8efc4ac3239576b3c8b270"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/arraybuffer.prototype.slice@1.0.3",
-      "name": "arraybuffer.prototype.slice",
-      "version": "1.0.3",
-      "purl": "pkg:npm/arraybuffer.prototype.slice@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6ccc4c2808e0d77101495b1cc53698038991739b755005dada45e219335f674efd1c85971242a692016b87f9c9a9a99a2d2ad73b91f85851643c468b2566ecdc"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/arrify@1.0.1",
-      "name": "arrify",
-      "version": "1.0.1",
-      "purl": "pkg:npm/arrify@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "dc26337b1f4cf451908c218c1b28baff7d5cf0625b81bd2a1b2af1e475b13ddd1a0b0878701d988cc6f65dff54ba8a20accae53bd713aa7079ac8e461d94dc50"
         }
       ],
       "licenses": [
@@ -25574,36 +23984,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/better-path-resolve@1.0.0",
-      "name": "better-path-resolve",
-      "version": "1.0.0",
-      "purl": "pkg:npm/better-path-resolve@1.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a5b9e5e57cc605dac553fc13e23aa62553e7d81e941cf04e873310918fd23d43c1e90b545ed9811c123009b5c9a25f7798ea463274323fff81075f6ad38c63ee"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/big.js@6.2.2",
       "name": "big.js",
       "version": "6.2.2",
@@ -25898,36 +24278,6 @@
         {
           "license": {
             "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/breakword@1.0.5",
-      "name": "breakword",
-      "version": "1.0.5",
-      "purl": "pkg:npm/breakword@1.0.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7b1e56f43a0e43f2d4114dcf31d2ecf6e6bf098665d7aefc35490a39d5128bc030e45d6276279a8915110811490b055cac3d49f08cb7bdf59296868cc0edaa16"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "name": "gpl-2.0"
           }
         }
       ]
@@ -26324,36 +24674,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/camelcase@5.3.1",
-      "name": "camelcase",
-      "version": "5.3.1",
-      "purl": "pkg:npm/camelcase@5.3.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2f6f124c1d7bd27c164badd48ed944384ddd95d400a5a257664388d6e3057f37f7ad1b8f7a01da1deb3279ef98c50f96e92bd10d057a52b74e751891d79df026"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/camelcase-css@2.0.1",
       "name": "camelcase-css",
       "version": "2.0.1",
@@ -26372,36 +24692,6 @@
         {
           "alg": "SHA-512",
           "content": "40e4af7af86c9628e0630471e91bfbcca74c17c95b466c7eb901b1dbebc373e288fde067b32f648ade5a8f6dc0806bb7a5ae2df408306e75d6a92fa2398fb668"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/camelcase-keys@6.2.2",
-      "name": "camelcase-keys",
-      "version": "6.2.2",
-      "purl": "pkg:npm/camelcase-keys@6.2.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "62bc1a034bc429accf0649f48a94e232949a8d80d27be2a341fae385c04cc49b7fce76ef94777c3f0fd56a66b3e4407859f86cdd2511dd9f66c11bbf3f7b3762"
         }
       ],
       "licenses": [
@@ -26684,36 +24974,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/chardet@0.7.0",
-      "name": "chardet",
-      "version": "0.7.0",
-      "purl": "pkg:npm/chardet@0.7.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "993f220dcae1d37a83191466a00da1981267c69965311fb4ff4aa5ce3a99112e8d762583719902340938acf159f50f39af6eee9e488d360f193a2c195c11f070"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/chevrotain@11.0.3",
       "name": "chevrotain",
       "version": "11.0.3",
@@ -26822,36 +25082,6 @@
         {
           "alg": "SHA-512",
           "content": "420ceef247c1be8f9c038f7ada39cfd4a912e83a29e4d4ba83b4792c5609af86fc51bf783cf417524b02c3d3ef5e87973d145d751342e42d4941447648c1ad9c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/ci-info@3.8.0",
-      "name": "ci-info",
-      "version": "3.8.0",
-      "purl": "pkg:npm/ci-info@3.8.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7974e0807592a28621ab8f45da8a5086e1d6833b9c7c5d9880e0cae1ed79eba190b390487cfdf4074a1e9f00491df5b102cd9fc8f075b3b320f78f732dfeb563"
         }
       ],
       "licenses": [
@@ -27018,36 +25248,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/cliui@6.0.0",
-      "name": "cliui",
-      "version": "6.0.0",
-      "purl": "pkg:npm/cliui@6.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b7ac1b82da025ef033b2ded0817c4962a3edd2eb047db81075fb443db2cbfdcbefe873c4e5582fa82b80203474360539d9db3aac5c2aae06a434bac712309bad"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/cliui@8.0.1",
       "name": "cliui",
       "version": "8.0.1",
@@ -27072,36 +25272,6 @@
         {
           "license": {
             "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/clone@1.0.4",
-      "name": "clone",
-      "version": "1.0.4",
-      "purl": "pkg:npm/clone@1.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2501d9d90316ea5dda1ff8fac42a904e163ff4e1f80fff65b37e1c8245018847a87114d4d38b477ca3c1b142b53ea64251033b1a20342085c94ae5c723ae0a6e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]
@@ -28098,36 +26268,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/core-js@3.49.0",
-      "name": "core-js",
-      "version": "3.49.0",
-      "purl": "pkg:npm/core-js@3.49.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7acd54dbe613b73a7093154bc0015d4a968833241aab43c1826dd80f55b7429b27d4d0263b72928197eefa8192595bba36f2c7a07095fda61cb04e70881ec02e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/cors@2.8.6",
       "name": "cors",
       "version": "2.8.6",
@@ -28368,36 +26508,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/cross-spawn@5.1.0",
-      "name": "cross-spawn",
-      "version": "5.1.0",
-      "purl": "pkg:npm/cross-spawn@5.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a53810279282d1dda1718f1ec8bd48ce504f6234e4c87ef65d164f9cbc8abacda605f36342cde496a6c95365482ea66bc80654b7d24e6f787f996332db7fdfe4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/cross-spawn@7.0.6",
       "name": "cross-spawn",
       "version": "7.0.6",
@@ -28626,126 +26736,6 @@
         {
           "alg": "SHA-512",
           "content": "b22fbec7344063d88fa7ad2ba10885b5aece15b86b82f72d86b86534019e429b52636e6e26391f515f0e02b0b728ba1c07c253f28873faa8315829b3f1186322"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/csv@5.5.3",
-      "name": "csv",
-      "version": "5.5.3",
-      "purl": "pkg:npm/csv@5.5.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "413698d178e385340e760b80445d2518a9b9fe612af4f0fdfd585965e8070c806adad43080da47737767783e261a8da226cf9f4cabf9069d1f67e051b98dd9d2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/csv-generate@3.4.3",
-      "name": "csv-generate",
-      "version": "3.4.3",
-      "purl": "pkg:npm/csv-generate@3.4.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c3f4feaea474bf0bc7a96b3fd59c8c0d6b471d225a374ea4951a895c11290c968cffe75992ca3438a87555cbae62f2b75cce772b2b1536af0aa3f7a908af303b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/csv-parse@4.16.3",
-      "name": "csv-parse",
-      "version": "4.16.3",
-      "purl": "pkg:npm/csv-parse@4.16.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "70ed48ff39b3e30d9d70a1d5be90abec9551bbcfc5ca61b9384a66bec65895c718a253c12e85462941e03687386469057859561840e633204cf934ea45d5bfc2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/csv-stringify@5.6.5",
-      "name": "csv-stringify",
-      "version": "5.6.5",
-      "purl": "pkg:npm/csv-stringify@5.6.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3e3890eb9f5a43e7d44d0a92addd571039ceaf9da3877d1106eadfce4b1c684dad3da16c0c7e703801c98b0f17007a614649c2c0c504f4a45ac9ce0afcd6cef0"
         }
       ],
       "licenses": [
@@ -29988,126 +27978,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/data-view-buffer@1.0.1",
-      "name": "data-view-buffer",
-      "version": "1.0.1",
-      "purl": "pkg:npm/data-view-buffer@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "d2586deceba0039c778892ce5858562bfe5e84e35da6b9342125ea5459ff345ac3bbe72e73c8800c5ac6433e419d12bb2cb53726691b5d2c5aa97fbf99762d50"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/data-view-byte-length@1.0.1",
-      "name": "data-view-byte-length",
-      "version": "1.0.1",
-      "purl": "pkg:npm/data-view-byte-length@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "e09ef04490f7001033afcc0ff8e70872aab676550aa780d57e5c7efa1b3987964ac9d58c23afc3fdf028b7eca1ea0dad1e1f1f2c54ef34e695377e7b36f4ab39"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/data-view-byte-offset@1.0.0",
-      "name": "data-view-byte-offset",
-      "version": "1.0.0",
-      "purl": "pkg:npm/data-view-byte-offset@1.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b7f620b32b6af91f7de442793d9943e02bb9eac59af089d7c92695891cf0f5aa6eb2ab0e3b66d03fe49b633021474a452a807ee37958cbcad66da9fd252b979c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/dataloader@1.4.0",
-      "name": "dataloader",
-      "version": "1.4.0",
-      "purl": "pkg:npm/dataloader@1.4.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ebcb398d8765bdab08b4e2670ae23643db38abdf20d290b22f71eb70a26ef0a36e81497c6a1826658837f32b0b4e04238d75f71fc0892e402f5ab72559f71a97"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/date-fns@4.1.0",
       "name": "date-fns",
       "version": "4.1.0",
@@ -30288,66 +28158,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/decamelize@1.2.0",
-      "name": "decamelize",
-      "version": "1.2.0",
-      "purl": "pkg:npm/decamelize@1.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "cf64be5bd5fbde10145248be37ef596b694196e9fcf738a03b21abb1ac7e29443ac0a5b86685a91180641a1423c008e30c2916c6163454a12193cc3363b17970"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/decamelize-keys@1.1.1",
-      "name": "decamelize-keys",
-      "version": "1.1.1",
-      "purl": "pkg:npm/decamelize-keys@1.1.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "5a23f18048ab215d3f78838c727141037fc8259019a8a9f00305b2bef762e25b2bd5608ddb69e175fff775bdc3a197148d35764aa7f3230372a7acb6c6cde79a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/decimal.js-light@2.5.1",
       "name": "decimal.js-light",
       "version": "2.5.1",
@@ -30468,36 +28278,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/defaults@1.0.4",
-      "name": "defaults",
-      "version": "1.0.4",
-      "purl": "pkg:npm/defaults@1.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "785b9a2e8cbf4716a5bf692bfa5a8c9549eb0d657ede3e299633882602c8848d39f0841f589eef5e1c84207bbe1ed0bbdfc9251802d8c4e2833b46d03f7b60f0"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/define-data-property@1.1.4",
       "name": "define-data-property",
       "version": "1.1.4",
@@ -30516,36 +28296,6 @@
         {
           "alg": "SHA-512",
           "content": "ac132f23396903cbfa13e489668a3ef87018aac2eb920ecc49f2229cc3c5866928af0ed7f9d39754942cf904faf731a4cccc9f0e720c3765a2775f8d6cbdd3f8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/define-properties@1.2.1",
-      "name": "define-properties",
-      "version": "1.2.1",
-      "purl": "pkg:npm/define-properties@1.2.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "f109902aa10048b7799f1d14d41d6890b1256d4baeb6d27f0276264576db6c60d687ab92db4f048c3e17aaafc8f702bbbb4bfa3b4f178535a7b795ed11b47a0e"
         }
       ],
       "licenses": [
@@ -30858,36 +28608,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/detect-indent@6.1.0",
-      "name": "detect-indent",
-      "version": "6.1.0",
-      "purl": "pkg:npm/detect-indent@6.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ade6244d424065bf6052e67646f542361547760eb64479c9ed6265f1fb4c8b876267a35695c88ecd037cf295214842c4c1f94986de28403bf417404c970698b4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/detect-node-es@1.1.0",
       "name": "detect-node-es",
       "version": "1.1.0",
@@ -31002,36 +28722,6 @@
         {
           "license": {
             "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/dir-glob@3.0.1",
-      "name": "dir-glob",
-      "version": "3.0.1",
-      "purl": "pkg:npm/dir-glob@3.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "5a4ad6a7d191e0a5df28663338b993b86562d545857f0b37efb9fd71ce79fed6fa0eeab217aa5c43901b88712c85a0e963dbfaa1a4abd9708389d1a633077320"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]
@@ -31210,36 +28900,6 @@
         {
           "alg": "SHA-512",
           "content": "b81ab87a05874dc4eddf76bbdafa521b4cf71e73ee225e8da98713aca120d9ace81329768695b4cea971cacab6a4af47943207c87c9a91e61a627480c1df1ba3"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-2-Clause"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/dotenv@8.6.0",
-      "name": "dotenv",
-      "version": "8.6.0",
-      "purl": "pkg:npm/dotenv@8.6.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "22b3dd5d0b24d816f3bc204604e4e69921f94a8766a9936de04440643996e024feb4bf15b6f8a7ab2c2e00d685bb86ce316922d7a9ea7f47b8a02d1021a0ebfe"
         }
       ],
       "licenses": [
@@ -31732,36 +29392,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/enquirer@2.3.6",
-      "name": "enquirer",
-      "version": "2.3.6",
-      "purl": "pkg:npm/enquirer@2.3.6",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ca33673ebdf5e7f1634b8cc8b14c5882e6143cfd9ed4d2b877b13b64e2e2c9809c6c50624ccc880fedb0be6db0ebea59fe874c03b71192386c3db96dc013ab2e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/entities@6.0.1",
       "name": "entities",
       "version": "6.0.1",
@@ -31840,36 +29470,6 @@
         {
           "alg": "SHA-512",
           "content": "4a4e55eb055accf86ae4c8693be014c499f9c7b5d25c697547ddd59fb8becd2d792835714228de8cd0abcfcdf8d3fd9b80b06347d1ad106f1954a38d0e372a19"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/es-abstract@1.23.3",
-      "name": "es-abstract",
-      "version": "1.23.3",
-      "purl": "pkg:npm/es-abstract@1.23.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7be1df347eb5063d57f7f8cb739bf5a3068b62e1dd7871d24259210818932bcac1bca6942e5fdb786331c2b3178e962bbf8a73db6065639ef4bd578f036868e0"
         }
       ],
       "licenses": [
@@ -32002,66 +29602,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/es-shim-unscopables@1.0.2",
-      "name": "es-shim-unscopables",
-      "version": "1.0.2",
-      "purl": "pkg:npm/es-shim-unscopables@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "277c814570b30eee142e7430c724e8a3f3a374cc7a6a48150bb2ba7dec346bb17fd302ed98a28dec8ef7007e53dbcdfa52e5d1a8ded083e208530ffe60992c47"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/es-to-primitive@1.2.1",
-      "name": "es-to-primitive",
-      "version": "1.2.1",
-      "purl": "pkg:npm/es-to-primitive@1.2.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4023a5960649b5a528f6689805c2c285351a1cd8c91773d8b35562743ec0c22123d6463129e41372d2c07b300e1f964a447d20d8880f9fa2b0078213f22469bc"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/escalade@3.2.0",
       "name": "escalade",
       "version": "3.2.0",
@@ -32176,36 +29716,6 @@
         {
           "license": {
             "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/esprima@4.0.1",
-      "name": "esprima",
-      "version": "4.0.1",
-      "purl": "pkg:npm/esprima@4.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "786b85170ed4a5d6be838a7e407be75b44724d7fd255e2410ccfe00ad30044ed1c2ee4f61dc10a9d33ef86357a6867aaac207fb1b368a742acce6d23b1a594e0"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-2-Clause"
           }
         }
       ]
@@ -32620,66 +30130,6 @@
         {
           "alg": "SHA-512",
           "content": "7e3aae0b9f5c0fb0b25babab3572b4141b9f9197288861bcd304ee3ee8d7e7dd1c0794ed967db4136501e12fd601156a8577df665d8b3604be81074f2088a6fe"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/extendable-error@0.1.7",
-      "name": "extendable-error",
-      "version": "0.1.7",
-      "purl": "pkg:npm/extendable-error@0.1.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "50e892da29fafd0d052b4474aba518f6f629436d66aff427d4a3a7b5eeefb000ae3497f9d785af08250749108f7208cf4f66c084d20976513a6d56a9d462a67a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/external-editor@3.1.0",
-      "name": "external-editor",
-      "version": "3.1.0",
-      "purl": "pkg:npm/external-editor@3.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "84c438097d69d62ce6b8b63266a2cc3bfa86370d74c12bfd40308f7f35dfc85ace682492a117ea13529fd6ce5a9fae89e49642eb635ec06fa62b8f63382b507b"
         }
       ],
       "licenses": [
@@ -33142,36 +30592,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/fflate@0.4.8",
-      "name": "fflate",
-      "version": "0.4.8",
-      "purl": "pkg:npm/fflate@0.4.8",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "149aaaa03051d3431d8fda696a62dafd8eefc66f8f46635603aecdf38e91beca1854c281e2adf2fdd7b93c0ee052644c60affc08ccf618365098244dd7005c58"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/fill-range@7.1.1",
       "name": "fill-range",
       "version": "7.1.1",
@@ -33256,96 +30676,6 @@
         {
           "license": {
             "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/find-up@4.1.0",
-      "name": "find-up",
-      "version": "4.1.0",
-      "purl": "pkg:npm/find-up@4.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3e93b001d43f6255d0daf8fc6b787c222a43b98462df071e550406616c4d20d71cab8d009f0ec196c11708c6edd59b7e38b03a16af6cb88a48583d0eb2721297"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/find-up@5.0.0",
-      "name": "find-up",
-      "version": "5.0.0",
-      "purl": "pkg:npm/find-up@5.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "efcfcf5d3d7094b2c3813cc3b3bb23abd873cf4bd70fece7fbbc32a447b87d74310a6766a9f1ac10f4319a2092408dda8c557dd5b552b2f36dac94625ba9c69e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/find-yarn-workspace-root2@1.2.16",
-      "name": "find-yarn-workspace-root2",
-      "version": "1.2.16",
-      "purl": "pkg:npm/find-yarn-workspace-root2@1.2.16",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "86bea16f5c3c78f3293d550adfd4b8465c09ce2fb13cbb95b86f179705d4dca0f9627dea8015957f2dc0ccd943856bc4d44391084eb9fd09b6eab150b7754b54"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
           }
         }
       ]
@@ -33622,36 +30952,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/fs-extra@7.0.1",
-      "name": "fs-extra",
-      "version": "7.0.1",
-      "purl": "pkg:npm/fs-extra@7.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6090da0896449c199c6f0d777ef74033d03034e2703b3ac4e29a8ca81ab99c5884a9752a1f094ae01fb7a54c3a24dbdf48fb57d39c451ed632ff59e2d357860b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/fs-extra@8.1.0",
       "name": "fs-extra",
       "version": "8.1.0",
@@ -33760,66 +31060,6 @@
         {
           "alg": "SHA-512",
           "content": "ed71cdc47eea5fdc46e66230c6486e993a31fcc21135c3a00ebc56b0cb76a40af6dd61e9e8cad194dec50521690a9afea153b417be38894811f369c931f1b648"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/function.prototype.name@1.1.6",
-      "name": "function.prototype.name",
-      "version": "1.1.6",
-      "purl": "pkg:npm/function.prototype.name@1.1.6",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "679931efdb305393f6ed611ac97335b418b965efe56c8ca2360537ab25d439ff5bdab81763217d0f2f42c7e210bff2dcf16086e8bf36cf050fa524bd8467a122"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/functions-have-names@1.2.3",
-      "name": "functions-have-names",
-      "version": "1.2.3",
-      "purl": "pkg:npm/functions-have-names@1.2.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c5c901517c9322a4fdeedab6c7600c6fe835eb76f9245cac624d31e2ac4d1706df42498d6688911dbeac3f323dfd0577dd67aebd5601508883e0dccd232a9a45"
         }
       ],
       "licenses": [
@@ -33970,36 +31210,6 @@
         {
           "alg": "SHA-512",
           "content": "b1349f063a17069f3d26f20a21e7eac3b53608279bb1cef892263a6b0886a202ada1219b823604fc6ffe97db05dcc5853cd73d21ca0e0b83837ca1dfc459a9d2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/get-symbol-description@1.0.2",
-      "name": "get-symbol-description",
-      "version": "1.0.2",
-      "purl": "pkg:npm/get-symbol-description@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8344189357590711b093e36073e96d447d88069d9fef306404c0496420deae1e8486585247afbd8ab302b93ff4f730faaa46ab1d44a7e76f6c2bfc8be12dbb9a"
         }
       ],
       "licenses": [
@@ -34192,66 +31402,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/globalthis@1.0.3",
-      "name": "globalthis",
-      "version": "1.0.3",
-      "purl": "pkg:npm/globalthis@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b05748e4bc8188d4c78d177b7063d66a988758c3972b2b81357fdc589dcd7f3ad94156bc188ffc7287c297be00395aaaf56e6436682e4c8cc9ff5b3683223dc0"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/globby@11.1.0",
-      "name": "globby",
-      "version": "11.1.0",
-      "purl": "pkg:npm/globby@11.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8e121768ecf2d6c6fc232a1c6abb964a7d538e69c156cf00ca1732f37ae6c4d27cab6b96282023dc29c963e2a91925c2b9e00f7348b4e6456f54ab4fd6df52de"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/gopd@1.2.0",
       "name": "gopd",
       "version": "1.2.0",
@@ -34306,36 +31456,6 @@
         {
           "license": {
             "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/grapheme-splitter@1.0.4",
-      "name": "grapheme-splitter",
-      "version": "1.0.4",
-      "purl": "pkg:npm/grapheme-splitter@1.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6f3879d035bd9133ccd344fccb8a3cbd083cf438bda0b2552d6fca68e1885c958ffe2a8237a58a6246cd385d38bc52c987072961487dc9d87ffb9be93aa57861"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]
@@ -34462,66 +31582,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/hard-rejection@2.1.0",
-      "name": "hard-rejection",
-      "version": "2.1.0",
-      "purl": "pkg:npm/hard-rejection@2.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "548641fa26c3871ece6e101eece56da046ee3f887f32e3931c9f89f21fde057a2d2589747c1811ef6c431422a0221db638964839537104c5ae840af5d2bf0774"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/has-bigints@1.0.2",
-      "name": "has-bigints",
-      "version": "1.0.2",
-      "purl": "pkg:npm/has-bigints@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b52bc22ad06bf65905d04c7469088ff4df8ea55e338b6aff35e7b95644436daaafdf944b60ccdbc107c5499647d2447e45deb7d36509676a7f6c9084a11dd5a1"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/has-flag@3.0.0",
       "name": "has-flag",
       "version": "3.0.0",
@@ -34600,36 +31660,6 @@
         {
           "alg": "SHA-512",
           "content": "e7924d2ae216fafab829ed418ce4e333661cb5022f093ec61731f099f64f1a8e709eb82489dd1842d9c095e152aae9999b86b3de7d814be7ab6f2e62a49760ae"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/has-proto@1.0.3",
-      "name": "has-proto",
-      "version": "1.0.3",
-      "purl": "pkg:npm/has-proto@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "489d5a999009522652f8f86c54b7f9b46c9d95a541f04745a5a48ee209a250a50ec64f2ace7e40232e19789526876db39c8764fee300513da9977171cd5507f9"
         }
       ],
       "licenses": [
@@ -35182,36 +32212,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/hosted-git-info@2.8.9",
-      "name": "hosted-git-info",
-      "version": "2.8.9",
-      "purl": "pkg:npm/hosted-git-info@2.8.9",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9b120301bf4bb26e83a0e27bc47fb9f97e32d4b53fe078b9d0bf42e6c22cc0adc9cd42d2e1bc24d45be374182f611e1bcd3e2db944220b5e451367f91db2ef63"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/html-tags@3.3.1",
       "name": "html-tags",
       "version": "3.3.1",
@@ -35392,36 +32392,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/human-id@1.0.2",
-      "name": "human-id",
-      "version": "1.0.2",
-      "purl": "pkg:npm/human-id@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "50da29ada9831211c90fe551f9e864f2b3ac97049f072c4f219c8945f57bdfd34384de4b1757dad4caa7cca9b69464d046336b8cad7d4397e192021f8e55542b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/humanize-duration@3.27.3",
       "name": "humanize-duration",
       "version": "3.27.3",
@@ -35560,36 +32530,6 @@
         {
           "alg": "SHA-512",
           "content": "8a6f438c40d0e79b3d7cbe04633380bf4c8caa6301499a7a1b456f1724cc3ca5b1892047523f4d5bfaaa2e65d4c17aeb33b02fa9295309fbea45bd1c33cc98ab"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/ignore@5.2.4",
-      "name": "ignore",
-      "version": "5.2.4",
-      "purl": "pkg:npm/ignore@5.2.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3006f7f017126c7d1e1cd0719fbaa5d8d1ff917df73a4077959d4135d87b10d7910a11d362c4ef5ab32e6e220030d4b69655c4120675314381b570a13f791a15"
         }
       ],
       "licenses": [
@@ -35860,36 +32800,6 @@
         {
           "alg": "SHA-512",
           "content": "9778d6c1836fac46ba3530adec11027c29b8f06bf0b99ce4a1e1b78012f6c3808778e5d6dde28599ff5435890d7d87379b132bb61327c63204d3b313d332c140"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/internal-slot@1.0.7",
-      "name": "internal-slot",
-      "version": "1.0.7",
-      "purl": "pkg:npm/internal-slot@1.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3469eb2b05f34a6b36a9452287f20b679241a8d4d26b5f9998fe9f95a229e8a992125804f6a7677734b772a8eb0e8bf015d9b0b06b0b75e16007ab2ec3ed5ef6"
         }
       ],
       "licenses": [
@@ -36292,36 +33202,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-array-buffer@3.0.4",
-      "name": "is-array-buffer",
-      "version": "3.0.4",
-      "purl": "pkg:npm/is-array-buffer@3.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c1c8da7ab1f0d32759c1f86229b5c958b0d8f00ef257b2a18d03a96fcde11a019f21dfda41ae133afc32ce7d8fbacc16da03c26042ff9c4022495a5d3a3d655f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-arrayish@0.2.1",
       "name": "is-arrayish",
       "version": "0.2.1",
@@ -36382,36 +33262,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-bigint@1.0.4",
-      "name": "is-bigint",
-      "version": "1.0.4",
-      "purl": "pkg:npm/is-bigint@1.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "cc1f42aee31a9a3ca6f358b6259dd4327e783ca1ac433b097a8eb1bcddc7249e0202c40d07a891bada764e8efb39f08dba8c6ca6c221cda3e83b5cf20848453a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-binary-path@2.1.0",
       "name": "is-binary-path",
       "version": "2.1.0",
@@ -36430,36 +33280,6 @@
         {
           "alg": "SHA-512",
           "content": "64c11161eb3aa43c9dcae1a276c7bb3ac1f1b5b23b595794128ce047f83baddd31522998365bd9444fcad8c8194e35b2ef6e487de94b79570433dee69ad4465f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-boolean-object@1.1.2",
-      "name": "is-boolean-object",
-      "version": "1.1.2",
-      "purl": "pkg:npm/is-boolean-object@1.1.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "80361a2872669e3e1a5b1ca3e981f25d5a5d41ac2d54b1d4e5c6fe7b3b4f19ccdfe9c8ee4ddc2f7b964811f817a87e1ee7b027d43d4029ff02677918ad046a60"
         }
       ],
       "licenses": [
@@ -36502,36 +33322,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-ci@3.0.1",
-      "name": "is-ci",
-      "version": "3.0.1",
-      "purl": "pkg:npm/is-ci@3.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "658bc282b79fc2aa10eb24f26146d0bbae07b084d9dcd7ca5f597368461d9130dc7cacf3088ff0b6145160a91d8c72855603625ca00a9bae59a35a64d9ab3f41"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-core-module@2.14.0",
       "name": "is-core-module",
       "version": "2.14.0",
@@ -36550,66 +33340,6 @@
         {
           "alg": "SHA-512",
           "content": "6b974526287964b62546d0dcd1d6563fb4622abeb120ace69ffa006020ef74b4e169d560c89c256a840f991b4c4a9cfeae4d0e180808bbe4dc33d1d41747e4d4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-data-view@1.0.1",
-      "name": "is-data-view",
-      "version": "1.0.1",
-      "purl": "pkg:npm/is-data-view@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "00791a26bb14556eb0aba252f32dc99ccfc6245ffd71ffa4db4fa20f3952689ae29c4a39fbbbd18ad78e4b00611d1880c90013375026638870cf124a3e661ffb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-date-object@1.0.5",
-      "name": "is-date-object",
-      "version": "1.0.5",
-      "purl": "pkg:npm/is-date-object@1.0.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "f5841a4b1b00892c1cbd2df7301937c130959d62be1e117c5594768d1c5e84cd7a41c54e747a8f9f854f1e644ae254abdfc9fd26b8aeac89cb70ff74c6c60d7d"
         }
       ],
       "licenses": [
@@ -36832,36 +33562,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-negative-zero@2.0.3",
-      "name": "is-negative-zero",
-      "version": "2.0.3",
-      "purl": "pkg:npm/is-negative-zero@2.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "e4aa08bb6360a727a4ef98d7a1d16f9da7c1e83260af7bbcbae2b42c46498eb535f43acc0f7115111691f2c8f3f0208682966fc4f97d4ae13518c54f147c759b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-number@7.0.0",
       "name": "is-number",
       "version": "7.0.0",
@@ -36880,66 +33580,6 @@
         {
           "alg": "SHA-512",
           "content": "e350a27e483a7bc4f2952a5db53a5e2d532abd20445734edb47bc4443ef8d7ea6767c00dbf4d34e0c44be3740a3c394af5c1af369e8d6566540656c65d8c719e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-number-object@1.0.7",
-      "name": "is-number-object",
-      "version": "1.0.7",
-      "purl": "pkg:npm/is-number-object@1.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "935534211ccb328ed995821fcd1bb6dce87a3222056ac8296fd5fbe9ea9f15902ac07e38508e0a4c1bc16086757522fd6730a14c1f528477cb911e29756e64ad"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-plain-obj@1.1.0",
-      "name": "is-plain-obj",
-      "version": "1.1.0",
-      "purl": "pkg:npm/is-plain-obj@1.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "caf911cb1985284390e293570a6246e401103655c94b92da38d5e8e7f70b75365d5afb19d62a091289cb180a2c2a531613c970532fdb273323730f1acfbdfe16"
         }
       ],
       "licenses": [
@@ -37012,66 +33652,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-regex@1.1.4",
-      "name": "is-regex",
-      "version": "1.1.4",
-      "purl": "pkg:npm/is-regex@1.1.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "92f45dc43b31663873517d3b6672f27734b54d4fd32654d41c763860b2fcededfba14038f437e42ea832f958c5a1ca30cb6f5c2af7128aefa422fef6f234d356"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-shared-array-buffer@1.0.3",
-      "name": "is-shared-array-buffer",
-      "version": "1.0.3",
-      "purl": "pkg:npm/is-shared-array-buffer@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9c0da1bf95c884b477b95cc30df0889277ab871f1750a9ecb6e38444f34d2229d71bbbfdbbea215c5ebbbf19b84cf4c43d4ea59bad599303f773d3c207deeb86"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-stream@2.0.1",
       "name": "is-stream",
       "version": "2.0.1",
@@ -37090,96 +33670,6 @@
         {
           "alg": "SHA-512",
           "content": "845a222624e5eb79e7fa4b2d1c606d7b05922a740ba726f5e7928785e035977f6ebed3bd9d6228a75a77b9da8f71477fc5b17554b30ee27ece23aa7b45b9e00e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-string@1.0.7",
-      "name": "is-string",
-      "version": "1.0.7",
-      "purl": "pkg:npm/is-string@1.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b44d945f38af8deea87cf5bb976ddc8c338c6b4f606fbc6502a1ba8c6e5e8fab8f577d939563f734a3e282d68678736ef5fa2171c458bc889931f38e9ce614b6"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-subdir@1.2.0",
-      "name": "is-subdir",
-      "version": "1.2.0",
-      "purl": "pkg:npm/is-subdir@1.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "d804fa8fe8177bfd6e7aa6d6e9f2d9262230dc5f225c626db74c83ad96818406441b5ada893c4a594f883ea302cd001739408a740e140cc81a70a1f6e571b60b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-symbol@1.0.4",
-      "name": "is-symbol",
-      "version": "1.0.4",
-      "purl": "pkg:npm/is-symbol@1.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0bf08f06a2969ef75cc6a200471c8e878bf551410e087a600dad16620a4a0c532ccdcacf71f7e0e6e8704a03c22c3d965b19aaea2b22b33f3bb734f4d6db8686"
         }
       ],
       "licenses": [
@@ -37222,36 +33712,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/is-weakref@1.0.2",
-      "name": "is-weakref",
-      "version": "1.0.2",
-      "purl": "pkg:npm/is-weakref@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a9cb6cb8b666210d3ebd248c7e856fc857b6f86484be7999d9ecd3ba9d5206c7bdfadc0209e89a97a1048b735cd8a15c7fafaacf61413e78d7b24f3184a49a3d"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/is-what@4.1.16",
       "name": "is-what",
       "version": "4.1.16",
@@ -37270,36 +33730,6 @@
         {
           "alg": "SHA-512",
           "content": "661330128b1b149900d188459cd0e04cce19c4346c4ba1ea4e8eeab19334f1f7a1c9160861ad321eee51ea6828d67ffc32068f05788f8a63c3efb6da545620f8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/is-windows@1.0.2",
-      "name": "is-windows",
-      "version": "1.0.2",
-      "purl": "pkg:npm/is-windows@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7972b55089ead9b3e68f25fa7b754723330ba1b73827de22e005a7f87a6adce5392a4ad10bde8e01c4773d127fa46bba9bc4d19c11cff5d917415b13fc239520"
         }
       ],
       "licenses": [
@@ -37612,36 +34042,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/js-cookie@3.0.5",
-      "name": "js-cookie",
-      "version": "3.0.5",
-      "purl": "pkg:npm/js-cookie@3.0.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "70488910012821b59f09960a5a157016ebcf5f58044d160fc3a2e56932a8c43decd80917ce40a39e9ea1d15efba33caa8f48da92d789e18a83253f37d3e9551b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/js-tokens@4.0.0",
       "name": "js-tokens",
       "version": "4.0.0",
@@ -37660,36 +34060,6 @@
         {
           "alg": "SHA-512",
           "content": "45d2547e5704ddc5332a232a420b02bb4e853eef5474824ed1b7986cf84737893a6a9809b627dca02b53f5b7313a9601b690f690233a49bce0e026aeb16fcf29"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/js-yaml@3.14.2",
-      "name": "js-yaml",
-      "version": "3.14.2",
-      "purl": "pkg:npm/js-yaml@3.14.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3cc4a692ac6bd74e976b5e7a736336eb967e153acf97ea3177fae0390cb6b628d078ae53c50e37a6c3b5642c2154e49d9e7f91ce4ce5473fde638060241615a6"
         }
       ],
       "licenses": [
@@ -38220,66 +34590,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/kind-of@6.0.3",
-      "name": "kind-of",
-      "version": "6.0.3",
-      "purl": "pkg:npm/kind-of@6.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "75c4b5ba5fbdb66783f794fec76f3f7a12e077d98435adcbb2f0d3b739b7bf20443bb44fa6dbc00feb78e165576948d305172ba45785942f160abb94478e7a87"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/kleur@4.1.5",
-      "name": "kleur",
-      "version": "4.1.5",
-      "purl": "pkg:npm/kleur@4.1.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a3e34efbc5ab462404138ffb9f044984dd475a9566266e75d690475313cbb69d015084b3941a653916129937250a726f42adad2aefec825df156991ced95ae41"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/kolorist@1.8.0",
       "name": "kolorist",
       "version": "1.8.0",
@@ -38520,36 +34830,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/load-yaml-file@0.2.0",
-      "name": "load-yaml-file",
-      "version": "0.2.0",
-      "purl": "pkg:npm/load-yaml-file@0.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "39f081906130e2737a24bb6046274f5fa4318c140641fef6ab7b22daebeac8510c6f27121451f0019797c7a70980533dc262eb7fdcc1c023f722fa9af8b2d93f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/local-pkg@1.1.2",
       "name": "local-pkg",
       "version": "1.1.2",
@@ -38568,66 +34848,6 @@
         {
           "alg": "SHA-512",
           "content": "6ab865c5b1519a8407977ddad199257bf616966370a32b7a40d64420972a35b76bb22c792ef7381f2c88dc49f0c53625658737d846d8ad0f12cc467b76a820f4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/locate-path@5.0.0",
-      "name": "locate-path",
-      "version": "5.0.0",
-      "purl": "pkg:npm/locate-path@5.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b7b870f6923e5afbb03495f0939cd51e9ca122ace0daa4e592524e7f4995c4649b7b7169d9589e65c76e3588da2c3a32ea9f6e1a94041961bced6a4c2a536af2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/locate-path@6.0.0",
-      "name": "locate-path",
-      "version": "6.0.0",
-      "purl": "pkg:npm/locate-path@6.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "88f64ae9e6236f146edee078fd667712c10830914ca80a28a65dd1fb3baad148dc026fcc3ba282c1e0e03df3f77a54f3b6828fdcab67547c539f63470520d553"
         }
       ],
       "licenses": [
@@ -39030,36 +35250,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/lodash.startcase@4.4.0",
-      "name": "lodash.startcase",
-      "version": "4.4.0",
-      "purl": "pkg:npm/lodash.startcase@4.4.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "f962aab0adbde073127368c46cd8291e977425f201869eeb115e1aa975aa16be80957a2ff9295c801d45bf4d72da419edc673c9cc5bb540d12ac6b929117c812"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/long@5.2.3",
       "name": "long",
       "version": "5.2.3",
@@ -39180,36 +35370,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/lru-cache@4.1.5",
-      "name": "lru-cache",
-      "version": "4.1.5",
-      "purl": "pkg:npm/lru-cache@4.1.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b166656c43f63ac1cd917acc97919893f8ca93bd0c06783a514e1823fa860d86e07fa61b3f812f9aa2126d70a826244ab3ed5b4a9147560431bc9d7b176962e6"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/lucide-react@0.229.0",
       "name": "lucide-react",
       "version": "0.229.0",
@@ -39318,66 +35478,6 @@
         {
           "alg": "SHA-512",
           "content": "2f45a1b6d0e5fb604eb326ef10e2caedf5b7500d0e434210d9de99976c7f6babd546cddb018d0408e4871de2f98c3f926cea4e094122d32d43807127f509f501"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/map-obj@1.0.1",
-      "name": "map-obj",
-      "version": "1.0.1",
-      "purl": "pkg:npm/map-obj@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ecdfeade5c99f8b542a7b3f3bb1ac9af828c6c1136856ec14fb60d89adf7d0e17121fe1ddebe7356989c3f6eb9d25ec23cde9133dcce251977346a6a4a2c3712"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/map-obj@4.3.0",
-      "name": "map-obj",
-      "version": "4.3.0",
-      "purl": "pkg:npm/map-obj@4.3.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "85d375c15ad96dbdbd7811a21a325b78ff096ca8ead6eae41c9fcb20ffcd638f0c6754155d4b10055d46d73bd81479f55c4d3a7308c1b0e2362b75259e3d585d"
         }
       ],
       "licenses": [
@@ -40098,36 +36198,6 @@
         {
           "alg": "SHA-512",
           "content": "6a2b27ac33f818d7b4e9470a1675796df30d3c1530e23b0b19a5b059f9c7defd361a706e5d7d8c0959f945bad6a348f7a5ccd48a561b96aedf43b370dade572b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/meow@6.1.1",
-      "name": "meow",
-      "version": "6.1.1",
-      "purl": "pkg:npm/meow@6.1.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "dd87df56222dd905a04f2e8f6a57b9429a295ff22f5372cf2f4de3393aa9ea91a3dd58deb1d3bf53c0ae1cc2a99d0af8b2108d08ce5f7795c516f20897a2411e"
         }
       ],
       "licenses": [
@@ -41490,36 +37560,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/minimist-options@4.1.0",
-      "name": "minimist-options",
-      "version": "4.1.0",
-      "purl": "pkg:npm/minimist-options@4.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "438afc82177cd3284eff48f53b7076063c1e5f77e21e0f5c74ec2325dd89efa435df973e343c460aa758290d52281b857e059b014cc17ef6233d411e360a8dd4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/minipass@7.1.3",
       "name": "minipass",
       "version": "7.1.3",
@@ -41544,36 +37584,6 @@
         {
           "license": {
             "id": "BlueOak-1.0.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/mixme@0.5.4",
-      "name": "mixme",
-      "version": "0.5.4",
-      "purl": "pkg:npm/mixme@0.5.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "dca61ae26e1596ac7df063dd387821c5274db53bdc3fc134924689e43961fa1d8347317bce9b9555c03c07442929dd7560978ff5043b01290acce7aed7de56cf"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]
@@ -42210,36 +38220,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/normalize-package-data@2.5.0",
-      "name": "normalize-package-data",
-      "version": "2.5.0",
-      "purl": "pkg:npm/normalize-package-data@2.5.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ff908c3774f44785d38f80dc19a7b1a3eae8652752156ff400e39344eae3c73086d70ad65c4b066d129ebe39482fe643138b19949af9103e185b4caa9a42be78"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-2-Clause"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/normalize-path@3.0.0",
       "name": "normalize-path",
       "version": "3.0.0",
@@ -42570,36 +38550,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/object.assign@4.1.5",
-      "name": "object.assign",
-      "version": "4.1.5",
-      "purl": "pkg:npm/object.assign@4.1.5",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6f2cbe53b829f855709b2cca3d8856da1e65ddcae9986b3197b5f6b3ccb8dc8831bc6e20dd067a09f7c3b6c350cb55ac999a506cefb26e8d00956ed363a0dc05"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/obuf@1.1.2",
       "name": "obuf",
       "version": "1.1.2",
@@ -42900,96 +38850,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/os-tmpdir@1.0.2",
-      "name": "os-tmpdir",
-      "version": "1.0.2",
-      "purl": "pkg:npm/os-tmpdir@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0f6151d37562afb148bb8e57058db49936fefd9496074d2c8d4f637505edf37803ac8e19b73e45b3bff2cbbe20d8de52550638c58d6a0ebe2b35d770611557d2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/outdent@0.5.0",
-      "name": "outdent",
-      "version": "0.5.0",
-      "purl": "pkg:npm/outdent@0.5.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fe31f1148ce831776a3f34da0a91730005a1a644a364f17856c9fa8c07cda666c7ff29ac99ded073a544f411a7d0be98323eaec2940bc42102a6eb38ba4292f5"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-filter@2.1.0",
-      "name": "p-filter",
-      "version": "2.1.0",
-      "purl": "pkg:npm/p-filter@2.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "641c71679b0bd878217a9861a46010768b24c69953c2bec809a7a16702c895f2fa69cb958193e6f3204db9100504612ab43fe19947aaf5ea8b836cacf57affcb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/p-finally@1.0.0",
       "name": "p-finally",
       "version": "1.0.0",
@@ -43020,66 +38880,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/p-limit@2.3.0",
-      "name": "p-limit",
-      "version": "2.3.0",
-      "purl": "pkg:npm/p-limit@2.3.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ffff3c985592271f25c42cf07400014c92f6332581d76f9e218ecc0cbd92a8b98091e294f6ac51bd6b92c938e6dc5526a4110cb857dc90022a11a546503c5beb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-limit@3.1.0",
-      "name": "p-limit",
-      "version": "3.1.0",
-      "purl": "pkg:npm/p-limit@3.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4d839a9ccdf01b0346b193767154d83c0af0e39e319d78f9aa6585d5b12801ce3e714fe897b19587ba1d7af8e9d4534776e1dcdca64c70576ec54e5773ab8945"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/p-limit@6.2.0",
       "name": "p-limit",
       "version": "6.2.0",
@@ -43098,96 +38898,6 @@
         {
           "alg": "SHA-512",
           "content": "92e52aa87354aa8216a7f738ebb448e17ea69b2ba88d8e631aeb4d534c154e610e39f72ec0bab2315a008bd30a8b6024fb98bdfa7866acae2e7d913cd3af641c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-locate@4.1.0",
-      "name": "p-locate",
-      "version": "4.1.0",
-      "purl": "pkg:npm/p-locate@4.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "47bf5967fd30031286bb7a18325cfc8f2fe46e1b0dad2ed2299ecfc441c1809e7e1769ad156d9f2b670eb4187570762442c6f3155ec8f84a1129ee98b74a0aec"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-locate@5.0.0",
-      "name": "p-locate",
-      "version": "5.0.0",
-      "purl": "pkg:npm/p-locate@5.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2da363b51594058fbecc1e6713f37071aa0cca548f93e4be647341d53cdd6cc24c9f2e9dca7a401aded7fed97f418ab74c8784ea7c47a696e8d8b1b29ab1b93f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-map@2.1.0",
-      "name": "p-map",
-      "version": "2.1.0",
-      "purl": "pkg:npm/p-map@2.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "cb76fc2a977c380378e388717c16c57e3d4563f463b5377cb73630854a8d617c747d7c76897e2668fe10afaaa120a6d05c8d36c132c075ae1f6146c36a04d417"
         }
       ],
       "licenses": [
@@ -43308,36 +39018,6 @@
         {
           "alg": "SHA-512",
           "content": "ae1230532720c3029c3fdc9338e14afc02ac028a638c26a456a2c778f3b7082e8c8abd59f7dc53f91eb78d9c404f994564b6b68a74b987e652d86bd1f7dfc506"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/p-try@2.2.0",
-      "name": "p-try",
-      "version": "2.2.0",
-      "purl": "pkg:npm/p-try@2.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "4789cf0154c053407d0f7e7f1a4dee25fffb5d86d0732a2148a76f03121148d821165e1eef5855a069c1350cfd716697c4ed88d742930bede331dbefa0ac3a75"
         }
       ],
       "licenses": [
@@ -43608,36 +39288,6 @@
         {
           "alg": "SHA-512",
           "content": "34e9e6069b796364566eebf42cccec6b2a77955ca50072cf513bade35d9903797e0b8bb0e1956441b8d2858090f130a950c74f6a9af862352a2d80fabfaf23fb"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/path-exists@4.0.0",
-      "name": "path-exists",
-      "version": "4.0.0",
-      "purl": "pkg:npm/path-exists@4.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6a4f50cb943b8d86f65b071ecb9169be0d8aa0073f64884b48b392066466ca03ec1b091556dd1f65ad2aaed333fa6ead2530077d943c167981e0c1b82d6cbbff"
         }
       ],
       "licenses": [
@@ -44370,36 +40020,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/pify@4.0.1",
-      "name": "pify",
-      "version": "4.0.1",
-      "purl": "pkg:npm/pify@4.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b81f3490115bfed7ddebc6d595e1bd4f9186b063e326b2c05294793d922b8419c86914d0463a9d252b082a438fe8e00815b8fb18eadcb9d739a4d8d9fa0795da"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/pirates@4.0.5",
       "name": "pirates",
       "version": "4.0.5",
@@ -44448,36 +40068,6 @@
         {
           "alg": "SHA-512",
           "content": "b9e18b7e5aeb9efc01df1ba8fee1a86f9a5de4537b97432c2dfd19f3ba3f510991b708ef7f295f73d32eac8c51016cb00984e0aefa5705caa357839f09818221"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/pkg-dir@4.2.0",
-      "name": "pkg-dir",
-      "version": "4.2.0",
-      "purl": "pkg:npm/pkg-dir@4.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1d10f36da2a30be00e5955f1014ff1e7808e19e22ff5e6fee82903490a0d4ede17c96a0826fb8fb178b3c6efc5af6dc489e91bb59c2687521c206fe5fdad7419"
         }
       ],
       "licenses": [
@@ -45330,36 +40920,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/posthog-js@1.369.0",
-      "name": "posthog-js",
-      "version": "1.369.0",
-      "purl": "pkg:npm/posthog-js@1.369.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7ce273c2909bfd35b1241b1434a2793e11cd974f97ef346b553b94ac81fe11fb087f12464a439ad2558f2491abdf1ce0f35d091c2529ba19f9b05041c5f1ea21"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "name": "SEE LICENSE IN LICENSE"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/posthog-node@4.17.1",
       "name": "posthog-node",
       "version": "4.17.1",
@@ -45378,96 +40938,6 @@
         {
           "alg": "SHA-512",
           "content": "7159503cec0e3e36a4527aee78a44241ed66d8abbe5f329a3a8b3b4e7ff30d99246457814ff6f23fbb5b35fecb8b085a051585051a306596ff32c4ed4916a8ae"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/preact@10.29.1",
-      "name": "preact",
-      "version": "10.29.1",
-      "purl": "pkg:npm/preact@10.29.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "81008b73fbd6ae813c948a65797b5d2614c50e88137591bd023314a559037f689308dc1835603ebb5e9d2f8d53a940c93b8826d8882b70cbf7b93a637783f09a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/preferred-pm@3.0.3",
-      "name": "preferred-pm",
-      "version": "3.0.3",
-      "purl": "pkg:npm/preferred-pm@3.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fb06606f13444bf2a526cf6ae3417fd6c7ce77f8fb7f53bd25a1dc5b90ec9f769450e660dcbd9b8e955470a5768efb449587e84ee42235e31f409e24c1402109"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/prettier@2.8.8",
-      "name": "prettier",
-      "version": "2.8.8",
-      "purl": "pkg:npm/prettier@2.8.8",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b5d37ca901af363c380876d8f975e4d098025e7f50885db56b9e6b05ee4b24053e903c82e16427e3e6b09b65df936950324e5f2aea7d5e0cd366d1a48c174ff5"
         }
       ],
       "licenses": [
@@ -45840,36 +41310,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/pseudomap@1.0.2",
-      "name": "pseudomap",
-      "version": "1.0.2",
-      "purl": "pkg:npm/pseudomap@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6ff6303616fc964d59cf6f9b5d7a52fcb2bd3a2b22659d5236c48bc4dd71d8e5d51215b60a4affee6584e6fac2d594e22650fd835f635accd3989b01fa812915"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/punycode@1.4.1",
       "name": "punycode",
       "version": "1.4.1",
@@ -46050,36 +41490,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/query-selector-shadow-dom@1.0.1",
-      "name": "query-selector-shadow-dom",
-      "version": "1.0.1",
-      "purl": "pkg:npm/query-selector-shadow-dom@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "953e720aa10181fa0c6297f7176c5044aef312bd6b848219b9c7832bafb1464250e0d31b1d3c17aa4e0d9300f040c36a5e01bdafd7f21e7cf0355b3acd5e4a47"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/queue-microtask@1.2.3",
       "name": "queue-microtask",
       "version": "1.2.3",
@@ -46098,36 +41508,6 @@
         {
           "alg": "SHA-512",
           "content": "36e68d49ae9f94a4f925a498433268934e09cd32f5080e9a1a1bf9adf2d6dcf82a03e3360a1a59427002f21f22e19164052f17e51aa40c11c0eebe217a3dcaf4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/quick-lru@4.0.1",
-      "name": "quick-lru",
-      "version": "4.0.1",
-      "purl": "pkg:npm/quick-lru@4.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "011842a66ef47f375cbcd41f3e8cb8f4869a9ca913951585d89333aa17096e1485459bfb9cf4ef64975c63bdf4d483e6bd6fbfa744602169d00cb27189fb10ee"
         }
       ],
       "licenses": [
@@ -47160,96 +42540,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/read-pkg@5.2.0",
-      "name": "read-pkg",
-      "version": "5.2.0",
-      "purl": "pkg:npm/read-pkg@5.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "520ebd98d3a97ef28301cd90f034693238f376dae7bfd1dc48c5fee15b19c43d5a67a673ac813bae5cd706d593ca150b48c2a0d3be805ba591e626690f42623a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/read-pkg-up@7.0.1",
-      "name": "read-pkg-up",
-      "version": "7.0.1",
-      "purl": "pkg:npm/read-pkg-up@7.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ccad1307b5dde89a422e694b9ae7eaca4184fbf4e539e3c3eaa28294d5bb8470ca161fc9effee0096191ee3a044045b56caab76b7c9465239b3a858b150e2886"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/read-yaml-file@1.1.0",
-      "name": "read-yaml-file",
-      "version": "1.1.0",
-      "purl": "pkg:npm/read-yaml-file@1.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "548327422fd9e074f6171bb08392ab635ef853555d5080124155975f2aad351b714abf486249f5aec23a4dbe87b2b1c2981ee05693705fa2713d31dc1fa2284c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/readdirp@3.6.0",
       "name": "readdirp",
       "version": "3.6.0",
@@ -47598,36 +42888,6 @@
         {
           "alg": "SHA-512",
           "content": "f15865885240591694895bd1108896d8d5d74e61ece2f30d9d2cee25586c7209866afde0f550f12eb427748ddd659555769d193bfe6fd31997e75ebfeccf5c9e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/regexp.prototype.flags@1.5.2",
-      "name": "regexp.prototype.flags",
-      "version": "1.5.2",
-      "purl": "pkg:npm/regexp.prototype.flags@1.5.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "35c0e20e44cbb8f47efbe382281d2759a7c49a183f0daf1a50f2cf3106caf9bc4a2829b5fd2e617be02a61ae0f94c09505a95be3fcb1211b9beaa904c79c896f"
         }
       ],
       "licenses": [
@@ -48240,36 +43500,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/require-main-filename@2.0.0",
-      "name": "require-main-filename",
-      "version": "2.0.0",
-      "purl": "pkg:npm/require-main-filename@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "34a37990c0f294aba577160b4947eb6e8e53bb387885dfb613c34f3d7d36999b67d55b911104e861efd9765272f89dee0a97da886174e5eec1f16d225db4079a"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/resize-observer-polyfill@1.5.1",
       "name": "resize-observer-polyfill",
       "version": "1.5.1",
@@ -48348,36 +43578,6 @@
         {
           "alg": "SHA-512",
           "content": "a5bfcc6265ecb40932b11171f2988d235b4614d408140def904dc6ab812e035745ea01e9ffebe066ab021896a9bf2f0ddd0fb8a3b170beab8f25c9d9ed1632e2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/resolve-from@5.0.0",
-      "name": "resolve-from",
-      "version": "5.0.0",
-      "purl": "pkg:npm/resolve-from@5.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a9883d28fdb8743e6a91af49e3b774695932d0df9be1f4d4f3d2cdf620e78c1e706a4b220b8f6bbcc0743eb509406a13987e745cf8aa3af0230df6a28c6c5867"
         }
       ],
       "licenses": [
@@ -48690,36 +43890,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/safe-array-concat@1.1.2",
-      "name": "safe-array-concat",
-      "version": "1.1.2",
-      "purl": "pkg:npm/safe-array-concat@1.1.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "be3e91b02b160427f5f6321e1c47e444cc3c0cf8816fe0cc5e4950ff54860c738c94774f524657150d98769952db7cc44938a301cbab6f569280903702032ed5"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/safe-buffer@5.1.2",
       "name": "safe-buffer",
       "version": "5.1.2",
@@ -48768,36 +43938,6 @@
         {
           "alg": "SHA-512",
           "content": "ae9dd2a34eca71d9a629b1af81a37141226bedb1954959394bd12ad45fa9a5b468ef4f9879a0f1930e4377c34f37e183e9b8e7626d95b8fb825e6a6e62f9825d"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/safe-regex-test@1.0.3",
-      "name": "safe-regex-test",
-      "version": "1.0.3",
-      "purl": "pkg:npm/safe-regex-test@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "09d0128cd24fbd16bbae83ba45afe02d8053cd8cf33f2c815f120c7465b751240bca358496cd91816e540535da415a7e3aba5e08addb2de9bcb26b6685ea11bb"
         }
       ],
       "licenses": [
@@ -48924,36 +44064,6 @@
         {
           "license": {
             "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/semver@5.7.1",
-      "name": "semver",
-      "version": "5.7.1",
-      "purl": "pkg:npm/semver@5.7.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "b1ab9a0dffcf65d560acb4cd60746da576b589188a71a79b88a435049769425587da50af7b141d5f9e6c9cf1722bb433a6e76a6c2234a9715f39ab0777234319"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
           }
         }
       ]
@@ -49140,36 +44250,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/set-blocking@2.0.0",
-      "name": "set-blocking",
-      "version": "2.0.0",
-      "purl": "pkg:npm/set-blocking@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2a22814bc0275861322f3a1f15f9af2b0a5d3f3aa2cb5e8bbd07cadf2bff7d51fb063d77ff097725247527eadf81113dabbc5424ae2abe04bcada48e78b51e87"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/set-cookie-parser@2.6.0",
       "name": "set-cookie-parser",
       "version": "2.6.0",
@@ -49218,36 +44298,6 @@
         {
           "alg": "SHA-512",
           "content": "a6045ce21278fec363582492f409a74b8d31ddb34c0d39271e02f951a3014ccc899d4f741205a1d51cfe302f5e16ee01b8dfd4c198ca42e63fd6fdeb33b1cc7e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/set-function-name@2.0.2",
-      "name": "set-function-name",
-      "version": "2.0.2",
-      "purl": "pkg:npm/set-function-name@2.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ecf185966b70b040036f4598caf08c6b5b7eca47ba75a206e168ab69fbabe6471ff8c8549cf9acd54791d02290753643f35c844b03076ed9fe4d1f9d32f89a91"
         }
       ],
       "licenses": [
@@ -49320,36 +44370,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/shebang-command@1.2.0",
-      "name": "shebang-command",
-      "version": "1.2.0",
-      "purl": "pkg:npm/shebang-command@1.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "115dcbd7e510586a2bdb53a69efa232b7ea6860f93c8828387788504a06886be71797221341731f2859d8244c4110f8110515874b46ea8c7dde4bf3837557956"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/shebang-command@2.0.0",
       "name": "shebang-command",
       "version": "2.0.0",
@@ -49368,36 +44388,6 @@
         {
           "alg": "SHA-512",
           "content": "907c6bdb366962d766acdd6a0e3aeb5ff675ad1d641bc0f1fa09292b51b87979af5ecc26704d614d6056614ce5ada630d7fc99a7a62e0d8efb62dbdb3747660c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/shebang-regex@1.0.0",
-      "name": "shebang-regex",
-      "version": "1.0.0",
-      "purl": "pkg:npm/shebang-regex@1.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c29a12140c72b3a6f66b6c076755e90d2803ecdf62563836f4f87db95fee68ff44c7f2979644d94de75dc433d2610a60bf328b18991ed94534033a060a3348bd"
         }
       ],
       "licenses": [
@@ -49620,36 +44610,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/signal-exit@3.0.7",
-      "name": "signal-exit",
-      "version": "3.0.7",
-      "purl": "pkg:npm/signal-exit@3.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c270f6644fa5f923c2feea12d2f5de13d2f5fb4c2e68ca8a95fcfd00c528dfc26cc8b48159215c1d1d51ae2eb62d9735daf2ebd606f78e5ee2c10860c2901b19"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/signal-exit@4.1.0",
       "name": "signal-exit",
       "version": "4.1.0",
@@ -49770,36 +44730,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/slash@3.0.0",
-      "name": "slash",
-      "version": "3.0.0",
-      "purl": "pkg:npm/slash@3.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "83d43585a79bcb7e8e492b706f89ed08618668ab1a5528d0ebc7c1c6841cbad9797d2d6fb98d7c1f7c12b778c5c85b6b931f8acf45751bce40e0cc80743322d9"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/slug@6.1.0",
       "name": "slug",
       "version": "6.1.0",
@@ -49818,36 +44748,6 @@
         {
           "alg": "SHA-512",
           "content": "c7abcb1c231ab20e034762cf8b2146234809261cb063a0d3886842ace3336f748e93fd0954b21a2f8521c85487bb4e120f7b806afaca63f2b7cd9de2ea245c80"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/smartwrap@2.0.2",
-      "name": "smartwrap",
-      "version": "2.0.2",
-      "purl": "pkg:npm/smartwrap@2.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "bc2b0a350c5becf9c235ddb063558295689f01cda5c2ab06f0e6acc29264549b2f306727127b5d4c20da8d90a493ddc0cb5537b7ff69b8999be76e5183931904"
         }
       ],
       "licenses": [
@@ -50190,156 +45090,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/spawndamnit@2.0.0",
-      "name": "spawndamnit",
-      "version": "2.0.0",
-      "purl": "pkg:npm/spawndamnit@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8f824a11c9dc4a3165a88c14e4bfeba763794883ec771691b08bfaefcf936716744910c94e6f09af124c8c4fd7ba21193448abdd2f25d056b729edf7f56238a8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/spdx-correct@3.1.1",
-      "name": "spdx-correct",
-      "version": "3.1.1",
-      "purl": "pkg:npm/spdx-correct@3.1.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "70e61c516c210ae1c25e2e3d4611510b22442b788f8f5662cfd0e9562577b5b64ec170f8f50cc837732938b24dc61daac2ada524965a28c570f6a362e234c2d3"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/spdx-exceptions@2.3.0",
-      "name": "spdx-exceptions",
-      "version": "2.3.0",
-      "purl": "pkg:npm/spdx-exceptions@2.3.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fed4eb60e0bb3cf2359d4020c77e21529a97bb2246f834c72539c850b1b8ac3ca08b8c6efed7e09aad5ed5c211c11cf0660a3834bc928beae270b919930e22e4"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "CC-BY-3.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/spdx-expression-parse@3.0.1",
-      "name": "spdx-expression-parse",
-      "version": "3.0.1",
-      "purl": "pkg:npm/spdx-expression-parse@3.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "71ba87ba7b105a724d13a2a155232c31e1f91ff2fd129ca66f3a93437b8bc0d08b675438f35a166a87ea1fb9cee95d3bc655f063a3e141d43621e756c7f64ae1"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/spdx-license-ids@3.0.12",
-      "name": "spdx-license-ids",
-      "version": "3.0.12",
-      "purl": "pkg:npm/spdx-license-ids@3.0.12",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "aebf955525ed4613b83876d7522005ef15b7068f43bae17a0b98c7faaff1d798f68e78b272029bc54d3d1ebd16aa548b52ce22e25b47197a937bb547725616c8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "CC0-1.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/split2@4.2.0",
       "name": "split2",
       "version": "4.2.0",
@@ -50364,36 +45114,6 @@
         {
           "license": {
             "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/sprintf-js@1.0.3",
-      "name": "sprintf-js",
-      "version": "1.0.3",
-      "purl": "pkg:npm/sprintf-js@1.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0fd70f824bcb955deddc8ccbd03d182ef180f40864e0f72f57051b3747521abd5a3f436bb780049d351bb86beab840b4980eb81aab757f38ab951b3989b5f1f2"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause"
           }
         }
       ]
@@ -50730,36 +45450,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/stream-transform@2.1.3",
-      "name": "stream-transform",
-      "version": "2.1.3",
-      "purl": "pkg:npm/stream-transform@2.1.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "f461d488ce613220a2e98d378c3d80442d5eb6d0579100684007bb9c9b0f9279c8d28c35d1a5e34e77b0f10b584262e3ce7f7be019e658400980263a64fd4379"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/streamdown@1.4.0",
       "name": "streamdown",
       "version": "1.4.0",
@@ -50880,96 +45570,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/string.prototype.trim@1.2.9",
-      "name": "string.prototype.trim",
-      "version": "1.2.9",
-      "purl": "pkg:npm/string.prototype.trim@1.2.9",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9251ee08dc62319f0c96c3a284984910124088c56a5376769c45d67d69c8aa3374804152f49f7e2312a8cd65ad406720a1ad56519ccb8ca3d3af86473454c5c7"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/string.prototype.trimend@1.0.8",
-      "name": "string.prototype.trimend",
-      "version": "1.0.8",
-      "purl": "pkg:npm/string.prototype.trimend@1.0.8",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a7bdee2f95421c23b605967a92bc30404de40b333b34a9a2b3c4bfff1102e9f4289dc85bba6e1e3fa911e032c48d014edd69e3dc5ba8f0d33490e4a355d1e365"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/string.prototype.trimstart@1.0.8",
-      "name": "string.prototype.trimstart",
-      "version": "1.0.8",
-      "purl": "pkg:npm/string.prototype.trimstart@1.0.8",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "517487dbad82499635b5fbb71b749e72beae18b08554f32122a1e3960094b4209c82285873fc4ab3d76331331439bda3d66552794f0453a35673f890294e867e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/stringify-entities@4.0.3",
       "name": "stringify-entities",
       "version": "4.0.3",
@@ -51048,36 +45648,6 @@
         {
           "alg": "SHA-512",
           "content": "8aae9e55523ae274104d162ad8ab44836776b94ecb125853270b07e18cc81d9b21c658199acff021ce15a03413946fc8bd522b04a1b4e82ad99e9d2abfb86471"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/strip-bom@3.0.0",
-      "name": "strip-bom",
-      "version": "3.0.0",
-      "purl": "pkg:npm/strip-bom@3.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "bdabc03115ce80154d17a9f210498bdc304ad7d891a437282305beb3043e09b1a2bbb963bbab7e264940d4c1f07a85ad69d82de0849552c5cbc83ab7e1d75cc0"
         }
       ],
       "licenses": [
@@ -51750,36 +46320,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/term-size@2.2.1",
-      "name": "term-size",
-      "version": "2.2.1",
-      "purl": "pkg:npm/term-size@2.2.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "c0ad118b87ce1a3bff5cfcbc4811d90a197c08ceee31ce5530bed2aa2434cc6efe27956bf913100e81dad82353e8a1d49d31885c7df85033243f3014c9aa4166"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/thenify@3.3.1",
       "name": "thenify",
       "version": "3.3.1",
@@ -51930,96 +46470,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/tldts@7.0.7",
-      "name": "tldts",
-      "version": "7.0.7",
-      "purl": "pkg:npm/tldts@7.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "agent,webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1133578f7eaa9790570dae15549937c20a9a9ec83c4c8d58aa8db5eedc1200f8f20e787f6f64fe5f3ac8d1fb67e849f354f6d7a4c4d91ce5a3e6cddaf3fb863c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/tldts-core@7.0.7",
-      "name": "tldts-core",
-      "version": "7.0.7",
-      "purl": "pkg:npm/tldts-core@7.0.7",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "agent,webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "102a9bf22992ae85f552652e85104d3e4926b59f261c47a789e8a6f34515c46d0ce705d58d8d85a76b585c23ef93e9cbcb581e3a1169783e5842133f805eb726"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/tmp@0.0.33",
-      "name": "tmp",
-      "version": "0.0.33",
-      "purl": "pkg:npm/tmp@0.0.33",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8d10899688ca9d9dda75db533a3748aa846e3c4281bcd5dc198ab33bacd6657f0a7ca1299c66398df820250dc48cabaef03e1b251af4cbe7182459986c89971b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/to-regex-range@5.0.1",
       "name": "to-regex-range",
       "version": "5.0.1",
@@ -52158,36 +46608,6 @@
         {
           "alg": "SHA-512",
           "content": "9118fc07e60764273d91061d59f241dbfa1497dac0f7da9ba3061806daf8ba2e26672010d89a6f54177fe94d989680137ea06105348c853a60047b54d0c7f746"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/trim-newlines@3.0.1",
-      "name": "trim-newlines",
-      "version": "3.0.1",
-      "purl": "pkg:npm/trim-newlines@3.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "7353d3b00ded62b22c2c69099331c5fb0f45d84cb17d71a8e14c89738a452fef853239ead07252ebd4f733b77ffe02ab14ac32e36f5ba2e3deb1c6e379c53e67"
         }
       ],
       "licenses": [
@@ -52440,120 +46860,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/tty-table@4.1.6",
-      "name": "tty-table",
-      "version": "4.1.6",
-      "purl": "pkg:npm/tty-table@4.1.6",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9118f9081cceada915e1545163991459b358be8fc5a4eb33eb90f3239a29f4ff9c1e8bf7f88a8f6e8d4913566740690775980d143b2b123adfaaacbf3e5cbd7f"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/type-fest@0.13.1",
-      "name": "type-fest",
-      "version": "0.13.1",
-      "purl": "pkg:npm/type-fest@0.13.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "df847b1d39c6d172097014a7e5784377b9cd14f45c5d8459ac10763b68dd2aa60e0e5752cc102acec5a865862f76e932ef7b68612fc44aac4fbe40dffc5d1732"
-        }
-      ],
-      "licenses": [
-        {
-          "expression": "(MIT OR CC0-1.0)"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/type-fest@0.6.0",
-      "name": "type-fest",
-      "version": "0.6.0",
-      "purl": "pkg:npm/type-fest@0.6.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "abe301f27611d4a0cbae0af81b9c9e99fb69302eff40ba959dd06610476ace6363e5d70538ee0ea3caa5c1913750b4f7f998a6d45f0aab87019e290d86508c96"
-        }
-      ],
-      "licenses": [
-        {
-          "expression": "(MIT OR CC0-1.0)"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/type-fest@0.8.1",
-      "name": "type-fest",
-      "version": "0.8.1",
-      "purl": "pkg:npm/type-fest@0.8.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "e1d6f3233aaf8ed822339af0d64e6b107b4100d2a676e7611b20446a3374d5f13285a00886ca0a372eb2efe20df7721fa45b7063d8aa8bb903fb1c0a850b0d24"
-        }
-      ],
-      "licenses": [
-        {
-          "expression": "(MIT OR CC0-1.0)"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/type-fest@4.33.0",
       "name": "type-fest",
       "version": "4.33.0",
@@ -52630,126 +46936,6 @@
         {
           "alg": "SHA-512",
           "content": "399b3a82c8c5e2f329df6aab09b8954a4ac5997b46fc0661637b7488032b30188067257da002ed5cef21b2b1db31717dc7a2f782b945bb05b6a00cfb71abfe1b"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/typed-array-buffer@1.0.2",
-      "name": "typed-array-buffer",
-      "version": "1.0.2",
-      "purl": "pkg:npm/typed-array-buffer@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "804ca6258299b4a5f3cc1ccce23a9af70e90d498e6ef1d9dfac875f4076c0f8c2a9cc3c3632bf0a6c21cd90ffcdf9907ba8dc1110ec28de94685f4eca016f631"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/typed-array-byte-length@1.0.1",
-      "name": "typed-array-byte-length",
-      "version": "1.0.1",
-      "purl": "pkg:npm/typed-array-byte-length@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "de2309f6ad1aa3b584f6d59c698288a6d90d06e3887190824f4778311beeb87f3c7c4a041fad88b907b43adada0f779b404a13464f17081a249d435cd58ebba7"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/typed-array-byte-offset@1.0.2",
-      "name": "typed-array-byte-offset",
-      "version": "1.0.2",
-      "purl": "pkg:npm/typed-array-byte-offset@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "3aeb34be87476b9e85be266e712d84eb7ce482d82b0028fba268f077ff254c43043c51728df8b1319d595de9e980214106de040b52765ecc954b68241b479314"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/typed-array-length@1.0.6",
-      "name": "typed-array-length",
-      "version": "1.0.6",
-      "purl": "pkg:npm/typed-array-length@1.0.6",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "fcec4337a3ad024e4a06919bdbc4fe1d973633e003b6f4715eb28a6d4c2db0b81da31817d77872cbb7a4e9b151979f9a06cdb26730747380a741f02d572a56fe"
         }
       ],
       "licenses": [
@@ -52900,36 +47086,6 @@
         {
           "alg": "SHA-512",
           "content": "0d4f45e6dd6d8a175a7ee3725b77c8ad75051c7887c66c2e4121951886d2a6a91cf77207e0fd1d53c9cf864d20396ec0471685bb8f8fffd7315709fa3dd9c869"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/unbox-primitive@1.0.2",
-      "name": "unbox-primitive",
-      "version": "1.0.2",
-      "purl": "pkg:npm/unbox-primitive@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "eb5a4f9420fd879d55a2b7b22740517a275e33730328c2a787af95f4bd3cdf7d62a6ae90f0e1576588aa3fa9ffb5b1f1e2ce48f6e4617327ba06b6e48b39010f"
         }
       ],
       "licenses": [
@@ -53812,36 +47968,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/validate-npm-package-license@3.0.4",
-      "name": "validate-npm-package-license",
-      "version": "3.0.4",
-      "purl": "pkg:npm/validate-npm-package-license@3.0.4",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "0e92a6d948bfc4deff1d0282b69671a11581859f59d24aadca01bc5c280d43c6650e7c6e4265a18f9eba8fc7cde02bb7fc999b86c0e8edf70026ae2cf61dbb13"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/vary@1.1.2",
       "name": "vary",
       "version": "1.1.2",
@@ -54230,36 +48356,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/wcwidth@1.0.1",
-      "name": "wcwidth",
-      "version": "1.0.1",
-      "purl": "pkg:npm/wcwidth@1.0.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "5c73c4c12d2ae936b172f1bce7ef046246e20aec765ed586da691ce3b360d80efb050bbdf83a8838995d493e0780f92e79aeddbca4a3e55817dcfd5de2b5bc4e"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/web-encoding@1.1.5",
       "name": "web-encoding",
       "version": "1.1.5",
@@ -54350,36 +48446,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/web-vitals@5.2.0",
-      "name": "web-vitals",
-      "version": "5.2.0",
-      "purl": "pkg:npm/web-vitals@5.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "8b6cfdf1b126682a920e21c40eefa01e5fdd991e10f93c45986dffd772a430efa8f14c50cc2a9668344288b8046b8d6794ee15a57488d0049ad715a63bdb0194"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "Apache-2.0"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/webidl-conversions@3.0.1",
       "name": "webidl-conversions",
       "version": "3.0.1",
@@ -54440,36 +48506,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/which@1.3.1",
-      "name": "which",
-      "version": "1.3.1",
-      "purl": "pkg:npm/which@1.3.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "1f125d616ab53132106c9de7c3472ab2c1e84cd536ebb2a5ac3b866755989710d2b54b4a52139a266875d76fd36661f1c547ee26a3d748e9bbb43c9ab3439221"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/which@2.0.2",
       "name": "which",
       "version": "2.0.2",
@@ -54500,96 +48536,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/which-boxed-primitive@1.0.2",
-      "name": "which-boxed-primitive",
-      "version": "1.0.2",
-      "purl": "pkg:npm/which-boxed-primitive@1.0.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "6f065dbf400a2e9a65158d8a6515fa4efcae37ba238ebee5c2483a9a5d2ba08cbd61eb92afb252dfbdaa94d5b5f14418ce060af7388671ead6a993a6127f5536"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/which-module@2.0.0",
-      "name": "which-module",
-      "version": "2.0.0",
-      "purl": "pkg:npm/which-module@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "07e7a75a19b0e9c8df542ee44bc3e3f690ab292739b7102b47269819ed3cf2c86ffc51961fed118f1ff13e0b6c59fb14b52dbb1643faf7b1380c3860ae0a1cd1"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/which-pm@2.0.0",
-      "name": "which-pm",
-      "version": "2.0.0",
-      "purl": "pkg:npm/which-pm@2.0.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "2e1b3d3e6ca9874a799f96779959cdd3259c6d0614003eeb6d052232c431389dd3e7b93b4457b7e5253058c7fb76c6c3664b35b8e9b0e0079c07f24c0e3defff"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/which-typed-array@1.1.15",
       "name": "which-typed-array",
       "version": "1.1.15",
@@ -54608,36 +48554,6 @@
         {
           "alg": "SHA-512",
           "content": "a15d23985b54932e825df92a7a156f04ffcb496276b32e2f58c8a888437224b78fac13bfc8ac95f4ec89c927c02a8b21f91624225e73242359f3fe099dcae974"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/wrap-ansi@6.2.0",
-      "name": "wrap-ansi",
-      "version": "6.2.0",
-      "purl": "pkg:npm/wrap-ansi@6.2.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "afa94f7011b1657948732984bbb227c43321756d0a0f1a4b82814b720b9ab3109a27f48e219c0835ab4af4a63fb5ff99ae5cb038a5345038f70135d405fc495c"
         }
       ],
       "licenses": [
@@ -54890,36 +48806,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/y18n@4.0.3",
-      "name": "y18n",
-      "version": "4.0.3",
-      "purl": "pkg:npm/y18n@4.0.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "24a86a4cec12aea340d4d639952ced2751ab06252874b326219b8b88368c449fa2b4577e001544f170633af2162fead2a8d0c2ef82c24859a56ff538519e2125"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/y18n@5.0.8",
       "name": "y18n",
       "version": "5.0.8",
@@ -54938,36 +48824,6 @@
         {
           "alg": "SHA-512",
           "content": "d297c5cde81e0d62472480264cb44fd83c078dd179b3b8e8f6dbb3b5d43102120d09dbd2fb79c620da8f774d00a61a8947fd0b8403544baffeed209bf7c60e7c"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/yallist@2.1.2",
-      "name": "yallist",
-      "version": "2.1.2",
-      "purl": "pkg:npm/yallist@2.1.2",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "9dc4f31d5ecdbec4199187b50d6edc6c32e6d18a731e6645e6bfe2c8fdd99d0b4c889fa98f38ac0a230d23e4a3fb1405e695e1487c52077b836ec053cd8fdcd8"
         }
       ],
       "licenses": [
@@ -55010,36 +48866,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/yargs@15.4.1",
-      "name": "yargs",
-      "version": "15.4.1",
-      "purl": "pkg:npm/yargs@15.4.1",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "69e3dbc4399c616fbe3daa81b09f8761417009dbf82d5bdd9e1072efc139ecf228afcfce56f84cac00c51440e1f031c3151bff3bd8b794f86c10d8ceed05f4f8"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/yargs@17.7.2",
       "name": "yargs",
       "version": "17.7.2",
@@ -55070,36 +48896,6 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/yargs-parser@18.1.3",
-      "name": "yargs-parser",
-      "version": "18.1.3",
-      "purl": "pkg:npm/yargs-parser@18.1.3",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "a39d23d09793a32ff82ba39971a4265ba9725d72a1abb72c4445dc0f0936a2614f244c1434e56d24abe60ebf442357c025953265c445ee4c460569915ee76b09"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
       "bom-ref": "pkg:npm/yargs-parser@21.1.1",
       "name": "yargs-parser",
       "version": "21.1.1",
@@ -55124,36 +48920,6 @@
         {
           "license": {
             "id": "ISC"
-          }
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:npm/yocto-queue@0.1.0",
-      "name": "yocto-queue",
-      "version": "0.1.0",
-      "purl": "pkg:npm/yocto-queue@0.1.0",
-      "properties": [
-        {
-          "name": "platos:image",
-          "value": "webapp"
-        },
-        {
-          "name": "platos:licenseSource",
-          "value": "registry:version"
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-512",
-          "content": "ad592cbec9cd09d27fa2119ceb180fc3237c7a1782c6c88b33c9b1b84fedfe6395a897b03ee3b59a22e94c74224604ca08b7b12f831e00555a82db3b1e6359d9"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
           }
         }
       ]

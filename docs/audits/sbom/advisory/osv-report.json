@@ -1,20 +1,20 @@
 {
   "$schema": "platos.audit.osv-receipt/v1",
   "tool": "osv.dev querybatch+vulns (scripts/audit-advisory.mjs)",
-  "scannedAt": "2026-08-28T17:20:44.647Z",
-  "lockfileSha256": "e19ff371daad04aafd9b822c5452023a7056152b717d63e6435e83655574fcfa",
+  "scannedAt": "2026-08-29T05:09:04.924Z",
+  "lockfileSha256": "603cd67f4564fe644852b01fa409c75d65a9cdf015f251bb79ce723846360f69",
   "ecosystem": "npm",
   "scope": "per-image production closures (agent, webapp) from pnpm-lock.yaml",
-  "componentsScanned": 2103,
+  "componentsScanned": 1897,
   "agentComponents": 718,
-  "webappComponents": 1845,
-  "findingsCount": 301,
+  "webappComponents": 1637,
+  "findingsCount": 291,
   "withdrawnCount": 0,
   "bySeverity": {
     "CRITICAL": 5,
-    "HIGH": 117,
-    "MODERATE": 152,
-    "LOW": 27
+    "HIGH": 111,
+    "MODERATE": 149,
+    "LOW": 26
   },
   "m05Adjudication": [
     {
@@ -341,66 +341,23 @@
     {
       "package": "tmp",
       "m05Note": "M0.5: 0.0.33 named for scan",
-      "versionsInClosure": [
-        "0.0.33"
-      ],
-      "shipsIn": [
-        "webapp"
-      ],
-      "advisories": [
-        {
-          "id": "GHSA-ph9p-34f9-6g65",
-          "cves": [
-            "CVE-2026-44705"
-          ],
-          "version": "0.0.33",
-          "severity": "HIGH",
-          "fixedIn": "0.2.6",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-52f5-9888-hmc6",
-          "cves": [
-            "CVE-2025-54798"
-          ],
-          "version": "0.0.33",
-          "severity": "LOW",
-          "fixedIn": "0.2.4",
-          "images": [
-            "webapp"
-          ]
-        }
-      ],
-      "verdict": "VULNERABLE_VERSION_PRESENT"
+      "versionsInClosure": [],
+      "shipsIn": [],
+      "advisories": [],
+      "verdict": "NOT_IN_CLOSURE"
     },
     {
       "package": "semver",
       "m05Note": "M0.5: 5.7.1 named for scan",
       "versionsInClosure": [
-        "5.7.1",
         "7.7.3"
       ],
       "shipsIn": [
-        "webapp",
-        "agent"
+        "agent",
+        "webapp"
       ],
-      "advisories": [
-        {
-          "id": "GHSA-c2qf-rxjj-qqgw",
-          "cves": [
-            "CVE-2022-25883"
-          ],
-          "version": "5.7.1",
-          "severity": "HIGH",
-          "fixedIn": "7.5.2",
-          "images": [
-            "webapp"
-          ]
-        }
-      ],
-      "verdict": "VULNERABLE_VERSION_PRESENT"
+      "advisories": [],
+      "verdict": "PRESENT_NO_ADVISORY"
     },
     {
       "package": "undici",
@@ -1961,25 +1918,6 @@
       "withdrawn": null
     },
     {
-      "package": "cross-spawn",
-      "version": "5.1.0",
-      "id": "GHSA-3xgq-45jj-v275",
-      "aliases": [
-        "CVE-2024-21538"
-      ],
-      "cves": [
-        "CVE-2024-21538"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Regular Expression Denial of Service (ReDoS) in cross-spawn",
-      "fixedIn": "7.0.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "deepmerge-ts",
       "version": "7.1.5",
       "id": "GHSA-ggr8-5vv4-36mx",
@@ -2485,59 +2423,6 @@
       "cvss": null,
       "summary": "JavaScript Cookie: Per-instance prototype hijack in assign() enables cookie-attribute injection",
       "fixedIn": "3.0.7",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-cookie",
-      "version": "3.0.5",
-      "id": "GHSA-qjx8-664m-686j",
-      "aliases": [
-        "CVE-2026-46625"
-      ],
-      "cves": [
-        "CVE-2026-46625"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "JavaScript Cookie: Per-instance prototype hijack in assign() enables cookie-attribute injection",
-      "fixedIn": "3.0.7",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "3.14.2",
-      "id": "GHSA-52cp-r559-cp3m",
-      "aliases": [
-        "CVE-2026-59869"
-      ],
-      "cves": [
-        "CVE-2026-59869"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
-      "fixedIn": "3.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "3.14.2",
-      "id": "GHSA-5p4m-2wfm-xmqj",
-      "aliases": [],
-      "cves": [],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
-      "fixedIn": "4.3.1",
       "images": [
         "webapp"
       ],
@@ -3141,25 +3026,6 @@
       "withdrawn": null
     },
     {
-      "package": "semver",
-      "version": "5.7.1",
-      "id": "GHSA-c2qf-rxjj-qqgw",
-      "aliases": [
-        "CVE-2022-25883"
-      ],
-      "cves": [
-        "CVE-2022-25883"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "semver vulnerable to Regular Expression Denial of Service",
-      "fixedIn": "7.5.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "socket.io-parser",
       "version": "4.2.4",
       "id": "GHSA-2m8v-j782-fhvr",
@@ -3348,25 +3214,6 @@
       "fixedIn": "7.5.21",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "tmp",
-      "version": "0.0.33",
-      "id": "GHSA-ph9p-34f9-6g65",
-      "aliases": [
-        "CVE-2026-44705"
-      ],
-      "cves": [
-        "CVE-2026-44705"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "tmp has Path Traversal via unsanitized prefix/postfix that enables directory escape",
-      "fixedIn": "0.2.6",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -3721,44 +3568,6 @@
     {
       "package": "@opentelemetry/core",
       "version": "2.0.1",
-      "id": "GHSA-8988-4f7v-96qf",
-      "aliases": [
-        "CVE-2026-54285"
-      ],
-      "cves": [
-        "CVE-2026-54285"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "OpenTelemetry Core: Unbounded memory allocation in W3C Baggage propagation",
-      "fixedIn": "2.8.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/core",
-      "version": "2.2.0",
-      "id": "GHSA-8988-4f7v-96qf",
-      "aliases": [
-        "CVE-2026-54285"
-      ],
-      "cves": [
-        "CVE-2026-54285"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "OpenTelemetry Core: Unbounded memory allocation in W3C Baggage propagation",
-      "fixedIn": "2.8.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/core",
-      "version": "2.6.1",
       "id": "GHSA-8988-4f7v-96qf",
       "aliases": [
         "CVE-2026-54285"
@@ -5078,25 +4887,6 @@
       "cvss": null,
       "summary": "joi has an uncaught RangeError on deeply nested input through recursive `link()` schemas",
       "fixedIn": "18.2.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "3.14.2",
-      "id": "GHSA-h67p-54hq-rp68",
-      "aliases": [
-        "CVE-2026-53550"
-      ],
-      "cves": [
-        "CVE-2026-53550"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
-      "fixedIn": "4.2.0",
       "images": [
         "webapp"
       ],
@@ -6991,25 +6781,6 @@
       "cvss": null,
       "summary": "send vulnerable to template injection that can lead to XSS",
       "fixedIn": "0.19.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "tmp",
-      "version": "0.0.33",
-      "id": "GHSA-52f5-9888-hmc6",
-      "aliases": [
-        "CVE-2025-54798"
-      ],
-      "cves": [
-        "CVE-2025-54798"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter",
-      "fixedIn": "0.2.4",
       "images": [
         "webapp"
       ],

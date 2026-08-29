@@ -73,6 +73,19 @@ jobs:
       - name: Platos vocabulary boundary gate
         run: pnpm test:vocabulary && pnpm audit:vocabulary
 
+      - name: V1 M0 executable evidence gates
+        run: |
+          node --test scripts/vocabulary-boundary.nul.test.mjs
+          node --test scripts/v1-ledger.test.mjs
+          node scripts/v1-ledger.mjs --check
+          pnpm audit:capability-matrix
+          pnpm audit:arch-boundaries
+          pnpm test:arch-boundaries
+          node scripts/arch/contract-map.mjs --check
+          pnpm audit:sbom:check
+          pnpm audit:sbom:nonvacuity
+          pnpm test:sbom
+
       - name: External Trigger configuration and direct-dispatch tests
         run: |
           pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts

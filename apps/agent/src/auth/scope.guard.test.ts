@@ -129,7 +129,6 @@ describe("ScopeGuard — pre-scoped short-circuit", () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 });
-
 describe("ScopeGuard — health allowlist", () => {
   it("allows /api/health without auth", async () => {
     const guard = new ScopeGuard();
@@ -1132,7 +1131,8 @@ describe("ScopeGuard — WIN-296 AccessKey lifecycle is control-plane-only", () 
   );
 
   // ZERO-KEY STATE — the create route, no internal token, but a valid one-use
-  // install secret. The guard consumes the bootstrap and authorizes operator.
+  // install secret. The guard validates bootstrap and authorizes the request;
+  // the service consumes it atomically with creation of the first access key.
   it("allows POST create via the first-install bootstrap in zero-key state", async () => {
     const tryConsumeAccessKeyBootstrap = vi
       .fn()
@@ -1283,4 +1283,3 @@ describe("ScopeGuard — WIN-296 AccessKey lifecycle is control-plane-only", () 
     }
   });
 });
-

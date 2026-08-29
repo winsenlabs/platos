@@ -17,10 +17,9 @@
 //                  to (and their production deps). Root dependencies do NOT reach
 //                  the agent runtime image.
 //
-//   webapp image : `turbo prune --docker` keeps the ROOT manifest, and the runner
-//                  does `COPY --from=production-deps /platos .`, so the closure is
-//                  apps/webapp's production deps UNION the root (`.`) production
-//                  deps, following the one workspace link webapp declares.
+//   webapp image : the production-deps stage installs `--filter webapp...`, so
+//                  only apps/webapp and its production workspace dependency
+//                  graph ship. Root release/tooling dependencies do not.
 //
 // "Production" = `dependencies` + `optionalDependencies`, never `devDependencies`.
 //
@@ -203,7 +202,7 @@ export function computeClosure(roots, parsed) {
 // SBOM, advisory scan and licence index all agree on what "ships".
 export const IMAGES = {
   agent: { roots: ['apps/agent'], displayName: 'platos-agent' },
-  webapp: { roots: ['apps/webapp', '.'], displayName: 'webapp' },
+  webapp: { roots: ['apps/webapp'], displayName: 'webapp' },
 };
 
 // Reduce a set of snapshot keys to the sorted, de-duplicated list of

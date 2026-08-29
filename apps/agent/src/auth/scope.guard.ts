@@ -178,6 +178,12 @@ export interface RequestScope {
   projectId: string;
   environmentId: string;
   userId: string;
+  /**
+   * Server-stamped only after the narrow first-install credential is validated.
+   * The controller uses this marker to consume the grant and create the first
+   * AccessKey in one database transaction. Never accept it from request data.
+   */
+  accessKeyBootstrapAuthenticated?: true;
   entityId?: string;
   userToken?: string;
   /**
@@ -806,19 +812,24 @@ export class ScopeGuard implements CanActivate {
           return true;
         }
         // Safe first-install bootstrap — create route ONLY, genuine zero-key
-        // state, one-use, non-replayable, atomically consumed, and audited. Any
+        // state, one-use, and non-replayable. The service consumes and audits it
+        // atomically with creation of the first access key. Any
         // other lifecycle route, or a create without a valid one-use install
         // secret, falls through to the rejection below.
         if (this.authService && this.isDirectAccessKeyBootstrapRoute(request)) {
+          const bootstrapToken = request.headers["x-platos-bootstrap-token"] as
+            | string
+            | undefined;
           const outcome = await this.authService.tryConsumeAccessKeyBootstrap({
             organizationId: request.scope.organizationId,
             projectId: request.scope.projectId,
             environmentId: request.scope.environmentId,
             userId: request.scope.userId,
-            providedToken: request.headers["x-platos-bootstrap-token"] as string | undefined,
+            providedToken: bootstrapToken,
             source: "scope-guard-first-install",
           });
           if (outcome.ok) {
+            request.scope.accessKeyBootstrapAuthenticated = true;
             return true;
           }
         }

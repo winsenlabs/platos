@@ -447,6 +447,26 @@ export const AgentEnvSchema = z
   })
   .passthrough() // Don't choke on unrelated env vars (PATH, HOME, etc.)
   .superRefine((data, ctx) => {
+    if (data.PLATOS_BOOTSTRAP_TOKEN) {
+      const expiry = data.PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT;
+      const parsedExpiry = expiry ? Date.parse(expiry) : Number.NaN;
+      if (!expiry || Number.isNaN(parsedExpiry)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT"],
+          message:
+            "PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT must be a valid ISO-8601 timestamp whenever PLATOS_BOOTSTRAP_TOKEN is set",
+        });
+      } else if (parsedExpiry <= Date.now()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT"],
+          message:
+            "PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT must be in the future; remove the bootstrap token after first install",
+        });
+      }
+    }
+
     // EOBD.3 — sentinel check. Never boot with known-public dev values
     // under NODE_ENV=production.
     if (data.NODE_ENV === "production") {

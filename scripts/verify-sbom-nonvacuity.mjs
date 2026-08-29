@@ -12,11 +12,11 @@
 //   A. control            — real lockfile + real policy  -> PASS (exit 0)
 //   B. inject un-waived   — GPL canary in agent, empty-baseline policy -> FAIL (exit 1)
 //   C. inject + dispose   — same canary, canary added to baseline -> PASS (exit 0)
-//   D. remove a real waiver — real breakword GPL, baseline minus breakword -> FAIL
+//   D. inject commercial canary — no-grant package -> FAIL
 //
 // A + B together prove the gate discriminates (it is not stuck-green). C proves
-// the disposition path is the release valve. D proves the gate fires on the
-// REAL GPL package already in the tree, not just on a synthetic one.
+// the disposition path is the release valve. D independently proves the
+// commercial/no-grant classifier fails closed too.
 //
 // Usage: node scripts/verify-sbom-nonvacuity.mjs   (exit 0 iff all assertions hold)
 
@@ -84,11 +84,14 @@ canaryWaived.dispositionedBaseline = [...policyDoc.dispositionedBaseline, {
 const canaryWaivedPath = path.join(tmp, 'policy.canary-waived.json');
 fs.writeFileSync(canaryWaivedPath, JSON.stringify(canaryWaived, null, 2));
 
-// Scratch policy = real baseline MINUS breakword (to prove the real GPL fires).
-const minusBreakword = JSON.parse(JSON.stringify(policyDoc));
-minusBreakword.dispositionedBaseline = minusBreakword.dispositionedBaseline.filter((b) => b.package !== 'breakword');
-const minusBreakwordPath = path.join(tmp, 'policy.minus-breakword.json');
-fs.writeFileSync(minusBreakwordPath, JSON.stringify(minusBreakword, null, 2));
+const commercialIndex = JSON.parse(JSON.stringify(indexDoc));
+commercialIndex.index[`${CANARY}@${CANARY_VER}`] = {
+  license: 'SEE LICENSE IN LICENSE',
+  resolvedFrom: 'version',
+  status: 200,
+};
+const commercialIndexPath = path.join(tmp, 'license-index.commercial.json');
+fs.writeFileSync(commercialIndexPath, JSON.stringify(commercialIndex, null, 2));
 
 // --- assertions ---
 const results = [];
@@ -120,8 +123,8 @@ assert(
   0,
 );
 assert(
-  'D. REAL GPL — unmodified lockfile, but breakword removed from baseline (should FAIL on the real GPL-2.0 breakword@1.0.5 in webapp)',
-  runCheck(['--policy', minusBreakwordPath]),
+  'D. COMMERCIAL — injected no-grant canary with empty baseline (should FAIL)',
+  runCheck(['--lockfile', injectedLockPath, '--index', commercialIndexPath, '--policy', emptyBaselinePath]),
   1,
 );
 

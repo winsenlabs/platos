@@ -6414,10 +6414,15 @@ Write the summary now:`;
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    const result = await this.authService.createOrRotateAccessKey(
-      scope,
-      { keyHash, keyPrefix },
-    );
+    const accessKeyInput = { keyHash, keyPrefix };
+    const result =
+      scope.accessKeyBootstrapAuthenticated === true
+        ? await this.authService.createOrRotateAccessKey(
+            scope,
+            accessKeyInput,
+            req.headers["x-platos-bootstrap-token"] as string | undefined,
+          )
+        : await this.authService.createOrRotateAccessKey(scope, accessKeyInput);
     if (
       !result?.key ||
       typeof result.key.id !== "string" ||

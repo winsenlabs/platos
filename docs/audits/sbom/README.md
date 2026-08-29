@@ -13,7 +13,7 @@ Start with **`closure-contract.md`** — the narrative + full disposition ledger
 | `closure-contract.md` | the contract: dispositions, multi-major, licence resolution, §6 ledger | — |
 | `NON-VACUITY-PROOF.md` | proof the licence gate can fail | `pnpm audit:sbom:nonvacuity` |
 | `platos-agent.cdx.json` | CycloneDX 1.5 SBOM — agent image (718 comps / 657 names) | `pnpm audit:sbom` |
-| `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — webapp image (1845 comps / 1521 names) | `pnpm audit:sbom` |
+| `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — webapp image (1637 comps / 1357 names) | `pnpm audit:sbom` |
 | `closure-receipts.json` | per-image file/hash/count receipts + input hashes | `pnpm audit:sbom` |
 | `license-index.json` | frozen registry licence snapshot (union closure) | `pnpm audit:licenses` (network) |
 | `license-overlay.json` | curated licence elections/corrections (hand-maintained) | — |
@@ -39,9 +39,8 @@ pnpm audit:licenses        # refresh the frozen licence index from the registry 
 
 - **agent** — seeds from `apps/agent` only (`pnpm --filter platos-agent deploy --prod`); root deps do
   NOT reach it.
-- **webapp** — seeds from `apps/webapp` **and** the root `.` importer (`turbo prune --docker` keeps the
-  root manifest and the runner copies it in), so root prod deps — and the GPL `breakword` they drag —
-  do ship.
+- **webapp** — seeds from `apps/webapp` only. The image installs
+  `--filter webapp...`, so root release tooling—including GPL `breakword`—does not ship.
 
 Same lockfile bytes → same SBOM bytes (verified byte-identical across regenerations). The only network
 steps are `audit:advisory` and `audit:licenses`; both write timestamped receipts and are never on the
