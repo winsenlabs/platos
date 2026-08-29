@@ -98,7 +98,7 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(orderedMigrations.at(-1)).toBe(accessKeyUpgradeMigrationName);
+    expect(orderedMigrations.at(-1)).toBe("20260828120000_win296_access_key_bootstrap_grant");
     expect(accessKeyRuntime).toContain("accessKeyRevocationVersion");
     const persistedStateJob = imageWorkflow.indexOf("  persisted-state:");
     const rehearsalStep = imageWorkflow.indexOf(

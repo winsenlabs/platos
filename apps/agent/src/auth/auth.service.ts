@@ -115,7 +115,28 @@ export type AccessKeyOperatorScope = Pick<
   | "sessionId"
   | "principal"
   | "operatorUserId"
+  | "accessKeyBootstrapAuthenticated"
 >;
+
+/**
+ * WIN-296 — outcome of validating a first-install AccessKey bootstrap credential.
+ * `ok:true` means the credential and mandatory expiry are valid. Consumption,
+ * audit, and first-key creation happen later in one transaction. Every failure names why the
+ * first-install path refused so the guard can respond precisely without
+ * leaking whether the environment already holds a key.
+ */
+export type AccessKeyBootstrapOutcome =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "disabled" // no install secret configured — path is off
+        | "invalid_token" // presented secret missing or wrong
+        | "invalid_expiry" // expiry is absent or malformed
+        | "expired" // install window has elapsed
+        | "not_zero_state" // an active key already exists — path self-disabled
+        | "already_consumed"; // one-use grant already claimed (replay / race loser)
+    };
 
 /**
  * AuthService — handles session tokens, HMAC verification, and entity registry.
@@ -1069,8 +1090,68 @@ export class AuthService {
   async createOrRotateAccessKey(
     scope: AccessKeyOperatorScope,
     input: { keyHash: string; keyPrefix: string },
+    bootstrapToken?: string,
   ) {
     const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
+    if (scope.accessKeyBootstrapAuthenticated === true) {
+      const credential = this.validateAccessKeyBootstrap(bootstrapToken);
+      if (!credential.ok) throw new Error(`access_key_bootstrap_${credential.reason}`);
+
+      const tokenFingerprint = crypto
+        .createHash("sha256")
+        .update(bootstrapToken!)
+        .digest("hex");
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          const existing = await tx.accessKey.count({
+            where: { environmentId: authorization.environmentId, revokedAt: null },
+          });
+          if (existing > 0) throw new Error("access_key_bootstrap_not_zero_state");
+
+          const grant = await tx.accessKeyBootstrapGrant.create({
+            data: {
+              environmentId: authorization.environmentId,
+              organizationId: authorization.organizationId,
+              projectId: authorization.projectId,
+              actorUserId: scope.userId,
+              tokenFingerprint,
+              source: "access-key-create",
+            },
+            select: { id: true },
+          });
+          await tx.adminAudit.create({
+            data: {
+              environmentId: authorization.environmentId,
+              actorUserId: scope.userId,
+              action: "access_key.bootstrap.consumed",
+              subjectType: "AccessKeyBootstrapGrant",
+              subjectId: grant.id,
+              after: { tokenFingerprint, source: "access-key-create" },
+              reason: "first-install access-key bootstrap",
+              source: "access-key-create",
+            },
+          });
+          const key = await tx.accessKey.create({
+            data: {
+              environmentId: authorization.environmentId,
+              keyHash: input.keyHash,
+              keyPrefix: input.keyPrefix,
+            },
+            select: ACCESS_KEY_SAFE_SELECT,
+          });
+          return { key, retiringKey: null };
+        });
+      } catch (err: unknown) {
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          (err as { code?: unknown }).code === "P2002"
+        ) {
+          throw new Error("access_key_bootstrap_already_consumed");
+        }
+        throw err;
+      }
+    }
     return rotateAccessKey(this.prisma, {
       environmentId: authorization.environmentId,
       keyHash: input.keyHash,
@@ -1159,6 +1240,79 @@ export class AuthService {
     await revokeAccessKeys(this.prisma, {
       environmentId: authorization.environmentId,
     });
+  }
+
+  /**
+   * WIN-296 — one-use first-install grant for the AccessKey lifecycle.
+   *
+   * The direct-header AccessKey lifecycle routes now require the internal
+   * control-plane token (`hasValidControlPlaneAuth`). This method is the ONLY
+   * other way the FIRST `POST /api/v1/agent/access-key` on an Environment may
+   * be authorized, and only when an operator has explicitly enabled it by
+   * setting the narrow install secret `PLATOS_BOOTSTRAP_TOKEN`. It is:
+   *
+   *   - narrowly scoped: the caller must gate this to the create route only;
+   *   - self-disabling: refused the moment any active AccessKey exists;
+   *   - one-use / non-replayable: consumed by inserting a row whose
+   *     `environmentId` is UNIQUE, so a concurrent or later writer collides
+   *     (P2002) and is refused — a single-winner guarantee with no
+   *     check-then-set race;
+   *   - time-limited: refused past `PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT`;
+   *   - auditable: the consume, AdminAudit row, and first key commit together
+   *     in `createOrRotateAccessKey`.
+   *
+   * Env is read from `process.env` directly (not the cached config proxy) so
+   * the guard and this method observe the same values in lightweight test
+   * harnesses, matching `ScopeGuard.hasValidControlPlaneAuth`.
+   */
+  validateAccessKeyBootstrap(providedToken: string | undefined): AccessKeyBootstrapOutcome {
+    const expected = process.env.PLATOS_BOOTSTRAP_TOKEN?.trim();
+    // No install secret configured → the first-install path is OFF entirely.
+    // The lifecycle routes then require the internal control-plane token, with
+    // no zero-state exception at all.
+    if (!expected) return { ok: false, reason: "disabled" };
+
+    const provided = providedToken;
+    if (
+      typeof provided !== "string" ||
+      provided.length !== expected.length ||
+      !this.timingSafeStringEqual(provided, expected)
+    ) {
+      return { ok: false, reason: "invalid_token" };
+    }
+
+    const expiresRaw = process.env.PLATOS_BOOTSTRAP_TOKEN_EXPIRES_AT?.trim();
+    if (!expiresRaw) return { ok: false, reason: "invalid_expiry" };
+    const expiresAt = Date.parse(expiresRaw);
+    if (Number.isNaN(expiresAt)) return { ok: false, reason: "invalid_expiry" };
+    if (Date.now() > expiresAt) return { ok: false, reason: "expired" };
+    return { ok: true };
+  }
+
+  /**
+   * Compatibility seam for focused guard harnesses created before the
+   * transaction boundary moved into createOrRotateAccessKey. It validates
+   * only; it never consumes database state.
+   */
+  async tryConsumeAccessKeyBootstrap(params: {
+    organizationId?: string;
+    projectId?: string;
+    environmentId?: string;
+    userId?: string;
+    providedToken: string | undefined;
+    source?: string;
+  }): Promise<AccessKeyBootstrapOutcome> {
+    return this.validateAccessKeyBootstrap(params.providedToken);
+  }
+
+  /** Length-checked, timing-safe string comparison. */
+  private timingSafeStringEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+    } catch {
+      return false;
+    }
   }
 
   /**

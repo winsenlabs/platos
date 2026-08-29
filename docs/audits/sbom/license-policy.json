@@ -1,0 +1,10 @@
+{
+  "$schema": "platos.audit.license-policy/v1",
+  "note": "Machine-readable licence gate for the two shipping runtime closures. scripts/audit-sbom.mjs classifies every component's resolved licence (license-overlay.json takes precedence over license-index.json); a copyleft or commercial match that is NOT in dispositionedBaseline fails `pnpm audit:sbom:check`. This is the non-vacuous half of the M0.5 closure contract.",
+  "policy": "Apache-2.0 is the governing project licence (see LICENSE, NOTICE). Permissive licences (MIT, ISC, BSD, Apache-2.0, BlueOak, 0BSD, MIT-0, CC0, Unlicense, Python-2.0) are allowed in shipping runtime closures without disposition. Copyleft (GPL/LGPL/AGPL/MPL/EPL/CDDL/OSL/EUPL/SSPL/CC-BY-SA) and commercial / no-grant strings (SEE LICENSE IN…, UNLICENSED, proprietary, commercial) require an explicit, reasoned disposition here before they may ship.",
+  "forbiddenPatterns": [
+    { "class": "copyleft", "pattern": "(^|[^L])gpl-?\\d|(^|\\W)a?gpl(\\W|$)|lgpl|\\bmpl\\b|mozilla public|\\beupl\\b|\\bepl\\b|\\bcddl\\b|\\bosl\\b|sleepycat|cc-by-sa|\\bsspl\\b", "reason": "Copyleft / reciprocal terms — legal review required before shipping in an Apache-2.0 product." },
+    { "class": "commercial", "pattern": "see license in|unlicensed|proprietary|commercial", "reason": "Commercial or unresolved 'see the bundled file' grant — obligation cannot be discharged from an SBOM and may be non-redistributable." }
+  ],
+  "dispositionedBaseline": []
+}

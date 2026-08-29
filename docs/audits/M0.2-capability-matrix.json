@@ -1,0 +1,5097 @@
+{
+  "milestone": "M0.2",
+  "issue": "WIN-247",
+  "title": "Capability & persisted-state parity matrix",
+  "baseline": "89c12b8 (frozen main oracle); re-enumerated from operation-manifest.generated.json + tenancy Prisma schemas",
+  "generatedBy": "scripts/capability-matrix.mjs",
+  "totals": {
+    "restOperations": 300,
+    "operatorProtectedRest": 120,
+    "mcpTools": 202,
+    "tenancyModels": 93,
+    "endUserRestrictedModels": 14
+  },
+  "surfaces": {
+    "rest": [
+      {
+        "id": "GET /.well-known/oauth-authorization-server",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/.well-known/oauth-authorization-server",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /.well-known/oauth-authorization-server/entity/:entityId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/.well-known/oauth-authorization-server/entity/:entityId",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/health",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/health",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/access-key",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/access-key",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/access-key",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/access-key",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/access-key",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/access-key",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/access-key/origins",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/access-key/origins",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/activity/recent",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/activity/recent",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/admin/memory-feedback/backfill",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/memory-feedback/backfill",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/admin/privacy/erasures",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/privacy/erasures",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "privacy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/admin/privacy/erasures/:operationId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/admin/privacy/erasures/:operationId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "privacy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/admin/privacy/erasures/:operationId/retry",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/privacy/erasures/:operationId/retry",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "privacy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/admin/privacy/erasures/resume-due",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/privacy/erasures/resume-due",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "privacy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/admin/privacy/subjects/:externalUserId/inventory",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/admin/privacy/subjects/:externalUserId/inventory",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "privacy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agent-versions",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agent-versions",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agent-versions/:versionId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agent-versions/:versionId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/agent-versions/:versionId/rollback",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/agent-versions/:versionId/rollback",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/agents",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/agents",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/agents/:agentId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/agents/:agentId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/agents/:agentId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/agents/:agentId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/agents/:agentId/canary",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/agents/:agentId/canary",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/canary/metrics",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/canary/metrics",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/agents/:agentId/canary/promote",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/agents/:agentId/canary/promote",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/categories",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/categories",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/chat/stream",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/chat/stream",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/evals/aggregate",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/evals/aggregate",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/agents/:agentId/feature-flags",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/agents/:agentId/feature-flags",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/agents/:agentId/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/agents/:agentId/messages",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/satisfaction",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/satisfaction",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/agents/:agentId/tool-mappings",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/agents/:agentId/tool-mappings",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/agents/:agentId/tool-mappings/:toolId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/approvals/:approvalId/resolve",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/approvals/:approvalId/resolve",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/attachments/presigned",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/attachments/presigned",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "files",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/budgets",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/budgets",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/budgets",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/budgets",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/budgets/:capId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/budgets/:capId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/budgets/:capId/override",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/budgets/:capId/override",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/budgets/status",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/budgets/status",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channel-apps",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channel-apps",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channel-apps",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channel-apps",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/channel-apps/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/channel-apps/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channel-apps/:id",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channel-apps/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/channel-apps/:id",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/channel-apps/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channel-apps/:id/installations",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channel-apps/:id/installations",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/channel-apps/:id/installations/:installationId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/channel-apps/:id/installations/:installationId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channel-apps/:id/installations/:installationId/bind",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channel-apps/:id/installations/:installationId/bind",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channel-apps/:id/installations/import",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channel-apps/:id/installations/import",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channel-apps/:id/installations/status",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channel-apps/:id/installations/status",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channels",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channels",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channels",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channels",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/channels/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/channels/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/channels/:id",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/channels/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/channels/:id",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/channels/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channels/:id/rotate-secret",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channels/:id/rotate-secret",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/channels/mint",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/channels/mint",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/clusters",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/clusters",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/clusters",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/clusters",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/clusters/:clusterId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/clusters/:clusterId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/clusters/:clusterId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/clusters/:clusterId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/clusters/:clusterId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/clusters/:clusterId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/clusters/:clusterId/agents",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/clusters/:clusterId/agents",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/clusters/:clusterId/agents/:agentId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/clusters/:clusterId/agents/:agentId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/connect",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/connect",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/durable-approvals/:token/resolve",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/durable-approvals/:token/resolve",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/entities",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/entities",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/entities",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/entities",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/entities/:entityId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/entities/:entityId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/entities/:entityId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/entities/:entityId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/entities/:entityId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/entities/:entityId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/entities/:entityId/mcp/config",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/entities/:entityId/mcp/config",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/entities/:entityId/mcp/config",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/entities/:entityId/mcp/config",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/entities/:entityId/refresh-discovery",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/entities/:entityId/refresh-discovery",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/entities/:entityId/regenerate-secret",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/entities/:entityId/regenerate-secret",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/entities/:entityId/test-credentials",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/entities/:entityId/test-credentials",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/entities/:entityId/wire-test",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/entities/:entityId/wire-test",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/entities/check-availability",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/entities/check-availability",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/eval-criteria",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/eval-criteria",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/eval-criteria",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/eval-criteria",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/eval-criteria/:criterionId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/eval-criteria/:criterionId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/eval-criteria/:criterionId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/eval-criteria/:criterionId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/eval-criteria/:criterionId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/eval-criteria/:criterionId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/evals",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/evals",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "governance",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/evals/:evalId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/evals/:evalId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "governance",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/evals/dispatch",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/evals/dispatch",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "governance",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/feature-flags",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/feature-flags",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/files/agents",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/files/agents",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/files/agents/:agentId/users",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/files/agents/:agentId/users",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/files/agents/:agentId/users/:userId/conversations",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/files/agents/:agentId/users/:userId/conversations",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/files/threads/:threadId/attachments",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/files/threads/:threadId/attachments",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/golden-sets",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/golden-sets",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/golden-sets",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/golden-sets",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/golden-sets/:goldenSetId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/golden-sets/:goldenSetId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/golden-sets/:goldenSetId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/golden-sets/:goldenSetId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/golden-sets/:goldenSetId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/golden-sets/:goldenSetId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/golden-sets/:goldenSetId/run",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/golden-sets/:goldenSetId/run",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/budget-alert",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/budget-alert",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/chat/reap-sessions",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/chat/reap-sessions",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/chat/stream-turn",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/chat/stream-turn",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/compaction",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/compaction",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/durable-turn",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/durable-turn",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/employee-run",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/employee-run",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/jobs/execute",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/jobs/execute",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/internal/performance-evidence/:requestId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/internal/performance-evidence/:requestId",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/skill-run",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/skill-run",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/internal/subagent-report",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/subagent-report",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/jobs",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/jobs",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/jobs",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/jobs",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/jobs/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/jobs/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/jobs/:id",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/jobs/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/jobs/:id",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/jobs/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/jobs/:id/dispatch",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/jobs/:id/dispatch",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/messages/:messageId/rating",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/messages/:messageId/rating",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/messages/:messageId/rating",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/messages/:messageId/rating",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/messages/:messageId/rating",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/messages/:messageId/rating",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/agent-scorecard",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/agent-scorecard",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/agent/:agentId/cache-range",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/agent/:agentId/cache-range",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/agents",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/agents",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "agents",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/approvals",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/approvals",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/approvals/:approvalId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/approvals/:approvalId",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/approvals/expiry-sweep",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/approvals/expiry-sweep",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/breaches",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/breaches",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/budget/email",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/budget/email",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost-by-agent",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost-by-agent",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost-by-model",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost-by-model",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost-by-user",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost-by-user",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/cost/catalog",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/cost/catalog",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/cost/reconcile",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/cost/reconcile",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost/skills/daily",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost/skills/daily",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost/skills/range",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost/skills/range",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost/thread/:threadId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost/thread/:threadId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/cost/user/:userId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/cost/user/:userId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/dlq/drain",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/dlq/drain",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/governance",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/governance",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/memory-extraction/health",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/memory-extraction/health",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/observability/status",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/observability/status",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/safety-events",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/safety-events",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/summary",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/summary",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/top-users",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/top-users",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/trace/:threadId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/trace/:threadId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/users",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/users",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/users/:userId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/users/:userId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/users/:userId/consumption",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/users/:userId/consumption",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/monitoring/users/:userId/summary",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/monitoring/users/:userId/summary",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/monitoring/utilization",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/utilization",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "cost-monitoring",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/openapi.json",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/openapi.json",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/postman-templates",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/postman-templates",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/postman-templates",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/postman-templates",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/postman-templates/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/postman-templates/:id",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PUT /api/v1/agent/postman-templates/:id",
+        "surface": "rest",
+        "method": "PUT",
+        "path": "/api/v1/agent/postman-templates/:id",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/postman-templates/:id/execute",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/postman-templates/:id/execute",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/prompt/assemble",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/prompt/assemble",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/prompt/defaults",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/prompt/defaults",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/prompt/preview",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/prompt/preview",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/providers",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/providers",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/providers/:provider",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/providers/:provider",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/providers/:provider/health",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/providers/:provider/health",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/providers/:provider/link",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/providers/:provider/link",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/providers/:provider/link",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/:provider/link",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/providers/health",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/providers/health",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/providers/keys",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/providers/keys",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/providers/keys",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/keys",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/providers/keys/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/providers/keys/:id",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/providers/keys/:id",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/providers/keys/:id",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/providers/keys/:id/rotate-secret",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/keys/:id/rotate-secret",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/providers/keys/byok",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/keys/byok",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/providers/models",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/providers/models",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "providers",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/secrets/status",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/secrets/status",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/skills",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/skills",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/skills",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/skills",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/skills/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/skills/:id",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/skills/:id",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/skills/:id",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/skills/agent/:agentId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/skills/agent/:agentId",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/skills/agent/:agentId/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/skills/agent/:agentId/:id",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/skills/agent/:agentId/:id",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/skills/agent/:agentId/:id",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/skills/health",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/skills/health",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/skills/import",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/skills/import",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "skills",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/agent/threads/:threadId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/agent/threads/:threadId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads/:threadId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads/:threadId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/threads/:threadId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/threads/:threadId",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/archive",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/archive",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads/:threadId/artifacts",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads/:threadId/artifacts",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/fork",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/fork",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads/:threadId/messages",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads/:threadId/messages",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/messages",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/messages/:messageId/edit-and-rerun",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/messages/:messageId/edit-and-rerun",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads/:threadId/messages/:messageId/replies",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads/:threadId/messages/:messageId/replies",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/messages/:messageId/retry",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/messages/:messageId/retry",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/pin",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/pin",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/threads/:threadId/rename",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/threads/:threadId/rename",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/threads/:threadId/reply-counts",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/threads/:threadId/reply-counts",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/stream",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/stream",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/tags",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/tags",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/threads/:threadId/unarchive",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/threads/:threadId/unarchive",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "conversations",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tool-calls",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tool-calls",
+        "classification": "MAPPED",
+        "requiresOperator": true,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tool-calls/:toolCallId",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tool-calls/:toolCallId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/tool-calls/:toolCallId/replay",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/tool-calls/:toolCallId/replay",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tools",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tools",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /api/v1/agent/tools/:entityId/:toolName/enabled",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/api/v1/agent/tools/:entityId/:toolName/enabled",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/tools/:toolId/test",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/tools/:toolId/test",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/agent/tools/execute",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/agent/tools/execute",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tools/matrix",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tools/matrix",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tools/search",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tools/search",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/agent/tools/stats",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/agent/tools/stats",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/channels/apps/:appId/events",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/channels/apps/:appId/events",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/channels/inbound/:connectionId/:webhookSecret",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/channels/inbound/:connectionId/:webhookSecret",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/channels/inbound/:connectionId/:webhookSecret",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/channels/inbound/:connectionId/:webhookSecret",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/channels/link/:nonce",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/channels/link/:nonce",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/channels/link/callback",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/channels/link/callback",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "channels",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/channels/oauth/:appId/callback",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/channels/oauth/:appId/callback",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/channels/oauth/:appId/install",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/channels/oauth/:appId/install",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/entities/:entityId/session-tokens",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/entities/:entityId/session-tokens",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/memory/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/memory/:id",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/:id",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/:id",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/:id/archive",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/:id/archive",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/:id/restore",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/:id/restore",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/admin/extraction-sweep",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/admin/extraction-sweep",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory/export",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory/export",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/extract",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/extract",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory/graph/entities",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory/graph/entities",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory/graph/entities/:id/relationships",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory/graph/entities/:id/relationships",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory/graph/path",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory/graph/path",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/import",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/import",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/memory/relate",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/memory/relate",
+        "classification": "REST_ONLY",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/memory/search",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/memory/search",
+        "classification": "MAPPED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /api/v1/platos/memory/:id",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/api/v1/platos/memory/:id",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/:id",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/:id",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/:id/archive",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/:id/archive",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/:id/restore",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/:id/restore",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/admin/extraction-sweep",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/admin/extraction-sweep",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory/export",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory/export",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/extract",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/extract",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory/graph/entities",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory/graph/entities",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory/graph/entities/:id/relationships",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory/graph/entities/:id/relationships",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory/graph/path",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory/graph/path",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/import",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/import",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/platos/memory/relate",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/relate",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /api/v1/platos/memory/search",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/platos/memory/search",
+        "classification": "DEPRECATED",
+        "requiresOperator": false,
+        "owner": "memory",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /api/v1/public/guest-token",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/api/v1/public/guest-token",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /internal/batch-turn",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/internal/batch-turn",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "jobs",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /internal/env/invalidate",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/internal/env/invalidate",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /internal/execute-tool",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/internal/execute-tool",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /internal/subagent-turn",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/internal/subagent-turn",
+        "classification": "INTERNAL",
+        "requiresOperator": false,
+        "owner": "durable-runtime / internal-callbacks",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/docs",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/docs",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/docs",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/docs",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/docs/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/docs/messages",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/docs/sse",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/docs/sse",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/entity/:entityId",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/entity/:entityId",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/branding",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/branding",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/config",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity/:entityId/config",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/config",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/config",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/enabled",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/enabled",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/events/subscribe",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity/:entityId/events/subscribe",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/identity",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/identity",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/inject-context",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/inject-context",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/entity/:entityId/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/entity/:entityId/messages",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/sse",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity/:entityId/sse",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/tokens",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity/:entityId/tokens",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/entity/:entityId/tokens",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/entity/:entityId/tokens",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/mcp/entity/:entityId/tokens/:tokenId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/tool-acl",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/entity/:entityId/tool-acl",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/tool-acl/:toolId",
+        "surface": "rest",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/tool-acl/:toolId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/entity/:entityId/tool-acl/bulk",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/entity/:entityId/tool-acl/bulk",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/messages",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/platform",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/platform",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/platform/catalog",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/platform/catalog",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/platform/events/subscribe",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/platform/events/subscribe",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/platform/messages",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/platform/messages",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/platform/sse",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/platform/sse",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/platform/tokens",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/platform/tokens",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/platform/tokens",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/platform/tokens",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /mcp/platform/tokens/:id/revoke",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/mcp/platform/tokens/:id/revoke",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /mcp/sse",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/sse",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "tools",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /metrics",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/metrics",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /oauth/authorize",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/oauth/authorize",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/authorize/callback",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/authorize/callback",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /oauth/consent",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/oauth/consent",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /oauth/entity/:entityId/authorize",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/oauth/entity/:entityId/authorize",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/entity/:entityId/authorize/anonymous",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/entity/:entityId/authorize/anonymous",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /oauth/entity/:entityId/oidc-callback",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/oauth/entity/:entityId/oidc-callback",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /oauth/entity/:entityId/oidc-redirect",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/oauth/entity/:entityId/oidc-redirect",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/entity/:entityId/register",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/entity/:entityId/register",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/entity/:entityId/revoke",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/entity/:entityId/revoke",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/entity/:entityId/token",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/entity/:entityId/token",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/introspect",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/introspect",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/register",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/register",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/revoke",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/revoke",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "POST /oauth/token",
+        "surface": "rest",
+        "method": "POST",
+        "path": "/oauth/token",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "identity-access",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "GET /openapi",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/openapi",
+        "classification": "PUBLIC_TRANSPORT",
+        "requiresOperator": false,
+        "owner": "unassigned (review)",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      }
+    ],
+    "mcp": [
+      {
+        "id": "mcp:agents.canary.promote",
+        "surface": "mcp-tool",
+        "name": "agents.canary.promote",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.canary.set",
+        "surface": "mcp-tool",
+        "name": "agents.canary.set",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.census",
+        "surface": "mcp-tool",
+        "name": "agents.census",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.clone_from",
+        "surface": "mcp-tool",
+        "name": "agents.clone_from",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.create",
+        "surface": "mcp-tool",
+        "name": "agents.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.delete",
+        "surface": "mcp-tool",
+        "name": "agents.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.deploy_with_skills",
+        "surface": "mcp-tool",
+        "name": "agents.deploy_with_skills",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.get",
+        "surface": "mcp-tool",
+        "name": "agents.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.list",
+        "surface": "mcp-tool",
+        "name": "agents.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:agents.update",
+        "surface": "mcp-tool",
+        "name": "agents.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.create",
+        "surface": "mcp-tool",
+        "name": "alert_channels.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.delete",
+        "surface": "mcp-tool",
+        "name": "alert_channels.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.get_integration",
+        "surface": "mcp-tool",
+        "name": "alert_channels.get_integration",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.list",
+        "surface": "mcp-tool",
+        "name": "alert_channels.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.test",
+        "surface": "mcp-tool",
+        "name": "alert_channels.test",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:alert_channels.update",
+        "surface": "mcp-tool",
+        "name": "alert_channels.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:approvals.get",
+        "surface": "mcp-tool",
+        "name": "approvals.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:approvals.list",
+        "surface": "mcp-tool",
+        "name": "approvals.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:approvals.resolve",
+        "surface": "mcp-tool",
+        "name": "approvals.resolve",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:artifacts.list",
+        "surface": "mcp-tool",
+        "name": "artifacts.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:audit.safety_events.query",
+        "surface": "mcp-tool",
+        "name": "audit.safety_events.query",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:budgets.delete",
+        "surface": "mcp-tool",
+        "name": "budgets.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:budgets.get",
+        "surface": "mcp-tool",
+        "name": "budgets.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:budgets.list",
+        "surface": "mcp-tool",
+        "name": "budgets.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:budgets.rollup_org_wide",
+        "surface": "mcp-tool",
+        "name": "budgets.rollup_org_wide",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:budgets.upsert",
+        "surface": "mcp-tool",
+        "name": "budgets.upsert",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.bind_installation",
+        "surface": "mcp-tool",
+        "name": "channel_apps.bind_installation",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.create",
+        "surface": "mcp-tool",
+        "name": "channel_apps.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.delete",
+        "surface": "mcp-tool",
+        "name": "channel_apps.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.get",
+        "surface": "mcp-tool",
+        "name": "channel_apps.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.import_installation",
+        "surface": "mcp-tool",
+        "name": "channel_apps.import_installation",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.installations_status",
+        "surface": "mcp-tool",
+        "name": "channel_apps.installations_status",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.list",
+        "surface": "mcp-tool",
+        "name": "channel_apps.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.list_installations",
+        "surface": "mcp-tool",
+        "name": "channel_apps.list_installations",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.revoke_installation",
+        "surface": "mcp-tool",
+        "name": "channel_apps.revoke_installation",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channel_apps.update",
+        "surface": "mcp-tool",
+        "name": "channel_apps.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.create",
+        "surface": "mcp-tool",
+        "name": "channels.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.delete",
+        "surface": "mcp-tool",
+        "name": "channels.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.get",
+        "surface": "mcp-tool",
+        "name": "channels.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.list",
+        "surface": "mcp-tool",
+        "name": "channels.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.mint_from_manifest",
+        "surface": "mcp-tool",
+        "name": "channels.mint_from_manifest",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.rotate_webhook_secret",
+        "surface": "mcp-tool",
+        "name": "channels.rotate_webhook_secret",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:channels.update",
+        "surface": "mcp-tool",
+        "name": "channels.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:clusters.add_agent",
+        "surface": "mcp-tool",
+        "name": "clusters.add_agent",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:clusters.create",
+        "surface": "mcp-tool",
+        "name": "clusters.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:clusters.list",
+        "surface": "mcp-tool",
+        "name": "clusters.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:end_users.bind_external_id",
+        "surface": "mcp-tool",
+        "name": "end_users.bind_external_id",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:end_users.get",
+        "surface": "mcp-tool",
+        "name": "end_users.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:end_users.link_identity",
+        "surface": "mcp-tool",
+        "name": "end_users.link_identity",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:end_users.unlink_identity",
+        "surface": "mcp-tool",
+        "name": "end_users.unlink_identity",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.census",
+        "surface": "mcp-tool",
+        "name": "entities.census",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.delete",
+        "surface": "mcp-tool",
+        "name": "entities.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.generate_mcp_token",
+        "surface": "mcp-tool",
+        "name": "entities.generate_mcp_token",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.get",
+        "surface": "mcp-tool",
+        "name": "entities.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.get_linked_agents",
+        "surface": "mcp-tool",
+        "name": "entities.get_linked_agents",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.get_mcp_config",
+        "surface": "mcp-tool",
+        "name": "entities.get_mcp_config",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.get_test_credentials",
+        "surface": "mcp-tool",
+        "name": "entities.get_test_credentials",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.get_tools",
+        "surface": "mcp-tool",
+        "name": "entities.get_tools",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.list",
+        "surface": "mcp-tool",
+        "name": "entities.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.provision",
+        "surface": "mcp-tool",
+        "name": "entities.provision",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.refresh_discovery",
+        "surface": "mcp-tool",
+        "name": "entities.refresh_discovery",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.regenerate_secret",
+        "surface": "mcp-tool",
+        "name": "entities.regenerate_secret",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.register",
+        "surface": "mcp-tool",
+        "name": "entities.register",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.set_linked_agents",
+        "surface": "mcp-tool",
+        "name": "entities.set_linked_agents",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.set_mcp_enabled",
+        "surface": "mcp-tool",
+        "name": "entities.set_mcp_enabled",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.set_mcp_inject_context",
+        "surface": "mcp-tool",
+        "name": "entities.set_mcp_inject_context",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.set_test_credentials",
+        "surface": "mcp-tool",
+        "name": "entities.set_test_credentials",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.set_tool_acl",
+        "surface": "mcp-tool",
+        "name": "entities.set_tool_acl",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.update",
+        "surface": "mcp-tool",
+        "name": "entities.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:entities.wire_test",
+        "surface": "mcp-tool",
+        "name": "entities.wire_test",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.create",
+        "surface": "mcp-tool",
+        "name": "environments.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.delete",
+        "surface": "mcp-tool",
+        "name": "environments.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.delete_secret",
+        "surface": "mcp-tool",
+        "name": "environments.delete_secret",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.list",
+        "surface": "mcp-tool",
+        "name": "environments.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.list_secrets",
+        "surface": "mcp-tool",
+        "name": "environments.list_secrets",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:environments.set_secret",
+        "surface": "mcp-tool",
+        "name": "environments.set_secret",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:evals.dispatch",
+        "surface": "mcp-tool",
+        "name": "evals.dispatch",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:evals.get",
+        "surface": "mcp-tool",
+        "name": "evals.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:evals.list",
+        "surface": "mcp-tool",
+        "name": "evals.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:evals.regression_sweep",
+        "surface": "mcp-tool",
+        "name": "evals.regression_sweep",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:events.recent",
+        "surface": "mcp-tool",
+        "name": "events.recent",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:events.subscribe",
+        "surface": "mcp-tool",
+        "name": "events.subscribe",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:gdpr.export",
+        "surface": "mcp-tool",
+        "name": "gdpr.export",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:gdpr.export_user_everywhere",
+        "surface": "mcp-tool",
+        "name": "gdpr.export_user_everywhere",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:gdpr.import",
+        "surface": "mcp-tool",
+        "name": "gdpr.import",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:gdpr.purge",
+        "surface": "mcp-tool",
+        "name": "gdpr.purge",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:health.check",
+        "surface": "mcp-tool",
+        "name": "health.check",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.create",
+        "surface": "mcp-tool",
+        "name": "jobs.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.delete",
+        "surface": "mcp-tool",
+        "name": "jobs.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.dispatch",
+        "surface": "mcp-tool",
+        "name": "jobs.dispatch",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.get",
+        "surface": "mcp-tool",
+        "name": "jobs.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.list",
+        "surface": "mcp-tool",
+        "name": "jobs.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.set_enabled",
+        "surface": "mcp-tool",
+        "name": "jobs.set_enabled",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.update",
+        "surface": "mcp-tool",
+        "name": "jobs.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:jobs.validate_handler",
+        "surface": "mcp-tool",
+        "name": "jobs.validate_handler",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.create_node",
+        "surface": "mcp-tool",
+        "name": "kg.create_node",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.delete_node",
+        "surface": "mcp-tool",
+        "name": "kg.delete_node",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.discover_links",
+        "surface": "mcp-tool",
+        "name": "kg.discover_links",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.get_entity",
+        "surface": "mcp-tool",
+        "name": "kg.get_entity",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.link_nodes",
+        "surface": "mcp-tool",
+        "name": "kg.link_nodes",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.list_entities",
+        "surface": "mcp-tool",
+        "name": "kg.list_entities",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.search_entities",
+        "surface": "mcp-tool",
+        "name": "kg.search_entities",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:kg.update_node",
+        "surface": "mcp-tool",
+        "name": "kg.update_node",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.delete",
+        "surface": "mcp-tool",
+        "name": "macros.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.get",
+        "surface": "mcp-tool",
+        "name": "macros.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.list",
+        "surface": "mcp-tool",
+        "name": "macros.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.record_start",
+        "surface": "mcp-tool",
+        "name": "macros.record_start",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.record_stop",
+        "surface": "mcp-tool",
+        "name": "macros.record_stop",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.replay",
+        "surface": "mcp-tool",
+        "name": "macros.replay",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.share",
+        "surface": "mcp-tool",
+        "name": "macros.share",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:macros.update",
+        "surface": "mcp-tool",
+        "name": "macros.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:mcp.list_clients",
+        "surface": "mcp-tool",
+        "name": "mcp.list_clients",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:mcp.list_tokens",
+        "surface": "mcp-tool",
+        "name": "mcp.list_tokens",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.archive",
+        "surface": "mcp-tool",
+        "name": "memories.archive",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.bulk_delete",
+        "surface": "mcp-tool",
+        "name": "memories.bulk_delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.delete",
+        "surface": "mcp-tool",
+        "name": "memories.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.extract_now",
+        "surface": "mcp-tool",
+        "name": "memories.extract_now",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.get",
+        "surface": "mcp-tool",
+        "name": "memories.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.list",
+        "surface": "mcp-tool",
+        "name": "memories.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.restore",
+        "surface": "mcp-tool",
+        "name": "memories.restore",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.search",
+        "surface": "mcp-tool",
+        "name": "memories.search",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:memories.upsert",
+        "surface": "mcp-tool",
+        "name": "memories.upsert",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:messages.list",
+        "surface": "mcp-tool",
+        "name": "messages.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:messages.rate",
+        "surface": "mcp-tool",
+        "name": "messages.rate",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:monitoring.cost.daily",
+        "surface": "mcp-tool",
+        "name": "monitoring.cost.daily",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:monitoring.cost.range",
+        "surface": "mcp-tool",
+        "name": "monitoring.cost.range",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.delete",
+        "surface": "mcp-tool",
+        "name": "notifications.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.get",
+        "surface": "mcp-tool",
+        "name": "notifications.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.list",
+        "surface": "mcp-tool",
+        "name": "notifications.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.register",
+        "surface": "mcp-tool",
+        "name": "notifications.register",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.test",
+        "surface": "mcp-tool",
+        "name": "notifications.test",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:notifications.update",
+        "surface": "mcp-tool",
+        "name": "notifications.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.create_client",
+        "surface": "mcp-tool",
+        "name": "oauth.create_client",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.delete_client",
+        "surface": "mcp-tool",
+        "name": "oauth.delete_client",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.list_clients",
+        "surface": "mcp-tool",
+        "name": "oauth.list_clients",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.list_tokens",
+        "surface": "mcp-tool",
+        "name": "oauth.list_tokens",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.revoke_token",
+        "surface": "mcp-tool",
+        "name": "oauth.revoke_token",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:oauth.rotate_secret",
+        "surface": "mcp-tool",
+        "name": "oauth.rotate_secret",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.add_member",
+        "surface": "mcp-tool",
+        "name": "org.add_member",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.get",
+        "surface": "mcp-tool",
+        "name": "org.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.list",
+        "surface": "mcp-tool",
+        "name": "org.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.list_members",
+        "surface": "mcp-tool",
+        "name": "org.list_members",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.remove_member",
+        "surface": "mcp-tool",
+        "name": "org.remove_member",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.set_member_role",
+        "surface": "mcp-tool",
+        "name": "org.set_member_role",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:org.update",
+        "surface": "mcp-tool",
+        "name": "org.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:platos.diff_agents",
+        "surface": "mcp-tool",
+        "name": "platos.diff_agents",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:platos.explain_turn",
+        "surface": "mcp-tool",
+        "name": "platos.explain_turn",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:platos.list_accessible_scopes",
+        "surface": "mcp-tool",
+        "name": "platos.list_accessible_scopes",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:platos.simulate_turn",
+        "surface": "mcp-tool",
+        "name": "platos.simulate_turn",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:platos.whoami",
+        "surface": "mcp-tool",
+        "name": "platos.whoami",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:projects.list_all",
+        "surface": "mcp-tool",
+        "name": "projects.list_all",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.add_key",
+        "surface": "mcp-tool",
+        "name": "providers.add_key",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.delete_key",
+        "surface": "mcp-tool",
+        "name": "providers.delete_key",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.get",
+        "surface": "mcp-tool",
+        "name": "providers.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.get_routes",
+        "surface": "mcp-tool",
+        "name": "providers.get_routes",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.link",
+        "surface": "mcp-tool",
+        "name": "providers.link",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.list",
+        "surface": "mcp-tool",
+        "name": "providers.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.list_keys",
+        "surface": "mcp-tool",
+        "name": "providers.list_keys",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.rotate_key",
+        "surface": "mcp-tool",
+        "name": "providers.rotate_key",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.set_routes",
+        "surface": "mcp-tool",
+        "name": "providers.set_routes",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.test_credentials",
+        "surface": "mcp-tool",
+        "name": "providers.test_credentials",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:providers.unlink",
+        "surface": "mcp-tool",
+        "name": "providers.unlink",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:scopes.bootstrap_demo_data",
+        "surface": "mcp-tool",
+        "name": "scopes.bootstrap_demo_data",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:scopes.list_all",
+        "surface": "mcp-tool",
+        "name": "scopes.list_all",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.disable",
+        "surface": "mcp-tool",
+        "name": "skills.disable",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.disable_globally",
+        "surface": "mcp-tool",
+        "name": "skills.disable_globally",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.enable",
+        "surface": "mcp-tool",
+        "name": "skills.enable",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.get",
+        "surface": "mcp-tool",
+        "name": "skills.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.get_installed_config",
+        "surface": "mcp-tool",
+        "name": "skills.get_installed_config",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.install",
+        "surface": "mcp-tool",
+        "name": "skills.install",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.list",
+        "surface": "mcp-tool",
+        "name": "skills.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.uninstall",
+        "surface": "mcp-tool",
+        "name": "skills.uninstall",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:skills.update",
+        "surface": "mcp-tool",
+        "name": "skills.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.create",
+        "surface": "mcp-tool",
+        "name": "threads.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.delete",
+        "surface": "mcp-tool",
+        "name": "threads.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.edit_and_rerun",
+        "surface": "mcp-tool",
+        "name": "threads.edit_and_rerun",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.fork",
+        "surface": "mcp-tool",
+        "name": "threads.fork",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.get",
+        "surface": "mcp-tool",
+        "name": "threads.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.list",
+        "surface": "mcp-tool",
+        "name": "threads.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:threads.update",
+        "surface": "mcp-tool",
+        "name": "threads.update",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:tool_calls.cross_scope_audit",
+        "surface": "mcp-tool",
+        "name": "tool_calls.cross_scope_audit",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:tool_calls.list",
+        "surface": "mcp-tool",
+        "name": "tool_calls.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:traces.get",
+        "surface": "mcp-tool",
+        "name": "traces.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:traces.list",
+        "surface": "mcp-tool",
+        "name": "traces.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.batches.get",
+        "surface": "mcp-tool",
+        "name": "trigger.batches.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.deployments.get",
+        "surface": "mcp-tool",
+        "name": "trigger.deployments.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.deployments.promote",
+        "surface": "mcp-tool",
+        "name": "trigger.deployments.promote",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.queues.list",
+        "surface": "mcp-tool",
+        "name": "trigger.queues.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.queues.pause",
+        "surface": "mcp-tool",
+        "name": "trigger.queues.pause",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.queues.resume",
+        "surface": "mcp-tool",
+        "name": "trigger.queues.resume",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.runs.cancel",
+        "surface": "mcp-tool",
+        "name": "trigger.runs.cancel",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.runs.get",
+        "surface": "mcp-tool",
+        "name": "trigger.runs.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.runs.list",
+        "surface": "mcp-tool",
+        "name": "trigger.runs.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.runs.replay",
+        "surface": "mcp-tool",
+        "name": "trigger.runs.replay",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.activate",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.activate",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.create",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.create",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.deactivate",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.deactivate",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.delete",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.delete",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.get",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.get",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.schedules.list",
+        "surface": "mcp-tool",
+        "name": "trigger.schedules.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.tasks.trigger",
+        "surface": "mcp-tool",
+        "name": "trigger.tasks.trigger",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      },
+      {
+        "id": "mcp:trigger.workers.list",
+        "surface": "mcp-tool",
+        "name": "trigger.workers.list",
+        "owner": "tools (mcp-platform)",
+        "auth": "oauth-bearer / platform token",
+        "compatibility": "MCP serverInfo.version 1; per WIN-249"
+      }
+    ],
+    "streaming": {
+      "wsInbound": 6,
+      "wsOutboundDistinct": 9,
+      "wsDynamic": 1,
+      "agentStreamEventVariants": 20,
+      "toolSyncIn": 4,
+      "toolSyncOut": 7,
+      "sseProducerFiles": 4,
+      "mcpTransportFamilies": 3,
+      "redisFanInChannels": 3,
+      "notes": "connections.gateway.ts (@SubscribeMessage x6), tool-sync-ws, agent SSE, 3 MCP transports, Redis approval:event/thread:lifecycle/overview:event. approval_needed carries durableToken."
+    },
+    "stores": {
+      "clickhouseDatabases": 2,
+      "clickhouseLiveTables": 18,
+      "clickhouseLiveMVs": 7,
+      "minioBuckets": 1,
+      "redisKeyFamilies": 64,
+      "redisPrefix": "platos:",
+      "notes": "ClickHouse platos_telemetry (renamed from the legacy run-engine database) + platos_observability; MinIO platos-media; Redis under ioredis keyPrefix platos:.",
+      "tenancyModels": [
+        "User",
+        "OperatorSession",
+        "OperatorIdentity",
+        "MagicLinkToken",
+        "OperatorMfaTotp",
+        "OperatorMfaRecoveryCode",
+        "AuthRateLimitBucket",
+        "ImpersonationAudit",
+        "Organization",
+        "OrganizationMembership",
+        "OrganizationInvitation",
+        "Project",
+        "ProjectMembership",
+        "Environment",
+        "EnvironmentSession",
+        "EndUser",
+        "EndUserIdentity",
+        "EndUserSession",
+        "Agent",
+        "AgentCluster",
+        "AgentVersion",
+        "AgentBinding",
+        "Credential",
+        "EnvironmentVariable",
+        "CredentialSecretVersion",
+        "CredentialAudit",
+        "AccessKey",
+        "AccessKeyBootstrapGrant",
+        "ProviderKey",
+        "McpToken",
+        "PersonalAccessToken",
+        "OAuthAccessToken",
+        "OAuthRefreshToken",
+        "McpBearerToken",
+        "PostmanTemplate",
+        "Thread",
+        "Model",
+        "ModelPrice",
+        "Turn",
+        "PostmanExecution",
+        "Step",
+        "ToolCall",
+        "ObservabilityOutbox",
+        "Artifact",
+        "MessageAttachment",
+        "Entity",
+        "ChannelConnection",
+        "ChannelThread",
+        "ChannelApp",
+        "ChannelInstallation",
+        "ChannelEventInbox",
+        "ChannelAppThread",
+        "EntityMcpConfig",
+        "EntityMcpClient",
+        "Tool",
+        "EnvironmentEntityTool",
+        "ToolHealth",
+        "ToolCallAudit",
+        "AdminAudit",
+        "AgentApproval",
+        "EnvironmentProvider",
+        "Budget",
+        "AlertChannel",
+        "AlertChannelConfiguration",
+        "BudgetThresholdEvent",
+        "AlertDelivery",
+        "AlertDeliveryRetry",
+        "SafetyEvent",
+        "MessageRating",
+        "EvalCriterion",
+        "AgentEval",
+        "GoldenSet",
+        "Job",
+        "Skill",
+        "ProjectSkill",
+        "EnvironmentSkill",
+        "AgentSkill",
+        "AgentToolPolicy",
+        "Memory",
+        "MemoryEntity",
+        "MemoryRelationship",
+        "OrganizationMcpPolicy",
+        "Macro",
+        "Event",
+        "NotificationRule",
+        "OAuthClient",
+        "OAuthAuthorizationCode",
+        "OAuthConsentTransaction",
+        "McpAnonymousSession",
+        "McpOidcSession",
+        "EntityToolPolicy",
+        "ErasureOperation",
+        "ErasureTombstone"
+      ],
+      "endUserModels": [
+        "EndUser",
+        "EndUserIdentity",
+        "EndUserSession",
+        "Thread",
+        "Turn",
+        "Step",
+        "ToolCall",
+        "Artifact",
+        "MessageAttachment",
+        "AgentApproval",
+        "Memory",
+        "MemoryEntity",
+        "MemoryRelationship",
+        "MessageRating"
+      ]
+    },
+    "sdksProviders": {
+      "sdkPackages": [
+        "@platosdev/client",
+        "platos-client-py",
+        "@platosdev/platools-sdk",
+        "platools-py",
+        "@platosdev/token-mint"
+      ],
+      "providerManifests": 14,
+      "notes": "14+ provider manifests (anthropic/openai/google/google-vertex/groq/mistral/xai/deepseek/cerebras/perplexity/together/fireworks/sakana/azure); model catalog + routing/fallback + cost."
+    }
+  },
+  "persistedStateGaps": [
+    {
+      "id": "oidc-session-erasure-gap",
+      "finding": "McpOidcSession (schema.prisma) stores end-user email / displayName / avatar / externalSubject and is NOT referenced by apps/agent/src/privacy — only Environment/Entity onDelete:Cascade removes it. An end-user erasure request leaves OIDC PII behind.",
+      "severity": "privacy",
+      "downstreamIssue": "WIN-278 (M5.6 — preserve privacy, audit, retention and cryptographic erasure across every store)",
+      "status": "recorded; NOT fixed in M0"
+    },
+    {
+      "id": "mcp-anonymous-session-lifecycle",
+      "finding": "McpAnonymousSession (IP + UA) has no sweeper/TTL/revocation cron.",
+      "severity": "privacy",
+      "downstreamIssue": "WIN-278",
+      "status": "recorded"
+    }
+  ],
+  "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift.",
+  "sourceDigest": "90bda71a963edd83ebed1e55cefcb2c3fbe9ed3cab980909b57de30d28a3920c"
+}

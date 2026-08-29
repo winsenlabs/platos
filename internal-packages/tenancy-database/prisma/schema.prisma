@@ -782,6 +782,41 @@ model AccessKey {
   @@index([replacedById])
 }
 
+/// WIN-296 — one-use first-install grant for the AccessKey lifecycle.
+///
+/// A fresh install has zero AccessKeys and needs to mint the FIRST one over the
+/// trusted direct-header channel. Rather than let the broad server-only
+/// internal token stand in as the first-operator credential, an operator may
+/// set a narrow, one-time install secret (PLATOS_BOOTSTRAP_TOKEN) that
+/// authorizes exactly one `POST /api/v1/agent/access-key` per Environment.
+///
+/// This row IS the consume record: `environmentId` is UNIQUE, so the first
+/// writer wins and any concurrent or later writer collides (P2002) and is
+/// rejected — a single-winner, non-replayable guarantee that does not depend on
+/// a check-then-set race. Once any active AccessKey exists the grant is inert
+/// (the guard self-disables the path), so re-entry requires an explicit,
+/// authorized recovery. `tokenFingerprint` is a SHA-256 of the presented
+/// secret — never the raw secret — for forensic correlation.
+model AccessKeyBootstrapGrant {
+  id               String   @id @default(uuid()) @db.Uuid
+  environmentId    String   @unique @db.Uuid
+  organizationId   String   @db.Uuid
+  projectId        String   @db.Uuid
+  actorUserId      String?
+  tokenFingerprint String
+  source           String?
+  consumedAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  // environmentId is an unmanaged scalar FK (enforced by the migration's
+  // AccessKeyBootstrapGrant_environmentId_fkey). It is intentionally NOT a
+  // Prisma @relation: the frozen 00000000000000_initial migration is hash-pinned,
+  // so post-initial additions carry their FK in SQL only (same pattern the
+  // access_key_revocation_fence used). See WIN-296.
+
+  @@index([organizationId, projectId])
+}
+
 model ProviderKey {
   id                 String    @id @default(uuid()) @db.Uuid
   environmentId      String    @db.Uuid

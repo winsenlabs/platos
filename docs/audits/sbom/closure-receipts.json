@@ -1,0 +1,30 @@
+{
+  "$schema": "platos.audit.closure-receipts/v1",
+  "generatedBy": "scripts/audit-sbom.mjs generate",
+  "toolVersion": "1.0.0",
+  "fixedTimestamp": "2026-08-28T00:00:00.000Z",
+  "lockfileSha256": "603cd67f4564fe644852b01fa409c75d65a9cdf015f251bb79ce723846360f69",
+  "licenseIndexSha256": "e1cfaf45f18403abb8cc8e0b075417124d3715fe1bd604742456f1c232f8f214",
+  "licenseOverlaySha256": "cabf35d68abfbf7a2c76ca7de356d3c7bac2cf776d91bedea1558fad06d4127a",
+  "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
+  "images": {
+    "agent": {
+      "file": "docs/audits/sbom/platos-agent.cdx.json",
+      "sha256": "c7e201258465a659569d7b57cace4836890c75d2544802ec9e1b2a5ef20d50d2",
+      "componentCount": 718,
+      "distinctNames": 657,
+      "roots": [
+        "apps/agent"
+      ]
+    },
+    "webapp": {
+      "file": "docs/audits/sbom/platos-webapp.cdx.json",
+      "sha256": "1f844390d9262e7b7137125a8d78615ec9839ae72f478d7aac4b20c367ebb314",
+      "componentCount": 1637,
+      "distinctNames": 1357,
+      "roots": [
+        "apps/webapp"
+      ]
+    }
+  }
+}

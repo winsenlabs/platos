@@ -4,22 +4,52 @@ Platos
 Platos is an open-source agent runtime platform maintained by Winsen Labs.
 
 Platos is built on top of, and incorporates code from, the trigger.dev project.
-See the LICENSE file for the full MIT license terms that apply to upstream
+The governing licence for this repository is the Apache License, Version 2.0.
+See the LICENSE file for the full Apache-2.0 terms that apply to upstream
 trigger.dev code and to Platos additions.
 
+  (The upstream trigger.dev project is itself distributed under Apache-2.0, and
+  the LICENSE file in this repository is the Apache-2.0 text. Earlier revisions
+  of this NOTICE referred to "MIT"; that was an error and Apache-2.0 governs.
+  Individual npm packages published from this monorepo should declare
+  "Apache-2.0" in their package.json `license` field; any package still
+  declaring "MIT" is a residue of the rename and should be corrected — see
+  docs/audits/sbom/licence-resolution.md.)
+
 Upstream credit:
-  - trigger.dev, Copyright (c) Trigger.dev, Inc.
+  - trigger.dev, Copyright (c) Trigger.dev, Inc. — Apache-2.0
     https://github.com/triggerdotdev/trigger.dev
 
 Platos additions (the @platos/* packages, apps/agent, Platos-specific
 schema migrations, and documentation) are Copyright (c) 2026 Winsen Labs,
-distributed under the same MIT license for consistency with the upstream work.
+distributed under the Apache License, Version 2.0.
 
-Dependencies:
-  This project depends on numerous third-party open-source libraries. See
-  package.json and pnpm-lock.yaml for the full list. Each dependency retains
-  its own license — browse node_modules/*/LICENSE or run `pnpm licenses list`
-  for details.
+Third-party dependency licences
+-------------------------------
+This project depends on numerous third-party open-source libraries. The
+authoritative, per-image inventory of what actually ships — every package,
+version, and resolved licence in the production closure of each image — is the
+CycloneDX SBOM set under docs/audits/sbom/:
+
+  - docs/audits/sbom/platos-agent.cdx.json   (agent image production closure)
+  - docs/audits/sbom/platos-webapp.cdx.json  (webapp image production closure)
+
+Regenerate with `pnpm audit:sbom` and verify with `pnpm audit:sbom:check`.
+
+Recorded licence elections (dual-licensed dependencies)
+-------------------------------------------------------
+Where a shipped dependency offers a choice of licences, Platos elects as follows
+(machine-readable in docs/audits/sbom/license-overlay.json):
+
+  - dompurify (both images): published "(MPL-2.0 OR Apache-2.0)" — Platos elects
+    Apache-2.0.
+  - json-schema: published "(AFL-2.1 OR BSD-3-Clause)" — Platos elects BSD-3-Clause.
+
+Attribution obligations
+------------------------
+Some permissive dependencies require attribution (for example caniuse-lite,
+CC-BY-4.0). Their notices are preserved in the dependency artifacts and enumerated
+in the SBOMs above.
 
 If you believe any attribution is missing or incorrect, please open an issue
 at https://github.com/winsenlabs/platos/issues or email security@platos.dev.

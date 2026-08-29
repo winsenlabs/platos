@@ -178,6 +178,12 @@ export interface RequestScope {
   projectId: string;
   environmentId: string;
   userId: string;
+  /**
+   * Server-stamped only after the narrow first-install credential is validated.
+   * The controller uses this marker to consume the grant and create the first
+   * AccessKey in one database transaction. Never accept it from request data.
+   */
+  accessKeyBootstrapAuthenticated?: true;
   entityId?: string;
   userToken?: string;
   /**
@@ -286,11 +292,13 @@ export class ScopeGuard implements CanActivate {
   constructor(@Optional() @Inject(AuthService) private readonly authService?: AuthService) {}
 
   /**
-   * Access-key lifecycle is a control-plane operation. The webapp sends it
-   * over the trusted direct-header channel and deliberately never retains the
-   * raw bearer after its one-time browser reveal. Keep this exception exact:
-   * it applies only to the lifecycle routes and only from Path 2 below, which
-   * rejects requests that arrived through the public proxy.
+   * Access-key lifecycle is a control-plane operation reachable over the
+   * trusted direct-header channel (webapp→agent, never through Caddy). WIN-296:
+   * these four routes are NO LONGER credential-free. On Path 2 below they now
+   * require the internal control-plane token; the sole exception is the safe
+   * first-install bootstrap of the create route (see
+   * `isDirectAccessKeyBootstrapRoute`). Keep the matcher exact — it applies
+   * only to these routes and only after the public-proxy rejection.
    */
   private isDirectAccessKeyLifecycleRequest(request: {
     method?: unknown;
@@ -311,6 +319,29 @@ export class ScopeGuard implements CanActivate {
         (method === "GET" || method === "POST" || method === "DELETE")) ||
       (pathname === "/api/v1/agent/access-key/origins" && method === "POST")
     );
+  }
+
+  /**
+   * WIN-296 — the ONLY lifecycle route the first-install bootstrap may
+   * authorize: `POST /api/v1/agent/access-key`, i.e. minting the first key.
+   * Read (GET), delete (DELETE), and origins (POST /origins) are never
+   * bootstrappable — they are not needed to establish the first operator/key
+   * and always require the internal control-plane token.
+   */
+  private isDirectAccessKeyBootstrapRoute(request: {
+    method?: unknown;
+    originalUrl?: unknown;
+    url?: unknown;
+  }): boolean {
+    const method = typeof request.method === "string" ? request.method.toUpperCase() : "";
+    const url =
+      typeof request.originalUrl === "string"
+        ? request.originalUrl
+        : typeof request.url === "string"
+        ? request.url
+        : "";
+    const pathname = url.split("?", 1)[0];
+    return method === "POST" && pathname === "/api/v1/agent/access-key";
   }
 
   /**
@@ -767,15 +798,55 @@ export class ScopeGuard implements CanActivate {
         // path too (webapp → agent over the Docker network).
         ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
       } satisfies RequestScope;
-      // Access key checks protect ordinary direct-header runtime requests. The
-      // exact AccessKey lifecycle routes are operator-authorized by their
-      // controller/service and cannot require raw bearer material that the
-      // dashboard intentionally discards after the one-time reveal.
-      if (
-        this.authService &&
-        !this.isDirectAccessKeyLifecycleRequest(request) &&
-        !this.hasValidControlPlaneAuth(request)
-      ) {
+      // WIN-296 — the AccessKey lifecycle routes are control-plane-only. They
+      // were previously exempted from BOTH the token check and the key check,
+      // which granted operator with NO credential to anything that could reach
+      // the agent on the internal network (read metadata, delete keys for DoS,
+      // or install a known key). They now require the internal control-plane
+      // token, with ONE safe exception: the first-install bootstrap of the
+      // create route.
+      if (this.isDirectAccessKeyLifecycleRequest(request)) {
+        // Normal path: the webapp always sends the internal control-plane token
+        // (X-Platos-Internal-Auth), which WIN-293 made mandatory.
+        if (this.hasValidControlPlaneAuth(request)) {
+          return true;
+        }
+        // Safe first-install bootstrap — create route ONLY, genuine zero-key
+        // state, one-use, and non-replayable. The service consumes and audits it
+        // atomically with creation of the first access key. Any
+        // other lifecycle route, or a create without a valid one-use install
+        // secret, falls through to the rejection below.
+        if (this.authService && this.isDirectAccessKeyBootstrapRoute(request)) {
+          const bootstrapToken = request.headers["x-platos-bootstrap-token"] as
+            | string
+            | undefined;
+          const outcome = await this.authService.tryConsumeAccessKeyBootstrap({
+            organizationId: request.scope.organizationId,
+            projectId: request.scope.projectId,
+            environmentId: request.scope.environmentId,
+            userId: request.scope.userId,
+            providedToken: bootstrapToken,
+            source: "scope-guard-first-install",
+          });
+          if (outcome.ok) {
+            request.scope.accessKeyBootstrapAuthenticated = true;
+            return true;
+          }
+        }
+        const resp = context.switchToHttp().getResponse();
+        resp.status(401).json({
+          error: "CONTROL_PLANE_AUTH_REQUIRED",
+          message:
+            "AccessKey lifecycle requires the internal control-plane credential (X-Platos-Internal-Auth). A one-use first-install bootstrap authorizes only the initial key.",
+        });
+        return false;
+      }
+
+      // Access key checks protect ordinary direct-header runtime requests. A
+      // server-authenticated control-plane call (internal token) is trusted
+      // without an Environment AccessKey; every other runtime caller must
+      // present a valid key when one is configured for the scope.
+      if (this.authService && !this.hasValidControlPlaneAuth(request)) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
         const origin = (request.headers["origin"] || request.headers["referer"]) as
           | string
@@ -791,13 +862,30 @@ export class ScopeGuard implements CanActivate {
           providedKey,
           origin
         );
-        if (keyResult === false) {
+        // WIN-293 — fail CLOSED on the unauthenticated direct-header operator
+        // path. Reaching here means the caller presented NO valid control-plane
+        // token (hasValidControlPlaneAuth already returned false above) and this
+        // is not an AccessKey lifecycle route, yet the scope block above already
+        // stamped principal: "operator". Confirm that promotion ONLY on a
+        // POSITIVE AccessKey match. verifyAccessKey returns `null` when no
+        // AccessKey is configured for the scope and `false` when one is
+        // configured but the presented key is missing/invalid — BOTH must reject
+        // here, so an anonymous caller can never be handed operator merely
+        // because no key exists. The trusted webapp reaches operator surfaces
+        // through the mandatory PLATOS_INTERNAL_AUTH_TOKEN (checked above), never
+        // through this branch. The session-token site keeps the opposite
+        // semantics: there `null` means "no optional gate configured" and
+        // correctly allows, because the token already authenticated the caller.
+        if (keyResult !== true) {
           const resp = context.switchToHttp().getResponse();
           resp
             .status(401)
             .json({
               error: "INVALID_ACCESS_KEY",
-              message: "X-Platos-Api-Key is missing or invalid for this scope.",
+              message:
+                keyResult === null
+                  ? "Operator access via direct scope headers requires a configured X-Platos-Api-Key or the internal control-plane token."
+                  : "X-Platos-Api-Key is missing or invalid for this scope.",
             });
           return false;
         }

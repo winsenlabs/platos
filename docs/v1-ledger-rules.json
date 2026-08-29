@@ -3,15 +3,15 @@
   "purpose": "One row per tracked file for the V1 refactor. Within an area the FIRST rule whose glob matches the path wins; array order IS the precedence. Rules are ordered pins-first: individually-verified rules (a legal obligation, a named-consumer pin, a reachability-proven orphan) are declared ahead of the broad fallback buckets, so a specific verified decision is never overridden by a generic rule.",
   "precedence": "First-match-wins is deliberately NOT a monotonic safety gradient: a delete pin is declared ahead of the archive bucket that also matches its files, which is the mechanism by which the verified orphan wins. The generator does not claim safer-always-first; instead it ENFORCES the property that matters for the destructive case in scripts/v1-ledger.mjs checkInvariants -- every delete row must be an exact literal path (validation rejects a wildcard in a delete rule) AND be confirmed unreferenced by a live scan of every tracked text file at check time. A tracked file that matches no rule, or a delete candidate found referenced, is a hard error. Globs match dotfiles: the matcher has no leading-dot special case.",
   "baseline": {
-    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force.",
-    "totalFiles": 3385,
+    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force. M0 INTEGRATION RE-BASELINE (tejas/m0-integration, base origin/v1 06d47ca): the single M0 close-out integration adds 35 tracked files, lifting the total from 3385 to 3420 and leaving apps-webapp (180) and packages (550) untouched. apps-agent 507->509 (+2): WIN-293/296 auth tests env-internal-auth-sentinel.test.ts and auth.service.access-key-bootstrap.test.ts. internal-packages 1268->1269 (+1): the WIN-296 AccessKeyBootstrapGrant migration (20260828120000). docs-content 675->692 (+17): the M0 ADRs (M0.3-bounded-contexts, M0.4-contract-versioning) and durable audit artifacts (M0.2 capability matrix json+md, M0.4 design-contract-map json+md, M0.5-dependency-sbom.md, and the ten docs/audits/sbom/* SBOM/advisory/licence/closure-receipt evidence files). root-infra 205->220 (+15): the WIN-248/249 arch-boundary tooling (.dependency-cruiser.js + scripts/arch/*, five files) with its fixture test, the WIN-250 supply-chain tooling (scripts/audit-{sbom,advisory,licenses}.mjs, scripts/lib/pnpm-closure.mjs, scripts/verify-sbom-nonvacuity.mjs, scripts/audit-sbom.test.mjs), scripts/capability-matrix.mjs (WIN-247), the WIN-295 scripts/vocabulary-boundary.nul.test.mjs adversarial NUL test, and renovate.json (WIN-250 update automation, newly classified by rule root-infra.automation.renovate). Every added file is enumerated above and conserves exactly to these deltas; this re-baseline is submitted for ledger-owner review in the M0 integration PR, not to silence a check. Any further drift from 3420 is again a finding to report, not a number to force.",
+    "totalFiles": 3420,
     "areaCounts": {
-      "apps-agent": 507,
+      "apps-agent": 509,
       "apps-webapp": 180,
       "packages": 550,
-      "internal-packages": 1268,
-      "docs-content": 675,
-      "root-infra": 205
+      "internal-packages": 1269,
+      "docs-content": 692,
+      "root-infra": 220
     }
   },
   "areas": {
@@ -1146,6 +1146,19 @@
         "evidence": "Consumer: internal-packages/otlp-importer/scripts/submodule.mjs runs `git submodule sync` and `git submodule update` at lines 13 and 24. Git reads this file itself, so no tracked file ever names it and a literal search for the filename returns nothing. Confirmed: an exhaustive basename scan over every tracked text file finds zero references. Reachability is real but indirect, and whether the vendored proto submodule survives V1 is an open product question, so this stays unresolved rather than being guessed either way."
       },
       {
+        "id": "root-infra.automation.renovate",
+        "match": [
+          "renovate.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Supply-Chain Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "filesystem-path"
+        ],
+        "evidence": "WIN-250 dependency update-automation policy. Consumed directly by the Renovate app by fixed filename; like .gitmodules, no tracked file references it, so it is declared explicitly. Defines grouping, schedule, and lockfile-maintenance for the M0 supply-chain closure loop (SBOM -> advisory -> update automation)."
+      },
+      {
         "id": "root-infra.pin.public-proxy-example",
         "match": [
           "hosting/Caddyfile.example"
@@ -1460,36 +1473,36 @@
     ]
   },
   "expected": {
-    "totalFiles": 3385,
+    "totalFiles": 3420,
     "areaCounts": {
-      "apps-agent": 507,
+      "apps-agent": 509,
       "apps-webapp": 180,
-      "docs-content": 675,
-      "internal-packages": 1268,
+      "docs-content": 692,
+      "internal-packages": 1269,
       "packages": 550,
-      "root-infra": 205
+      "root-infra": 220
     },
     "kindCounts": {
       "asset": 154,
-      "config": 249,
-      "doc": 556,
+      "config": 251,
+      "doc": 558,
       "fixture": 18,
-      "generated": 25,
+      "generated": 40,
       "legal": 15,
       "lockfile": 3,
-      "migration": 893,
-      "source": 1039,
-      "test": 433
+      "migration": 894,
+      "source": 1050,
+      "test": 437
     },
     "dispositionCounts": {
       "archive": 511,
       "delete": 7,
-      "move-refactor": 1706,
-      "regenerate": 16,
-      "retain": 1143,
+      "move-refactor": 1723,
+      "regenerate": 31,
+      "retain": 1146,
       "unresolved": 2
     },
-    "protectedCount": 932,
+    "protectedCount": 933,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -1499,7 +1512,7 @@
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
       "apps-agent.source.runtime": 275,
-      "apps-agent.test.suites": 199,
+      "apps-agent.test.suites": 201,
       "apps-agent.tooling.scripts": 11,
       "apps-webapp.asset.public": 10,
       "apps-webapp.config.build": 13,
@@ -1518,9 +1531,9 @@
       "docs-content.design.canvas-assets": 5,
       "docs-content.design.canvas-style": 4,
       "docs-content.design.index": 1,
-      "docs-content.generated.audit": 3,
+      "docs-content.generated.audit": 18,
       "docs-content.notes.ai-references": 3,
-      "docs-content.notes.platos": 48,
+      "docs-content.notes.platos": 50,
       "docs-content.pin.boundary-manifest": 1,
       "docs-content.pin.ledger-rules": 1,
       "docs-content.pin.unreferenced-media": 7,
@@ -1547,7 +1560,7 @@
       "internal-packages.infra.container": 2,
       "internal-packages.legal.attribution": 2,
       "internal-packages.lockfile.migration-image": 1,
-      "internal-packages.migration.canonical": 856,
+      "internal-packages.migration.canonical": 857,
       "internal-packages.migration.image": 4,
       "internal-packages.schema.analytics": 34,
       "internal-packages.schema.prisma": 3,
@@ -1570,11 +1583,12 @@
       "packages.vendor.sdk.source": 36,
       "packages.vendor.sdk.test": 2,
       "root-infra.archive.working-notes": 2,
+      "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
       "root-infra.ci.repository-meta": 7,
       "root-infra.ci.workflows": 4,
       "root-infra.compose.stacks": 2,
-      "root-infra.config.dotfiles": 7,
+      "root-infra.config.dotfiles": 8,
       "root-infra.deps.patches": 8,
       "root-infra.doc.root-notes": 5,
       "root-infra.doc.self-host": 1,
@@ -1591,9 +1605,9 @@
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 25,
       "root-infra.test.harness": 55,
-      "root-infra.test.script-suites": 6,
-      "root-infra.tooling.scripts": 28
+      "root-infra.test.script-suites": 8,
+      "root-infra.tooling.scripts": 39
     },
-    "classificationSha256": "0c8b8ad75be3a50d774c74b17d1b49c7795cbc032c766478d0b68f0e125cc044"
+    "classificationSha256": "f7620b2cd6d66a486aefd83e4c355accfd598c978021051816d9f15bd553eb07"
   }
 }

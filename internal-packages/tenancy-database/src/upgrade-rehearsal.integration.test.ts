@@ -94,6 +94,7 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
       { migration_name: "20260824111500_memory_profile_key_and_source_contract" },
       { migration_name: upgradeMigrationName },
       { migration_name: accessKeyUpgradeMigrationName },
+      { migration_name: "20260828120000_win296_access_key_bootstrap_grant" },
     ]);
 
     const accessKeyFenceColumn = await prisma.$queryRawUnsafe<

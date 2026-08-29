@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(92);
+    expect(modelNames).toHaveLength(93);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1387,6 +1387,16 @@ async function seedEveryModel(control: PrismaClient) {
       keyPrefix: "pk_test",
       keyHash: "access-key-hash",
       allowedOrigins: ["https://example.test"],
+    },
+  }));
+  track("AccessKeyBootstrapGrant", await control.accessKeyBootstrapGrant.create({
+    data: {
+      environmentId: environment.id,
+      organizationId: organization.id,
+      projectId: project.id,
+      actorUserId: user.id,
+      tokenFingerprint: "bootstrap-grant-fingerprint",
+      source: "integration-seed",
     },
   }));
   track("ProviderKey", await control.providerKey.create({

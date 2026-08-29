@@ -67,14 +67,57 @@ export function listRepositoryFiles(root) {
     .sort();
 }
 
-export function decodeTextFile(path) {
-  const source = readFileSync(path);
-  if (source.includes(0)) return null;
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(source);
-  } catch {
-    return null;
+// WIN-295 — binary/generated artifacts skipped by the gate. This is a DENYLIST,
+// not an allowlist: every file whose extension is NOT here fails CLOSED — it is
+// decoded leniently, its NUL bytes stripped, and it is scanned. So no source-like
+// input (a .ts, a bare `Dockerfile`, a `.env.production`, a novel extension) can
+// hide forbidden vocabulary behind a NUL byte or an encoding trick by falling
+// through to a "binary" skip path (the pre-WIN-295 blind spot). `svg` is absent —
+// SVG is XML text and is scanned.
+export const BINARY_EXTENSIONS = new Set([
+  "png", "jpg", "jpeg", "gif", "bmp", "ico", "icns", "tif", "tiff",
+  "webp", "avif", "heic", "heif", "psd", "raw", "cr2", "nef", "arw",
+  "woff", "woff2", "ttf", "otf", "eot", "ttc",
+  "pdf", "zip", "gz", "tgz", "bz2", "xz", "7z", "rar", "tar", "jar",
+  "war", "ear", "lz4", "zst", "zstd", "br", "cab", "dmg", "iso",
+  "mp3", "mp4", "m4a", "m4v", "mov", "avi", "mkv", "webm", "wav",
+  "flac", "ogg", "opus", "aac", "wma", "mpg", "mpeg", "flv", "3gp",
+  "wasm", "exe", "dll", "so", "dylib", "o", "obj", "lib", "a",
+  "class", "pyc", "pyo", "node", "bin", "dat", "img",
+  "sqlite", "sqlite3", "db", "mdb", "realm", "pack", "idx",
+  "onnx", "pt", "pth", "h5", "npy", "npz", "parquet", "arrow",
+  "feather", "safetensors", "gguf", "ggml",
+  "keystore", "jks", "p12", "pfx",
+]);
+
+function isBinaryPath(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  const match = /\.([a-z0-9]+)$/u.exec(base);
+  return match ? BINARY_EXTENSIONS.has(match[1]) : false;
+}
+
+function stripNulCharacters(text) {
+  const nul = String.fromCharCode(0);
+  return text.includes(nul) ? text.split(nul).join("") : text;
+}
+
+// Returns { text, sourceLike }. text === null iff the file is a genuine binary
+// artifact (extension on BINARY_EXTENSIONS). Every other file is decoded
+// leniently with its NUL bytes stripped — so a planted NUL, a UTF-16/BOM
+// disguise, or a NUL that splits a flagged word can no longer hide vocabulary
+// or demote a source-like file to a "binary" skip.
+export function decodeForScan(path) {
+  const bytes = readFileSync(path);
+  if (isBinaryPath(path)) {
+    return { text: null, sourceLike: false };
   }
+  const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  return { text: stripNulCharacters(text), sourceLike: true };
+}
+
+// Back-compat wrapper: string|null, preserved for any existing caller/test.
+export function decodeTextFile(path) {
+  return decodeForScan(path).text;
 }
 
 export function validateManifest(manifest) {
