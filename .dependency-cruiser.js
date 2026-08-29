@@ -336,7 +336,7 @@ module.exports = {
       "comment": "node_modules/@tri[g]ger\\.dev may be imported only from its single owning adapter.",
       "severity": "error",
       "from": {
-        "pathNot": "^packages/adapters/durable-runtime-tri[g]ger/"
+        "pathNot": "^packages/adapters/durable-runtime/"
       },
       "to": {
         "path": "node_modules/@tri[g]ger\\.dev"

@@ -30,8 +30,11 @@
 
 // The durable-runtime vendor scope, character-class form (see NOTE above).
 const DURABLE_RUNTIME_SCOPE = "@tri[g]ger\\.dev";
-// The durable-runtime adapter directory, character-class form (see NOTE above).
-const DURABLE_RUNTIME_ADAPTER = "packages/adapters/durable-runtime-tri[g]ger/";
+// The durable-runtime adapter directory. ADR M0.3 §4/§5.1(h) spells this with a
+// vendor suffix; ADR M0.3 §12 (amendment) records that the IMPLEMENTED directory
+// carries no vendor segment, so this anchor is a plain literal and needs no
+// character class. The vendor scope above still does.
+const DURABLE_RUNTIME_ADAPTER = "packages/adapters/durable-runtime/";
 
 // The charter "banned in domain + application" infrastructure import list
 // (ADR M0.3 §2 "Banned imports in domain/** and application/**"). Each entry is a
