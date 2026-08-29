@@ -1,0 +1,418 @@
+{
+  "milestone": "M0.9",
+  "issue": "WIN-294",
+  "title": "Webapp/BFF entrypoint census",
+  "mechanism": "Counts every exported `loader` and `action` (server-side BFF entrypoints) across apps/webapp/app/routes.",
+  "expectedEntrypoints": 117,
+  "totals": {
+    "routeFiles": 84,
+    "routeFilesWithServer": 80,
+    "loaders": 75,
+    "actions": 42,
+    "entrypoints": 117
+  },
+  "reconciliation": "loaders + actions === entrypoints; entrypoints === expectedEntrypoints (WIN-294's 117, verified from source). --check fails on any drift.",
+  "entries": [
+    {
+      "file": "apps/webapp/app/routes/_app/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx",
+      "loader": false,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters.$clusterId/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts",
+      "loader": false,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.initial-secret/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.wire-test/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.new/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-evals._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-governance._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring.users._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-tools._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.canary/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.context/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.evals-ab/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.audit/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.cost/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx",
+      "loader": false,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.eval-criteria._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations.$threadId.attachments/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.general/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId.trace/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/_app.orgs.new/route.tsx",
+      "loader": false,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/account._index/route.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
+      "loader": false,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/embed.$agentId.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/healthcheck.tsx",
+      "loader": true,
+      "action": false
+    },
+    {
+      "file": "apps/webapp/app/routes/login._index/route.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/logout.tsx",
+      "loader": true,
+      "action": true
+    },
+    {
+      "file": "apps/webapp/app/routes/magic.tsx",
+      "loader": true,
+      "action": false
+    }
+  ],
+  "sourceDigest": "518eb13e03862aea7a2c8520ca195a117cbc059a2ea23d425f3a8754df6920d1"
+}
