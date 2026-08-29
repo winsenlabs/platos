@@ -6,16 +6,14 @@ name: CI
 # the box. A workhorse-on-autopilot must reject code that doesn't compile BEFORE
 # it can be merged.
 #
-# SCOPE: this gate type-checks `platos-agent` — the runtime that handles every
-# turn, and exactly the package #15's TS2352 broke. It is verified green today
-# (6/6 tasks). The gate is deliberately NOT whole-monorepo yet: two packages
-# fail typecheck on `main` independent of any change here — `@internal/zod-worker`
-# (TS7016: legacy `moduleResolution: "Node"` can't read eventsource-parser's
-# `exports`-mapped types) and `webapp` (server.ts Socket.IO type mismatches). A
-# gate that is red from birth trains everyone to ignore it — worse than no gate.
-# Widening to the whole monorepo is tracked as a follow-up once that pre-existing
-# debt is cleared. Branch protection should require the "typecheck" check so a
-# red PR cannot be squashed in.
+# SCOPE: this gate type-checks both shipping application surfaces. The explicit
+# `platos-agent` graph gets a strict declaration build, and `webapp` runs its
+# dedicated no-emit typecheck. It is deliberately NOT whole-monorepo yet:
+# `@internal/zod-worker` still fails independently because legacy
+# `moduleResolution: "Node"` cannot read eventsource-parser's exports-mapped
+# types. Widening to the whole monorepo remains a follow-up after that debt is
+# cleared. Branch protection should require the "typecheck" check so a red PR
+# cannot be squashed in.
 
 on:
   pull_request:
@@ -47,7 +45,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -75,6 +73,7 @@ jobs:
 
       - name: V1 M0 executable evidence gates
         run: |
+          pnpm test:ci-policy
           node --test scripts/vocabulary-boundary.nul.test.mjs
           node --test scripts/v1-ledger.test.mjs
           node scripts/v1-ledger.mjs --check
@@ -107,6 +106,19 @@ jobs:
       - name: Webapp memory-policy tests
         run: pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts
 
+      - name: Webapp typecheck
+        run: pnpm --filter webapp typecheck
+
+      - name: Prove source-only evidence verifiers fail on mutation
+        run: |
+          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts
+          pnpm --filter platos-agent exec vitest run src/memory/memory-profile-startup-verifier.service.test.ts
+          pnpm --filter platos-agent exec vitest run src/startup-failure.test.ts
+          pnpm test:persisted-state:performance-contract
+          pnpm test:non-browser-completion:contract
+          pnpm test:browser-evidence:contract
+          pnpm test:route-parity:completion:evidence
+
       - name: Strict declaration build for the explicit Platos agent graph
         # Builds only the agent's real runtime graph and emits declarations.
         # The separate image workflow builds the webapp's still-deferred engine
@@ -134,7 +146,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -203,7 +215,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install lockfile-backed dependencies

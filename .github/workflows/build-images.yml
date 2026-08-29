@@ -7,9 +7,9 @@ name: Build and gate container images
 # from a successful landed-main run; this workflow never publishes them.
 on:
   push:
-    branches: [main]
+    branches: [main, v1]
   pull_request:
-    branches: [main]
+    branches: [main, v1]
   workflow_dispatch: {} # manual build/gate only; never publication
 
 concurrency:
@@ -188,7 +188,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22.14.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install lockfile-backed test dependencies
@@ -278,14 +278,6 @@ jobs:
           };
           fs.writeFileSync("artifacts/win235/candidate-images.json", `${JSON.stringify(images, null, 2)}\n`);
           NODE
-
-      - name: Prove performance and evidence verifiers fail on mutation
-        run: |
-          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts src/memory/memory-profile-startup-verifier.service.test.ts src/startup-failure.test.ts
-          pnpm test:persisted-state:performance-contract
-          pnpm test:non-browser-completion:contract
-          pnpm test:browser-evidence:contract
-          pnpm test:route-parity:completion:evidence
 
       - name: Measure the pristine dense fixture against the exact candidates
         shell: bash

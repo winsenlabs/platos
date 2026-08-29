@@ -10,6 +10,25 @@ function source(relativePath) {
   return readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 }
 
+function mutate(fixture, before, after, options = {}) {
+  assert.ok(fixture.includes(before), `mutation source is missing ${JSON.stringify(before)}`);
+  const mutation = options.all ? fixture.replaceAll(before, after) : fixture.replace(before, after);
+  assert.notEqual(mutation, fixture, "fixture mutation must change source");
+  return mutation;
+}
+
+function insertExecutableJobStep(fixture, jobName, stepYaml) {
+  const job = jobBlock(fixture, jobName);
+  const marker = "    steps:\n";
+  assert.ok(job.includes(marker), `${jobName} job is missing steps`);
+  const mutatedJob = job.replace(marker, `${marker}${stepYaml}`);
+  assert.notEqual(mutatedJob, job, "job step mutation must change source");
+  const mutation = fixture.replace(job, mutatedJob);
+  assert.notEqual(mutation, fixture, "workflow mutation must change source");
+  assert.ok(jobBlock(mutation, jobName).includes(`${marker}${stepYaml}`), "mutation must remain under the target job steps");
+  return mutation;
+}
+
 function jobBlock(workflow, jobName) {
   const start = workflow.indexOf(`  ${jobName}:\n`);
   assert.notEqual(start, -1, `missing ${jobName} job`);
@@ -95,11 +114,11 @@ function triggerReleaseViolations(workflow) {
   return violations;
 }
 
-test("main and pull-request image gates cannot write packages or publish to GHCR", () => {
+test("main/v1 push and pull-request image gates cannot write packages or publish to GHCR", () => {
   const buildWorkflow = source(".github/workflows/build-images.yml");
 
-  assert.match(buildWorkflow, /^\s{2}push:\n\s{4}branches: \[main\]/m);
-  assert.match(buildWorkflow, /^\s{2}pull_request:\n\s{4}branches: \[main\]/m);
+  assert.match(buildWorkflow, /^\s{2}push:\n\s{4}branches: \[main, v1\]/m);
+  assert.match(buildWorkflow, /^\s{2}pull_request:\n\s{4}branches: \[main, v1\]/m);
   assert.doesNotMatch(buildWorkflow, /packages:\s*write/);
   assert.doesNotMatch(buildWorkflow, /docker\/login-action/);
   assert.doesNotMatch(buildWorkflow, /regctl image (?:import|copy) "\$staging_ref"/);
@@ -128,11 +147,15 @@ test("image publication is protected, dispatch-only, and reuses one successful l
 test("image authorization checks fail under release-boundary mutations", () => {
   const workflow = source(".github/workflows/publish-images.yml");
   const mutations = [
-    workflow.replace('.event == "push"', '.event == "pull_request"'),
-    workflow.replace("environment: image-publication", "environment: unprotected"),
-    workflow.replace('.conclusion == "success"', '.conclusion != "cancelled"'),
-    workflow.replaceAll("run-id: ${{ inputs.source_run_id }}", "run-id: ${{ github.run_id }}"),
-    `${workflow}\n# mutation\n      - run: docker build .\n`,
+    mutate(workflow, '.event == "push"', '.event == "pull_request"'),
+    mutate(workflow, "environment: image-publication", "environment: unprotected"),
+    mutate(workflow, '.conclusion == "success"', '.conclusion != "cancelled"'),
+    mutate(workflow, "run-id: ${{ inputs.source_run_id }}", "run-id: ${{ github.run_id }}", { all: true }),
+    insertExecutableJobStep(
+      workflow,
+      "publish-images",
+      "      - name: Mutation rebuild\n        run: docker build .\n\n"
+    ),
   ];
 
   for (const mutation of mutations) {
@@ -149,11 +172,11 @@ test("Trigger pushes validate only; deployment and promotion require separate au
 test("Trigger release authorization checks fail under mutation", () => {
   const workflow = source(".github/workflows/trigger-deploy.yml");
   const mutations = [
-    workflow.replace("if: github.event_name == 'workflow_dispatch'", "if: github.ref == 'refs/heads/main'"),
-    workflow.replace("environment: trigger-deployment", "environment: trigger-promotion"),
-    workflow.replace("deploy --skip-promotion", "deploy"),
-    workflow.replace("inputs.promote_target == true", "inputs.promote_target != false"),
-    workflow.replace("environment: trigger-promotion", "environment: trigger-deployment"),
+    mutate(workflow, "if: github.event_name == 'workflow_dispatch'", "if: github.ref == 'refs/heads/main'"),
+    mutate(workflow, "environment: trigger-deployment", "environment: trigger-promotion"),
+    mutate(workflow, "deploy --skip-promotion", "deploy"),
+    mutate(workflow, "inputs.promote_target == true", "inputs.promote_target != false"),
+    mutate(workflow, "environment: trigger-promotion", "environment: trigger-deployment"),
   ];
 
   for (const mutation of mutations) {

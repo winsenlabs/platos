@@ -33,7 +33,7 @@ COPY . .
 # pnpm-workspace.yaml so --frozen-lockfile works against the trimmed tree.
 RUN sed -i '/docs/d' pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
-    pnpm install --no-frozen-lockfile
+    pnpm install --frozen-lockfile
 
 # Explicit Platos agent graph: clean tenancy client, runtime-only internal
 # packages, then the agent's strict declaration build.

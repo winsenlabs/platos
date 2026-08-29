@@ -40,6 +40,7 @@
     "test": "turbo run test --concurrency=1 -- --run",
     "test:route-parity": "node --test scripts/route-capability-parity.test.mjs",
     "test:route-parity:completion:evidence": "node --test scripts/route-capability-completion-audit.test.mjs",
+    "test:ci-policy": "node --test scripts/ci-policy.test.mjs",
     "test:webapp": "turbo run test --filter webapp -- --run",
     "test:packages": "turbo run test --concurrency=1 --filter \"@trigger.dev/*\" -- --run",
     "test:internal": "turbo run test --concurrency=1 --filter \"@internal/*\" -- --run",
@@ -107,7 +108,8 @@
     "typescript": "5.5.4",
     "vite": "^5.4.21",
     "vite-tsconfig-paths": "^4.0.5",
-    "vitest": "3.1.4"
+    "vitest": "3.1.4",
+    "yaml": "2.6.1"
   },
   "packageManager": "pnpm@10.23.0",
   "dependencies": {

@@ -43,7 +43,7 @@ WORKDIR /platos
 # Corepack is used to install pnpm with the exact version from packageManager
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ENV NODE_ENV=development
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --no-frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 # Generate Prisma client here where all deps are installed
 COPY --from=pruner --chown=node:node /platos/internal-packages/tenancy-database/prisma /platos/internal-packages/tenancy-database/prisma
 RUN cd /platos/internal-packages/tenancy-database && pnpx prisma@6.14.0 generate --schema prisma/schema.prisma
@@ -56,7 +56,7 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ENV NODE_ENV=production
 # Install only the webapp's production dependency graph. Root dependencies are
 # repository/release tooling and must not be copied into the runtime image.
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --prod --filter webapp... --no-frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --prod --filter webapp... --frozen-lockfile
 
 ## Builder (builds the webapp)
 FROM base AS builder
