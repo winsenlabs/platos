@@ -23,6 +23,8 @@ const vocabularyManifestPath = "docs/vocabulary-boundary-exceptions.json";
 export const AREAS = [
   "apps-agent",
   "apps-webapp",
+  "apps-core-api",
+  "apps-mcp-stdio",
   "packages",
   "internal-packages",
   "docs-content",
@@ -113,6 +115,15 @@ export function byteCompare(left, right) {
 export function assignArea(path) {
   if (path.startsWith("apps/agent/")) return "apps-agent";
   if (path.startsWith("apps/webapp/")) return "apps-webapp";
+  // The ADR M0.3 §4 deployables. Each gets its own area rather than folding into
+  // apps-agent: `area` is a data field on every row and is hashed into the
+  // classification fingerprint, so labelling a core-api file "apps-agent" would
+  // be false data. Separate areas also keep the M2 drain (agent -> core-api)
+  // legible as two conserving counts instead of one net number that hides both
+  // directions. A sibling that is not one of these two still returns null and is
+  // reported, never absorbed.
+  if (path.startsWith("apps/core-api/")) return "apps-core-api";
+  if (path.startsWith("apps/mcp-stdio/")) return "apps-mcp-stdio";
 
   const slash = path.indexOf("/");
   if (slash === -1) return "root-infra";
