@@ -1,0 +1,321 @@
+{
+  "milestone": "M0.9",
+  "issue": "WIN-294",
+  "title": "Independent REST census — second enumerator reconciled to the generated manifest",
+  "mechanism": "Independent in ENUMERATION: discovers controllers by globbing apps/agent/src/**/*.controller.ts (file presence, NOT the generator's CONTROLLER_MODULE_MAP allowlist) and parses @Controller base paths, route decorators, and requireOperator guards directly from source. The committed manifest is read ONLY to reconcile counts, never to enumerate — so a controller the generator's allowlist misses still appears here and fails --check.",
+  "reconciliation": {
+    "routes": "independentUniqueRoutes + dualMountAliasOps === manifestOps; every controller's manifest ops === decorators × mount-multiplier.",
+    "operator": "manifestOperator >= independentOperatorFloor per controller (wrapper/inherited operator enforcement legitimately lifts the manifest above the direct-call floor).",
+    "omission": "a production controller found by glob but absent from the manifest FAILS --check."
+  },
+  "totals": {
+    "controllers": 27,
+    "independentUniqueRoutes": 281,
+    "dualMountAliasOps": 19,
+    "manifestOps": 300,
+    "independentOperatorFloor": 103,
+    "manifestOperator": 120
+  },
+  "table": [
+    {
+      "controller": "AgentController",
+      "file": "apps/agent/src/agent-runtime/agent.controller.ts",
+      "independentDecorators": 152,
+      "mountMultiplier": 1,
+      "manifestOps": 152,
+      "independentOperatorFloor": 68,
+      "manifestOperator": 68,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "AttachmentUploadController",
+      "file": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelAppEventsController",
+      "file": "apps/agent/src/channels/channel-app-events.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelAppOAuthController",
+      "file": "apps/agent/src/channels/channel-app-oauth.controller.ts",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelAppsController",
+      "file": "apps/agent/src/agent-runtime/channel-apps.controller.ts",
+      "independentDecorators": 10,
+      "mountMultiplier": 1,
+      "manifestOps": 10,
+      "independentOperatorFloor": 10,
+      "manifestOperator": 10,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelLinkController",
+      "file": "apps/agent/src/channels/channel-link.controller.ts",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelsController",
+      "file": "apps/agent/src/agent-runtime/channels.controller.ts",
+      "independentDecorators": 7,
+      "mountMultiplier": 1,
+      "manifestOps": 7,
+      "independentOperatorFloor": 7,
+      "manifestOperator": 7,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChannelsInboundController",
+      "file": "apps/agent/src/channels/channels-inbound.controller.ts",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "DocsMcpController",
+      "file": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "independentDecorators": 4,
+      "mountMultiplier": 2,
+      "manifestOps": 8,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ErasureController",
+      "file": "apps/agent/src/privacy/erasure.controller.ts",
+      "independentDecorators": 5,
+      "mountMultiplier": 1,
+      "manifestOps": 5,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "FilesController",
+      "file": "apps/agent/src/files/files.controller.ts",
+      "independentDecorators": 4,
+      "mountMultiplier": 1,
+      "manifestOps": 4,
+      "independentOperatorFloor": 4,
+      "manifestOperator": 4,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "HealthController",
+      "file": "apps/agent/src/health/health.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "InternalExecuteToolController",
+      "file": "apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts",
+      "independentDecorators": 4,
+      "mountMultiplier": 1,
+      "manifestOps": 4,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "JobExecutionController",
+      "file": "apps/agent/src/agent-runtime/job-execution.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "JobsController",
+      "file": "apps/agent/src/agent-runtime/jobs.controller.ts",
+      "independentDecorators": 6,
+      "mountMultiplier": 1,
+      "manifestOps": 6,
+      "independentOperatorFloor": 6,
+      "manifestOperator": 6,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "McpEntityController",
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "independentDecorators": 17,
+      "mountMultiplier": 1,
+      "manifestOps": 17,
+      "independentOperatorFloor": 1,
+      "manifestOperator": 13,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "McpPlatformController",
+      "file": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
+      "independentDecorators": 8,
+      "mountMultiplier": 1,
+      "manifestOps": 8,
+      "independentOperatorFloor": 4,
+      "manifestOperator": 4,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "MemoryController",
+      "file": "apps/agent/src/memory/memory.controller.ts",
+      "independentDecorators": 15,
+      "mountMultiplier": 2,
+      "manifestOps": 30,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "MemoryFeedbackAdminController",
+      "file": "apps/agent/src/memory/memory-feedback-admin.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 1,
+      "manifestOperator": 1,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "MetricsController",
+      "file": "apps/agent/src/monitoring/metrics.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "OAuthController",
+      "file": "apps/agent/src/oauth/oauth.controller.ts",
+      "independentDecorators": 16,
+      "mountMultiplier": 1,
+      "manifestOps": 16,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "OpenApiController",
+      "file": "apps/agent/src/openapi/openapi.controller.ts",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "PerformanceEvidenceController",
+      "file": "apps/agent/src/performance-evidence/performance-evidence.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ProvidersController",
+      "file": "apps/agent/src/providers/providers.controller.ts",
+      "independentDecorators": 7,
+      "mountMultiplier": 1,
+      "manifestOps": 7,
+      "independentOperatorFloor": 2,
+      "manifestOperator": 7,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "PublicGuestTokenController",
+      "file": "apps/agent/src/auth/public-guest-token.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "SessionTokenController",
+      "file": "apps/agent/src/auth/session-token.controller.ts",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "SkillsController",
+      "file": "apps/agent/src/skills/skills.controller.ts",
+      "independentDecorators": 9,
+      "mountMultiplier": 1,
+      "manifestOps": 9,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    }
+  ],
+  "ok": true,
+  "failures": [],
+  "sourceDigest": "91a8a5f25352b277733681d50576518201403573f7f2e0da028659ab23492fac"
+}

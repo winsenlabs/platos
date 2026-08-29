@@ -10,7 +10,7 @@
  * shim so bearer lifecycle and canonical ancestry are exercised together.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { UnauthorizedException } from "@nestjs/common";
+import { UnauthorizedException, Logger } from "@nestjs/common";
 import { mintSessionToken } from "@platosdev/token-mint";
 import {
   isPublicDocsMcpTransport,
@@ -19,6 +19,7 @@ import {
   isPublicOAuthRoute,
   isPublicTokenMintRoute,
   ScopeGuard,
+  AuthDecisionReason,
 } from "./scope.guard";
 import { AuthService } from "./auth.service";
 import { AgentController } from "../agent-runtime/agent.controller";
@@ -660,6 +661,25 @@ describe("ScopeGuard — Path 1 session token", () => {
     expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
   });
 
+  it("WIN-293 clause 6 — Path 1 (session token) emits ACCEPT_SESSION_TOKEN telemetry on an operator grant", async () => {
+    const logSpy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined as never);
+    try {
+      const h = makeAuthHarness();
+      const token = await h.auth.createPlatformSessionToken({
+        organizationId: h.scope.organizationId,
+        projectId: h.scope.projectId,
+        environmentId: h.scope.environmentId,
+        userId: h.scope.userId,
+      });
+      const ctx = mockExecutionContext({ "x-platos-session-token": token! });
+      await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+      const reasons = logSpy.mock.calls.map((c) => (c[0] as any)?.reason);
+      expect(reasons).toContain(AuthDecisionReason.ACCEPT_SESSION_TOKEN);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it("keeps guest platform tokens in the end-user tier", async () => {
     const h = makeAuthHarness();
     const token = await h.auth.createPlatformSessionToken({
@@ -1070,9 +1090,12 @@ describe("ScopeGuard — WIN-296 AccessKey lifecycle is control-plane-only", () 
       expect(response.json).toHaveBeenCalledWith(
         expect.objectContaining({ error: "CONTROL_PLANE_AUTH_REQUIRED" })
       );
-      // The request never becomes an operator.
-      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
-      // ...but canActivate returned false, so the handler never runs.
+      // WIN-293 (clause 5) — the request never becomes an operator. Principal is
+      // promoted ONLY after a positive credential, so a fail-closed reject
+      // leaves it unset. Previously it was stamped "operator" before the check
+      // (the anti-pattern WIN-293 removes), which this assertion now guards.
+      expect((ctx.switchToHttp().getRequest() as any).scope.principal).not.toBe("operator");
+      // ...canActivate returned false, so the handler never runs anyway.
     }
   );
 
@@ -1281,5 +1304,156 @@ describe("ScopeGuard — WIN-296 AccessKey lifecycle is control-plane-only", () 
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+
+describe("ScopeGuard — WIN-293 auth-decision telemetry + negative-control matrix", () => {
+  const scopeHeaders = {
+    "x-platos-organization-id": "org_1",
+    "x-platos-project-id": "proj_1",
+    "x-platos-environment-id": "env_1",
+    "x-platos-user-id": "user_1",
+  };
+  const TOKEN = "a".repeat(48);
+  let prevToken: string | undefined;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    logSpy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined as never);
+    warnSpy = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined as never);
+  });
+  afterEach(() => {
+    if (prevToken === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    else process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
+    vi.restoreAllMocks();
+  });
+
+  const acceptReasons = () => logSpy.mock.calls.map((c) => (c[0] as any)?.reason);
+  const rejectReasons = () => warnSpy.mock.calls.map((c) => (c[0] as any)?.reason);
+  const principalOf = (ctx: ReturnType<typeof mockExecutionContext>) =>
+    (ctx.switchToHttp().getRequest() as any).scope?.principal;
+
+  it("valid internal token → operator, emits ACCEPT_CONTROL_PLANE_TOKEN", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = TOKEN;
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn() } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": TOKEN },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(principalOf(ctx)).toBe("operator");
+    expect(acceptReasons()).toContain(AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+  });
+
+  it("positive Environment key on the direct-header path → operator, emits ACCEPT_ACCESS_KEY", async () => {
+    delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(true) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-api-key": "pk_valid" },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(principalOf(ctx)).toBe("operator");
+    expect(acceptReasons()).toContain(AuthDecisionReason.ACCEPT_ACCESS_KEY);
+  });
+
+  it("NEGATIVE: no configured key (null) → 401, REJECT_NO_CREDENTIAL, never operator, no ACCEPT emitted", async () => {
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext({ ...scopeHeaders }, "/api/v1/agent/threads", undefined, "GET");
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(rejectReasons()).toContain(AuthDecisionReason.REJECT_NO_CREDENTIAL);
+    // clause-5 mutation control: reject must never leave an operator principal.
+    expect(principalOf(ctx)).not.toBe("operator");
+    // discrimination: a reject emits NO accept reason.
+    expect(acceptReasons()).toHaveLength(0);
+  });
+
+  it("NEGATIVE: configured-but-wrong/revoked/retiring key (false) → 401, REJECT_INVALID_KEY, never operator", async () => {
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(false) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-api-key": "pk_wrong" },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(rejectReasons()).toContain(AuthDecisionReason.REJECT_INVALID_KEY);
+    expect(principalOf(ctx)).not.toBe("operator");
+  });
+
+  it("NEGATIVE: spoofed X-Forwarded-For + raw scope headers is rejected (REJECT_PROXIED_RAW_HEADERS) — network placement is not auth", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = TOKEN;
+    const verifyAccessKey = vi.fn().mockResolvedValue(true);
+    const guard = new ScopeGuard({ verifyAccessKey } as any);
+    // A caller that arrived through the proxy (X-Forwarded-For present) presenting
+    // raw scope headers AND a valid-looking internal token is STILL rejected: the
+    // raw-header operator path is not even considered for proxied requests, and the
+    // credential is never consulted as an authorization on this path.
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-forwarded-for": "203.0.113.9", "x-platos-internal-auth": TOKEN },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(rejectReasons()).toContain(AuthDecisionReason.REJECT_PROXIED_RAW_HEADERS);
+    expect(verifyAccessKey).not.toHaveBeenCalled();
+  });
+
+  it("NEGATIVE: internal-token rotation invalidates the OLD token; only the current token authenticates", async () => {
+    const OLD = "o".repeat(48);
+    const NEW = "n".repeat(48);
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = NEW;
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(null) };
+    const ctxOld = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": OLD },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(new ScopeGuard(authService as any).canActivate(ctxOld)).resolves.toBe(false);
+    expect(rejectReasons()).toContain(AuthDecisionReason.REJECT_NO_CREDENTIAL);
+    expect(principalOf(ctxOld)).not.toBe("operator");
+
+    logSpy.mockClear();
+    const ctxNew = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": NEW },
+      "/api/v1/agent/threads",
+      undefined,
+      "GET"
+    );
+    await expect(new ScopeGuard(authService as any).canActivate(ctxNew)).resolves.toBe(true);
+    expect(acceptReasons()).toContain(AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+  });
+
+  it("telemetry is REDACTED: no token or api-key material appears in any emitted event", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = TOKEN;
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(false) } as any);
+    await guard.canActivate(
+      mockExecutionContext(
+        { ...scopeHeaders, "x-platos-internal-auth": TOKEN },
+        "/api/v1/agent/threads",
+        undefined,
+        "GET"
+      )
+    );
+    await guard.canActivate(
+      mockExecutionContext(
+        { ...scopeHeaders, "x-platos-api-key": "pk_super_secret_value" },
+        "/api/v1/agent/threads",
+        undefined,
+        "GET"
+      )
+    );
+    const blob = JSON.stringify([...logSpy.mock.calls, ...warnSpy.mock.calls]);
+    expect(blob).not.toContain(TOKEN);
+    expect(blob).not.toContain("pk_super_secret_value");
   });
 });

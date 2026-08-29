@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
@@ -19,6 +20,28 @@ import { env } from "../shared/env";
  * secrets, budgets, files, entity management, or monitoring — surfaces that an
  * entity-minted widget/SDK/guest token must never reach.
  */
+/**
+ * WIN-293 — stable, enumerated reason codes for every auth decision. These
+ * string values are a telemetry contract: dashboards and tests match on them,
+ * so they must remain stable. ACCEPT_* are positive-credential operator grants
+ * (or the explicit no-AuthService test-harness allowance); REJECT_* are
+ * fail-closed denials.
+ */
+export enum AuthDecisionReason {
+  ACCEPT_CONTROL_PLANE_TOKEN = "ACCEPT_CONTROL_PLANE_TOKEN",
+  ACCEPT_ACCESS_KEY = "ACCEPT_ACCESS_KEY",
+  ACCEPT_BOOTSTRAP = "ACCEPT_BOOTSTRAP",
+  ACCEPT_HARNESS_NO_AUTHSERVICE = "ACCEPT_HARNESS_NO_AUTHSERVICE",
+  ACCEPT_SESSION_TOKEN = "ACCEPT_SESSION_TOKEN",
+  REJECT_NO_CREDENTIAL = "REJECT_NO_CREDENTIAL",
+  REJECT_INVALID_KEY = "REJECT_INVALID_KEY",
+  REJECT_CONTROL_PLANE_REQUIRED = "REJECT_CONTROL_PLANE_REQUIRED",
+  REJECT_INVALID_AGENT_SCOPE = "REJECT_INVALID_AGENT_SCOPE",
+  REJECT_AGENT_SCOPE_MISMATCH = "REJECT_AGENT_SCOPE_MISMATCH",
+  REJECT_PROXIED_RAW_HEADERS = "REJECT_PROXIED_RAW_HEADERS",
+  REJECT_MISSING_CREDENTIALS = "REJECT_MISSING_CREDENTIALS",
+}
+
 export function requireOperator(scope: Pick<RequestScope, "principal">): void {
   if (scope?.principal !== "operator") {
     throw new ForbiddenException({
@@ -291,6 +314,50 @@ export interface RequestScope {
 export class ScopeGuard implements CanActivate {
   constructor(@Optional() @Inject(AuthService) private readonly authService?: AuthService) {}
 
+  private readonly logger = new Logger("ScopeGuard");
+
+  /**
+   * WIN-293 — correlated, redacted auth-decision telemetry. Emits exactly ONE
+   * structured event per accept/reject decision with a STABLE reason code.
+   * NEVER logs credential material (internal token, api key, bootstrap secret,
+   * session/user tokens) — only non-secret scope identifiers, the route, the
+   * resulting principal, and correlation/trace ids. Accepts log at info, all
+   * rejects at warn so denials are independently alertable.
+   */
+  private emitAuthDecision(
+    request: {
+      method?: string;
+      url?: string;
+      headers?: Record<string, unknown>;
+      scope?: RequestScope;
+    },
+    decision: "accept" | "reject",
+    reason: AuthDecisionReason
+  ): void {
+    const headers = request.headers ?? {};
+    const correlationId =
+      (typeof headers["x-request-id"] === "string" && headers["x-request-id"]) ||
+      (typeof headers["x-correlation-id"] === "string" && headers["x-correlation-id"]) ||
+      undefined;
+    const event = {
+      event: "auth.decision",
+      decision,
+      reason,
+      method:
+        typeof request.method === "string" ? request.method.toUpperCase() : undefined,
+      path: (typeof request.url === "string" ? request.url : "").split("?", 1)[0],
+      principal: request.scope?.principal,
+      organizationId: request.scope?.organizationId,
+      projectId: request.scope?.projectId,
+      environmentId: request.scope?.environmentId,
+      userId: request.scope?.userId,
+      traceId: request.scope?.traceId,
+      correlationId: correlationId || undefined,
+    };
+    if (decision === "accept") this.logger.log(event);
+    else this.logger.warn(event);
+  }
+
   /**
    * Access-key lifecycle is a control-plane operation reachable over the
    * trusted direct-header channel (webapp→agent, never through Caddy). WIN-296:
@@ -549,7 +616,10 @@ export class ScopeGuard implements CanActivate {
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -568,7 +638,10 @@ export class ScopeGuard implements CanActivate {
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -617,7 +690,10 @@ export class ScopeGuard implements CanActivate {
       const provided = request.headers["x-platos-internal-auth"];
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -641,6 +717,7 @@ export class ScopeGuard implements CanActivate {
         const pathAgentId = this.extractAgentIdFromPath(url);
         if (tokenAgentId && pathAgentId && tokenAgentId !== pathAgentId) {
           // Token is scoped to a different agent than the requested path.
+          this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_AGENT_SCOPE_MISMATCH);
           const resp = context.switchToHttp().getResponse();
           resp.status(403).json({
             error: "AGENT_SCOPE_MISMATCH",
@@ -727,6 +804,7 @@ export class ScopeGuard implements CanActivate {
             origin
           );
           if (keyResult === false) {
+            this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_INVALID_KEY);
             const resp = context.switchToHttp().getResponse();
             resp
               .status(401)
@@ -737,6 +815,7 @@ export class ScopeGuard implements CanActivate {
             return false;
           }
         }
+        this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_SESSION_TOKEN);
         return true;
       }
       // Invalid / incomplete — fall through to direct headers
@@ -773,6 +852,7 @@ export class ScopeGuard implements CanActivate {
             String(requestedAgentId)
           ));
         if (!validPin) {
+          this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_INVALID_AGENT_SCOPE);
           const resp = context.switchToHttp().getResponse();
           resp.status(403).json({
             error: "INVALID_AGENT_SCOPE",
@@ -790,7 +870,11 @@ export class ScopeGuard implements CanActivate {
         // Trusted internal path (webapp→agent over the Docker network, never
         // through Caddy — enforced by the !viaProxy guard above). This IS the
         // control-plane, so it authorizes operator surfaces.
-        principal: "operator",
+        // WIN-293 — no principal yet. It is promoted to "operator" ONLY after a
+        // positive credential outcome below (control-plane token, positive
+        // AccessKey, or one-use bootstrap). !viaProxy gates CONSIDERATION of the
+        // raw-header path as non-authorizing perimeter defense; it never itself
+        // grants operator.
         ...(validatedAgentId ? { agentId: validatedAgentId } : {}),
         ...(entityId ? { entityId: String(entityId) } : {}),
         ...(userToken ? { userToken: String(userToken) } : {}),
@@ -809,6 +893,8 @@ export class ScopeGuard implements CanActivate {
         // Normal path: the webapp always sends the internal control-plane token
         // (X-Platos-Internal-Auth), which WIN-293 made mandatory.
         if (this.hasValidControlPlaneAuth(request)) {
+          request.scope.principal = "operator";
+          this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
           return true;
         }
         // Safe first-install bootstrap — create route ONLY, genuine zero-key
@@ -830,9 +916,12 @@ export class ScopeGuard implements CanActivate {
           });
           if (outcome.ok) {
             request.scope.accessKeyBootstrapAuthenticated = true;
+            request.scope.principal = "operator";
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_BOOTSTRAP);
             return true;
           }
         }
+        this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_CONTROL_PLANE_REQUIRED);
         const resp = context.switchToHttp().getResponse();
         resp.status(401).json({
           error: "CONTROL_PLANE_AUTH_REQUIRED",
@@ -842,11 +931,19 @@ export class ScopeGuard implements CanActivate {
         return false;
       }
 
-      // Access key checks protect ordinary direct-header runtime requests. A
-      // server-authenticated control-plane call (internal token) is trusted
-      // without an Environment AccessKey; every other runtime caller must
-      // present a valid key when one is configured for the scope.
-      if (this.authService && !this.hasValidControlPlaneAuth(request)) {
+      // Ordinary direct-header runtime request. WIN-293 — the operator grant
+      // rests on a POSITIVE cryptographic credential, never on network
+      // placement. A server-authenticated control-plane call (the internal
+      // token, timing-safe verified) is operator; otherwise a POSITIVE
+      // Environment AccessKey match is required. Principal is promoted only in
+      // these accept branches, so no path can reach a controller as operator
+      // without a proven credential.
+      if (this.hasValidControlPlaneAuth(request)) {
+        request.scope.principal = "operator";
+        this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+        return true;
+      }
+      if (this.authService) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
         const origin = (request.headers["origin"] || request.headers["referer"]) as
           | string
@@ -862,21 +959,18 @@ export class ScopeGuard implements CanActivate {
           providedKey,
           origin
         );
-        // WIN-293 — fail CLOSED on the unauthenticated direct-header operator
-        // path. Reaching here means the caller presented NO valid control-plane
-        // token (hasValidControlPlaneAuth already returned false above) and this
-        // is not an AccessKey lifecycle route, yet the scope block above already
-        // stamped principal: "operator". Confirm that promotion ONLY on a
-        // POSITIVE AccessKey match. verifyAccessKey returns `null` when no
-        // AccessKey is configured for the scope and `false` when one is
-        // configured but the presented key is missing/invalid — BOTH must reject
-        // here, so an anonymous caller can never be handed operator merely
-        // because no key exists. The trusted webapp reaches operator surfaces
-        // through the mandatory PLATOS_INTERNAL_AUTH_TOKEN (checked above), never
-        // through this branch. The session-token site keeps the opposite
-        // semantics: there `null` means "no optional gate configured" and
-        // correctly allows, because the token already authenticated the caller.
+        // Fail CLOSED. verifyAccessKey returns `null` when no AccessKey is
+        // configured for the scope and `false` when one is configured but the
+        // presented key is missing/invalid. BOTH reject here, so an anonymous
+        // caller can never be handed operator merely because no key exists.
         if (keyResult !== true) {
+          this.emitAuthDecision(
+            request,
+            "reject",
+            keyResult === null
+              ? AuthDecisionReason.REJECT_NO_CREDENTIAL
+              : AuthDecisionReason.REJECT_INVALID_KEY
+          );
           const resp = context.switchToHttp().getResponse();
           resp
             .status(401)
@@ -889,10 +983,26 @@ export class ScopeGuard implements CanActivate {
             });
           return false;
         }
+        request.scope.principal = "operator";
+        this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_ACCESS_KEY);
+        return true;
       }
+      // No AuthService — the lightweight test harness only; the production
+      // module graph always injects it. Preserve the historical harness
+      // allowance but record it with an explicit reason code so it is auditable
+      // and can never be confused with a credentialed accept.
+      request.scope.principal = "operator";
+      this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_HARNESS_NO_AUTHSERVICE);
       return true;
     }
 
+    this.emitAuthDecision(
+      request,
+      "reject",
+      viaProxy
+        ? AuthDecisionReason.REJECT_PROXIED_RAW_HEADERS
+        : AuthDecisionReason.REJECT_MISSING_CREDENTIALS
+    );
     throw new UnauthorizedException(
       viaProxy
         ? "External requests must use X-Platos-Session-Token (minted from an active entity bearer). Raw scope headers are rejected when the request arrives through the public proxy."

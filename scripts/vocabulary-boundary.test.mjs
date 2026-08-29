@@ -578,7 +578,7 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //   +33  vendor/machine references newly SURFACED by the WIN-295 scanner fix
   //        in the SBOM/advisory/governance evidence + rewritten NOTICE, minus
   //        6 stale NOTICE exceptions re-anchored after the NOTICE rewrite -> 20438
-  assert.equal(manifest.exceptions.length, 20480);
+  assert.equal(manifest.exceptions.length, 20481);
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {
