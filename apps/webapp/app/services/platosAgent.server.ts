@@ -1,4 +1,5 @@
 import { env } from "~/env.server";
+import { signWorkloadJwt } from "@internal/workload-identity";
 
 export type AgentScope = {
   organizationId: string;
@@ -110,10 +111,50 @@ export async function agentRequest<T = unknown>(path: string, scope: AgentScope,
   return (await agentRequestResult<T>(path, scope, options)).payload;
 }
 
+/**
+ * WIN-293 clause 4 — mint a cryptographic workload-identity credential for one
+ * outbound agent call. Ed25519, short-lived, and bound to this exact
+ * method + path + tenant, so a captured header cannot be replayed elsewhere.
+ *
+ * Returns {} when no signing key is configured, so the legacy shared secret
+ * still carries the request during migration (and rollback stays safe). The
+ * agent never treats the ABSENCE of this header as authorization.
+ */
+function workloadAuthHeaders(
+  method: string,
+  path: string,
+  scope: AgentScope,
+): Record<string, string> {
+  const privateKeyPem = env.PLATOS_WORKLOAD_PRIVATE_KEY;
+  const kid = env.PLATOS_WORKLOAD_KEY_ID;
+  if (!privateKeyPem || !kid) return {};
+  try {
+    return {
+      "X-Platos-Workload-Token": signWorkloadJwt({
+        privateKeyPem,
+        kid,
+        workload: "webapp",
+        method,
+        path,
+        tenant: {
+          org: scope.organizationId,
+          prj: scope.projectId,
+          env: scope.environmentId,
+        },
+      }),
+    };
+  } catch {
+    // A signing failure must never silently downgrade the call: emit nothing and
+    // let the agent reject (or the legacy secret carry it during migration).
+    return {};
+  }
+}
+
 export function agentResponse(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<Response> {
   assertAgentPath(path);
+  const method = options.method ?? "GET";
   return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
-    method: options.method ?? "GET",
+    method,
     headers: {
       "Content-Type": "application/json",
       "X-Platos-Organization-Id": scope.organizationId,
@@ -127,6 +168,9 @@ export function agentResponse(path: string, scope: AgentScope, options: RequestO
       ...(env.PLATOS_INTERNAL_AUTH_TOKEN
         ? { "X-Platos-Internal-Auth": env.PLATOS_INTERNAL_AUTH_TOKEN }
         : {}),
+      // WIN-293 clause 4 — the cryptographic workload credential. Preferred by
+      // the agent; the shared secret above is migration-only.
+      ...workloadAuthHeaders(method, path, scope),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal ?? AbortSignal.timeout(10_000),
@@ -153,6 +197,7 @@ export function mcpManagementResponse(
       ...(env.PLATOS_INTERNAL_AUTH_TOKEN
         ? { "X-Platos-Internal-Auth": env.PLATOS_INTERNAL_AUTH_TOKEN }
         : {}),
+      ...workloadAuthHeaders(options.method, path, scope),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal ?? AbortSignal.timeout(10_000),

@@ -10,6 +10,12 @@ import {
 } from "@nestjs/common";
 import * as crypto from "node:crypto";
 import { AuthService } from "./auth.service";
+import {
+  WORKLOAD_TOKEN_HEADER,
+  canonicalPath as workloadCanonicalPath,
+  parseKeyset,
+  verifyWorkloadJwt,
+} from "@internal/workload-identity";
 import { env } from "../shared/env";
 
 /**
@@ -33,6 +39,11 @@ export enum AuthDecisionReason {
   ACCEPT_BOOTSTRAP = "ACCEPT_BOOTSTRAP",
   ACCEPT_HARNESS_NO_AUTHSERVICE = "ACCEPT_HARNESS_NO_AUTHSERVICE",
   ACCEPT_SESSION_TOKEN = "ACCEPT_SESSION_TOKEN",
+  // WIN-293 clause 4 — cryptographic workload identity. The two accepts are kept
+  // DISTINCT so rollout can watch legacy usage fall to zero before the shared
+  // secret is switched off, and so an alert can fire if legacy reappears after.
+  ACCEPT_WORKLOAD_IDENTITY = "ACCEPT_WORKLOAD_IDENTITY",
+  ACCEPT_LEGACY_SHARED_SECRET = "ACCEPT_LEGACY_SHARED_SECRET",
   REJECT_NO_CREDENTIAL = "REJECT_NO_CREDENTIAL",
   REJECT_INVALID_KEY = "REJECT_INVALID_KEY",
   REJECT_CONTROL_PLANE_REQUIRED = "REJECT_CONTROL_PLANE_REQUIRED",
@@ -40,6 +51,7 @@ export enum AuthDecisionReason {
   REJECT_AGENT_SCOPE_MISMATCH = "REJECT_AGENT_SCOPE_MISMATCH",
   REJECT_PROXIED_RAW_HEADERS = "REJECT_PROXIED_RAW_HEADERS",
   REJECT_MISSING_CREDENTIALS = "REJECT_MISSING_CREDENTIALS",
+  REJECT_WORKLOAD_IDENTITY_INVALID = "REJECT_WORKLOAD_IDENTITY_INVALID",
 }
 
 export function requireOperator(scope: Pick<RequestScope, "principal">): void {
@@ -418,20 +430,106 @@ export class ScopeGuard implements CanActivate {
    * unavailable to loaders. Runtime callers without this token still require
    * the Environment AccessKey when one is configured.
    */
-  private hasValidControlPlaneAuth(request: { headers?: Record<string, unknown> }): boolean {
-    // Read directly instead of through the complete config proxy: this guard
-    // is deliberately usable in lightweight test harnesses before unrelated
-    // runtime integrations (Redis/credential root keys) are configured.
+  private hasValidControlPlaneAuth(request: {
+    headers?: Record<string, unknown>;
+    method?: string;
+    url?: string;
+  }): boolean {
+    return this.controlPlaneAuthOutcome(request).ok;
+  }
+
+  /**
+   * WIN-293 clause 4 — verify a cryptographic WORKLOAD IDENTITY credential.
+   *
+   * Ed25519 (EdDSA) JWT-SVID-shaped credential, bound to the audience, the
+   * signing key's registered identity, the exact method+path, and (when the
+   * request presents one) the tenant tuple. The agent holds ONLY public keys, so
+   * compromising the verifier cannot mint a credential. Stateless by design so
+   * the guard stays usable in lightweight harnesses; single-use `jti` is
+   * available to callers that hold a replay store.
+   *
+   * Network location and forwarding headers play NO part here — the grant is the
+   * signature verification result and nothing else.
+   */
+  private verifyWorkloadCredential(request: {
+    headers?: Record<string, unknown>;
+    method?: string;
+    url?: string;
+  }): { ok: boolean; reason: string } {
+    const keyset = parseKeyset(process.env.PLATOS_WORKLOAD_KEYSET);
+    if (Object.keys(keyset).length === 0) return { ok: false, reason: "NO_KEYSET" };
+    const token = request.headers?.[WORKLOAD_TOKEN_HEADER];
+    if (typeof token !== "string" || token.length === 0)
+      return { ok: false, reason: "ABSENT" };
+    const headerValue = (name: string): string | undefined => {
+      const v = request.headers?.[name];
+      return typeof v === "string" ? v : undefined;
+    };
+    // Bind to the tenant tuple the request actually presents. Genuinely
+    // cross-scope internal surfaces present none, and are bound by
+    // audience + identity + method/path + expiry instead.
+    const org = headerValue("x-platos-organization-id");
+    const prj = headerValue("x-platos-project-id");
+    const env = headerValue("x-platos-environment-id");
+    const tenant =
+      org || prj || env
+        ? {
+            ...(org ? { org } : {}),
+            ...(prj ? { prj } : {}),
+            ...(env ? { env } : {}),
+          }
+        : undefined;
+    const result = verifyWorkloadJwt(token, {
+      keyset,
+      method: typeof request.method === "string" ? request.method : "",
+      path: workloadCanonicalPath(typeof request.url === "string" ? request.url : ""),
+      ...(tenant ? { tenant } : {}),
+    });
+    return { ok: result.ok, reason: String(result.reason) };
+  }
+
+  /**
+   * The control-plane credential outcome, reported with WHICH mechanism
+   * authorized so telemetry can watch the shared-secret migration finish.
+   *
+   * Order: the cryptographic workload credential is preferred; the legacy shared
+   * secret is accepted only while the migration mode allows it. BOTH are positive
+   * cryptographic outcomes (Ed25519 verify / timing-safe secret match) — this
+   * introduces NO fail-open path: absence of either still rejects.
+   */
+  private controlPlaneAuthOutcome(request: {
+    headers?: Record<string, unknown>;
+    method?: string;
+    url?: string;
+  }): { ok: boolean; via?: "workload" | "legacy"; reason?: string } {
+    const workload = this.verifyWorkloadCredential(request);
+    if (workload.ok) return { ok: true, via: "workload" };
+
+    // A PRESENTED-but-invalid workload credential is a hard reject: it must never
+    // silently fall through to the weaker legacy secret.
+    if (workload.reason !== "ABSENT" && workload.reason !== "NO_KEYSET")
+      return { ok: false, reason: workload.reason };
+
+    // Migration mode. "workload-only" retires the shared secret entirely.
+    const mode = (process.env.PLATOS_WORKLOAD_IDENTITY_MODE ?? "dual").trim();
+    if (mode === "workload-only") return { ok: false, reason: workload.reason };
+
+    // Legacy shared secret. Read directly instead of through the complete config
+    // proxy: this guard is deliberately usable in lightweight test harnesses
+    // before unrelated runtime integrations (Redis/credential root keys) are
+    // configured.
     const expected = process.env.PLATOS_INTERNAL_AUTH_TOKEN?.trim();
     const provided = request.headers?.["x-platos-internal-auth"];
     if (!expected || typeof provided !== "string" || provided.length !== expected.length) {
-      return false;
+      return { ok: false, reason: workload.reason };
     }
     try {
-      return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+      if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected)))
+        return { ok: true, via: "legacy" };
     } catch {
-      return false;
+      /* length mismatch handled above */
     }
+    return { ok: false, reason: "LEGACY_MISMATCH" };
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

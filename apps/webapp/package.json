@@ -55,6 +55,7 @@
     "@electric-sql/react": "^0.3.5",
     "@headlessui/react": "^1.7.8",
     "@heroicons/react": "^2.0.12",
+    "@internal/workload-identity": "workspace:*",
     "@internationalized/date": "^3.5.1",
     "@jsonhero/schema-infer": "^0.1.5",
     "@lezer/highlight": "^1.1.6",

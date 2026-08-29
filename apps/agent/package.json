@@ -35,6 +35,7 @@
     "@chat-adapter/whatsapp": "^4.34.0",
     "@e2b/code-interpreter": "^2.4.0",
     "@internal/docs": "workspace:*",
+    "@internal/workload-identity": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
