@@ -6,6 +6,13 @@ import type { RequestScope } from "../auth/scope.guard";
 import { env } from "../shared/env";
 import { TELEMETRY_DATABASE } from "../shared/telemetry-namespace";
 import {
+  ClickhouseTimeoutError,
+  clickhouseAbortSignal,
+  clickhouseMaxExecutionTimeSeconds,
+  isAbortLikeError,
+  resolveClickhouseDeadlineMs,
+} from "../shared/clickhouse-deadline";
+import {
   MAX_SPAN_DLQ_RETRIES,
   spanDlqRetryCount,
   withSpanDlqRetryCount,
@@ -52,6 +59,13 @@ function hex(bytes: number): string {
 @Injectable()
 export class SpansService {
   private sampler = 1.0;
+  /**
+   * WIN-290 — every ClickHouse HTTP call is bounded by this deadline. Injectable
+   * `fetchImpl` exists so the slow/hung-server tests can drive a deterministic
+   * abort without a real socket.
+   */
+  private readonly clickhouseDeadlineMs = resolveClickhouseDeadlineMs();
+  fetchImpl: typeof fetch = (...args) => fetch(...args);
   /**
    * PPR-15 — ClickHouse HTTP endpoint for persistent span storage.
    * When unset, we remain Redis-only (pre-PPR-15 behaviour). When set,
@@ -379,11 +393,25 @@ export class SpansService {
         "Basic " +
         Buffer.from(`${this.clickhouseAuth.user}:${this.clickhouseAuth.pass}`).toString("base64");
     }
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(row) + "\n",
-    });
+    // WIN-290 — bounded write. The client stops waiting AND ClickHouse stops
+    // working (max_execution_time), so an abandoned insert cannot keep burning
+    // server CPU for a result nobody will read.
+    const deadlineMs = this.clickhouseDeadlineMs;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(
+        `${url}&max_execution_time=${clickhouseMaxExecutionTimeSeconds(deadlineMs)}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(row) + "\n",
+          signal: clickhouseAbortSignal(deadlineMs),
+        }
+      );
+    } catch (error) {
+      if (isAbortLikeError(error)) throw new ClickhouseTimeoutError("span-write", deadlineMs, error);
+      throw error;
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`clickhouse ${res.status}: ${text.slice(0, 200)}`);
@@ -426,7 +454,20 @@ export class SpansService {
         "Basic " +
         Buffer.from(`${this.clickhouseAuth.user}:${this.clickhouseAuth.pass}`).toString("base64");
     }
-    const res = await fetch(url, { method: "GET", headers });
+    // WIN-290 — bounded read. A hung ClickHouse must never hold a user-visible
+    // request open without an upper bound.
+    const readDeadlineMs = this.clickhouseDeadlineMs;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(
+        `${url}&max_execution_time=${clickhouseMaxExecutionTimeSeconds(readDeadlineMs)}`,
+        { method: "GET", headers, signal: clickhouseAbortSignal(readDeadlineMs) }
+      );
+    } catch (error) {
+      if (isAbortLikeError(error))
+        throw new ClickhouseTimeoutError("span-read", readDeadlineMs, error);
+      throw error;
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`clickhouse read ${res.status}: ${text.slice(0, 200)}`);
