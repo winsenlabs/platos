@@ -7,10 +7,12 @@ import { env } from "../shared/env";
 import { TELEMETRY_DATABASE } from "../shared/telemetry-namespace";
 import {
   ClickhouseTimeoutError,
+  buildClickhouseOperationEvent,
   clickhouseAbortSignal,
   clickhouseMaxExecutionTimeSeconds,
   isAbortLikeError,
   resolveClickhouseDeadlineMs,
+  type ClickhouseOutcome,
 } from "../shared/clickhouse-deadline";
 import {
   MAX_SPAN_DLQ_RETRIES,
@@ -66,6 +68,38 @@ export class SpansService {
    */
   private readonly clickhouseDeadlineMs = resolveClickhouseDeadlineMs();
   fetchImpl: typeof fetch = (...args) => fetch(...args);
+  /**
+   * WIN-290 observability gate — one versioned, redacted event per ClickHouse
+   * call. Overridable so tests can assert the emitted shape directly.
+   */
+  emitClickhouseEvent: (event: ReturnType<typeof buildClickhouseOperationEvent>) => void = (
+    event
+  ) => {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(event));
+  };
+
+  private recordClickhouseOperation(
+    operation: string,
+    startedAt: number,
+    outcome: ClickhouseOutcome,
+    deadlineMs: number,
+    error?: unknown
+  ): void {
+    try {
+      this.emitClickhouseEvent(
+        buildClickhouseOperationEvent({
+          operation,
+          outcome,
+          elapsedMs: Date.now() - startedAt,
+          deadlineMs,
+          error,
+        })
+      );
+    } catch {
+      // Telemetry must never break the operation it observes.
+    }
+  }
   /**
    * PPR-15 — ClickHouse HTTP endpoint for persistent span storage.
    * When unset, we remain Redis-only (pre-PPR-15 behaviour). When set,
@@ -397,6 +431,7 @@ export class SpansService {
     // working (max_execution_time), so an abandoned insert cannot keep burning
     // server CPU for a result nobody will read.
     const deadlineMs = this.clickhouseDeadlineMs;
+    const writeStartedAt = Date.now();
     let res: Response;
     try {
       res = await this.fetchImpl(
@@ -409,13 +444,20 @@ export class SpansService {
         }
       );
     } catch (error) {
-      if (isAbortLikeError(error)) throw new ClickhouseTimeoutError("span-write", deadlineMs, error);
+      if (isAbortLikeError(error)) {
+        this.recordClickhouseOperation("span-write", writeStartedAt, "timeout", deadlineMs, error);
+        throw new ClickhouseTimeoutError("span-write", deadlineMs, error);
+      }
+      this.recordClickhouseOperation("span-write", writeStartedAt, "error", deadlineMs, error);
       throw error;
     }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`clickhouse ${res.status}: ${text.slice(0, 200)}`);
+      const failure = new Error(`clickhouse ${res.status}: ${text.slice(0, 200)}`);
+      this.recordClickhouseOperation("span-write", writeStartedAt, "error", deadlineMs, failure);
+      throw failure;
     }
+    this.recordClickhouseOperation("span-write", writeStartedAt, "ok", deadlineMs);
   }
 
   /**
@@ -457,6 +499,7 @@ export class SpansService {
     // WIN-290 — bounded read. A hung ClickHouse must never hold a user-visible
     // request open without an upper bound.
     const readDeadlineMs = this.clickhouseDeadlineMs;
+    const readStartedAt = Date.now();
     let res: Response;
     try {
       res = await this.fetchImpl(
@@ -464,14 +507,20 @@ export class SpansService {
         { method: "GET", headers, signal: clickhouseAbortSignal(readDeadlineMs) }
       );
     } catch (error) {
-      if (isAbortLikeError(error))
+      if (isAbortLikeError(error)) {
+        this.recordClickhouseOperation("span-read", readStartedAt, "timeout", readDeadlineMs, error);
         throw new ClickhouseTimeoutError("span-read", readDeadlineMs, error);
+      }
+      this.recordClickhouseOperation("span-read", readStartedAt, "error", readDeadlineMs, error);
       throw error;
     }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`clickhouse read ${res.status}: ${text.slice(0, 200)}`);
+      const failure = new Error(`clickhouse read ${res.status}: ${text.slice(0, 200)}`);
+      this.recordClickhouseOperation("span-read", readStartedAt, "error", readDeadlineMs, failure);
+      throw failure;
     }
+    this.recordClickhouseOperation("span-read", readStartedAt, "ok", readDeadlineMs);
     const body = await res.text();
     const spans: PlatosSpan[] = [];
     for (const line of body.split("\n")) {

@@ -95,3 +95,64 @@ export function isAbortLikeError(error: unknown): boolean {
   const message = (error as { message?: unknown }).message;
   return typeof message === "string" && /aborted|timed?\s?out/i.test(message);
 }
+
+// ─── Observability (WIN-290 cross-cutting gate) ─────────────────────────────
+//
+// Every ClickHouse call emits ONE versioned, redacted event. The version is part
+// of the contract: dashboards and alerts match on `event` + `v`, so adding a
+// field is safe but changing a meaning requires bumping `v`.
+//
+// REDACTION IS STRUCTURAL, not best-effort: the emitted object is built from a
+// fixed field list that has no place to put SQL, a URL, credentials or row data.
+// A caller cannot accidentally widen it.
+
+/** Contract version for `clickhouse.operation` events. Bump on a breaking change. */
+export const CLICKHOUSE_OPERATION_EVENT_VERSION = 1;
+
+export type ClickhouseOutcome = "ok" | "timeout" | "error";
+
+export interface ClickhouseOperationEvent {
+  event: "clickhouse.operation";
+  v: number;
+  /** A CONSTANT operation name (e.g. "span-read") — never a query or a URL. */
+  operation: string;
+  outcome: ClickhouseOutcome;
+  elapsedMs: number;
+  deadlineMs: number;
+  /** Present only for outcome !== "ok"; a short class name, never a message body. */
+  errorKind?: string;
+  traceId?: string;
+}
+
+/**
+ * Build the event. Pure, so it is directly assertable in tests — the redaction
+ * guarantee is verified rather than trusted.
+ */
+export function buildClickhouseOperationEvent(input: {
+  operation: string;
+  outcome: ClickhouseOutcome;
+  elapsedMs: number;
+  deadlineMs: number;
+  error?: unknown;
+  traceId?: string;
+}): ClickhouseOperationEvent {
+  const event: ClickhouseOperationEvent = {
+    event: "clickhouse.operation",
+    v: CLICKHOUSE_OPERATION_EVENT_VERSION,
+    operation: input.operation,
+    outcome: input.outcome,
+    elapsedMs: Math.max(0, Math.round(input.elapsedMs)),
+    deadlineMs: input.deadlineMs,
+  };
+  if (input.outcome !== "ok" && input.error !== undefined) {
+    // Only the error CLASS, never its message — messages can carry SQL fragments,
+    // hostnames or credentials from the driver.
+    const name =
+      (input.error as { name?: unknown } | undefined)?.name ??
+      (input.error as { constructor?: { name?: string } } | undefined)?.constructor?.name;
+    event.errorKind = typeof name === "string" && name.length > 0 ? name : "UnknownError";
+  }
+  if (input.traceId) event.traceId = input.traceId;
+  return event;
+}
+

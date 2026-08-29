@@ -136,4 +136,47 @@ describe("WIN-290 — ClickHouse calls are bounded (hung server)", () => {
       }
     );
   }, 15_000);
+
+  it("OBSERVABILITY: emits ONE versioned redacted event per call — outcome=ok", async () => {
+    const svc = makeService();
+    expect(svc.isClickhouseEnabled()).toBe(true);
+    const events: unknown[] = [];
+    svc.emitClickhouseEvent = (e) => events.push(e);
+    svc.fetchImpl = okFetch("");
+    await svc.getThreadSpansFromClickhouse(SCOPE, "thread_1");
+    expect(events).toHaveLength(1);
+    const e = events[0] as Record<string, unknown>;
+    expect(e.event).toBe("clickhouse.operation");
+    expect(e.v).toBe(1);
+    expect(e.operation).toBe("span-read");
+    expect(e.outcome).toBe("ok");
+    expect(typeof e.elapsedMs).toBe("number");
+  }, 15_000);
+
+  it("OBSERVABILITY: a hung server emits outcome=timeout, and leaks no URL or credential", async () => {
+    const svc = makeService();
+    expect(svc.isClickhouseEnabled()).toBe(true);
+    const events: unknown[] = [];
+    svc.emitClickhouseEvent = (e) => events.push(e);
+    svc.fetchImpl = hungFetch;
+    await svc.getThreadSpansFromClickhouse(SCOPE, "thread_1").catch(() => undefined);
+    expect(events).toHaveLength(1);
+    const e = events[0] as Record<string, unknown>;
+    expect(e.outcome).toBe("timeout");
+    expect(e.errorKind).toBe("TimeoutError");
+    const blob = JSON.stringify(events);
+    expect(blob).not.toContain("clickhouse.test");
+    expect(blob).not.toContain("pw");
+    expect(blob).not.toContain("SELECT");
+  }, 15_000);
+
+  it("OBSERVABILITY: an auth failure emits outcome=error, distinct from timeout", async () => {
+    const svc = makeService();
+    expect(svc.isClickhouseEnabled()).toBe(true);
+    const events: unknown[] = [];
+    svc.emitClickhouseEvent = (e) => events.push(e);
+    svc.fetchImpl = (async () => new Response("nope", { status: 401 })) as typeof fetch;
+    await svc.getThreadSpansFromClickhouse(SCOPE, "thread_1").catch(() => undefined);
+    expect((events[0] as Record<string, unknown>).outcome).toBe("error");
+  }, 15_000);
 });

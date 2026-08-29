@@ -1,7 +1,9 @@
 // WIN-290 (M1.6) — the ClickHouse deadline policy and its negative controls.
 import { describe, expect, it } from "vitest";
 import {
+  CLICKHOUSE_OPERATION_EVENT_VERSION,
   ClickhouseTimeoutError,
+  buildClickhouseOperationEvent,
   DEFAULT_CLICKHOUSE_DEADLINE_MS,
   MAX_CLICKHOUSE_DEADLINE_MS,
   MIN_CLICKHOUSE_DEADLINE_MS,
@@ -105,3 +107,69 @@ describe("error classification — timeout is distinguishable from other failure
     expect(e.message).toContain("10000ms");
   });
 });
+
+describe("observability gate — versioned, REDACTED ClickHouse operation events", () => {
+  it("emits a versioned event with the operation, outcome, elapsed and budget", () => {
+    const e = buildClickhouseOperationEvent({
+      operation: "span-read",
+      outcome: "ok",
+      elapsedMs: 12.6,
+      deadlineMs: 10_000,
+    });
+    expect(e.event).toBe("clickhouse.operation");
+    expect(e.v).toBe(CLICKHOUSE_OPERATION_EVENT_VERSION);
+    expect(e.operation).toBe("span-read");
+    expect(e.outcome).toBe("ok");
+    expect(e.elapsedMs).toBe(13); // rounded
+    expect(e.deadlineMs).toBe(10_000);
+    expect(e.errorKind).toBeUndefined(); // no error kind on success
+  });
+
+  it("records only the error CLASS on failure, never the message", () => {
+    const secretish = new Error(
+      "clickhouse 401 at http://default:SUPERSECRET@ch.internal:8123 SELECT * FROM platos_spans_v1"
+    );
+    const e = buildClickhouseOperationEvent({
+      operation: "span-read",
+      outcome: "error",
+      elapsedMs: 5,
+      deadlineMs: 10_000,
+      error: secretish,
+    });
+    expect(e.errorKind).toBe("Error");
+    const serialized = JSON.stringify(e);
+    expect(serialized).not.toContain("SUPERSECRET");
+    expect(serialized).not.toContain("SELECT");
+    expect(serialized).not.toContain("ch.internal");
+    expect(serialized).not.toContain("platos_spans_v1");
+  });
+
+  it("REDACTION IS STRUCTURAL: unknown fields cannot be smuggled into the event", () => {
+    const e = buildClickhouseOperationEvent({
+      operation: "span-write",
+      outcome: "timeout",
+      elapsedMs: 1000,
+      deadlineMs: 1000,
+      error: Object.assign(new Error("aborted"), { name: "TimeoutError" }),
+      // @ts-expect-error — a caller trying to attach extra data must not succeed
+      sql: "SELECT * FROM secrets",
+      url: "http://user:pw@host",
+    });
+    expect(Object.keys(e).sort()).toEqual(
+      ["deadlineMs", "elapsedMs", "errorKind", "event", "operation", "outcome", "v"].sort()
+    );
+    expect(e.errorKind).toBe("TimeoutError");
+  });
+
+  it("carries traceId for correlation when one is supplied", () => {
+    const e = buildClickhouseOperationEvent({
+      operation: "span-read",
+      outcome: "ok",
+      elapsedMs: 1,
+      deadlineMs: 10_000,
+      traceId: "abc123",
+    });
+    expect(e.traceId).toBe("abc123");
+  });
+});
+
