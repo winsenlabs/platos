@@ -2,7 +2,7 @@
   "milestone": "M0.9",
   "issue": "WIN-294",
   "title": "Independent REST census — second enumerator reconciled to the generated manifest",
-  "mechanism": "Globs apps/agent/src/**/*.controller.ts (file presence, NOT the generator's CONTROLLER_MODULE_MAP allowlist) and parses route decorators + requireOperator guards directly from source.",
+  "mechanism": "Independent in ENUMERATION: discovers controllers by globbing apps/agent/src/**/*.controller.ts (file presence, NOT the generator's CONTROLLER_MODULE_MAP allowlist) and parses @Controller base paths, route decorators, and requireOperator guards directly from source. The committed manifest is read ONLY to reconcile counts, never to enumerate — so a controller the generator's allowlist misses still appears here and fails --check.",
   "reconciliation": {
     "routes": "independentUniqueRoutes + dualMountAliasOps === manifestOps; every controller's manifest ops === decorators × mount-multiplier.",
     "operator": "manifestOperator >= independentOperatorFloor per controller (wrapper/inherited operator enforcement legitimately lifts the manifest above the direct-call floor).",

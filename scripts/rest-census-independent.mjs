@@ -20,7 +20,7 @@
 //   node scripts/rest-census-independent.mjs --check    # fail on any drift/omission
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -28,14 +28,16 @@ const SRC = join(ROOT, "apps/agent/src");
 const MANIFEST = join(ROOT, "apps/agent/src/control-plane/operation-manifest.generated.json");
 const OUT = join(ROOT, "docs/audits/M0.9-rest-census-independent.json");
 
-// Controllers mounted at TWO path prefixes (compatibility aliases). The manifest
-// counts every MOUNTED operation, so for these the manifest op count equals the
-// number of route decorators times 2. Verified from source (each controller is
-// registered under two module paths); any edit here is a REVIEWED reconciliation
-// entry, never a silent number to make a check pass.
-export const DUAL_MOUNT = {
-  DocsMcpController: 2, // mounted at /mcp/docs (canonical) AND /mcp (install URL)
-  MemoryController: 2, // mounted on the agent app AND the memory-admin Caddy route
+// Array-form controllers bind every method under MULTIPLE base paths, so the
+// manifest counts each route once per base path. The multiplier is DERIVED FROM
+// SOURCE (the length of the `@Controller([...])` array), never hardcoded — this
+// is exactly the "array-form Controller binding expansion" WIN-294 requires. The
+// two known multi-mount controllers are documented here only as a human tripwire;
+// the reconciliation uses the source-derived count, and this map is asserted to
+// match it (a silent change to either side fails --check).
+export const KNOWN_MULTI_MOUNT = {
+  DocsMcpController: 2, // @Controller(["mcp/docs", "mcp"]) — canonical + install URL
+  MemoryController: 2, // @Controller(["api/v1/memory", "api/v1/platos/memory"]) — legacy alias
 };
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
@@ -52,9 +54,16 @@ export function walkControllers(dir = SRC, acc = []) {
   return acc;
 }
 
-/** Parse a controller source: class name, route-decorator count, operator floor. */
+/** Parse a controller source: class name, base-path count, routes, operator floor. */
 export function parseController(src) {
   const className = (/export\s+class\s+(\w+Controller)\b/.exec(src) || [])[1] || null;
+  // Base paths from the @Controller(...) argument. An array literal binds every
+  // route under each element (array-form expansion); a single/empty argument is
+  // one base path. Derived from source so a new alias prefix is picked up
+  // automatically rather than needing a hardcoded multiplier.
+  const ctrl = /@Controller\s*\(\s*(\[[^\]]*\])?/.exec(src);
+  const basePaths =
+    ctrl && ctrl[1] ? Math.max(1, (ctrl[1].match(/["'`][^"'`]*["'`]/g) || []).length) : 1;
   // Line-anchored HTTP method decorators. This matches the manifest's per-route
   // counting and ignores decorator names appearing inside comments or strings.
   const routes = (src.match(/^\s*@(Get|Post|Put|Patch|Delete)\s*\(/gm) || []).length;
@@ -63,7 +72,7 @@ export function parseController(src) {
   // legitimately show a lower floor than the manifest's semantic count — that is
   // an inequality the reconciliation permits, never an equality it forces.
   const requireOperator = (src.match(/requireOperator\s*\(/g) || []).length;
-  return { className, routes, requireOperator };
+  return { className, basePaths, routes, requireOperator };
 }
 
 /** Independent census by globbing + parsing controller files. */
@@ -126,9 +135,19 @@ export function reconcile(indep = independentCensus(), man = manifestCensus()) {
   // Checks 2 & 3 — per-controller route reconciliation + operator lower bound.
   let indepUniqueRoutes = 0;
   for (const name of [...new Set([...indepNames, ...manNames])].sort()) {
-    const i = indep[name] || { routes: 0, requireOperator: 0, file: "(none)" };
+    const i = indep[name] || { routes: 0, requireOperator: 0, basePaths: 1, file: "(none)" };
     const mm = man.controllers[name] || { ops: 0, operator: 0 };
-    const mult = DUAL_MOUNT[name] || 1;
+    const mult = i.basePaths || 1;
+    // Bidirectional multi-mount tripwire: the source-derived base-path count and
+    // the documented KNOWN_MULTI_MOUNT map must agree, so neither can drift silently.
+    if (KNOWN_MULTI_MOUNT[name] && KNOWN_MULTI_MOUNT[name] !== mult)
+      failures.push(
+        `MULTI-MOUNT DRIFT: ${name} — source @Controller declares ${mult} base paths but KNOWN_MULTI_MOUNT records ${KNOWN_MULTI_MOUNT[name]}.`
+      );
+    if (mult > 1 && !KNOWN_MULTI_MOUNT[name])
+      failures.push(
+        `NEW MULTI-MOUNT: ${name} declares ${mult} base paths in source but is not documented in KNOWN_MULTI_MOUNT — review and record it.`
+      );
     const expectedOps = i.routes * mult;
     indepUniqueRoutes += i.routes;
     const routeOk = expectedOps === mm.ops;
@@ -172,7 +191,7 @@ function build() {
     issue: "WIN-294",
     title: "Independent REST census — second enumerator reconciled to the generated manifest",
     mechanism:
-      "Globs apps/agent/src/**/*.controller.ts (file presence, NOT the generator's CONTROLLER_MODULE_MAP allowlist) and parses route decorators + requireOperator guards directly from source.",
+      "Independent in ENUMERATION: discovers controllers by globbing apps/agent/src/**/*.controller.ts (file presence, NOT the generator's CONTROLLER_MODULE_MAP allowlist) and parses @Controller base paths, route decorators, and requireOperator guards directly from source. The committed manifest is read ONLY to reconcile counts, never to enumerate — so a controller the generator's allowlist misses still appears here and fails --check.",
     reconciliation: {
       routes:
         "independentUniqueRoutes + dualMountAliasOps === manifestOps; every controller's manifest ops === decorators × mount-multiplier.",
@@ -225,4 +244,4 @@ function main() {
   );
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) main();

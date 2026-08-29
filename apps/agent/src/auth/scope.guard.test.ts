@@ -661,6 +661,25 @@ describe("ScopeGuard — Path 1 session token", () => {
     expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
   });
 
+  it("WIN-293 clause 6 — Path 1 (session token) emits ACCEPT_SESSION_TOKEN telemetry on an operator grant", async () => {
+    const logSpy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined as never);
+    try {
+      const h = makeAuthHarness();
+      const token = await h.auth.createPlatformSessionToken({
+        organizationId: h.scope.organizationId,
+        projectId: h.scope.projectId,
+        environmentId: h.scope.environmentId,
+        userId: h.scope.userId,
+      });
+      const ctx = mockExecutionContext({ "x-platos-session-token": token! });
+      await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+      const reasons = logSpy.mock.calls.map((c) => (c[0] as any)?.reason);
+      expect(reasons).toContain(AuthDecisionReason.ACCEPT_SESSION_TOKEN);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it("keeps guest platform tokens in the end-user tier", async () => {
     const h = makeAuthHarness();
     const token = await h.auth.createPlatformSessionToken({

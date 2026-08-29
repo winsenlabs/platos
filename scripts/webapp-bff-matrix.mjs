@@ -16,7 +16,7 @@
 //   node scripts/webapp-bff-matrix.mjs --check     # fail on any drift
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -132,4 +132,4 @@ function main() {
   );
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) main();

@@ -32,10 +32,12 @@ export enum AuthDecisionReason {
   ACCEPT_ACCESS_KEY = "ACCEPT_ACCESS_KEY",
   ACCEPT_BOOTSTRAP = "ACCEPT_BOOTSTRAP",
   ACCEPT_HARNESS_NO_AUTHSERVICE = "ACCEPT_HARNESS_NO_AUTHSERVICE",
+  ACCEPT_SESSION_TOKEN = "ACCEPT_SESSION_TOKEN",
   REJECT_NO_CREDENTIAL = "REJECT_NO_CREDENTIAL",
   REJECT_INVALID_KEY = "REJECT_INVALID_KEY",
   REJECT_CONTROL_PLANE_REQUIRED = "REJECT_CONTROL_PLANE_REQUIRED",
   REJECT_INVALID_AGENT_SCOPE = "REJECT_INVALID_AGENT_SCOPE",
+  REJECT_AGENT_SCOPE_MISMATCH = "REJECT_AGENT_SCOPE_MISMATCH",
   REJECT_PROXIED_RAW_HEADERS = "REJECT_PROXIED_RAW_HEADERS",
   REJECT_MISSING_CREDENTIALS = "REJECT_MISSING_CREDENTIALS",
 }
@@ -614,7 +616,10 @@ export class ScopeGuard implements CanActivate {
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -633,7 +638,10 @@ export class ScopeGuard implements CanActivate {
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -682,7 +690,10 @@ export class ScopeGuard implements CanActivate {
       const provided = request.headers["x-platos-internal-auth"];
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
-          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
+          if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) {
+            this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_CONTROL_PLANE_TOKEN);
+            return true;
+          }
         } catch {
           /* length mismatch handled above */
         }
@@ -706,6 +717,7 @@ export class ScopeGuard implements CanActivate {
         const pathAgentId = this.extractAgentIdFromPath(url);
         if (tokenAgentId && pathAgentId && tokenAgentId !== pathAgentId) {
           // Token is scoped to a different agent than the requested path.
+          this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_AGENT_SCOPE_MISMATCH);
           const resp = context.switchToHttp().getResponse();
           resp.status(403).json({
             error: "AGENT_SCOPE_MISMATCH",
@@ -792,6 +804,7 @@ export class ScopeGuard implements CanActivate {
             origin
           );
           if (keyResult === false) {
+            this.emitAuthDecision(request, "reject", AuthDecisionReason.REJECT_INVALID_KEY);
             const resp = context.switchToHttp().getResponse();
             resp
               .status(401)
@@ -802,6 +815,7 @@ export class ScopeGuard implements CanActivate {
             return false;
           }
         }
+        this.emitAuthDecision(request, "accept", AuthDecisionReason.ACCEPT_SESSION_TOKEN);
         return true;
       }
       // Invalid / incomplete — fall through to direct headers

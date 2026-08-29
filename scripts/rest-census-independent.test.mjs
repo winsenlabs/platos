@@ -6,7 +6,7 @@
 // vacuous.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseController, reconcile, DUAL_MOUNT } from "./rest-census-independent.mjs";
+import { parseController, reconcile, KNOWN_MULTI_MOUNT } from "./rest-census-independent.mjs";
 
 const manOf = (controllers) => {
   let totalOps = 0,
@@ -38,7 +38,7 @@ test("parseController counts the operator floor from requireOperator( calls", ()
 });
 
 test("MUTATION: a production controller absent from the manifest fails as OMISSION", () => {
-  const indep = { FooController: { routes: 1, requireOperator: 0, file: "foo.controller.ts" } };
+  const indep = { FooController: { routes: 1, requireOperator: 0, basePaths: 1, file: "foo.controller.ts" } };
   const r = reconcile(indep, manOf({}));
   assert.equal(r.ok, false);
   assert.ok(r.failures.some((f) => f.startsWith("OMISSION")), r.failures.join("\n"));
@@ -51,27 +51,43 @@ test("MUTATION: a manifest controller with no source file fails as PHANTOM", () 
 });
 
 test("MUTATION: hiding a route (manifest ops != decorators x mult) fails as ROUTE DRIFT", () => {
-  const indep = { FooController: { routes: 3, requireOperator: 0, file: "foo" } };
+  const indep = { FooController: { routes: 3, requireOperator: 0, basePaths: 1, file: "foo" } };
   const r = reconcile(indep, manOf({ FooController: { ops: 5, operator: 0 } }));
   assert.equal(r.ok, false);
   assert.ok(r.failures.some((f) => f.startsWith("ROUTE DRIFT")), r.failures.join("\n"));
 });
 
 test("MUTATION: wrapping operator auth away (manifest operator < floor) fails as OPERATOR REGRESSION", () => {
-  const indep = { FooController: { routes: 2, requireOperator: 2, file: "foo" } };
+  const indep = { FooController: { routes: 2, requireOperator: 2, basePaths: 1, file: "foo" } };
   const r = reconcile(indep, manOf({ FooController: { ops: 2, operator: 1 } }));
   assert.equal(r.ok, false);
   assert.ok(r.failures.some((f) => f.startsWith("OPERATOR REGRESSION")), r.failures.join("\n"));
 });
 
-test("dual-mount multiplier: a DUAL_MOUNT controller expects decorators x 2 ops", () => {
-  const name = Object.keys(DUAL_MOUNT)[0];
-  const mult = DUAL_MOUNT[name];
-  const indep = { [name]: { routes: 4, requireOperator: 0, file: "x" } };
-  // correct: 4 x mult
+test("array-form multi-mount: manifest ops == decorators x source basePaths", () => {
+  const name = Object.keys(KNOWN_MULTI_MOUNT)[0];
+  const mult = KNOWN_MULTI_MOUNT[name];
+  const indep = { [name]: { routes: 4, requireOperator: 0, basePaths: mult, file: "x" } };
+  // correct: 4 x source-derived basePaths
   assert.equal(reconcile(indep, manOf({ [name]: { ops: 4 * mult, operator: 0 } })).ok, true);
-  // wrong: not multiplied -> drift
+  // wrong: not multiplied -> route drift
   assert.equal(reconcile(indep, manOf({ [name]: { ops: 4, operator: 0 } })).ok, false);
+});
+
+test("MUTATION: basePaths disagreeing with KNOWN_MULTI_MOUNT fails as MULTI-MOUNT DRIFT", () => {
+  const name = Object.keys(KNOWN_MULTI_MOUNT)[0];
+  // source now says 3 base paths but the documented map says its recorded value
+  const indep = { [name]: { routes: 2, requireOperator: 0, basePaths: 3, file: "x" } };
+  const r = reconcile(indep, manOf({ [name]: { ops: 6, operator: 0 } }));
+  assert.equal(r.ok, false);
+  assert.ok(r.failures.some((f) => f.startsWith("MULTI-MOUNT DRIFT")), r.failures.join("\n"));
+});
+
+test("MUTATION: an undocumented new multi-mount controller fails as NEW MULTI-MOUNT", () => {
+  const indep = { FreshController: { routes: 2, requireOperator: 0, basePaths: 2, file: "x" } };
+  const r = reconcile(indep, manOf({ FreshController: { ops: 4, operator: 0 } }));
+  assert.equal(r.ok, false);
+  assert.ok(r.failures.some((f) => f.startsWith("NEW MULTI-MOUNT")), r.failures.join("\n"));
 });
 
 test("BASELINE: the live tree reconciles to zero unexplained delta (ok=true)", () => {
