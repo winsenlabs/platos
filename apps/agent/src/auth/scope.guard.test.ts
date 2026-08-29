@@ -22,6 +22,7 @@ import {
   AuthDecisionReason,
 } from "./scope.guard";
 import { AuthService } from "./auth.service";
+import { generateWorkloadKeypair, signWorkloadJwt } from "@internal/workload-identity";
 import { AgentController } from "../agent-runtime/agent.controller";
 import type { ExecutionContext } from "@nestjs/common";
 
@@ -1455,5 +1456,224 @@ describe("ScopeGuard — WIN-293 auth-decision telemetry + negative-control matr
     const blob = JSON.stringify([...logSpy.mock.calls, ...warnSpy.mock.calls]);
     expect(blob).not.toContain(TOKEN);
     expect(blob).not.toContain("pk_super_secret_value");
+  });
+});
+
+
+describe("ScopeGuard — WIN-293 clause 4: cryptographic workload identity", () => {
+  const scopeHeaders = {
+    "x-platos-organization-id": "org_1",
+    "x-platos-project-id": "proj_1",
+    "x-platos-environment-id": "env_1",
+    "x-platos-user-id": "user_1",
+  };
+  const PATH = "/api/v1/agent/threads";
+  const LEGACY = "legacy-shared-secret-value-32chars!!";
+  let keys: ReturnType<typeof generateWorkloadKeypair>;
+  let keysetJson: string;
+  let prev: Record<string, string | undefined>;
+
+  const snap = () => ({
+    PLATOS_WORKLOAD_KEYSET: process.env.PLATOS_WORKLOAD_KEYSET,
+    PLATOS_WORKLOAD_IDENTITY_MODE: process.env.PLATOS_WORKLOAD_IDENTITY_MODE,
+    PLATOS_INTERNAL_AUTH_TOKEN: process.env.PLATOS_INTERNAL_AUTH_TOKEN,
+  });
+
+  beforeEach(() => {
+    prev = snap();
+    keys = generateWorkloadKeypair();
+    keysetJson = JSON.stringify({
+      wa_1: { pub: keys.publicKeyPem, iss: "platos-webapp", sub: "spiffe://platos/webapp" },
+    });
+    process.env.PLATOS_WORKLOAD_KEYSET = keysetJson;
+    delete process.env.PLATOS_WORKLOAD_IDENTITY_MODE;
+    delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+  });
+  afterEach(() => {
+    for (const [k, v] of Object.entries(prev)) {
+      if (v === undefined) delete (process.env as Record<string, string | undefined>)[k];
+      else (process.env as Record<string, string>)[k] = v;
+    }
+  });
+
+  const mint = (over: Record<string, unknown> = {}) =>
+    signWorkloadJwt({
+      privateKeyPem: keys.privateKeyPem,
+      kid: "wa_1",
+      workload: "webapp",
+      method: "GET",
+      path: PATH,
+      tenant: { org: "org_1", prj: "proj_1", env: "env_1" },
+      ...over,
+    } as Parameters<typeof signWorkloadJwt>[0]);
+
+  const principalOf = (ctx: ReturnType<typeof mockExecutionContext>) =>
+    (ctx.switchToHttp().getRequest() as any).scope?.principal;
+
+  it("grants operator on a valid workload credential with NO shared secret configured at all", async () => {
+    const verifyAccessKey = vi.fn().mockResolvedValue(null);
+    const guard = new ScopeGuard({ verifyAccessKey } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": mint() },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(principalOf(ctx)).toBe("operator");
+    // The AccessKey path was never consulted — the workload credential authorized.
+    expect(verifyAccessKey).not.toHaveBeenCalled();
+  });
+
+  it("NETWORK LOCATION NEVER AUTHORIZES: a valid workload credential arriving through the proxy (X-Forwarded-For) with raw scope headers is still rejected", async () => {
+    const verifyAccessKey = vi.fn().mockResolvedValue(true);
+    const guard = new ScopeGuard({ verifyAccessKey } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-forwarded-for": "203.0.113.7", "x-platos-workload-token": mint() },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(principalOf(ctx)).not.toBe("operator");
+  });
+
+  it("ABSENCE of forwarding headers alone grants nothing — no credential still rejects", async () => {
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext({ ...scopeHeaders }, PATH, undefined, "GET");
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(principalOf(ctx)).not.toBe("operator");
+  });
+
+  it("REPLAY to a different path is rejected (request binding)", async () => {
+    const token = mint({ path: "/api/v1/agent/access-key" });
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": token },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(principalOf(ctx)).not.toBe("operator");
+  });
+
+  it("CROSS-ENVIRONMENT replay is rejected (tenant binding)", async () => {
+    const token = mint({ tenant: { org: "org_1", prj: "proj_1", env: "env_OTHER" } });
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": token },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+  });
+
+  it("EXPIRED credential is rejected", async () => {
+    const token = mint({ nowSeconds: Math.floor(Date.now() / 1000) - 4000 });
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": token },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+  });
+
+  it("STOLEN-KEY forgery is rejected (signature must verify under the registered kid)", async () => {
+    const attacker = generateWorkloadKeypair();
+    const forged = signWorkloadJwt({
+      privateKeyPem: attacker.privateKeyPem,
+      kid: "wa_1",
+      workload: "webapp",
+      method: "GET",
+      path: PATH,
+      tenant: { org: "org_1", prj: "proj_1", env: "env_1" },
+    });
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": forged },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+  });
+
+  it("NO FAIL-OPEN DOWNGRADE: an INVALID workload credential does not fall through to a valid legacy secret", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = LEGACY;
+    const attacker = generateWorkloadKeypair();
+    const forged = signWorkloadJwt({
+      privateKeyPem: attacker.privateKeyPem,
+      kid: "wa_1",
+      workload: "webapp",
+      method: "GET",
+      path: PATH,
+    });
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      {
+        ...scopeHeaders,
+        "x-platos-workload-token": forged,
+        "x-platos-internal-auth": LEGACY, // a VALID legacy secret alongside
+      },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(principalOf(ctx)).not.toBe("operator");
+  });
+
+  it("MIGRATION dual mode (default): the legacy shared secret still authorizes", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = LEGACY;
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": LEGACY },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(principalOf(ctx)).toBe("operator");
+  });
+
+  it("MIGRATION workload-only mode: the legacy shared secret is RETIRED and rejected", async () => {
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = LEGACY;
+    process.env.PLATOS_WORKLOAD_IDENTITY_MODE = "workload-only";
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const legacyCtx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": LEGACY },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(legacyCtx)).resolves.toBe(false);
+    expect(principalOf(legacyCtx)).not.toBe("operator");
+
+    // ...while the workload credential still works in the same mode.
+    const workloadCtx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-workload-token": mint() },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(workloadCtx)).resolves.toBe(true);
+    expect(principalOf(workloadCtx)).toBe("operator");
+  });
+
+  it("ROLLBACK: with no keyset configured, the legacy secret alone still authorizes (safe rollback path)", async () => {
+    delete process.env.PLATOS_WORKLOAD_KEYSET;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = LEGACY;
+    const guard = new ScopeGuard({ verifyAccessKey: vi.fn().mockResolvedValue(null) } as any);
+    const ctx = mockExecutionContext(
+      { ...scopeHeaders, "x-platos-internal-auth": LEGACY },
+      PATH,
+      undefined,
+      "GET"
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 });

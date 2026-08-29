@@ -14,6 +14,11 @@ const schema = z.object({
   // if unset so a running install can never silently fall back to an
   // unauthenticated operator grant.
   PLATOS_INTERNAL_AUTH_TOKEN: z.string().min(16),
+  // WIN-293 clause 4 — workload-identity signing material. Optional so the
+  // migration (and rollback) stays safe: without them the legacy shared secret
+  // still carries the request. Never logged.
+  PLATOS_WORKLOAD_PRIVATE_KEY: z.string().optional(),
+  PLATOS_WORKLOAD_KEY_ID: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   FROM_EMAIL: z.string().default("Platos <no-reply@platos.dev>"),
   BACKDOOR_PLATOS_DEV: z.string().optional(),
