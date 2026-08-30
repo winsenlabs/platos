@@ -1,27 +1,15 @@
 #!/usr/bin/env node
-// Generates the ADR M0.3 §4 V1 package skeleton — the empty-but-real directory
-// tree the M2 migration moves code INTO.
+// Generates the ADR M0.3 §4 V1 package skeleton and its complete TypeScript
+// project graph.
 //
-// Why a generator rather than 170 hand-written files:
-//   * the 17 context names are read from scripts/arch/boundary-rules.mjs, the
-//     same single source of truth the boundary checker and .dependency-cruiser.js
-//     read, so the skeleton and the rules can never name different contexts;
-//   * `--check` re-renders every file in memory and byte-compares it against the
-//     working tree, so the skeleton is drift-gated the same way
-//     .dependency-cruiser.js is. A hand edit to a placeholder is caught, and a
-//     context added to the DAG map without its package is caught;
-//   * it is re-runnable evidence: the reviewer runs one command instead of
-//     reading 170 near-identical files.
+// This generator owns every manifest, project tsconfig and declaration-only
+// placeholder under the V1 roots, plus the root solution tsconfig. `--check`
+// byte-compares all owned source/config files and rejects missing, stale or
+// unexpected files. Build outputs are deliberately excluded from ownership.
 //
-//   node scripts/arch/gen-v1-skeleton.mjs            # write the tree
-//   node scripts/arch/gen-v1-skeleton.mjs --check    # fail on drift / missing / extra
-//   node scripts/arch/gen-v1-skeleton.mjs --list     # print the emitted paths
-//
-// SCOPE. Every emitted module is a declaration-only placeholder: interfaces,
-// type aliases and re-exports, no runtime behaviour. Nothing here is wired into
-// pnpm-workspace.yaml or pnpm-lock.yaml, so `pnpm install --frozen-lockfile`,
-// the SBOM closure and the licence audits are untouched; M2 adds the workspace
-// globs in the commit that first builds one of these packages.
+//   node scripts/arch/gen-v1-skeleton.mjs            # write generated files
+//   node scripts/arch/gen-v1-skeleton.mjs --check    # fail on generated drift
+//   node scripts/arch/gen-v1-skeleton.mjs --list     # print emitted paths
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -31,82 +19,214 @@ import { CONTEXT_DEPENDS_ON, CONTEXT_NAMES, SDK_CONTAINMENT } from "./boundary-r
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
-// ADR M0.3 §4 adapters/. Each implements ONE kernel port and is the sole holder
-// of its vendor client. `channel-*` and the notifier pair are enumerated rather
-// than globbed: a skeleton directory has to have a name.
+// Adapter-facing ports belong to their contexts. Only genuinely cross-cutting
+// decoupling ports remain in the pure-leaf kernel (ADR M0.3 §13 amendment).
 export const ADAPTERS = [
-  { dir: "postgres-tenancy", port: "TenancyRepository", note: "the tenancy-database client; per-context repositories, owner-tagged" },
-  { dir: "outbox", port: "OutboxWriter", note: "THE single writer of the Event/outbox table" },
-  { dir: "durable-runtime", port: "DurableRuntime", note: "the durable job runtime behind one kernel port (ADR M0.3 §12)" },
-  { dir: "clickhouse-observability", port: "ObservabilitySink", note: "the column-store observability client" },
-  { dir: "objectstore-minio", port: "ObjectStore", note: "the S3-compatible object store client" },
-  { dir: "redis-ratelimit", port: "RateLimiter", note: "one namespaced keyspace, one owner" },
-  { dir: "redis-cache", port: "Cache", note: "one namespaced keyspace, one owner" },
-  { dir: "redis-streams", port: "EventBus", note: "one namespaced keyspace, one owner" },
-  { dir: "model-router-providers", port: "ModelRouter", note: "the model-provider clients" },
-  { dir: "channel-slack", port: "ChannelAdapter", note: "one channel client" },
-  { dir: "notifier-email", port: "Notifier", note: "outbound email" },
-  { dir: "notifier-webhook", port: "Notifier", note: "outbound HTTP callbacks" },
+  { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy", note: "the tenancy-database client; per-context repositories, owner-tagged" },
+  { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "THE single writer of the Event/outbox table" },
+  { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "the durable job runtime behind one kernel port (ADR M0.3 §12)" },
+  { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "the column-store observability client" },
+  { dir: "objectstore-minio", port: "ObjectStore", owner: "files", note: "the S3-compatible object store client" },
+  { dir: "redis-ratelimit", port: "RateLimiter", owner: "identity-access", note: "one namespaced keyspace, one owner" },
+  { dir: "redis-cache", port: "Cache", owner: "memory", note: "one namespaced keyspace, one owner" },
+  { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
+  { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "the model-provider clients" },
+  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "one channel client" },
+  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
+  { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
 ];
 
-// ADR M0.3 §4 apps/core-api/src/transports/.
 export const TRANSPORTS = ["rest", "mcp", "ws", "webhook", "channels-ingress", "bff"];
 
-// ADR M0.3 §4 packages/kernel/src/ports/.
 const KERNEL_PORTS = [
   "EventBus", "OutboxWriter", "UnitOfWork", "Clock", "IdGenerator", "Logger",
   "DurableRuntime", "SafetyEventSink", "ErasureTarget",
 ];
 
-// Every directory this generator owns. `--check` treats an unexpected file under
-// one of these as drift, so a stray hand-written module cannot hide in the tree.
 export const OWNED_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
+export const ROOT_SOLUTION_PATH = "tsconfig.json";
+export const EXPECTED_PROJECT_COUNT = 32;
+export const EXPECTED_EDGE_COUNT = 94;
+export const EXPECTED_GENERATED_FILE_COUNT = 201;
 
 const HEADER = "// PLACEHOLDER — generated by scripts/arch/gen-v1-skeleton.mjs. Do not edit by hand.\n";
+const BUILD_SCRIPTS = { build: "tsc -b", clean: "tsc -b --clean" };
 
 function pascal(name) {
   return name.split(/[-_]/u).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");
 }
 
-function manifest(name, description) {
-  return `${JSON.stringify({
+function camel(name) {
+  return name.replace(/-(.)/gu, (_match, character) => character.toUpperCase());
+}
+
+function workspaceDependencies(names) {
+  return Object.fromEntries(names.map((name) => [name, "workspace:*"]));
+}
+
+function packageManifest({ name, description, main, types, dependencies = {}, exports = undefined }) {
+  const manifest = {
     name,
     version: "0.0.0",
     private: true,
     description,
     license: "Apache-2.0",
     type: "module",
-    main: "src/index.ts",
-    types: "src/index.ts",
-  }, null, 2)}\n`;
+    main,
+    types,
+    exports: exports ?? { ".": { types, import: main } },
+    scripts: BUILD_SCRIPTS,
+  };
+  if (Object.keys(dependencies).length) manifest.dependencies = dependencies;
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
+function kernelManifest() {
+  return packageManifest({
+    name: "@platos/kernel",
+    description: "Port interfaces and pure value objects. Zero runtime dependencies.",
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
+  });
 }
 
 function contextManifest(name) {
-  return `${JSON.stringify({
+  const dependencies = workspaceDependencies([
+    "@platos/kernel",
+    ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
+  ]);
+  return packageManifest({
     name: `@platos/context-${name}`,
-    version: "0.0.0",
-    private: true,
     description: `ADR M0.3 bounded context: ${name}.`,
-    license: "Apache-2.0",
-    type: "module",
-    main: "contracts/index.ts",
-    types: "contracts/index.ts",
+    main: "./dist/contracts/index.js",
+    types: "./dist/contracts/index.d.ts",
+    exports: {
+      ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
+      "./application/ports/index.js": {
+        types: "./dist/application/ports/index.d.ts",
+        import: "./dist/application/ports/index.js",
+      },
+    },
+    dependencies,
+  });
+}
+
+function adapterManifest(adapter) {
+  const dependency = adapter.owner === "kernel" ? "@platos/kernel" : `@platos/context-${adapter.owner}`;
+  return packageManifest({
+    name: `@platos/adapter-${adapter.dir}`,
+    description: `Implements the ${adapter.owner} ${adapter.port} port.`,
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
+    dependencies: workspaceDependencies([dependency]),
+  });
+}
+
+function appManifest({ name, description, dependencies }) {
+  return packageManifest({
+    name,
+    description,
+    main: "./dist/main.js",
+    types: "./dist/main.d.ts",
+    dependencies: workspaceDependencies(dependencies),
+  });
+}
+
+export function projectPaths() {
+  return [
+    "packages/kernel",
+    ...CONTEXT_NAMES.map((name) => `packages/contexts/${name}`),
+    ...ADAPTERS.map((adapter) => `packages/adapters/${adapter.dir}`),
+    "apps/core-api",
+    "apps/mcp-stdio",
+  ];
+}
+
+export function projectReferences() {
+  const references = new Map();
+  references.set("packages/kernel", []);
+  for (const name of CONTEXT_NAMES) {
+    references.set(`packages/contexts/${name}`, [
+      "packages/kernel",
+      ...CONTEXT_DEPENDS_ON[name].map((dependency) => `packages/contexts/${dependency}`),
+    ]);
+  }
+  for (const adapter of ADAPTERS) {
+    references.set(
+      `packages/adapters/${adapter.dir}`,
+      [adapter.owner === "kernel" ? "packages/kernel" : `packages/contexts/${adapter.owner}`]
+    );
+  }
+  references.set("apps/core-api", [
+    ...CONTEXT_NAMES.map((name) => `packages/contexts/${name}`),
+    ...ADAPTERS.map((adapter) => `packages/adapters/${adapter.dir}`),
+  ]);
+  references.set("apps/mcp-stdio", ["packages/contexts/tools"]);
+  return references;
+}
+
+function relativeReference(fromProject, toProject) {
+  const path = relative(fromProject, toProject).split("\\").join("/");
+  return path.startsWith(".") ? path : `./${path}`;
+}
+
+function projectTsconfig(project, include, references, rootDir) {
+  const extendsPath = relative(project, ROOT_SOLUTION_PATH).split("\\").join("/");
+  return `${JSON.stringify({
+    extends: extendsPath,
+    compilerOptions: {
+      composite: true,
+      declaration: true,
+      declarationMap: true,
+      rootDir,
+      outDir: "dist",
+      tsBuildInfoFile: "dist/.tsbuildinfo",
+    },
+    include,
+    exclude: ["dist", "node_modules"],
+    references: references.map((dependency) => ({ path: relativeReference(project, dependency) })),
   }, null, 2)}\n`;
 }
 
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
+function rootSolutionTsconfig() {
+  return `${JSON.stringify({
+    extends: "./.configs/tsconfig.base.json",
+    files: [],
+    compilerOptions: {
+      baseUrl: ".",
+      paths: {
+        "@platos/kernel": ["packages/kernel/src/index.ts"],
+        "@platos/kernel/*": ["packages/kernel/src/*"],
+        "@platos/context-*": ["packages/contexts/*"],
+        "@platos/adapter-*": ["packages/adapters/*"],
+      },
+    },
+    references: projectPaths().map((path) => ({ path: `./${path}` })),
+  }, null, 2)}\n`;
+}
+
+function contextAdapterPorts(name) {
+  const ports = [];
+  for (const adapter of ADAPTERS) {
+    if (adapter.owner === name && adapter.port !== `${pascal(name)}Repository` && !ports.includes(adapter.port)) {
+      ports.push(adapter.port);
+    }
+  }
+  return ports;
+}
 
 export function renderSkeleton() {
   const files = new Map();
+  const references = projectReferences();
   const put = (path, text) => {
     if (files.has(path)) throw new Error(`duplicate emitted path ${path}`);
     files.set(path, text);
   };
 
-  // --- packages/kernel ----------------------------------------------------
-  put("packages/kernel/package.json", manifest("@platos/kernel", "Port interfaces and pure value objects. Zero runtime dependencies."));
+  put(ROOT_SOLUTION_PATH, rootSolutionTsconfig());
+
+  put("packages/kernel/package.json", kernelManifest());
+  put("packages/kernel/tsconfig.json", projectTsconfig("packages/kernel", ["src/**/*.ts"], references.get("packages/kernel"), "src"));
   put(
     "packages/kernel/README.md",
     `# @platos/kernel\n\nADR M0.3 §4 \`packages/kernel\`: the ONLY cross-cutting package. It holds port\ninterfaces and pure value objects and nothing else — no service, no adapter, no\nvendor client, no business rule. \`kernel-is-leaf\` in\n\`scripts/arch/boundary-rules.mjs\` enforces that it imports no context, no\nadapter and no infrastructure client.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
@@ -126,16 +246,17 @@ export function renderSkeleton() {
       `export interface DomainEvent {\n  readonly name: string;\n  readonly occurredAt: string;\n}\n`
   );
 
-  // --- packages/contexts/<name> ------------------------------------------
   for (const name of CONTEXT_NAMES) {
     const base = `packages/contexts/${name}`;
-    const deps = CONTEXT_DEPENDS_ON[name];
+    const dependencies = CONTEXT_DEPENDS_ON[name];
     const Type = pascal(name);
+    const adapterPorts = contextAdapterPorts(name);
 
     put(`${base}/package.json`, contextManifest(name));
+    put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
-      `# @platos/context-${name}\n\nADR M0.3 bounded context. Layers: \`domain/\`, \`application/\`,\n\`application/ports/\`, \`contracts/\`. Other contexts may import \`contracts/\` and\nnothing else (\`cross-context-contracts-only\`).\n\nMay depend on: ${deps.length ? deps.join(", ") : "nothing (leaf)"}.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
+      `# @platos/context-${name}\n\nADR M0.3 bounded context. Layers: \`domain/\`, \`application/\`,\n\`application/ports/\`, \`contracts/\`. Other contexts may import \`contracts/\` and\nnothing else (\`cross-context-contracts-only\`).\n\nMay depend on: ${dependencies.length ? dependencies.join(", ") : "nothing (leaf)"}.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
     );
     put(
       `${base}/domain/index.ts`,
@@ -148,18 +269,19 @@ export function renderSkeleton() {
       `${HEADER}// Driven ports this context needs. Implemented by packages/adapters/*,\n` +
         `// wired in apps/core-api. Never imported by domain/.\n` +
         `import type { ${Type}Aggregate } from "../../domain/index.js";\n\n` +
-        `export interface ${Type}Repository {\n  load(id: string): Promise<${Type}Aggregate | null>;\n}\n`
+        `export interface ${Type}Repository {\n  load(id: string): Promise<${Type}Aggregate | null>;\n}\n` +
+        adapterPorts.map((port) => `\nexport interface ${port} {\n  readonly __port: "${port}";\n}\n`).join("")
     );
     put(
       `${base}/application/index.ts`,
       `${HEADER}// Use-cases. May import this context's domain and ports, and any allowed\n` +
         `// peer context's contracts/ (ADR M0.3 §1 domainDeps).\n` +
         `import type { ${Type}Repository } from "./ports/index.js";\n` +
-        deps.map((dep) => `import type { ${pascal(dep)}Contract } from "@platos/context-${dep}/contracts/index.js";`).join("\n") +
-        (deps.length ? "\n" : "") +
+        dependencies.map((dependency) => `import type { ${pascal(dependency)}Contract } from "@platos/context-${dependency}";`).join("\n") +
+        (dependencies.length ? "\n" : "") +
         `\nexport interface ${Type}UseCases {\n  readonly repository: ${Type}Repository;\n` +
-        deps.map((dep) => `  readonly ${dep.replace(/-(.)/gu, (_m, c) => c.toUpperCase())}: ${pascal(dep)}Contract;`).join("\n") +
-        (deps.length ? "\n" : "") +
+        dependencies.map((dependency) => `  readonly ${camel(dependency)}: ${pascal(dependency)}Contract;`).join("\n") +
+        (dependencies.length ? "\n" : "") +
         `}\n`
     );
     put(
@@ -170,27 +292,40 @@ export function renderSkeleton() {
     );
   }
 
-  // --- packages/adapters/<name> ------------------------------------------
   for (const adapter of ADAPTERS) {
     const base = `packages/adapters/${adapter.dir}`;
     const Type = pascal(adapter.dir);
-    put(`${base}/package.json`, manifest(`@platos/adapter-${adapter.dir}`, `Implements the kernel ${adapter.port} port.`));
+    const portModule = adapter.owner === "kernel"
+      ? "@platos/kernel"
+      : `@platos/context-${adapter.owner}/application/ports/index.js`;
+    put(`${base}/package.json`, adapterManifest(adapter));
+    put(`${base}/tsconfig.json`, projectTsconfig(base, ["src/**/*.ts"], references.get(base), "src"));
     put(
       `${base}/README.md`,
-      `# @platos/adapter-${adapter.dir}\n\nImplements the kernel \`${adapter.port}\` port — ${adapter.note}.\n\nADR M0.3 §4: an adapter implements ONE port and is the sole holder of its vendor\nclient. Only \`apps/core-api\` may import it (\`adapters-only-from-core\`), and it\nmay import no other adapter (\`adapter-is-self-contained\`).\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
+      adapter.owner === "kernel"
+        ? `# @platos/adapter-${adapter.dir}\n\nImplements the kernel \`${adapter.port}\` port — ${adapter.note}.\n\nADR M0.3 §4: an adapter implements ONE port and is the sole holder of its vendor\nclient. Only \`apps/core-api\` may import it (\`adapters-only-from-core\`), and it\nmay import no other adapter (\`adapter-is-self-contained\`).\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
+        : `# @platos/adapter-${adapter.dir}\n\nImplements the ${adapter.owner} \`${adapter.port}\` port — ${adapter.note}.\n\nADR M0.3 §4/§13: an adapter implements ONE owner-supplied port and is the sole\nholder of its vendor client. Only \`apps/core-api\` may import it, and it may\nimport no other adapter.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
     );
     put(`${base}/src/index.ts`, `${HEADER}export type { ${Type}Adapter } from "./adapter.js";\n`);
     put(
       `${base}/src/adapter.ts`,
       `${HEADER}// The single ${adapter.port} implementation. The vendor client is imported\n` +
         `// HERE and nowhere else in the repository.\n` +
-        `import type { ${adapter.port} } from "@platos/kernel";\n\n` +
+        `import type { ${adapter.port} } from "${portModule}";\n\n` +
         `export interface ${Type}Adapter extends ${adapter.port} {\n  readonly adapterName: "${adapter.dir}";\n}\n`
     );
   }
 
-  // --- apps/core-api -------------------------------------------------------
-  put("apps/core-api/package.json", manifest("@platos/core-api", "THE single V1 deployable: the composition root and every transport."));
+  const coreDependencies = [
+    ...CONTEXT_NAMES.map((name) => `@platos/context-${name}`),
+    ...ADAPTERS.map((adapter) => `@platos/adapter-${adapter.dir}`),
+  ];
+  put("apps/core-api/package.json", appManifest({
+    name: "@platos/core-api",
+    description: "THE single V1 deployable: the composition root and every transport.",
+    dependencies: coreDependencies,
+  }));
+  put("apps/core-api/tsconfig.json", projectTsconfig("apps/core-api", ["src/**/*.ts"], references.get("apps/core-api"), "src"));
   put(
     "apps/core-api/README.md",
     `# @platos/core-api\n\nADR M0.3 §4: THE single V1 deployable. It is the composition root — the ONLY\nplace that may import \`packages/adapters/*\` — and it hosts every transport.\nTransports are thin: they call context use-cases and hold no business rule.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
@@ -204,13 +339,13 @@ export function renderSkeleton() {
   put(
     "apps/core-api/src/app.module.ts",
     `${HEADER}// THE composition root: the one place adapters are bound to context ports.\n` +
-      CONTEXT_NAMES.map((name) => `import type { ${pascal(name)}Contract } from "@platos/context-${name}/contracts/index.js";`).join("\n") +
+      CONTEXT_NAMES.map((name) => `import type { ${pascal(name)}Contract } from "@platos/context-${name}";`).join("\n") +
       "\n" +
-      ADAPTERS.map((adapter) => `import type { ${pascal(adapter.dir)}Adapter } from "@platos/adapter-${adapter.dir}/src/index.js";`).join("\n") +
+      ADAPTERS.map((adapter) => `import type { ${pascal(adapter.dir)}Adapter } from "@platos/adapter-${adapter.dir}";`).join("\n") +
       "\n\nexport interface AppModule {\n" +
-      CONTEXT_NAMES.map((name) => `  readonly ${name.replace(/-(.)/gu, (_m, c) => c.toUpperCase())}: ${pascal(name)}Contract;`).join("\n") +
+      CONTEXT_NAMES.map((name) => `  readonly ${camel(name)}: ${pascal(name)}Contract;`).join("\n") +
       "\n" +
-      ADAPTERS.map((adapter) => `  readonly ${adapter.dir.replace(/-(.)/gu, (_m, c) => c.toUpperCase())}: ${pascal(adapter.dir)}Adapter;`).join("\n") +
+      ADAPTERS.map((adapter) => `  readonly ${camel(adapter.dir)}: ${pascal(adapter.dir)}Adapter;`).join("\n") +
       "\n}\n"
   );
   for (const transport of TRANSPORTS) {
@@ -222,8 +357,12 @@ export function renderSkeleton() {
     );
   }
 
-  // --- apps/mcp-stdio ------------------------------------------------------
-  put("apps/mcp-stdio/package.json", manifest("@platos/mcp-stdio", "Thin stdio binary; reuses the tools context transport."));
+  put("apps/mcp-stdio/package.json", appManifest({
+    name: "@platos/mcp-stdio",
+    description: "Thin stdio binary; reuses the tools context transport.",
+    dependencies: ["@platos/context-tools"],
+  }));
+  put("apps/mcp-stdio/tsconfig.json", projectTsconfig("apps/mcp-stdio", ["src/**/*.ts"], references.get("apps/mcp-stdio"), "src"));
   put(
     "apps/mcp-stdio/README.md",
     `# @platos/mcp-stdio\n\nADR M0.3 §4: a thin stdio binary. It owns no business logic; it reuses the\n\`tools\` context transport surface published through that context's\n\`contracts/\`.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
@@ -231,57 +370,80 @@ export function renderSkeleton() {
   put(
     "apps/mcp-stdio/src/main.ts",
     `${HEADER}// Stdio entry point. Reuses the tools context contract surface.\n` +
-      `import type { ToolsContract } from "@platos/context-tools/contracts/index.js";\n\n` +
+      `import type { ToolsContract } from "@platos/context-tools";\n\n` +
       `export type StdioBootstrap = () => Promise<ToolsContract>;\n`
   );
 
   return files;
 }
 
-// ---------------------------------------------------------------------------
-// Invariants the generator holds over its own data
-// ---------------------------------------------------------------------------
-
 export function selfCheck() {
   const errors = [];
-  const dirs = new Set(ADAPTERS.map((a) => a.dir));
-  // Every SDK containment home under packages/adapters/ must be a real adapter,
-  // or rule (h) would pin a vendor client to a directory that does not exist.
+  const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
+  const references = projectReferences();
+  const edgeCount = [...references.values()].reduce((count, dependencies) => count + dependencies.length, 0);
+
   for (const sdk of SDK_CONTAINMENT) {
     const match = /\^packages\/adapters\/([^/]+)\//u.exec(sdk.home);
-    if (match && !dirs.has(match[1])) {
+    if (match && !adapterDirectories.has(match[1])) {
       errors.push(`SDK_CONTAINMENT ${sdk.id} names packages/adapters/${match[1]}/, which the skeleton does not create`);
     }
   }
-  if (CONTEXT_NAMES.length !== 17) {
-    errors.push(`ADR M0.3 §4 names 17 contexts; CONTEXT_DEPENDS_ON has ${CONTEXT_NAMES.length}`);
-  }
+  if (CONTEXT_NAMES.length !== 17) errors.push(`ADR M0.3 §4 names 17 contexts; CONTEXT_DEPENDS_ON has ${CONTEXT_NAMES.length}`);
+  if (ADAPTERS.length !== 12) errors.push(`ADR M0.3 §4 names 12 concrete adapters; ADAPTERS has ${ADAPTERS.length}`);
+  if (projectPaths().length !== EXPECTED_PROJECT_COUNT) errors.push(`V1 project count is ${projectPaths().length}, expected ${EXPECTED_PROJECT_COUNT}`);
+  if (edgeCount !== EXPECTED_EDGE_COUNT) errors.push(`V1 project edge count is ${edgeCount}, expected ${EXPECTED_EDGE_COUNT}`);
   for (const name of CONTEXT_NAMES) {
-    for (const dep of CONTEXT_DEPENDS_ON[name]) {
-      if (!CONTEXT_NAMES.includes(dep)) errors.push(`${name} depends on unknown context ${dep}`);
+    for (const dependency of CONTEXT_DEPENDS_ON[name]) {
+      if (!CONTEXT_NAMES.includes(dependency)) errors.push(`${name} depends on unknown context ${dependency}`);
+    }
+  }
+  for (const adapter of ADAPTERS) {
+    if (adapter.owner !== "kernel" && !CONTEXT_NAMES.includes(adapter.owner)) {
+      errors.push(`${adapter.dir} assigns ${adapter.port} to unknown owner ${adapter.owner}`);
     }
   }
   return errors;
 }
 
-// ---------------------------------------------------------------------------
-// CLI
-// ---------------------------------------------------------------------------
-
-function listExistingOwnedFiles(root) {
+export function listExistingOwnedFiles(root) {
   const found = [];
   const walk = (absolute) => {
     for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      if (entry.isDirectory() && ["dist", "node_modules"].includes(entry.name)) continue;
       const child = join(absolute, entry.name);
       if (entry.isDirectory()) walk(child);
-      else found.push(relative(root, child).split("\\").join("/"));
+      else if (!entry.name.endsWith(".tsbuildinfo")) found.push(relative(root, child).split("\\").join("/"));
     }
   };
   for (const owned of OWNED_ROOTS) {
     const absolute = join(root, owned);
     if (existsSync(absolute) && statSync(absolute).isDirectory()) walk(absolute);
   }
+  if (existsSync(join(root, ROOT_SOLUTION_PATH))) found.push(ROOT_SOLUTION_PATH);
   return found.sort();
+}
+
+export function checkSkeleton(root = repositoryRoot) {
+  const problems = [];
+  const files = renderSkeleton();
+  for (const [path, text] of files) {
+    const absolute = join(root, path);
+    if (!existsSync(absolute)) problems.push(`MISSING ${path}`);
+    else if (readFileSync(absolute, "utf8") !== text) problems.push(`STALE   ${path}`);
+  }
+  for (const path of listExistingOwnedFiles(root)) if (!files.has(path)) problems.push(`EXTRA   ${path}`);
+  return problems;
+}
+
+export function writeSkeleton(root = repositoryRoot) {
+  const files = renderSkeleton();
+  for (const [path, text] of files) {
+    const absolute = join(root, path);
+    mkdirSync(dirname(absolute), { recursive: true });
+    writeFileSync(absolute, text, "utf8");
+  }
+  return files;
 }
 
 function main() {
@@ -297,6 +459,11 @@ function main() {
   }
 
   const files = renderSkeleton();
+  if (files.size !== EXPECTED_GENERATED_FILE_COUNT) {
+    process.stderr.write(`FAIL generated file count is ${files.size}, expected ${EXPECTED_GENERATED_FILE_COUNT}\n`);
+    process.exitCode = 1;
+    return;
+  }
 
   if (list) {
     for (const path of [...files.keys()].sort()) process.stdout.write(`${path}\n`);
@@ -304,34 +471,23 @@ function main() {
   }
 
   if (check) {
-    const problems = [];
-    for (const [path, text] of files) {
-      const absolute = join(root, path);
-      if (!existsSync(absolute)) {
-        problems.push(`MISSING ${path}`);
-        continue;
-      }
-      if (readFileSync(absolute, "utf8") !== text) problems.push(`STALE   ${path}`);
-    }
-    for (const path of listExistingOwnedFiles(root)) {
-      if (!files.has(path)) problems.push(`EXTRA   ${path}`);
-    }
+    const problems = checkSkeleton(root);
     if (problems.length) {
       for (const problem of problems) process.stdout.write(`${problem}\n`);
-      process.stdout.write(`\n${problems.length} skeleton drift(s). Run: node scripts/arch/gen-v1-skeleton.mjs\n`);
+      process.stdout.write(`\n${problems.length} generated drift(s). Run: node scripts/arch/gen-v1-skeleton.mjs\n`);
       process.exitCode = 1;
       return;
     }
-    process.stdout.write(`ok: ${files.size} skeleton file(s) match scripts/arch/gen-v1-skeleton.mjs\n`);
+    process.stdout.write(
+      `ok: exactly ${files.size} generated file(s) define ${EXPECTED_PROJECT_COUNT} V1 projects and ${EXPECTED_EDGE_COUNT} project edges\n`
+    );
     return;
   }
 
-  for (const [path, text] of files) {
-    const absolute = join(root, path);
-    mkdirSync(dirname(absolute), { recursive: true });
-    writeFileSync(absolute, text, "utf8");
-  }
-  process.stdout.write(`wrote ${files.size} skeleton file(s)\n`);
+  writeSkeleton(root);
+  process.stdout.write(
+    `wrote exactly ${files.size} generated file(s) for ${EXPECTED_PROJECT_COUNT} V1 projects and ${EXPECTED_EDGE_COUNT} project edges\n`
+  );
 }
 
 if (process.argv[1] && process.argv[1].endsWith("gen-v1-skeleton.mjs")) main();

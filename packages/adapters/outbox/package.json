@@ -5,6 +5,19 @@
   "description": "Implements the kernel OutboxWriter port.",
   "license": "Apache-2.0",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@platos/kernel": "workspace:*"
+  }
 }

@@ -4,11 +4,11 @@
 // Drift gate:      node scripts/arch/gen-dependency-cruiser.mjs --check
 //
 // The dependency-cruiser encoding of ADR M0.3 (WIN-248) boundary rules. It is
-// the M2 activation artifact: add dependency-cruiser as a dev dependency and run
+// wired to the WIN-251 root solution tsconfig. Run
 //   depcruise packages apps --config .dependency-cruiser.js
-// to enforce these rules against the V1 packages once they exist. Until M2, the
-// zero-dependency checker scripts/arch/arch-boundaries.mjs enforces the same rule
-// set and is proven non-vacuous by scripts/arch/arch-boundaries.test.mjs.
+// when dependency-cruiser is activated. The zero-dependency checker
+// scripts/arch/arch-boundaries.mjs enforces the same rule set now and is proven
+// non-vacuous by scripts/arch/arch-boundaries.test.mjs.
 //
 // The banned core-import list encoded below is exactly:
 //   @nestjs, @prisma, prisma, ioredis, redis, @clickhouse, minio, @aws-sdk, @tri[g]ger\.dev, @modelcontextprotocol, openai, @anthropic-ai
@@ -387,6 +387,9 @@ module.exports = {
     }
   ],
   "options": {
+    "tsConfig": {
+      "fileName": "tsconfig.json"
+    },
     "doNotFollow": {
       "path": "node_modules"
     },

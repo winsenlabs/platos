@@ -6,3 +6,7 @@ import type { ChannelsAggregate } from "../../domain/index.js";
 export interface ChannelsRepository {
   load(id: string): Promise<ChannelsAggregate | null>;
 }
+
+export interface ChannelAdapter {
+  readonly __port: "ChannelAdapter";
+}

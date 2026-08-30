@@ -6,3 +6,7 @@ import type { ProvidersAggregate } from "../../domain/index.js";
 export interface ProvidersRepository {
   load(id: string): Promise<ProvidersAggregate | null>;
 }
+
+export interface ModelRouter {
+  readonly __port: "ModelRouter";
+}

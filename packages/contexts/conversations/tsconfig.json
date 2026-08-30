@@ -1,0 +1,55 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": [
+    "domain/**/*.ts",
+    "application/**/*.ts",
+    "contracts/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "references": [
+    {
+      "path": "../../kernel"
+    },
+    {
+      "path": "../agents"
+    },
+    {
+      "path": "../skills"
+    },
+    {
+      "path": "../tools"
+    },
+    {
+      "path": "../memory"
+    },
+    {
+      "path": "../providers"
+    },
+    {
+      "path": "../files"
+    },
+    {
+      "path": "../cost-monitoring"
+    },
+    {
+      "path": "../jobs"
+    },
+    {
+      "path": "../secrets"
+    },
+    {
+      "path": "../tenancy"
+    }
+  ]
+}

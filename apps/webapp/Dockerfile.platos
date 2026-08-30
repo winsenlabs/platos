@@ -21,6 +21,7 @@ COPY --chown=node:node .gitignore .gitignore
 COPY --from=pruner --chown=node:node /platos/out/json/ .
 COPY --from=pruner --chown=node:node /platos/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner --chown=node:node /platos/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner --chown=node:node /platos/scripts/install-git-hooks.mjs ./scripts/install-git-hooks.mjs
 COPY --chown=node:node patches ./patches
 # `turbo prune --docker` strips `pnpm.patchedDependencies` from the
 # pruned root package.json, leaving an empty `{}` — which means pnpm

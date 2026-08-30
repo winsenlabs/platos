@@ -6,13 +6,9 @@
 // set (scripts/arch/boundary-rules.mjs) against a source tree and exits non-zero
 // on any violation.
 //
-// WHAT ENFORCES NOW vs WHAT IS READY FOR M2. The V1 bounded-context packages
-// (packages/contexts/*, packages/adapters/*, packages/kernel, apps/core-api) do
-// not exist yet — they are built in M2. So the default scan finds no V1 source
-// and the checker is green by vacuity today. The rule logic is proven non-vacuous
-// by scripts/arch/arch-boundaries.test.mjs, which builds real temp-directory
-// fixtures and asserts each rule CATCHES a violation and PASSES a compliant tree.
-// As M2 creates the packages, the same rules bind against real code with no edit.
+// The V1 skeleton is real and built by WIN-251. The default scan therefore must
+// be non-zero; scripts/arch/arch-boundaries.test.mjs additionally mutation-tests
+// every rule against temporary violating and compliant trees.
 //
 // Usage:
 //   node scripts/arch/arch-boundaries.mjs                 # scan the V1 layout in this repo
@@ -363,9 +359,7 @@ function main() {
     );
     if (result.violations.length === 0) {
       if (result.fileCount === 0) {
-        process.stdout.write(
-          "ok: no V1-layout source present yet; rules are fixture-proven and bind as M2 creates packages.\n"
-        );
+        process.stdout.write("FAIL: V1 layout scan is vacuous; generated source is missing or selectors drifted.\n");
       } else {
         process.stdout.write(`ok: ${result.fileCount} file(s) satisfy every ADR M0.3 boundary rule.\n`);
       }
@@ -377,7 +371,7 @@ function main() {
     }
   }
 
-  process.exitCode = result.violations.length > 0 ? 1 : 0;
+  process.exitCode = result.violations.length > 0 || result.fileCount === 0 ? 1 : 0;
 }
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

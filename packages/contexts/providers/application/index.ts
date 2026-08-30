@@ -2,8 +2,8 @@
 // Use-cases. May import this context's domain and ports, and any allowed
 // peer context's contracts/ (ADR M0.3 §1 domainDeps).
 import type { ProvidersRepository } from "./ports/index.js";
-import type { TenancyContract } from "@platos/context-tenancy/contracts/index.js";
-import type { SecretsContract } from "@platos/context-secrets/contracts/index.js";
+import type { TenancyContract } from "@platos/context-tenancy";
+import type { SecretsContract } from "@platos/context-secrets";
 
 export interface ProvidersUseCases {
   readonly repository: ProvidersRepository;

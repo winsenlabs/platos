@@ -2,7 +2,7 @@
 // Use-cases. May import this context's domain and ports, and any allowed
 // peer context's contracts/ (ADR M0.3 §1 domainDeps).
 import type { JobsRepository } from "./ports/index.js";
-import type { TenancyContract } from "@platos/context-tenancy/contracts/index.js";
+import type { TenancyContract } from "@platos/context-tenancy";
 
 export interface JobsUseCases {
   readonly repository: JobsRepository;

@@ -85,8 +85,15 @@ jobs:
           node scripts/operator-operations.mjs --check
           node --test scripts/license-distribution.test.mjs
           node scripts/arch/gen-v1-skeleton.mjs --check
+          pnpm test:v1-foundation
+          pnpm test:install-git-hooks
+          pnpm audit:v1-project-graph
+          pnpm test:v1-project-graph
           pnpm audit:arch-boundaries
           pnpm test:arch-boundaries
+          pnpm audit:max-file-lines
+          pnpm test:max-file-lines
+          pnpm build:v1
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity

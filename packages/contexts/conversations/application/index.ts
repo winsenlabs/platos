@@ -2,16 +2,16 @@
 // Use-cases. May import this context's domain and ports, and any allowed
 // peer context's contracts/ (ADR M0.3 §1 domainDeps).
 import type { ConversationsRepository } from "./ports/index.js";
-import type { AgentsContract } from "@platos/context-agents/contracts/index.js";
-import type { SkillsContract } from "@platos/context-skills/contracts/index.js";
-import type { ToolsContract } from "@platos/context-tools/contracts/index.js";
-import type { MemoryContract } from "@platos/context-memory/contracts/index.js";
-import type { ProvidersContract } from "@platos/context-providers/contracts/index.js";
-import type { FilesContract } from "@platos/context-files/contracts/index.js";
-import type { CostMonitoringContract } from "@platos/context-cost-monitoring/contracts/index.js";
-import type { JobsContract } from "@platos/context-jobs/contracts/index.js";
-import type { SecretsContract } from "@platos/context-secrets/contracts/index.js";
-import type { TenancyContract } from "@platos/context-tenancy/contracts/index.js";
+import type { AgentsContract } from "@platos/context-agents";
+import type { SkillsContract } from "@platos/context-skills";
+import type { ToolsContract } from "@platos/context-tools";
+import type { MemoryContract } from "@platos/context-memory";
+import type { ProvidersContract } from "@platos/context-providers";
+import type { FilesContract } from "@platos/context-files";
+import type { CostMonitoringContract } from "@platos/context-cost-monitoring";
+import type { JobsContract } from "@platos/context-jobs";
+import type { SecretsContract } from "@platos/context-secrets";
+import type { TenancyContract } from "@platos/context-tenancy";
 
 export interface ConversationsUseCases {
   readonly repository: ConversationsRepository;

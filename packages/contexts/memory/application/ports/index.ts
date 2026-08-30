@@ -6,3 +6,7 @@ import type { MemoryAggregate } from "../../domain/index.js";
 export interface MemoryRepository {
   load(id: string): Promise<MemoryAggregate | null>;
 }
+
+export interface Cache {
+  readonly __port: "Cache";
+}

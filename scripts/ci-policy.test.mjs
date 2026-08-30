@@ -72,7 +72,31 @@ const relocatedCommands = [
   "pnpm test:browser-evidence:contract",
   "pnpm test:route-parity:completion:evidence",
 ];
+const v1ReleaseGateCommands = [
+  "node scripts/arch/gen-v1-skeleton.mjs --check",
+  "pnpm test:v1-foundation",
+  "pnpm test:install-git-hooks",
+  "pnpm audit:v1-project-graph",
+  "pnpm test:v1-project-graph",
+  "pnpm audit:max-file-lines",
+  "pnpm test:max-file-lines",
+  "pnpm build:v1",
+];
+const expectedV1PackageScripts = new Map([
+  ["build:v1", "tsc -b tsconfig.json"],
+  ["clean:v1", "node scripts/arch/clean-v1.mjs"],
+  ["test:v1-foundation", "pnpm test:gen-v1-skeleton && pnpm test:clean-v1"],
+  ["test:gen-v1-skeleton", "node --test scripts/arch/gen-v1-skeleton.test.mjs"],
+  ["test:clean-v1", "node --test scripts/arch/clean-v1.test.mjs"],
+  ["test:install-git-hooks", "node --test scripts/install-git-hooks.test.mjs"],
+  ["audit:v1-project-graph", "node scripts/arch/v1-project-graph.mjs"],
+  ["test:v1-project-graph", "node --test scripts/arch/v1-project-graph.test.mjs"],
+  ["audit:max-file-lines", "node scripts/arch/max-file-lines.mjs"],
+  ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
+]);
 const shippingDockerfiles = [...expectedInstallInstructions.keys()];
+const prepareTarget = "scripts/install-git-hooks.mjs";
+const webappPrepareCopy = `COPY --from=pruner --chown=node:node /platos/${prepareTarget} ./${prepareTarget}`;
 const shellInterpreters = new Set(["bash", "sh", "dash", "zsh", "ksh", "ash"]);
 const corepackManagementCommands = new Set([
   "cache",
@@ -544,6 +568,9 @@ function policyViolations(input) {
     if (JSON.stringify(pnpmRuns) !== JSON.stringify(expectedPnpmRunInstructions.get(file))) {
       violations.push(`${file} must contain only its exact executable pnpm/pnpx RUN instruction(s)`);
     }
+    if (installs.some((instruction) => instruction.includes("--ignore-scripts"))) {
+      violations.push(`${file} shipping installs must execute lifecycle scripts`);
+    }
   }
 
   if (input.nvmrc.trim() !== "v22.14.0") violations.push(".nvmrc must pin exactly v22.14.0");
@@ -564,6 +591,25 @@ function policyViolations(input) {
 
   const ciWorkflow = workflows.get("ci").workflow;
   const ciJobs = workflowJobs(ciWorkflow);
+  const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter((step) => step.name === "V1 M0 executable evidence gates");
+  if (v1EvidenceSteps.length !== 1) violations.push("CI must contain exactly one V1 executable evidence step");
+  const v1EvidenceStep = v1EvidenceSteps[0] ?? {};
+  if (v1EvidenceStep.if !== undefined || v1EvidenceStep["continue-on-error"] !== undefined || v1EvidenceStep.shell !== undefined) {
+    violations.push("V1 evidence step must be unconditional and fail-fast");
+  }
+  const v1Lines = typeof v1EvidenceStep.run === "string"
+    ? v1EvidenceStep.run.split("\n").map((line) => line.trim()).filter(Boolean)
+    : [];
+  const allCiLines = [...ciJobs.values()].flatMap((job) => executableRunValues(job))
+    .flatMap((run) => run.split("\n").map((line) => line.trim()).filter(Boolean));
+  let previousGateIndex = -1;
+  for (const command of v1ReleaseGateCommands) {
+    const gateIndex = v1Lines.indexOf(command);
+    if (countExact(v1Lines, command) !== 1 || countExact(allCiLines, command) !== 1 || gateIndex <= previousGateIndex) {
+      violations.push(`CI must execute fail-fast V1 gate exactly once in order: ${command}`);
+    }
+    previousGateIndex = gateIndex;
+  }
   const typecheckCommands = normalizedRunCommands(ciJobs.get("typecheck"));
   const allCiCommands = [...ciJobs.values()].flatMap((job) => normalizedRunCommands(job));
   const allCiRunValues = [...ciJobs.values()].flatMap(executableRunValues);
@@ -579,6 +625,31 @@ function policyViolations(input) {
     violations.push("package.json must remain valid JSON");
   }
   const packageScripts = packageManifest.scripts ?? {};
+  for (const [name, target] of expectedV1PackageScripts) {
+    if (packageScripts[name] !== target) violations.push(`package.json must wire exact V1 script ${name}: ${target}`);
+  }
+  if (packageScripts.prepare !== `node ${prepareTarget}`) {
+    violations.push(`package.json prepare must execute ${prepareTarget}`);
+  }
+  const agentDockerfile = input.dockerfiles["apps/agent/Dockerfile"] ?? "";
+  const agentInstall = agentDockerfile.indexOf("pnpm install --frozen-lockfile");
+  const agentRepositoryCopy = agentDockerfile.indexOf("COPY . .");
+  if (agentRepositoryCopy === -1 || agentRepositoryCopy > agentInstall) {
+    violations.push(`apps/agent/Dockerfile must make ${prepareTarget} available before its shipping install`);
+  }
+  const webappDockerfile = input.dockerfiles["apps/webapp/Dockerfile.platos"] ?? "";
+  const prepareCopyIndex = webappDockerfile.indexOf(webappPrepareCopy);
+  const devStageIndex = webappDockerfile.indexOf("FROM base AS dev-deps");
+  const productionStageIndex = webappDockerfile.indexOf("FROM base AS production-deps");
+  if (
+    prepareCopyIndex === -1 ||
+    devStageIndex === -1 ||
+    productionStageIndex === -1 ||
+    prepareCopyIndex > devStageIndex ||
+    prepareCopyIndex > productionStageIndex
+  ) {
+    violations.push(`apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`);
+  }
   if (packageScripts["test:ci-policy"] !== "node --test scripts/ci-policy.test.mjs") {
     violations.push("package.json must wire the CI policy test executable");
   }
@@ -777,6 +848,7 @@ test("committed CI and image-build policy is executable, correlated, and complet
     "shipping install selector must cover all four executable installs"
   );
   assert.equal(relocatedCommands.length, 7, "relocated command selector must cover all seven commands");
+  assert.equal(v1ReleaseGateCommands.length, 8, "V1 release gate selector must cover generator, foundation, and six commands");
   assert.deepEqual(policyViolations(fixtures()), []);
 });
 
@@ -847,6 +919,36 @@ test("CI policy controls fail under generated semantic source mutations", async 
   }
 
   controls.push(
+    ...v1ReleaseGateCommands.map((command) => ({
+      name: `fail-fast V1 gate ${command}`,
+      expected: `CI must execute fail-fast V1 gate exactly once in order: ${command}`,
+      mutate: (input) => mutateFixture(input, "ci", command, `${command} || true`),
+    })),
+    {
+      name: "conditional V1 evidence step is unreachable",
+      expected: "V1 evidence step must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "      - name: V1 M0 executable evidence gates\n        run:", "      - name: V1 M0 executable evidence gates\n        if: ${{ false }}\n        run:"),
+    },
+    {
+      name: "continue-on-error weakens V1 evidence step",
+      expected: "V1 evidence step must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "      - name: V1 M0 executable evidence gates\n        run:", "      - name: V1 M0 executable evidence gates\n        continue-on-error: true\n        run:"),
+    },
+    ...[...expectedV1PackageScripts].map(([name, target]) => ({
+      name: `successful no-op V1 package script ${name}`,
+      expected: `package.json must wire exact V1 script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
+    })),
+    {
+      name: "webapp pruned prepare target availability",
+      expected: `apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`,
+      mutate: (input) => mutateDockerfile(input, "apps/webapp/Dockerfile.platos", webappPrepareCopy, `# removed ${prepareTarget}`),
+    },
+    {
+      name: "root prepare target wiring",
+      expected: `package.json prepare must execute ${prepareTarget}`,
+      mutate: (input) => mutateFixture(input, "packageJson", `node ${prepareTarget}`, "node scripts/missing-hooks.mjs"),
+    },
     {
       name: "malformed .nvmrc",
       expected: ".nvmrc must pin exactly v22.14.0",
@@ -1265,7 +1367,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  assert.equal(controls.length, 89, "semantic mutation control table must cover every declared checkpoint");
+  assert.equal(controls.length, 111, "semantic mutation control table must cover every declared checkpoint");
   for (const control of controls) {
     await t.test(control.name, () => {
       const mutation = control.mutate(pristine);

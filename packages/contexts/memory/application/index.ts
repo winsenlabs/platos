@@ -2,8 +2,8 @@
 // Use-cases. May import this context's domain and ports, and any allowed
 // peer context's contracts/ (ADR M0.3 §1 domainDeps).
 import type { MemoryRepository } from "./ports/index.js";
-import type { TenancyContract } from "@platos/context-tenancy/contracts/index.js";
-import type { ProvidersContract } from "@platos/context-providers/contracts/index.js";
+import type { TenancyContract } from "@platos/context-tenancy";
+import type { ProvidersContract } from "@platos/context-providers";
 
 export interface MemoryUseCases {
   readonly repository: MemoryRepository;

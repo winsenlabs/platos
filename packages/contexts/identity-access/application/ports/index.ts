@@ -6,3 +6,7 @@ import type { IdentityAccessAggregate } from "../../domain/index.js";
 export interface IdentityAccessRepository {
   load(id: string): Promise<IdentityAccessAggregate | null>;
 }
+
+export interface RateLimiter {
+  readonly __port: "RateLimiter";
+}

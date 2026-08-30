@@ -6,3 +6,7 @@ import type { CostMonitoringAggregate } from "../../domain/index.js";
 export interface CostMonitoringRepository {
   load(id: string): Promise<CostMonitoringAggregate | null>;
 }
+
+export interface Notifier {
+  readonly __port: "Notifier";
+}

@@ -273,9 +273,101 @@ importers:
         specifier: ^3.1.0
         version: 3.1.4(@types/debug@4.1.12)(@types/node@20.14.14)(jsdom@28.1.0)(lightningcss@1.29.2)(terser@5.44.1)
 
-  apps/core-api: {}
+  apps/core-api:
+    dependencies:
+      '@platos/adapter-channel-slack':
+        specifier: workspace:*
+        version: link:../../packages/adapters/channel-slack
+      '@platos/adapter-clickhouse-observability':
+        specifier: workspace:*
+        version: link:../../packages/adapters/clickhouse-observability
+      '@platos/adapter-durable-runtime':
+        specifier: workspace:*
+        version: link:../../packages/adapters/durable-runtime
+      '@platos/adapter-model-router-providers':
+        specifier: workspace:*
+        version: link:../../packages/adapters/model-router-providers
+      '@platos/adapter-notifier-email':
+        specifier: workspace:*
+        version: link:../../packages/adapters/notifier-email
+      '@platos/adapter-notifier-webhook':
+        specifier: workspace:*
+        version: link:../../packages/adapters/notifier-webhook
+      '@platos/adapter-objectstore-minio':
+        specifier: workspace:*
+        version: link:../../packages/adapters/objectstore-minio
+      '@platos/adapter-outbox':
+        specifier: workspace:*
+        version: link:../../packages/adapters/outbox
+      '@platos/adapter-postgres-tenancy':
+        specifier: workspace:*
+        version: link:../../packages/adapters/postgres-tenancy
+      '@platos/adapter-redis-cache':
+        specifier: workspace:*
+        version: link:../../packages/adapters/redis-cache
+      '@platos/adapter-redis-ratelimit':
+        specifier: workspace:*
+        version: link:../../packages/adapters/redis-ratelimit
+      '@platos/adapter-redis-streams':
+        specifier: workspace:*
+        version: link:../../packages/adapters/redis-streams
+      '@platos/context-agents':
+        specifier: workspace:*
+        version: link:../../packages/contexts/agents
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../packages/contexts/channels
+      '@platos/context-conversations':
+        specifier: workspace:*
+        version: link:../../packages/contexts/conversations
+      '@platos/context-cost-monitoring':
+        specifier: workspace:*
+        version: link:../../packages/contexts/cost-monitoring
+      '@platos/context-eventing':
+        specifier: workspace:*
+        version: link:../../packages/contexts/eventing
+      '@platos/context-files':
+        specifier: workspace:*
+        version: link:../../packages/contexts/files
+      '@platos/context-governance':
+        specifier: workspace:*
+        version: link:../../packages/contexts/governance
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../packages/contexts/identity-access
+      '@platos/context-jobs':
+        specifier: workspace:*
+        version: link:../../packages/contexts/jobs
+      '@platos/context-memory':
+        specifier: workspace:*
+        version: link:../../packages/contexts/memory
+      '@platos/context-observability':
+        specifier: workspace:*
+        version: link:../../packages/contexts/observability
+      '@platos/context-privacy':
+        specifier: workspace:*
+        version: link:../../packages/contexts/privacy
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../../packages/contexts/providers
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../../packages/contexts/secrets
+      '@platos/context-skills':
+        specifier: workspace:*
+        version: link:../../packages/contexts/skills
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../../packages/contexts/tenancy
+      '@platos/context-tools':
+        specifier: workspace:*
+        version: link:../../packages/contexts/tools
 
-  apps/mcp-stdio: {}
+  apps/mcp-stdio:
+    dependencies:
+      '@platos/context-tools':
+        specifier: workspace:*
+        version: link:../../packages/contexts/tools
 
   apps/webapp:
     dependencies:
@@ -1491,6 +1583,78 @@ importers:
         specifier: 8.6.6
         version: 8.6.6
 
+  packages/adapters/channel-slack:
+    dependencies:
+      '@platos/context-channels':
+        specifier: workspace:*
+        version: link:../../contexts/channels
+
+  packages/adapters/clickhouse-observability:
+    dependencies:
+      '@platos/context-observability':
+        specifier: workspace:*
+        version: link:../../contexts/observability
+
+  packages/adapters/durable-runtime:
+    dependencies:
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/adapters/model-router-providers:
+    dependencies:
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../../contexts/providers
+
+  packages/adapters/notifier-email:
+    dependencies:
+      '@platos/context-cost-monitoring':
+        specifier: workspace:*
+        version: link:../../contexts/cost-monitoring
+
+  packages/adapters/notifier-webhook:
+    dependencies:
+      '@platos/context-cost-monitoring':
+        specifier: workspace:*
+        version: link:../../contexts/cost-monitoring
+
+  packages/adapters/objectstore-minio:
+    dependencies:
+      '@platos/context-files':
+        specifier: workspace:*
+        version: link:../../contexts/files
+
+  packages/adapters/outbox:
+    dependencies:
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/adapters/postgres-tenancy:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../../contexts/tenancy
+
+  packages/adapters/redis-cache:
+    dependencies:
+      '@platos/context-memory':
+        specifier: workspace:*
+        version: link:../../contexts/memory
+
+  packages/adapters/redis-ratelimit:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
+
+  packages/adapters/redis-streams:
+    dependencies:
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
   packages/build:
     dependencies:
       '@platos/core':
@@ -1533,6 +1697,213 @@ importers:
       tsx:
         specifier: 4.17.0
         version: 4.17.0
+
+  packages/contexts/agents:
+    dependencies:
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@platos/context-skills':
+        specifier: workspace:*
+        version: link:../skills
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/channels:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../identity-access
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/conversations:
+    dependencies:
+      '@platos/context-agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@platos/context-cost-monitoring':
+        specifier: workspace:*
+        version: link:../cost-monitoring
+      '@platos/context-files':
+        specifier: workspace:*
+        version: link:../files
+      '@platos/context-jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      '@platos/context-memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../secrets
+      '@platos/context-skills':
+        specifier: workspace:*
+        version: link:../skills
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/context-tools':
+        specifier: workspace:*
+        version: link:../tools
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/cost-monitoring:
+    dependencies:
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/eventing:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/files:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/governance:
+    dependencies:
+      '@platos/context-agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/identity-access:
+    dependencies:
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/jobs:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/memory:
+    dependencies:
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/observability:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/privacy:
+    dependencies:
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/providers:
+    dependencies:
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../secrets
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/secrets:
+    dependencies:
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/skills:
+    dependencies:
+      '@platos/context-files':
+        specifier: workspace:*
+        version: link:../files
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/tenancy:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../identity-access
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+
+  packages/contexts/tools:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../identity-access
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../secrets
+      '@platos/context-tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
 
   packages/core:
     dependencies:

@@ -1,11 +1,9 @@
 // Non-vacuity proof for the Platos V1 architecture-boundary checker.
 //
-// The V1 bounded-context packages do not exist yet (they are built in M2), so
-// the checker is green by vacuity against the real repo today. These tests are
-// what make the rules MEAN something: each builds a real temp-directory fixture
-// laid out in the ADR M0.3 §4 shape and asserts the rule CATCHES a violating
-// tree and PASSES a compliant one. As M2 creates the packages, the identical
-// rules bind against real code.
+// The V1 bounded-context skeleton exists and is scanned in the real repository.
+// These tests independently prove mutation sensitivity: each builds a temporary
+// ADR M0.3 §4 tree and asserts the rule CATCHES a violation and PASSES a
+// compliant counterpart.
 //
 // Fixtures live under os.tmpdir() and are never tracked, so they may reference
 // real vendor package names freely. The proofs deliberately use non-reserved
@@ -218,8 +216,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     );
   });
 
-  it("the real repository scan is clean today (no V1 packages yet ⇒ vacuously green)", () => {
+  it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
+    assert.equal(result.fileCount, 104, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

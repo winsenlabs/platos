@@ -6,3 +6,7 @@ import type { FilesAggregate } from "../../domain/index.js";
 export interface FilesRepository {
   load(id: string): Promise<FilesAggregate | null>;
 }
+
+export interface ObjectStore {
+  readonly __port: "ObjectStore";
+}

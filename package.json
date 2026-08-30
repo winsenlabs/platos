@@ -4,11 +4,16 @@
   "workspaces": [
     "apps/*",
     "packages/*",
+    "packages/contexts/*",
+    "packages/adapters/*",
     "integrations/*"
   ],
   "version": "0.0.1",
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.mjs",
     "build": "turbo run build",
+    "build:v1": "tsc -b tsconfig.json",
+    "clean:v1": "node scripts/arch/clean-v1.mjs",
     "build:force": "turbo run build --force",
     "build:platos": "pnpm run build:platos:agent && pnpm run build:platos:webapp",
     "build:platos:agent": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
@@ -88,6 +93,14 @@
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
     "test:arch-boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
+    "audit:v1-project-graph": "node scripts/arch/v1-project-graph.mjs",
+    "test:v1-project-graph": "node --test scripts/arch/v1-project-graph.test.mjs",
+    "test:gen-v1-skeleton": "node --test scripts/arch/gen-v1-skeleton.test.mjs",
+    "test:clean-v1": "node --test scripts/arch/clean-v1.test.mjs",
+    "test:v1-foundation": "pnpm test:gen-v1-skeleton && pnpm test:clean-v1",
+    "audit:max-file-lines": "node scripts/arch/max-file-lines.mjs",
+    "test:max-file-lines": "node --test scripts/arch/max-file-lines.test.mjs",
+    "test:install-git-hooks": "node --test scripts/install-git-hooks.test.mjs",
     "audit:contract-map": "node scripts/arch/contract-map.mjs",
     "audit:capability-matrix": "node scripts/capability-matrix.mjs --check"
   },

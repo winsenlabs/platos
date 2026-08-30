@@ -6,3 +6,7 @@ import type { ObservabilityAggregate } from "../../domain/index.js";
 export interface ObservabilityRepository {
   load(id: string): Promise<ObservabilityAggregate | null>;
 }
+
+export interface ObservabilitySink {
+  readonly __port: "ObservabilitySink";
+}

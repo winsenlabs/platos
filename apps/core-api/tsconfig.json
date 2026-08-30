@@ -1,0 +1,107 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
+  "references": [
+    {
+      "path": "../../packages/contexts/identity-access"
+    },
+    {
+      "path": "../../packages/contexts/tenancy"
+    },
+    {
+      "path": "../../packages/contexts/secrets"
+    },
+    {
+      "path": "../../packages/contexts/providers"
+    },
+    {
+      "path": "../../packages/contexts/agents"
+    },
+    {
+      "path": "../../packages/contexts/skills"
+    },
+    {
+      "path": "../../packages/contexts/tools"
+    },
+    {
+      "path": "../../packages/contexts/memory"
+    },
+    {
+      "path": "../../packages/contexts/channels"
+    },
+    {
+      "path": "../../packages/contexts/files"
+    },
+    {
+      "path": "../../packages/contexts/observability"
+    },
+    {
+      "path": "../../packages/contexts/cost-monitoring"
+    },
+    {
+      "path": "../../packages/contexts/governance"
+    },
+    {
+      "path": "../../packages/contexts/jobs"
+    },
+    {
+      "path": "../../packages/contexts/conversations"
+    },
+    {
+      "path": "../../packages/contexts/eventing"
+    },
+    {
+      "path": "../../packages/contexts/privacy"
+    },
+    {
+      "path": "../../packages/adapters/postgres-tenancy"
+    },
+    {
+      "path": "../../packages/adapters/outbox"
+    },
+    {
+      "path": "../../packages/adapters/durable-runtime"
+    },
+    {
+      "path": "../../packages/adapters/clickhouse-observability"
+    },
+    {
+      "path": "../../packages/adapters/objectstore-minio"
+    },
+    {
+      "path": "../../packages/adapters/redis-ratelimit"
+    },
+    {
+      "path": "../../packages/adapters/redis-cache"
+    },
+    {
+      "path": "../../packages/adapters/redis-streams"
+    },
+    {
+      "path": "../../packages/adapters/model-router-providers"
+    },
+    {
+      "path": "../../packages/adapters/channel-slack"
+    },
+    {
+      "path": "../../packages/adapters/notifier-email"
+    },
+    {
+      "path": "../../packages/adapters/notifier-webhook"
+    }
+  ]
+}
