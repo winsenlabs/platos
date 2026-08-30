@@ -54,6 +54,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
+      - name: Compute exact webapp inventory build-input digest
+        id: webapp-inventory-inputs
+        shell: bash
+        run: echo "sha256=$(node scripts/verify-webapp-image-inventory.mjs --print-build-inputs-sha256)" >> "$GITHUB_OUTPUT"
+
       - name: Build the candidate exactly once as an OCI archive
         id: candidate
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -66,6 +71,10 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ env.PLATOS_CANDIDATE_SHA }}
             dev.platos.candidate-run=${{ github.run_id }}-${{ github.run_attempt }}
+            dev.winsen.platos.webapp-inventory-inputs-sha256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}
+          build-args: |
+            BUILD_GIT_SHA=${{ env.PLATOS_CANDIDATE_SHA }}
+            WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}
           outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.name }}.oci.tar,oci-mediatypes=true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }},ignore-error=true
@@ -190,6 +199,13 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Verify distinct production-deps and exact final webapp candidate inventories
+        id: webapp-inventory
+        env:
+          EVIDENCE_DIR: ${{ github.workspace }}/artifacts/webapp-image-inventory
+          WEBAPP_CANDIDATE_ARCHIVE: ${{ github.workspace }}/artifacts/candidates/webapp.oci.tar
+        run: pnpm audit:webapp-image-inventory
 
       - name: Install lockfile-backed test dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -372,6 +388,15 @@ jobs:
           name: win234-browser-evidence-${{ github.run_id }}
           path: artifacts/win234-browser
           if-no-files-found: warn
+          retention-days: 14
+
+      - name: Retain verified webapp candidate inventory provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: win253-webapp-image-inventory-${{ steps.webapp-inventory.outputs.candidate_manifest_digest || 'unverified' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/webapp-image-inventory
+          if-no-files-found: error
           retention-days: 14
 
       - name: Tear down isolated gate infrastructure

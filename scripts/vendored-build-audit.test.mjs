@@ -219,7 +219,7 @@ test("live audit is green and derives every deletion from the exact primary base
   assert.deepEqual(violations, []);
   assert.equal(report.integrationBase.sha, INTEGRATION_BASE);
   assert.equal(report.deletion.workspaceCount, 6);
-  assert.equal(report.deletion.actualFileCount, 122);
+  assert.equal(report.deletion.actualFileCount, 124);
   assert.equal(report.reviewedSource.base, REVIEWED_SOURCE_BASE);
   assert.equal(report.reviewedSource.commit, REVIEWED_SOURCE_COMMIT);
   assert.equal(report.reviewedSource.deletion.workspaceCount, 6);
@@ -229,6 +229,10 @@ test("live audit is green and derives every deletion from the exact primary base
   assert.deepEqual(
     report.reviewedSource.integrationCoverage.primaryBaseAdditions.map(({ path }) => path),
     ["packages/rsc/LICENSE", "packages/schema-to-json/LICENSE"]
+  );
+  assert.deepEqual(
+    report.reviewedSource.integrationCoverage.additionalReviewedDeletions.map(({ path }) => path),
+    ["patches/@upstash__ratelimit.patch", "patches/@window-splitter__state@0.4.1.patch"]
   );
   assert.ok(
     report.reviewedSource.integrationCoverage.primaryBaseAdditions.every(({ reason }) => reason.includes("WIN-252")),
@@ -257,6 +261,7 @@ test("reviewed-source provenance rejects incorrect source SHAs and pathsets", ()
     ["commit SHA", { reviewedSourceCommit: REVIEWED_SOURCE_BASE }],
     ["pathset", { reviewedSourceRoots: candidateRoots.slice(1) }],
     ["missing primary-base explanation", { allowedPrimaryBaseAdditions: [] }],
+    ["missing additional integration deletion explanation", { allowedAdditionalIntegrationDeletions: [] }],
   ]) {
     const mutated = auditRepository(root, options);
     assert.ok(

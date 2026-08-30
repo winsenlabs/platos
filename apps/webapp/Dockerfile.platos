@@ -19,7 +19,12 @@ RUN apt-get update && apt-get install -y openssl dumb-init git python3 make g++ 
 WORKDIR /platos
 COPY --chown=node:node .gitignore .gitignore
 COPY --from=pruner --chown=node:node /platos/out/json/ .
-COPY --from=pruner --chown=node:node /platos/out/pnpm-lock.yaml ./pnpm-lock.yaml
+# turbo@2.5.4 can emit an importers-only pnpm v10 lockfile whose retained
+# importer versions have no package/snapshot entries. pnpm correctly rejects
+# that as ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY even with --filter. Keep the
+# canonical, already-reviewed lockfile and let the frozen filtered install
+# select the webapp closure without any non-frozen repair or version drift.
+COPY --chown=node:node pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner --chown=node:node /platos/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner --chown=node:node /platos/scripts/install-git-hooks.mjs ./scripts/install-git-hooks.mjs
 COPY --chown=node:node patches ./patches
@@ -35,7 +40,8 @@ COPY --chown=node:node patches ./patches
 # ERR_PNPM_UNUSED_PATCH on install.
 COPY --chown=node:node package.json /tmp/orig-root-package.json
 COPY --chown=node:node apps/webapp/scripts/restore-patches.cjs /tmp/restore-patches.cjs
-RUN node /tmp/restore-patches.cjs /tmp/orig-root-package.json package.json pnpm-lock.yaml \
+RUN node /tmp/restore-patches.cjs \
+      /tmp/orig-root-package.json package.json pnpm-lock.yaml \
     && rm /tmp/orig-root-package.json /tmp/restore-patches.cjs
 
 ## Dev deps
@@ -52,11 +58,27 @@ RUN cd /platos/internal-packages/tenancy-database && pnpx prisma@6.14.0 generate
 ## Production deps
 FROM base AS production-deps
 WORKDIR /platos
+ARG BUILD_GIT_SHA
+ARG WEBAPP_INVENTORY_BUILD_INPUTS_SHA256
+LABEL org.opencontainers.image.revision=${BUILD_GIT_SHA} \
+      dev.winsen.platos.webapp-inventory-inputs-sha256=${WEBAPP_INVENTORY_BUILD_INPUTS_SHA256}
 # Corepack is used to install pnpm with the exact version from packageManager
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ENV NODE_ENV=production
-# Install only the webapp's production dependency graph. Root dependencies are
-# repository/release tooling and must not be copied into the runtime image.
+# pnpm installs the root importer even when a workspace filter is supplied. The
+# canonical lock therefore needs a production-only normalization before install:
+# remove every root dependency declaration from both package.json and the root
+# lock importer, and retain only patches reachable from apps/webapp. This keeps
+# repository/release tooling (including @changesets/cli -> GPL breakword) out of
+# the runtime image without resolving versions or repairing the lockfile.
+COPY --chown=node:node package.json /tmp/orig-root-package.json
+COPY --chown=node:node apps/webapp/scripts/restore-patches.cjs /tmp/restore-patches.cjs
+RUN node /tmp/restore-patches.cjs \
+      /tmp/orig-root-package.json package.json pnpm-lock.yaml \
+      --production-root apps/webapp \
+    && rm /tmp/orig-root-package.json /tmp/restore-patches.cjs
+# Install only the webapp's production dependency graph from the transformed,
+# still-frozen canonical lockfile.
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --prod --filter webapp... --frozen-lockfile
 
 ## Builder (builds the webapp)
@@ -144,6 +166,9 @@ ARG BUILD_GIT_SHA
 ARG SENTRY_RELEASE
 ARG BUILD_GIT_REF_NAME
 ARG BUILD_TIMESTAMP_SECONDS
+ARG WEBAPP_INVENTORY_BUILD_INPUTS_SHA256
+LABEL org.opencontainers.image.revision=${BUILD_GIT_SHA} \
+      dev.winsen.platos.webapp-inventory-inputs-sha256=${WEBAPP_INVENTORY_BUILD_INPUTS_SHA256}
 ENV BUILD_APP_VERSION=${BUILD_APP_VERSION} \
     BUILD_GIT_SHA=${BUILD_GIT_SHA} \
     SENTRY_RELEASE=${SENTRY_RELEASE} \

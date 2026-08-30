@@ -10,7 +10,18 @@ import { listRepositoryFiles } from "./root-entry-manifest.mjs";
 
 export const OWNER_AUTHORIZATION_BASE = "fcf39fa227cb9265b7e532f14ef181a3b65ff061";
 export const INTEGRATION_BASE = "0e3a86661dcaeae1ef8932fb1371a55ff3614c15";
+export const COEXISTING_INTEGRATION_BASE = "5eb2d48d82c049e68e53b33701356e3091af532a";
 export const REPORT_PATH = "docs/audits/win253-removals/clickhouse-split.json";
+export const ADDITIONAL_INTEGRATION_DELETIONS = Object.freeze([
+  {
+    path: "patches/@upstash__ratelimit.patch",
+    reason: "WIN-253 webapp dependency pruning removed the retired, unconfigured Upstash patch.",
+  },
+  {
+    path: "patches/@window-splitter__state@0.4.1.patch",
+    reason: "WIN-253 webapp dependency pruning removed the retired window-splitter patch.",
+  },
+]);
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const candidateRoots = [
@@ -28,13 +39,19 @@ const auditOwnedPaths = new Set([
 ]);
 const immutableConsumers = [
   "apps/agent/src/observability/observability-erasure-contract.test.ts",
-  "apps/webapp/Dockerfile.platos",
   "apps/webapp/scripts/entrypoint.sh",
   "docker-compose.deploy.yml",
   "internal-packages/tenancy-database/Dockerfile.migrations",
   "internal-packages/testcontainers/src/utils.ts",
 ];
 const integrationConsumers = new Map([
+  [
+    "apps/webapp/Dockerfile.platos",
+    [
+      "COPY --chown=node:node internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema",
+      "COPY --from=builder --chown=node:node /platos/internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema",
+    ],
+  ],
   [
     "docker-compose.platos.yml",
     [
@@ -138,6 +155,13 @@ function retiredRootFilesystemPaths(root) {
 
 function actualDeletedPaths(root, base) {
   return git(root, ["diff", "--no-renames", "--name-only", "--diff-filter=D", "-z", base, "--"])
+    .split("\0")
+    .filter(Boolean)
+    .sort();
+}
+
+function deletedPathsBetween(root, base, target) {
+  return git(root, ["diff", "--no-renames", "--name-only", "--diff-filter=D", "-z", base, target, "--"])
     .split("\0")
     .filter(Boolean)
     .sort();
@@ -509,12 +533,23 @@ export function auditRepository(root = repositoryRoot) {
   const integrationBaseEntries = treeEntries(root, INTEGRATION_BASE);
   const integrationBaseByPath = new Map(integrationBaseEntries.map((entry) => [entry.path, entry]));
   const deleted = actualDeletedPaths(root, INTEGRATION_BASE);
+  const coexistingDeleted = deletedPathsBetween(root, INTEGRATION_BASE, COEXISTING_INTEGRATION_BASE)
+    .filter((path) => !isAuthorizedRemoval(path));
+  const coexistingDeletedSet = new Set(coexistingDeleted);
+  const additionalDeletionSet = new Set(ADDITIONAL_INTEGRATION_DELETIONS.map(({ path }) => path));
+  const deletedSet = new Set(deleted);
+  for (const { path } of ADDITIONAL_INTEGRATION_DELETIONS) {
+    if (!deletedSet.has(path)) violations.push(`reviewed additional integration deletion is absent: ${path}`);
+  }
+  const clickhouseDeleted = deleted.filter(
+    (path) => isAuthorizedRemoval(path) || (!coexistingDeletedSet.has(path) && !additionalDeletionSet.has(path))
+  );
   const currentTreePaths = currentPaths(root);
   const currentTreePathSet = new Set(currentTreePaths);
   const ignoredRetiredRootPaths = retiredRootFilesystemPaths(root)
     .filter((path) => !currentTreePathSet.has(path));
   const tombstoneInventory = [...new Set([...currentTreePaths, ...ignoredRetiredRootPaths])];
-  const deletionSet = validateDeletionSet(ownerAuthorizationEntries.map(({ path }) => path), deleted);
+  const deletionSet = validateDeletionSet(ownerAuthorizationEntries.map(({ path }) => path), clickhouseDeleted);
   for (const path of deletionSet.missing) violations.push(`owner-authorized path was not deleted: ${path}`);
   for (const path of deletionSet.unrecorded) violations.push(`unrecorded deletion outside cluster authorization: ${path}`);
   const tombstoneViolations = validateCurrentTreeTombstones(tombstoneInventory);
@@ -577,6 +612,15 @@ export function auditRepository(root = repositoryRoot) {
       treeOid: git(root, ["rev-parse", `${INTEGRATION_BASE}^{tree}`]).trim(),
       trackedFiles: integrationBaseEntries.length,
     },
+    coexistingIntegrationBase: {
+      sha: COEXISTING_INTEGRATION_BASE,
+      treeOid: git(root, ["rev-parse", `${COEXISTING_INTEGRATION_BASE}^{tree}`]).trim(),
+      authorizedExternalDeletionCount: coexistingDeleted.length,
+      authorizedExternalDeletionManifestSha256: sha256(
+        coexistingDeleted.map((path) => `${path}\n`).join("")
+      ),
+    },
+    reviewedAdditionalIntegrationDeletions: ADDITIONAL_INTEGRATION_DELETIONS,
     deletion: {
       actualFileCount: removedFiles.length,
       actualBytes: removedFiles.reduce((total, file) => total + file.bytes, 0),

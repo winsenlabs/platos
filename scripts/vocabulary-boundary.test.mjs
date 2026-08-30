@@ -591,8 +591,13 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         fixture literals --> 19875
   //   -617  exact-excluded vendored receipt rows break the receipt/vocabulary
   //         evidence cycle --> 19258
-  //   +5    reviewed deprecated-subpath mutation controls --> 19263.
-  assert.equal(manifest.exceptions.length, 19263);
+  //   +5    reviewed deprecated-subpath mutation controls --> 19263
+  //   +26   immutable source-run provenance occurrences
+  //   -13   stale webapp dependency-prune exceptions --> 19276
+  //   +8    reviewed advisory request telemetry and image-verifier fixtures
+  //         --> 19284
+  //   -5    stale M0.5 current-state vendor references --> 19279.
+  assert.equal(manifest.exceptions.length, 19279);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

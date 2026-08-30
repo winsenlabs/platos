@@ -117,6 +117,10 @@ jobs:
           pnpm test:arch-boundaries
           pnpm audit:max-file-lines
           pnpm test:max-file-lines
+          pnpm test:webapp-image-inventory
+          pnpm test:webapp-inventory-contract
+          pnpm test:advisory
+          pnpm audit:advisory:check
           pnpm build:v1
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check

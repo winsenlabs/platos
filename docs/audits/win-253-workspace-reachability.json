@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2fd6daf178147e71e1d0261ac37ff1f0463b0c6cb9aba2f6acd421a364ccb765",
+  "evidenceSha256": "9ab470a61ee3cb49685af8fe5962182a198b9ec53c2d37cec9da1ee3573f8be7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d7f2ecadb3d5858e58c1243e437a1cd496302a9a0e3a9b21d858c0a2b8176392",
+    "aggregateSha256": "ce154c8a0d01298b77c811c34d080852213765daa31b0a01cec8b100592468df",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -257,15 +257,15 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "492f64c319e17ddc1c2d30a48f87b02216ea49d695756f14291ceb9b6741a32b"
+        "sha256": "9b4aa9d0a51febbf6607f79054aabadf6754b47c47b9c555d6ae9ca813a01b02"
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "4fb73ab04f0f40fa04c1953cc4f8714b4c9876e8b9f6ccdb775fd9f52da3d541"
+        "sha256": "9757d25ee1da84dd7fca06c0b224198c9e97af2f6e2a34096653496f9e014951"
       },
       {
         "path": ".github/workflows/publish-images.yml",
-        "sha256": "4b56f41570686a1b8b88729a0c0a4b955843d03e777d27d54cd81b2205df4e77"
+        "sha256": "2c4bb335319af63f481c2a25489516bce45965f0eab5182b196958a2171e2c84"
       },
       {
         "path": ".github/workflows/trigger-deploy.yml",
@@ -2505,7 +2505,7 @@
       },
       {
         "path": "apps/webapp/Dockerfile.platos",
-        "sha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085"
+        "sha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057"
       },
       {
         "path": "apps/webapp/README.md",
@@ -2969,7 +2969,7 @@
       },
       {
         "path": "apps/webapp/package.json",
-        "sha256": "6026965044352a11f70b85b067c972dc67310139a065fe8bf96b91532b19f44a"
+        "sha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed"
       },
       {
         "path": "apps/webapp/postcss.config.js",
@@ -3021,7 +3021,7 @@
       },
       {
         "path": "apps/webapp/remix.config.js",
-        "sha256": "730429fb38d5f3981a05b29b7c0d064bd1b50c94cd9cb44e458127be0f0ab660"
+        "sha256": "c38dae5613fdce59ffbb667baac31824cd901a8dde947dd5db0f3cc60f343daf"
       },
       {
         "path": "apps/webapp/remix.env.d.ts",
@@ -3030,6 +3030,14 @@
       {
         "path": "apps/webapp/reset.d.ts",
         "sha256": "3a099895deb165d0aba50984b4bfc4060869ef832e0a7ebe379341b2b1cf1e0f"
+      },
+      {
+        "path": "apps/webapp/scripts/audit-production-dependencies.mjs",
+        "sha256": "e96b182454116bc3c9223cd56a9af476db9296c9a0e8fd5d408d327ed7cb69dd"
+      },
+      {
+        "path": "apps/webapp/scripts/audit-production-dependencies.test.mjs",
+        "sha256": "5f192dfd7f623c8eb65afe6f91e453a15939cf16c603e31572f9e6a8b8321f00"
       },
       {
         "path": "apps/webapp/scripts/build-remix.mjs",
@@ -3045,7 +3053,11 @@
       },
       {
         "path": "apps/webapp/scripts/restore-patches.cjs",
-        "sha256": "46a3e12d2b79d6bc9b8e97c44961ee570e395d5a4b1e4d3328f593e541d4b1c9"
+        "sha256": "88ac75eb63e207144c0464eff92c48aaba8d2cb8a1f6eb5daab8a53d5c599cde"
+      },
+      {
+        "path": "apps/webapp/scripts/restore-patches.test.mjs",
+        "sha256": "68230178970588a2d77341a6025708f7cbc9ad2232f0a003244f64580a382a68"
       },
       {
         "path": "apps/webapp/scripts/wait-for-it.sh",
@@ -3845,7 +3857,7 @@
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
-        "sha256": "28be30e2cd2651b860fca655814cfb85a6f3266c5785767b45c0a8aad323bf11"
+        "sha256": "38ad2fe07debfe2972801276a5f3347fa433861b310e640bf865a5d809ce478a"
       },
       {
         "path": "docs/audits/M0.6-admin-access-containment.md",
@@ -3925,27 +3937,27 @@
       },
       {
         "path": "docs/audits/sbom/README.md",
-        "sha256": "cd81077b7cde2b8d65b414a7a36d8f7b53b7ead8033523024ab6dec59924163a"
+        "sha256": "649a7e7cb30ad34b4eadc95d7e64d6d4446f8a5fccef03519a96632605d0dcf0"
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "31c0070c25ddbca3f9de3ce704af492fd9f41d865c422ef143ee2b05d119c726"
+        "sha256": "1de28eb2d07c22fbc63a6fb13a2cf6d401b1a72f66fa714cf7f2ef9fe05387f9"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
-        "sha256": "5acf86b1cbc8dcc004db3f1bc821fc22b13549a1f5b123a1609afac3d7dbbf61"
+        "sha256": "20cbc3592c1abdf55100e72afce0267854b2b7e44d86e764bd0b1634022a8c83"
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "70468e2c30dc58b22be63b7b4575bcc75cdde284a611221d2446a61ec4602dec"
+        "sha256": "8cb6d5b76a84fe40bf656277889a32d2b1d140a83af97eb6e51ec7ca3f0d6ab4"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
-        "sha256": "23b6a77d97e31c4820a91e8eae68a03d76d9f6163d9c9fcb04206e9ba8bd649f"
+        "sha256": "ff816ea2d0cfa6a67693614ba41593de1b18bafd685bcf192c54c614e73a9e12"
       },
       {
         "path": "docs/audits/sbom/license-overlay.json",
-        "sha256": "cabf35d68abfbf7a2c76ca7de356d3c7bac2cf776d91bedea1558fad06d4127a"
+        "sha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b"
       },
       {
         "path": "docs/audits/sbom/license-policy.json",
@@ -3953,11 +3965,15 @@
       },
       {
         "path": "docs/audits/sbom/platos-agent.cdx.json",
-        "sha256": "c7e201258465a659569d7b57cace4836890c75d2544802ec9e1b2a5ef20d50d2"
+        "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108"
       },
       {
         "path": "docs/audits/sbom/platos-webapp.cdx.json",
-        "sha256": "1f844390d9262e7b7137125a8d78615ec9839ae72f478d7aac4b20c367ebb314"
+        "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511"
+      },
+      {
+        "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
+        "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419"
       },
       {
         "path": "docs/audits/win-234-route-capability-parity.generated.md",
@@ -3977,7 +3993,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "e8b968e1a0110ee5140f375e309b60eb8d87bcc7ee4f739bb0afeb2f2c7768cd"
+        "sha256": "3cf2fec8b7719a9372693232498c57e53979c61313e60f9ec61415aeba52b4a9"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -5897,7 +5913,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "f8a33f03246924a85955720388eb49d1982cc89dccbc68a3b751b226639a0927"
+        "sha256": "b1b3a0b6682046ef4b31c884bb433c6325678508f99a7fad07a88d93afca929b"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5917,7 +5933,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "f9de617f60578032ea9e5a2ecb438a6b6d955dbf4bb0bc0334eefe90a9500ea9"
+        "sha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -10689,7 +10705,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "4459eaa92ce90f459a55b4668f5b87b524124b85bfae7cc4a75e4b70173a46fd"
+        "sha256": "9330da1a90a493b5eb642603f4d7a9778a57e36675a509511c1d270e9e99d150"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -13248,14 +13264,6 @@
         "sha256": "146126b032581925294aaed63ab53ce3f5e0356a755f1763d7a9a76b9846943b"
       },
       {
-        "path": "patches/@upstash__ratelimit.patch",
-        "sha256": "e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74"
-      },
-      {
-        "path": "patches/@window-splitter__state@0.4.1.patch",
-        "sha256": "da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0"
-      },
-      {
         "path": "patches/engine.io-parser@5.2.2.patch",
         "sha256": "9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f"
       },
@@ -13269,7 +13277,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782"
+        "sha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -13357,7 +13365,7 @@
       },
       {
         "path": "renovate.json",
-        "sha256": "e9ec829a2abdf664911de021e4a52cb66f05d36cdd4a60b71139a088978758ca"
+        "sha256": "6c07634bd706d0e15e2d2ab14d56d359580ea42a690acf65902da4b8c76164f9"
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
@@ -13457,11 +13465,15 @@
       },
       {
         "path": "scripts/audit-advisory.mjs",
-        "sha256": "22f4998c2c6605414d315856ca15da1655ba028447b7b1ccd6f642a0758c4c67"
+        "sha256": "d2c5272dd4df69989db750fdf3e80cacb221610042ff95fe8c47b37985f0035b"
+      },
+      {
+        "path": "scripts/audit-advisory.test.mjs",
+        "sha256": "5136e2dd0892ef4cc1094d0910761330dd5039d16095cecce55681ed63267525"
       },
       {
         "path": "scripts/audit-licenses.mjs",
-        "sha256": "aa076aa48cd6609ad49af0bac6ddc68ba776f8e2fcc843add7bf0e599406e0b0"
+        "sha256": "312d024992c62fe594db18f84a5edde53b9f34ab244cc1674713b206a9e90808"
       },
       {
         "path": "scripts/audit-platos-build.mjs",
@@ -13469,15 +13481,19 @@
       },
       {
         "path": "scripts/audit-sbom.mjs",
-        "sha256": "ae5b0b26bffabbed39f3ec250d93635833c8fb53fe6167b432d0ae1a2e4b194a"
+        "sha256": "45d9b65dd09a5bb78d3312d560515f41b2167570d74a859c3fbebfed81a428eb"
       },
       {
         "path": "scripts/audit-sbom.test.mjs",
-        "sha256": "93e2c86f77f377c85e13c72203d7f8eda38fe3cadddd4df4107f0764ab860573"
+        "sha256": "7d3b6865a77a4c85e884e256ba005f144a134ff75a206169d3da01aa5da62429"
       },
       {
         "path": "scripts/audit-scope.mjs",
         "sha256": "d1b2245712532bcd2fb03f6d22d55bc4eb6d2315c36cb55f1f6882ada60b0a1d"
+      },
+      {
+        "path": "scripts/audit-webapp-image-inventory.sh",
+        "sha256": "d371942d86820211e54b405fd22e49a70b94a279bf1050f8509c7cd5e40b0d8f"
       },
       {
         "path": "scripts/batch-concurrency-cleaner.sh",
@@ -13489,15 +13505,15 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "1c812c65ff2d86923d6534a283568eb47a69eb0dc4c169d6a9404bc2aac4ee58"
+        "sha256": "7532c8ef5c8d168eef33fcd291da2ab6f419043f294ae46888bb2901a97b50af"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
-        "sha256": "cdf56e6e43f772f59179b57bb3d95a7903c5dc85717cfb6c22a009287d114080"
+        "sha256": "12c2a1a9b0129b75c80173174e6d373bdc629e69fe2159d81562d6032ef7d1a8"
       },
       {
         "path": "scripts/clickhouse-split-audit.test.mjs",
-        "sha256": "de928c8c1ec16dd4d13d473515980823eff11182a6ec4bb03d1a39bff6af73d0"
+        "sha256": "6643e166cc0d5dc0ebc3cf1a826fc2dbe1b1393d9d176436f9843879ca734318"
       },
       {
         "path": "scripts/deploy-platos.sh",
@@ -13524,6 +13540,14 @@
         "sha256": "d47cceacad21468d37de86c05e36b70943829d2c0fc5ac69494b9e8ae322ba97"
       },
       {
+        "path": "scripts/image-package-inventory.mjs",
+        "sha256": "35a6af30ce664b89dac197f8cb0735f68acec2b891fd84ae34855b0024c32d9e"
+      },
+      {
+        "path": "scripts/image-package-inventory.test.mjs",
+        "sha256": "95dd8a098c9870d360777113da2a99bb5761a12665853146b99cec1b06433149"
+      },
+      {
         "path": "scripts/install-git-hooks.mjs",
         "sha256": "e95f73992cb20578da7d711bcaa718fe746766edf87138b3e7413a933b62d840"
       },
@@ -13534,6 +13558,10 @@
       {
         "path": "scripts/lib/pnpm-closure.mjs",
         "sha256": "a5a4ba88d6aeb00d2a62c7fa1ff0a80c1433190bd22cf92dee32fd184c89ecf1"
+      },
+      {
+        "path": "scripts/lib/webapp-inventory-contract.mjs",
+        "sha256": "5dcc926c0a51ff937800a91fab36685602491164992ba7ed3e146098b6c6f1c4"
       },
       {
         "path": "scripts/license-distribution.test.mjs",
@@ -13613,15 +13641,27 @@
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
-        "sha256": "4527987c5f18e27591f7aeeaf5a8f4af3da6fa2c4ada7776e08acd36fb172cc1"
+        "sha256": "bec8b6995118069d8172f601c5d46a0200ee8c4afd6a8c3a8b9700ebb914ea14"
       },
       {
         "path": "scripts/vendored-build-audit.test.mjs",
-        "sha256": "15bf53ef85b2c682da183ec27c11287ed1cbcdce29ddd74bce1797dced464c48"
+        "sha256": "4ac267f6efd0e9e6bf896a4f2d747eefc06d0932d7efbd23487ea28f11418608"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
         "sha256": "2d90a11cf4d0524dbbf86d359536cfc723ea4b64188b8c0d156a842302f3d182"
+      },
+      {
+        "path": "scripts/verify-webapp-image-inventory.mjs",
+        "sha256": "b2f8a2d3ad208f5cdde223d5077171d339429f410df79a77d65cc9b9b9cf4e14"
+      },
+      {
+        "path": "scripts/verify-webapp-image-inventory.test.mjs",
+        "sha256": "a259dce3e9f8f2e6faac5859e74b6b6d0a0d78a3b96fee3c55dedf6de68b7cf0"
+      },
+      {
+        "path": "scripts/verify-webapp-publication-provenance.mjs",
+        "sha256": "d39a87ea284cedd64de5f9e818dfdc0e589b2e6f98699663b3b5843464091ea7"
       },
       {
         "path": "scripts/vocabulary-boundary.mjs",
@@ -13633,7 +13673,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "ec9bb9179c8415405e00ec329bd7825b6135448d43f0cbef5d311b651358c013"
+        "sha256": "2a5686e96365e6dc6e44b3a36a5524011f362cf3e210c4f9352399245909230c"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -13676,6 +13716,10 @@
         "sha256": "c346e28c7f1cbf452b21bdd7b856819328fc860246cb1ddac9b511bce04e08ef"
       },
       {
+        "path": "scripts/webapp-inventory-contract.test.mjs",
+        "sha256": "9fb79e4b8a4103360a8435b9b3c3b3e2c98121f2fdc077839216d257cdf5b9f6"
+      },
+      {
         "path": "scripts/workload-identity-keygen.mjs",
         "sha256": "0586ffc081ed2b11a09f6c34378c40a3edd69d0be95e9f768b2cda14d28b9430"
       },
@@ -13685,7 +13729,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "63b07e308085aa3a9b44bda504f06e8138b0ce47352c96b0564a76a9732668bc"
+        "sha256": "77d0aa6ce0b210176cf161e1e9ca5de4767df2ab84138433651919dd24aa121f"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -13797,11 +13841,11 @@
       },
       {
         "path": "tests/persisted-state-gate/prepare-candidate-images.sh",
-        "sha256": "fe3de0692decefe7e7a8b61cabab3f9f52387e802b1023ff6b76f2f2d1604867"
+        "sha256": "559fe75d80361121eed15defb33269dafef6a93d9e48710c7554702094bc67bd"
       },
       {
         "path": "tests/persisted-state-gate/release-authorization-contract.test.mjs",
-        "sha256": "4425ee6bd8cf1526281aa55314c701d8824516ea0db141d20f0033c58ea8876f"
+        "sha256": "415c462279d3045d8fbb0dab725ae329b8d8d0eff85c294b72848c64420a2ce1"
       },
       {
         "path": "tests/persisted-state-gate/run-non-browser-evidence.mjs",
@@ -13903,7 +13947,7 @@
   },
   "issue": "WIN-253",
   "patchReconciliation": {
-    "configuredPatchCount": 7,
+    "configuredPatchCount": 5,
     "patches": [
       {
         "dependencyAtVersion": "@changesets/assemble-release-plan@5.2.4",
@@ -13943,45 +13987,6 @@
           }
         ],
         "patchFile": "patches/@sentry__remix@9.46.0.patch"
-      },
-      {
-        "dependencyAtVersion": "@upstash/ratelimit@1.1.3",
-        "importerClosures": [
-          {
-            "importer": "apps/webapp",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "apps/webapp",
-                "snapshot:@upstash/ratelimit@1.1.3(patch_hash=e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74)"
-              ]
-            ],
-            "snapshotKeys": [
-              "@upstash/ratelimit@1.1.3(patch_hash=e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74)"
-            ]
-          }
-        ],
-        "patchFile": "patches/@upstash__ratelimit.patch"
-      },
-      {
-        "dependencyAtVersion": "@window-splitter/state@0.4.1",
-        "importerClosures": [
-          {
-            "importer": "apps/webapp",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "apps/webapp",
-                "snapshot:react-window-splitter@0.4.1(@types/react@18.2.69)(react-dom@18.2.0(react@18.3.1))(react@18.3.1)",
-                "snapshot:@window-splitter/state@0.4.1(patch_hash=da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0)"
-              ]
-            ],
-            "snapshotKeys": [
-              "@window-splitter/state@0.4.1(patch_hash=da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0)"
-            ]
-          }
-        ],
-        "patchFile": "patches/@window-splitter__state@0.4.1.patch"
       },
       {
         "dependencyAtVersion": "engine.io-parser@5.2.2",
@@ -14228,19 +14233,6 @@
         "dependencyAtVersion": "graphile-worker@0.16.6",
         "importerClosures": [
           {
-            "importer": "apps/webapp",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "apps/webapp",
-                "snapshot:graphile-worker@0.16.6(patch_hash=798129c99ed02177430fc90a1fdef800ec94e5fd1d491b931297dc52f4c98ab1)(typescript@5.5.4)"
-              ]
-            ],
-            "snapshotKeys": [
-              "graphile-worker@0.16.6(patch_hash=798129c99ed02177430fc90a1fdef800ec94e5fd1d491b931297dc52f4c98ab1)(typescript@5.5.4)"
-            ]
-          },
-          {
             "importer": "internal-packages/zod-worker",
             "kind": "lockfile-production-snapshot-closure",
             "reversePaths": [
@@ -14276,7 +14268,7 @@
         "patchFile": "patches/redlock@5.0.0-beta.2.patch"
       }
     ],
-    "reconciledPatchCount": 7
+    "reconciledPatchCount": 5
   },
   "roots": {
     "applicationDeployable": {
@@ -14687,25 +14679,25 @@
     "channelReachableCounts": {
       "ci": 60,
       "dockerImage": 7,
-      "docsExamples": 58,
+      "docsExamples": 57,
       "generated": 40,
-      "license": 45,
+      "license": 46,
       "packageScripts": 60,
       "patches": 15,
       "sourceDynamic": 0,
       "sourceStatic": 15,
       "testsFixtures": 40
     },
-    "configuredPatchCount": 7,
+    "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
     "externalProductionSnapshotNodesByImage": {
       "agent": 718,
-      "webapp": 1637
+      "webapp": 335
     },
     "installTraversalWorkspaceCount": 60,
     "ociImageWorkspaceCount": 6,
     "publicBoundaryCount": 8,
-    "reconciledPatchCount": 7,
+    "reconciledPatchCount": 5,
     "registeredWorkspaceCount": 60,
     "repositoryDevWorkspaceCount": 10,
     "reviewCandidateCount": 22
@@ -15007,7 +14999,7 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 96
+              "line": 105
             },
             {
               "from": "docs/audits/sbom/closure-receipts.json",
@@ -15017,7 +15009,7 @@
             {
               "from": "docs/audits/sbom/README.md",
               "kind": "reference",
-              "line": 40
+              "line": 64
             },
             {
               "from": "docs/audits/win-234-route-capability-parity.json",
@@ -15027,7 +15019,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 1834
+              "line": 1850
             },
             {
               "from": "docs/control-plane-parity.generated.md",
@@ -16945,6 +16937,11 @@
               "line": 14
             },
             {
+              "from": "tests/persisted-state-gate/release-authorization-contract.test.mjs",
+              "kind": "reference",
+              "line": 50
+            },
+            {
               "from": "tests/persisted-state-gate/run-non-browser-evidence.mjs",
               "kind": "reference",
               "line": 82
@@ -17873,6 +17870,10 @@
               "tests/persisted-state-gate/prepare-candidate-images.sh"
             ],
             [
+              "tests/persisted-state-gate/release-authorization-contract.test.mjs",
+              "tests/persisted-state-gate/release-authorization-contract.test.mjs"
+            ],
+            [
               "tests/persisted-state-gate/run-non-browser-evidence.mjs",
               "tests/persisted-state-gate/run-non-browser-evidence.mjs"
             ],
@@ -18122,6 +18123,7 @@
             "scripts/workspace-reachability.test.mjs",
             "tests/persisted-state-gate/non-browser-evidence-contract.json",
             "tests/persisted-state-gate/prepare-candidate-images.sh",
+            "tests/persisted-state-gate/release-authorization-contract.test.mjs",
             "tests/persisted-state-gate/run-non-browser-evidence.mjs",
             "tests/persisted-state-gate/run-non-browser-evidence.test.mjs",
             "tests/persisted-state-gate/run-performance.mjs",
@@ -18180,7 +18182,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "223f4bfc263bdf898d3779f2a7bf57e0193a2afeb2255f3dbd3ab37558243047",
+      "evidenceSha256": "d9d4ede505564d693d93b9c4c1da26bc4fbfc70ed7e0d346ef30b9d1467d99e0",
       "manifestSha256": "b9b8eed2d98a23eb5bb4a10b2d8c59357d4893ba11d025dc063a29de9c708944",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -19507,7 +19509,7 @@
             {
               "from": ".github/workflows/publish-images.yml",
               "kind": "reference",
-              "line": 130
+              "line": 101
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -19555,7 +19557,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "workspace-owned-file",
-              "line": 37
+              "line": 42
             },
             {
               "from": "docker-compose.deploy.yml",
@@ -19754,12 +19756,12 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 22
+              "line": 11
             },
             {
               "from": "docs/audits/sbom/closure-receipts.json",
               "kind": "reference",
-              "line": 26
+              "line": 27
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -19772,9 +19774,14 @@
               "line": 21
             },
             {
+              "from": "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "kind": "reference",
+              "line": 6
+            },
+            {
               "from": "docs/audits/sbom/README.md",
               "kind": "reference",
-              "line": 42
+              "line": 54
             },
             {
               "from": "docs/audits/win-234-route-capability-parity.generated.md",
@@ -19789,7 +19796,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 1839
+              "line": 1855
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.md",
@@ -20130,6 +20137,10 @@
               "docs/audits/sbom/NON-VACUITY-PROOF.md"
             ],
             [
+              "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "docs/audits/sbom/platos-webapp.image-inventory.json"
+            ],
+            [
               "docs/audits/sbom/README.md",
               "docs/audits/sbom/README.md"
             ],
@@ -20346,6 +20357,7 @@
             "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/closure-receipts.json",
             "docs/audits/sbom/license-overlay.json",
+            "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win253-removals/clickhouse-split.json",
@@ -20419,6 +20431,11 @@
               "line": 37
             },
             {
+              "from": "scripts/audit-licenses.mjs",
+              "kind": "reference",
+              "line": 26
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 32
@@ -20434,6 +20451,10 @@
               "NOTICE"
             ],
             [
+              "scripts/audit-licenses.mjs",
+              "scripts/audit-licenses.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
@@ -20441,6 +20462,7 @@
           "roots": [
             "NOTICE",
             "docs/audits/sbom/license-overlay.json",
+            "scripts/audit-licenses.mjs",
             "scripts/license-distribution.test.mjs"
           ]
         },
@@ -20448,7 +20470,13 @@
           "reachable": true,
           "reasons": [
             {
-              "command": "run-s build:remix build:server build:sentry && pnpm run upload:sourcemaps",
+              "command": "node ./scripts/audit-production-dependencies.mjs",
+              "from": "apps/webapp/package.json",
+              "kind": "workspace-script",
+              "script": "audit:production-dependencies"
+            },
+            {
+              "command": "run-s build:remix build:server build:sentry && pnpm run upload:sourcemaps && pnpm run audit:production-dependencies -- --build-output",
               "from": "apps/webapp/package.json",
               "kind": "workspace-script",
               "script": "build:components"
@@ -20526,7 +20554,13 @@
               "script": "start"
             },
             {
-              "command": "vitest --no-file-parallelism",
+              "command": "node --test ./scripts/audit-production-dependencies.test.mjs ./scripts/restore-patches.test.mjs",
+              "from": "apps/webapp/package.json",
+              "kind": "workspace-script",
+              "script": "test:production-dependencies"
+            },
+            {
+              "command": "pnpm run test:production-dependencies && vitest --no-file-parallelism",
               "from": "apps/webapp/package.json",
               "kind": "workspace-script",
               "script": "test"
@@ -20542,6 +20576,12 @@
               "from": "apps/webapp/package.json",
               "kind": "workspace-script",
               "script": "upload:sourcemaps"
+            },
+            {
+              "command": "bash scripts/audit-webapp-image-inventory.sh",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "audit:webapp-image-inventory"
             },
             {
               "command": "pnpm --filter @platos/tenancy-database build && node apps/webapp/scripts/memory-policy.mjs build -- pnpm exec turbo run build --filter='webapp' --concurrency=1",
@@ -20585,6 +20625,18 @@
               "from": "package.json",
               "kind": "script-reference",
               "script": "test:persisted-state:integration"
+            },
+            {
+              "command": "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:webapp-image-inventory"
+            },
+            {
+              "command": "node --test scripts/webapp-inventory-contract.test.mjs",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:webapp-inventory-contract"
             },
             {
               "command": "turbo run test --filter webapp -- --run",
@@ -20643,37 +20695,6 @@
               ]
             },
             {
-              "dependency": "@upstash/ratelimit@1.1.3",
-              "file": "patches/@upstash__ratelimit.patch",
-              "from": "apps/webapp",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "apps/webapp",
-                  "snapshot:@upstash/ratelimit@1.1.3(patch_hash=e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74)"
-                ]
-              ],
-              "snapshotKeys": [
-                "@upstash/ratelimit@1.1.3(patch_hash=e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74)"
-              ]
-            },
-            {
-              "dependency": "@window-splitter/state@0.4.1",
-              "file": "patches/@window-splitter__state@0.4.1.patch",
-              "from": "apps/webapp",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "apps/webapp",
-                  "snapshot:react-window-splitter@0.4.1(@types/react@18.2.69)(react-dom@18.2.0(react@18.3.1))(react@18.3.1)",
-                  "snapshot:@window-splitter/state@0.4.1(patch_hash=da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0)"
-                ]
-              ],
-              "snapshotKeys": [
-                "@window-splitter/state@0.4.1(patch_hash=da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0)"
-              ]
-            },
-            {
               "dependency": "engine.io-parser@5.2.2",
               "file": "patches/engine.io-parser@5.2.2.patch",
               "from": "apps/webapp",
@@ -20688,21 +20709,6 @@
               "snapshotKeys": [
                 "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
               ]
-            },
-            {
-              "dependency": "graphile-worker@0.16.6",
-              "file": "patches/graphile-worker@0.16.6.patch",
-              "from": "apps/webapp",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "apps/webapp",
-                  "snapshot:graphile-worker@0.16.6(patch_hash=798129c99ed02177430fc90a1fdef800ec94e5fd1d491b931297dc52f4c98ab1)(typescript@5.5.4)"
-                ]
-              ],
-              "snapshotKeys": [
-                "graphile-worker@0.16.6(patch_hash=798129c99ed02177430fc90a1fdef800ec94e5fd1d491b931297dc52f4c98ab1)(typescript@5.5.4)"
-              ]
             }
           ],
           "reversePaths": [
@@ -20712,21 +20718,8 @@
             ],
             [
               "apps/webapp",
-              "snapshot:@upstash/ratelimit@1.1.3(patch_hash=e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74)"
-            ],
-            [
-              "apps/webapp",
-              "snapshot:react-window-splitter@0.4.1(@types/react@18.2.69)(react-dom@18.2.0(react@18.3.1))(react@18.3.1)",
-              "snapshot:@window-splitter/state@0.4.1(patch_hash=da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0)"
-            ],
-            [
-              "apps/webapp",
               "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
               "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ],
-            [
-              "apps/webapp",
-              "snapshot:graphile-worker@0.16.6(patch_hash=798129c99ed02177430fc90a1fdef800ec94e5fd1d491b931297dc52f4c98ab1)(typescript@5.5.4)"
             ]
           ],
           "roots": [
@@ -20786,7 +20779,22 @@
             {
               "from": "apps/webapp/package.json",
               "kind": "test-script",
+              "script": "test:production-dependencies"
+            },
+            {
+              "from": "apps/webapp/package.json",
+              "kind": "test-script",
               "script": "test"
+            },
+            {
+              "from": "apps/webapp/scripts/audit-production-dependencies.test.mjs",
+              "kind": "workspace-owned-file",
+              "line": 10
+            },
+            {
+              "from": "apps/webapp/scripts/restore-patches.test.mjs",
+              "kind": "workspace-owned-file",
+              "line": 42
             },
             {
               "from": "apps/webapp/test/accessKeyLifecycle.test.ts",
@@ -20944,14 +20952,24 @@
               "line": 201
             },
             {
+              "from": "scripts/audit-advisory.test.mjs",
+              "kind": "reference",
+              "line": 34
+            },
+            {
               "from": "scripts/audit-sbom.test.mjs",
               "kind": "reference",
-              "line": 58
+              "line": 27
             },
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 18
+            },
+            {
+              "from": "scripts/clickhouse-split-audit.test.mjs",
+              "kind": "reference",
+              "line": 197
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -20962,6 +20980,11 @@
               "from": "scripts/docs-examples.test.mjs",
               "kind": "reference",
               "line": 130
+            },
+            {
+              "from": "scripts/image-package-inventory.test.mjs",
+              "kind": "reference",
+              "line": 15
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -20989,6 +21012,11 @@
               "line": 90
             },
             {
+              "from": "scripts/verify-webapp-image-inventory.test.mjs",
+              "kind": "reference",
+              "line": 27
+            },
+            {
               "from": "scripts/vocabulary-boundary.nul.test.mjs",
               "kind": "reference",
               "line": 200
@@ -21002,6 +21030,11 @@
               "from": "scripts/webapp-bff-matrix.test.mjs",
               "kind": "reference",
               "line": 1
+            },
+            {
+              "from": "scripts/webapp-inventory-contract.test.mjs",
+              "kind": "reference",
+              "line": 14
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -21064,6 +21097,11 @@
               "line": 15
             },
             {
+              "from": "tests/persisted-state-gate/release-authorization-contract.test.mjs",
+              "kind": "reference",
+              "line": 10
+            },
+            {
               "from": "tests/persisted-state-gate/run-performance.mjs",
               "kind": "reference",
               "line": 32
@@ -21121,6 +21159,14 @@
             [
               "apps/webapp/package.json",
               "apps/webapp/package.json"
+            ],
+            [
+              "apps/webapp/scripts/audit-production-dependencies.test.mjs",
+              "apps/webapp/scripts/audit-production-dependencies.test.mjs"
+            ],
+            [
+              "apps/webapp/scripts/restore-patches.test.mjs",
+              "apps/webapp/scripts/restore-patches.test.mjs"
             ],
             [
               "apps/webapp/test/accessKeyLifecycle.test.ts",
@@ -21247,6 +21293,10 @@
               "scripts/arch/arch-boundaries.test.mjs"
             ],
             [
+              "scripts/audit-advisory.test.mjs",
+              "scripts/audit-advisory.test.mjs"
+            ],
+            [
               "scripts/audit-sbom.test.mjs",
               "scripts/audit-sbom.test.mjs"
             ],
@@ -21255,12 +21305,20 @@
               "scripts/ci-policy.test.mjs"
             ],
             [
+              "scripts/clickhouse-split-audit.test.mjs",
+              "scripts/clickhouse-split-audit.test.mjs"
+            ],
+            [
               "scripts/deploy-platos.test.mjs",
               "scripts/deploy-platos.test.mjs"
             ],
             [
               "scripts/docs-examples.test.mjs",
               "scripts/docs-examples.test.mjs"
+            ],
+            [
+              "scripts/image-package-inventory.test.mjs",
+              "scripts/image-package-inventory.test.mjs"
             ],
             [
               "scripts/license-distribution.test.mjs",
@@ -21283,6 +21341,10 @@
               "scripts/v1-ledger.test.mjs"
             ],
             [
+              "scripts/verify-webapp-image-inventory.test.mjs",
+              "scripts/verify-webapp-image-inventory.test.mjs"
+            ],
+            [
               "scripts/vocabulary-boundary.nul.test.mjs",
               "scripts/vocabulary-boundary.nul.test.mjs"
             ],
@@ -21293,6 +21355,10 @@
             [
               "scripts/webapp-bff-matrix.test.mjs",
               "scripts/webapp-bff-matrix.test.mjs"
+            ],
+            [
+              "scripts/webapp-inventory-contract.test.mjs",
+              "scripts/webapp-inventory-contract.test.mjs"
             ],
             [
               "scripts/workspace-reachability.test.mjs",
@@ -21343,6 +21409,10 @@
               "tests/persisted-state-gate/prepare-candidate-images.sh"
             ],
             [
+              "tests/persisted-state-gate/release-authorization-contract.test.mjs",
+              "tests/persisted-state-gate/release-authorization-contract.test.mjs"
+            ],
+            [
               "tests/persisted-state-gate/run-performance.mjs",
               "tests/persisted-state-gate/run-performance.mjs"
             ],
@@ -21372,6 +21442,8 @@
             "apps/agent/src/privacy/clickhouse.test.ts",
             "apps/agent/src/trigger-tasks/deployment-boundary-manifest.test.ts",
             "apps/webapp/package.json",
+            "apps/webapp/scripts/audit-production-dependencies.test.mjs",
+            "apps/webapp/scripts/restore-patches.test.mjs",
             "apps/webapp/test/accessKeyLifecycle.test.ts",
             "apps/webapp/test/agentToolMappingMutation.test.ts",
             "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
@@ -21403,18 +21475,23 @@
             "apps/webapp/test/threadChatLifecycle.test.ts",
             "internal-packages/workload-identity/src/index.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/audit-advisory.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
+            "scripts/clickhouse-split-audit.test.mjs",
             "scripts/deploy-platos.test.mjs",
             "scripts/docs-examples.test.mjs",
+            "scripts/image-package-inventory.test.mjs",
             "scripts/license-distribution.test.mjs",
             "scripts/root-entry-manifest.test.mjs",
             "scripts/route-capability-completion-audit.test.mjs",
             "scripts/route-capability-parity.test.mjs",
             "scripts/v1-ledger.test.mjs",
+            "scripts/verify-webapp-image-inventory.test.mjs",
             "scripts/vocabulary-boundary.nul.test.mjs",
             "scripts/vocabulary-boundary.test.mjs",
             "scripts/webapp-bff-matrix.test.mjs",
+            "scripts/webapp-inventory-contract.test.mjs",
             "scripts/workspace-reachability.test.mjs",
             "tests/browser-evidence/artifact-schema.json",
             "tests/browser-evidence/auth.fixture.ts",
@@ -21427,6 +21504,7 @@
             "tests/persisted-state-gate/candidate-identity-contract.test.mjs",
             "tests/persisted-state-gate/performance-artifact.schema.json",
             "tests/persisted-state-gate/prepare-candidate-images.sh",
+            "tests/persisted-state-gate/release-authorization-contract.test.mjs",
             "tests/persisted-state-gate/run-performance.mjs",
             "tests/persisted-state-gate/verify-artifacts.mjs",
             "tests/persisted-state-gate/verify-performance-artifacts.mjs",
@@ -21472,8 +21550,8 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "ba069094d4cca110f065219dba6fea8907c74de6a08ecfbc39bfe874711a7c97",
-      "manifestSha256": "6026965044352a11f70b85b067c972dc67310139a065fe8bf96b91532b19f44a",
+      "evidenceSha256": "e5fcc70e992cf856fecde5f11c1320802aa38f2d6e5857499e5b756fdb8f5fe0",
+      "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
         "reachable": true,
@@ -21612,7 +21690,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "reference",
-              "line": 128
+              "line": 150
             },
             {
               "from": "docker-compose.platos.yml",
@@ -22134,6 +22212,11 @@
               "line": 1
             },
             {
+              "from": "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "docs/audits/sbom/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -22161,7 +22244,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "workspace-owned-file",
-              "line": 1014
+              "line": 1030
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.md",
@@ -24476,6 +24559,10 @@
               "docs/audits/sbom/NON-VACUITY-PROOF.md"
             ],
             [
+              "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "docs/audits/sbom/platos-webapp.image-inventory.json"
+            ],
+            [
               "docs/audits/sbom/README.md",
               "docs/audits/sbom/README.md"
             ],
@@ -26146,6 +26233,7 @@
             "docs/audits/sbom/license-index.json",
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/sbom/license-policy.json",
+            "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win-252-root-entry-manifest.json",
@@ -26791,12 +26879,12 @@
             {
               "from": "scripts/audit-sbom.test.mjs",
               "kind": "reference",
-              "line": 90
+              "line": 26
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
               "kind": "reference",
-              "line": 131
+              "line": 133
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -26822,6 +26910,11 @@
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
               "line": 106
+            },
+            {
+              "from": "scripts/verify-webapp-image-inventory.test.mjs",
+              "kind": "reference",
+              "line": 49
             },
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
@@ -26945,6 +27038,10 @@
               "scripts/vendored-build-audit.test.mjs"
             ],
             [
+              "scripts/verify-webapp-image-inventory.test.mjs",
+              "scripts/verify-webapp-image-inventory.test.mjs"
+            ],
+            [
               "scripts/vocabulary-boundary.test.mjs",
               "scripts/vocabulary-boundary.test.mjs"
             ],
@@ -26995,6 +27092,7 @@
             "scripts/route-capability-completion-audit.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vendored-build-audit.test.mjs",
+            "scripts/verify-webapp-image-inventory.test.mjs",
             "scripts/vocabulary-boundary.test.mjs",
             "scripts/workspace-reachability.test.mjs",
             "tests/browser-evidence/artifact-schema.json",
@@ -27011,7 +27109,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b303764c134ba9b3f78c112d17faf7d50e9e963ea7652409da61f6660ebc5b8c",
+      "evidenceSha256": "3b77d35d004a3510064dab11b3a5891b14fff901e0271e462d22bdba6701f6b2",
       "manifestSha256": "3c417b8f7bd7a07e1d17a6f3d37555005c99588f6cc952f079b9be2d6da82328",
       "name": "docs",
       "ociImageClosure": {
@@ -27728,7 +27826,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 199
+              "line": 203
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -28581,7 +28679,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3c86b463c24870d4abebd91de00efcf9034dcae4ef745738f29c6357ea901273",
+      "evidenceSha256": "e3e2ba53e59f2ddf8339b9061f4609e92a52ff23bc048c6cbc1e9b81f400c2c8",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -30295,7 +30393,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 887
+              "line": 903
             },
             {
               "from": "internal-packages/redis/README.md",
@@ -30836,7 +30934,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6fa04225fba8b6bb2c185126630ad1ffb49b5c9643bed20f1c9694f861e36139",
+      "evidenceSha256": "08d45dbdf86429ec1315924b00bbf0216eb8bc768df68f2ab3b392248499e99e",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -32027,7 +32125,7 @@
             {
               "from": ".github/workflows/build-images.yml",
               "kind": "reference",
-              "line": 201
+              "line": 217
             },
             {
               "from": ".github/workflows/ci.yml",
@@ -32069,7 +32167,7 @@
             {
               "from": "apps/webapp/Dockerfile.platos",
               "kind": "reference",
-              "line": 49
+              "line": 55
             },
             {
               "from": "docker-compose.platos.yml",
@@ -32118,7 +32216,32 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 212
+              "line": 230
+            },
+            {
+              "from": "docs/audits/sbom/closure-receipts.json",
+              "kind": "reference",
+              "line": 68
+            },
+            {
+              "from": "docs/audits/sbom/license-index.json",
+              "kind": "reference",
+              "line": 930
+            },
+            {
+              "from": "docs/audits/sbom/license-overlay.json",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "kind": "reference",
+              "line": 17
+            },
+            {
+              "from": "docs/audits/sbom/README.md",
+              "kind": "reference",
+              "line": 74
             },
             {
               "from": "docs/audits/win-234-route-capability-parity.json",
@@ -32128,7 +32251,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 1825
+              "line": 1841
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.md",
@@ -32160,6 +32283,26 @@
               "docs/audits/sbom/closure-contract.md"
             ],
             [
+              "docs/audits/sbom/closure-receipts.json",
+              "docs/audits/sbom/closure-receipts.json"
+            ],
+            [
+              "docs/audits/sbom/license-index.json",
+              "docs/audits/sbom/license-index.json"
+            ],
+            [
+              "docs/audits/sbom/license-overlay.json",
+              "docs/audits/sbom/license-overlay.json"
+            ],
+            [
+              "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "docs/audits/sbom/platos-webapp.image-inventory.json"
+            ],
+            [
+              "docs/audits/sbom/README.md",
+              "docs/audits/sbom/README.md"
+            ],
+            [
               "docs/audits/win-234-route-capability-parity.json",
               "docs/audits/win-234-route-capability-parity.json"
             ],
@@ -32183,7 +32326,12 @@
           "roots": [
             "ai/references/repo.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/sbom/README.md",
             "docs/audits/sbom/closure-contract.md",
+            "docs/audits/sbom/closure-receipts.json",
+            "docs/audits/sbom/license-index.json",
+            "docs/audits/sbom/license-overlay.json",
+            "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/audits/win253-removals/clickhouse-split.md",
@@ -32201,6 +32349,16 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/audits/sbom/license-index.json",
+              "kind": "reference",
+              "line": 930
+            },
+            {
+              "from": "docs/audits/sbom/license-overlay.json",
+              "kind": "reference",
+              "line": 9
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 38
@@ -32208,11 +32366,21 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/sbom/license-index.json",
+              "docs/audits/sbom/license-index.json"
+            ],
+            [
+              "docs/audits/sbom/license-overlay.json",
+              "docs/audits/sbom/license-overlay.json"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
           ],
           "roots": [
+            "docs/audits/sbom/license-index.json",
+            "docs/audits/sbom/license-overlay.json",
             "scripts/license-distribution.test.mjs"
           ]
         },
@@ -33087,6 +33255,11 @@
               "line": 1
             },
             {
+              "from": "scripts/audit-sbom.test.mjs",
+              "kind": "reference",
+              "line": 111
+            },
+            {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 24
@@ -33331,6 +33504,10 @@
               "internal-packages/tenancy-database/src/win124.integration.test.ts"
             ],
             [
+              "scripts/audit-sbom.test.mjs",
+              "scripts/audit-sbom.test.mjs"
+            ],
+            [
               "scripts/ci-policy.test.mjs",
               "scripts/ci-policy.test.mjs"
             ],
@@ -33420,6 +33597,7 @@
             "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
             "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
             "internal-packages/tenancy-database/src/win124.integration.test.ts",
+            "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/deploy-platos.test.mjs",
             "scripts/docs-examples.test.mjs",
@@ -33536,7 +33714,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "fcb024f0ac81cedfc61a91763fe4ac3f931a6d7dc0b99354761f78049f24a98d",
+      "evidenceSha256": "249f85a402c87bf02e912d9241f0aa1cfb6e2dabdd30797910dddb7fc554371d",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -33727,23 +33905,10 @@
           ]
         },
         "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 291
-            }
-          ],
-          "reversePaths": [
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ]
-          ],
-          "roots": [
-            "docs/audits/M0.5-dependency-sbom.md"
-          ]
+          "reachable": false,
+          "reasons": [],
+          "reversePaths": [],
+          "roots": []
         },
         "generated": {
           "reachable": false,
@@ -33864,7 +34029,7 @@
           "internal-packages/tenancy-database/migration-image"
         ]
       },
-      "evidenceSha256": "17d79c29708db585ffc04bc5706f20eee7794267cdabcf427611f2b46c95c42a",
+      "evidenceSha256": "f63a66d17bb21fb6ae1f2552199c6693109830227ea61a50602f3be44abacf86",
       "manifestSha256": "506c8ea91345cd9dbe3edbbc3d60bd5b44b487845c9f8190d07375afd36c0c28",
       "name": "@platos/tenancy-migration-image",
       "ociImageClosure": {
@@ -33966,7 +34131,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 199
+              "line": 203
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -34020,7 +34185,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 1859
+              "line": 1870
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.md",
@@ -34663,7 +34828,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "ecf297845ca237b57f050c890f2bb0d3f4b741b16570fc6deca97538af40eb44",
+      "evidenceSha256": "0d7c47994bfc67e6784fb638a7699f1cbc63e57de056e9365d5de623b3a52d54",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -34783,7 +34948,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 870
+              "line": 886
             },
             {
               "from": "internal-packages/tracing/README.md",
@@ -35479,7 +35644,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9dc8d9440e78ef988ca59ccb539ae038fe6806845739a39df9c9edaead2cc088",
+      "evidenceSha256": "5174728a1a32187da6b97586dfa2fdaa77b1f46032a3f1ca0146d6b0c5b49cc9",
       "manifestSha256": "1794136d4ad02d644e8a8af5c3f80f4f8ea883f9fcb2ce66e4cd8bc949d5b98e",
       "name": "@internal/tracing",
       "ociImageClosure": {
@@ -35631,6 +35796,36 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/audits/sbom/closure-contract.md",
+              "kind": "reference",
+              "line": 37
+            },
+            {
+              "from": "docs/audits/sbom/closure-receipts.json",
+              "kind": "reference",
+              "line": 72
+            },
+            {
+              "from": "docs/audits/sbom/license-index.json",
+              "kind": "reference",
+              "line": 455
+            },
+            {
+              "from": "docs/audits/sbom/license-overlay.json",
+              "kind": "reference",
+              "line": 5
+            },
+            {
+              "from": "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "kind": "reference",
+              "line": 13
+            },
+            {
+              "from": "docs/audits/sbom/README.md",
+              "kind": "reference",
+              "line": 74
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 6
@@ -35638,11 +35833,41 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/sbom/closure-contract.md",
+              "docs/audits/sbom/closure-contract.md"
+            ],
+            [
+              "docs/audits/sbom/closure-receipts.json",
+              "docs/audits/sbom/closure-receipts.json"
+            ],
+            [
+              "docs/audits/sbom/license-index.json",
+              "docs/audits/sbom/license-index.json"
+            ],
+            [
+              "docs/audits/sbom/license-overlay.json",
+              "docs/audits/sbom/license-overlay.json"
+            ],
+            [
+              "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "docs/audits/sbom/platos-webapp.image-inventory.json"
+            ],
+            [
+              "docs/audits/sbom/README.md",
+              "docs/audits/sbom/README.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ]
           ],
           "roots": [
+            "docs/audits/sbom/README.md",
+            "docs/audits/sbom/closure-contract.md",
+            "docs/audits/sbom/closure-receipts.json",
+            "docs/audits/sbom/license-index.json",
+            "docs/audits/sbom/license-overlay.json",
+            "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/v1-ledger-rules.json"
           ]
         },
@@ -35653,10 +35878,33 @@
           "roots": []
         },
         "license": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "docs/audits/sbom/license-index.json",
+              "kind": "reference",
+              "line": 455
+            },
+            {
+              "from": "docs/audits/sbom/license-overlay.json",
+              "kind": "reference",
+              "line": 5
+            }
+          ],
+          "reversePaths": [
+            [
+              "docs/audits/sbom/license-index.json",
+              "docs/audits/sbom/license-index.json"
+            ],
+            [
+              "docs/audits/sbom/license-overlay.json",
+              "docs/audits/sbom/license-overlay.json"
+            ]
+          ],
+          "roots": [
+            "docs/audits/sbom/license-index.json",
+            "docs/audits/sbom/license-overlay.json"
+          ]
         },
         "packageScripts": {
           "reachable": true,
@@ -35743,6 +35991,16 @@
               "from": "internal-packages/workload-identity/src/index.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
+            },
+            {
+              "from": "scripts/audit-sbom.test.mjs",
+              "kind": "reference",
+              "line": 110
+            },
+            {
+              "from": "scripts/image-package-inventory.test.mjs",
+              "kind": "reference",
+              "line": 55
             }
           ],
           "reversePaths": [
@@ -35753,11 +36011,21 @@
             [
               "internal-packages/workload-identity/src/index.test.ts",
               "internal-packages/workload-identity/src/index.test.ts"
+            ],
+            [
+              "scripts/audit-sbom.test.mjs",
+              "scripts/audit-sbom.test.mjs"
+            ],
+            [
+              "scripts/image-package-inventory.test.mjs",
+              "scripts/image-package-inventory.test.mjs"
             ]
           ],
           "roots": [
             "apps/agent/src/auth/scope.guard.test.ts",
-            "internal-packages/workload-identity/src/index.test.ts"
+            "internal-packages/workload-identity/src/index.test.ts",
+            "scripts/audit-sbom.test.mjs",
+            "scripts/image-package-inventory.test.mjs"
           ]
         }
       },
@@ -35842,7 +36110,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "5588e99dcc7a4f13f0cb4bb95468a4703d2009260af7076fea94c7e1288492aa",
+      "evidenceSha256": "d1c7944f2993f95a74a4d88bc55362a0cf157de980075244f00064ff8726b878",
       "manifestSha256": "14cc61dfe3b0756d3a1cda1988781b78a9cdfdaa2d6df538e4b5436d0be3c0f5",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -36032,7 +36300,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 194
+              "line": 198
             }
           ],
           "reversePaths": [
@@ -36166,7 +36434,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "95f017b0601ce86ac78ce03dbd80af7ade0ecdfbd69fd423ced6214875d9ecfc",
+      "evidenceSha256": "26b92cb7412d1ce2c3d943646726018913da77b5619c3aeeb546a807a44c19bb",
       "manifestSha256": "2568326aebd0fca05e86b46e0c588e9dce424bd4749cd5807c3224d6d89dc2ee",
       "name": "@internal/zod-worker",
       "ociImageClosure": {
@@ -51903,7 +52171,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 208
+              "line": 212
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -51985,7 +52253,7 @@
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
-              "line": 872
+              "line": 888
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -53369,7 +53637,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "feb073b4afa7eed1d86f46bf8e899de6dda6c32949a149f6851eaf2a9bdd7dc7",
+      "evidenceSha256": "b719a2b9a0e191db45ea019331b687547fc7a58e3380638bc786d203f0a2b153",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -55558,12 +55826,12 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 291
+              "line": 116
             },
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 97
+              "line": 106
             },
             {
               "from": "docs/entity-connect.md",
@@ -56041,7 +56309,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "61cdb0cfd036f2d0d5027f2277efe8f4c03f3686057337afc918af85294750f5",
+      "evidenceSha256": "0f7f340078044a6ac9f0518ce23cfb703eea169aae88938df231101a098cffa1",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -56212,7 +56480,7 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 214
+              "line": 232
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -56839,7 +57107,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3764832df6c2a868b1dc408a7c8fc624dc0cfeb1c6a07cbdafa3af6a20fcb27b",
+      "evidenceSha256": "9d908630ff8b4eed753775ea3b976fcc67ddba2c4ef61fb97c324cf54c9db033",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -58090,11 +58358,6 @@
               "line": 3
             },
             {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 285
-            },
-            {
               "from": "docs/refactor/platos-trigger-refactor.md",
               "kind": "reference",
               "line": 84
@@ -58201,10 +58464,6 @@
               "docs/audits/history/win-252/stale-changesets/ppr-34-platos-client-mvp.md"
             ],
             [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
               "docs/refactor/platos-trigger-refactor.md",
               "docs/refactor/platos-trigger-refactor.md"
             ],
@@ -58264,7 +58523,6 @@
             ".changeset/react-hooks-f7-artifact-stream-events.md",
             ".changeset/react-hooks-f8-artifact-renderer.md",
             ".changeset/win-146-sdk-v1.md",
-            "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/history/win-252/stale-changesets/ppr-34-platos-client-mvp.md",
             "docs/refactor/platos-trigger-refactor.md",
             "docs/sdk-v1-migration.md",
@@ -58474,7 +58732,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "ec8d23d1883e1f8b44552be424742ec47acb954804c72b8f202fe3a6f91ee568",
+      "evidenceSha256": "6997e7e627f6ba576bd732e69d9134a34eae72fa5de624365cd61d97b55a4bb5",
       "manifestSha256": "9e88758002295b4e87f4bd0e2ba50586b0ffa4141d0694d2f14e5eab3b016e28",
       "name": "@platos/react-hooks",
       "ociImageClosure": {
@@ -58568,11 +58826,6 @@
               "line": 3
             },
             {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 285
-            },
-            {
               "from": "docs/refactor/platos-trigger-refactor.md",
               "kind": "reference",
               "line": 83
@@ -58599,10 +58852,6 @@
               ".changeset/eobd-83-followup-package-repo-urls.md"
             ],
             [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
               "docs/refactor/platos-trigger-refactor.md",
               "docs/refactor/platos-trigger-refactor.md"
             ],
@@ -58621,7 +58870,6 @@
           ],
           "roots": [
             ".changeset/eobd-83-followup-package-repo-urls.md",
-            "docs/audits/M0.5-dependency-sbom.md",
             "docs/refactor/platos-trigger-refactor.md",
             "docs/v1-ledger-rules.json",
             "packages/redis-worker/CHANGELOG.md",
@@ -59025,7 +59273,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "75274ab8b956db4d67d0060da00da2455d7ab31ce8b8b78cd2b4b05ce8d27338",
+      "evidenceSha256": "c226bb1853c2b7571bbf4782271d564ce24700da088931d24a8d56769551ddd5",
       "manifestSha256": "ef514ac499b1a401341cdaeed75e735f1b90b64989f1dd77b791966f0ab45c7e",
       "name": "@platos/redis-worker",
       "ociImageClosure": {

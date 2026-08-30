@@ -33,6 +33,16 @@ const allowedPrimaryBaseAdditions = [
     reason: "WIN-252 added the package-local Apache-2.0 license after the reviewed source base.",
   },
 ];
+const allowedAdditionalIntegrationDeletions = [
+  {
+    path: "patches/@upstash__ratelimit.patch",
+    reason: "WIN-253 removed the unreachable @upstash/ratelimit package and its obsolete tracked patch.",
+  },
+  {
+    path: "patches/@window-splitter__state@0.4.1.patch",
+    reason: "WIN-253 removed react-window-splitter and its obsolete transitive patch.",
+  },
+];
 const protectedRoots = [
   "packages/platools-js",
   "packages/platos-client",
@@ -396,6 +406,7 @@ export function validateReviewedSourceProvenance(root, {
   integrationDeletedPaths,
   integrationBaseEntries,
   allowedAdditions = allowedPrimaryBaseAdditions,
+  allowedAdditionalDeletions = allowedAdditionalIntegrationDeletions,
 } = {}) {
   const violations = [];
   const resolvedBase = git(root, ["rev-parse", `${reviewedSourceBase}^{commit}`]).trim();
@@ -433,11 +444,18 @@ export function validateReviewedSourceProvenance(root, {
   const additionSet = validateDeletionSet(allowedPaths, actualAdditions);
   for (const path of additionSet.missing) violations.push(`explained primary-base addition is absent: ${path}`);
   for (const path of additionSet.unrecorded) violations.push(`primary base adds unexplained candidate path: ${path}`);
-  const coverageAdditions = validateDeletionSet(allowedPaths, coverage.unrecorded);
+  const allowedDeletionPaths = allowedAdditionalDeletions.map(({ path }) => path);
+  const coverageAdditions = validateDeletionSet(
+    [...allowedPaths, ...allowedDeletionPaths],
+    coverage.unrecorded,
+  );
   for (const path of coverageAdditions.missing) violations.push(`explained primary-base addition is absent from current deletion set: ${path}`);
   for (const path of coverageAdditions.unrecorded) violations.push(`current integration deletion lacks a primary-base addition explanation: ${path}`);
   for (const addition of allowedAdditions) {
     if (!addition.reason?.trim()) violations.push(`primary-base addition lacks an explanation: ${addition.path}`);
+  }
+  for (const deletion of allowedAdditionalDeletions) {
+    if (!deletion.reason?.trim()) violations.push(`additional integration deletion lacks an explanation: ${deletion.path}`);
   }
 
   const sourceEntriesByPath = new Map(sourceBaseEntries.map((entry) => [entry.path, entry]));
@@ -476,6 +494,7 @@ export function validateReviewedSourceProvenance(root, {
             bytes: entry?.bytes ?? null,
           };
         }),
+        additionalReviewedDeletions: allowedAdditionalDeletions,
       },
     },
   };
@@ -527,11 +546,17 @@ function validateIntegration(root, deleted, candidateNames, currentPaths, violat
 export function auditRepository(root = repositoryRoot, options = {}) {
   const violations = [];
   const baseEntries = treeEntries(root, INTEGRATION_BASE, candidateRoots);
-  const baseBlobs = readBlobBatch(root, baseEntries);
+  const additionalDeletionEntries = treeEntries(
+    root,
+    INTEGRATION_BASE,
+    allowedAdditionalIntegrationDeletions.map(({ path }) => path),
+  );
+  const deletionBaseEntries = [...baseEntries, ...additionalDeletionEntries];
+  const baseBlobs = readBlobBatch(root, deletionBaseEntries);
   const manifests = candidateManifests(baseEntries, baseBlobs);
   const candidateNames = manifests.map(({ name }) => name);
   const deleted = actualDeletedPaths(root);
-  const deletionSet = validateDeletionSet(baseEntries.map(({ path }) => path), deleted);
+  const deletionSet = validateDeletionSet(deletionBaseEntries.map(({ path }) => path), deleted);
   for (const path of deletionSet.missing) violations.push(`integration-base cluster path was not deleted: ${path}`);
   for (const path of deletionSet.unrecorded) violations.push(`unrecorded deletion outside the six-workspace cluster: ${path}`);
 
@@ -539,7 +564,9 @@ export function auditRepository(root = repositoryRoot, options = {}) {
   const tombstoneViolations = existingRetiredRoots(root);
   for (const path of tombstoneViolations) violations.push(`current-tree tombstone violated: ${path}`);
 
-  const deletedEntries = deletionSet.actual.map((path) => baseEntries.find((entry) => entry.path === path)).filter(Boolean);
+  const deletedEntries = deletionSet.actual
+    .map((path) => deletionBaseEntries.find((entry) => entry.path === path))
+    .filter(Boolean);
   const deletedFiles = deletedEntries.map((entry) => ({
     path: entry.path,
     mode: entry.mode,
@@ -590,6 +617,7 @@ export function auditRepository(root = repositoryRoot, options = {}) {
       reviewedSourceCommit: options.reviewedSourceCommit,
       reviewedSourceRoots: options.reviewedSourceRoots,
       allowedAdditions: options.allowedPrimaryBaseAdditions,
+      allowedAdditionalDeletions: options.allowedAdditionalIntegrationDeletions,
       integrationDeletedPaths: deletionSet.actual,
       integrationBaseEntries: baseEntries,
     });

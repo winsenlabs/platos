@@ -1,18 +1,13 @@
 {
   "$schema": "platos.audit.license-index/v1",
-  "note": "Frozen registry.npmjs.org licence snapshot for the union production closure. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock.",
-  "resolvedAgainstLockfileSha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782",
-  "resolvedAt": "2026-08-30T11:21:45.494Z",
+  "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock.",
+  "resolvedAgainstLockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
+  "resolvedAt": "2026-08-30T14:36:06.224Z",
   "registry": "https://registry.npmjs.org",
-  "componentCount": 1897,
-  "unresolvedCount": 3,
+  "componentCount": 883,
+  "unresolvedCount": 2,
   "index": {
     "@acemir/cssom@0.9.31": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@adobe/css-tools@4.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -57,36 +52,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@alloc/quick-lru@5.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@antfu/install-pkg@1.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@antfu/utils@9.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@ariakit/core@0.4.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@ariakit/react-core@0.4.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@ariakit/react@0.4.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@asamuzakjp/css-color@5.1.11": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -107,11 +72,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-crypto/crc32@3.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-crypto/crc32@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -122,17 +82,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-crypto/ie11-detection@3.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-crypto/sha1-browser@5.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-crypto/sha256-browser@3.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -142,17 +92,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-crypto/sha256-js@3.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-crypto/sha256-js@5.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-crypto/supports-web-crypto@3.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -162,17 +102,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-crypto/util@3.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-crypto/util@5.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-ecr@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -182,52 +112,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/client-sqs@3.454.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-sso@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-sso@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-sso@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/client-sso@3.940.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-sts@3.454.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/client-sts@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/core@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/core@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/core@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -237,52 +122,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/credential-provider-env@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-env@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-env@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/credential-provider-env@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/credential-provider-http@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-http@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/credential-provider-http@3.940.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-ini@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-ini@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-ini@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -297,37 +142,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/credential-provider-node@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-node@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-node@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/credential-provider-node@3.940.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-process@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-process@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-process@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -337,37 +152,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/credential-provider-sso@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-sso@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-sso@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/credential-provider-sso@3.940.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-web-identity@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-web-identity@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/credential-provider-web-identity@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -392,21 +177,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/middleware-host-header@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-host-header@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-host-header@3.930.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/middleware-host-header@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -417,37 +187,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/middleware-logger@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-logger@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-logger@3.930.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/middleware-logger@3.936.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-recursion-detection@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-recursion-detection@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-recursion-detection@3.930.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -462,37 +202,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/middleware-sdk-sqs@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-sdk-sts@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-signing@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/middleware-ssec@3.936.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-user-agent@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-user-agent@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/middleware-user-agent@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -502,42 +212,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/nested-clients@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/nested-clients@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/nested-clients@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/region-config-resolver@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/region-config-resolver@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/region-config-resolver@3.930.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/region-config-resolver@3.936.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/s3-presigned-post@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -552,37 +232,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/token-providers@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/token-providers@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/token-providers@3.931.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/token-providers@3.940.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/types@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/types@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/types@3.930.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -593,21 +243,6 @@
       "status": 200
     },
     "@aws-sdk/util-arn-parser@3.893.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-endpoints@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-endpoints@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-endpoints@3.930.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -627,37 +262,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/util-user-agent-browser@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-user-agent-browser@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-user-agent-browser@3.930.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/util-user-agent-browser@3.936.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-user-agent-node@3.451.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-user-agent-node@3.840.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/util-user-agent-node@3.931.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -667,33 +272,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@aws-sdk/util-utf8-browser@3.259.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws-sdk/xml-builder@3.821.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@aws-sdk/xml-builder@3.930.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@aws/lambda-invoke-store@0.1.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
     "@aws/lambda-invoke-store@0.2.1": {
       "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@babel/code-frame@7.24.7": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -707,17 +292,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@babel/highlight@7.24.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@babel/parser@7.27.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@babel/runtime@7.28.4": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -727,28 +302,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@better-auth/utils@0.2.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@borewit/text-codec@0.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@braintree/sanitize-url@7.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "@bramus/specificity@2.4.2": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@bufbuild/protobuf@1.10.0": {
-      "license": "(Apache-2.0 AND BSD-3-Clause)",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -792,112 +352,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@chevrotain/cst-dts-gen@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@chevrotain/gast@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@chevrotain/regexp-to-ast@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@chevrotain/types@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@chevrotain/utils@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/autocomplete@6.4.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/commands@6.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/lang-javascript@6.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/lang-json@6.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/lang-sql@6.5.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/language@6.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/lint@6.4.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/search@6.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/state@6.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/theme-one-dark@6.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@codemirror/view@6.7.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@conform-to/dom@0.9.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@conform-to/react@0.9.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@conform-to/zod@0.9.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@connectrpc/connect-node@1.4.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@connectrpc/connect-web@2.0.0-rc.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@connectrpc/connect@1.4.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -933,66 +388,6 @@
       "status": 200
     },
     "@csstools/css-tokenizer@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@date-fns/tz@1.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-darwin-arm64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-darwin-x64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-linux-arm64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-linux-arm@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-linux-ia32@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-linux-x64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-win32-arm64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-win32-ia32@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli-win32-x64@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/cli@0.0.1-cli.2.80.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@depot/sdk-node@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -1037,102 +432,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@electric-sql/client@0.4.0": {
-      "license": "Apache-2",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@electric-sql/client@1.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@electric-sql/react@0.3.5": {
-      "license": "Apache-2",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@emotion/is-prop-valid@0.8.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@emotion/memoize@0.7.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@exodus/bytes@1.15.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@fastify/busboy@2.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/core@0.7.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/core@1.6.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/dom@0.5.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/dom@1.6.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/react-dom@0.7.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/react-dom@2.0.9": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@floating-ui/utils@0.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@formatjs/ecma402-abstract@1.18.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@formatjs/fast-memoize@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@formatjs/icu-messageformat-parser@2.7.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@formatjs/icu-skeleton-parser@1.7.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@formatjs/intl-localematcher@0.5.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@fullhuman/postcss-purgecss@2.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -1142,105 +447,15 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@graphile/logger@0.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@graphql-typed-document-node/core@3.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@grpc/grpc-js@1.12.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@grpc/proto-loader@0.7.13": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/boom@10.0.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/bourne@3.0.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/hoek@10.0.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/hoek@11.0.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/hoek@9.3.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/topo@5.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@hapi/wreck@18.0.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@headlessui/react@1.7.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@heroicons/react@2.0.13": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@hono/node-server@1.19.9": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@iconify/types@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@iconify/utils@3.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@internationalized/date@3.5.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@internationalized/message@3.1.4": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@internationalized/number@3.5.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@internationalized/string@3.2.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
+    "@internal/workload-identity@0.0.1": {
+      "license": null,
+      "resolvedFrom": "not-found",
+      "status": 404
     },
     "@ioredis/commands@1.5.1": {
       "license": "MIT",
@@ -1262,87 +477,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@jridgewell/gen-mapping@0.3.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jridgewell/resolve-uri@3.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jridgewell/set-array@1.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jridgewell/sourcemap-codec@1.5.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jridgewell/trace-mapping@0.3.31": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@js-sdsl/ordered-map@4.4.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jsonhero/json-infer-types@1.2.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@jsonhero/json-schema-fns@0.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@jsonhero/path@1.0.21": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@jsonhero/schema-infer@0.1.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@lezer/common@1.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@lezer/highlight@1.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@lezer/javascript@1.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@lezer/json@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@lezer/lr@1.4.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@lukeed/csprng@1.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@mermaid-js/parser@0.6.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -1387,168 +527,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@nodelib/fs.scandir@2.1.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@nodelib/fs.stat@2.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@nodelib/fs.walk@1.2.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@nuxt/opencollective@0.4.1": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/app@14.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-app@6.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-oauth-app@7.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-oauth-device@6.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-oauth-user@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-token@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/auth-unauthenticated@5.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/core@5.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/endpoint@9.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/graphql@7.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/oauth-app@6.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/oauth-authorization-url@6.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/oauth-methods@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/openapi-types@20.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/openapi-types@24.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-paginate-graphql@4.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-paginate-rest@11.4.4-cjs.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-paginate-rest@9.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-rest-endpoint-methods@13.3.2-cjs.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-retry@6.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/plugin-throttling@8.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/request-error@5.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/request@8.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/types@12.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/types@13.10.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/webhooks-methods@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/webhooks-types@7.6.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@octokit/webhooks@12.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/api-logs@0.203.0": {
-      "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -1572,11 +552,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/api@1.8.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/api@1.9.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -1592,11 +567,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/context-async-hooks@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/context-async-hooks@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -1607,22 +577,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/core@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/core@2.7.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-logs-otlp-grpc@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-logs-otlp-http@0.203.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1632,62 +587,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/exporter-logs-otlp-proto@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-metrics-otlp-grpc@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-metrics-otlp-http@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/exporter-metrics-otlp-http@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/exporter-metrics-otlp-proto@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-prometheus@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-trace-otlp-grpc@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-trace-otlp-http@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/exporter-trace-otlp-http@0.218.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-trace-otlp-proto@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/exporter-zipkin@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/host-metrics@0.37.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1698,11 +603,6 @@
       "status": 200
     },
     "@opentelemetry/instrumentation-amqplib@0.46.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/instrumentation-aws-sdk@0.57.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1733,11 +633,6 @@
       "status": 200
     },
     "@opentelemetry/instrumentation-express@0.47.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/instrumentation-express@0.52.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1783,11 +678,6 @@
       "status": 200
     },
     "@opentelemetry/instrumentation-hapi@0.45.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/instrumentation-http@0.203.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1937,11 +827,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/instrumentation@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/instrumentation@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -1962,22 +847,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/otlp-exporter-base@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/otlp-exporter-base@0.218.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/otlp-grpc-exporter-base@0.203.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/otlp-transformer@0.203.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -1987,27 +857,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/propagation-utils@0.31.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/propagator-b3@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/propagator-jaeger@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/redis-common@0.36.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/resource-detector-aws@2.3.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -2017,17 +867,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/resources@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/resources@2.7.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/sdk-logs@0.203.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -2037,17 +877,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/sdk-metrics@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/sdk-metrics@2.7.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/sdk-node@0.203.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -2057,17 +887,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@opentelemetry/sdk-trace-base@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@opentelemetry/sdk-trace-base@2.7.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@opentelemetry/sdk-trace-node@2.0.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -2107,10 +927,10 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@popperjs/core@2.11.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
+    "@platos/tenancy-database@0.0.1": {
+      "license": null,
+      "resolvedFrom": "not-found",
+      "status": 404
     },
     "@prisma/client@6.14.0": {
       "license": "Apache-2.0",
@@ -2157,923 +977,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@prisma/instrumentation@6.14.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@protobuf-ts/runtime@2.11.1": {
       "license": "(Apache-2.0 AND BSD-3-Clause)",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/aspromise@1.1.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/base64@1.1.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/codegen@2.0.4": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/eventemitter@1.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/fetch@1.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/float@1.0.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/inquire@1.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/path@1.1.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/pool@1.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@protobufjs/utf8@1.1.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/number@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/number@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/primitive@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/primitive@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/primitive@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-accordion@1.2.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-alert-dialog@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-arrow@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-arrow@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-collapsible@1.1.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-collection@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-collection@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-collection@1.1.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-compose-refs@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-compose-refs@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-compose-refs@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-context@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-context@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-context@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-dialog@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-direction@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-direction@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-direction@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-dismissable-layer@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-dismissable-layer@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-dismissable-layer@1.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-focus-guards@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-focus-guards@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-focus-scope@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-focus-scope@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-focus-scope@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-id@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-id@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-id@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-label@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-popover@1.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-popper@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-popper@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-popper@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-portal@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-portal@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-portal@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-portal@1.1.9": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-presence@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-presence@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-presence@1.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-primitive@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-primitive@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-primitive@2.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-radio-group@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-roving-focus@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-roving-focus@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-select@1.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-slider@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-slot@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-slot@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-slot@1.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-switch@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-tabs@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-tooltip@1.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-callback-ref@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-callback-ref@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-controllable-state@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-controllable-state@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-controllable-state@1.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-effect-event@0.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-escape-keydown@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-escape-keydown@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-layout-effect@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-layout-effect@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-layout-effect@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-previous@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-previous@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-rect@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-rect@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-size@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-use-size@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-visually-hidden@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/react-visually-hidden@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/rect@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@radix-ui/rect@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/breadcrumbs@3.5.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/button@3.9.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/calendar@3.5.11": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/checkbox@3.14.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/combobox@3.10.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/datepicker@3.11.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/dialog@3.5.17": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/dnd@3.7.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/focus@3.18.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/form@3.0.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/grid@3.10.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/gridlist@3.9.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/i18n@3.12.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/interactions@3.22.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/label@3.7.11": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/link@3.7.4": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/listbox@3.13.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/live-announcer@3.3.4": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/menu@3.15.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/meter@3.4.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/numberfield@3.11.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/overlays@3.23.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/progress@3.4.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/radio@3.10.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/searchfield@3.7.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/select@3.14.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/selection@3.19.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/separator@3.4.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/slider@3.7.11": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/spinbutton@3.6.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/ssr@3.9.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/switch@3.6.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/table@3.15.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/tabs@3.9.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/tag@3.4.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/textfield@3.14.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/toggle@3.10.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/tooltip@3.7.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/utils@3.25.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-aria/visually-hidden@3.8.15": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-spring/rafz@9.7.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/calendar@3.5.4": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/checkbox@3.6.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/collections@3.10.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/combobox@3.9.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/data@3.11.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/datepicker@3.10.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/dnd@3.4.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/flags@3.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/form@3.0.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/grid@3.9.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/list@3.10.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/menu@3.8.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/numberfield@3.9.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/overlays@3.6.10": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/radio@3.10.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/searchfield@3.5.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/select@3.6.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/selection@3.16.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/slider@3.5.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/table@3.12.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/tabs@3.6.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/toggle@3.7.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/tooltip@3.4.12": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/tree@3.8.4": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-stately/utils@3.10.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/breadcrumbs@3.7.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/button@3.9.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/calendar@3.4.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/checkbox@3.8.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/combobox@3.12.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/datepicker@3.8.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/dialog@3.5.12": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/grid@3.2.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/link@3.5.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/listbox@3.5.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/menu@3.9.11": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/meter@3.4.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/numberfield@3.8.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/overlays@3.8.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/progress@3.5.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/radio@3.8.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/searchfield@3.5.8": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/select@3.9.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/shared@3.24.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/slider@3.7.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/switch@3.5.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/table@3.10.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/tabs@3.3.9": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/textfield@3.9.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@react-types/tooltip@3.4.11": {
-      "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -3102,17 +1007,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@remix-run/serve@2.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@remix-run/server-runtime@2.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@remix-run/v1-meta@0.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -3147,17 +1042,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@rollup/rollup-linux-x64-gnu@4.53.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@s2-dev/streamstore@0.22.10": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@s2-dev/streamstore@0.22.5": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -3292,72 +1177,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@shikijs/core@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/engine-javascript@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/engine-oniguruma@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/langs@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/themes@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/types@3.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@shikijs/vscode-textmate@10.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@sideway/address@4.1.4": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@sideway/formula@3.0.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@sideway/pinpoint@2.0.0": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@slack/logger@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@slack/logger@4.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "@slack/socket-mode@2.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@slack/types@2.14.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -3369,16 +1194,6 @@
     },
     "@slack/web-api@7.19.0": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@slack/web-api@7.9.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/abort-controller@2.0.14": {
-      "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -3397,11 +1212,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/config-resolver@2.0.19": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/config-resolver@4.4.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -3412,17 +1222,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/credential-provider-imds@2.1.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/credential-provider-imds@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/eventstream-codec@2.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3452,11 +1252,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/fetch-http-handler@2.2.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/fetch-http-handler@5.3.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -3467,22 +1262,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/hash-node@2.0.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/hash-node@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
     "@smithy/hash-stream-node@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/invalid-dependency@2.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3502,17 +1287,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/md5-js@2.0.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/md5-js@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/middleware-content-length@2.0.16": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3522,17 +1297,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/middleware-endpoint@2.2.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/middleware-endpoint@4.3.12": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/middleware-retry@2.0.21": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3542,17 +1307,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/middleware-serde@2.0.14": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/middleware-serde@4.2.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/middleware-stack@2.0.8": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3562,17 +1317,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/node-config-provider@2.1.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/node-config-provider@4.3.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/node-http-handler@2.1.10": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3582,17 +1327,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/property-provider@2.0.15": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/property-provider@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/protocol-http@3.0.10": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3602,17 +1337,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/querystring-builder@2.0.14": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/querystring-builder@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/querystring-parser@2.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3622,17 +1347,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/service-error-classification@2.0.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/service-error-classification@4.2.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/shared-ini-file-loader@2.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3642,17 +1357,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/signature-v4@2.0.16": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/signature-v4@5.3.5": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/smithy-client@2.1.16": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3662,17 +1367,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/types@2.6.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/types@4.9.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/url-parser@2.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3682,27 +1377,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-base64@2.0.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-base64@4.3.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-body-length-browser@2.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-body-length-browser@4.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/util-body-length-node@2.1.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3722,17 +1402,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-config-provider@2.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-config-provider@4.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/util-defaults-mode-browser@2.0.20": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3742,17 +1412,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-defaults-mode-node@2.0.26": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-defaults-mode-node@4.2.14": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/util-endpoints@1.0.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3762,17 +1422,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-hex-encoding@2.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-hex-encoding@4.2.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/util-middleware@2.0.7": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3782,27 +1432,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-retry@2.0.7": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-retry@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@smithy/util-stream@2.0.21": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@smithy/util-stream@4.5.6": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@smithy/util-uri-escape@2.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
@@ -3837,67 +1472,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@socket.io/redis-adapter@8.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@standard-schema/spec@1.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@swc/helpers@0.5.15": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tabler/icons-react@3.36.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tabler/icons@3.41.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tailwindcss/container-queries@0.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tanstack/match-sorter-utils@8.19.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tanstack/react-table@8.21.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tanstack/react-virtual@3.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tanstack/table-core@8.21.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@tanstack/virtual-core@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@team-plain/typescript-sdk@3.5.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@testing-library/jest-dom@6.5.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -3912,32 +1487,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@trigger.dev/companyicons@1.5.35": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@trigger.dev/core@4.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@trigger.dev/platform@1.0.27": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@trigger.dev/sdk@4.5.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/aws-lambda@8.10.152": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/btoa-lite@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -3957,217 +1512,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@types/cookie@0.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@types/cors@2.8.17": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "@types/d3-array@3.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-axis@3.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-brush@3.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-chord@3.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-color@3.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-contour@3.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-delaunay@6.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-dispatch@3.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-drag@3.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-dsv@3.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-ease@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-fetch@3.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-force@3.0.10": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-format@3.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-geo@3.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-hierarchy@3.1.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-interpolate@3.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-path@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-polygon@3.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-quadtree@3.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-random@3.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-scale-chromatic@3.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-scale@4.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-selection@3.0.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-shape@3.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-time-format@4.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-time@3.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-timer@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-transition@3.0.9": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3-zoom@3.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/d3@7.4.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@types/debug@4.1.12": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/estree-jsx@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/estree@1.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/geojson@7946.0.16": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/hast@3.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/interpret@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/invariant@2.2.37": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/js-cookie@2.2.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/jsonwebtoken@9.0.10": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/katex@0.16.7": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4212,42 +1562,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@types/pg@8.6.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/prismjs@1.26.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/prop-types@15.7.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/react-dom@18.2.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/react@18.2.69": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@types/retry@0.12.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/scheduler@0.16.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@types/semver@7.5.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4267,57 +1582,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@types/unist@2.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@types/unist@3.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "@types/ws@8.5.13": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@uiw/codemirror-extensions-basic-setup@4.19.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@uiw/react-codemirror@4.19.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@ungap/structured-clone@1.3.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@unkey/cache@1.5.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@unkey/error@0.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@upstash/core-analytics@0.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@upstash/ratelimit@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@upstash/redis@1.29.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4332,11 +1602,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@vercel/sdk@1.19.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "package",
-      "status": 200
-    },
     "@vladfrangu/async_event_emitter@2.4.7": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -4347,31 +1612,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "@whatwg-node/events@0.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@whatwg-node/fetch@0.9.14": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@whatwg-node/node-fetch@0.5.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@window-splitter/state@0.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@wolfy1339/lru-cache@11.0.2-patch.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "@workflow/serde@4.1.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -4379,16 +1619,6 @@
     },
     "@workflow/serde@4.1.0-beta.2": {
       "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@xobotyi/scrollbar-width@1.9.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "@xstate/react@4.1.2": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -4422,21 +1652,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "acorn-node@1.8.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "acorn-walk@7.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "acorn@7.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "acorn@8.16.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -4448,11 +1663,6 @@
       "status": 200
     },
     "agent-base@7.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "aggregate-error@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4482,11 +1692,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "ansi-styles@3.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "ansi-styles@4.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -4497,47 +1702,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "any-promise@1.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "anymatch@3.1.3": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "append-field@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "arg@5.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "argparse@2.0.1": {
-      "license": "Python-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "aria-hidden@1.2.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "aria-query@5.3.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "array-flatten@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "assert-never@1.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4552,22 +1722,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "autoprefixer@9.8.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "available-typed-arrays@1.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "aws4fetch@1.0.18": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "axios@1.12.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4612,37 +1767,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "baseline-browser-mapping@2.10.18": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "basic-auth@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "before-after-hook@2.2.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "bidi-js@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "big.js@6.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "bignumber.js@9.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "binary-extensions@2.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4662,17 +1792,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "bottleneck@2.19.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "bowser@2.12.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "brace-expansion@1.1.11": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4683,21 +1803,6 @@
       "status": 200
     },
     "brace-expansion@5.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "braces@3.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "browserslist@4.28.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "btoa-lite@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4752,37 +1857,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "callsites@3.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "camelcase-css@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "caniuse-lite@1.0.30001787": {
-      "license": "CC-BY-4.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "ccount@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chalk@2.4.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chalk@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chalk@4.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4792,42 +1867,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "character-entities-html4@2.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "character-entities-legacy@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "character-entities@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "character-reference-invalid@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "chat@4.34.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chevrotain-allstar@0.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chevrotain@11.0.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "chokidar@3.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4857,28 +1902,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "class-variance-authority@0.5.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "package",
-      "status": 200
-    },
-    "clean-stack@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "client-only@0.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "cliui@8.0.1": {
       "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "clsx@1.2.1": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -4892,22 +1917,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "codemirror@6.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "color-convert@1.9.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "color-convert@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "color-name@1.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4917,47 +1927,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "color-string@1.9.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "color@3.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "combined-stream@1.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "comma-separated-tokens@2.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "commander@2.20.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "commander@4.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "commander@5.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "commander@7.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "commander@8.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -4977,17 +1947,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "concat-map@0.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "concat-stream@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "confbox@0.1.8": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5042,42 +2002,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "copy-anything@3.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "copy-to-clipboard@3.3.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "cors@2.8.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cose-base@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cose-base@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cosmiconfig@8.3.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "crelt@1.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cron-parser@4.9.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5102,247 +2027,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "crypto-js@4.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "css-in-js-utils@3.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "css-tree@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "css-tree@3.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "css-unit-converter@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "css.escape@1.5.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cssesc@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "cssstyle@6.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "csstype@3.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cuid@2.1.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cytoscape-cose-bilkent@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cytoscape-fcose@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "cytoscape@3.33.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-array@2.12.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-array@3.2.4": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-axis@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-brush@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-chord@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-color@3.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-contour@4.0.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-delaunay@6.0.4": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-dispatch@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-drag@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-dsv@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-ease@3.0.1": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-fetch@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-force@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-format@3.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-geo@3.1.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-hierarchy@3.1.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-interpolate@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-path@1.0.9": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-path@3.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-polygon@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-quadtree@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-random@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-sankey@0.12.3": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-scale-chromatic@3.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-scale@4.0.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-selection@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-shape@1.3.7": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-shape@3.2.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-time-format@4.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-time@3.1.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-timer@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-transition@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3-zoom@3.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "d3@7.9.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "dagre-d3-es@7.0.11": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5362,21 +2052,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "date-fns-jalali@4.1.0-0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "date-fns@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "dayjs@1.11.18": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "debug@2.6.9": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -5388,11 +2063,6 @@
       "status": 200
     },
     "debug@4.4.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "decimal.js-light@2.5.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5412,28 +2082,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "deepmerge@4.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "define-data-property@1.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "defined@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "defu@6.1.4": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "delaunator@5.0.1": {
-      "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -5452,11 +2107,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "deprecation@2.3.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "dequal@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -5472,27 +2122,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "detect-node-es@1.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "detective@5.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "devlop@1.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "didyoumean@1.2.2": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "discontinuous-range@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5517,22 +2147,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "dlv@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "dockerfile-ast@0.7.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "dom-accessibility-api@0.6.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "dom-helpers@5.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5574,16 +2189,6 @@
     },
     "effect@3.16.12": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "effect@3.18.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "electron-to-chromium@1.5.335": {
-      "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -5647,16 +2252,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "error-ex@1.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "error-stack-parser@2.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "es-define-property@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -5687,17 +2282,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "escape-string-regexp@1.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "escape-string-regexp@5.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "estree-util-is-identifier-name@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5728,11 +2313,6 @@
       "status": 200
     },
     "eventsource@3.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "eventsource@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5782,11 +2362,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "fast-decode-uri-component@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "fast-deep-equal@3.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -5797,22 +2372,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "fast-equals@5.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "fast-fifo@1.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fast-glob@3.3.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fast-querystring@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5822,43 +2382,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "fast-shallow-equal@1.0.0": {
-      "license": null,
-      "resolvedFrom": "none",
-      "status": 200
-    },
     "fast-uri@3.0.6": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
       "status": 200
     },
-    "fast-url-parser@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fast-xml-parser@4.2.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fast-xml-parser@4.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "fast-xml-parser@5.2.5": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fastest-stable-stringify@2.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fastq@1.19.1": {
-      "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -5877,22 +2407,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "fill-range@7.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "finalhandler@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "finalhandler@2.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "follow-redirects@1.15.9": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5932,32 +2452,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "framer-motion@10.17.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "fresh@0.5.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "fresh@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fs-extra@8.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fs.realpath@1.0.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "fsevents@2.3.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -5987,16 +2487,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "get-nonce@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "get-port@5.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "get-proto@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -6012,16 +2502,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "glob-parent@5.1.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "glob-parent@6.0.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "glob@10.4.5": {
       "license": "ISC",
       "resolvedFrom": "version",
@@ -6029,16 +2509,6 @@
     },
     "glob@11.1.0": {
       "license": "BlueOak-1.0.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "glob@7.2.3": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "globals@15.15.0": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -6062,36 +2532,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "graphile-config@0.0.1-beta.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "graphile-worker@0.16.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "graphql@16.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hachure-fill@0.5.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "has-flag@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "has-flag@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "has-property-descriptors@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -6112,71 +2552,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "hast-util-from-dom@5.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-from-html-isomorphic@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-from-html@2.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-from-parse5@8.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-is-element@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-parse-selector@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-raw@9.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-to-html@9.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-to-jsx-runtime@2.3.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-to-parse5@8.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-to-text@4.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hast-util-whitespace@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "hastscript@9.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "hoist-non-react-statics@3.3.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
@@ -6188,21 +2563,6 @@
       "status": 200
     },
     "html-encoding-sniffer@6.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "html-tags@3.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "html-url-attributes@3.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "html-void-elements@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6242,11 +2602,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "hyphenate-style-name@1.0.4": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "iconv-lite@0.4.24": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -6267,11 +2622,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "import-fresh@3.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "import-in-the-middle@1.11.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
@@ -6287,68 +2637,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "indent-string@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "inflight@1.0.6": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "inherits@2.0.4": {
       "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
-    "inline-style-parser@0.2.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "inline-style-prefixer@7.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "input-otp@1.4.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "install-artifact-from-github@1.7.0": {
       "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "internmap@1.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "internmap@2.0.3": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "interpret@3.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "intl-messageformat@10.5.8": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "intl-parse-accept-language@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "invariant@2.2.4": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -6362,42 +2657,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "ip-address@8.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "ipaddr.js@1.9.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "is-alphabetical@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-alphanumerical@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "is-arguments@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-arrayish@0.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-arrayish@0.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-binary-path@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6412,17 +2677,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "is-decimal@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "is-electron@2.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-extglob@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6433,21 +2688,6 @@
       "status": 200
     },
     "is-generator-function@1.0.10": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-glob@4.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-hexadecimal@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "is-number@7.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6482,21 +2722,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "is-what@4.1.16": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "isarray@2.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "isbot@3.6.5": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "isexe@2.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
@@ -6527,18 +2752,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "jiti@1.21.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "jiti@2.4.2": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "joi@17.7.0": {
-      "license": "BSD-3-Clause",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -6552,22 +2767,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "js-cookie@2.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "js-tokens@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "js-yaml@4.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jsbn@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6578,11 +2778,6 @@
       "status": 200
     },
     "json-bigint@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "json-parse-even-better-errors@2.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6602,42 +2797,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "json-stable-stringify@1.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "json5@2.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jsonfile@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jsonify@0.0.1": {
-      "license": "Public Domain",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "jsonlines@0.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jsonpointer@5.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jsonwebtoken@9.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jwa@1.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6647,67 +2807,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "jws@3.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "jws@4.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "jwt-decode@3.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "katex@0.16.25": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "khroma@2.1.0": {
-      "license": null,
-      "resolvedFrom": "none",
-      "status": 200
-    },
-    "kolorist@1.8.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "langium@3.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "layerr@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "layout-base@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "layout-base@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lilconfig@2.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lilconfig@3.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lines-and-columns@1.2.4": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6717,67 +2817,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "local-pkg@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash-es@4.17.21": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.camelcase@4.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "lodash.defaults@4.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "lodash.includes@4.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "lodash.isarguments@3.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.isboolean@3.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.isinteger@4.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.isnumber@3.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.isplainobject@4.0.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.isstring@4.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.omit@4.5.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "lodash.once@4.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6789,11 +2834,6 @@
     },
     "lodash@4.17.23": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "long@5.2.3": {
-      "license": "Apache-2.0",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -6822,11 +2862,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "lucide-react@0.542.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "luxon@3.7.2": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -6847,17 +2882,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "marked@16.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "marked@4.2.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "match-sorter@6.3.4": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6907,32 +2932,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "mdast-util-math@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mdast-util-mdx-expression@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mdast-util-mdx-jsx@3.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mdast-util-mdxjs-esm@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "mdast-util-phrasing@4.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mdast-util-to-hast@13.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -6944,11 +2944,6 @@
     },
     "mdast-util-to-string@4.0.0": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mdn-data@2.0.14": {
-      "license": "CC0-1.0",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -6978,16 +2973,6 @@
       "status": 200
     },
     "merge-stream@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "merge2@1.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "mermaid@11.12.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7033,11 +3018,6 @@
       "status": 200
     },
     "micromark-extension-gfm@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "micromark-extension-math@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7142,11 +3122,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "micromatch@4.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "mime-db@1.52.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7177,11 +3152,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "min-indent@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "minimal-polyfills@2.2.3": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7192,18 +3162,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "minimatch@3.1.2": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "minimatch@9.0.5": {
       "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "minimist@1.2.7": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -7217,27 +3177,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "mlly@1.7.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "module-details-from-path@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "module-details-from-path@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "moo@0.5.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "morgan@1.10.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7262,32 +3207,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "mz@2.7.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "nan@2.28.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "nano-css@5.6.2": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "nanoid@3.3.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "nanoid@3.3.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "nearley@2.20.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7302,17 +3227,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "neverthrow@8.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "node-domexception@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "node-emoji@1.11.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7342,47 +3257,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "node-releases@2.0.37": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "non.geist@1.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "nopt@10.0.1": {
       "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
-    "normalize-path@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "normalize-range@0.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "normalize.css@8.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "notepack.io@3.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "npm-run-path@5.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "num2fraction@1.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7397,11 +3277,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "object-hash@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "object-hash@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7412,32 +3287,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "object-keys@1.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "obuf@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "octokit@3.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "ohash@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "ohash@2.0.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "on-finished@2.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7462,16 +3317,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "oniguruma-parser@0.12.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "oniguruma-to-es@4.3.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "openapi-fetch@0.14.1": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7488,16 +3333,6 @@
       "status": 200
     },
     "p-finally@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "p-limit@6.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "p-map@6.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7522,52 +3357,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "package-manager-detector@1.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "parent-module@1.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "parse-duration@2.1.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "parse-entities@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "parse-json@5.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "parse5@7.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "parse5@8.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "parseurl@1.3.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "path-data-parser@0.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "path-is-absolute@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7607,22 +3402,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "path-type@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "pathe@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "perfect-debounce@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "performant-array-to-tree@1.11.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7702,18 +3487,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "picocolors@0.2.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "picocolors@1.1.1": {
       "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "picomatch@2.3.1": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -7722,22 +3497,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "pify@2.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "pirates@4.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "pkce-challenge@5.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "pkg-types@1.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7752,87 +3512,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "points-on-curve@0.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "points-on-path@0.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "possible-typed-array-names@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-functions@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-import@15.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-js@2.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-js@4.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-load-config@4.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-nested@4.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-nested@6.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-selector-parser@6.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-value-parser@3.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss-value-parser@4.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss@6.0.23": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss@7.0.32": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss@7.0.39": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "postcss@8.5.6": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -7882,28 +3562,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "posthog-node@4.17.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "pretty-hrtime@1.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "prism-react-renderer@2.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "prisma@6.14.0": {
       "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "prismjs@1.30.0": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -7927,21 +3587,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "property-information@6.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "property-information@7.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "protobufjs@7.5.5": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "proxy-addr@2.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7957,11 +3602,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "punycode@1.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "punycode@2.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -7972,43 +3612,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "purgecss@2.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "qrcode.react@4.2.0": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "qs@6.14.1": {
       "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "quansync@0.2.11": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "queue-microtask@1.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "railroad-diagrams@1.0.0": {
-      "license": "CC0-1.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "randexp@0.4.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "random-words@2.0.0": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8037,21 +3642,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "react-aria@3.34.3": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-collapse@5.1.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-day-picker@9.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "react-dom@18.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -8062,52 +3652,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "react-fast-compare@3.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "react-grid-layout@2.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "react-hotkeys-hook@4.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "react-is@16.13.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-is@18.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-markdown@10.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-popper@2.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-remove-scroll-bar@2.3.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-remove-scroll@2.5.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-resizable-panels@2.0.9": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8127,47 +3677,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "react-smooth@4.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-stately@3.29.1": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-style-singleton@2.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-transition-group@4.4.5": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-universal-interface@0.6.2": {
-      "license": null,
-      "resolvedFrom": "none",
-      "status": 200
-    },
-    "react-use@17.5.1": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "react-window-splitter@0.4.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "react@18.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "read-cache@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8177,27 +3687,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "readdirp@3.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "readdirp@4.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "recharts-scale@0.4.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "recharts@2.15.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "redent@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8212,53 +3702,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "reduce-css-calc@2.1.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "reflect-metadata@0.2.2": {
       "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "reforest@0.13.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "regex-recursion@6.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "regex-utilities@2.3.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "regex@6.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "regression@2.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "rehype-harden@1.1.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "rehype-katex@7.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "rehype-raw@7.0.0": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8267,17 +3712,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "remark-math@6.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "remark-parse@11.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remark-rehype@11.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8289,46 +3724,6 @@
     },
     "remend@1.3.0": {
       "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-auth-email-link@2.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-auth-github@1.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-auth-google@2.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-auth-oauth2@1.11.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-auth@3.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-typedjson@0.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remix-utils@7.7.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "remove-accents@0.5.0": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8357,17 +3752,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "resolve-from@4.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "resolve@1.22.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "ret@0.1.15": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8377,43 +3762,13 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "reusify@1.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "robust-predicates@3.0.2": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "roughjs@4.6.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "router@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "rtl-css-js@1.16.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "run-exclusive@2.2.18": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "run-parallel@1.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "rw@1.3.3": {
-      "license": "BSD-3-Clause",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8443,16 +3798,6 @@
       "status": 200
     },
     "scheduler@0.23.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "screenfull@5.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "seedrandom@3.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8497,11 +3842,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "set-harmonic-interval@1.0.1": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "setprototypeof@1.2.0": {
       "license": "ISC",
       "resolvedFrom": "version",
@@ -8513,11 +3853,6 @@
       "status": 200
     },
     "shebang-regex@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "shiki@3.13.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8552,21 +3887,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "simple-oauth2@5.0.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "simple-swizzle@0.2.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "simplur@3.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "slug@6.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -8597,11 +3917,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "sonner@1.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "source-map-js@1.2.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
@@ -8609,11 +3924,6 @@
     },
     "source-map-support@0.5.21": {
       "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "source-map@0.5.6": {
-      "license": "BSD-3-Clause",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8627,48 +3937,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "space-separated-tokens@2.0.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "split2@4.2.0": {
       "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "sprintf-js@1.1.2": {
-      "license": "BSD-3-Clause",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "sql-formatter@15.6.12": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "sqs-consumer@7.5.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "stack-generator@2.0.10": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "stackframe@1.3.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "stacktrace-gps@3.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "stacktrace-js@2.0.2": {
-      "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -8697,11 +3967,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "streamdown@1.4.0": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "streamsearch@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -8727,11 +3992,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "stringify-entities@4.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "strip-ansi@6.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -8747,67 +4007,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "strip-indent@3.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "strnum@1.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "strnum@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "strtok3@10.3.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "style-mod@4.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "style-to-js@1.1.16": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "style-to-object@1.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "stylis@4.3.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "sucrase@3.35.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "superjson@2.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "supports-color@5.5.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "supports-color@6.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "supports-color@7.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8822,47 +4027,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "systeminformation@5.27.14": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "systeminformation@5.31.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwind-merge@1.12.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwind-merge@3.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwind-scrollbar-hide@1.1.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwindcss-animate@1.0.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwindcss-textshadow@2.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwindcss@1.9.6": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tailwindcss@3.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8887,26 +4052,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "thenify-all@1.6.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "thenify@3.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "throttle-debounce@3.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "tiny-invariant@1.3.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "tinyexec@0.3.2": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -8928,16 +4073,6 @@
       "status": 200
     },
     "tldts@7.0.7": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "to-regex-range@5.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "toggle-selection@1.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -8967,37 +4102,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "trim-lines@3.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "trough@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "ts-dedent@2.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "ts-easing@0.2.0": {
-      "license": "Unlicense",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "ts-interface-checker@0.1.13": {
-      "license": "Apache-2.0",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "ts-mixer@6.0.4": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "ts-pattern@3.3.5": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9007,18 +4117,8 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "tslib@1.14.1": {
-      "license": "0BSD",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "tslib@2.8.1": {
       "license": "0BSD",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "type-fest@4.33.0": {
-      "license": "(MIT OR CC0-1.0)",
       "resolvedFrom": "version",
       "status": 200
     },
@@ -9042,16 +4142,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "ufo@1.6.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "uid2@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "uid@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -9067,22 +4157,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "ulidx@2.2.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "uncrypto@0.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "undici-types@5.26.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "undici@5.29.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9112,22 +4192,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "unist-util-find-after@5.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "unist-util-is@6.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "unist-util-position@5.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "unist-util-remove-position@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9147,57 +4212,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "universal-cookie@7.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "universal-github-app-jwt@1.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "universal-user-agent@6.0.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "universalify@0.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "unpipe@1.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "update-browserslist-db@1.2.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "urlpattern-polyfill@9.0.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "use-callback-ref@1.3.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "use-isomorphic-layout-effect@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "use-sidecar@1.1.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "use-sync-external-store@1.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9217,27 +4232,7 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "uuid@11.1.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "uuid@8.3.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "uuid@9.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "vary@1.1.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "vfile-location@5.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9252,21 +4247,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "victory-vendor@36.6.11": {
-      "license": "MIT AND ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "vscode-jsonrpc@8.2.0": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "vscode-languageserver-protocol@3.17.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "vscode-languageserver-textdocument@1.0.12": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -9277,37 +4257,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "vscode-languageserver@9.0.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "vscode-uri@3.0.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "w3c-keyname@2.2.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "w3c-xmlserializer@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
-    "warning@4.0.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "web-encoding@1.1.5": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "web-namespaces@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9412,11 +4367,6 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "xstate@5.18.1": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "xtend@4.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
@@ -9432,22 +4382,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "yaml@2.6.1": {
-      "license": "ISC",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "yargs-parser@21.1.1": {
       "license": "ISC",
       "resolvedFrom": "version",
       "status": 200
     },
     "yargs@17.7.2": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "yocto-queue@1.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
@@ -9467,22 +4407,12 @@
       "resolvedFrom": "version",
       "status": 200
     },
-    "zod@3.23.8": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
     "zod@3.25.76": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200
     },
     "zod@4.4.3": {
-      "license": "MIT",
-      "resolvedFrom": "version",
-      "status": 200
-    },
-    "zustand@4.5.5": {
       "license": "MIT",
       "resolvedFrom": "version",
       "status": 200

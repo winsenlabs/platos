@@ -62,4 +62,5 @@ for candidate in \
   fi
 
   printf 'WIN235_%s_IMAGE=%s\n' "$env_name" "$identity" >>"$GITHUB_ENV"
+  printf 'WIN235_%s_ARCHIVE_SHA256=%s\n' "$env_name" "$expected_archive_sha" >>"$GITHUB_ENV"
 done

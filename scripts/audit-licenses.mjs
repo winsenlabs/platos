@@ -20,6 +20,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadLockfile, computeAllClosures } from './lib/pnpm-closure.mjs';
+import {
+  linkedWorkspaceComponents,
+  sortAndDedupeComponents,
+} from './lib/webapp-inventory-contract.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK = path.join(ROOT, 'pnpm-lock.yaml');
@@ -73,7 +77,10 @@ async function main() {
   const { text, parsed } = loadLockfile(LOCK);
   const lockHash = crypto.createHash('sha256').update(text).digest('hex');
   const closures = computeAllClosures(parsed);
-  const comps = closures.union.components;
+  const comps = sortAndDedupeComponents([
+    ...closures.union.components,
+    ...linkedWorkspaceComponents(ROOT, parsed),
+  ]);
   console.error(`Resolving licences for ${comps.length} components (concurrency ${concurrency})…`);
 
   const index = {};
@@ -97,7 +104,7 @@ async function main() {
   const nulls = Object.entries(sorted).filter(([, v]) => !v.license);
   const doc = {
     $schema: 'platos.audit.license-index/v1',
-    note: 'Frozen registry.npmjs.org licence snapshot for the union production closure. '
+    note: 'Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. '
       + 'Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. '
       + 'Regenerate only after a relock.',
     resolvedAgainstLockfileSha256: lockHash,

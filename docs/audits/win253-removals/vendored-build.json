@@ -154,6 +154,16 @@
           "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
           "bytes": 10935
         }
+      ],
+      "additionalReviewedDeletions": [
+        {
+          "path": "patches/@upstash__ratelimit.patch",
+          "reason": "WIN-253 removed the unreachable @upstash/ratelimit package and its obsolete tracked patch."
+        },
+        {
+          "path": "patches/@window-splitter__state@0.4.1.patch",
+          "reason": "WIN-253 removed react-window-splitter and its obsolete transitive patch."
+        }
       ]
     }
   },
@@ -196,9 +206,9 @@
   ],
   "deletion": {
     "workspaceCount": 6,
-    "actualFileCount": 122,
-    "actualBytes": 626057,
-    "manifestSha256": "52ffd3c502ccbddfa919bb73d2eae5a095be3e73b242ac0440865e52ecb04568",
+    "actualFileCount": 124,
+    "actualBytes": 628213,
+    "manifestSha256": "070843c227818eb8c40a5846acdd69d8e79e2231248fd25dc8da3fb35198186e",
     "files": [
       {
         "path": "internal-packages/sdk-compat-tests/package.json",
@@ -1053,6 +1063,20 @@
         "integrationBaseBlobOid": "8387992eaae072289feb5ac2f167ba87cbede60c",
         "integrationBaseSha256": "c553247fbb6c009683089b05247e29fabb1f0f66b4b27115c0ce9ccb46a27d1f",
         "bytes": 175
+      },
+      {
+        "path": "patches/@upstash__ratelimit.patch",
+        "mode": "100644",
+        "integrationBaseBlobOid": "840984fbaa844d0680f205efe60b97b372b0eb54",
+        "integrationBaseSha256": "e5922e50fbefb7b2b24950c4b1c5c9ddc4cd25464439c9548d2298c432debe74",
+        "bytes": 796
+      },
+      {
+        "path": "patches/@window-splitter__state@0.4.1.patch",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8d99b717ba8825ec1805802f5640906ad77e9063",
+        "integrationBaseSha256": "da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0",
+        "bytes": 1360
       }
     ]
   },
@@ -1195,7 +1219,9 @@
       "packages/trigger-sdk/src/version.ts",
       "packages/trigger-sdk/tsconfig.build.json",
       "packages/trigger-sdk/tsconfig.json",
-      "packages/trigger-sdk/vitest.config.ts"
+      "packages/trigger-sdk/vitest.config.ts",
+      "patches/@upstash__ratelimit.patch",
+      "patches/@window-splitter__state@0.4.1.patch"
     ],
     "pathspec": [
       "internal-packages/sdk-compat-tests/package.json",
@@ -1319,7 +1345,9 @@
       "packages/trigger-sdk/src/version.ts",
       "packages/trigger-sdk/tsconfig.build.json",
       "packages/trigger-sdk/tsconfig.json",
-      "packages/trigger-sdk/vitest.config.ts"
+      "packages/trigger-sdk/vitest.config.ts",
+      "patches/@upstash__ratelimit.patch",
+      "patches/@window-splitter__state@0.4.1.patch"
     ]
   },
   "reachability": {
@@ -4693,10 +4721,10 @@
     }
   ],
   "integration": {
-    "lockfileSha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782",
-    "vocabularySha256": "f9de617f60578032ea9e5a2ecb438a6b6d955dbf4bb0bc0334eefe90a9500ea9",
-    "ledgerRulesSha256": "f8a33f03246924a85955720388eb49d1982cc89dccbc68a3b751b226639a0927",
-    "reachabilitySha256": "f2150c47f9ce68f9c4972730cade4ad34635c836610e6706cffc510b9ac903f7",
+    "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
+    "vocabularySha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4",
+    "ledgerRulesSha256": "b1b3a0b6682046ef4b31c884bb433c6325678508f99a7fad07a88d93afca929b",
+    "reachabilitySha256": "f152323352e610429705ded11b63eb5b154a9b6e9ccc512a5b44e9cefb3f79ba",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

@@ -92,6 +92,10 @@ const v1ReleaseGateCommands = [
   "pnpm test:v1-project-graph",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  "pnpm test:webapp-image-inventory",
+  "pnpm test:webapp-inventory-contract",
+  "pnpm test:advisory",
+  "pnpm audit:advisory:check",
   "pnpm build:v1",
 ];
 const repositoryGovernanceCommands = [
@@ -131,6 +135,10 @@ const expectedV1EvidenceCommands = [
   "pnpm test:arch-boundaries",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  "pnpm test:webapp-image-inventory",
+  "pnpm test:webapp-inventory-contract",
+  "pnpm test:advisory",
+  "pnpm audit:advisory:check",
   "pnpm build:v1",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
@@ -179,7 +187,50 @@ const expectedV1PackageScripts = new Map([
   ["test:v1-project-graph", "node --test scripts/arch/v1-project-graph.test.mjs"],
   ["audit:max-file-lines", "node scripts/arch/max-file-lines.mjs"],
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
+  ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
+  ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
+  ["test:advisory", "node --test scripts/audit-advisory.test.mjs"],
+  ["audit:advisory:check", "node scripts/audit-advisory.mjs --check"],
 ]);
+const webappInventoryPackageScript = "bash scripts/audit-webapp-image-inventory.sh";
+const webappInventoryCommand = "pnpm audit:webapp-image-inventory";
+const webappInventoryStepName = "Verify distinct production-deps and exact final webapp candidate inventories";
+const webappInventoryUploadStepName = "Retain verified webapp candidate inventory provenance";
+const expectedWebappInventoryVerifierCommands = [
+  "node scripts/verify-webapp-image-inventory.mjs --image $production_image --stage production-deps --evidence $evidence_dir/production-deps.json --candidate-archive $WEBAPP_CANDIDATE_ARCHIVE --candidate-manifest-digest $candidate_digest --candidate-archive-sha256 $WIN235_WEBAPP_ARCHIVE_SHA256",
+  "node scripts/verify-webapp-image-inventory.mjs --image $final_image --stage final --evidence $evidence_dir/final.json --candidate-archive $WEBAPP_CANDIDATE_ARCHIVE --candidate-manifest-digest $candidate_digest --candidate-archive-sha256 $WIN235_WEBAPP_ARCHIVE_SHA256",
+];
+const webappPublicationValidatorCommand =
+  "node scripts/verify-webapp-publication-provenance.mjs --candidate-identities artifacts/gate/candidate-images.json --inventory-root artifacts/webapp-inventory";
+const requiredWebappPublicationValidatorControls = [
+  [
+    "source-run candidate identities",
+    "JSON.stringify(tested),\n  JSON.stringify(expectedIdentities),",
+    "JSON.stringify(expectedIdentities),\n  JSON.stringify(expectedIdentities),",
+  ],
+  [
+    "evidence schema",
+    'requireEqual(evidence.$schema, WEBAPP_INVENTORY_EVIDENCE_SCHEMA',
+    'requireEqual(WEBAPP_INVENTORY_EVIDENCE_SCHEMA, WEBAPP_INVENTORY_EVIDENCE_SCHEMA',
+  ],
+  ["evidence stage", "requireEqual(evidence.stage, stage", "requireEqual(stage, stage"],
+  ["source run ID", "requireEqual(evidence.sourceRunId, sourceRunId", "requireEqual(sourceRunId, sourceRunId"],
+  ["source run attempt", "requireEqual(evidence.sourceRunAttempt, sourceRunAttempt", "requireEqual(sourceRunAttempt, sourceRunAttempt"],
+  ["candidate manifest digest", "requireEqual(evidence.candidateManifestDigest, manifestDigest", "requireEqual(manifestDigest, manifestDigest"],
+  ["candidate archive checksum", "requireEqual(evidence.candidateArchiveSha256, archiveSha256", "requireEqual(archiveSha256, archiveSha256"],
+  ["target platform", 'requireEqual(evidence.platform, WEBAPP_TARGET_PLATFORM', 'requireEqual(WEBAPP_TARGET_PLATFORM, WEBAPP_TARGET_PLATFORM'],
+  ["Git revision", "requireEqual(evidence.gitHead, candidateSha", "requireEqual(candidateSha, candidateSha"],
+  ["image revision label", "requireEqual(evidence.imageRevisionLabel, candidateSha", "requireEqual(candidateSha, candidateSha"],
+  ["image build-input label", "requireEqual(evidence.imageBuildInputsLabel, currentBuildInputsSha256", "requireEqual(currentBuildInputsSha256, currentBuildInputsSha256"],
+  ["evidence build-input hash", "requireEqual(evidence.buildInputsSha256, currentBuildInputsSha256", "requireEqual(currentBuildInputsSha256, currentBuildInputsSha256"],
+  ["inventory byte equality", "requireEqual(evidence.inventoryByteMatch, true", "requireEqual(true, true"],
+  [
+    "inventory hash equality",
+    "evidence.generatedInventorySha256,\n    evidence.committedInventorySha256,",
+    "evidence.generatedInventorySha256,\n    evidence.generatedInventorySha256,",
+  ],
+  ["distinct production-deps and final images", "assertDistinctStageImageIds(production, final)", "assertDistinctStageImageIds(final, final)"],
+];
 const shippingDockerfiles = [...expectedInstallInstructions.keys()];
 const prepareTarget = "scripts/install-git-hooks.mjs";
 const webappPrepareCopy = `COPY --from=pruner --chown=node:node /platos/${prepareTarget} ./${prepareTarget}`;
@@ -206,6 +257,10 @@ function fixtures() {
     packageJson: source("package.json"),
     ci: source(".github/workflows/ci.yml"),
     buildImages: source(".github/workflows/build-images.yml"),
+    publishImages: source(".github/workflows/publish-images.yml"),
+    webappInventoryAudit: source("scripts/audit-webapp-image-inventory.sh"),
+    webappInventoryVerifier: source("scripts/verify-webapp-image-inventory.mjs"),
+    webappPublicationValidator: source("scripts/verify-webapp-publication-provenance.mjs"),
     dockerfiles: Object.fromEntries(shippingDockerfiles.map((file) => [file, source(file)])),
   };
 }
@@ -692,6 +747,13 @@ function normalizedRunCommands(job) {
   return executableRunCommands(job).map((command) => executableShellArgv(command).join(" "));
 }
 
+function normalizedShellCommands(sourceText) {
+  return shellSegments(sourceText)
+    .map(executableShellArgv)
+    .filter((argv) => argv.length > 0)
+    .map((argv) => argv.join(" "));
+}
+
 function relocatedSelector(command) {
   const vitestMarker = " exec vitest run ";
   return command.includes(vitestMarker)
@@ -723,6 +785,31 @@ function policyViolations(input) {
 
   const buildWorkflow = workflows.get("buildImages").workflow;
   const buildJobs = workflowJobs(buildWorkflow);
+
+  const publishWorkflow = parseWorkflow(input.publishImages, "publish-images.yml", violations);
+  const publishJob = workflowJobs(publishWorkflow).get("publish-images");
+  const publicationValidatorCommands = normalizedRunCommands(publishJob).filter((command) =>
+    command.startsWith("node scripts/verify-webapp-publication-provenance.mjs ")
+  );
+  if (JSON.stringify(publicationValidatorCommands) !== JSON.stringify([webappPublicationValidatorCommand])) {
+    violations.push("publish-images must execute the exact webapp publication provenance validator once");
+  }
+  const publishSteps = workflowSteps(publishJob);
+  const publicationValidatorIndex = publishSteps.findIndex((step) =>
+    typeof step.run === "string" && step.run.includes("verify-webapp-publication-provenance.mjs")
+  );
+  const publicationLoginIndex = publishSteps.findIndex((step) =>
+    typeof step.uses === "string" && step.uses.startsWith("docker/login-action@")
+  );
+  if (publicationValidatorIndex === -1 || publicationLoginIndex === -1 || publicationValidatorIndex >= publicationLoginIndex) {
+    violations.push("publish-images must validate webapp provenance before registry authentication");
+  }
+  if (requiredWebappPublicationValidatorControls.some(([, control]) =>
+    !input.webappPublicationValidator.includes(control)
+  )) {
+    violations.push("webapp publication validator must enforce every bound provenance field");
+  }
+
   const buildCandidatesJob = buildJobs.get("build-candidates");
   const candidates = imageCandidates(buildCandidatesJob);
   if (candidates.length === 0) violations.push("build image matrix candidate selector is empty");
@@ -743,6 +830,30 @@ function policyViolations(input) {
   const buildAction = buildActionSteps[0];
   if (buildAction?.with?.file !== "${{ matrix.dockerfile }}") {
     violations.push("build-push action file must correlate to matrix.dockerfile");
+  }
+  if (buildAction?.with?.platforms !== "linux/amd64") {
+    violations.push("build-push action must produce only the linux/amd64 candidate");
+  }
+  const buildArgs = typeof buildAction?.with?.["build-args"] === "string"
+    ? buildAction.with["build-args"].split("\n").map((line) => line.trim()).filter(Boolean)
+    : [];
+  if (JSON.stringify(buildArgs) !== JSON.stringify([
+    "BUILD_GIT_SHA=${{ env.PLATOS_CANDIDATE_SHA }}",
+    "WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}",
+  ])) {
+    violations.push("build-push action must apply the exact revision and webapp inventory build-input digest");
+  }
+  const candidateLabels = typeof buildAction?.with?.labels === "string"
+    ? buildAction.with.labels.split("\n").map((line) => line.trim()).filter(Boolean)
+    : [];
+  if (!candidateLabels.includes("org.opencontainers.image.revision=${{ env.PLATOS_CANDIDATE_SHA }}") ||
+      !candidateLabels.includes("dev.winsen.platos.webapp-inventory-inputs-sha256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}")) {
+    violations.push("build-push action must label the candidate with revision and inventory build-input digest");
+  }
+  const inventoryInputSteps = workflowSteps(buildCandidatesJob).filter((step) => step.id === "webapp-inventory-inputs");
+  if (inventoryInputSteps.length !== 1 ||
+      inventoryInputSteps[0].run !== 'echo "sha256=$(node scripts/verify-webapp-image-inventory.mjs --print-build-inputs-sha256)" >> "$GITHUB_OUTPUT"') {
+    violations.push("build-candidates must compute the exact webapp inventory build-input digest once");
   }
 
   for (const [file, expectedInstructions] of expectedInstallInstructions) {
@@ -958,6 +1069,9 @@ function policyViolations(input) {
   if (packageScripts["test:ci-policy"] !== "node --test scripts/ci-policy.test.mjs") {
     violations.push("package.json must wire the CI policy test executable");
   }
+  if (packageScripts["audit:webapp-image-inventory"] !== webappInventoryPackageScript) {
+    violations.push(`package.json must wire exact webapp inventory script: ${webappInventoryPackageScript}`);
+  }
   if (packageManifest.devDependencies?.yaml !== "2.6.1") {
     violations.push("package.json must pin yaml 2.6.1 as an exact root devDependency");
   }
@@ -1030,6 +1144,77 @@ function policyViolations(input) {
   }
 
   const persistedStateCommands = normalizedRunCommands(buildJobs.get("persisted-state"));
+  const persistedStateSteps = workflowSteps(buildJobs.get("persisted-state"));
+  const inventorySteps = persistedStateSteps.filter((step) => step.name === webappInventoryStepName);
+  if (inventorySteps.length !== 1) {
+    violations.push("persisted-state must contain exactly one webapp candidate inventory step");
+  }
+  const inventoryStep = inventorySteps[0] ?? {};
+  if (inventoryStep.if !== undefined || inventoryStep["continue-on-error"] !== undefined || inventoryStep.shell !== undefined) {
+    violations.push("webapp candidate inventory step must be unconditional and fail-fast");
+  }
+  if (inventoryStep.run !== webappInventoryCommand ||
+      inventoryStep.env?.EVIDENCE_DIR !== "${{ github.workspace }}/artifacts/webapp-image-inventory" ||
+      inventoryStep.env?.WEBAPP_CANDIDATE_ARCHIVE !== "${{ github.workspace }}/artifacts/candidates/webapp.oci.tar") {
+    violations.push("webapp candidate inventory step must execute the exact archive-backed package command");
+  }
+  const inventoryStepIndex = persistedStateSteps.indexOf(inventoryStep);
+  const loadCandidatesIndex = persistedStateSteps.findIndex((step) => step.name === "Verify and load the exact OCI candidates without registry access");
+  const startCandidatesIndex = persistedStateSteps.findIndex((step) => step.name === "Start the exact Agent and webapp candidate pair");
+  if (inventoryStepIndex <= loadCandidatesIndex || inventoryStepIndex >= startCandidatesIndex) {
+    violations.push("release gate must consume the verified webapp candidate before starting it");
+  }
+  const allInventoryCommands = [
+    ...[...ciJobs.values()].flatMap((job) => normalizedRunCommands(job)),
+    ...[...buildJobs.values()].flatMap((job) => normalizedRunCommands(job)),
+  ];
+  if (countExact(allInventoryCommands, webappInventoryCommand) !== 1) {
+    violations.push("webapp candidate inventory package command must execute exactly once in build-images");
+  }
+
+  const inventoryShellCommands = normalizedShellCommands(input.webappInventoryAudit);
+  const verifierCommands = inventoryShellCommands.filter((command) => command.startsWith("node scripts/verify-webapp-image-inventory.mjs --image "));
+  if (JSON.stringify(verifierCommands) !== JSON.stringify(expectedWebappInventoryVerifierCommands)) {
+    violations.push("webapp inventory audit must verify distinct production-deps and final candidate stages exactly once");
+  }
+  const expectedProductionBuild = "docker build --platform linux/amd64 --no-cache --target production-deps --build-arg BUILD_GIT_SHA=$git_head --build-arg WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=$inputs_sha256 --file apps/webapp/Dockerfile.platos --tag $production_image .";
+  if (!inventoryShellCommands.includes(expectedProductionBuild)) {
+    violations.push("webapp inventory audit must build the exact linux/amd64 production-deps stage with required labels");
+  }
+  const inventoryDockerBuilds = inventoryShellCommands.filter((command) => command.startsWith("docker build "));
+  if (JSON.stringify(inventoryDockerBuilds) !== JSON.stringify([expectedProductionBuild])) {
+    violations.push("webapp inventory audit must not rebuild the final candidate archive");
+  }
+  if (!inventoryShellCommands.includes("regctl image import $layout_ref $WEBAPP_CANDIDATE_ARCHIVE") ||
+      !inventoryShellCommands.includes("regctl image export --platform linux/amd64 --name $final_image $layout_ref $docker_archive") ||
+      !input.webappInventoryAudit.includes("test \"$production_image_id\" != \"$final_image_id\"")) {
+    violations.push("webapp inventory audit must load a distinct final image from the exact OCI candidate archive");
+  }
+  if (!input.webappInventoryAudit.includes("printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$final_image\" >> \"$GITHUB_ENV\"")) {
+    violations.push("release gate must consume the archive-derived verified webapp runtime image");
+  }
+  const requiredVerifierControls = [
+    "if (platform !== WEBAPP_TARGET_PLATFORM)",
+    "labels['org.opencontainers.image.revision'] !== gitHead",
+    "labels['dev.winsen.platos.webapp-inventory-inputs-sha256'] !== inputEvidence.sha256",
+    "const inventoryByteMatch = generated === committed",
+    "if (!inventoryByteMatch || generatedInventorySha256 !== committedInventorySha256)",
+    "candidateDescriptor.digest !== config.candidateManifestDigest",
+  ];
+  if (requiredVerifierControls.some((control) => !input.webappInventoryVerifier.includes(control))) {
+    violations.push("webapp inventory verifier must enforce platform, labels, archive digest, and byte equality");
+  }
+
+  const inventoryUploadSteps = persistedStateSteps.filter((step) => step.name === webappInventoryUploadStepName);
+  const inventoryUpload = inventoryUploadSteps[0] ?? {};
+  if (inventoryUploadSteps.length !== 1 ||
+      inventoryUpload.if !== "always()" ||
+      inventoryUpload.uses !== "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" ||
+      inventoryUpload.with?.name !== "win253-webapp-image-inventory-${{ steps.webapp-inventory.outputs.candidate_manifest_digest || 'unverified' }}-${{ github.run_id }}-${{ github.run_attempt }}" ||
+      inventoryUpload.with?.path !== "artifacts/webapp-image-inventory" ||
+      inventoryUpload.with?.["if-no-files-found"] !== "error") {
+    violations.push("build-images must retain manifest-keyed webapp candidate inventory evidence");
+  }
   for (const command of relocatedCommands) {
     if (countExact(typecheckCommands, command) !== 1) {
       violations.push(`typecheck job must execute relocated command: ${command}`);
@@ -1154,31 +1339,6 @@ function replaceNth(sourceText, before, after, occurrence) {
   return changed;
 }
 
-function replaceAfterNthAnchor(sourceText, anchor, before, after, occurrence) {
-  let anchorCursor = 0;
-  let anchorIndex = -1;
-  for (let index = 0; index <= occurrence; index += 1) {
-    anchorIndex = sourceText.indexOf(anchor, anchorCursor);
-    assert.notEqual(
-      anchorIndex,
-      -1,
-      `mutation source is missing occurrence ${occurrence + 1} of ${JSON.stringify(anchor)}`
-    );
-    anchorCursor = anchorIndex + anchor.length;
-  }
-  const replacementIndex = sourceText.indexOf(before, anchorCursor);
-  assert.notEqual(
-    replacementIndex,
-    -1,
-    `anchored mutation source is missing ${JSON.stringify(before)}`
-  );
-  const changed = `${sourceText.slice(0, replacementIndex)}${after}${sourceText.slice(
-    replacementIndex + before.length
-  )}`;
-  assert.notEqual(changed, sourceText, "anchored fixture mutation must change source");
-  return changed;
-}
-
 function mutateFixture(input, key, before, after, options = {}) {
   const original = input[key];
   assert.equal(typeof original, "string", `missing string fixture ${key}`);
@@ -1215,17 +1375,34 @@ function mutateDockerfile(input, file, before, after, options = {}) {
   return { ...input, dockerfiles: { ...input.dockerfiles, [file]: changed } };
 }
 
-function mutateDockerInstallFlag(input, file, occurrence) {
+function mutateDockerInstallInstruction(input, file, occurrence, expectedInstruction, before, after) {
   const original = input.dockerfiles[file];
   assert.equal(typeof original, "string", `missing Dockerfile fixture ${file}`);
-  const changed = replaceAfterNthAnchor(
-    original,
-    "pnpm install",
-    "--frozen-lockfile",
-    "--no-frozen-lockfile",
-    occurrence
-  );
-  return { ...input, dockerfiles: { ...input.dockerfiles, [file]: changed } };
+  const lines = original.split("\n");
+  let installIndex = 0;
+  for (let start = 0; start < lines.length; start += 1) {
+    if (!/^\s*RUN(?:\s|$)/iu.test(lines[start])) continue;
+    let end = start;
+    while (lines[end].trimEnd().endsWith("\\") && end + 1 < lines.length) end += 1;
+    const rawInstruction = lines.slice(start, end + 1).join("\n");
+    const normalizedInstruction = dockerRunInstructions(rawInstruction)[0];
+    if (!containsExecutablePnpmInstall(normalizedInstruction)) {
+      start = end;
+      continue;
+    }
+    if (installIndex !== occurrence) {
+      installIndex += 1;
+      start = end;
+      continue;
+    }
+    assert.equal(normalizedInstruction, expectedInstruction, `${file} executable install mutation must select the expected RUN`);
+    assert.ok(rawInstruction.includes(before), `${file} install mutation source is missing ${JSON.stringify(before)}`);
+    lines.splice(start, end - start + 1, ...rawInstruction.replace(before, after).split("\n"));
+    const changed = lines.join("\n");
+    assert.notEqual(changed, original, `${file} install mutation must change source`);
+    return { ...input, dockerfiles: { ...input.dockerfiles, [file]: changed } };
+  }
+  assert.fail(`${file} mutation source is missing executable install ${occurrence + 1}`);
 }
 
 function mutateEventSelector(input, key, eventName) {
@@ -1275,8 +1452,8 @@ test("committed CI and image-build policy is executable, correlated, and complet
   );
   assert.equal(
     v1ReleaseGateCommands.length,
-    12,
-    "V1 release gate selector must cover generator, foundation, both WIN-253 clusters, and six commands"
+    16,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -1315,12 +1492,27 @@ test("CI policy controls fail under generated semantic source mutations", async 
           name: `${file} executable install ${occurrence + 1} selector`,
           expected: `${file} must contain only its exact frozen pnpm install RUN instruction(s)`,
           mutate: (input) =>
-            mutateDockerfile(input, file, "pnpm install", "# pnpm install", { occurrence }),
+            mutateDockerInstallInstruction(
+              input,
+              file,
+              occurrence,
+              expectedInstructions[occurrence],
+              "pnpm install",
+              "# pnpm install"
+            ),
         },
         {
           name: `${file} executable install ${occurrence + 1} frozen lockfile`,
           expected: `${file} must contain only its exact frozen pnpm install RUN instruction(s)`,
-          mutate: (input) => mutateDockerInstallFlag(input, file, occurrence),
+          mutate: (input) =>
+            mutateDockerInstallInstruction(
+              input,
+              file,
+              occurrence,
+              expectedInstructions[occurrence],
+              "--frozen-lockfile",
+              "--no-frozen-lockfile"
+            ),
         }
       );
     }
@@ -1361,6 +1553,198 @@ test("CI policy controls fail under generated semantic source mutations", async 
   }
 
   controls.push(
+    {
+      name: "successful no-op webapp publication provenance validator",
+      expected: "publish-images must execute the exact webapp publication provenance validator once",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "publishImages",
+          [
+            "node scripts/verify-webapp-publication-provenance.mjs \\",
+            "            --candidate-identities artifacts/gate/candidate-images.json \\",
+            "            --inventory-root artifacts/webapp-inventory",
+          ].join("\n"),
+          "node -e 'process.exit(0)'",
+        ),
+    },
+    ...requiredWebappPublicationValidatorControls.map(([name, control, shortCircuit]) => ({
+      name: `short-circuited webapp publication ${name}`,
+      expected: "webapp publication validator must enforce every bound provenance field",
+      mutate: (input) =>
+        mutateFixture(input, "webappPublicationValidator", control, shortCircuit),
+    })),
+    {
+      name: "successful no-op webapp inventory package script",
+      expected: `package.json must wire exact webapp inventory script: ${webappInventoryPackageScript}`,
+      mutate: (input) => mutateFixture(input, "packageJson", webappInventoryPackageScript, "node -p 0"),
+    },
+    {
+      name: "successful no-op webapp candidate inventory step",
+      expected: "webapp candidate inventory step must execute the exact archive-backed package command",
+      mutate: (input) => mutateFixture(input, "buildImages", webappInventoryCommand, "echo skipped-webapp-inventory"),
+    },
+    {
+      name: "skipped webapp candidate inventory step",
+      expected: "webapp candidate inventory step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          `      - name: ${webappInventoryStepName}\n        id: webapp-inventory`,
+          `      - name: ${webappInventoryStepName}\n        id: webapp-inventory\n        if: \${{ false }}`
+        ),
+    },
+    {
+      name: "continue-on-error webapp candidate inventory step",
+      expected: "webapp candidate inventory step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          `      - name: ${webappInventoryStepName}\n        id: webapp-inventory`,
+          `      - name: ${webappInventoryStepName}\n        id: webapp-inventory\n        continue-on-error: true`
+        ),
+    },
+    {
+      name: "same image verified twice",
+      expected: "webapp inventory audit must verify distinct production-deps and final candidate stages exactly once",
+      mutate: (input) => mutateFixture(input, "webappInventoryAudit", '--image "$final_image"', '--image "$production_image"'),
+    },
+    {
+      name: "drop production-deps inventory stage",
+      expected: "webapp inventory audit must verify distinct production-deps and final candidate stages exactly once",
+      mutate: (input) => mutateFixture(input, "webappInventoryAudit", "--stage production-deps", "--stage omitted-production-deps"),
+    },
+    {
+      name: "drop final candidate inventory stage",
+      expected: "webapp inventory audit must verify distinct production-deps and final candidate stages exactly once",
+      mutate: (input) => mutateFixture(input, "webappInventoryAudit", "--stage final", "--stage omitted-final"),
+    },
+    {
+      name: "non-amd64 webapp candidate",
+      expected: "build-push action must produce only the linux/amd64 candidate",
+      mutate: (input) => mutateFixture(input, "buildImages", "platforms: linux/amd64", "platforms: linux/arm64"),
+    },
+    {
+      name: "non-amd64 production-deps verification",
+      expected: "webapp inventory audit must build the exact linux/amd64 production-deps stage with required labels",
+      mutate: (input) => mutateFixture(input, "webappInventoryAudit", "--platform linux/amd64", "--platform linux/arm64"),
+    },
+    {
+      name: "missing candidate inventory build argument",
+      expected: "build-push action must apply the exact revision and webapp inventory build-input digest",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}",
+          "WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=missing"
+        ),
+    },
+    {
+      name: "missing candidate inventory digest label",
+      expected: "build-push action must label the candidate with revision and inventory build-input digest",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "dev.winsen.platos.webapp-inventory-inputs-sha256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}",
+          "dev.winsen.platos.webapp-inventory-inputs-sha256=missing"
+        ),
+    },
+    {
+      name: "missing candidate revision label",
+      expected: "build-push action must label the candidate with revision and inventory build-input digest",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "org.opencontainers.image.revision=${{ env.PLATOS_CANDIDATE_SHA }}",
+          "org.opencontainers.image.revision=missing"
+        ),
+    },
+    {
+      name: "successful no-op candidate build-input digest",
+      expected: "build-candidates must compute the exact webapp inventory build-input digest once",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          'echo "sha256=$(node scripts/verify-webapp-image-inventory.mjs --print-build-inputs-sha256)" >> "$GITHUB_OUTPUT"',
+          'echo "sha256=$(printf 0)" >> "$GITHUB_OUTPUT"'
+        ),
+    },
+    {
+      name: "disabled inventory byte comparison",
+      expected: "webapp inventory verifier must enforce platform, labels, archive digest, and byte equality",
+      mutate: (input) => mutateFixture(input, "webappInventoryVerifier", "const inventoryByteMatch = generated === committed", "const inventoryByteMatch = true"),
+    },
+    {
+      name: "missing candidate archive manifest comparison",
+      expected: "webapp inventory verifier must enforce platform, labels, archive digest, and byte equality",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryVerifier",
+          "candidateDescriptor.digest !== config.candidateManifestDigest",
+          "candidateDescriptor.digest === config.candidateManifestDigest"
+        ),
+    },
+    {
+      name: "missing candidate build-input label validation",
+      expected: "webapp inventory verifier must enforce platform, labels, archive digest, and byte equality",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryVerifier",
+          "labels['dev.winsen.platos.webapp-inventory-inputs-sha256'] !== inputEvidence.sha256",
+          "labels['dev.winsen.platos.webapp-inventory-inputs-sha256'] === inputEvidence.sha256"
+        ),
+    },
+    {
+      name: "dropped manifest-keyed evidence upload",
+      expected: "build-images must retain manifest-keyed webapp candidate inventory evidence",
+      mutate: (input) => mutateFixture(input, "buildImages", "path: artifacts/webapp-image-inventory", "path: artifacts/missing-webapp-image-inventory"),
+    },
+    {
+      name: "warning-only manifest-keyed evidence upload",
+      expected: "build-images must retain manifest-keyed webapp candidate inventory evidence",
+      mutate: (input) => mutateFixture(input, "buildImages", "if-no-files-found: error", "if-no-files-found: warn", { occurrence: 1 }),
+    },
+    {
+      name: "final verification imports a different archive",
+      expected: "webapp inventory audit must load a distinct final image from the exact OCI candidate archive",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryAudit",
+          "regctl image import \"$layout_ref\" \"$WEBAPP_CANDIDATE_ARCHIVE\"",
+          "regctl image import \"$layout_ref\" /var/tmp/unverified.oci.tar"
+        ),
+    },
+    {
+      name: "final candidate is rebuilt separately",
+      expected: "webapp inventory audit must not rebuild the final candidate archive",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryAudit",
+          'docker load --input "$docker_archive"',
+          'docker load --input "$docker_archive"\ndocker build --tag unverified-final .'
+        ),
+    },
+    {
+      name: "release gate retains unverified runtime image",
+      expected: "release gate must consume the archive-derived verified webapp runtime image",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryAudit",
+          "printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$final_image\"",
+          "printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$production_image\""
+        ),
+    },
     ...v1ReleaseGateCommands.map((command) => ({
       name: `fail-fast V1 gate ${command}`,
       expected: `CI must execute fail-fast V1 gate exactly once in order: ${command}`,
@@ -2224,7 +2608,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    183,
+    228,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

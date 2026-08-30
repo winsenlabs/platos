@@ -8,9 +8,10 @@ multi-major dispositions, an update-automation policy, and a committed, non-vacu
 regenerates the SBOMs and fails the build on drift or on a new copyleft/commercial dependency in a
 shipping runtime image.
 
-Everything here derives from `pnpm-lock.yaml` **without installing** `node_modules`. The closure
-walker (`scripts/lib/pnpm-closure.mjs`) parses the lockfile's `importers` / `snapshots` / `packages`
-sections and walks each image's production closure exactly as the image is built.
+The agent inventory derives from `pnpm-lock.yaml` without installing `node_modules`. The webapp
+inventory is captured from the exact Docker `production-deps` stage and committed as a sorted list of
+installed name/version pairs, including linked first-party workspace manifests; the closure walker
+reconciles external snapshots and importer-linked workspaces separately.
 
 ---
 
@@ -18,22 +19,30 @@ sections and walks each image's production closure exactly as the image is built
 
 | artifact | what it is | sha256 |
 |---|---|---|
-| `platos-agent.cdx.json` | CycloneDX 1.5 SBOM — agent image production closure (**718 components / 657 names**) | `c7e201258465a659…` |
-| `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — webapp image production closure (**1637 components / 1357 names**) | `1f844390d9262e7b…` |
-| `closure-receipts.json` | machine-readable receipts: per-image file, sha256, counts, roots; input hashes | regenerated |
-| `license-index.json` | frozen registry.npmjs.org licence snapshot for the 1897-component union closure | `e1cfaf45f18403ab…` |
-| `license-overlay.json` | curated licence elections/corrections (dompurify→Apache-2.0, etc.) | `cabf35d68abfbf7a2…` |
+| `platos-agent.cdx.json` | CycloneDX 1.5 SBOM — agent image production closure (**718 components / 657 names**) | `bb31518f442fa32a…` |
+| `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — exact webapp Docker image inventory (**330 components / 303 names**) | `89c8d9d5d6948ea3…` |
+| `platos-webapp.image-inventory.json` | exact `linux/amd64` external and linked-workspace packages installed in the webapp Docker `production-deps` stage | `9b745000948ff883…` |
+| `closure-receipts.json` | machine-readable receipts: per-image SBOM/inventory sha256, counts, roots; input hashes | regenerated |
+| `license-index.json` | frozen registry.npmjs.org licence snapshot for the 881-component lock closure plus two linked first-party workspaces | `ff816ea2d0cfa6a6…` |
+| `license-overlay.json` | curated licence elections/corrections, first-party Apache-2.0 dispositions, and absent-image GPL canary | `db436a3bfad82b7…` |
 | `license-policy.json` | machine-readable copyleft/commercial gate + dispositioned baseline | `2c47d8ec03aed511…` |
-| `advisory/osv-report.json` | OSV vulnerability scan receipt for both closures (point-in-time) | timestamped receipt |
+| `advisory/osv-report.json` | OSV receipt for agent lock closure plus exact webapp image inventory | `1de28eb2d07c22fb…` |
 
 Hashes are recomputed and cross-checked by `pnpm audit:sbom:check`. The exact current values live in
 `closure-receipts.json`; the truncations above are for the eye.
 
 ### Closure numbers vs the M0.5 report
-The corrected walker computes **agent 718/657 and webapp 1637/1357**. The webapp reduction is
-intentional: its production stage now installs only `--filter webapp...`, and two unused direct
-dependencies were removed. Root release tooling, GPL `breakword`, the proprietary Fingerprint SDK,
-and unused PostHog browser code no longer enter the runtime closure.
+The corrected walker computes **agent 718/657** and a webapp production lock closure of **335/308**.
+The exact Linux webapp image contains **330 components / 303 names**: 328 external package pairs plus
+the linked `@internal/workload-identity@0.0.1` and `@platos/tenancy-database@0.0.1` manifests. The seven
+external lock-only packages remain the reviewed non-`linux/amd64` `@sentry/cli-*` optionals. This
+produces an **876-component / 745-name image-grounded union**. Reverse reconciliation requires the
+exact seven platform exclusions and exact two-workspace importer set; any other mismatch fails.
+The webapp reduction is intentional: its production stage strips the root manifest and lock importer
+dependency sections before frozen `--filter webapp...` installation, and its direct production
+manifest is derived from parsed runtime/configuration/operational reachability.
+Root release tooling, GPL `breakword`, the proprietary Fingerprint SDK, unused PostHog browser code,
+and the removed legacy UI/AI dependency graph no longer enter the runtime closure.
 
 ---
 
@@ -55,23 +64,23 @@ the licence; the only remaining human item is cosmetic (§2.5).
 
 ### 2.2 Copyleft and unused commercial dependencies — REMOVED
 
-The production image now installs only `--filter webapp...`; root release tooling no longer enters
-the runner, so `@changesets/cli → tty-table → smartwrap → breakword@1.0.5` and its GPL-2.0
+The production image now removes root dependency sections from both its manifest and lock importer
+before the frozen filtered install; root release tooling no longer enters the runner, so
+`@changesets/cli → tty-table → smartwrap → breakword@1.0.5` and its GPL-2.0
 obligation are absent from the shipping closure. The unused `@kapaai/react-sdk` and `posthog-js`
 dependencies were removed from the webapp and the lockfile. This removes the proprietary
 Fingerprint SDK transitively. No licence waiver remains in `license-policy.json`.
 
-### 2.3 The remaining no-licence packages — RECORDED
+### 2.3 Linked first-party packages without registry records — RECORDED
 
 | package@version | registry state | disposition |
 |---|---|---|
-| `react-universal-interface@0.6.2` | no `license` field at all | `NOASSERTION`; transitive orphan → drops when its parent is removed |
-| `fast-shallow-equal@1.0.0` | no `license` field at all | `NOASSERTION`; transitive orphan |
-| `khroma@2.1.0` | no `license` field at all | `NOASSERTION`; transitive orphan |
+| `@internal/workload-identity@0.0.1` | private linked workspace; not published to npm | Apache-2.0 under the repository `LICENSE`; explicit overlay disposition |
+| `@platos/tenancy-database@0.0.1` | private linked workspace; not published to npm | Apache-2.0 under the repository `LICENSE`; explicit overlay disposition |
 
-"No published grant" is recorded honestly as `NOASSERTION` in the SBOMs rather than the fabricated
-Apache-2.0/MIT the source inventory had claimed. None are copyleft/commercial, so none block the gate;
-all are removable and tracked with the orphan-cleanup precondition (M0.5 §5.2).
+The frozen registry index records both npm lookups as not found. The curated overlay ties these
+first-party manifests to the repository's Apache-2.0 grant rather than pretending registry metadata
+exists.
 
 ### 2.4 Recorded elections and the per-package `MIT` residue
 
@@ -108,30 +117,32 @@ literal in `Dockerfile.platos`; never resolve `prisma@latest` — npm `latest` i
 
 ## 4. Advisory / vulnerability scan (M0.5 deliverable #2)
 
-`scripts/audit-advisory.mjs` scans **exactly the two production closures** against the live OSV
-database (osv.dev `querybatch` + `vulns`), and retains `advisory/osv-report.json` as a timestamped,
-lockfile-hash-stamped receipt. (Point-in-time by nature — OSV grows; the deterministic gate is §5.)
-An `--offline --osv-dir <export>` path is provided for air-gapped CI.
+`scripts/audit-advisory.mjs` scans the agent's production lock closure and the **exact committed,
+validated `linux/amd64` webapp image inventory** against OSV (`querybatch` + `vulns`). The receipt is
+stamped with the inventory schema, byte hash, platform, counts, and exact per-image scan-set hashes.
+`audit:advisory:check` fails on any input or finding-membership drift without network. Refreshes use
+20-second bounded requests, batches of at most 1000, eight detail workers, and content-addressed JSON
+caching; cache fallback or network limitations are recorded in the receipt. An
+`--offline --osv-dir <export>` path remains available for air-gapped refreshes.
 
 All eight M0.5-named items are adjudicated in the receipt's `m05Adjudication` block:
 
 | package | versions in closure | verdict | advisory |
 |---|---|---|---|
 | **cookie** | 0.4.2, 0.6.0, 0.7.2 | **VULNERABLE_VERSION_PRESENT** | GHSA-pxg6-pf52-xh8x / **CVE-2024-47764**, LOW, fixed 0.7.0 — hits **0.4.2 (agent+webapp)** and **0.6.0 (webapp)**; **0.7.2 correctly NOT flagged** |
-| postcss | 6.0.23, 7.0.32, 7.0.39, 8.5.6 | vulnerable version present | GHSA line, webapp |
-| tmp | 0.0.33 | vulnerable version present | webapp |
-| semver | 5.7.1, 7.7.3 | vulnerable version present | both |
-| undici | 5.29.0 … 8.7.0 | vulnerable version present | both — 5.29.0 is the eviction target |
-| fast-xml-parser | 4.2.5, 4.4.1, 5.2.5 | vulnerable version present | **CVE-2026-25896 (CRITICAL)**, fixed 5.3.5, agent+webapp |
+| postcss | absent | not in current shipping scan set | removed from the exact webapp image |
+| tmp | absent | not in current shipping scan set | removed from the exact webapp image |
+| semver | 7.7.3 | present, no current OSV advisory | agent+webapp |
+| undici | 6.27.0, 7.25.0, 7.28.0, 8.7.0 | vulnerable version present | agent only; former 5.29.0 webapp surface removed |
+| fast-xml-parser | 5.2.5 | vulnerable version present | **CVE-2026-25896 (CRITICAL)**, fixed 5.3.5, agent only |
 | ws | 8.11.0, 8.18.0, 8.18.3 | vulnerable version present | both |
 | path-to-regexp | 0.1.10, 8.4.2 | vulnerable version present | both |
 
-**Point-in-time totals (scan date 2026-08-29):** 291 active findings across the union closure —
-5 CRITICAL, 111 HIGH, 149 MODERATE, 26 LOW. The CRITICALs are current, dated CVEs
-(`@remix-run/node` path traversal `CVE-2025-61686`; `fast-xml-parser` `CVE-2026-25896`; `tar` DoS
-`CVE-2026-59873`). These feed the `security` renovate group (immediate, cadence-bypassing). The large
-count is expected: the webapp closure still carries the ~126 orphaned upstream-UI packages the M0.5
-report flags for deletion — removing those (M0.5 §5.2 precondition) is the highest-leverage reduction.
+**Point-in-time totals (scan date 2026-08-30):** 152 active findings across 876 exact union package
+pairs — 3 CRITICAL, 56 HIGH, 75 MODERATE, 18 LOW. The refresh made 126/126 successful bounded public
+OSV requests, used no cache fallback, and recorded no network limitation. These feed the `security`
+renovate group (immediate, cadence-bypassing). WIN-253 materially reduced the prior pre-prune receipt;
+the receipt does not claim the remaining findings are remediated.
 M0 closes the missing-inventory and missing-routing defect; it does **not** claim these findings are
 remediated. Each upgrade still requires the compatibility gates and owner review defined below.
 
@@ -163,10 +174,11 @@ remediated. Each upgrade still requires the compatibility gates and owner review
 
 `scripts/audit-sbom.mjs check` (`pnpm audit:sbom:check`):
 
-1. **Regenerates** both CycloneDX SBOMs in memory from the current `pnpm-lock.yaml` and **byte-compares**
-   them to the committed files — any drift (a relock that changes the closure without regenerating the
-   SBOM) fails the build. Verified byte-identical across regenerations.
-2. **Cross-checks** the committed SBOM hashes against `closure-receipts.json`.
+1. **Regenerates** the agent SBOM from `pnpm-lock.yaml` and the webapp SBOM from its committed exact
+   Docker package inventory, then **byte-compares** both to the committed files.
+2. **Cross-checks** the committed SBOM and webapp inventory hashes, `linux/amd64` target, exact
+   component/name counts, the reviewed seven lock-only Sentry optionals, build-input hashes, roots,
+   lock-closure counts, and lockfile hash against `closure-receipts.json`.
 3. **Runs the licence gate**: every component in a shipping runtime closure is classified; a copyleft
    (GPL/LGPL/AGPL/MPL/EPL/…) or commercial (`SEE LICENSE IN…`/`UNLICENSED`/proprietary) licence that is
    not in `license-policy.json`'s `dispositionedBaseline` **fails the build**.
@@ -177,16 +189,22 @@ into a scratch copy of the agent closure and shows the gate FAILS; adds it to th
 PASSES; and independently injects a commercial/no-grant canary to show that classifier also FAILS.
 All four assertions hold.
 
-`pnpm test:sbom` runs the whole thing offline as a CI gate (8 tests, all green).
+`pnpm test:sbom` runs the offline contract as a CI gate (12 tests, including receipt drift,
+root-tooling/licence mutation, and removal of a legitimately installed package).
 
-### Suggested CI wiring (not applied — release/CI is a reserved vocabulary term)
-Add to `.github/workflows/ci.yml` after install:
-```yaml
-- run: pnpm audit:sbom:check   # SBOM drift + licence gate (offline, deterministic)
-- run: pnpm test:sbom           # closure + non-vacuity proof
-```
-`audit:advisory` / `audit:licenses` are network steps — run them on a schedule (nightly), not on the
-frozen-lockfile critical path.
+### CI image evidence
+`.github/workflows/build-images.yml` passes the aggregate Docker/manifest/lock/scanner input hash into
+the immutable `linux/amd64` webapp candidate build. Its required gate builds a distinct no-cache
+`production-deps` stage, imports the exact downloaded final-candidate OCI archive without rebuilding
+it, validates the archive checksum and candidate manifest digest, requires revision/build-input labels,
+and byte-compares both inventories with the committed artifact. Evidence is retained under that
+candidate manifest digest and records archive, image/rootfs, platform, revision, input, and inventory
+hashes. The persisted-state gate starts the archive-derived verified image; publication redownloads
+and validates the same manifest-keyed, source-run-bound evidence before importing that candidate archive
+into GHCR. Publication delegates those checks to the executable
+`scripts/verify-webapp-publication-provenance.mjs` validator before registry authentication. Its fixture
+tests mutate every bound evidence field, while CI policy mutations short-circuit each comparison and
+require every mutation to fail the policy gate.
 
 ---
 

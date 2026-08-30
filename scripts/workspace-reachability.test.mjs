@@ -228,7 +228,7 @@ test("committed baseline independently captures OCI, application/deployable, and
   assert.ok(applicationRootKinds.has("ci-build-entrypoint"));
   assert.deepEqual(report.summary.externalProductionSnapshotNodesByImage, {
     agent: 718,
-    webapp: 1637,
+    webapp: 335,
   });
   assert.equal(
     report.inputs.files.some((file) => file.path === ".git"),
@@ -375,10 +375,7 @@ test("patch reachability uses each importer lockfile snapshot closure and detect
   assert.deepEqual(dependencies("apps/agent"), ["engine.io-parser@5.2.2"]);
   assert.deepEqual(dependencies("apps/webapp"), [
     "@sentry/remix@9.46.0",
-    "@upstash/ratelimit@1.1.3",
-    "@window-splitter/state@0.4.1",
     "engine.io-parser@5.2.2",
-    "graphile-worker@0.16.6",
   ]);
   assert.equal(
     Object.hasOwn(
@@ -405,9 +402,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   const testcontainers = report.workspaces.find(
     (workspace) => workspace.path === "internal-packages/testcontainers"
   );
-  assert.equal(report.patchReconciliation.configuredPatchCount, 7);
-  assert.equal(report.patchReconciliation.reconciledPatchCount, 7);
-  assert.equal(report.patchReconciliation.patches.length, 7);
+  assert.equal(report.patchReconciliation.configuredPatchCount, 5);
+  assert.equal(report.patchReconciliation.reconciledPatchCount, 5);
+  assert.equal(report.patchReconciliation.patches.length, 5);
   const changesets = report.patchReconciliation.patches.find(
     (patch) => patch.dependencyAtVersion === "@changesets/assemble-release-plan@5.2.4"
   );
@@ -440,7 +437,10 @@ test("the report distinguishes production and dev-only importer patch closures",
         route.at(-1).startsWith("snapshot:engine.io-parser@5.2.2(patch_hash=")
     )
   );
-  assert.equal(webapp.channels.patches.reasons.length, 5);
+  assert.deepEqual(
+    webapp.channels.patches.reasons.map((reason) => reason.dependency),
+    ["@sentry/remix@9.46.0", "engine.io-parser@5.2.2"]
+  );
   assert.deepEqual(
     testcontainers.channels.patches.reasons.map((reason) => ({
       dependency: reason.dependency,

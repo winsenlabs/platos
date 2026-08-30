@@ -12,6 +12,22 @@
     "treeOid": "7a772b3d4dbedb6652390da67b39c68a4eb4c035",
     "trackedFiles": 3656
   },
+  "coexistingIntegrationBase": {
+    "sha": "5eb2d48d82c049e68e53b33701356e3091af532a",
+    "treeOid": "565a2ae239015db0b92eca3af5c54af52420ddaa",
+    "authorizedExternalDeletionCount": 122,
+    "authorizedExternalDeletionManifestSha256": "38b0fb1424a8b7b8f508f0f4febe18eb6fd069e0757ea896933f27f3b8fe871a"
+  },
+  "reviewedAdditionalIntegrationDeletions": [
+    {
+      "path": "patches/@upstash__ratelimit.patch",
+      "reason": "WIN-253 webapp dependency pruning removed the retired, unconfigured Upstash patch."
+    },
+    {
+      "path": "patches/@window-splitter__state@0.4.1.patch",
+      "reason": "WIN-253 webapp dependency pruning removed the retired window-splitter patch."
+    }
+  ],
   "deletion": {
     "actualFileCount": 91,
     "actualBytes": 1734453,
@@ -1514,56 +1530,56 @@
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 204,
+          "line": 209,
           "kind": "docs",
           "token": "internal-packages/replication",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 204,
+          "line": 209,
           "kind": "docs",
           "token": "internal-packages/tsql",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 205,
+          "line": 210,
           "kind": "docs",
           "token": "@internal/clickhouse",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 207,
+          "line": 212,
           "kind": "docs",
           "token": "antlr4ts",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 266,
+          "line": 271,
           "kind": "docs",
           "token": "internal-packages/clickhouse/Dockerfile",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 312,
+          "line": 358,
           "kind": "docs",
           "token": "internal-packages/replication",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 312,
+          "line": 358,
           "kind": "docs",
           "token": "internal-packages/tsql",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 313,
+          "line": 359,
           "kind": "docs",
           "token": "internal-packages/clickhouse/Dockerfile",
           "scope": "external"
@@ -1836,11 +1852,6 @@
         "currentSha256": "6ccb0b15186d2295005c9ded64c62af27be98b6f0b18e4b865254275715c2aaa"
       },
       {
-        "path": "apps/webapp/Dockerfile.platos",
-        "ownerAuthorizationSha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085",
-        "currentSha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085"
-      },
-      {
         "path": "apps/webapp/scripts/entrypoint.sh",
         "ownerAuthorizationSha256": "d1b35e460843c38c8995cd7d762d9e0d8d37c7d3493b4db7a563a4b77d936714",
         "currentSha256": "d1b35e460843c38c8995cd7d762d9e0d8d37c7d3493b4db7a563a4b77d936714"
@@ -1861,6 +1872,15 @@
         "currentSha256": "00dc369ade5827112c239323c62ad2bd55ed6e9835c1d377d9d8317bf002e340"
       },
       {
+        "path": "apps/webapp/Dockerfile.platos",
+        "ownerAuthorizationSha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085",
+        "currentSha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057",
+        "requiredReferences": [
+          "COPY --chown=node:node internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema",
+          "COPY --from=builder --chown=node:node /platos/internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema"
+        ]
+      },
+      {
         "path": "docker-compose.platos.yml",
         "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
         "currentSha256": "43c288e8c07cc8466b819016e9ebfc2367e859515438fea310b9b58cad125e39",
@@ -1878,8 +1898,8 @@
     ]
   },
   "integration": {
-    "lockfileSha256": "f0edd6c5fb83f28af035564a99fd2ac826c2d45f79ddd7b2b2226c8ff34982a8",
-    "vocabularySha256": "33b610e7938e4481af3d473220999dab651174a08677d96560a1ef73025e9125",
+    "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
+    "vocabularySha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
   }

@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import {
+  ADDITIONAL_INTEGRATION_DELETIONS,
+  COEXISTING_INTEGRATION_BASE,
   INTEGRATION_BASE,
   OWNER_AUTHORIZATION_BASE,
   REPORT_PATH,
@@ -192,6 +194,24 @@ test("deletion-set validation rejects a restored owner-authorized path", () => {
   );
 });
 
+test("post-base webapp patch deletions remain exact, reviewed, and outside the ClickHouse receipt", () => {
+  assert.deepEqual(
+    ADDITIONAL_INTEGRATION_DELETIONS.map(({ path }) => path),
+    [
+      "patches/@upstash__ratelimit.patch",
+      "patches/@window-splitter__state@0.4.1.patch",
+    ]
+  );
+  for (const deletion of ADDITIONAL_INTEGRATION_DELETIONS) assert.ok(deletion.reason.trim());
+  assert.deepEqual(cleanAudit.report.reviewedAdditionalIntegrationDeletions, ADDITIONAL_INTEGRATION_DELETIONS);
+  assert.equal(
+    cleanAudit.report.deletion.files.some(({ path }) =>
+      ADDITIONAL_INTEGRATION_DELETIONS.some((deletion) => deletion.path === path)
+    ),
+    false
+  );
+});
+
 test("current-tree tombstones reject newly introduced retired-cluster paths", () => {
   const pristine = [
     "internal-packages/clickhouse/schema",
@@ -249,8 +269,21 @@ test("live audit derives every deletion and integration-base identity from Git",
     ["diff", "--no-renames", "--name-only", "--diff-filter=D", "-z", INTEGRATION_BASE, "--"],
     { cwd: root, encoding: "utf8" }
   ).split("\0").filter(Boolean).sort();
-  assert.deepEqual(report.deletion.files.map(({ path }) => path), actual);
-  assert.deepEqual(report.restore.pathspec, actual);
+  const coexisting = new Set(execFileSync(
+    "git",
+    ["diff", "--no-renames", "--name-only", "--diff-filter=D", "-z", INTEGRATION_BASE, COEXISTING_INTEGRATION_BASE, "--"],
+    { cwd: root, encoding: "utf8" }
+  ).split("\0").filter(Boolean));
+  const additional = new Set(ADDITIONAL_INTEGRATION_DELETIONS.map(({ path }) => path));
+  const clickhouseActual = actual.filter((path) =>
+    path.startsWith("internal-packages/clickhouse/") ||
+    path.startsWith("internal-packages/replication/") ||
+    path.startsWith("internal-packages/tsql/") ||
+    path === "patches/antlr4ts@0.5.0-alpha.4.patch" ||
+    (!coexisting.has(path) && !additional.has(path))
+  );
+  assert.deepEqual(report.deletion.files.map(({ path }) => path), clickhouseActual);
+  assert.deepEqual(report.restore.pathspec, clickhouseActual);
   assert.deepEqual(report.restore.argv.slice(0, 4), ["git", "restore", `--source=${INTEGRATION_BASE}`, "--"]);
 
   for (const file of report.deletion.files) {

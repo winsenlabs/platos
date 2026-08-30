@@ -11,7 +11,7 @@ The assembled tree removes exactly six inherited Trigger workspaces from integra
 - `packages/rsc` (`@platos/rsc`)
 - `packages/schema-to-json` (`@platos/schema-to-json`)
 
-The executable receipt derives 122 deleted files and 626057 bytes from Git. The restore argv in `docs/audits/win253-removals/vendored-build.json` restores every deleted blob from the integration base and is exercised byte-for-byte by `scripts/vendored-build-audit.test.mjs`.
+The executable receipt derives 124 deleted files and 628213 bytes from Git. The restore argv in `docs/audits/win253-removals/vendored-build.json` restores every deleted blob from the integration base and is exercised byte-for-byte by `scripts/vendored-build-audit.test.mjs`.
 
 ## Reviewed-source provenance
 
@@ -41,4 +41,4 @@ The current lockfile, changesets, vocabulary exceptions, V1 ledger fingerprint, 
 
 ## Rollback
 
-Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores only the 122 Git-derived deletion paths from `34c41bc10bd23c90271e83592148fab3bf26aa38`.
+Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores only the 124 Git-derived deletion paths from `34c41bc10bd23c90271e83592148fab3bf26aa38`.

@@ -81,9 +81,14 @@
     "clean:sourcemaps": "turbo run clean:sourcemaps",
     "storybook": "turbo run storybook",
     "audit:advisory": "node scripts/audit-advisory.mjs",
+    "audit:advisory:check": "node scripts/audit-advisory.mjs --check",
+    "test:advisory": "node --test scripts/audit-advisory.test.mjs",
     "audit:licenses": "node scripts/audit-licenses.mjs",
     "audit:sbom": "node scripts/audit-sbom.mjs generate",
     "audit:sbom:check": "node scripts/audit-sbom.mjs check",
+    "audit:webapp-image-inventory": "bash scripts/audit-webapp-image-inventory.sh",
+    "test:webapp-image-inventory": "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs",
+    "test:webapp-inventory-contract": "node --test scripts/webapp-inventory-contract.test.mjs",
     "audit:sbom:nonvacuity": "node scripts/verify-sbom-nonvacuity.mjs",
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
@@ -131,9 +136,7 @@
       "engine.io-parser@5.2.2": "patches/engine.io-parser@5.2.2.patch",
       "graphile-worker@0.16.6": "patches/graphile-worker@0.16.6.patch",
       "redlock@5.0.0-beta.2": "patches/redlock@5.0.0-beta.2.patch",
-      "@sentry/remix@9.46.0": "patches/@sentry__remix@9.46.0.patch",
-      "@upstash/ratelimit@1.1.3": "patches/@upstash__ratelimit.patch",
-      "@window-splitter/state@0.4.1": "patches/@window-splitter__state@0.4.1.patch"
+      "@sentry/remix@9.46.0": "patches/@sentry__remix@9.46.0.patch"
     },
     "overrides": {
       "typescript": "5.5.4",
