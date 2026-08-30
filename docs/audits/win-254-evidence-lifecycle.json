@@ -1172,7 +1172,7 @@
       "path": "docs/audits/M0.4-design-contract-map.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "93d80b6933723ab95d0187dbabdf4d61208eb329e532befe26267790952bb8ca",
+      "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301",
       "binds": "current-repository-truth"
     },
     {
@@ -1374,7 +1374,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "359b57b63384094616d071f8b735c906894af68c80a1f1bf3082542bf1571383",
+      "sha256": "2f04bdeece47cc7026157c4de71262dfe407b62df69178074c7c69a63836836f",
       "binds": "current-repository-truth"
     },
     {
@@ -1453,14 +1453,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "5dc30d3e69db416d8123f27d91fe68f27d50c5bc3d1de2ef98fedd6d609f3279",
+      "sha256": "6dc08d09e5b275eefa6d1acf9616e78d562905380f91fd4ca7919c762fdf1462",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "29cae9965e6073bcfe8f4b4e39670f27061851e0050ac67676037f65241a766d",
+      "sha256": "3b85bd1ec249e033685be7577d9aa236d54def01baaf88b4fd30ec313659f2bd",
       "binds": "current-repository-truth"
     },
     {
@@ -1481,7 +1481,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "3204d72f94b6b1d06949ea5e200cf13b4a7476d5c355f7f8d606ce71f6d02642",
+      "sha256": "5f2cd5ae3d3ef5618ba0cdef9cb3a5711c80f1471fbd3f7aa7736fbb3ad6b6ef",
       "binds": "current-repository-truth"
     },
     {

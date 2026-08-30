@@ -15,6 +15,7 @@ import {
 const expected = [
   "pnpm audit:docs-link-integrity",
   "pnpm audit:design-provenance",
+  "pnpm audit:contract-map",
   "pnpm audit:protected-paths",
   "pnpm audit:evidence-lifecycle",
   "pnpm audit:docs-build",
@@ -106,6 +107,24 @@ test("combined verifier is fail-fast and does not execute later checks after fai
   });
   assert.deepEqual(called, expected.slice(0, 4));
   assert.deepEqual(result, { ok: false, command: expected[3], status: 7 });
+});
+
+test("combined verifier cannot omit or continue past contract-map drift", () => {
+  const called = [];
+  const contractMapIndex = expected.indexOf("pnpm audit:contract-map");
+  const result = verifyWin254("/var/tmp", {
+    spawn(executable, args) {
+      const command = [executable, ...args].join(" ");
+      called.push(command);
+      return { status: command === expected[contractMapIndex] ? 9 : 0 };
+    },
+  });
+  assert.deepEqual(called, expected.slice(0, contractMapIndex + 1));
+  assert.deepEqual(result, {
+    ok: false,
+    command: "pnpm audit:contract-map",
+    status: 9,
+  });
 });
 
 test("combined verifier reports success only after every composed check runs", () => {

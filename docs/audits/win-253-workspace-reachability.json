@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "16000db01bde7b37c37d2aef93486a84453c475d039fd9912201812431ab209b",
+  "evidenceSha256": "0f046896e6a600165d0beb4a0ae618fcc84305fda34ff34f8b226f20cf5936dd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d612a10035a69e383f0200dce7df68197d04ffbcb5687c64b6435df8a057d1df",
+    "aggregateSha256": "9381165eb5be6b1755f13d536116632eeb39f1992b4659d9ffbfab9642a699ee",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -3857,7 +3857,7 @@
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.md",
-        "sha256": "93d80b6933723ab95d0187dbabdf4d61208eb329e532befe26267790952bb8ca"
+        "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301"
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -3953,7 +3953,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "359b57b63384094616d071f8b735c906894af68c80a1f1bf3082542bf1571383"
+        "sha256": "2f04bdeece47cc7026157c4de71262dfe407b62df69178074c7c69a63836836f"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
@@ -10721,7 +10721,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "c59e2ab8f9c18b001a5dcdfe40686b9fe8221e8f34379f26aa43f9379c25eb5f"
+        "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -13449,7 +13449,7 @@
       },
       {
         "path": "scripts/arch/contract-map.mjs",
-        "sha256": "28fc8d7b89aba445b013c9fbf74db4a047a615edbfd4cc870c454bdd0b48c96b"
+        "sha256": "991b2ba0ef11507d47954b37ca4dfc9994e8157410d9144ae9ebc4679987ea44"
       },
       {
         "path": "scripts/arch/gen-dependency-cruiser.mjs",
@@ -13525,7 +13525,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "90369eef0d71d9fa0528a17c15507b804b3c7b31746730cd65c498a6cdc06609"
+        "sha256": "79e5ce3e8d4fb11218469ab0c463bafe58aa8e9eab7affa1e1ca835f21a97064"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -13717,11 +13717,11 @@
       },
       {
         "path": "scripts/verify-win254.mjs",
-        "sha256": "34dea32c8983419230481591c11458e26fe838c4641404a930f53262e54d44cc"
+        "sha256": "018bd016dd496fc2f176b021fabd42ddf967d07b24b4ad5610cf2a189d3bbb37"
       },
       {
         "path": "scripts/verify-win254.test.mjs",
-        "sha256": "05060fec54c3d8238c157ba7b5053232640d3f81f1ab8033d1784633609562fd"
+        "sha256": "dc7df1e0e54e48e83a60671e03a21d95c94a2d227a8f4d276ab3d57018ef20a7"
       },
       {
         "path": "scripts/vocabulary-boundary.mjs",
@@ -29393,7 +29393,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 145
+              "line": 146
             }
           ],
           "reversePaths": [
@@ -29505,7 +29505,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "ee9257d8d829f00207554c4e52aa3d41f2f7178513882e1810e2dbf6e6c9be41",
+      "evidenceSha256": "e48a83576c841340306976d06a66c700331b6ef5bf2a8b50f1b8c02b90ddd31a",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -33540,7 +33540,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 145
+              "line": 146
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -33992,7 +33992,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "c7a849d7d8fba09bd942561f8c6408a71a0fa53be51fd4f9640498fbd5424967",
+      "evidenceSha256": "eaf5ced87673cad00e432e2d02f9e1783f03e3c1ca16bab4a51d67233e3f6de6",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -36328,7 +36328,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 145
+              "line": 146
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -36490,7 +36490,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "43eb77373701355ac7f0757c618a7c61740c81e4ab97a701e3e78b0eee0d3d1c",
+      "evidenceSha256": "02d337cc1ec1b97de5f149640604d73abec9735d53f92e19f6297d4e0de43bba",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {

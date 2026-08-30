@@ -131,6 +131,7 @@ const expectedWin254Scripts = new Map([
   ["test:evidence-lifecycle", "node --test scripts/evidence-lifecycle.test.mjs"],
   ["audit:docs-build", "pnpm --filter docs validate && pnpm --filter docs broken-links"],
   ["audit:v1-ledger", "node scripts/v1-ledger.mjs --check"],
+  ["audit:contract-map", "node scripts/arch/contract-map.mjs --check"],
   ["test:win254", "node --test scripts/docs-link-integrity.test.mjs scripts/design-provenance.test.mjs scripts/protected-paths.test.mjs scripts/evidence-lifecycle.test.mjs scripts/verify-win254.test.mjs"],
   ["generate:win254", "node scripts/verify-win254.mjs --regenerate"],
   ["verify:win254", "node scripts/verify-win254.mjs"],
@@ -2837,7 +2838,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    270,
+    271,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

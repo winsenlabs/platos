@@ -9,6 +9,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const WIN254_COMMANDS = Object.freeze([
   ["pnpm", ["audit:docs-link-integrity"]],
   ["pnpm", ["audit:design-provenance"]],
+  ["pnpm", ["audit:contract-map"]],
   ["pnpm", ["audit:protected-paths"]],
   ["pnpm", ["audit:evidence-lifecycle"]],
   ["pnpm", ["audit:docs-build"]],

@@ -823,7 +823,7 @@
     {
       "path": "docs/audits/M0.4-design-contract-map.md",
       "mode": "100644",
-      "sha256": "93d80b6933723ab95d0187dbabdf4d61208eb329e532befe26267790952bb8ca"
+      "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301"
     },
     {
       "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "359b57b63384094616d071f8b735c906894af68c80a1f1bf3082542bf1571383"
+      "sha256": "2f04bdeece47cc7026157c4de71262dfe407b62df69178074c7c69a63836836f"
     },
     {
       "path": "docs/audits/sbom/license-index.json",
@@ -998,12 +998,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "5dc30d3e69db416d8123f27d91fe68f27d50c5bc3d1de2ef98fedd6d609f3279"
+      "sha256": "6dc08d09e5b275eefa6d1acf9616e78d562905380f91fd4ca7919c762fdf1462"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "29cae9965e6073bcfe8f4b4e39670f27061851e0050ac67676037f65241a766d"
+      "sha256": "3b85bd1ec249e033685be7577d9aa236d54def01baaf88b4fd30ec313659f2bd"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1018,7 +1018,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "3204d72f94b6b1d06949ea5e200cf13b4a7476d5c355f7f8d606ce71f6d02642"
+      "sha256": "5f2cd5ae3d3ef5618ba0cdef9cb3a5711c80f1471fbd3f7aa7736fbb3ad6b6ef"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3593,7 +3593,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "c59e2ab8f9c18b001a5dcdfe40686b9fe8221e8f34379f26aa43f9379c25eb5f"
+      "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3858,12 +3858,12 @@
     {
       "path": "scripts/verify-win254.mjs",
       "mode": "100644",
-      "sha256": "34dea32c8983419230481591c11458e26fe838c4641404a930f53262e54d44cc"
+      "sha256": "018bd016dd496fc2f176b021fabd42ddf967d07b24b4ad5610cf2a189d3bbb37"
     },
     {
       "path": "scripts/verify-win254.test.mjs",
       "mode": "100644",
-      "sha256": "05060fec54c3d8238c157ba7b5053232640d3f81f1ab8033d1784633609562fd"
+      "sha256": "dc7df1e0e54e48e83a60671e03a21d95c94a2d227a8f4d276ab3d57018ef20a7"
     },
     {
       "path": "scripts/vocabulary-boundary.mjs",
