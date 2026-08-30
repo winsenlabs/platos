@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "7d82f29cfc303294974e6552412cfb135a1f1ab6728b9dc97dccc4797f2a5108",
+  "evidenceSha256": "d8ffbda5e23d641707f959a74438b10a1ab02755da7f77f857f26e37cf26bab0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "e82c3c47743a99aa350ca12e6f3d5b70770c2ae0f8abae1299302a2602304bdb",
+    "aggregateSha256": "849d19fbfc54bfc3d2549b6e6ff6f89bee0ebc6dfd45368c5419ca4aa4344d03",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -225,7 +225,7 @@
       },
       {
         "path": ".env.example",
-        "sha256": "6b3bb8368eacc90d8478423a44dee359ae99946d3c078580223a1eb9e53477ae"
+        "sha256": "bc509b53317c7410758499308b25a2a9af8a6a9ee34f1f79fe69a0b6a48c3c72"
       },
       {
         "path": ".github/FUNDING.yml",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "b1a77dab20739463220ba7bd2bba4602f1498183451f6bc1cd72331933ca438f"
+        "sha256": "099d8ee5ea01214c26cf333925ed599b2aff8b802c7f1bdbd06cccf64af56de0"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -545,7 +545,7 @@
       },
       {
         "path": "apps/agent/src/agent-runtime/agent.controller.ts",
-        "sha256": "542e5d3a514a22a05a6d9e69be8eb5e668259e60a21ecae13528c40d91b3f73c"
+        "sha256": "0bdf805d5216aff40de257e882cb3858ef509a3c419a37190f449efc29abbdb1"
       },
       {
         "path": "apps/agent/src/agent-runtime/agent.service-version-lock.test.ts",
@@ -1081,11 +1081,11 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-platform-management.test.ts",
-        "sha256": "6bfa47ebc665466c3b8ef59fd5883b42e1df24b0bc13e92a0ab1418d4f25ff2b"
+        "sha256": "6e0ba2eaf4cfb48d86fbc76a1cdac34552952dcad9d08cbb8a3157f79fcfd7c4"
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
-        "sha256": "6329bcb9c98a71820103b816cc467e45f85c35ad2222c7ae01763abac2910e14"
+        "sha256": "030d23e501062feed7e327882e8549c0b2094a87a5779ddd26dc2e24e37967ea"
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-platform.module.ts",
@@ -1093,11 +1093,11 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-router.test.ts",
-        "sha256": "e843bd778939b82c32e48c8caac26f9973a6e3c11585d0ba5ae8f6caeb86526a"
+        "sha256": "c7d1915dd709c2a38ae7ef8ec3eeb4ed5f66ffd6b505e976d620aaa762febcdd"
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-router.ts",
-        "sha256": "61b11f671ede21a02e4a19c01d2ddccecf0839abe9e012c75119c427665c5090"
+        "sha256": "8085fd6d090bcc517bb2ab359c62e02e91551fdd0c61dfac26d13c33bcc3462c"
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
@@ -1133,11 +1133,11 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/stdio-transport.test.ts",
-        "sha256": "dc7e0de51f41d8947bd29d28c7a10236edde0768306562ebeeab5d2be9137d9f"
+        "sha256": "9744b1c794f4002025ecd75399814449729db4edb63eb6551bcbacfdd9a18f17"
       },
       {
         "path": "apps/agent/src/mcp-platform/stdio-transport.ts",
-        "sha256": "aad14b14c358ab923e3fb6bbcd0a89aaa06c720ddaaba124389ce40e4bdbc67c"
+        "sha256": "a1682e0c3cd8e2cbf730925011fd9b6ebefb7897992818466781eef5449f5cb0"
       },
       {
         "path": "apps/agent/src/mcp-platform/token.service.test.ts",
@@ -1197,7 +1197,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/macros.ts",
-        "sha256": "58e669c961613c7ad6b8c105ca97b30b9d273a54c250041876a15ab52593253d"
+        "sha256": "0b1b00cf0035243174bb6eb596d493421ef117dd76df7bc0987dd176f6fa73c8"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/mcp.ts",
@@ -1205,7 +1205,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/monitoring.ts",
-        "sha256": "1e5de93345bb6c4c4dee214b8221531e9c9cb8ec79f47fa45a25cd380ceaf133"
+        "sha256": "177611e88bc01bb05c4aaf7040a12aa8d0fe028bc2e7979666fe747bcb4b68f1"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/oauth.ts",
@@ -1237,7 +1237,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/reflection.ts",
-        "sha256": "e535e7756e88bd8593cd2f9190e83f4133f45d1dfd71f94e2b98a8cccea2cffd"
+        "sha256": "3ff7b9cbe5696334f43e76cd5592fe5ae4390c5e517ed349bb33a7110d294f79"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/settings.ts",
@@ -1609,19 +1609,23 @@
       },
       {
         "path": "apps/agent/src/monitoring/span-dlq.test.ts",
-        "sha256": "33141a3894d3477d7a83bc2d6db1e3299f278e87ddf7af29dcbad3143b1e5085"
+        "sha256": "ede28c6c1a78aa6ec68a5826f072071a85ec58006ed0a1de8825314b7d183c6e"
       },
       {
         "path": "apps/agent/src/monitoring/span-dlq.ts",
-        "sha256": "34f0010c4862448790900e923523d9ec16a60a9f227c1ec0cec676bbe5c25352"
+        "sha256": "46223bdd46bb1f8a211e38432c7458f944a658a56cfd4f9466afc4f957c76ff0"
       },
       {
         "path": "apps/agent/src/monitoring/spans.clickhouse-deadline.test.ts",
-        "sha256": "217e4548b2a8e000718ca22ec4bca38698f9a1f72add2babdeaa041037e55fdc"
+        "sha256": "2477ac49c804da7d7c56fe22796cdb20ed292bc7ffe731fcb7af74722fa1c2b8"
+      },
+      {
+        "path": "apps/agent/src/monitoring/spans.dlq.redis.test.ts",
+        "sha256": "fbdda1f55fefa4995beee81b9f2bcdfb128cd29e90b6a45da7dffc3ba13b294c"
       },
       {
         "path": "apps/agent/src/monitoring/spans.service.ts",
-        "sha256": "706d43ef3724695b9dae185a7db246cd2f2497f6ce15b2c9aaf1f278c238af33"
+        "sha256": "524358592aeb574a9058780b0c21f8c49239dd0c24ecf5d642eea864e596f012"
       },
       {
         "path": "apps/agent/src/monitoring/tool-audit.service.ts",
@@ -1632,8 +1636,12 @@
         "sha256": "bc561f00a39426ef7a1b461fa176549916de5a77065c1234b3d817a7e2c5bb60"
       },
       {
+        "path": "apps/agent/src/monitoring/trace-request-abort.test.ts",
+        "sha256": "d8f6af43afba4d8ed8de3f9a3367c785661ff7b6c135b53ae4811d75f1ec69c1"
+      },
+      {
         "path": "apps/agent/src/monitoring/trace.service.ts",
-        "sha256": "cf2001659f1cc35a67520cf7567e8267ccab068e71735a3664c715a3d50b40aa"
+        "sha256": "0cc8a27969c969bec3f71845deedf11f3a40065a8e90d6b9dda6fce315a8223b"
       },
       {
         "path": "apps/agent/src/monitoring/usage-ledger-cross-surface.test.ts",
@@ -1977,11 +1985,11 @@
       },
       {
         "path": "apps/agent/src/shared/clickhouse-deadline.test.ts",
-        "sha256": "9079b30bd2d60c84d431a475b517a80cf68564793133f3c4efe45b31e85d0266"
+        "sha256": "378cac66aa6f915cd591aea817e06455dd749c503ac93230b7b1d1d8bf7dc77f"
       },
       {
         "path": "apps/agent/src/shared/clickhouse-deadline.ts",
-        "sha256": "0822b2c6b7f0850ba82ce66bf953f3e0b996969244368a4788fb84920309e075"
+        "sha256": "80fe981fdca968fc97cd979eead174a782755139551fb0a9e697eea26309a340"
       },
       {
         "path": "apps/agent/src/shared/database.provider.test.ts",
@@ -2013,7 +2021,7 @@
       },
       {
         "path": "apps/agent/src/shared/env.ts",
-        "sha256": "8171c00e2a9447d3609e9aa84fe1a466cf938d79862d5b2be64019a054e730a9"
+        "sha256": "5b126b3aedd11ad11111e8f4b9a3bd8ca8fc017891263658b6e74a0ed8b0f52d"
       },
       {
         "path": "apps/agent/src/shared/external-trigger-config.test.ts",
@@ -3773,7 +3781,7 @@
       },
       {
         "path": "docker-compose.platos.yml",
-        "sha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882"
+        "sha256": "43c288e8c07cc8466b819016e9ebfc2367e859515438fea310b9b58cad125e39"
       },
       {
         "path": "docs/.gitignore",
@@ -5881,7 +5889,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "50fd416373c23213fa46e688c3a189b5883e5046327c6d0fce633b22f45203d9"
+        "sha256": "9fd33049e68c64c1600f617d5a9fd7ec066fade332b6df95e3596715b4c1db95"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11113,7 +11121,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "3a95d81931a684050d842a9607091ff8c87b56a445c86d19de187cf88cf6bc4c"
+        "sha256": "16df9cdd5ec4bc92aa27f189bb2e4edceb813232eadb6cf165a50aa7785fb066"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -14325,7 +14333,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "06dd00c8bb02e2f40d22ae076e6fcc5e69089f115000af293b0c0412ea1d9089"
+        "sha256": "ce1bb39443a9a81111304aa9e5d648ea83eee971a9ea04c8a77241fbdeff8d9a"
       },
       {
         "path": "scripts/deploy-platos.sh",
@@ -16162,7 +16170,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 24
+              "line": 6
             },
             {
               "from": "docs/win-132-trigger-writer-fence.md",
@@ -16732,6 +16740,18 @@
               "from": "package.json",
               "kind": "script-reference",
               "script": "test:postgres-memory:contract"
+            },
+            {
+              "command": "pnpm --filter platos-agent exec vitest run src/monitoring/spans.dlq.redis.test.ts",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:win-290:redis"
+            },
+            {
+              "command": "pnpm --filter platos-agent exec vitest run src/shared/clickhouse-deadline.test.ts src/monitoring/spans.clickhouse-deadline.test.ts src/monitoring/span-dlq.test.ts src/monitoring/trace-request-abort.test.ts --no-file-parallelism",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:win-290"
             },
             {
               "from": "package.json",
@@ -17513,7 +17533,17 @@
               "line": 1
             },
             {
+              "from": "apps/agent/src/monitoring/spans.dlq.redis.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "apps/agent/src/monitoring/trace-cost-agreement.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "apps/agent/src/monitoring/trace-request-abort.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -18517,8 +18547,16 @@
               "apps/agent/src/monitoring/spans.clickhouse-deadline.test.ts"
             ],
             [
+              "apps/agent/src/monitoring/spans.dlq.redis.test.ts",
+              "apps/agent/src/monitoring/spans.dlq.redis.test.ts"
+            ],
+            [
               "apps/agent/src/monitoring/trace-cost-agreement.test.ts",
               "apps/agent/src/monitoring/trace-cost-agreement.test.ts"
+            ],
+            [
+              "apps/agent/src/monitoring/trace-request-abort.test.ts",
+              "apps/agent/src/monitoring/trace-request-abort.test.ts"
             ],
             [
               "apps/agent/src/monitoring/usage-ledger-cross-surface.test.ts",
@@ -19016,7 +19054,9 @@
             "apps/agent/src/monitoring/runtime-spine-projections.test.ts",
             "apps/agent/src/monitoring/span-dlq.test.ts",
             "apps/agent/src/monitoring/spans.clickhouse-deadline.test.ts",
+            "apps/agent/src/monitoring/spans.dlq.redis.test.ts",
             "apps/agent/src/monitoring/trace-cost-agreement.test.ts",
+            "apps/agent/src/monitoring/trace-request-abort.test.ts",
             "apps/agent/src/monitoring/usage-ledger-cross-surface.test.ts",
             "apps/agent/src/monitoring/usage-ledger.test.ts",
             "apps/agent/src/oauth/oauth.controller.test.ts",
@@ -19158,7 +19198,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "c96b8ab0dbb4541480389677f6306e6fd8652d418e12b988fb9e216210ebddb1",
+      "evidenceSha256": "292c71bc479f1398a15a5ff6f4cd574fdd6f6338a5fe6c5effa860b296ef0529",
       "manifestSha256": "b9b8eed2d98a23eb5bb4a10b2d8c59357d4893ba11d025dc063a29de9c708944",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -20543,7 +20583,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 499
+              "line": 502
             }
           ],
           "reversePaths": [
@@ -22430,7 +22470,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "ad0c17693f3ecd14cf5c34ccf8ac8dcfeee1a12424dbed9dfc44485038e8978f",
+      "evidenceSha256": "16c9d4571824a8e6e9e8216d44c1454486ab30441ef120f12037866b143491b7",
       "manifestSha256": "6026965044352a11f70b85b067c972dc67310139a065fe8bf96b91532b19f44a",
       "name": "webapp",
       "ociImageClosure": {
@@ -29194,7 +29234,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 177
+              "line": 195
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -30047,7 +30087,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aab583608b0598b4623fc5676bd2edff8bc8a6710782ec92a8ad6a23053ae0b7",
+      "evidenceSha256": "736a7fcea9a0ce6007310c061e34c12d946f42f5875880eb4ed809969b338bf1",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -34228,7 +34268,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 66
+              "line": 76
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35698,7 +35738,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "137c847d49ff0ee79bf4e290e508cb21f108d82fc49f931db5c94a9fb67ff480",
+      "evidenceSha256": "f83850e4377b23fd4cd06c135234ca4a91a598cb487471e749105b2fcc22eb95",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -36128,7 +36168,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 177
+              "line": 195
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -36855,7 +36895,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "36c2fd2adbdfe486d77c782a3d72145af4e7f852a319cde345006fdcbae58dfd",
+      "evidenceSha256": "5162552f6302df5a8caa2d39191f6d6c75497e7d0d8fe5d69841a146b341d8ea",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -54946,7 +54986,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 186
+              "line": 204
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -57137,7 +57177,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "25efbcd084f39e93fd350b05c2a16a16f0506f6eabadff5486e1f1fe1fcbd0ec",
+      "evidenceSha256": "bea52cd4d20eae0950ec803785de86aa28a47a6bb8069389f0d9b43e758bbb0b",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -59257,7 +59297,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 684
+              "line": 687
             },
             {
               "from": "references/entity-docs-mcp-bridge/Dockerfile",
@@ -59809,7 +59849,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "88dff98af73cfa576a4f55dd8e7a83798d5cae22734233955d6e8e181d0c49e9",
+      "evidenceSha256": "974c23d20e0d603cf181a7afb50c051ded802480fb0735fbf1925455ac27ee11",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {

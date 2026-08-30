@@ -5,7 +5,7 @@ import { RPC_ERRORS } from "./mcp-router";
 
 /** A token-pinned view of the same McpRouter used by HTTP and SSE. */
 export interface McpStdioSession {
-  handle(request: JsonRpcRequest): Promise<JsonRpcResponse>;
+  handle(request: JsonRpcRequest, abortSignal?: AbortSignal): Promise<JsonRpcResponse>;
 }
 
 export interface McpStdioTransportOptions {
@@ -38,13 +38,22 @@ function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
  */
 export async function runMcpStdioTransport(options: McpStdioTransportOptions): Promise<void> {
   const lines = createInterface({ input: options.input, crlfDelay: Infinity });
-  const abort = () => {
+  const requestAbort = new AbortController();
+  const cancelInFlight = () => {
+    if (!requestAbort.signal.aborted) requestAbort.abort();
+  };
+  const abortTransport = () => {
+    cancelInFlight();
     lines.close();
     if (!options.input.destroyed) options.input.destroy();
   };
-  options.signal?.addEventListener("abort", abort, { once: true });
+  const onInputEnd = () => cancelInFlight();
+  const onInputClose = () => cancelInFlight();
+  options.input.once("end", onInputEnd);
+  options.input.once("close", onInputClose);
+  options.signal?.addEventListener("abort", abortTransport, { once: true });
   try {
-    if (options.signal?.aborted) abort();
+    if (options.signal?.aborted) abortTransport();
     for await (const rawLine of lines) {
       const line = rawLine.trim();
       if (!line) continue;
@@ -68,13 +77,15 @@ export async function runMcpStdioTransport(options: McpStdioTransportOptions): P
         continue;
       }
 
-      const response = await options.session.handle(parsed);
+      const response = await options.session.handle(parsed, requestAbort.signal);
       // JSON-RPC notifications have no id and MUST NOT produce a response.
       if (parsed.id === undefined) continue;
       await options.writeProtocolLine(`${JSON.stringify(response)}\n`);
     }
   } finally {
-    options.signal?.removeEventListener("abort", abort);
+    options.input.off("end", onInputEnd);
+    options.input.off("close", onInputClose);
+    options.signal?.removeEventListener("abort", abortTransport);
     lines.close();
   }
 }

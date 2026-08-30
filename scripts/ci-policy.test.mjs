@@ -28,7 +28,9 @@ const expectedCandidates = [
 const expectedInstallInstructions = new Map([
   [
     "apps/agent/Dockerfile",
-    ["RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile"],
+    [
+      "RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile",
+    ],
   ],
   [
     "apps/webapp/Dockerfile.platos",
@@ -37,7 +39,10 @@ const expectedInstallInstructions = new Map([
       "RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --prod --filter webapp... --frozen-lockfile",
     ],
   ],
-  ["internal-packages/tenancy-database/Dockerfile.migrations", ["RUN pnpm install --frozen-lockfile --prod"]],
+  [
+    "internal-packages/tenancy-database/Dockerfile.migrations",
+    ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
 ]);
 const expectedPnpmRunInstructions = new Map([
   [
@@ -57,7 +62,10 @@ const expectedPnpmRunInstructions = new Map([
       "RUN --mount=type=secret,id=sentry_auth_token SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token 2>/dev/null || true) pnpm run build:platos:webapp",
     ],
   ],
-  ["internal-packages/tenancy-database/Dockerfile.migrations", ["RUN pnpm install --frozen-lockfile --prod"]],
+  [
+    "internal-packages/tenancy-database/Dockerfile.migrations",
+    ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
 ]);
 const expectedSetupNodeCounts = new Map([
   ["ci", 3],
@@ -133,6 +141,21 @@ const expectedWorkspaceReachabilityScripts = new Map([
   ["audit:workspace-reachability", "node scripts/workspace-reachability.mjs check"],
   ["test:workspace-reachability", "node --test scripts/workspace-reachability.test.mjs"],
 ]);
+const win290Command = "pnpm test:win-290";
+const win290ScriptTarget =
+  "pnpm --filter platos-agent exec vitest run src/shared/clickhouse-deadline.test.ts src/monitoring/spans.clickhouse-deadline.test.ts src/monitoring/span-dlq.test.ts src/monitoring/trace-request-abort.test.ts --no-file-parallelism";
+const win290RedisCommand = "pnpm test:win-290:redis";
+const win290RedisScriptTarget =
+  "pnpm --filter platos-agent exec vitest run src/monitoring/spans.dlq.redis.test.ts";
+const win290RedisStepName = "WIN-290 real Redis DLQ lifecycle suite";
+const win290RedisUrl = "redis://127.0.0.1:6379";
+const expectedWin290RedisService = {
+  image: "redis:7",
+  ports: ["6379:6379"],
+  options:
+    '--health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30',
+};
+
 const expectedV1PackageScripts = new Map([
   ["build:v1", "tsc -b tsconfig.json"],
   ["clean:v1", "node scripts/arch/clean-v1.mjs"],
@@ -203,15 +226,21 @@ function parseWorkflow(workflow, label, violations) {
 
 function workflowJobs(workflow) {
   const jobs = workflow?.jobs;
-  return jobs !== null && typeof jobs === "object" && !Array.isArray(jobs) ? new Map(Object.entries(jobs)) : new Map();
+  return jobs !== null && typeof jobs === "object" && !Array.isArray(jobs)
+    ? new Map(Object.entries(jobs))
+    : new Map();
 }
 
 function workflowSteps(job) {
-  return Array.isArray(job?.steps) ? job.steps.filter((step) => step !== null && typeof step === "object") : [];
+  return Array.isArray(job?.steps)
+    ? job.steps.filter((step) => step !== null && typeof step === "object")
+    : [];
 }
 
 function executableRunValues(job) {
-  return workflowSteps(job).map((step) => step.run).filter((run) => typeof run === "string");
+  return workflowSteps(job)
+    .map((step) => step.run)
+    .filter((run) => typeof run === "string");
 }
 
 function allWorkflowSteps(workflow) {
@@ -219,9 +248,10 @@ function allWorkflowSteps(workflow) {
 }
 
 function permissionDeclarations(workflow) {
-  return [workflow?.permissions, ...[...workflowJobs(workflow).values()].map((job) => job?.permissions)].filter(
-    (permissions) => permissions !== undefined && permissions !== null
-  );
+  return [
+    workflow?.permissions,
+    ...[...workflowJobs(workflow).values()].map((job) => job?.permissions),
+  ].filter((permissions) => permissions !== undefined && permissions !== null);
 }
 
 function eventBranches(workflow, eventName) {
@@ -283,7 +313,13 @@ function shellSegments(command) {
       continue;
     }
     const pair = command.slice(index, index + 2);
-    if (character === "\n" || character === ";" || character === "|" || pair === "&&" || pair === "||") {
+    if (
+      character === "\n" ||
+      character === ";" ||
+      character === "|" ||
+      pair === "&&" ||
+      pair === "||"
+    ) {
       flush();
       if (pair === "&&" || pair === "||") index += 1;
       continue;
@@ -333,9 +369,27 @@ function executableShellArgv(segment) {
   while (index < words.length) {
     while (/^[A-Za-z_][A-Za-z0-9_]*=/u.test(words[index] ?? "")) index += 1;
     const wrapper = words[index];
-    if (!new Set(["env", "sudo", "command", "builtin", "exec", "time", "nice", "nohup", "then", "if", "while", "until", "!"]).has(wrapper)) break;
+    if (
+      !new Set([
+        "env",
+        "sudo",
+        "command",
+        "builtin",
+        "exec",
+        "time",
+        "nice",
+        "nohup",
+        "then",
+        "if",
+        "while",
+        "until",
+        "!",
+      ]).has(wrapper)
+    )
+      break;
     index += 1;
-    while (words[index]?.startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(words[index] ?? "")) index += 1;
+    while (words[index]?.startsWith("-") || /^[A-Za-z_][A-Za-z0-9_]*=/u.test(words[index] ?? ""))
+      index += 1;
   }
   const argv = words.slice(index);
   if (argv.length > 0) argv[0] = argv[0].replace(/^.*\//u, "");
@@ -348,8 +402,29 @@ function executableRunCommands(job) {
 }
 
 const forbiddenEvidenceKeywords = new Set([
-  "if", "then", "else", "elif", "fi", "case", "esac", "for", "select", "while", "until", "do", "done",
-  "function", "eval", "source", ".", "bash", "sh", "dash", "zsh", "ksh", "ash",
+  "if",
+  "then",
+  "else",
+  "elif",
+  "fi",
+  "case",
+  "esac",
+  "for",
+  "select",
+  "while",
+  "until",
+  "do",
+  "done",
+  "function",
+  "eval",
+  "source",
+  ".",
+  "bash",
+  "sh",
+  "dash",
+  "zsh",
+  "ksh",
+  "ash",
 ]);
 
 function reviewedTopLevelCommands(run) {
@@ -362,8 +437,10 @@ function reviewedTopLevelCommands(run) {
     if (
       !/^[A-Za-z0-9_./:@*+=,-]+(?:\s+[A-Za-z0-9_./:@*+=,-]+)*$/u.test(line) ||
       words.some((word) => forbiddenEvidenceKeywords.has(word.toLowerCase())) ||
-      ((words[0] === "node" || words[0] === "python" || words[0] === "python3") && words.some((word) => ["-e", "-p", "-c"].includes(word)))
-    ) return { commands: [], valid: false };
+      ((words[0] === "node" || words[0] === "python" || words[0] === "python3") &&
+        words.some((word) => ["-e", "-p", "-c"].includes(word)))
+    )
+      return { commands: [], valid: false };
     commands.push(line);
   }
   return { commands, valid: commands.length > 0 };
@@ -396,7 +473,10 @@ function dockerRunInstructions(dockerfile) {
 }
 
 function pnpmExecutableToken(word) {
-  const normalized = word.replace(/^[`$({[]+/u, "").replace(/[,\]})]+$/u, "").replace(/^.*\//u, "");
+  const normalized = word
+    .replace(/^[`$({[]+/u, "")
+    .replace(/[,\]})]+$/u, "")
+    .replace(/^.*\//u, "");
   return normalized === "pnpm" || normalized === "pnpx";
 }
 
@@ -410,7 +490,11 @@ function corepackPnpmToken(word) {
 }
 
 function jsonPnpmInvocation(argv) {
-  if (!Array.isArray(argv) || !argv.every((argument) => typeof argument === "string") || argv.length === 0) {
+  if (
+    !Array.isArray(argv) ||
+    !argv.every((argument) => typeof argument === "string") ||
+    argv.length === 0
+  ) {
     return { ambiguous: true, pnpmIndex: null, argv: [] };
   }
   let command = [...argv];
@@ -446,12 +530,13 @@ function jsonPnpmInvocation(argv) {
         argument === "-S" || argument === "--split-string"
           ? command[index + 1]
           : argument.startsWith("--split-string=")
-            ? argument.slice("--split-string=".length)
-            : argument.startsWith("-S") && argument.length > 2
-              ? argument.slice(2)
-              : null;
+          ? argument.slice("--split-string=".length)
+          : argument.startsWith("-S") && argument.length > 2
+          ? argument.slice(2)
+          : null;
       if (splitString !== null) {
-        if (typeof splitString !== "string") return { ambiguous: true, pnpmIndex: null, argv: command };
+        if (typeof splitString !== "string")
+          return { ambiguous: true, pnpmIndex: null, argv: command };
         const splitArgv = shellWords(splitString);
         if (splitArgv.length === 0) return { ambiguous: true, pnpmIndex: null, argv: command };
         const consumed = argument === "-S" || argument === "--split-string" ? 2 : 1;
@@ -496,7 +581,9 @@ function pnpmInstallInvocation({ ambiguous, pnpmIndex, argv }) {
   if (pnpmIndex === null) return false;
   return argv
     .slice(pnpmIndex + 1)
-    .some((argument) => argument === "install" || argument === "i" || dynamicCommandToken(argument));
+    .some(
+      (argument) => argument === "install" || argument === "i" || dynamicCommandToken(argument)
+    );
 }
 
 function containsExecutablePnpmInstall(instruction) {
@@ -515,7 +602,9 @@ function containsExecutablePnpmInstall(instruction) {
     if (pnpmIndex === -1) return false;
     return words
       .slice(pnpmIndex + 1)
-      .some((argument) => argument === "install" || argument === "i" || dynamicCommandToken(argument));
+      .some(
+        (argument) => argument === "install" || argument === "i" || dynamicCommandToken(argument)
+      );
   });
 }
 
@@ -541,7 +630,9 @@ function dockerPnpmRunInstructions(dockerfile) {
 }
 
 function hasInterpreterCommandPayload(argv) {
-  const interpreterIndex = argv.findIndex((word) => shellInterpreters.has(word.replace(/^.*\//u, "").toLowerCase()));
+  const interpreterIndex = argv.findIndex((word) =>
+    shellInterpreters.has(word.replace(/^.*\//u, "").toLowerCase())
+  );
   if (interpreterIndex === -1) return false;
   return argv
     .slice(interpreterIndex + 1)
@@ -553,12 +644,18 @@ function containsDockerInterpreterPayload(instruction) {
   if (command.startsWith("[")) {
     try {
       const argv = JSON.parse(command);
-      return Array.isArray(argv) && argv.every((argument) => typeof argument === "string") && hasInterpreterCommandPayload(argv);
+      return (
+        Array.isArray(argv) &&
+        argv.every((argument) => typeof argument === "string") &&
+        hasInterpreterCommandPayload(argv)
+      );
     } catch {
       return true;
     }
   }
-  return shellSegments(command).some((segment) => hasInterpreterCommandPayload(shellWords(segment)));
+  return shellSegments(command).some((segment) =>
+    hasInterpreterCommandPayload(shellWords(segment))
+  );
 }
 
 function countExact(values, expected) {
@@ -585,14 +682,22 @@ function normalizedRunCommands(job) {
 
 function relocatedSelector(command) {
   const vitestMarker = " exec vitest run ";
-  return command.includes(vitestMarker) ? command.slice(command.indexOf(vitestMarker) + vitestMarker.length) : command;
+  return command.includes(vitestMarker)
+    ? command.slice(command.indexOf(vitestMarker) + vitestMarker.length)
+    : command;
 }
 
 function policyViolations(input) {
   const violations = [];
   const workflows = new Map([
     ["ci", { label: "ci.yml", workflow: parseWorkflow(input.ci, "ci.yml", violations) }],
-    ["buildImages", { label: "build-images.yml", workflow: parseWorkflow(input.buildImages, "build-images.yml", violations) }],
+    [
+      "buildImages",
+      {
+        label: "build-images.yml",
+        workflow: parseWorkflow(input.buildImages, "build-images.yml", violations),
+      },
+    ],
   ]);
 
   for (const { label, workflow } of workflows.values()) {
@@ -621,16 +726,21 @@ function policyViolations(input) {
   const buildActionSteps = workflowSteps(buildCandidatesJob).filter(
     (step) => typeof step.uses === "string" && step.uses.startsWith("docker/build-push-action@")
   );
-  if (buildActionSteps.length !== 1) violations.push("build-candidates must have exactly one build-push action");
+  if (buildActionSteps.length !== 1)
+    violations.push("build-candidates must have exactly one build-push action");
   const buildAction = buildActionSteps[0];
   if (buildAction?.with?.file !== "${{ matrix.dockerfile }}") {
     violations.push("build-push action file must correlate to matrix.dockerfile");
   }
 
   for (const [file, expectedInstructions] of expectedInstallInstructions) {
-    const interpreterPayloads = dockerRunInstructions(input.dockerfiles[file] ?? "").filter(containsDockerInterpreterPayload);
+    const interpreterPayloads = dockerRunInstructions(input.dockerfiles[file] ?? "").filter(
+      containsDockerInterpreterPayload
+    );
     if (interpreterPayloads.length > 0) {
-      violations.push(`${file} must not contain shell interpreter command payload RUN instruction(s)`);
+      violations.push(
+        `${file} must not contain shell interpreter command payload RUN instruction(s)`
+      );
     }
     const installs = dockerInstallInstructions(input.dockerfiles[file] ?? "");
     if (installs.length === 0) violations.push(`${file} executable pnpm install selector is empty`);
@@ -639,7 +749,9 @@ function policyViolations(input) {
     }
     const pnpmRuns = dockerPnpmRunInstructions(input.dockerfiles[file] ?? "");
     if (JSON.stringify(pnpmRuns) !== JSON.stringify(expectedPnpmRunInstructions.get(file))) {
-      violations.push(`${file} must contain only its exact executable pnpm/pnpx RUN instruction(s)`);
+      violations.push(
+        `${file} must contain only its exact executable pnpm/pnpx RUN instruction(s)`
+      );
     }
     if (installs.some((instruction) => instruction.includes("--ignore-scripts"))) {
       violations.push(`${file} shipping installs must execute lifecycle scripts`);
@@ -649,14 +761,17 @@ function policyViolations(input) {
   if (input.nvmrc.trim() !== "v22.14.0") violations.push(".nvmrc must pin exactly v22.14.0");
   for (const [key, expectedCount] of expectedSetupNodeCounts) {
     const { label, workflow } = workflows.get(key);
-    const setupNodeSteps = allWorkflowSteps(workflow).filter((step) =>
-      typeof step.uses === "string" && step.uses.startsWith("actions/setup-node@")
+    const setupNodeSteps = allWorkflowSteps(workflow).filter(
+      (step) => typeof step.uses === "string" && step.uses.startsWith("actions/setup-node@")
     );
     if (setupNodeSteps.length !== expectedCount) {
       violations.push(`${label} must contain exactly ${expectedCount} setup-node step(s)`);
     }
     for (const step of setupNodeSteps) {
-      if (step.with?.["node-version-file"] !== ".nvmrc" || Object.hasOwn(step.with ?? {}, "node-version")) {
+      if (
+        step.with?.["node-version-file"] !== ".nvmrc" ||
+        Object.hasOwn(step.with ?? {}, "node-version")
+      ) {
         violations.push(`${label} setup-node must derive its version from .nvmrc`);
       }
     }
@@ -665,45 +780,86 @@ function policyViolations(input) {
   const ciWorkflow = workflows.get("ci").workflow;
   const ciJobs = workflowJobs(ciWorkflow);
   const typecheckSteps = workflowSteps(ciJobs.get("typecheck"));
-  const reachabilitySteps = typecheckSteps.filter((step) => step.name === "WIN-253 workspace reachability evidence");
-  if (reachabilitySteps.length !== 1) violations.push("CI must contain exactly one WIN-253 workspace reachability evidence step");
+  const reachabilitySteps = typecheckSteps.filter(
+    (step) => step.name === "WIN-253 workspace reachability evidence"
+  );
+  if (reachabilitySteps.length !== 1)
+    violations.push("CI must contain exactly one WIN-253 workspace reachability evidence step");
   const reachabilityStep = reachabilitySteps[0] ?? {};
-  if (reachabilityStep.if !== undefined || reachabilityStep["continue-on-error"] !== undefined || reachabilityStep.shell !== undefined) {
-    violations.push("WIN-253 workspace reachability evidence step must be unconditional and fail-fast");
+  if (
+    reachabilityStep.if !== undefined ||
+    reachabilityStep["continue-on-error"] !== undefined ||
+    reachabilityStep.shell !== undefined
+  ) {
+    violations.push(
+      "WIN-253 workspace reachability evidence step must be unconditional and fail-fast"
+    );
   }
   const typecheckJob = ciJobs.get("typecheck") ?? {};
   if (typecheckJob.if !== undefined || typecheckJob["continue-on-error"] !== undefined) {
     violations.push("WIN-253 workspace reachability job must be unconditional and fail-fast");
   }
-  if (ciWorkflow.defaults?.run?.shell !== undefined || typecheckJob.defaults?.run?.shell !== undefined) {
-    violations.push("WIN-253 workspace reachability step must not inherit workflow or job shell defaults");
+  if (
+    ciWorkflow.defaults?.run?.shell !== undefined ||
+    typecheckJob.defaults?.run?.shell !== undefined
+  ) {
+    violations.push(
+      "WIN-253 workspace reachability step must not inherit workflow or job shell defaults"
+    );
   }
   const reviewedReachability = reviewedTopLevelCommands(reachabilityStep.run);
-  if (!reviewedReachability.valid || JSON.stringify(reviewedReachability.commands) !== JSON.stringify(workspaceReachabilityCommands)) {
-    violations.push("WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence");
+  if (
+    !reviewedReachability.valid ||
+    JSON.stringify(reviewedReachability.commands) !== JSON.stringify(workspaceReachabilityCommands)
+  ) {
+    violations.push(
+      "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence"
+    );
   }
-  const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter((step) => step.name === "V1 M0 executable evidence gates");
-  if (v1EvidenceSteps.length !== 1) violations.push("CI must contain exactly one V1 executable evidence step");
+  const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter(
+    (step) => step.name === "V1 M0 executable evidence gates"
+  );
+  if (v1EvidenceSteps.length !== 1)
+    violations.push("CI must contain exactly one V1 executable evidence step");
   const v1EvidenceStep = v1EvidenceSteps[0] ?? {};
-  if (v1EvidenceStep.if !== undefined || v1EvidenceStep["continue-on-error"] !== undefined || v1EvidenceStep.shell !== undefined) {
+  if (
+    v1EvidenceStep.if !== undefined ||
+    v1EvidenceStep["continue-on-error"] !== undefined ||
+    v1EvidenceStep.shell !== undefined
+  ) {
     violations.push("V1 evidence step must be unconditional and fail-fast");
   }
   const reviewedEvidence = reviewedTopLevelCommands(v1EvidenceStep.run);
-  if (!reviewedEvidence.valid || JSON.stringify(reviewedEvidence.commands) !== JSON.stringify(expectedV1EvidenceCommands)) {
+  if (
+    !reviewedEvidence.valid ||
+    JSON.stringify(reviewedEvidence.commands) !== JSON.stringify(expectedV1EvidenceCommands)
+  ) {
     violations.push("V1 evidence script must contain only reviewed top-level simple commands");
   }
   const v1Lines = reviewedEvidence.commands;
-  const allCiLines = [...ciJobs.values()].flatMap((job) => executableRunValues(job))
-    .flatMap((run) => run.split("\n").map((line) => line.trim()).filter(Boolean));
+  const allCiLines = [...ciJobs.values()]
+    .flatMap((job) => executableRunValues(job))
+    .flatMap((run) =>
+      run
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+    );
   for (const command of workspaceReachabilityCommands) {
     if (countExact(allCiLines, command) !== 1) {
-      violations.push(`CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`);
+      violations.push(
+        `CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`
+      );
     }
   }
   let previousGateIndex = -1;
   for (const command of v1ReleaseGateCommands) {
     const gateIndex = v1Lines.indexOf(command);
-    if (countExact(v1Lines, command) !== 1 || countExact(allCiLines, command) !== 1 || gateIndex <= previousGateIndex) {
+    if (
+      countExact(v1Lines, command) !== 1 ||
+      countExact(allCiLines, command) !== 1 ||
+      gateIndex <= previousGateIndex
+    ) {
       violations.push(`CI must execute fail-fast V1 gate exactly once in order: ${command}`);
     }
     previousGateIndex = gateIndex;
@@ -711,8 +867,14 @@ function policyViolations(input) {
   let previousGovernanceIndex = v1Lines.indexOf("pnpm test:ci-policy");
   for (const command of repositoryGovernanceCommands) {
     const gateIndex = v1Lines.indexOf(command);
-    if (countExact(v1Lines, command) !== 1 || countExact(allCiLines, command) !== 1 || gateIndex <= previousGovernanceIndex) {
-      violations.push(`CI must execute fail-fast repository governance gate exactly once in order: ${command}`);
+    if (
+      countExact(v1Lines, command) !== 1 ||
+      countExact(allCiLines, command) !== 1 ||
+      gateIndex <= previousGovernanceIndex
+    ) {
+      violations.push(
+        `CI must execute fail-fast repository governance gate exactly once in order: ${command}`
+      );
     }
     previousGovernanceIndex = gateIndex;
   }
@@ -720,7 +882,10 @@ function policyViolations(input) {
   const allCiCommands = [...ciJobs.values()].flatMap((job) => normalizedRunCommands(job));
   const allCiRunValues = [...ciJobs.values()].flatMap(executableRunValues);
   const webappTypecheck = "pnpm --filter webapp typecheck";
-  if (countExact(typecheckCommands, webappTypecheck) !== 1 || countExact(allCiCommands, webappTypecheck) !== 1) {
+  if (
+    countExact(typecheckCommands, webappTypecheck) !== 1 ||
+    countExact(allCiCommands, webappTypecheck) !== 1
+  ) {
     violations.push("webapp typecheck must be one executable command scoped to the typecheck job");
   }
 
@@ -732,16 +897,25 @@ function policyViolations(input) {
   }
   const packageScripts = packageManifest.scripts ?? {};
   if (Object.hasOwn(packageManifest, "workspaces")) {
-    violations.push("package.json must not declare workspaces; pnpm-workspace.yaml is authoritative");
+    violations.push(
+      "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative"
+    );
   }
   for (const [name, target] of expectedV1PackageScripts) {
-    if (packageScripts[name] !== target) violations.push(`package.json must wire exact V1 script ${name}: ${target}`);
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact V1 script ${name}: ${target}`);
   }
   for (const [name, target] of expectedRepositoryGovernanceScripts) {
-    if (packageScripts[name] !== target) violations.push(`package.json must wire exact repository governance script ${name}: ${target}`);
+    if (packageScripts[name] !== target)
+      violations.push(
+        `package.json must wire exact repository governance script ${name}: ${target}`
+      );
   }
   for (const [name, target] of expectedWorkspaceReachabilityScripts) {
-    if (packageScripts[name] !== target) violations.push(`package.json must wire exact workspace reachability script ${name}: ${target}`);
+    if (packageScripts[name] !== target)
+      violations.push(
+        `package.json must wire exact workspace reachability script ${name}: ${target}`
+      );
   }
   if (packageScripts.prepare !== `node ${prepareTarget}`) {
     violations.push(`package.json prepare must execute ${prepareTarget}`);
@@ -750,7 +924,9 @@ function policyViolations(input) {
   const agentInstall = agentDockerfile.indexOf("pnpm install --frozen-lockfile");
   const agentRepositoryCopy = agentDockerfile.indexOf("COPY . .");
   if (agentRepositoryCopy === -1 || agentRepositoryCopy > agentInstall) {
-    violations.push(`apps/agent/Dockerfile must make ${prepareTarget} available before its shipping install`);
+    violations.push(
+      `apps/agent/Dockerfile must make ${prepareTarget} available before its shipping install`
+    );
   }
   const webappDockerfile = input.dockerfiles["apps/webapp/Dockerfile.platos"] ?? "";
   const prepareCopyIndex = webappDockerfile.indexOf(webappPrepareCopy);
@@ -763,7 +939,9 @@ function policyViolations(input) {
     prepareCopyIndex > devStageIndex ||
     prepareCopyIndex > productionStageIndex
   ) {
-    violations.push(`apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`);
+    violations.push(
+      `apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`
+    );
   }
   if (packageScripts["test:ci-policy"] !== "node --test scripts/ci-policy.test.mjs") {
     violations.push("package.json must wire the CI policy test executable");
@@ -774,6 +952,70 @@ function policyViolations(input) {
   if (countExact(typecheckCommands, "pnpm test:ci-policy") !== 1) {
     violations.push("typecheck job must execute the wired CI policy test exactly once");
   }
+  if (packageScripts["test:win-290"] !== win290ScriptTarget) {
+    violations.push("package.json must wire the exact focused WIN-290 suite");
+  }
+  if (
+    countExact(typecheckCommands, win290Command) !== 1 ||
+    countExact(allCiCommands, win290Command) !== 1
+  ) {
+    violations.push("CI must execute the focused WIN-290 suite exactly once in typecheck");
+  }
+  if (packageScripts["test:win-290:redis"] !== win290RedisScriptTarget) {
+    violations.push("package.json must wire the exact WIN-290 real Redis DLQ lifecycle suite");
+  }
+  const win290RedisSteps = typecheckSteps.filter((step) => step.name === win290RedisStepName);
+  if (win290RedisSteps.length !== 1) {
+    violations.push(
+      "CI must contain exactly one WIN-290 real Redis DLQ lifecycle step in typecheck"
+    );
+  }
+  const win290RedisStep = win290RedisSteps[0] ?? {};
+  if (
+    win290RedisStep.if !== undefined ||
+    win290RedisStep["continue-on-error"] !== undefined ||
+    win290RedisStep.shell !== undefined
+  ) {
+    violations.push("WIN-290 real Redis DLQ lifecycle step must be unconditional and fail-fast");
+  }
+  if (typecheckJob.if !== undefined || typecheckJob["continue-on-error"] !== undefined) {
+    violations.push("WIN-290 real Redis DLQ lifecycle job must be unconditional and fail-fast");
+  }
+  if (
+    ciWorkflow.defaults?.run?.shell !== undefined ||
+    typecheckJob.defaults?.run?.shell !== undefined
+  ) {
+    violations.push(
+      "WIN-290 real Redis DLQ lifecycle step must not inherit workflow or job shell defaults"
+    );
+  }
+  const reviewedWin290Redis = reviewedTopLevelCommands(win290RedisStep.run);
+  if (
+    !reviewedWin290Redis.valid ||
+    JSON.stringify(reviewedWin290Redis.commands) !== JSON.stringify([win290RedisCommand])
+  ) {
+    violations.push("WIN-290 real Redis DLQ lifecycle step must execute only its exact command");
+  }
+  if (
+    JSON.stringify(win290RedisStep.env) !==
+    JSON.stringify({ PLATOS_TEST_REDIS_URL: win290RedisUrl })
+  ) {
+    violations.push("WIN-290 real Redis DLQ lifecycle step must set the exact Redis service URL");
+  }
+  if (
+    JSON.stringify(typecheckJob.services?.["win290-redis"]) !==
+    JSON.stringify(expectedWin290RedisService)
+  ) {
+    violations.push("typecheck job must provide the exact dedicated Redis 7 service for WIN-290");
+  }
+  if (
+    countExact(typecheckCommands, win290RedisCommand) !== 1 ||
+    countExact(allCiCommands, win290RedisCommand) !== 1
+  ) {
+    violations.push(
+      "CI must execute the WIN-290 real Redis DLQ lifecycle suite exactly once in typecheck"
+    );
+  }
 
   const persistedStateCommands = normalizedRunCommands(buildJobs.get("persisted-state"));
   for (const command of relocatedCommands) {
@@ -783,7 +1025,11 @@ function policyViolations(input) {
     if (countSubstring(allCiRunValues, command) !== 1) {
       violations.push(`CI must execute relocated command exactly once across all jobs: ${command}`);
     }
-    if (persistedStateCommands.some((persistedCommand) => persistedCommand.includes(relocatedSelector(command)))) {
+    if (
+      persistedStateCommands.some((persistedCommand) =>
+        persistedCommand.includes(relocatedSelector(command))
+      )
+    ) {
       violations.push(`persisted-state job must not execute relocated command: ${command}`);
     }
   }
@@ -791,14 +1037,21 @@ function policyViolations(input) {
   const buildSteps = allWorkflowSteps(buildWorkflow);
   const permissions = permissionDeclarations(buildWorkflow);
   if (
-    permissions.some((declaration) => declaration !== null && typeof declaration === "object" && declaration.packages === "write")
+    permissions.some(
+      (declaration) =>
+        declaration !== null && typeof declaration === "object" && declaration.packages === "write"
+    )
   ) {
     violations.push("build-images grants package write permission");
   }
   if (permissions.some((declaration) => declaration === "write-all")) {
     violations.push("build-images grants write-all permission");
   }
-  if (buildSteps.some((step) => typeof step.uses === "string" && step.uses.startsWith("docker/login-action@"))) {
+  if (
+    buildSteps.some(
+      (step) => typeof step.uses === "string" && step.uses.startsWith("docker/login-action@")
+    )
+  ) {
     violations.push("build-images contains a registry login action");
   }
   if (buildAction?.with?.push !== false) violations.push("build-push action must keep push false");
@@ -806,13 +1059,18 @@ function policyViolations(input) {
   if (typeof outputs !== "string" || /\btype\s*=\s*(?:registry|image)\b/iu.test(outputs)) {
     violations.push("build-push action contains a registry-capable exporter");
   }
-  const shellArgv = [...buildJobs.values()].flatMap(executableRunCommands).map(executableShellArgv).filter((argv) => argv.length > 0);
+  const shellArgv = [...buildJobs.values()]
+    .flatMap(executableRunCommands)
+    .map(executableShellArgv)
+    .filter((argv) => argv.length > 0);
   if (
     shellArgv.some((argv) => {
       const [tool, ...arguments_] = argv.map((word) => word.toLowerCase());
       if (tool === "eval") return true;
       if (!shellInterpreters.has(tool)) return false;
-      return arguments_.some((argument) => argument === "--command" || /^-[a-z]*c[a-z]*$/iu.test(argument));
+      return arguments_.some(
+        (argument) => argument === "--command" || /^-[a-z]*c[a-z]*$/iu.test(argument)
+      );
     })
   ) {
     violations.push("build-images contains executable shell command indirection");
@@ -820,9 +1078,11 @@ function policyViolations(input) {
   if (
     shellArgv.some((argv) => {
       const [tool, ...arguments_] = argv.map((word) => word.toLowerCase());
-      return (tool === "docker" && arguments_.includes("login")) ||
+      return (
+        (tool === "docker" && arguments_.includes("login")) ||
         (tool === "regctl" && arguments_.includes("login")) ||
-        ((tool === "oras" || tool === "skopeo") && arguments_.includes("login"));
+        ((tool === "oras" || tool === "skopeo") && arguments_.includes("login"))
+      );
     })
   ) {
     violations.push("build-images contains an executable shell registry login");
@@ -844,7 +1104,8 @@ function policyViolations(input) {
       return arguments_.some(
         (argument, index) =>
           /^(?:--output|-o)=?type=(?:registry|image)(?:,|$)/iu.test(argument) ||
-          (/^(?:--output|-o)$/iu.test(argument) && /^type=(?:registry|image)(?:,|$)/iu.test(arguments_[index + 1] ?? ""))
+          (/^(?:--output|-o)$/iu.test(argument) &&
+            /^type=(?:registry|image)(?:,|$)/iu.test(arguments_[index + 1] ?? ""))
       );
     })
   ) {
@@ -852,7 +1113,9 @@ function policyViolations(input) {
   }
   if (
     shellArgv.some((argv) =>
-      /(?:deploy-platos\.sh|trigger\.dev@\S+\s+(?:deploy|promote)|kubectl\s+apply|helm\s+(?:install|upgrade))/u.test(argv.join(" "))
+      /(?:deploy-platos\.sh|trigger\.dev@\S+\s+(?:deploy|promote)|kubectl\s+apply|helm\s+(?:install|upgrade))/u.test(
+        argv.join(" ")
+      )
     )
   ) {
     violations.push("build-images contains an executable deployment command");
@@ -867,7 +1130,11 @@ function replaceNth(sourceText, before, after, occurrence) {
   let found = -1;
   for (let index = 0; index <= occurrence; index += 1) {
     found = sourceText.indexOf(before, cursor);
-    assert.notEqual(found, -1, `mutation source is missing occurrence ${occurrence + 1} of ${JSON.stringify(before)}`);
+    assert.notEqual(
+      found,
+      -1,
+      `mutation source is missing occurrence ${occurrence + 1} of ${JSON.stringify(before)}`
+    );
     cursor = found + before.length;
   }
   const changed = `${sourceText.slice(0, found)}${after}${sourceText.slice(found + before.length)}`;
@@ -880,12 +1147,22 @@ function replaceAfterNthAnchor(sourceText, anchor, before, after, occurrence) {
   let anchorIndex = -1;
   for (let index = 0; index <= occurrence; index += 1) {
     anchorIndex = sourceText.indexOf(anchor, anchorCursor);
-    assert.notEqual(anchorIndex, -1, `mutation source is missing occurrence ${occurrence + 1} of ${JSON.stringify(anchor)}`);
+    assert.notEqual(
+      anchorIndex,
+      -1,
+      `mutation source is missing occurrence ${occurrence + 1} of ${JSON.stringify(anchor)}`
+    );
     anchorCursor = anchorIndex + anchor.length;
   }
   const replacementIndex = sourceText.indexOf(before, anchorCursor);
-  assert.notEqual(replacementIndex, -1, `anchored mutation source is missing ${JSON.stringify(before)}`);
-  const changed = `${sourceText.slice(0, replacementIndex)}${after}${sourceText.slice(replacementIndex + before.length)}`;
+  assert.notEqual(
+    replacementIndex,
+    -1,
+    `anchored mutation source is missing ${JSON.stringify(before)}`
+  );
+  const changed = `${sourceText.slice(0, replacementIndex)}${after}${sourceText.slice(
+    replacementIndex + before.length
+  )}`;
   assert.notEqual(changed, sourceText, "anchored fixture mutation must change source");
   return changed;
 }
@@ -895,7 +1172,10 @@ function mutateFixture(input, key, before, after, options = {}) {
   assert.equal(typeof original, "string", `missing string fixture ${key}`);
   const changed = options.all
     ? (() => {
-        assert.ok(original.includes(before), `${key} mutation source is missing ${JSON.stringify(before)}`);
+        assert.ok(
+          original.includes(before),
+          `${key} mutation source is missing ${JSON.stringify(before)}`
+        );
         return original.replaceAll(before, after);
       })()
     : replaceNth(original, before, after, options.occurrence ?? 0);
@@ -912,7 +1192,10 @@ function mutateDockerfile(input, file, before, after, options = {}) {
   assert.equal(typeof original, "string", `missing Dockerfile fixture ${file}`);
   const changed = options.all
     ? (() => {
-        assert.ok(original.includes(before), `${file} mutation source is missing ${JSON.stringify(before)}`);
+        assert.ok(
+          original.includes(before),
+          `${file} mutation source is missing ${JSON.stringify(before)}`
+        );
         return original.replaceAll(before, after);
       })()
     : replaceNth(original, before, after, options.occurrence ?? 0);
@@ -960,16 +1243,39 @@ function insertWorkflowJobStep(input, key, jobName, step) {
 
 test("committed CI and image-build policy is executable, correlated, and complete", () => {
   assert.equal(expectedCandidates.length, 3, "candidate selector must be non-empty and explicit");
-  assert.equal(shippingDockerfiles.length, 3, "shipping Dockerfile selector must be non-empty and explicit");
   assert.equal(
-    [...expectedInstallInstructions.values()].reduce((total, instructions) => total + instructions.length, 0),
+    shippingDockerfiles.length,
+    3,
+    "shipping Dockerfile selector must be non-empty and explicit"
+  );
+  assert.equal(
+    [...expectedInstallInstructions.values()].reduce(
+      (total, instructions) => total + instructions.length,
+      0
+    ),
     4,
     "shipping install selector must cover all four executable installs"
   );
-  assert.equal(relocatedCommands.length, 7, "relocated command selector must cover all seven commands");
-  assert.equal(v1ReleaseGateCommands.length, 8, "V1 release gate selector must cover generator, foundation, and six commands");
-  assert.equal(repositoryGovernanceCommands.length, 5, "repository governance selector must cover manifest and hook policy commands");
-  assert.equal(workspaceReachabilityCommands.length, 2, "workspace reachability selector must cover test then audit");
+  assert.equal(
+    relocatedCommands.length,
+    7,
+    "relocated command selector must cover all seven commands"
+  );
+  assert.equal(
+    v1ReleaseGateCommands.length,
+    8,
+    "V1 release gate selector must cover generator, foundation, and six commands"
+  );
+  assert.equal(
+    repositoryGovernanceCommands.length,
+    5,
+    "repository governance selector must cover manifest and hook policy commands"
+  );
+  assert.equal(
+    workspaceReachabilityCommands.length,
+    2,
+    "workspace reachability selector must cover test then audit"
+  );
   assert.deepEqual(policyViolations(fixtures()), []);
 });
 
@@ -1009,7 +1315,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     controls.push({
       name: `${file} non-empty executable install selector`,
       expected: `${file} must contain only its exact frozen pnpm install RUN instruction(s)`,
-      mutate: (input) => mutateDockerfile(input, file, "pnpm install", "# pnpm install", { all: true }),
+      mutate: (input) =>
+        mutateDockerfile(input, file, "pnpm install", "# pnpm install", { all: true }),
     });
   }
 
@@ -1020,7 +1327,9 @@ test("CI policy controls fail under generated semantic source mutations", async 
         name: `${label} setup-node ${occurrence + 1}`,
         expected: `${label} setup-node must derive its version from .nvmrc`,
         mutate: (input) =>
-          mutateFixture(input, key, "node-version-file: .nvmrc", "node-version: 20.20.0", { occurrence }),
+          mutateFixture(input, key, "node-version-file: .nvmrc", "node-version: 20.20.0", {
+            occurrence,
+          }),
       });
     }
   }
@@ -1054,7 +1363,11 @@ test("CI policy controls fail under generated semantic source mutations", async 
       {
         name: `globally unique repository governance gate ${command}`,
         expected: `CI must execute fail-fast repository governance gate exactly once in order: ${command}`,
-        mutate: (input) => insertWorkflowJobStep(input, "ci", "cross-scope-isolation", { name: "Duplicate governance gate", run: command }),
+        mutate: (input) =>
+          insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+            name: "Duplicate governance gate",
+            run: command,
+          }),
       },
     ]),
     ...workspaceReachabilityCommands.flatMap((command) => [
@@ -1066,18 +1379,24 @@ test("CI policy controls fail under generated semantic source mutations", async 
       {
         name: `globally duplicated WIN-253 workspace reachability gate ${command}`,
         expected: `CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`,
-        mutate: (input) => insertWorkflowJobStep(input, "ci", "cross-scope-isolation", { name: "Duplicate reachability gate", run: command }),
+        mutate: (input) =>
+          insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+            name: "Duplicate reachability gate",
+            run: command,
+          }),
       },
     ]),
     {
       name: "reordered WIN-253 workspace reachability gates",
-      expected: "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
-      mutate: (input) => mutateFixture(
-        input,
-        "ci",
-        workspaceReachabilityCommands.join("\n          "),
-        [...workspaceReachabilityCommands].reverse().join("\n          ")
-      ),
+      expected:
+        "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          workspaceReachabilityCommands.join("\n          "),
+          [...workspaceReachabilityCommands].reverse().join("\n          ")
+        ),
     },
     ...[
       ["if false", ["if false; then", workspaceReachabilityCommands[0], "fi"]],
@@ -1087,7 +1406,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
       ["exec true", ["exec true", workspaceReachabilityCommands[0]]],
     ].map(([name, lines]) => ({
       name: `WIN-253 workspace reachability ${name} cannot hide or terminate the gate`,
-      expected: "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
+      expected:
+        "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
       mutate: (input) => wrapEvidenceCommand(input, workspaceReachabilityCommands[0], lines),
     })),
     ...[
@@ -1096,7 +1416,10 @@ test("CI policy controls fail under generated semantic source mutations", async 
       ["for loop", ["for x in one; do", repositoryGovernanceCommands[0], "done"]],
       ["while loop", ["while false; do", repositoryGovernanceCommands[0], "done"]],
       ["until loop", ["until true; do", repositoryGovernanceCommands[0], "done"]],
-      ["function", ["governance_gate() {", repositoryGovernanceCommands[0], "}", "governance_gate"]],
+      [
+        "function",
+        ["governance_gate() {", repositoryGovernanceCommands[0], "}", "governance_gate"],
+      ],
       ["subshell", ["(", repositoryGovernanceCommands[0], ")"]],
       ["eval", [`eval '${repositoryGovernanceCommands[0]}'`]],
       ["interpreter wrapper", [`bash -c '${repositoryGovernanceCommands[0]}'`]],
@@ -1110,17 +1433,35 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "root package workspace graph cannot reappear",
       expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
-      mutate: (input) => mutateFixture(input, "packageJson", '"private": true,', '"private": true,\n  "workspaces": ["apps/*"],'),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          '"private": true,',
+          '"private": true,\n  "workspaces": ["apps/*"],'
+        ),
     },
     {
       name: "conditional V1 evidence step is unreachable",
       expected: "V1 evidence step must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "      - name: V1 M0 executable evidence gates\n        run:", "      - name: V1 M0 executable evidence gates\n        if: ${{ false }}\n        run:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "      - name: V1 M0 executable evidence gates\n        run:",
+          "      - name: V1 M0 executable evidence gates\n        if: ${{ false }}\n        run:"
+        ),
     },
     {
       name: "continue-on-error weakens V1 evidence step",
       expected: "V1 evidence step must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "      - name: V1 M0 executable evidence gates\n        run:", "      - name: V1 M0 executable evidence gates\n        continue-on-error: true\n        run:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "      - name: V1 M0 executable evidence gates\n        run:",
+          "      - name: V1 M0 executable evidence gates\n        continue-on-error: true\n        run:"
+        ),
     },
     ...[...expectedV1PackageScripts].map(([name, target]) => ({
       name: `successful no-op V1 package script ${name}`,
@@ -1140,42 +1481,92 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "conditional WIN-253 workspace reachability evidence step is unreachable",
       expected: "WIN-253 workspace reachability evidence step must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "      - name: WIN-253 workspace reachability evidence\n        run:", "      - name: WIN-253 workspace reachability evidence\n        if: ${{ false }}\n        run:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "      - name: WIN-253 workspace reachability evidence\n        run:",
+          "      - name: WIN-253 workspace reachability evidence\n        if: ${{ false }}\n        run:"
+        ),
     },
     {
       name: "continue-on-error weakens WIN-253 workspace reachability evidence step",
       expected: "WIN-253 workspace reachability evidence step must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "      - name: WIN-253 workspace reachability evidence\n        run:", "      - name: WIN-253 workspace reachability evidence\n        continue-on-error: true\n        run:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "      - name: WIN-253 workspace reachability evidence\n        run:",
+          "      - name: WIN-253 workspace reachability evidence\n        continue-on-error: true\n        run:"
+        ),
     },
     {
       name: "workflow shell default wraps WIN-253 workspace reachability evidence",
-      expected: "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
-      mutate: (input) => mutateFixture(input, "ci", "jobs:\n", "defaults:\n  run:\n    shell: bash {0} || true\n\njobs:\n"),
+      expected:
+        "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "jobs:\n",
+          "defaults:\n  run:\n    shell: bash {0} || true\n\njobs:\n"
+        ),
     },
     {
       name: "job shell default wraps WIN-253 workspace reachability evidence",
-      expected: "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
-      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    defaults:\n      run:\n        shell: bash {0} || true\n    runs-on:"),
+      expected:
+        "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    defaults:\n      run:\n        shell: bash {0} || true\n    runs-on:"
+        ),
     },
     {
       name: "conditional typecheck job bypasses WIN-253 workspace reachability evidence",
       expected: "WIN-253 workspace reachability job must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    if: ${{ false }}\n    runs-on:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    if: ${{ false }}\n    runs-on:"
+        ),
     },
     {
       name: "continue-on-error typecheck job weakens WIN-253 workspace reachability evidence",
       expected: "WIN-253 workspace reachability job must be unconditional and fail-fast",
-      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    continue-on-error: true\n    runs-on:"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    continue-on-error: true\n    runs-on:"
+        ),
     },
     {
       name: "webapp pruned prepare target availability",
       expected: `apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`,
-      mutate: (input) => mutateDockerfile(input, "apps/webapp/Dockerfile.platos", webappPrepareCopy, `# removed ${prepareTarget}`),
+      mutate: (input) =>
+        mutateDockerfile(
+          input,
+          "apps/webapp/Dockerfile.platos",
+          webappPrepareCopy,
+          `# removed ${prepareTarget}`
+        ),
     },
     {
       name: "root prepare target wiring",
       expected: `package.json prepare must execute ${prepareTarget}`,
-      mutate: (input) => mutateFixture(input, "packageJson", `node ${prepareTarget}`, "node scripts/missing-hooks.mjs"),
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          `node ${prepareTarget}`,
+          "node scripts/missing-hooks.mjs"
+        ),
     },
     {
       name: "malformed .nvmrc",
@@ -1190,7 +1581,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "wrong matrix candidate",
       expected: "build image matrix candidates must be unique and exact",
-      mutate: (input) => mutateFixture(input, "buildImages", "image: platos-agent", "image: wrong-agent"),
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "image: platos-agent", "image: wrong-agent"),
     },
     {
       name: "duplicate matrix candidate",
@@ -1201,36 +1593,62 @@ test("CI policy controls fail under generated semantic source mutations", async 
       name: "uncorrelated build action",
       expected: "build-push action file must correlate to matrix.dockerfile",
       mutate: (input) =>
-        mutateFixture(input, "buildImages", "file: ${{ matrix.dockerfile }}", "file: apps/agent/Dockerfile"),
+        mutateFixture(
+          input,
+          "buildImages",
+          "file: ${{ matrix.dockerfile }}",
+          "file: apps/agent/Dockerfile"
+        ),
     },
     {
       name: "package write publication",
       expected: "build-images grants package write permission",
       mutate: (input) =>
-        mutateFixture(input, "buildImages", "      contents: read\n    strategy:", "      contents: read\n      packages: write\n    strategy:"),
+        mutateFixture(
+          input,
+          "buildImages",
+          "      contents: read\n    strategy:",
+          "      contents: read\n      packages: write\n    strategy:"
+        ),
     },
     {
       name: "quoted package write publication",
       expected: "build-images grants package write permission",
       mutate: (input) =>
-        mutateFixture(input, "buildImages", "      contents: read\n    strategy:", "      contents: read\n      \"packages\": write\n    strategy:"),
+        mutateFixture(
+          input,
+          "buildImages",
+          "      contents: read\n    strategy:",
+          '      contents: read\n      "packages": write\n    strategy:'
+        ),
     },
     {
       name: "quoted root permissions and packages publication",
       expected: "build-images grants package write permission",
       mutate: (input) =>
-        mutateFixture(input, "buildImages", "jobs:\n", '"permissions":\n  "packages": write\n\njobs:\n'),
+        mutateFixture(
+          input,
+          "buildImages",
+          "jobs:\n",
+          '"permissions":\n  "packages": write\n\njobs:\n'
+        ),
     },
     {
       name: "root package write publication",
       expected: "build-images grants package write permission",
       mutate: (input) =>
-        mutateFixture(input, "buildImages", "jobs:\n", "permissions:\n  packages: write\n\njobs:\n"),
+        mutateFixture(
+          input,
+          "buildImages",
+          "jobs:\n",
+          "permissions:\n  packages: write\n\njobs:\n"
+        ),
     },
     {
       name: "root write-all publication",
       expected: "build-images grants write-all permission",
-      mutate: (input) => mutateFixture(input, "buildImages", "jobs:\n", '"permissions": "write-all"\n\njobs:\n'),
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "jobs:\n", '"permissions": "write-all"\n\njobs:\n'),
     },
     {
       name: "job write-all publication",
@@ -1246,7 +1664,11 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "registry login publication",
       expected: "build-images contains a registry login action",
-      mutate: (input) => insertBuildCandidateStep(input, { name: "Mutation registry login", uses: "docker/login-action@mutation" }),
+      mutate: (input) =>
+        insertBuildCandidateStep(input, {
+          name: "Mutation registry login",
+          uses: "docker/login-action@mutation",
+        }),
     },
     {
       name: "build action push publication",
@@ -1279,12 +1701,19 @@ test("CI policy controls fail under generated semantic source mutations", async 
       name: "shell publication",
       expected: "build-images contains an executable shell publication command",
       mutate: (input) =>
-        insertBuildCandidateStep(input, { name: "Mutation redirected shell publication", run: "docker push>/var/tmp/mutation.log ghcr.io/example/image:mutation" }),
+        insertBuildCandidateStep(input, {
+          name: "Mutation redirected shell publication",
+          run: "docker push>/var/tmp/mutation.log ghcr.io/example/image:mutation",
+        }),
     },
     {
       name: "shell registry login",
       expected: "build-images contains an executable shell registry login",
-      mutate: (input) => insertBuildCandidateStep(input, { name: "Mutation shell login", run: "docker login ghcr.io" }),
+      mutate: (input) =>
+        insertBuildCandidateStep(input, {
+          name: "Mutation shell login",
+          run: "docker login ghcr.io",
+        }),
     },
     {
       name: "shell registry login with docker global options",
@@ -1326,10 +1755,10 @@ test("CI policy controls fail under generated semantic source mutations", async 
       name: "buildx push publication",
       expected: "build-images contains an executable shell publication command",
       mutate: (input) =>
-        insertBuildCandidateStep(
-          input,
-          { name: "Mutation buildx publication", run: "docker buildx build --push -t ghcr.io/example/image:mutation ." }
-        ),
+        insertBuildCandidateStep(input, {
+          name: "Mutation buildx publication",
+          run: "docker buildx build --push -t ghcr.io/example/image:mutation .",
+        }),
     },
     {
       name: "buildx registry output publication",
@@ -1352,7 +1781,11 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "compose push publication",
       expected: "build-images contains an executable shell publication command",
-      mutate: (input) => insertBuildCandidateStep(input, { name: "Mutation compose publication", run: "docker compose push" }),
+      mutate: (input) =>
+        insertBuildCandidateStep(input, {
+          name: "Mutation compose publication",
+          run: "docker compose push",
+        }),
     },
     {
       name: "chained prefixed shell publication",
@@ -1365,7 +1798,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "multiple installs in one RUN",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1376,7 +1810,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "frozen lockfile false",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1387,7 +1822,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "lowercase RUN enforcement",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1398,7 +1834,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON RUN enforcement",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1409,7 +1846,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "heredoc RUN fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1420,7 +1858,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "quoted hash pnpm install fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1431,7 +1870,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "pnpm global option install fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1442,7 +1882,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "pnpm install alias fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1453,7 +1894,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "dynamic pnpm subcommand fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1464,7 +1906,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "shell-form nested pnpm interpreter payload fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must not contain shell interpreter command payload RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must not contain shell interpreter command payload RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1475,7 +1918,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON nested pnpm interpreter payload fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must not contain shell interpreter command payload RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must not contain shell interpreter command payload RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1486,7 +1930,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON env-wrapped pnpm install alias fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact frozen pnpm install RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1497,7 +1942,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON corepack-wrapped versioned pnpm alias fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1508,7 +1954,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON env split-string pnpm payload fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1519,7 +1966,8 @@ test("CI policy controls fail under generated semantic source mutations", async 
     },
     {
       name: "JSON dynamic corepack command fails closed",
-      expected: "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
+      expected:
+        "internal-packages/tenancy-database/Dockerfile.migrations must contain only its exact executable pnpm/pnpx RUN instruction(s)",
       mutate: (input) =>
         mutateDockerfile(
           input,
@@ -1560,6 +2008,177 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: "typecheck job must execute the wired CI policy test exactly once",
       mutate: (input) =>
         mutateFixture(input, "ci", "pnpm test:ci-policy", "echo skipped # pnpm test:ci-policy"),
+    },
+    {
+      name: "WIN-290 package suite selector",
+      expected: "package.json must wire the exact focused WIN-290 suite",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          `"test:win-290": "${win290ScriptTarget}"`,
+          '"test:win-290": "echo skipped"'
+        ),
+    },
+    {
+      name: "WIN-290 CI suite inert text",
+      expected: "CI must execute the focused WIN-290 suite exactly once in typecheck",
+      mutate: (input) =>
+        mutateFixture(input, "ci", win290Command, `echo skipped # ${win290Command}`),
+    },
+    {
+      name: "WIN-290 CI suite global uniqueness",
+      expected: "CI must execute the focused WIN-290 suite exactly once in typecheck",
+      mutate: (input) =>
+        insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+          name: "Mutation duplicate WIN-290 suite",
+          run: win290Command,
+        }),
+    },
+    {
+      name: "WIN-290 real Redis package selector",
+      expected: "package.json must wire the exact WIN-290 real Redis DLQ lifecycle suite",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          `"test:win-290:redis": "${win290RedisScriptTarget}"`,
+          '"test:win-290:redis": "pnpm --filter platos-agent exec vitest run src/monitoring/span-dlq.test.ts"'
+        ),
+    },
+    {
+      name: "WIN-290 real Redis package successful no-op",
+      expected: "package.json must wire the exact WIN-290 real Redis DLQ lifecycle suite",
+      mutate: (input) => mutateFixture(input, "packageJson", win290RedisScriptTarget, "node -p 0"),
+    },
+    {
+      name: "WIN-290 real Redis CI suite skipped as inert text",
+      expected:
+        "CI must execute the WIN-290 real Redis DLQ lifecycle suite exactly once in typecheck",
+      mutate: (input) =>
+        mutateFixture(input, "ci", win290RedisCommand, `echo skipped # ${win290RedisCommand}`),
+    },
+    {
+      name: "WIN-290 real Redis CI suite global uniqueness",
+      expected:
+        "CI must execute the WIN-290 real Redis DLQ lifecycle suite exactly once in typecheck",
+      mutate: (input) =>
+        insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+          name: "Mutation duplicate WIN-290 real Redis suite",
+          run: win290RedisCommand,
+        }),
+    },
+    {
+      name: "WIN-290 real Redis inline success bypass",
+      expected: "WIN-290 real Redis DLQ lifecycle step must execute only its exact command",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `run: ${win290RedisCommand}`,
+          `run: ${win290RedisCommand} || true`
+        ),
+    },
+    {
+      name: "conditional WIN-290 real Redis step is unreachable",
+      expected: "WIN-290 real Redis DLQ lifecycle step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${win290RedisStepName}\n        env:`,
+          `      - name: ${win290RedisStepName}\n        if: \${{ false }}\n        env:`
+        ),
+    },
+    {
+      name: "continue-on-error weakens WIN-290 real Redis step",
+      expected: "WIN-290 real Redis DLQ lifecycle step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${win290RedisStepName}\n        env:`,
+          `      - name: ${win290RedisStepName}\n        continue-on-error: true\n        env:`
+        ),
+    },
+    {
+      name: "explicit shell bypass weakens WIN-290 real Redis step",
+      expected: "WIN-290 real Redis DLQ lifecycle step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `        run: ${win290RedisCommand}`,
+          `        shell: bash {0} || true\n        run: ${win290RedisCommand}`
+        ),
+    },
+    {
+      name: "workflow shell default wraps WIN-290 real Redis step",
+      expected:
+        "WIN-290 real Redis DLQ lifecycle step must not inherit workflow or job shell defaults",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "jobs:\n",
+          "defaults:\n  run:\n    shell: bash {0} || true\n\njobs:\n"
+        ),
+    },
+    {
+      name: "job shell default wraps WIN-290 real Redis step",
+      expected:
+        "WIN-290 real Redis DLQ lifecycle step must not inherit workflow or job shell defaults",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    defaults:\n      run:\n        shell: bash {0} || true\n    runs-on:"
+        ),
+    },
+    {
+      name: "conditional typecheck job bypasses WIN-290 real Redis step",
+      expected: "WIN-290 real Redis DLQ lifecycle job must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    if: ${{ false }}\n    runs-on:"
+        ),
+    },
+    {
+      name: "continue-on-error typecheck job weakens WIN-290 real Redis step",
+      expected: "WIN-290 real Redis DLQ lifecycle job must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "  typecheck:\n    runs-on:",
+          "  typecheck:\n    continue-on-error: true\n    runs-on:"
+        ),
+    },
+    {
+      name: "WIN-290 real Redis service URL",
+      expected: "WIN-290 real Redis DLQ lifecycle step must set the exact Redis service URL",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `PLATOS_TEST_REDIS_URL: ${win290RedisUrl}`,
+          "PLATOS_TEST_REDIS_URL: redis://127.0.0.1:6380"
+        ),
+    },
+    {
+      name: "WIN-290 dedicated Redis major version",
+      expected: "typecheck job must provide the exact dedicated Redis 7 service for WIN-290",
+      mutate: (input) => mutateFixture(input, "ci", "image: redis:7", "image: redis:8"),
+    },
+    {
+      name: "WIN-290 dedicated Redis health check",
+      expected: "typecheck job must provide the exact dedicated Redis 7 service for WIN-290",
+      mutate: (input) =>
+        mutateFixture(input, "ci", '--health-cmd "redis-cli ping"', '--health-cmd "true"'),
     }
   );
 
@@ -1574,28 +2193,28 @@ test("CI policy controls fail under generated semantic source mutations", async 
         name: `relocated command absent from persisted-state ${command}`,
         expected: `persisted-state job must not execute relocated command: ${command}`,
         mutate: (input) =>
-          insertWorkflowJobStep(
-            input,
-            "buildImages",
-            "persisted-state",
-            { name: "Mutation slow-job command", run: command }
-          ),
+          insertWorkflowJobStep(input, "buildImages", "persisted-state", {
+            name: "Mutation slow-job command",
+            run: command,
+          }),
       },
       {
         name: `relocated command globally unique ${command}`,
         expected: `CI must execute relocated command exactly once across all jobs: ${command}`,
         mutate: (input) =>
-          insertWorkflowJobStep(
-            input,
-            "ci",
-            "cross-scope-isolation",
-            { name: "Mutation decorated duplicate fast command", run: `${command} > /var/tmp/mutation.log` }
-          ),
+          insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+            name: "Mutation decorated duplicate fast command",
+            run: `${command} > /var/tmp/mutation.log`,
+          }),
       }
     );
   }
 
-  assert.equal(controls.length, 157, "semantic mutation control table must cover every declared checkpoint");
+  assert.equal(
+    controls.length,
+    175,
+    "semantic mutation control table must cover every declared checkpoint"
+  );
   for (const control of controls) {
     await t.test(control.name, () => {
       const mutation = control.mutate(pristine);
@@ -1603,7 +2222,9 @@ test("CI policy controls fail under generated semantic source mutations", async 
       const violations = policyViolations(mutation);
       assert.ok(
         violations.some((violation) => violation.includes(control.expected)),
-        `${control.name} mutation did not trip ${JSON.stringify(control.expected)}: ${violations.join("; ")}`
+        `${control.name} mutation did not trip ${JSON.stringify(
+          control.expected
+        )}: ${violations.join("; ")}`
       );
     });
   }

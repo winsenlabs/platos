@@ -406,7 +406,7 @@ export function buildMacroToolHandlers(deps: {
         },
         additionalProperties: false,
       },
-      async execute(params, scope, token) {
+      async execute(params, scope, token, abortSignal) {
         const macroId = String(params["macroId"]);
         const replayParams = (params["params"] as Record<string, unknown> | undefined) ?? {};
         const row = await prisma.macro.findFirst({
@@ -428,6 +428,7 @@ export function buildMacroToolHandlers(deps: {
         }> = [];
 
         for (let i = 0; i < steps.length; i++) {
+          if (abortSignal?.aborted) throw new Error("MCP macro replay cancelled");
           const step = steps[i];
           if (!step || typeof step.tool !== "string") continue;
           const resolvedParams = (substitutePlaceholders(step.params ?? {}, replayParams) ??
@@ -438,7 +439,7 @@ export function buildMacroToolHandlers(deps: {
             method: "tools/call",
             params: { name: step.tool, arguments: resolvedParams },
           };
-          const response = await router.handle(rpc, token);
+          const response = await router.handle(rpc, token, { abortSignal });
           if (response.error) {
             results.push({
               stepIndex: i,

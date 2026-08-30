@@ -86,7 +86,7 @@ describe("McpRouter tools/call", () => {
     expect(JSON.stringify(create.mock.calls)).not.toContain("sentinel-macro-secret");
   });
 
-  it("executes a harmless registered tool", async () => {
+  it("passes cancellation separately while keeping legacy short-arity handlers compatible", async () => {
     const instance = router();
     const execute = vi.fn().mockResolvedValue({ ok: true });
     instance.register({
@@ -100,6 +100,7 @@ describe("McpRouter tools/call", () => {
       execute,
     });
 
+    const abort = new AbortController();
     const response = await instance.handle(
       {
         jsonrpc: "2.0",
@@ -107,7 +108,8 @@ describe("McpRouter tools/call", () => {
         method: "tools/call",
         params: { name: "harmless.ping", arguments: {} },
       },
-      token
+      token,
+      { abortSignal: abort.signal },
     );
 
     expect(response.error).toBeUndefined();
@@ -115,6 +117,8 @@ describe("McpRouter tools/call", () => {
       content: [{ type: "text", text: JSON.stringify({ ok: true }) }],
     });
     expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0]?.[3]).toBe(abort.signal);
+    expect(Object.keys(execute.mock.calls[0]?.[1] ?? {})).not.toContain("abortSignal");
   });
 
   it("returns a stable generic internal error without logging exception details", async () => {

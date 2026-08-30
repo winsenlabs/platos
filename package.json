@@ -42,6 +42,8 @@
     "test:route-parity": "node --test scripts/route-capability-parity.test.mjs",
     "test:route-parity:completion:evidence": "node --test scripts/route-capability-completion-audit.test.mjs",
     "test:ci-policy": "node --test scripts/ci-policy.test.mjs",
+    "test:win-290": "pnpm --filter platos-agent exec vitest run src/shared/clickhouse-deadline.test.ts src/monitoring/spans.clickhouse-deadline.test.ts src/monitoring/span-dlq.test.ts src/monitoring/trace-request-abort.test.ts --no-file-parallelism",
+    "test:win-290:redis": "pnpm --filter platos-agent exec vitest run src/monitoring/spans.dlq.redis.test.ts",
     "test:webapp": "turbo run test --filter webapp -- --run",
     "test:packages": "turbo run test --concurrency=1 --filter \"./packages/**\" -- --run",
     "test:internal": "turbo run test --concurrency=1 --filter \"@internal/*\" -- --run",

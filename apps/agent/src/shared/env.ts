@@ -381,6 +381,13 @@ export const AgentEnvSchema = z
       max: 1,
     }),
     PLATOS_OTEL_CLICKHOUSE_URL: z.string().url().optional(),
+    // WIN-290 — complete fetch/status/body budget for ClickHouse HTTP calls.
+    // Integer milliseconds only; startup rejects values that could remove the
+    // bound or retain work for longer than two minutes.
+    PLATOS_CLICKHOUSE_TIMEOUT_MS: intString("PLATOS_CLICKHOUSE_TIMEOUT_MS", {
+      min: 1_000,
+      max: 120_000,
+    }).transform((value) => value ?? 10_000),
     PLATOS_TELEMETRY_DATABASE: z
       .string()
       .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, {

@@ -3107,24 +3107,44 @@ export class AgentController {
    * Theme E.2.
    */
   @Get("monitoring/trace/:threadId")
-  async getThreadTrace(@Req() req: Request, @Param("threadId") threadId: string) {
-    const scope = this.getScope(req);
-    // SECURITY (audit authz-2026-07-22 F4) — buildThreadTrace filters by the
-    // (org,project,env) tuple alone, so any co-tenant token with a victim
-    // threadId read the victim's full messages+spans+cost. Ownership-gate the
-    // thread first (mirrors getThreadCost / audit H2): end-users only their own
-    // thread; operators any in-scope thread via allUsers.
-    const thread = await this.conversationService.getThread(threadId, scope as any, {
-      allUsers: scope.principal === "operator",
-    });
-    if (!thread) {
-      throw new NotFoundException("Thread not found");
+  async getThreadTrace(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param("threadId") threadId: string,
+  ) {
+    const requestAbort = new AbortController();
+    const onDisconnect = () => {
+      if (!requestAbort.signal.aborted) requestAbort.abort();
+    };
+    req.once("aborted", onDisconnect);
+    res.once("close", onDisconnect);
+    if (req.aborted || req.destroyed || res.destroyed) onDisconnect();
+    try {
+      const scope = this.getScope(req);
+      // SECURITY (audit authz-2026-07-22 F4) — buildThreadTrace filters by the
+      // (org,project,env) tuple alone, so any co-tenant token with a victim
+      // threadId read the victim's full messages+spans+cost. Ownership-gate the
+      // thread first (mirrors getThreadCost / audit H2): end-users only their own
+      // thread; operators any in-scope thread via allUsers.
+      const thread = await this.conversationService.getThread(threadId, scope as any, {
+        allUsers: scope.principal === "operator",
+      });
+      if (!thread) {
+        throw new NotFoundException("Thread not found");
+      }
+      const trace = await this.traceService.buildThreadTrace(
+        this.scopeTuple(scope),
+        threadId,
+        requestAbort.signal,
+      );
+      if (!trace) {
+        throw new NotFoundException("Thread not found");
+      }
+      return trace;
+    } finally {
+      req.off("aborted", onDisconnect);
+      res.off("close", onDisconnect);
     }
-    const trace = await this.traceService.buildThreadTrace(this.scopeTuple(scope), threadId);
-    if (!trace) {
-      throw new NotFoundException("Thread not found");
-    }
-    return trace;
   }
 
   /**

@@ -29,6 +29,16 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      win290-redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -113,6 +123,14 @@ jobs:
         run: |
           pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
           pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
+
+      - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
+        run: pnpm test:win-290
+
+      - name: WIN-290 real Redis DLQ lifecycle suite
+        env:
+          PLATOS_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: pnpm test:win-290:redis
 
       - name: Platos tenancy and operator-auth tests
         # Runs the complete clean-slate schema/service suite, including its real
