@@ -70,6 +70,15 @@ jobs:
         # The agent Docker build (which DOES need re2) builds it separately.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: WIN-254 docs, design, protection, and lifecycle evidence
+        run: |
+          pnpm test:docs-link-integrity
+          pnpm test:design-provenance
+          pnpm test:protected-paths
+          pnpm test:evidence-lifecycle
+          node --test scripts/verify-win254.test.mjs
+          pnpm verify:win254
+
       - name: Generate and build database clients
         # The clean tenancy package is the agent's compiled persistence dependency,
         # so focused Vitest runs need its package entry emitted from a fresh checkout.

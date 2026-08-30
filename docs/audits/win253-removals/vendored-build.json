@@ -4224,7 +4224,7 @@
       },
       {
         "path": "docs/writing-agents.md",
-        "line": 176,
+        "line": 178,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task"
@@ -4293,7 +4293,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 8,
+        "line": 15,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4302,7 +4302,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 42,
+        "line": 49,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4311,7 +4311,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 85,
+        "line": 92,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4321,7 +4321,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 169,
+        "line": 176,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4330,7 +4330,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 211,
+        "line": 218,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4339,7 +4339,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 357,
+        "line": 364,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4348,7 +4348,7 @@
       },
       {
         "path": "rules/4.0.0/advanced-tasks.md",
-        "line": 399,
+        "line": 406,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4357,7 +4357,7 @@
       },
       {
         "path": "rules/4.0.0/basic-tasks.md",
-        "line": 8,
+        "line": 15,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task"
@@ -4365,7 +4365,7 @@
       },
       {
         "path": "rules/4.0.0/basic-tasks.md",
-        "line": 50,
+        "line": 57,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "schedules"
@@ -4373,7 +4373,7 @@
       },
       {
         "path": "rules/4.0.0/basic-tasks.md",
-        "line": 72,
+        "line": 79,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "tasks"
@@ -4381,7 +4381,7 @@
       },
       {
         "path": "rules/4.0.0/basic-tasks.md",
-        "line": 137,
+        "line": 144,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4406,7 +4406,7 @@
       },
       {
         "path": "rules/4.0.0/realtime.md",
-        "line": 46,
+        "line": 53,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "runs",
@@ -4415,7 +4415,7 @@
       },
       {
         "path": "rules/4.0.0/realtime.md",
-        "line": 71,
+        "line": 78,
         "specifier": "@trigger.dev/sdk",
         "symbols": [
           "task",
@@ -4727,10 +4727,10 @@
     }
   ],
   "integration": {
-    "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
-    "vocabularySha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4",
-    "ledgerRulesSha256": "e1e881dc86856bbcca21ddf48f3a01edcc0ee398e8cfac1b1521f84429f260be",
-    "reachabilitySha256": "ea80c88da323a95df802620308ad4918d1781097421890d45ae1fef1cf32f0e1",
+    "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+    "vocabularySha256": "91b4cba3a28330c03f0d3bdabedb45791eb6db8c10654f2f0e47ee449a6ad5ed",
+    "ledgerRulesSha256": "51e2a67b30eb9be3ab68fb892781035cf26987b011261354011849872df13d97",
+    "reachabilitySha256": "5dc30d3e69db416d8123f27d91fe68f27d50c5bc3d1de2ef98fedd6d609f3279",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

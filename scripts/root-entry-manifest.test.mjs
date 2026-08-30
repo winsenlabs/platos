@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,6 +9,7 @@ import {
   ARCHIVED_MOVES,
   CORPUS_EXCLUSIONS,
   JSON_PATH,
+  archivedPayloadBytes,
   collectSemanticConsumers,
   findSemanticPathReferences,
   listRepositoryFiles,
@@ -95,6 +97,22 @@ test("manifest schema rejects malformed rows, self-exclusion expansion, and stal
   duplicate.entries.splice(1, 0, copy(duplicate.entries[0]));
   assert.ok(validateManifest(repositoryRoot, duplicate).some((error) => error.includes("duplicates")));
   assert.equal(ARCHIVED_MOVES.length, 13);
+});
+
+test("visible lifecycle envelopes preserve exact archived payload hashes and fail closed when malformed", () => {
+  for (const move of ARCHIVED_MOVES) {
+    const source = readFileSync(join(repositoryRoot, move.destination), "utf8");
+    const payloadHash = createHash("sha256").update(archivedPayloadBytes(source)).digest("hex");
+    assert.equal(payloadHash, move.sha256, move.destination);
+    assert.throws(
+      () => archivedPayloadBytes(source.replace('lifecycle: "POINT-IN-TIME"', 'lifecycle: "ACCEPTED"')),
+      /exact reviewed POINT-IN-TIME lifecycle envelope/u,
+    );
+    assert.notEqual(
+      createHash("sha256").update(archivedPayloadBytes(`${source}payload drift\n`)).digest("hex"),
+      move.sha256,
+    );
+  }
 });
 
 test("semantic consumers come from parsed JSON and YAML, not removed scripts or inert comments", () => {

@@ -1,3 +1,10 @@
+---
+title: "[POINT-IN-TIME] Refactor Implementation Status — `shrink` branch"
+lifecycle: "POINT-IN-TIME"
+---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
+
 # Refactor Implementation Status — `shrink` branch
 
 Tracks the execution of [`platos-trigger-refactor.md`](./platos-trigger-refactor.md) on the `shrink` branch.

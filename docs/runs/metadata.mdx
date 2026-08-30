@@ -407,7 +407,7 @@ export const myTask = task({
 });
 ```
 
-## Parent & root updates
+## Parent & root updates {#parent-and-root-updates}
 
 Tasks that have been triggered by a parent task (a.k.a. a "child task") can update the metadata of the parent task. This is useful for propagating progress information up the task hierarchy. You can also update the metadata of the root task (root = the initial task that was triggered externally, like from your backend).
 

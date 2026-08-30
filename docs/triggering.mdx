@@ -35,10 +35,10 @@ When you trigger a task from your backend code, you need to set the `TRIGGER_SEC
 
 <Note>
   If you are using Next.js Server Actions [you'll need to be careful with
-  bundling](/guides/frameworks/nextjs#triggering-your-task-in-next-js).
+  bundling](/guides/frameworks/nextjs#triggering-your-task-in-nextjs).
 </Note>
 
-### tasks.trigger()
+### tasks.trigger() {#tasks-trigger}
 
 Triggers a single run of a task with the payload you pass in, and any options you specify, without needing to import the task.
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 }
 ```
 
-### tasks.batchTrigger()
+### tasks.batchTrigger() {#tasks-batchtrigger}
 
 Triggers multiple runs of a single task with the payloads you pass in, and any options you specify, without needing to import the task.
 
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
 }
 ```
 
-### batch.trigger()
+### batch.trigger() {#batch-trigger}
 
 Triggers multiple runs of different tasks with the payloads you pass in, and any options you specify. This is useful when you need to trigger multiple tasks at once.
 
@@ -196,13 +196,13 @@ The following functions should only be used when running inside a task, for one 
 - You need to **wait** for the result of the triggered task.
 - You need to import the task instance. Importing a task instance from your backend code is not recommended, as it can pull in a lot of unnecessary code and dependencies.
 
-### yourTask.trigger()
+### yourTask.trigger() {#yourtask-trigger}
 
 Triggers a single run of a task with the payload you pass in, and any options you specify.
 
 <Note>
   If you need to call `trigger()` on a task in a loop, use
-  [`batchTrigger()`](#yourTask-batchtrigger) instead which will trigger up to 1,000 runs in a single
+  [`batchTrigger()`](#yourtask-batchtrigger) instead which will trigger up to 1,000 runs in a single
   call with SDK 4.3.1+ (500 runs in prior versions).
 </Note>
 
@@ -238,7 +238,7 @@ export const myTask = task({
 });
 ```
 
-### yourTask.batchTrigger()
+### yourTask.batchTrigger() {#yourtask-batchtrigger}
 
 Triggers multiple runs of a single task with the payloads you pass in, and any options you specify.
 
@@ -295,7 +295,7 @@ export const myTask = task({
 });
 ```
 
-### yourTask.triggerAndWait()
+### yourTask.triggerAndWait() {#yourtask-triggerandwait}
 
 This is where it gets interesting. You can trigger a task and then wait for the result. This is useful when you need to call a different task and then use the result to continue with your task.
 
@@ -410,7 +410,7 @@ export const parentTask = task({
   error.
 </Warning>
 
-### yourTask.batchTriggerAndWait()
+### yourTask.batchTriggerAndWait() {#yourtask-batchtriggerandwait}
 
 You can batch trigger a task and wait for all the results. This is useful for the fan-out pattern, where you need to call a task multiple times and then wait for all the results to continue with your task.
 
@@ -529,7 +529,7 @@ export const batchParentTask = task({
   error.
 </Warning>
 
-### batch.triggerAndWait()
+### batch.triggerAndWait() {#batch-triggerandwait}
 
 You can batch trigger multiple different tasks and wait for all the results:
 
@@ -578,7 +578,7 @@ export const childTask2 = task({
 });
 ```
 
-### batch.triggerByTask()
+### batch.triggerByTask() {#batch-triggerbytask}
 
 You can batch trigger multiple different tasks by passing in the task instances. This function is especially useful when you have a static set of tasks you want to trigger:
 
@@ -614,7 +614,7 @@ export const childTask2 = task({
 });
 ```
 
-### batch.triggerByTaskAndWait()
+### batch.triggerByTaskAndWait() {#batch-triggerbytaskandwait}
 
 You can batch trigger multiple different tasks by passing in the task instances, and wait for all the results. This function is especially useful when you have a static set of tasks you want to trigger:
 

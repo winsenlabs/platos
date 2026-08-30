@@ -682,7 +682,7 @@
     },
     {
       "source": "/frontend/react-hooks/realtime",
-      "destination": "/realtime/react-hooks/realtime"
+      "destination": "/realtime/react-hooks/overview"
     },
     {
       "source": "/frontend/react-hooks/triggering",

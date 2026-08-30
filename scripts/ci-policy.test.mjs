@@ -109,6 +109,32 @@ const workspaceReachabilityCommands = [
   "pnpm test:workspace-reachability",
   "pnpm audit:workspace-reachability",
 ];
+const win254EvidenceStepName = "WIN-254 docs, design, protection, and lifecycle evidence";
+const win254EvidenceCommands = [
+  "pnpm test:docs-link-integrity",
+  "pnpm test:design-provenance",
+  "pnpm test:protected-paths",
+  "pnpm test:evidence-lifecycle",
+  "node --test scripts/verify-win254.test.mjs",
+  "pnpm verify:win254",
+];
+const expectedWin254Scripts = new Map([
+  ["audit:docs-link-integrity", "node scripts/docs-link-integrity.mjs"],
+  ["test:docs-link-integrity", "node --test scripts/docs-link-integrity.test.mjs"],
+  ["audit:design-provenance", "node scripts/design-provenance.mjs check"],
+  ["test:design-provenance", "node --test scripts/design-provenance.test.mjs"],
+  ["generate:protected-paths", "node scripts/protected-paths.mjs write"],
+  ["audit:protected-paths", "node scripts/protected-paths.mjs check"],
+  ["test:protected-paths", "node --test scripts/protected-paths.test.mjs"],
+  ["generate:evidence-lifecycle", "node scripts/evidence-lifecycle.mjs write"],
+  ["audit:evidence-lifecycle", "node scripts/evidence-lifecycle.mjs check"],
+  ["test:evidence-lifecycle", "node --test scripts/evidence-lifecycle.test.mjs"],
+  ["audit:docs-build", "pnpm --filter docs validate && pnpm --filter docs broken-links"],
+  ["audit:v1-ledger", "node scripts/v1-ledger.mjs --check"],
+  ["test:win254", "node --test scripts/docs-link-integrity.test.mjs scripts/design-provenance.test.mjs scripts/protected-paths.test.mjs scripts/evidence-lifecycle.test.mjs scripts/verify-win254.test.mjs"],
+  ["generate:win254", "node scripts/verify-win254.mjs --regenerate"],
+  ["verify:win254", "node scripts/verify-win254.mjs"],
+]);
 const workloadPackageTestCommand = "pnpm test:workload-identity-package";
 const agentRuntimeSmokeTestCommand = "pnpm test:agent-runtime-smoke";
 const licenseDeterminismTestCommand = "pnpm test:licenses";
@@ -949,6 +975,30 @@ function policyViolations(input) {
       "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence"
     );
   }
+  const win254Steps = typecheckSteps.filter((step) => step.name === win254EvidenceStepName);
+  if (win254Steps.length !== 1)
+    violations.push("CI must contain exactly one WIN-254 evidence step");
+  const win254Step = win254Steps[0] ?? {};
+  if (
+    win254Step.if !== undefined ||
+    win254Step["continue-on-error"] !== undefined ||
+    win254Step.shell !== undefined
+  ) {
+    violations.push("WIN-254 evidence step must be unconditional and fail-fast");
+  }
+  if (
+    ciWorkflow.defaults?.run?.shell !== undefined ||
+    typecheckJob.defaults?.run?.shell !== undefined
+  ) {
+    violations.push("WIN-254 evidence step must not inherit workflow or job shell defaults");
+  }
+  const reviewedWin254 = reviewedTopLevelCommands(win254Step.run);
+  if (
+    !reviewedWin254.valid ||
+    JSON.stringify(reviewedWin254.commands) !== JSON.stringify(win254EvidenceCommands)
+  ) {
+    violations.push("WIN-254 evidence script must contain only the exact reviewed command sequence");
+  }
   const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter(
     (step) => step.name === "V1 M0 executable evidence gates"
   );
@@ -983,6 +1033,11 @@ function policyViolations(input) {
       violations.push(
         `CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`
       );
+    }
+  }
+  for (const command of win254EvidenceCommands) {
+    if (countExact(allCiLines, command) !== 1) {
+      violations.push(`CI must execute fail-fast WIN-254 evidence exactly once in order: ${command}`);
     }
   }
   let previousGateIndex = -1;
@@ -1049,6 +1104,10 @@ function policyViolations(input) {
       violations.push(
         `package.json must wire exact workspace reachability script ${name}: ${target}`
       );
+  }
+  for (const [name, target] of expectedWin254Scripts) {
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact WIN-254 script ${name}: ${target}`);
   }
   if (packageScripts.prepare !== `node ${prepareTarget}`) {
     violations.push(`package.json prepare must execute ${prepareTarget}`);
@@ -1511,6 +1570,11 @@ test("committed CI and image-build policy is executable, correlated, and complet
     2,
     "workspace reachability selector must cover test then audit"
   );
+  assert.equal(
+    win254EvidenceCommands.length,
+    6,
+    "WIN-254 selector must cover four focused suites, composition policy, and the combined verifier"
+  );
   assert.deepEqual(policyViolations(fixtures()), []);
 });
 
@@ -1852,6 +1916,33 @@ test("CI policy controls fail under generated semantic source mutations", async 
         "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
       mutate: (input) => wrapEvidenceCommand(input, workspaceReachabilityCommands[0], lines),
     })),
+    ...win254EvidenceCommands.flatMap((command) => [
+      {
+        name: `removed WIN-254 evidence command ${command}`,
+        expected: "WIN-254 evidence script must contain only the exact reviewed command sequence",
+        mutate: (input) => mutateFixture(input, "ci", command, `echo removed # ${command}`),
+      },
+      {
+        name: `duplicated WIN-254 evidence command ${command}`,
+        expected: `CI must execute fail-fast WIN-254 evidence exactly once in order: ${command}`,
+        mutate: (input) =>
+          insertWorkflowJobStep(input, "ci", "cross-scope-isolation", {
+            name: "Duplicate WIN-254 evidence",
+            run: command,
+          }),
+      },
+    ]),
+    ...[
+      ["if false", ["if false; then", win254EvidenceCommands[0], "fi"]],
+      ["subshell", ["(", win254EvidenceCommands[0], ")"]],
+      ["interpreter wrapper", [`bash -c '${win254EvidenceCommands[0]}'`]],
+      ["exit 0", ["exit 0", win254EvidenceCommands[0]]],
+      ["exec true", ["exec true", win254EvidenceCommands[0]]],
+    ].map(([name, lines]) => ({
+      name: `WIN-254 evidence ${name} cannot hide or terminate the gate`,
+      expected: "WIN-254 evidence script must contain only the exact reviewed command sequence",
+      mutate: (input) => wrapEvidenceCommand(input, win254EvidenceCommands[0], lines),
+    })),
     ...[
       ["if false", ["if false; then", repositoryGovernanceCommands[0], "fi"]],
       ["case", ["case x in", `x) ${repositoryGovernanceCommands[0]} ;;`, "esac"]],
@@ -1920,6 +2011,39 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: `package.json must wire exact workspace reachability script ${name}: ${target}`,
       mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
     })),
+    ...[...expectedWin254Scripts].map(([name, target]) => ({
+      name: `successful no-op WIN-254 package script ${name}`,
+      expected: `package.json must wire exact WIN-254 script ${name}: ${target}`,
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          `"${name}": "${target}"`,
+          `"${name}": "node -p 0"`,
+        ),
+    })),
+    {
+      name: "conditional WIN-254 evidence step is unreachable",
+      expected: "WIN-254 evidence step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${win254EvidenceStepName}\n        run:`,
+          `      - name: ${win254EvidenceStepName}\n` + "        if: ${{ false }}\n        run:"
+        ),
+    },
+    {
+      name: "continue-on-error weakens WIN-254 evidence step",
+      expected: "WIN-254 evidence step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${win254EvidenceStepName}\n        run:`,
+          `      - name: ${win254EvidenceStepName}\n        continue-on-error: true\n        run:`
+        ),
+    },
     {
       name: "conditional WIN-253 workspace reachability evidence step is unreachable",
       expected: "WIN-253 workspace reachability evidence step must be unconditional and fail-fast",
@@ -2713,7 +2837,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    236,
+    270,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

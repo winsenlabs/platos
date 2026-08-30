@@ -556,7 +556,7 @@ Type safety is enforced through the generic — both `.send()` and the receiving
 | `.on(handler)` | No | Full — process stays alive | Continuous listening (cancel signals, live updates) |
 | `.peek()` | No | None | Non-blocking check for latest buffered value |
 
-#### `wait()` — Suspend until data arrives
+#### `wait()` — Suspend until data arrives {#wait-suspend-until-data-arrives}
 
 Suspends the task entirely, freeing compute resources. The task resumes when data arrives via `.send()`. Returns a [`ManualWaitpointPromise`](/wait-for-token) — the same type as `wait.forToken()`.
 
@@ -846,7 +846,7 @@ Streams are now visible in the Trigger.dev dashboard, allowing you to:
 6. **Throttle frontend updates**: Use `throttleInMs` in `useRealtimeStream` to prevent excessive re-renders
 7. **Use descriptive stream IDs**: Choose clear, descriptive IDs like `"ai-output"` or `"progress"` instead of generic names
 
-## Pre-4.1.0 streams (legacy)
+## Pre-4.1.0 streams (legacy) {#pre-410-streams-legacy}
 
 Prior to SDK 4.1.0, streams used the older metadata-based API. If you're on an earlier version, see [metadata.stream()](/runs/metadata#stream) for legacy usage. With 4.4.2+, [Input Streams](#input-streams) are available and documented in this page.
 

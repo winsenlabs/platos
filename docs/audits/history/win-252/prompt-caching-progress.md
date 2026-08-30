@@ -1,3 +1,10 @@
+---
+title: "[POINT-IN-TIME] PROGRESS — prompt caching + LLM serving research"
+lifecycle: "POINT-IN-TIME"
+---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
+
 # PROGRESS — prompt caching + LLM serving research
 
 Branch: `feat/prompt-caching-and-serving-research`

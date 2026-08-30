@@ -1,6 +1,10 @@
 ---
+title: "[POINT-IN-TIME] Eobd 89 90 95 97 Public Embed"
+lifecycle: "POINT-IN-TIME"
 "@platos/embed": minor
 ---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
 
 EOBD.89/90/95/97 — public embed foundations:
 

@@ -20,7 +20,7 @@ The upstream trigger.dev project shipped a `references/` and an `integrations/` 
 
 ## Future integrations path
 
-Platos does not ship bundled third-party integrations. Instead, the [tool gateway](../PLATOS_SPEC.md#3-tool-gateway) lets entities register any API as an MCP tool from their own backend via `@platos/platools`. This is the intended surface for integrations — the user codebase owns the integration, Platos just federates the contract.
+Platos does not ship bundled third-party integrations. Instead, the [tool gateway](../tool-gateway.md) lets entities register any API as an MCP tool from their own backend via `@platos/platools`. This is the intended surface for integrations — the user codebase owns the integration, Platos just federates the contract.
 
 ## Decision
 

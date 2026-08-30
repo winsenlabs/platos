@@ -236,16 +236,23 @@ test("committed baseline independently captures OCI, application/deployable, and
   );
   assert.equal(report.derivation.manualReachabilityAssertionsAccepted, false);
   assert.equal(report.derivation.deletionAuthorized, false);
-  const vendoredBuildReceipts = new Set([
+  const evidenceDataPaths = new Set([
     "docs/audits/win253-removals/vendored-build.json",
     "docs/audits/win253-removals/vendored-build.md",
+    "docs/audits/win-254-protected-paths.json",
+    "docs/audits/win-254-evidence-lifecycle.json",
   ]);
+  assert.equal(
+    report.inputs.files.some((file) => evidenceDataPaths.has(file.path)),
+    false,
+    "generated evidence data must not enter the reachability input fingerprint"
+  );
   for (const workspace of report.workspaces) {
     for (const channel of Object.values(workspace.channels)) {
       assert.equal(
-        channel.reasons.some(({ from }) => vendoredBuildReceipts.has(from)),
+        channel.reasons.some(({ from }) => evidenceDataPaths.has(from)),
         false,
-        `${workspace.path} reachability must not derive from WIN-253 removal receipts`
+        `${workspace.path} reachability must not derive from generated evidence data`
       );
     }
   }

@@ -53,11 +53,13 @@ test('toSnapKey resolves npm aliases to the aliased target, plain versions to na
   assert.equal(toSnapKey('lru-cache', '@wolfy1339/lru-cache@11.0.2-patch.1'), '@wolfy1339/lru-cache@11.0.2-patch.1');
 });
 
-test('agent closure reproduces the M0.5 audit (718 nodes / 657 names)', () => {
+test('agent closure reproduces the exact lockfile audit (718 nodes / 657 names) without React 19', () => {
   const { parsed } = loadLockfile(LOCK);
   const comps = componentsFromSnapshots(computeClosure(IMAGES.agent.roots, parsed));
   assert.equal(comps.length, 718, 'agent node count');
   assert.equal(names(comps).size, 657, 'agent distinct names');
+  assert.ok(hasPkg(comps, 'react', '18.3.1'), 'Agent SDK optional React peer remains pinned to 18.3.1');
+  assert.ok(!comps.some((component) => component.name === 'react' && component.version.startsWith('19.')), 'React 19 requires separate Agent production-closure approval');
   // Undeclared-but-shipping (M0.5 §1.4)
   assert.ok(hasPkg(comps, 'express', '5.2.1'), 'agent ships express 5.2.1');
   assert.ok(hasPkg(comps, 'multer', '2.1.1'), 'agent ships multer');

@@ -1,3 +1,10 @@
+---
+title: "[SUPERSEDED-BY] Historical realtime rules"
+lifecycle: "SUPERSEDED-BY"
+---
+
+> **Lifecycle: SUPERSEDED-BY.** These rules are historical and not current product truth. Use [the current rules](../4.1.0/realtime.md).
+
 # Trigger.dev Realtime (v4)
 
 **Real-time monitoring and updates for runs**

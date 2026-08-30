@@ -1,6 +1,10 @@
 ---
+title: "[POINT-IN-TIME] Platos Client Model Routing"
+lifecycle: "POINT-IN-TIME"
 "@platos/client": patch
 ---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
 
 Add `modelLabel` to `SendMessageOptions` for per-request model routing.
 

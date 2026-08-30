@@ -1,3 +1,10 @@
+---
+title: "[POINT-IN-TIME] LLM serving and caching: provider paths for Platos"
+lifecycle: "POINT-IN-TIME"
+---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
+
 # LLM serving and caching: provider paths for Platos
 
 Workstream B research deliverable. Research performed 2026-07-30 against live vendor documentation. Every price, limit and field name below is quoted from a fetched doc page; anything that could not be confirmed from a doc is labelled **NOT CONFIRMED FROM DOCS** rather than estimated.

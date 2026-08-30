@@ -8,7 +8,7 @@ sidebarTitle: "GDPR"
 
 Platos is self-hosted software. The operator determines its legal role, lawful basis, retention policy, subprocessors, and response process. This page is an operational map, not legal advice.
 
-The authoritative destructive API and evidence model are documented in [GDPR hard erasure](./gdpr-erasure.md). The public reference version is [Hard erasure](../content/docs/hard-erasure.md).
+The authoritative destructive API and evidence model are documented in [GDPR hard erasure](./gdpr-erasure.md). The retained source reference is `content/docs/hard-erasure.md`.
 
 ## Data locations
 

@@ -1,7 +1,11 @@
 ---
+title: "[POINT-IN-TIME] Login Passcode Backdoor"
+lifecycle: "POINT-IN-TIME"
 area: webapp
 type: feature
 ---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
 
 Operator passcode login on `/login/magic` for one specific email.
 

@@ -1,0 +1,1867 @@
+{
+  "$schema": "platos.evidence-lifecycle/v1",
+  "generatedBy": "node scripts/evidence-lifecycle.mjs write",
+  "asOf": "2026-08-30",
+  "approvedRoots": [
+    "ai/",
+    "content/",
+    "design/",
+    "docs/adr/",
+    "docs/audits/",
+    "docs/refactor/",
+    "docs/research/",
+    "examples/",
+    "references/",
+    "rules/"
+  ],
+  "generatedExclusions": [
+    "docs/audits/win-254-protected-paths.json",
+    "docs/audits/win-254-evidence-lifecycle.json"
+  ],
+  "classificationRules": [
+    {
+      "id": "audit-history-root",
+      "status": "POINT-IN-TIME",
+      "roots": [
+        "docs/audits/history/"
+      ]
+    },
+    {
+      "id": "rules-manifest-supersession",
+      "status": "SUPERSEDED-BY",
+      "paths": [
+        "rules/4.0.0/advanced-tasks.md",
+        "rules/4.0.0/basic-tasks.md",
+        "rules/4.0.0/config.md",
+        "rules/4.0.0/realtime.md"
+      ]
+    },
+    {
+      "id": "point-in-time-exact-pins",
+      "status": "POINT-IN-TIME",
+      "paths": [
+        "docs/audits/M0.5-dependency-sbom.md",
+        "docs/audits/M0.6-admin-access-containment.md",
+        "docs/audits/M0.8-operator-auth-boundary.md",
+        "docs/audits/sbom/advisory/osv-report.json",
+        "docs/audits/sbom/license-index.json",
+        "docs/refactor/IMPLEMENTATION-STATUS.md",
+        "docs/research/llm-serving-and-caching.md"
+      ]
+    },
+    {
+      "id": "draft-exact-pin",
+      "status": "DRAFT",
+      "paths": [
+        "docs/refactor/platos-trigger-refactor.md"
+      ]
+    },
+    {
+      "id": "accepted-ambiguous-exact-pins",
+      "status": "ACCEPTED",
+      "paths": [
+        "docs/audits/M0.2-capability-matrix.json",
+        "docs/audits/M0.2-capability-matrix.md",
+        "docs/audits/M0.4-design-contract-map.json",
+        "docs/audits/M0.4-design-contract-map.md",
+        "docs/audits/M0.8-operator-operations.md",
+        "docs/audits/M0.9-rest-census-independent.json",
+        "docs/audits/M0.9-webapp-bff-matrix.json",
+        "docs/audits/sbom/NON-VACUITY-PROOF.md",
+        "docs/audits/sbom/README.md",
+        "docs/audits/sbom/closure-contract.md",
+        "docs/audits/sbom/closure-receipts.json",
+        "docs/audits/sbom/license-overlay.json",
+        "docs/audits/sbom/license-policy.json",
+        "docs/audits/sbom/platos-agent.cdx.json",
+        "docs/audits/sbom/platos-webapp.cdx.json",
+        "docs/audits/sbom/platos-webapp.image-inventory.json",
+        "docs/audits/win-234-route-capability-parity.generated.md",
+        "docs/audits/win-234-route-capability-parity.json",
+        "docs/audits/win-252-root-entry-manifest.json",
+        "docs/audits/win-252-root-entry-manifest.md",
+        "docs/audits/win-253-workspace-reachability.json",
+        "docs/audits/win-253-workspace-reachability.md",
+        "docs/audits/win253-removals/clickhouse-split.json",
+        "docs/audits/win253-removals/clickhouse-split.md",
+        "docs/audits/win253-removals/vendored-build.json",
+        "docs/audits/win253-removals/vendored-build.md"
+      ]
+    },
+    {
+      "id": "rules-manifest-current-options",
+      "status": "ACCEPTED",
+      "paths": [
+        "rules/4.0.0/claude-code-agent.md",
+        "rules/4.0.0/scheduled-tasks.md",
+        "rules/4.1.0/config.md",
+        "rules/4.1.0/realtime.md",
+        "rules/4.3.0/advanced-tasks.md",
+        "rules/4.3.0/basic-tasks.md",
+        "rules/manifest.json"
+      ]
+    },
+    {
+      "id": "accepted-mechanically-current-roots",
+      "status": "ACCEPTED",
+      "roots": [
+        "ai/",
+        "content/",
+        "design/",
+        "docs/adr/",
+        "examples/",
+        "references/"
+      ]
+    }
+  ],
+  "protectedPathSetSha256": "ef2779982f88697540e965d5404ca4a3749173661e9107c26ae17e05a47ba3e2",
+  "currentStatuses": [
+    "ACCEPTED"
+  ],
+  "historicalStatuses": [
+    "SUPERSEDED-BY",
+    "POINT-IN-TIME",
+    "DRAFT"
+  ],
+  "openQuestions": [],
+  "entryCount": 241,
+  "counts": {
+    "ACCEPTED": 216,
+    "SUPERSEDED-BY": 4,
+    "POINT-IN-TIME": 20,
+    "DRAFT": 1
+  },
+  "entries": [
+    {
+      "path": "ai/references/migrations.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a4a6af08729c1e7974e21e290c356f4bd5795572989c879e295e317c77ccf9a7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "ai/references/repo.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "483317004cff6f4fafbd0dda6c96e575ed34e7fe1eeeae8cd2c9913d6d2e8fce",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "ai/references/tests.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "61c111629de0b138c3b4a9405dd0b04b19506e71c14c4bbca004c5ab4d1ca5eb",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/agent-clusters.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d88cc3d7426175d3ef9d5cbd15bb73dbfda4c3cb191d751ae506de367d31647d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/agent-versions.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1d53454d449046ef1d0db75bf1528c075d1e051886ff60329459b0fa19799c56",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/agents.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "43c4b95e3177796b35b20e97c484a3f86a95ba649f756d8ceec8936142bd5101",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/approvals-and-hitl.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "684424b535bc18559e822b32da43a7bd3ec300a854954ccca6b8185f18f82869",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/artifacts.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "88754ccd9eb50df8fbca42b4ff80e65c9abcd4cbd1dfb4eabf32720b5d455307",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/attachments-and-files.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "06c2bfcb95f1e4f4c36d48ae8635b7ba8214bb25502a6f95d0dbf055c3f5082d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/audit-log.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d92bf5f892711ee5f424090c93c3d88ae6bbdd3ced6959b6dc847d95353adc6f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/auth-modes.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "92cd0dbb2b2f664a06644cf504d4b0eb4d5c65a56bc14ec56fba203c2ecc0079",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/batches.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "13938cecfaeb52de11dd3b06a0a66005946e284db9bcbfa58916735de3706e31",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/budgets.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0ca5b554151d47e0c829fefc83192553e82b81daed6a886d57b7d0e7500e8b51",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/chat-and-postman.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "c092649af6bb0a39022450bdae0bf87c1d9a4d7f73b68903e1809778d3f675b3",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/connected-entities.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "26b678ab61d28ebf52f179f1605c1a4f1510b9696d233ef3e0083d393d5fc97a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/context.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e5a2c66df38c4dd9da10319730e28874b3cdd48561c295507f918b04002d54c9",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/conversations-and-threads.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "17f25abddd626e8ede72cbe2787826245c2c9e337a7c9b7aef271e50ba6f0bcf",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/costs.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "07f4c7b74c7f5f2036d40a72dfe7732e96140282cb2a5692e680c084b84db0c2",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/credential-inventory.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "25a0ff747844151927892f3f1177cf7f224834c3f9bbed141c26aeab3c8abdda",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/domain-vocabulary.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2a3acc85c6c992e7b8751bca4098c626b123a1de91e0616cc027b4ae4194edf8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/encryption-and-secrets.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "dacd2496213085230813e2a9ac6d1ba6d731fcd9b395fc3918d35428b6e7edac",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/environments.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2310716d627cd8f4f6837b52dafaa49bdcd1b4ea09e5f191e842fcf7e062d461",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/evals.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ed5803a817aad1d150d69f181fd0990465d2812c095a7bb91acd8e7056393763",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/evaluation-runs.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "11cd865bc870185d8f5152dd43b2895e02890f5e8c17ecc982de217e9c55d890",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/events-and-polling.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "498267f135f9f9cc0d892c4e7b89ada6aa8d4f5a4107e4552ba053ad224d7df8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/faq.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ec17624d9b011766e559b372fd50fac2f2bdaf90a0fcfe8535c49cf3b8edc1f4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/hard-erasure.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "10d39d9695c21013b4fc57c497ed15a6150e4a87f2d1a8c677b059c6e75d6d86",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/jobs.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0dbb2f8af62d92d7c5d7c965c10ab1f0c5c7f171a7b3ac5ae262174318eedd89",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/legal-and-policies.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ea71c5d7047b1965d0d7fb90d2d886a654c681691495c5278a3ab228f07808cd",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/mcp-gateway.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b77eef5869ec5778a6120189cc0309c3a699ecec4f43effebc6a28562043268f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/mcp-tokens-and-pat.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8596f7a82e46c817ca99569e594558f038c470346983889c781d114c5dec22f2",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/memory-graph.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "05d467d9b90f909d3d6e1165d5e07d21c3a32a1e2d564b9f5854f77861d66a68",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/memory.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "7d4782b6fc767351758a614ce81ccadd8bfefaa6fd7fe6fbe50fc6cd79e6a59d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/metrics.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9a24a0566dee08a686ce6d670b398b01adf05fe8ab2435304c72c60c00a91274",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/models.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "633a1a78ebb2efc2a2c0a0c6b691db1bd20700aa2713cdc96fffdb5fbbb847ca",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/monitoring.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ee13f2fd5dc26936de1295328621b7c0550dbedfb85462c7be73d2f350cdd459",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/observability.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "94f609652d39265917965466b05ba5f7393455f4ec76d91c9812848ea7b398fc",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/official-skills.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e9efb78b0ba0d4872bdaaf0aceda77b3a7976b7f479569e296a898b325454503",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/openapi-and-rest.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "788743177a676e60af265ed5e0df0b119b0bbb4c087c32847b2b056998369d7b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/play-platos-dev.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9399b158b9a0625c687c11b6595bdcb1744aac36cbe6b66214c1a9b9aa9b929e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/prompts.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2a9e8bab2c7d24e4d7a2794bab38ea0bee3fb299d15279708e06a65d593cd529",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/providers.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3de6083111d65888b12e9eedd068a48c9f756be0a6077fa18050a5994b63535f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/public-agents-and-embed.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d389168239b476ad85566bdb975117e826782987375cfd234fd0f978c8eb7c1a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/rate-limits.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4617e809f4061ad0a8b41115b5ff225c2cc4c3c456f2656245dc22df805fe3e9",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/react-widget.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6741beebab4008a5bfc40f1144c79423d18e67acedb9979963e1bd5667fdf5dd",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/safety-and-pii.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "30c4dc59a9832d2650a0277aadbb7c02f112706cca41ad83e431bb2ce276ead5",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/schedules.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a35321d050d089466d56b4954e7b8b7ed43ff26b1576617c4b3902a073048085",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/scope-and-multi-tenancy.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "46242ea7b6132bb6377f7ec2dc63890fffae7068f2dbb7c789aa371c45ba8395",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/sdks.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "940d564e72f1217e66657a918c7975622e767523bebdc39366201bc44e11594e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/self-hosting.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9f747e8270fcec5d9ca3f00348b07306c841fc44371fa5ce40daa661c9973da7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/skills.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "345ff6eaf185e8c3028e6a5c75b2638859fc0c1b720c54a548e74e0e09f7a735",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/streaming.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b15b86acb61af11954c6d7c500aea69f58bed4c34b82a8454074998601eb2dc3",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/tenancy.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d9476ef9ad6c377be549810d502e655cb6573e46851e0f48abec37ee0e5b7211",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/tools.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b3a3aef473e6c5df923f3eb1ea33b84b6b4cc69202ba4f1cb9e84f524af79571",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/traces.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "34805174e71f8a1b4ab48431402f9255b7ca6676ab4374a15d70a8e16aa6b49f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/docs/turns.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6a9c74eb6b6552893c425c504c14e626318c58d65882c50f7aad4054eb3ef1a8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/add-provider-key.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "95b08f2d8ebea239b512caf10c25a9c517205c5582253eb4bb628e6de4a6d92c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/approve-tool-call.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "98332df5a47a646dbdcd600592533b4688159aafaa0316bd94f56abef0528d70",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/backup-and-restore.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1df1ebf7321f2711e841fdbdae05a8d28e4d2b39d01d860e1a9a15fc676cbdc7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/build-agent-cluster.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6221a29681f23d5db57c9c5df97ae8f9923cd9cc27897423aa9aae43536f8a64",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/chat-stream-disconnects.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d9c24465cb9411e6888e463c04a854be37b0bf0c467fc682569560e042cc2099",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/connect-entity-platools-py.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0b5454b4a9b406e3cb1e24cb9974c799142eb8624f7dbe38a850331d871cf206",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/connect-entity-platools-ts.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8d9f205d8f6cc91643e0d265f84455de6057cad90b692b4f0a92e82a59de3e25",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/consume-platos-mcp.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6e7b04b1f3b02865fa12aceb858e4fb744166fc15959aa627504b96c2d7db023",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/create-first-agent.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "cde888613a85c80e55f56ddfcd825deee996b8034744145d1a859587f4055789",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/debug-cost-spike.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "54c666ad105cdb29fec12180ede133dd5f7b35ad3b8e8fc756e2d23e7f2ae1f3",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/dispatch-job.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "de24b5994be13f8f4df161a9f8f283fb18fe9e86b374d9aea2d04f6d5c6bf9a3",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/embed-public-agent.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "271e5e207f1d5a542546d5d8faecfbc8d11ec328c64f55f2c072436cafb2ce50",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/extract-memory.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "652c08a030b35b94d926f96d78693f0f19eea0ab4181d067e37f9c9c2317e926",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/filter-pii.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "199279205f7fd2fb593079caf90ddf67394fd698d8a54835f247a0f856355816",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/fix-encryption-key.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9604f1402d2c7203042234fef3c4133b06079140cbc86d0a94315fae9fe85b9b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/import-claude-skill.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "94a38c3b0b942b7b3d3b965666d762285d9c0a26d5d9bc136d9f6e4853ee8ab9",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/install-self-host.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "cd47ead19344507537bfe5db99f3a7390fba9af22ac07a67f494ab171ca4bfd0",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/invite-team.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a4922803d0891ee75d69c1f8f17c937afda00fe67c17b1bd01798162a78141f5",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/publish-postman-template.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "c1b3c2aecabba5c5008e7eadafa467d0ae62a565b3354b0cd1954ca78f2e98c6",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/quickstart.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "520163da23402692ab1692710a1c6d7b92f9b86a4bf8720c2c911b583567d039",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/recover-stuck-job.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "68e4a207465105b7abe5a29d7b11936d963883915c5faca4a18febeef2871728",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/run-golden-set.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0e26f34610f754948dbc6fd0cb8a0ae7b8abe3215688e18334b27be7c9b0419d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/schedule-recurring-job.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "849dab23a51184b0110a4dd868ecbf697cb74e42eefcc1461ad98d91d517ed4c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/send-attachment.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8a97ed1adda2a8f3ced8bde9bd002e8ac0dc5e5eeade9ebd44b7096b13d2e53a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/set-budget-cap.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b6ea82f56efc754fd527881ba88bcfad1a7aef4bb295d65ca58eeaa55bffaa1d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/spawn-job.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "aec9bee96f05cfecabafc4d3ff963d0fc19012b6a0cefa70de8cf61446563dff",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/trace-a-turn.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f1c7cc6446a908744f0236057788a9124bb896a1e2504d0f0d71fafd2e0d8f60",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "content/guides/version-and-rollback.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4289818ab7430ee290016b812db04e08ebe4d68ca70f839732f590cb2b5be693",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3bab4b892ffb8d9e8407dd6ce0cdb5d585ad72b9476573bf47ceec31d861004d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor.provenance.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "62de5a6cf569e4986e87fad0509626e2ebbe11b909352253b65a420b6ae8ca0b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/00-index.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2857af57915258c8b08cb9960a8ab035795944f89d60c85c3e65c30d86d7948a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/01-auth.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "61e98a663cffbe8260c956b413df7eca94fa08cef2476fa05411d6c9f1e306a6",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/02-onboarding.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "39c1abc81edda90d482a025851f56df4e0d58a74333e23de8400673b8b7fe94e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/03-home.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "43668d52bc9fd0590ec74068789d846193a01000e60fa1f8acc190542a0f4dc9",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/04-command.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0ac13608fa8c8a3298770a7e7dc0f5defd14969e59a7089b6806a4d4437ff1b1",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/05-orgs.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4360971c759514c6251b85cc62ff87738d915e0a52c3f0dd8727539c16b11bdd",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/07-billing.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e0d09b60c1723d23c0802a75e9738bda3a73a2d2f6ac1f113176c8beb587f915",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/08-account.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "36a54e4e08e27f50707ba80f3eb07d0730a143104b413177793b625e4afe544e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/09-agent-share.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "13771524308450181e6313882ba028fe067c3e25ddc0431c5f344a357927fbcc",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/10-agents.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8028064b8b538fbaf430d289f6552126e7dda5380b3596c110bd22db9e00b1d7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/11-agent-new.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a54b11476536c1aed4e225c539dd9f1b00d38b4abd23c43ba6087f6402a2e261",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/12-agent-config.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e162a8e8374011b8ce88811fdc6201f5c08f6221457877979cfb2b52592b8557",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/13-agent-context.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f4fe24bae2da20928d1ddd4f16673ea4fea2e444c0e0a7dab0460511e594c44b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/14-agent-tools.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "adb4236a7cafdef66440a0d63f991104eca6a24254cf0a36e8698745e5f5a828",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/15-agent-versions.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "fa983571a7e16163f077d44bca6ecaa3f26ff763332e2c09d4e3e026bb73f10c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/16-threads.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e6f805a54c956e8d84ac103e9c14e7c8949638f5fba6b9c5d83ae5e62f545fed",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/17-thread.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4f35551b7b8d40255367508c5990336267f5b939debe018edecff3b7fef62825",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/18-trace.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b52286bd9ee0487ac5f8eecd70e804ee88b7cedd0a7d02644424d24bbb315ea5",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/19-playground.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0df6c77be589fd5855ea09ce636bfa1823e3cd50178c483423518522e115ee68",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/20-entities.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "663a9101d346474d6f3b04be8f3c1c8acaf80113530f07ca079cf3dcafe79fd5",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/21-entity.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "fe039c6e6e8ad3a1f0914d15a1d36110cf5b809e638d09a01c079a27eb7e50bf",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/22-mcp.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9938cead4e1c5a4218df63139337debdc571770ec42d0d99cd58a902cae7cc0a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/23-tools.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "eaf8fbdabdce00487b5ea536f68ce4f45c1349e26cd5d6221aa0792b3b796685",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/24-providers.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "fa893ac7b9605b7f9697e1f3d9271331420265f282c56851e184ec3d16e89693",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/25-memory.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "c6e81cc6fcd7c668e58d03d0dc49fb886e1883236ff7a7669553e8c48d891414",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/26-graph.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "bef94a1df5e55899ede65b38ffb8dd4d6514ef8651dfd2e2236d368ed001917f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/27-clusters.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f3169d36077732dbb325c35410167b4080adc17d496f80f82da7bb349e4038e9",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/28-skills.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3dc47b699ae656311f38a9931005fb22d6417d41f93fac8b5c0f901aeeb0a9bf",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/29-monitoring.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d60e6deba456eb886b54e234f8580e7a9a85a848d87fb82a2c0498dde2019426",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/30-cost.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0e9b70401055851b4eadc9519fb74f6e2ca9b34c1b74a9e57cccd299e5e67bc7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/31-budgets.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9ca273add2f36ad488212f9df20cd857b0ce9533417f7b580076a7e1c9e0935a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/32-traces.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ee9bad4b89e958108d6003cd29e43507cc802ae4fc94bb34e254ca807dc3659a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/34-approvals.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "23c851c2de015afc7ca8953f96f60263411ded2f20561ffd1efba98aee8c09be",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/35-governance.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a744c12758d4280a9b3c283071819b3c5fa3f75f33aa85757c61f95e09ce95f4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/36-evals.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "946a102365faa33b970acd61bf552203dd4592f9bf655b47542714aacea1667a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/37-audit.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8cc4ee65252bf08422e55e25b0285c3aa9bf202b5c7cddb0ffe1649e179832ca",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/38-jobs.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8bcf96c908339ceac3023afd77c0aef4bcfe864f91a06873d43b97712b2bfe64",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/39-variables.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3c59dd733ccb3578decc0dcfd72aa030195c3017705fe68a73cd321c0c314dec",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/40-settings.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "03fbca4b90c99d4f922bf14cc593b9da03293797c7084d4546da6c0d45b1bc2e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/41-widget.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9d01dab4502eca2905655a9c1c34fe61869df9583954fcfeca04410943e869bf",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/42-connect.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4cc8b7bb289d0cdc531e236c59ed1a8bba8fe758e16dab98eb50c5b6a53791da",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/43-docs.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f3634bade6e8b051cc7d8d1d730fa3abb42e5b4890e05f5b2615648cc88f7505",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/44-debug.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "cef317a0b062fad123312d97d0815a45f8a4a64ec04f77829c0090799f06451a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/45-admin.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "001edb9ecc2cd0b9952f275046280380aa69458e156dbd6a83c7f3986ee14d63",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/46-errors.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "54b99520db7f14a46940bacf31564c259f7902635d35400d33466756760ecad6",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/47-parts.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "328199977b6a61992e3557e7f319b7bff9d35318e02b99c34ad9256b26929339",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/PlatosNav.dc.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4ff5b1429acb7db59d328143b21cfa0ce7a61399b34720a0b3f97b431b2a24a8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/logo.png",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a7cc2ea9c8b88f5c39b563a0db44ef2a4c5ee8340add4f09c38fba0cd1d2393f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-icon.svg",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b0f651a965258042d862378de6cee5b514a3d0c3c5c23a2e3f4463743e5d094c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-logo.png",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b86c0669d623b5e5a79be180c3dfd3be5c46f707ebc79ce94b3d2bbcbc514146",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-logotype.png",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b86c0669d623b5e5a79be180c3dfd3be5c46f707ebc79ce94b3d2bbcbc514146",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/github.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "bb57a409547047e090235bf1b75eb1e12fb6214335573c32aeccf7197c318296",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/one.css",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "48b005e16b7b7a0017ccb24f7c683ba5d83a80ad1069779ac4eb553734a3367c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/platos.css",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "89dfb12a532a0c8f3230fa30969165723d7bf6ead566ecd516eef8d00b2fe98b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/styles.css",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "d6eb56a1f9e659acbf4aefa90878ef88647c3cb90957865f53a152fc8b61f530",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/support.js",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "da5192a07f83b3475e5d60409c4f3dff129df9b3843f3edb0562dadb81df08a8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/adr/M0.3-bounded-contexts.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b4249a46697343dc48f41e8b66382e7e0bd225ba2eeb7c78741bb4afeb76a63f",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/adr/M0.4-contract-versioning.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "63eb464192fd0509588ca762eabe135f7a2524df5c1895240fcbeac7e7cf3b98",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.2-capability-matrix.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8fe3dfc9eb510c95a39b1e572b8674714b7ba52d10d416aaae54987696cf0c6c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.2-capability-matrix.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "65b1757eac1891ac66e8c04b5395cb340a77a6e6d10cc74f2e2d4b3dc3200cc7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.4-design-contract-map.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "931fb1b66d75a69b03688270e23fc63a76fbc8c8e22479fd74e2d8e50dfa283e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.4-design-contract-map.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "93d80b6933723ab95d0187dbabdf4d61208eb329e532befe26267790952bb8ca",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.5-dependency-sbom.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "3605835f4813210e65c549d06732323c2fbfe68036054ea9a7db46f0d17a4dad",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/M0.6-admin-access-containment.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "88fe8f785292d72154ef00ed6aed4c9d0217cd609218506ff71f63beab685f15",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/M0.8-operator-auth-boundary.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "dab08a9adc93874d9c937b8e36706aa5481ca77f93d840a005097331f02d707c",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/M0.8-operator-operations.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "218aedef3b6845245332bb771e94dbf01c5a2459abfa02c4a7fc8410441e4500",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.9-rest-census-independent.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5c9c5613fdbd2fdde0a7ff7f583f99b1dd08bbb9030f0c35a87c0bd62aefa41b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/M0.9-webapp-bff-matrix.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f5254318ac99f0ed5c212b9e4bc7a1662dc5997f7e52855119e7beaefa5ab12a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/history/win-252/prompt-caching-progress.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "1091fb28f224657f049d4ed3a4cd362b43fa1597c35ec7c96456868d9937782c",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/server-changes/login-passcode-backdoor.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "c69542e6cddaa2352b7b6cd2de276ac500076d258ded05c805594d136aa24693",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/server-changes/prompt-caching-and-billing.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "9b8665054f24f538400ae41ad1ca67265d166987d366ef589a3dbd18918a4449",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/ctx-sdk-context.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "995bd07bcae11704ee9893003717bbdc8282909a35c7352cbb81f47f85abe963",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/eobd-80-platos-client-publish-prep.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "b51956ffcd0c52986156bc103705e0ecd15c253e72d6974e1f1c887593845dcf",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/eobd-82-platools-sdk-publish-prep.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "c1bc750984c63ab10b9b0cab5cba35ffe906eb307e3bb51353eb0d89a7a3a758",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/eobd-85-86-94-platos-client-namespaces.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "b4c9ebe52538ac4acdd9c758a14c1f7ae786aadf0426b2b2a15f74109973ae68",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/eobd-89-90-95-97-public-embed.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "6d9abf14a812a383884d34829ea6470fb7ffd46e227f5970540c4812f773c76e",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/platos-client-model-routing.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "cf5496fa6f471a03f96d65ba6fa208e122fd29568c640bc87f46f5d94e3b929c",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/ppr-29-platools-js-strict-context.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "9dbcceb6a982d7879d06c63a36cbc8c3e0e3a9da689af106f91c6568128e483d",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/ppr-34-platos-client-mvp.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "ab43cf3c287273a88d6093c0a9005e0f3ed440a0929d1ee2f5fd7763eebe16e1",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/ppr-71-nonce-replay-guard.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "d83339f1d9ccf03e954459748ebd0de720374c1d2fecd7d77291612dfd6baaeb",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/history/win-252/stale-changesets/sdk-context-pop-bump.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "ace5091c64f48641e296d98dac7c2d894c61c22747a0c2af26b15cb6f825cf6d",
+      "sourceSnapshot": "repository history retained at its original path",
+      "baseline": "historical snapshot; not current product acceptance",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/sbom/NON-VACUITY-PROOF.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "65ca1da586e9e98ff11a16be6f9fcbdd73e90eac271a92c0fccc0a3713a4ac6b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "649a7e7cb30ad34b4eadc95d7e64d6d4446f8a5fccef03519a96632605d0dcf0",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/advisory/osv-report.json",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "d5403af8a239e5f9f748fd3c39375fe54ec2fdf44b461e8aca5874a48ea17930",
+      "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
+      "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/sbom/closure-contract.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2599cad4f7b91e4a8123b96f18c8b0d8637252db7e9c9c79a0690d2972bd12a8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/closure-receipts.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "359b57b63384094616d071f8b735c906894af68c80a1f1bf3082542bf1571383",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/license-index.json",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b",
+      "sourceSnapshot": "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
+      "baseline": "point-in-time registry metadata baseline; current shipping membership is checked separately",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/sbom/license-overlay.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/license-policy.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/platos-agent.cdx.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/platos-webapp.cdx.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-234-route-capability-parity.generated.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1bbfbe0e607b7905d4877ddffee6d1192f17091b62634232b91178cb7177370d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-234-route-capability-parity.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "296cdccfdbb7db362d326069d2c4db0c2f04e546e5edb4301ad9f618de6bbdc4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-252-root-entry-manifest.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1c38f01b5c08b22b9283923ecb880b94495591f80f5ff9579752e6c65645fbb4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-252-root-entry-manifest.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "db013073bb0308d3c9553ce0df5baa194f4cac9b8974685402d11722f1688618",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-253-workspace-reachability.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5dc30d3e69db416d8123f27d91fe68f27d50c5bc3d1de2ef98fedd6d609f3279",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-253-workspace-reachability.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "29cae9965e6073bcfe8f4b4e39670f27061851e0050ac67676037f65241a766d",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win253-removals/clickhouse-split.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "116e4dbe7d6b4d2ed38315db2fbf52e349dd924d52a8980e4b31b7d826701693",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win253-removals/clickhouse-split.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "b8776147d674390835b777bd0629d4531960e2e2cb798f48cc505d1b5ac57757",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win253-removals/vendored-build.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3204d72f94b6b1d06949ea5e200cf13b4a7476d5c355f7f8d606ce71f6d02642",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win253-removals/vendored-build.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "992235ea55b416e9493382f4e33680a45092ba48f510bd9b2bb15005325a5103",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/refactor/IMPLEMENTATION-STATUS.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "b37d67160a061ab34c3b770d437531e7f16e3f3a911cb9f1c4473844d4672b64",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "docs/refactor/platos-trigger-refactor.md",
+      "status": "DRAFT",
+      "mode": "100644",
+      "sha256": "0e7f8fed9bbf0f62b630267e8445c8b2271fdb018ad6ae0b93f74f7c69a5be71",
+      "notice": "not-current-acceptance"
+    },
+    {
+      "path": "docs/research/llm-serving-and-caching.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "d67dfe9e1d6c52f8f530abaa5ec8eed0d9021cd032bd51227f5246eed710ad26",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
+      "path": "examples/platos-client-python/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ade20e0172cc869f83dad771335cdfe7eebb022d652d20c061745ddb086fe672",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-python/cli.py",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3d3e57481dbc27a1051ff12f222c39798da9362f3ae8ec9ad5838547f9d323ed",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/ChatWidget.tsx",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9544d173505d124f2d18fbb9ea19b784f480b0e71541dce05914eb2ad0d233fd",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "fef86ae574d15a50315fff9fe29d0c654773d36e46610e9fbc30e76497442b09",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/index.html",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "34a115db2a32b9e037794eb0bf3c2873a728e666f633e389d5dec8bc814b2d5a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/package.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "9df3d551e454449b69633694f25fe127ccefdb280631d6e20f876cf384ca5c2c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/src/main.tsx",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a575b4b0d867793b93ff1e581ee2108261304e4c4ef0cd76c660632d41084726",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/tsconfig.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f1e622ec2627c1f48ab92c29023b79f31adc7b31717bae08cf19870174a9d3e1",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-react-widget/vite.config.ts",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8207f6b8acd6f628795a3dd642b31f19ce980197145225dc7a2ea4b953d0e8ff",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-ts-node/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "8c3cc1fc21af011133f4d3abe441824b8ac9ac0642811b9e421d7fdeecde9264",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-ts-node/cli.ts",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "01215fa241a0293ed1f3d6ee0e6f16f777ebda9fdc9aa8fe9731756f4f00f59a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-client-ts-node/package.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "300994aeee0e40fad116f254b5c2a0ab07e3bc6520032520333c3463b6409d15",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/.env.example",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "aa8f8576c69a24f8a57c9632a1996da59240de714906d300c8236f931db6eb55",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "154dd7254657ccbd59ecc741ec964558ab04794581267a43e9694a3d22b221e1",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/app/chat/page.tsx",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4f70133e3c72181d9fb60230250d1a163558a1b95b1d4c6d7dde47d307bdccf2",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/app/platos/token/route.ts",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "af1fce25ccd37d8c6134323fbd17661c98225402b997033dd3e803ca2789bbc4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/package.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "19805aaadbbddcc491f8d96986f61b25420d019feda5614a59f41fd164447db6",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/platos-nextjs-starter/tsconfig.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1b678c11b01a3d84470441ff121939670a0db6de4005da5a08e4355869d65b0e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "examples/simple-agent/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "53233027c94bb6241b9b473a12a722774ba1313750e2401701ef165baafc093e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/.dockerignore",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5e4768f601d01a57602a49b63512efb35a8dcb159e21e552486cceb44e42b1fc",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/.env.example",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e0e1d7ef7d71971506581964d3b5ee55aef7afdce61ded5ceec82189df0e7ca8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/.gitignore",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "4ddc7f952e52b285c0f300fd61fc1c1b77a5b338dc2e6251887b886c9def4384",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/Dockerfile",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "088f39e60ec98693858883f54e857b2ece44558bf9e8af0c38013aa69fff6e50",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ccc17c5b528766af13012119db8914446308e5c3427239d1032cf2d510e3277a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/docker-compose.yml",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "7e4633986385ae91d7d4612e7453406ba4edd794d7d8e801bfa1764376131296",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/package-lock.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "02dfebb45009510cf08701de7e0bbc3a10ab94a2b11b3e97a5c1890ef93d240e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/package.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "f27cd8c21db7784f562adbbacd1e97d8a4e06f594dd6ac3f462cf55ab30ff5a0",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/src/server.ts",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "e4c4b11143aac159f52794b9cb70a8cd0391adfc7288379f1351eae9b21f0528",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-docs-mcp-bridge/tsconfig.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a6595b935f9452b367d68aacfe4d3ab71871ace00a1f5182819349718a272fb0",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/.dockerignore",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "1e55330cb303d5da9b2b139cc96aa69d7e3574e4f33d03ab629c2efd41bfacf7",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/.env.example",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "28302592dd82912196c6ed73e6f1000d21078c5c975f4a48ba3e83e55b990b14",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/.gitignore",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "7b6d0c9f4d831b6ef9b74114f8322e3501db93811506f3033204a35c0ebd2f74",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/Dockerfile",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5a52898c7c9e679e474c3bbb472890f3f1258ccb2ade353b73e2089ebb90d047",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/README.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6fd3acc99e19e2347756a0cb602307bf6cc6be93c3beafc359658773d44c7056",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/docker-compose.yml",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "de643f73cf070b920747afba45e6d1e7f9c5da80439e3173aeb96bc6da0bd011",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/package.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "532da63e0744ea8b9c10119fa6727233066a3a437dd47495c80ad356afe4a924",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/src/server.ts",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "6b77616e4743b71d8849650dcc859f44bdf1c4b96e1f7d22401deb52d61e7302",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "references/entity-hello-world/tsconfig.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "a6595b935f9452b367d68aacfe4d3ab71871ace00a1f5182819349718a272fb0",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.0.0/advanced-tasks.md",
+      "status": "SUPERSEDED-BY",
+      "mode": "100644",
+      "sha256": "82aad1f5d2e37420baf82bcc6773bfccfe91b923e19b198d361b2d81ba6aed3b",
+      "target": "rules/4.3.0/advanced-tasks.md",
+      "relationshipSource": "rules/manifest.json"
+    },
+    {
+      "path": "rules/4.0.0/basic-tasks.md",
+      "status": "SUPERSEDED-BY",
+      "mode": "100644",
+      "sha256": "01dbd71680b1c2c00a95e1ba389a4894cf08e20922db8d6e42b2c8c631c74cf1",
+      "target": "rules/4.3.0/basic-tasks.md",
+      "relationshipSource": "rules/manifest.json"
+    },
+    {
+      "path": "rules/4.0.0/claude-code-agent.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "69f5538096209542b569a571ea30fe667702bb6d96ae0c7bac170d1163cd5f5c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.0.0/config.md",
+      "status": "SUPERSEDED-BY",
+      "mode": "100644",
+      "sha256": "ec280279979a8df48063aadc90d9c9f6919a86fac318a9d3e2e5e60db6763c86",
+      "target": "rules/4.1.0/config.md",
+      "relationshipSource": "rules/manifest.json"
+    },
+    {
+      "path": "rules/4.0.0/realtime.md",
+      "status": "SUPERSEDED-BY",
+      "mode": "100644",
+      "sha256": "02e5f6e781ce4ffbaebe2ed275fe49a6b6a6b48f086c2ee9edc2425c16e6205a",
+      "target": "rules/4.1.0/realtime.md",
+      "relationshipSource": "rules/manifest.json"
+    },
+    {
+      "path": "rules/4.0.0/scheduled-tasks.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "566c6916da3acee24b2bbe71ec526133b507d85162c797a8031f8392f4188bc6",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.1.0/config.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "3c9843249adcdd0aca2312928332ebe32dc0fd2b3c9109693404a8c2cc9cfb73",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.1.0/realtime.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "c2b9bca6d38ffb58115335e248ad0958de2ad127e128ea2782a0baf6510ff54a",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.3.0/advanced-tasks.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "529a691240fcb56c93e196aa7b4247ff8dad5be0063d7b6c2582017d188f050e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/4.3.0/basic-tasks.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5d8d592028f460271be539f2afde03dc7f73578f45b56e3baa8570351b96088c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "rules/manifest.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "ca921bdfce6a3b6479fa1a2ee8cf534e553001115b06f5bd7fe8b3f6398572be",
+      "binds": "current-repository-truth"
+    }
+  ]
+}

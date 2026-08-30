@@ -71,7 +71,14 @@ export const REACHED_VIA = [
 // A protected file may never be proposed for removal. These are hard-coded on
 // purpose: they must not be weakened by editing the rules document alone.
 export const PROTECTED_GLOBS = [
+  "ai/**",
+  "content/**",
+  "design/README.md",
   "design/platos-ui-refactor/**",
+  "docs/**",
+  "examples/**",
+  "references/**",
+  "rules/**",
   "lefthook.yml",
   "LICENSE",
   "NOTICE",

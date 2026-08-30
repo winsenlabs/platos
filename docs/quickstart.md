@@ -21,7 +21,7 @@ cd platos
 cp .env.example .env
 ```
 
-Before Compose model evaluation, replace every required development sentinel in `.env` with an independently generated value. Copying the example alone is not sufficient for a usable stack. The authoritative required-variable list and generation rules are in [`content/docs/self-hosting.md`](../content/docs/self-hosting.md#required-compose-variables).
+Before Compose model evaluation, replace every required development sentinel in `.env` with an independently generated value. Copying the example alone is not sufficient for a usable stack. The authoritative required-variable list and generation rules are in [Required environment variables](./self-hosting.md#1-required-environment-variables).
 
 Provider credentials are configured for an authenticated Environment in the dashboard after sign-in. Do not put Anthropic, OpenAI, or other provider keys in the root `.env`; the agent does not fall back to process-environment provider keys.
 

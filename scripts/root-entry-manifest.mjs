@@ -355,6 +355,21 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+const ARCHIVED_LIFECYCLE_BANNER =
+  "> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.";
+
+export function archivedPayloadBytes(source) {
+  const escapedBanner = ARCHIVED_LIFECYCLE_BANNER.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const pattern = new RegExp(
+    `^---\\ntitle: "\\[POINT-IN-TIME\\] [^"\\n]+"\\nlifecycle: "POINT-IN-TIME"\\n([\\s\\S]*?)---\\n\\n${escapedBanner}\\n\\n`,
+    "u",
+  );
+  const match = source.match(pattern);
+  if (!match) throw new Error("archived destination requires the exact reviewed POINT-IN-TIME lifecycle envelope");
+  const body = source.slice(match[0].length);
+  return Buffer.from(match[1] ? `---\n${match[1]}---\n\n${body}` : body);
+}
+
 function manifestDocument(root) {
   return {
     schemaVersion: 1,
@@ -395,7 +410,16 @@ export function validateManifest(root, document) {
   for (const move of ARCHIVED_MOVES) {
     if (pathExistsByLstat(join(root, move.source))) errors.push(`archived source still exists: ${move.source}`);
     if (!pathExistsByLstat(join(root, move.destination))) errors.push(`archived destination is missing: ${move.destination}`);
-    else if (sha256(join(root, move.destination)) !== move.sha256) errors.push(`archived bytes changed: ${move.destination}`);
+    else {
+      try {
+        const payloadHash = createHash("sha256")
+          .update(archivedPayloadBytes(readFileSync(join(root, move.destination), "utf8")))
+          .digest("hex");
+        if (payloadHash !== move.sha256) errors.push(`archived payload bytes changed: ${move.destination}`);
+      } catch (error) {
+        errors.push(`${move.destination}: ${error.message}`);
+      }
+    }
   }
   for (const path of DELETED_PATHS) if (pathExistsByLstat(join(root, path))) errors.push(`deleted candidate still exists: ${path}`);
   const packageManifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -436,8 +460,8 @@ export function renderMarkdown(document) {
     "|---|---|---|---|---|---:|---|---|",
   ];
   for (const row of document.entries) lines.push(`| \`${row.entry}\` | ${row.kind} | ${row.disposition} | ${row.owner} | ${row.consumer} | ${row.fixedName ? "yes" : "no"} | ${row.externalBoundary ?? "—"} | ${row.evidence} |`);
-  lines.push("", "## Archived byte-preserving moves", "");
-  for (const move of document.archivedMoves) lines.push(`- \`${move.source}\` → \`${move.destination}\` — SHA-256 \`${move.sha256}\``);
+  lines.push("", "## Archived payload-preserving moves with visible lifecycle envelopes", "");
+  for (const move of document.archivedMoves) lines.push(`- \`${move.source}\` → \`${move.destination}\` — original payload SHA-256 \`${move.sha256}\``);
   lines.push("", "## Deletion evidence", "", "Every path below is absent and has zero semantic consumers across Markdown/MDX links, package and workflow commands, source imports, and plain JSON/YAML/config/path references. Inert comments, explicit WIN-252 history, and the five self-declaring control artifacts are excluded:", "");
   for (const row of document.deletedPaths) lines.push(`- \`${row.path}\`: ${row.referenceCount} references`);
   lines.push("", "Local hooks are a contributor guard only; `git commit --no-verify` remains a documented client-side bypass. Remote authorization remains outside this manifest.");

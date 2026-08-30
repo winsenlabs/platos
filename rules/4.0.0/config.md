@@ -1,3 +1,10 @@
+---
+title: "[SUPERSEDED-BY] Historical configuration rules"
+lifecycle: "SUPERSEDED-BY"
+---
+
+> **Lifecycle: SUPERSEDED-BY.** These rules are historical and not current product truth. Use [the current rules](../4.1.0/config.md).
+
 # Trigger.dev Configuration (v4)
 
 **Complete guide to configuring `trigger.config.ts` with build extensions**

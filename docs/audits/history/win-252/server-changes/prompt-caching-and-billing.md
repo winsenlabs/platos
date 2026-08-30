@@ -1,7 +1,11 @@
 ---
+title: "[POINT-IN-TIME] Prompt Caching And Billing"
+lifecycle: "POINT-IN-TIME"
 area: agent, webapp
 type: fix
 ---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
 
 Anthropic prompt caching across the message history, plus two billing corrections.
 

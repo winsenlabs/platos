@@ -20,6 +20,11 @@ const VENDORED_BUILD_RECEIPT_PATHS = new Set([
   "docs/audits/win253-removals/vendored-build.json",
   "docs/audits/win253-removals/vendored-build.md",
 ]);
+const EVIDENCE_DATA_PATHS = new Set([
+  ...VENDORED_BUILD_RECEIPT_PATHS,
+  "docs/audits/win-254-protected-paths.json",
+  "docs/audits/win-254-evidence-lifecycle.json",
+]);
 const V1_GENERATOR_PATH = "scripts/arch/gen-v1-skeleton.mjs";
 const CHANNELS = [
   "sourceStatic",
@@ -787,7 +792,7 @@ function repositoryChannelEvidence(root, files, workspaces, parsed) {
     if (
       file === JSON_PATH ||
       file === MARKDOWN_PATH ||
-      VENDORED_BUILD_RECEIPT_PATHS.has(file) ||
+      EVIDENCE_DATA_PATHS.has(file) ||
       file === "docs/vocabulary-boundary-exceptions.json" ||
       file.startsWith("docs/audits/sbom/advisory/") ||
       /docs\/audits\/sbom\/.*\.cdx\.json$/.test(file)
@@ -907,7 +912,7 @@ function channelRecord(reasons) {
 }
 
 function inputHashes(root, files) {
-  const excluded = new Set([JSON_PATH, MARKDOWN_PATH, ...VENDORED_BUILD_RECEIPT_PATHS]);
+  const excluded = new Set([JSON_PATH, MARKDOWN_PATH, ...EVIDENCE_DATA_PATHS]);
   const selected = files.filter(
     (file) => !excluded.has(file) && file !== ".git" && !file.startsWith(".git/")
   );

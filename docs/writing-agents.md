@@ -128,6 +128,8 @@ Notice the cache hit on turn 2 — the system prompt + tool schemas are identica
 
 ---
 
+<a id="example-2"></a>
+
 ## Example 2 — Research agent (spawn_job for multi-step)
 
 Long-horizon research that can't fit in a single LLM turn: fetch 20 URLs, summarize each, synthesize. You don't want this running in the request-response path; you want it durable so retries, logs, and timeouts are free.

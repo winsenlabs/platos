@@ -1,6 +1,10 @@
 ---
+title: "[POINT-IN-TIME] Sdk Context Pop Bump"
+lifecycle: "POINT-IN-TIME"
 "@platools/sdk": minor
 ---
+
+> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.
 
 `@platools/sdk` 0.1.0 → 0.2.0 — first release with audited `_context` envelope handling.
 

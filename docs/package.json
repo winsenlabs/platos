@@ -4,7 +4,12 @@
   "description": "Trigger.dev documentation",
   "private": true,
   "scripts": {
-    "dev": "npx mintlify@latest dev --port 3050"
+    "dev": "pnpm exec mintlify dev --port 3050",
+    "validate": "pnpm exec mintlify validate --telemetry false",
+    "broken-links": "pnpm exec mintlify broken-links --check-anchors --check-snippets --check-redirects --telemetry false"
+  },
+  "devDependencies": {
+    "mintlify": "4.2.836"
   },
   "engines": {
     "node": ">=18.0.0"

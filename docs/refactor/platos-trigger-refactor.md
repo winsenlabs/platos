@@ -1,3 +1,10 @@
+---
+title: "[DRAFT] Historical control-plane refactor proposal"
+lifecycle: "DRAFT"
+---
+
+> **Lifecycle: DRAFT.** This proposal is not current acceptance and is not mandatory. Any canonical, locked, or required language below is retained only as historical proposal text.
+
 # Platos → MCP-Native Control Plane + Trigger Substrate — Refactor Spec
 
 **Status:** Proposed (canonical plan) · **Date:** 2026-07-08 · **Rev 2** (folds in MCP interface, multi-tenancy model, skills-as-tasks, user-defined tasks) · **Owner:** Tejas

@@ -3,8 +3,8 @@
   "generatedBy": "scripts/audit-sbom.mjs generate",
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
-  "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
-  "licenseIndexSha256": "db522b9f17757a1c656088d9486ada891222c5eba36faa5fca5a5dcf10f64b2e",
+  "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+  "licenseIndexSha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b",
   "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
@@ -74,11 +74,11 @@
         },
         {
           "file": "package.json",
-          "sha256": "e281dd728aa151d64ca4f17b948a22aef0895218144678e77a7c45ed95d07cf8"
+          "sha256": "c59e2ab8f9c18b001a5dcdfe40686b9fe8221e8f34379f26aa43f9379c25eb5f"
         },
         {
           "file": "pnpm-lock.yaml",
-          "sha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766"
+          "sha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9"
         },
         {
           "file": "scripts/image-package-inventory.mjs",
@@ -89,7 +89,7 @@
           "sha256": "5dcc926c0a51ff937800a91fab36685602491164992ba7ed3e146098b6c6f1c4"
         }
       ],
-      "buildInputsSha256": "9eac6fed80df65bc57a225fc84f05c871e7637ce59a712969ad93217449f81b9"
+      "buildInputsSha256": "4d1fc4eab9d22468a1fa22be530800f1ae7fd3c21efb48b3027728a9efd1514b"
     }
   }
 }

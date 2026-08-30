@@ -105,7 +105,22 @@
     "test:max-file-lines": "node --test scripts/arch/max-file-lines.test.mjs",
     "test:install-git-hooks": "node --test scripts/install-git-hooks.test.mjs",
     "audit:contract-map": "node scripts/arch/contract-map.mjs",
-    "audit:capability-matrix": "node scripts/capability-matrix.mjs --check"
+    "audit:capability-matrix": "node scripts/capability-matrix.mjs --check",
+    "audit:docs-link-integrity": "node scripts/docs-link-integrity.mjs",
+    "test:docs-link-integrity": "node --test scripts/docs-link-integrity.test.mjs",
+    "audit:design-provenance": "node scripts/design-provenance.mjs check",
+    "test:design-provenance": "node --test scripts/design-provenance.test.mjs",
+    "generate:protected-paths": "node scripts/protected-paths.mjs write",
+    "audit:protected-paths": "node scripts/protected-paths.mjs check",
+    "test:protected-paths": "node --test scripts/protected-paths.test.mjs",
+    "generate:evidence-lifecycle": "node scripts/evidence-lifecycle.mjs write",
+    "audit:evidence-lifecycle": "node scripts/evidence-lifecycle.mjs check",
+    "test:evidence-lifecycle": "node --test scripts/evidence-lifecycle.test.mjs",
+    "audit:docs-build": "pnpm --filter docs validate && pnpm --filter docs broken-links",
+    "audit:v1-ledger": "node scripts/v1-ledger.mjs --check",
+    "test:win254": "node --test scripts/docs-link-integrity.test.mjs scripts/design-provenance.test.mjs scripts/protected-paths.test.mjs scripts/evidence-lifecycle.test.mjs scripts/verify-win254.test.mjs",
+    "generate:win254": "node scripts/verify-win254.mjs --regenerate",
+    "verify:win254": "node scripts/verify-win254.mjs"
   },
   "devDependencies": {
     "@manypkg/cli": "^0.19.2",

@@ -1495,91 +1495,91 @@
       "docs": [
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 45,
+          "line": 52,
           "kind": "docs",
           "token": "antlr4ts",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 88,
+          "line": 95,
           "kind": "docs",
           "token": "internal-packages/clickhouse/Dockerfile",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 183,
+          "line": 190,
           "kind": "docs",
           "token": "@internal/clickhouse",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 184,
+          "line": 191,
           "kind": "docs",
           "token": "@internal/replication",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 184,
+          "line": 191,
           "kind": "docs",
           "token": "@internal/tsql",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 209,
+          "line": 216,
           "kind": "docs",
           "token": "internal-packages/replication",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 209,
+          "line": 216,
           "kind": "docs",
           "token": "internal-packages/tsql",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 210,
+          "line": 217,
           "kind": "docs",
           "token": "@internal/clickhouse",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 212,
+          "line": 219,
           "kind": "docs",
           "token": "antlr4ts",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 271,
+          "line": 278,
           "kind": "docs",
           "token": "internal-packages/clickhouse/Dockerfile",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 358,
+          "line": 365,
           "kind": "docs",
           "token": "internal-packages/replication",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 358,
+          "line": 365,
           "kind": "docs",
           "token": "internal-packages/tsql",
           "scope": "external"
         },
         {
           "path": "docs/audits/M0.5-dependency-sbom.md",
-          "line": 359,
+          "line": 366,
           "kind": "docs",
           "token": "internal-packages/clickhouse/Dockerfile",
           "scope": "external"
@@ -1898,8 +1898,8 @@
     ]
   },
   "integration": {
-    "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
-    "vocabularySha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4",
+    "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+    "vocabularySha256": "91b4cba3a28330c03f0d3bdabedb45791eb6db8c10654f2f0e47ee449a6ad5ed",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
   }
