@@ -204,12 +204,12 @@ disposition, not a blocker.
 | 3 | `breakword` GPL-2.0 | **CLOSED** | Root release tooling is excluded from the filtered production install; no waiver remains. |
 | 4 | LICENSE vs NOTICE | **CLOSED** | Apache-2.0 governs; `NOTICE` corrected (§2.1). |
 | 5 | `@platos` npm scope ownership | **DECISION** | Founder must confirm/claim the scope or treat squatting as live risk. Cannot be resolved from the repo. |
-| 6 | `tsql`/`@internal/clickhouse` archive | **DECISION** | Confirm WIN-150 status before deleting the package; `schema/` must stay. Neither is in either shipping closure (walker-confirmed), so it is not an SBOM concern. Owner: observability. |
+| 6 | inherited ClickHouse parser/replication cluster | **CLOSED** | WIN-253 removed the unreachable npm packages and parser patch after executable multi-channel proof. `internal-packages/clickhouse/schema/` remains shipping content and is hash-protected by the cluster audit. |
 | 7 | `@fingerprintjs/fingerprintjs-pro` commercial | **CLOSED** | Removed unused `@kapaai/react-sdk`; the proprietary transitive SDK is absent from the shipping closure. |
 | 8 | Sentry unification | **DECISION** | Is the `@sentry__remix@9.46.0.patch` still needed on 10.x? Unblocks the OTel 2.x cluster. Grouped with OTel in renovate. Owner: observability. |
 | 9 | `prisma` npm `latest` = 8.x RC | **CLOSED (policy)** | `prisma` group targets 7.10.0 explicitly, never `latest`; renovate note + recommended CI assertion that no Prisma spec resolves to a prerelease. Owner: data. |
 | 10 | Docker reproducibility (`--frozen-lockfile`) | **DECISION** | `turbo prune` rewrites the lockfile; `agent/Dockerfile` mutates `pnpm-workspace.yaml`. Prereq for digest-based promotion. That term is reserved — its own ticket. Owner: platform. |
-| 11 | `internal-packages/clickhouse/Dockerfile` floating base | **DECISION** | Pin `FROM golang` + `goose@latest`, or delete if the image is dead. Release-reserved. Owner: platform. |
+| 11 | inherited ClickHouse package Dockerfile | **CLOSED** | WIN-253 proved that no Docker/Compose/CI entrypoint referenced it and removed it. Shipping migration images continue to use `internal-packages/tenancy-database/Dockerfile.migrations`. |
 | 12 | Second/third lockfiles (migration-image, references/*) | **NOTED** | migration-image is `ignorePaths`-excluded from renovate and flagged for folding into the root workspace. Owner: platform. |
 | 13 | Python packages under no lock policy | **NOTED** | `packages/platools-py`, `packages/platos-client-py` are out of the pnpm/renovate scope; bring under an equivalent lock+cooldown or declare out of V1 scope. Owner: SDK. |
 | 14 | Changelogs not read (semver arithmetic only) | **CLOSED (policy)** | Resolved per-ecosystem in the renovate group contract tests / migration issues (M0.5 §5.2 gate 5). |

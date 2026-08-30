@@ -579,9 +579,14 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //        in the SBOM/advisory/governance evidence + rewritten NOTICE, minus
   //        6 stale NOTICE exceptions re-anchored after the NOTICE rewrite -> 20438
   //   +46  subsequently reviewed exact occurrences -> 20484
-  //   -86  WIN-252 retired-file and rewritten-guidance occurrences -> 20398
-  //   +4   WIN-252 package-local Apache-2.0 LICENSE copies -> 20402
-  assert.equal(manifest.exceptions.length, 20430);
+  //   -86  WIN-252 retired-file and rewritten-guidance occurrences --> 20398
+  //   +4   WIN-252 package-local Apache-2.0 LICENSE copies --> 20402
+  //   +28  subsequently integrated primary evidence rows --> 20430
+  //   -455 WIN-253 exact rows still present after the primary overlays were resolved by deleting the inherited ClickHouse
+  //        package/parser/replication cluster and updating its live commentary
+  //        --> 19974. The generated removal report is an exact exclusion because
+  //        it recursively records predecessor paths rather than product wording.
+  assert.equal(manifest.exceptions.length, 19975);
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {

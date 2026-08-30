@@ -211,13 +211,13 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
 
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
   const report = repositoryReport();
-  assert.equal(report.summary.registeredWorkspaceCount, 69);
+  assert.equal(report.summary.registeredWorkspaceCount, 66);
   assert.equal(report.summary.ociImageWorkspaceCount, 6);
   assert.equal(report.summary.applicationDeployableWorkspaceCount, 37);
   assert.equal(report.summary.deploymentUnionWorkspaceCount, 38);
   assert.equal(report.summary.repositoryDevWorkspaceCount, 10);
-  assert.equal(report.summary.installTraversalWorkspaceCount, 69);
-  assert.equal(report.summary.reviewCandidateCount, 31);
+  assert.equal(report.summary.installTraversalWorkspaceCount, 66);
+  assert.equal(report.summary.reviewCandidateCount, 28);
   const applicationRootKinds = new Set(
     Object.values(report.roots.applicationDeployable.reasons)
       .flat()
@@ -392,9 +392,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   const testcontainers = report.workspaces.find(
     (workspace) => workspace.path === "internal-packages/testcontainers"
   );
-  assert.equal(report.patchReconciliation.configuredPatchCount, 8);
-  assert.equal(report.patchReconciliation.reconciledPatchCount, 8);
-  assert.equal(report.patchReconciliation.patches.length, 8);
+  assert.equal(report.patchReconciliation.configuredPatchCount, 7);
+  assert.equal(report.patchReconciliation.reconciledPatchCount, 7);
+  assert.equal(report.patchReconciliation.patches.length, 7);
   const changesets = report.patchReconciliation.patches.find(
     (patch) => patch.dependencyAtVersion === "@changesets/assemble-release-plan@5.2.4"
   );

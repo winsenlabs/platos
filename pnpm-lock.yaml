@@ -34,9 +34,6 @@ patchedDependencies:
   '@window-splitter/state@0.4.1':
     hash: da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0
     path: patches/@window-splitter__state@0.4.1.patch
-  antlr4ts@0.5.0-alpha.4:
-    hash: b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4
-    path: patches/antlr4ts@0.5.0-alpha.4.patch
   engine.io-parser@5.2.2:
     hash: 9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f
     path: patches/engine.io-parser@5.2.2.patch
@@ -1158,34 +1155,6 @@ importers:
         specifier: ^2.2.1
         version: 2.2.1
 
-  internal-packages/clickhouse:
-    dependencies:
-      '@clickhouse/client':
-        specifier: ^1.12.1
-        version: 1.12.1
-      '@internal/tracing':
-        specifier: workspace:*
-        version: link:../tracing
-      '@internal/tsql':
-        specifier: workspace:*
-        version: link:../tsql
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
-      zod-error:
-        specifier: 1.5.0
-        version: 1.5.0
-    devDependencies:
-      '@internal/testcontainers':
-        specifier: workspace:*
-        version: link:../testcontainers
-      rimraf:
-        specifier: 6.0.1
-        version: 6.0.1
-
   internal-packages/compute:
     dependencies:
       zod:
@@ -1317,34 +1286,6 @@ importers:
       ioredis:
         specifier: ^5.3.2
         version: 5.10.1
-
-  internal-packages/replication:
-    dependencies:
-      '@internal/redis':
-        specifier: workspace:*
-        version: link:../redis
-      '@internal/tracing':
-        specifier: workspace:*
-        version: link:../tracing
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      pg:
-        specifier: 8.15.6
-        version: 8.15.6
-      redlock:
-        specifier: 5.0.0-beta.2
-        version: 5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)
-    devDependencies:
-      '@internal/testcontainers':
-        specifier: workspace:*
-        version: link:../testcontainers
-      '@types/pg':
-        specifier: 8.11.14
-        version: 8.11.14
-      rimraf:
-        specifier: 6.0.1
-        version: 6.0.1
 
   internal-packages/run-engine:
     dependencies:
@@ -1533,22 +1474,6 @@ importers:
       '@platos/core':
         specifier: workspace:*
         version: link:../../packages/core
-
-  internal-packages/tsql:
-    dependencies:
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      antlr4ts:
-        specifier: 0.5.0-alpha.4
-        version: 0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
-    devDependencies:
-      antlr4ts-cli:
-        specifier: 0.5.0-alpha.4
-        version: 0.5.0-alpha.4
 
   internal-packages/workload-identity: {}
 
@@ -9577,13 +9502,6 @@ packages:
   ansis@4.2.0:
     resolution: {integrity: sha512-HqZ5rWlFjGiV0tDm3UxxgNRqsOTniqoKZu0pIAfh7TZQMGuZK+hH0drySty0si0QXj1ieop4+SkSfPZBPPkHig==}
     engines: {node: '>=14'}
-
-  antlr4ts-cli@0.5.0-alpha.4:
-    resolution: {integrity: sha512-lVPVBTA2CVHRYILSKilL6Jd4hAumhSZZWA7UbQNQrmaSSj7dPmmYaN4bOmZG79cOy0lS00i4LY68JZZjZMWVrw==}
-    hasBin: true
-
-  antlr4ts@0.5.0-alpha.4:
-    resolution: {integrity: sha512-WPQDt1B74OfPv/IMS2ekXAKkTZIHl88uMetg6q3OTqgFxZ/dxDXI0EWLyZid/1Pe6hTftyg5N7gel5wNAGxXyQ==}
 
   any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
@@ -26794,10 +26712,6 @@ snapshots:
   ansi-styles@6.2.1: {}
 
   ansis@4.2.0: {}
-
-  antlr4ts-cli@0.5.0-alpha.4: {}
-
-  antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4): {}
 
   any-promise@1.3.0: {}
 

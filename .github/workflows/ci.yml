@@ -97,6 +97,8 @@ jobs:
           node --test scripts/vocabulary-boundary.nul.test.mjs
           node --test scripts/v1-ledger.test.mjs
           node scripts/v1-ledger.mjs --check
+          pnpm test:win253-clickhouse-split
+          pnpm audit:win253-clickhouse-split
           pnpm audit:capability-matrix
           node scripts/rest-census-independent.mjs --check
           node --test scripts/rest-census-independent.test.mjs

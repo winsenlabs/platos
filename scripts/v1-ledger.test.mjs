@@ -529,16 +529,8 @@ test("the committed fingerprint is current", () => {
 // decides each one deterministically, to the disposition the charter names as
 // safer for that file. These are concrete outcome assertions: a reorder of the
 // live document that flipped any of them would fail here.
-test("the six formerly contradictory files resolve as the charter requires", () => {
-  assert.equal(liveByPath.get("internal-packages/clickhouse/Dockerfile").disposition, "retain");
+test("the retained formerly contradictory files resolve as the charter requires", () => {
   assert.equal(liveByPath.get("internal-packages/run-engine/runengine-diagram.monojson").disposition, "retain");
-  for (const grammar of ["TSQLLexer", "TSQLParser"]) {
-    for (const extension of ["interp", "tokens"]) {
-      const row = liveByPath.get(`internal-packages/tsql/src/grammar/${grammar}.${extension}`);
-      assert.equal(row.disposition, "regenerate", row.path);
-      assert.equal(row.kind, "generated", row.path);
-    }
-  }
   const license = liveByPath.get("internal-packages/otlp-importer/LICENSE");
   assert.equal(license.kind, "legal");
   assert.equal(license.disposition, "retain");
@@ -617,7 +609,6 @@ test("the hard-coded protected set is protected in the ledger", () => {
     "SECURITY.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
-    "internal-packages/tsql/NOTICE.md",
     "internal-packages/database/prisma/migrations/20221206131204_init/migration.sql",
   ]) {
     const row = liveByPath.get(path);

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d8ffbda5e23d641707f959a74438b10a1ab02755da7f77f857f26e37cf26bab0",
+  "evidenceSha256": "9b25f780bf6fdfe9805540a4f64a6e0a6ebbc36571811994ece15c910f5b1a11",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "849d19fbfc54bfc3d2549b6e6ff6f89bee0ebc6dfd45368c5419ca4aa4344d03",
+    "aggregateSha256": "db32f0baa92119e38a585db5899b13dd462852ca7fa12b93cb5460c4ee08507c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "099d8ee5ea01214c26cf333925ed599b2aff8b802c7f1bdbd06cccf64af56de0"
+        "sha256": "f8d0d8ad1241688db19092e326bd478ba8eb6109b49c9f55c4fb046860828fc4"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -1685,7 +1685,7 @@
       },
       {
         "path": "apps/agent/src/observability/clickhouse-observability-sink.ts",
-        "sha256": "601aeb01f472968793237c438e759c4515d053c45629ba054cae1ba256222539"
+        "sha256": "c10f3a3b5cbc3a41fd2c43ad2bfe016b993f7432e35358af8e761513b55320df"
       },
       {
         "path": "apps/agent/src/observability/observability-config.test.ts",
@@ -3845,7 +3845,7 @@
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
-        "sha256": "199c3d0933ad751693739ca3b06b5bfab8ba42f8865eeb96b30a37115ca6a30f"
+        "sha256": "28be30e2cd2651b860fca655814cfb85a6f3266c5785767b45c0a8aad323bf11"
       },
       {
         "path": "docs/audits/M0.6-admin-access-containment.md",
@@ -3933,11 +3933,11 @@
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
-        "sha256": "ba33737d1ad7f50c4ff754494aaee6cc040c12c8057aa20f222f7ae437107837"
+        "sha256": "5acf86b1cbc8dcc004db3f1bc821fc22b13549a1f5b123a1609afac3d7dbbf61"
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "899eab109df028d932d330db7b82ed8381c0d73410d3df789db154f807b1441d"
+        "sha256": "50db2cc88681909337a3326ba31b4334f4e366c649489f58f3382e46a11c2ada"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
@@ -3974,6 +3974,14 @@
       {
         "path": "docs/audits/win-252-root-entry-manifest.md",
         "sha256": "8ce3f0e08e8613a168df76f31caff29375de7f6a83191d9ade32d35882aad692"
+      },
+      {
+        "path": "docs/audits/win253-removals/clickhouse-split.json",
+        "sha256": "e8b968e1a0110ee5140f375e309b60eb8d87bcc7ee4f739bb0afeb2f2c7768cd"
+      },
+      {
+        "path": "docs/audits/win253-removals/clickhouse-split.md",
+        "sha256": "b8776147d674390835b777bd0629d4531960e2e2cb798f48cc505d1b5ac57757"
       },
       {
         "path": "docs/authentication.md",
@@ -5385,7 +5393,7 @@
       },
       {
         "path": "docs/observability-model.md",
-        "sha256": "b388ea0624e68bbb28679649be62be1415c208876e970b1660a56c989903d6c4"
+        "sha256": "afd1e2cfc59bbb3d3cf907ee0a72220586380b505866acc2b3a6ef82f18cf178"
       },
       {
         "path": "docs/observability/dashboards.mdx",
@@ -5889,7 +5897,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "9fd33049e68c64c1600f617d5a9fd7ec066fade332b6df95e3596715b4c1db95"
+        "sha256": "5ace69c7988f4890ffb4e75d291a75e1f245ee7e0904cb9347837516c2856f1a"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5909,7 +5917,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "fbf43da07b1d735bb9f2c9a130f91b46237b83e613b31bafc3c698529bfe1e8f"
+        "sha256": "33b610e7938e4481af3d473220999dab651174a08677d96560a1ef73025e9125"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -6064,18 +6072,6 @@
         "sha256": "96384f6a86b2992cd913e83e7309f60b89361eff9f38452cffbd87087fbe56b9"
       },
       {
-        "path": "internal-packages/clickhouse/Dockerfile",
-        "sha256": "af6a2e08e50861e74f899c55583788c42c23c893dac97d128c777786b8753743"
-      },
-      {
-        "path": "internal-packages/clickhouse/README.md",
-        "sha256": "f0a29b6a5a7b6cdb1133163fa3c0ff66079b9c1df134129b3789d6fe22d345c5"
-      },
-      {
-        "path": "internal-packages/clickhouse/package.json",
-        "sha256": "02f623c4a1a2e6b77a46a6bfb4215027c5caa12f9c14f276a5ab78d90f9b5e2a"
-      },
-      {
         "path": "internal-packages/clickhouse/schema/001_create_databases.sql",
         "sha256": "80594ec620de1b190788302b16b551f66a8fa867de14a6c4b462eaa89ba8656f"
       },
@@ -6210,122 +6206,6 @@
       {
         "path": "internal-packages/clickhouse/schema/034_rename_legacy_telemetry_database.sql",
         "sha256": "91d877e0344c66c06222bc501f3816d3bb1a15b119a59473e3c7328c924d3704"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/__snapshots__/taskRuns.test.ts.snap",
-        "sha256": "7aa7e1daaa4d674162f9099823f81570269b4d0066712e9470bb048726440107"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/client.test.ts",
-        "sha256": "b9963532be9ab6786a8aa5fa7b065671f29c8c3e45adb7def9c5dd5adc245146"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/client.ts",
-        "sha256": "1c5e5b0a2081a656d5b29eb6bebf8caf9eee72e5d1865eb15191eef26f18147c"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/errors.ts",
-        "sha256": "36f5ab360d500f682f052723630e3bfec72b830815e717bce4ea35c4acc64cf6"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/noop.ts",
-        "sha256": "46033dcb8d8aea5c18aac60721070c5ba187d8476f54c69e002e3e6ef17a3571"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/queryBuilder.ts",
-        "sha256": "c4fee085c032a343900be09c5c244242375efdd2f8b1a6800f6c3877244fd345"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/tsql.ts",
-        "sha256": "2a32332b3468ce512cdcf7461d554dd6b959e203c30f430f74d71f2dde3a0687"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/client/types.ts",
-        "sha256": "5b5f39b22606b245faf1d6d11b14b7f42e74c5e8ffd640cd43357eb53721a939"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/errors.ts",
-        "sha256": "975d59ac9472d1ebeac5b125b20a09727f890f3f451a46ac1180e6410607b6d1"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/index.ts",
-        "sha256": "7048391fbd0341d4a6be69c087dd30edc3f90e29664531cc3ec4b4f2e305e995"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/intervals.ts",
-        "sha256": "151b49d655ea5319e57f8fa9263c0c7667cb146e8577e01b9a5987290755a351"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/llmMetrics.ts",
-        "sha256": "f61f4bdc47aa7ebbe93bf9e605da188fe6ac6c2cc382ff6ad0f13ebac90a40d4"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/llmModelAggregates.ts",
-        "sha256": "c5483c16dcd62cd1d40d35e4916dac4f23f9a20d98db27e2092eb64cb0478e08"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/metrics.ts",
-        "sha256": "7a45bec9082369b267be5d2952cb106e4a9834d6c665646683dd46e9d39fc967"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/namespace-migration.test.ts",
-        "sha256": "a0de7605f00a3bcb90f5db7228eb3bdb58f1248ecbc6fa3938cd0105a3e62fd1"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/queryVocabulary.test.ts",
-        "sha256": "fbc4a60f4f2cb2008215147b9a544e500427175017da45a83ad663119689d680"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/taskEvents.ts",
-        "sha256": "25c11cf38406f82fb06f6bb46d25c60eceb19b18aa8c3561010c7e06b7e9293b"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/taskRuns.test.ts",
-        "sha256": "baba39500540e869a0b2c0a6fd63aa049f6d6c8c7b204190227c6612dce5ae52"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/taskRuns.ts",
-        "sha256": "e3e8186c19194620f463dc6c3cd0014a624092a9fb3fca5bfddf0958bebf79e3"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
-        "sha256": "4c7a436a3bb6db06c4cd4128859c6a47ef1619a3105d2de0531a0d9ccfb07f27"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/telemetryNamespace.ts",
-        "sha256": "541ef74cf4d7ea88577f7d86b922af58158896dfd3bd1428715f81dc0ce7af81"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/tsql.test.ts",
-        "sha256": "132bcb0441fc2303a7302f97324087fe085295d666d2101048ff934dca0d9bd8"
-      },
-      {
-        "path": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-        "sha256": "f511856bbe8aa357465a7c9fb93dbe3c67c22c2f5be62c2c1791b9cebaa16c72"
-      },
-      {
-        "path": "internal-packages/clickhouse/test-fixtures/applied-schema-sha256.json",
-        "sha256": "3b2e45d88ed1359e17c2e253b7a886becb8ea41128c4d0b073828f6f3d784524"
-      },
-      {
-        "path": "internal-packages/clickhouse/tsconfig.build.json",
-        "sha256": "356df84b4feeab366ee33891c1ed95a06f118581e8f5f59f8dc2efd680dbabf9"
-      },
-      {
-        "path": "internal-packages/clickhouse/tsconfig.json",
-        "sha256": "9485f26de2ca1e392a5ef466b267437269e8afa2bac4bd87967c7cda9c21b324"
-      },
-      {
-        "path": "internal-packages/clickhouse/tsconfig.src.json",
-        "sha256": "23970649c7f87877d517c3283543ae57c587a98e2b8cc5ebeec91abad1074e42"
-      },
-      {
-        "path": "internal-packages/clickhouse/tsconfig.test.json",
-        "sha256": "cede6d78e886bf7d940542e7f6b20e831274ac6cbd4e5046f078cd2e12b76005"
-      },
-      {
-        "path": "internal-packages/clickhouse/vitest.config.ts",
-        "sha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c"
       },
       {
         "path": "internal-packages/compute/package.json",
@@ -10120,58 +10000,6 @@
         "sha256": "452d1501c67de8ad2dec99adad8e90c11b4d88dc1a47c8e79792a9955d417448"
       },
       {
-        "path": "internal-packages/replication/README.md",
-        "sha256": "61a76b99e84a0f52c12990ebc5c690a1048a6d23559ab9a192ba03e8b3b79c05"
-      },
-      {
-        "path": "internal-packages/replication/package.json",
-        "sha256": "5e3d15029606582dbb2e2b0dccb3664493cb1468bbf8acd43311839d8de7dd7a"
-      },
-      {
-        "path": "internal-packages/replication/src/client.test.ts",
-        "sha256": "2b5817d9404cb11bfb47712524e35fa7b3a57ce7a25c51ed7bb6662559dd9bc1"
-      },
-      {
-        "path": "internal-packages/replication/src/client.ts",
-        "sha256": "eb3790170f9699d398f96eff1f4d88a5694ece2754a7ff5943b2e817ecbde29b"
-      },
-      {
-        "path": "internal-packages/replication/src/errors.ts",
-        "sha256": "9fc6d852e417a0ca4b560bfeb792c74ed54a1c19cebb84e8a32b7fa472784640"
-      },
-      {
-        "path": "internal-packages/replication/src/index.ts",
-        "sha256": "9430f250338fc396d9dfe42801e0c5c1df6ee7515797bfbc7be7fa4eba6f5963"
-      },
-      {
-        "path": "internal-packages/replication/src/pgoutput.ts",
-        "sha256": "ff0effa27fd1c09fcf65a24ebeb1cb3f50b4d2935efa71d2591aaff6e60d1b0c"
-      },
-      {
-        "path": "internal-packages/replication/src/redlock-shim.d.ts",
-        "sha256": "fb0c272510489b3be65a6d1818adadcb937708c3f5320fdcedfaf4d7d2152ab7"
-      },
-      {
-        "path": "internal-packages/replication/tsconfig.build.json",
-        "sha256": "67adf10d70adcde600c8066901691e607c7ba41e0f2db88cd9608f74ddfe6271"
-      },
-      {
-        "path": "internal-packages/replication/tsconfig.json",
-        "sha256": "9485f26de2ca1e392a5ef466b267437269e8afa2bac4bd87967c7cda9c21b324"
-      },
-      {
-        "path": "internal-packages/replication/tsconfig.src.json",
-        "sha256": "0829150ebc2aaf20bd7a065c9db51f8ce6f07f964ba1af0b936c625618510c51"
-      },
-      {
-        "path": "internal-packages/replication/tsconfig.test.json",
-        "sha256": "18bdfdf3ddc14b4da3024d303fb6bc1c3ea7c8f4975cc421635229d9b3697b87"
-      },
-      {
-        "path": "internal-packages/replication/vitest.config.ts",
-        "sha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c"
-      },
-      {
         "path": "internal-packages/run-engine/README.md",
         "sha256": "f6beb0346cafbfa79e6b78931ae19fe59394a3a04ba2a7cbe7b978a254407f91"
       },
@@ -10904,186 +10732,6 @@
         "sha256": "452d1501c67de8ad2dec99adad8e90c11b4d88dc1a47c8e79792a9955d417448"
       },
       {
-        "path": "internal-packages/tsql/.gitignore",
-        "sha256": "414bcece7a414c895d96be7b969c1e69e4f73f186df97108bf01eea12bff7b2e"
-      },
-      {
-        "path": "internal-packages/tsql/NOTICE.md",
-        "sha256": "9045745ef618f5af1bce85ce945ab77adf98f141de5352f0a54b1a0b8c84899e"
-      },
-      {
-        "path": "internal-packages/tsql/README.md",
-        "sha256": "35e39ec3ed08d4aac5eb2f1c4db1d4e646175607923f6bea98629e7d87d02ea6"
-      },
-      {
-        "path": "internal-packages/tsql/package.json",
-        "sha256": "256cf1c4e56acc151727ac50c05b43fe9deac112e7ba5b8a13ff1a7e18a3cca2"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLLexer.common.g4",
-        "sha256": "924b0ecaf46b69666d933ab4fc9bc6efa405af0db30dc349f805e5cb3b0c8019"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLLexer.interp",
-        "sha256": "65d9f487795f336af374cbf533e638dd409c98b813adab7383d71b2068c60206"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLLexer.tokens",
-        "sha256": "a210741f483b7123b944229880761943390e6f7449c1b80d13ceb42a96830abd"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
-        "sha256": "0134031642aee8a6771e606e84f65e0f31f745f21bc0f6edce4a5004e145aea3"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLLexer.typescript.g4",
-        "sha256": "efffd64ee55b2f56c58698b055b7133ac23df39ed3cd46408f9d8616bed5a5e8"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLParser.g4",
-        "sha256": "636f87751500b57461d51b79096fef0376b85986970ae6445846dd04346bff4a"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLParser.interp",
-        "sha256": "308ec7ca0ae196681d002b76d3ce34fdf5fac95808ebd0204ea4f317aaf32a57"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLParser.tokens",
-        "sha256": "a210741f483b7123b944229880761943390e6f7449c1b80d13ceb42a96830abd"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
-        "sha256": "2cecbc44fafa67d3822fa94aa465a798e6633144f70deebbcf7bd509299391d7"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/TSQLParserVisitor.ts",
-        "sha256": "4451435d22587903e6fe2f67461ee547d155f7f7657131ae3296385afa1df037"
-      },
-      {
-        "path": "internal-packages/tsql/src/grammar/parser.test.ts",
-        "sha256": "ae2ff296d018a657e2548cd614989153cfe8cc87f929a79aa0b04dca3be4d196"
-      },
-      {
-        "path": "internal-packages/tsql/src/index.test.ts",
-        "sha256": "a1c96ff5788b68975ebda01f96e5d3bb2859cb80c11cf52e9d54df2e8675af7e"
-      },
-      {
-        "path": "internal-packages/tsql/src/index.ts",
-        "sha256": "a70b914ee657d0268114e3dc243c5303e16cf84f59ea7a7b5c915476a1a597ca"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/ast.ts",
-        "sha256": "a61567da42fd582c6127cbee56e5a45c25c7d73f1d8b3f59a344942109f81a61"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/constants.ts",
-        "sha256": "db1ad3083f4036b81475557d4ee6267653f29d602a64e2873dcf7553ce130a7e"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/context.ts",
-        "sha256": "5c10a8a30ff6a0b7b385f4636fa86fcd80aa27d38b3b9fb0e7d5363e21a4b9e2"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/database.ts",
-        "sha256": "c212b16a09a692ee8af49885961702302871d532c44e4df2074afe74bc21134d"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/errors.ts",
-        "sha256": "bb9e408cded94ab430774db58a042e416def1495059a0e6aaab12234f0cf86e5"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/escape.test.ts",
-        "sha256": "ef6fda8adeaf58dbb2d623c70a886f9e37a39dd9cdc54e08bdd1a5c416b79904"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/escape.ts",
-        "sha256": "fda8f161daa54abcc40fd70e9e579f2dae0c21354da601ae6843ae959a66aaf6"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/functions.ts",
-        "sha256": "d61e352367c4283f913858d56ca063365475f77e75d8c7fc764b7bfe536f518b"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/models.ts",
-        "sha256": "999999ff27abf38db29bf9e0dac8a2321331ec3986651263407a924be8f66768"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/parse_string.ts",
-        "sha256": "fc83ab18507ed66f67c9002390b94c811f509de72d88b7ff5bb8e793c023370c"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/parser.test.ts",
-        "sha256": "68c36087509dfa435a4852be2748da12361938e98138b8eb61466b21c34865c6"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/parser.ts",
-        "sha256": "2e278d666a913204d00228cfc21e99c436bbbc46cdce15110434cf1819367572"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/printer.test.ts",
-        "sha256": "a0141b80003322d4881b4a5e8aecf5c8206a11682dda782020659a99937249f3"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/printer.ts",
-        "sha256": "427c0375c641b77fd7899f2f6a767c73879e1b430e619efbfffd08110baeabf0"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/printer_context.ts",
-        "sha256": "4f462a8b296df156832893276aa5736f53c3e47fd80850b4ab89592c4dc386af"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/property_types.ts",
-        "sha256": "40670bcc3f34c7e1c4f77d17cea7d0e0f6d66a4c9c9ed942d64c123679af3e42"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/results.test.ts",
-        "sha256": "9600925c80bc8d1f38475ea929a785789d8135114efac9bea284a78ee44f6215"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/results.ts",
-        "sha256": "7373a8ad1da1bba1097f0283f0f804d4bd9f9bc683e9d07237668cc4e53db14d"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/schema.test.ts",
-        "sha256": "74fefe9b526ea7fc6eb8fb57528bc0a7c67da4bc129f6f29e8966322c197ec65"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/schema.ts",
-        "sha256": "949ebdc95b07e2347e89028f3d95b821a83293991c632abafa73a89c3e832b9c"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/security.test.ts",
-        "sha256": "b767b520edcbd6499ccbdc0f0e2be80d451ca4794d345a5a0fae29f04cdd26f7"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/time_buckets.test.ts",
-        "sha256": "41020765a435ad2a0c1e433a894a433873af5156ee715c1223973a0a16bb5c6e"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/time_buckets.ts",
-        "sha256": "fefc77240a224611c99588890731f974cf9fb50d70c35991a20cfc2a41532fa2"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/timings.ts",
-        "sha256": "29f292b0466db7267b0154d2a7fb7efa26a63ad9a2070311a914d04aa99a20f4"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/validator.test.ts",
-        "sha256": "0238f4c82fae7851f9c1d73c43afee5401f10b8ff5f2087666ec15194331a3a1"
-      },
-      {
-        "path": "internal-packages/tsql/src/query/validator.ts",
-        "sha256": "d1b6e1d64c91f7f9233887101cb606dbb90723d700e33815e0c0fe0075050b45"
-      },
-      {
-        "path": "internal-packages/tsql/tsconfig.json",
-        "sha256": "7f4fd9dd483805c5cd8b67ebfe1e917c6d5f3aff59d095325a2afeac1ae5c28d"
-      },
-      {
-        "path": "internal-packages/tsql/vitest.config.ts",
-        "sha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c"
-      },
-      {
         "path": "internal-packages/workload-identity/package.json",
         "sha256": "14cc61dfe3b0756d3a1cda1988781b78a9cdfdaa2d6df538e4b5436d0be3c0f5"
       },
@@ -11121,7 +10769,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "16df9cdd5ec4bc92aa27f189bb2e4edceb813232eadb6cf165a50aa7785fb066"
+        "sha256": "51c30df8672fe54db8c3e956aac424ae9287844366261189eb72a217a4f4e338"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -14096,10 +13744,6 @@
         "sha256": "da01382a3c0d3f4f66db5b09d6f0833cc21eaf8db00f97e2c1738797673b57c0"
       },
       {
-        "path": "patches/antlr4ts@0.5.0-alpha.4.patch",
-        "sha256": "dc99ff1933ecddc358e76c95098666e0cf15a37a9eb26dd6ac92f26e1bcd418f"
-      },
-      {
         "path": "patches/engine.io-parser@5.2.2.patch",
         "sha256": "9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f"
       },
@@ -14113,7 +13757,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "627d2b30f35874fa86966691ac73a5d6bc3c466039880c948be2d34ae659f865"
+        "sha256": "f0edd6c5fb83f28af035564a99fd2ac826c2d45f79ddd7b2b2226c8ff34982a8"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -14333,7 +13977,15 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "ce1bb39443a9a81111304aa9e5d648ea83eee971a9ea04c8a77241fbdeff8d9a"
+        "sha256": "5b67aa09eee79751387f3db6ac4ddc1ade2d8cf96964ebe350d058908456f7a5"
+      },
+      {
+        "path": "scripts/clickhouse-split-audit.mjs",
+        "sha256": "cdf56e6e43f772f59179b57bb3d95a7903c5dc85717cfb6c22a009287d114080"
+      },
+      {
+        "path": "scripts/clickhouse-split-audit.test.mjs",
+        "sha256": "de928c8c1ec16dd4d13d473515980823eff11182a6ec4bb03d1a39bff6af73d0"
       },
       {
         "path": "scripts/deploy-platos.sh",
@@ -14441,11 +14093,11 @@
       },
       {
         "path": "scripts/v1-ledger.mjs",
-        "sha256": "587d3eee2d15673a8d91a03e728873ae6f2dc2a38f0b81f96ddcd2bffae374a9"
+        "sha256": "9b3e1e3a2629f8cf546011493f284c6929a193319a49b1a26d9031824e23a76f"
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "660bf11cbaca88b4fc13e2c9d0993070fd03fd2c3f44ede0dd40940529bfca9a"
+        "sha256": "7854c28bc50f59a601f008206d1ee59a12c8d27acf4a2fd086984824fbadc697"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -14461,7 +14113,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "6f3da2954d4aa872a96edde2aceccefd38c39a8c3b102f197265c4f34e6a3457"
+        "sha256": "38ad1ebdf4a32122c7416c5c4bc9f7fbe56a7cef2404a6711f85f904dba65715"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -14513,7 +14165,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "975b07128e6f8cb46eadd2c6c58840cb6b12cceafb4088e75a133e7b1745e68a"
+        "sha256": "b2f69f84f8e8a2949578a9685e91ae3f59798c8880221870c404d6202abc924e"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -14731,7 +14383,7 @@
   },
   "issue": "WIN-253",
   "patchReconciliation": {
-    "configuredPatchCount": 8,
+    "configuredPatchCount": 7,
     "patches": [
       {
         "dependencyAtVersion": "@changesets/assemble-release-plan@5.2.4",
@@ -14812,39 +14464,6 @@
         "patchFile": "patches/@window-splitter__state@0.4.1.patch"
       },
       {
-        "dependencyAtVersion": "antlr4ts@0.5.0-alpha.4",
-        "importerClosures": [
-          {
-            "importer": "internal-packages/clickhouse",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/clickhouse",
-                "internal-packages/tsql",
-                "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-              ]
-            ],
-            "snapshotKeys": [
-              "antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-            ]
-          },
-          {
-            "importer": "internal-packages/tsql",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/tsql",
-                "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-              ]
-            ],
-            "snapshotKeys": [
-              "antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-            ]
-          }
-        ],
-        "patchFile": "patches/antlr4ts@0.5.0-alpha.4.patch"
-      },
-      {
         "dependencyAtVersion": "engine.io-parser@5.2.2",
         "importerClosures": [
           {
@@ -14893,22 +14512,6 @@
             ]
           },
           {
-            "importer": "internal-packages/clickhouse",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/clickhouse",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
             "importer": "internal-packages/emails",
             "kind": "lockfile-production-snapshot-closure",
             "reversePaths": [
@@ -14946,22 +14549,6 @@
             "reversePaths": [
               [
                 "internal-packages/redis",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "internal-packages/replication",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/replication",
                 "packages/core",
                 "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
                 "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
@@ -15043,22 +14630,6 @@
             "reversePaths": [
               [
                 "internal-packages/tracing",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "internal-packages/tsql",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/tsql",
                 "packages/core",
                 "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
                 "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
@@ -15266,19 +14837,6 @@
         "dependencyAtVersion": "redlock@5.0.0-beta.2",
         "importerClosures": [
           {
-            "importer": "internal-packages/replication",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/replication",
-                "snapshot:redlock@5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)"
-              ]
-            ],
-            "snapshotKeys": [
-              "redlock@5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)"
-            ]
-          },
-          {
             "importer": "internal-packages/run-engine",
             "kind": "lockfile-production-snapshot-closure",
             "reversePaths": [
@@ -15295,7 +14853,7 @@
         "patchFile": "patches/redlock@5.0.0-beta.2.patch"
       }
     ],
-    "reconciledPatchCount": 8
+    "reconciledPatchCount": 7
   },
   "roots": {
     "applicationDeployable": {
@@ -15639,7 +15197,6 @@
       "apps/webapp",
       "docs",
       "internal-packages/cache",
-      "internal-packages/clickhouse",
       "internal-packages/compute",
       "internal-packages/cost-rates",
       "internal-packages/database",
@@ -15648,7 +15205,6 @@
       "internal-packages/llm-model-catalog",
       "internal-packages/otlp-importer",
       "internal-packages/redis",
-      "internal-packages/replication",
       "internal-packages/run-engine",
       "internal-packages/schedule-engine",
       "internal-packages/sdk-compat-tests",
@@ -15656,7 +15212,6 @@
       "internal-packages/tenancy-database/migration-image",
       "internal-packages/testcontainers",
       "internal-packages/tracing",
-      "internal-packages/tsql",
       "internal-packages/workload-identity",
       "internal-packages/zod-worker",
       "packages/adapters/channel-slack",
@@ -15713,30 +15268,30 @@
   "summary": {
     "applicationDeployableWorkspaceCount": 37,
     "channelReachableCounts": {
-      "ci": 69,
-      "dockerImage": 8,
-      "docsExamples": 66,
+      "ci": 66,
+      "dockerImage": 7,
+      "docsExamples": 63,
       "generated": 40,
-      "license": 51,
-      "packageScripts": 69,
-      "patches": 24,
+      "license": 50,
+      "packageScripts": 66,
+      "patches": 21,
       "sourceDynamic": 0,
-      "sourceStatic": 18,
-      "testsFixtures": 49
+      "sourceStatic": 17,
+      "testsFixtures": 46
     },
-    "configuredPatchCount": 8,
+    "configuredPatchCount": 7,
     "deploymentUnionWorkspaceCount": 38,
     "externalProductionSnapshotNodesByImage": {
       "agent": 718,
       "webapp": 1637
     },
-    "installTraversalWorkspaceCount": 69,
+    "installTraversalWorkspaceCount": 66,
     "ociImageWorkspaceCount": 6,
     "publicBoundaryCount": 13,
-    "reconciledPatchCount": 8,
-    "registeredWorkspaceCount": 69,
+    "reconciledPatchCount": 7,
+    "registeredWorkspaceCount": 66,
     "repositoryDevWorkspaceCount": 10,
-    "reviewCandidateCount": 31
+    "reviewCandidateCount": 28
   },
   "workspaces": [
     {
@@ -16015,7 +15570,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 34
+              "line": 40
             },
             {
               "from": "docs/audits/M0.8-operator-auth-boundary.md",
@@ -16051,6 +15606,11 @@
               "from": "docs/audits/win-234-route-capability-parity.json",
               "kind": "reference",
               "line": 1719
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 1834
             },
             {
               "from": "docs/control-plane-parity.generated.md",
@@ -16348,6 +15908,10 @@
               "docs/audits/win-234-route-capability-parity.json"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
               "docs/control-plane-parity.generated.md",
               "docs/control-plane-parity.generated.md"
             ],
@@ -16515,6 +16079,7 @@
             "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/closure-receipts.json",
             "docs/audits/win-234-route-capability-parity.json",
+            "docs/audits/win253-removals/clickhouse-split.json",
             "docs/control-plane-parity.generated.md",
             "docs/deployment/off-box-build.md",
             "docs/deployment/persisted-state-release-gate.md",
@@ -19198,7 +18763,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "292c71bc479f1398a15a5ff6f4cd574fdd6f6338a5fe6c5effa860b296ef0529",
+      "evidenceSha256": "8172702020a1f938f2c902d857b3bcfc64f2ac130eeaef0ffac3ed08ff2e2199",
       "manifestSha256": "b9b8eed2d98a23eb5bb4a10b2d8c59357d4893ba11d025dc063a29de9c708944",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -20757,7 +20322,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 27
+              "line": 33
             },
             {
               "from": "docs/audits/M0.8-operator-auth-boundary.md",
@@ -20803,6 +20368,16 @@
               "from": "docs/audits/win-234-route-capability-parity.json",
               "kind": "reference",
               "line": 12
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 1839
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.md",
+              "kind": "reference",
+              "line": 84
             },
             {
               "from": "docs/authentication.md",
@@ -21150,6 +20725,14 @@
               "docs/audits/win-234-route-capability-parity.json"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
+              "docs/audits/win253-removals/clickhouse-split.md",
+              "docs/audits/win253-removals/clickhouse-split.md"
+            ],
+            [
               "docs/authentication.md",
               "docs/authentication.md"
             ],
@@ -21348,6 +20931,8 @@
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
             "docs/audits/win-234-route-capability-parity.json",
+            "docs/audits/win253-removals/clickhouse-split.json",
+            "docs/audits/win253-removals/clickhouse-split.md",
             "docs/authentication.md",
             "docs/batch-queue-metrics.md",
             "docs/batch-queue-stress-test-plan.md",
@@ -22470,7 +22055,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "16c9d4571824a8e6e9e8216d44c1454486ab30441ef120f12037866b143491b7",
+      "evidenceSha256": "84e6148075da90a8567e13fea82af5b74c2b037d088f0b7b9ac044ba0f63bf1a",
       "manifestSha256": "6026965044352a11f70b85b067c972dc67310139a065fe8bf96b91532b19f44a",
       "name": "webapp",
       "ociImageClosure": {
@@ -23155,6 +22740,16 @@
               "from": "docs/audits/win-252-root-entry-manifest.md",
               "kind": "workspace-owned-file",
               "line": 38
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "workspace-owned-file",
+              "line": 1014
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.md",
+              "kind": "workspace-owned-file",
+              "line": 73
             },
             {
               "from": "docs/authentication.md",
@@ -25519,6 +25114,14 @@
               "docs/audits/win-252-root-entry-manifest.md"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
+              "docs/audits/win253-removals/clickhouse-split.md",
+              "docs/audits/win253-removals/clickhouse-split.md"
+            ],
+            [
               "docs/authentication.md",
               "docs/authentication.md"
             ],
@@ -27193,6 +26796,8 @@
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win-252-root-entry-manifest.json",
             "docs/audits/win-252-root-entry-manifest.md",
+            "docs/audits/win253-removals/clickhouse-split.json",
+            "docs/audits/win253-removals/clickhouse-split.md",
             "docs/authentication.md",
             "docs/batch-queue-metrics.md",
             "docs/batch-queue-stress-test-plan.md",
@@ -27842,6 +27447,11 @@
               "line": 90
             },
             {
+              "from": "scripts/clickhouse-split-audit.test.mjs",
+              "kind": "reference",
+              "line": 131
+            },
+            {
               "from": "scripts/docs-examples.test.mjs",
               "kind": "reference",
               "line": 7
@@ -27959,6 +27569,10 @@
               "scripts/audit-sbom.test.mjs"
             ],
             [
+              "scripts/clickhouse-split-audit.test.mjs",
+              "scripts/clickhouse-split-audit.test.mjs"
+            ],
+            [
               "scripts/docs-examples.test.mjs",
               "scripts/docs-examples.test.mjs"
             ],
@@ -28019,6 +27633,7 @@
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/tenancy-database/src/model-pricing.test.ts",
             "scripts/audit-sbom.test.mjs",
+            "scripts/clickhouse-split-audit.test.mjs",
             "scripts/docs-examples.test.mjs",
             "scripts/root-entry-manifest.test.mjs",
             "scripts/route-capability-completion-audit.test.mjs",
@@ -28039,7 +27654,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aec703ab345783c48a7af96873a9a9b9e71b882891a2c8550345f1a96a4d670c",
+      "evidenceSha256": "0f96de9b36cf01ae6cf5949c99035a0291700858074c0141720b7e39486f8be6",
       "manifestSha256": "3c417b8f7bd7a07e1d17a6f3d37555005c99588f6cc952f079b9be2d6da82328",
       "name": "docs",
       "ociImageClosure": {
@@ -28332,484 +27947,6 @@
         "roots": []
       },
       "path": "internal-packages/cache",
-      "private": true,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": false,
-        "externalPublicReasons": [],
-        "kind": "embedded-private-implementation",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-repository-referenced"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "apps/webapp/Dockerfile.platos",
-              "kind": "reference",
-              "line": 86
-            },
-            {
-              "from": "internal-packages/tenancy-database/Dockerfile.migrations",
-              "kind": "reference",
-              "line": 17
-            }
-          ],
-          "reversePaths": [
-            [
-              "apps/webapp/Dockerfile.platos",
-              "apps/webapp/Dockerfile.platos"
-            ],
-            [
-              "internal-packages/tenancy-database/Dockerfile.migrations",
-              "internal-packages/tenancy-database/Dockerfile.migrations"
-            ]
-          ],
-          "roots": [
-            "apps/webapp/Dockerfile.platos",
-            "internal-packages/tenancy-database/Dockerfile.migrations"
-          ]
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 196
-            },
-            {
-              "from": "docs/audits/sbom/closure-contract.md",
-              "kind": "reference",
-              "line": 212
-            },
-            {
-              "from": "docs/observability-model.md",
-              "kind": "reference",
-              "line": 397
-            },
-            {
-              "from": "docs/production-hardening.md",
-              "kind": "reference",
-              "line": 187
-            },
-            {
-              "from": "docs/v1-ledger-rules.json",
-              "kind": "reference",
-              "line": 966
-            },
-            {
-              "from": "internal-packages/clickhouse/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/audits/sbom/closure-contract.md",
-              "docs/audits/sbom/closure-contract.md"
-            ],
-            [
-              "docs/observability-model.md",
-              "docs/observability-model.md"
-            ],
-            [
-              "docs/production-hardening.md",
-              "docs/production-hardening.md"
-            ],
-            [
-              "docs/v1-ledger-rules.json",
-              "docs/v1-ledger-rules.json"
-            ],
-            [
-              "internal-packages/clickhouse/README.md",
-              "internal-packages/clickhouse/README.md"
-            ]
-          ],
-          "roots": [
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/audits/sbom/closure-contract.md",
-            "docs/observability-model.md",
-            "docs/production-hardening.md",
-            "docs/v1-ledger-rules.json",
-            "internal-packages/clickhouse/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "command": "pnpm run clean && tsc -p tsconfig.build.json",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "rimraf dist",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "GOOSE_COMMAND=down pnpm run db:migrate",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "db:migrate:down"
-            },
-            {
-              "command": "docker compose -f ../../docker-compose.platos.yml up clickhouse-migrate --build",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "db:migrate"
-            },
-            {
-              "command": "tsc --watch  -p tsconfig.build.json",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism --coverage.enabled",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "test:coverage"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc --noEmit -p tsconfig.build.json",
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/clickhouse/package.json",
-              "internal-packages/clickhouse/package.json"
-            ],
-            [
-              "package.json",
-              "package.json"
-            ]
-          ],
-          "roots": [
-            "internal-packages/clickhouse/package.json",
-            "package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "antlr4ts@0.5.0-alpha.4",
-              "file": "patches/antlr4ts@0.5.0-alpha.4.patch",
-              "from": "internal-packages/clickhouse",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/clickhouse",
-                  "internal-packages/tsql",
-                  "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-                ]
-              ],
-              "snapshotKeys": [
-                "antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-              ]
-            },
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "internal-packages/clickhouse",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/clickhouse",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/tsql",
-              "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "internal-packages/clickhouse"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "apps/agent/src/observability/observability-erasure-contract.test.ts",
-              "kind": "reference",
-              "line": 40
-            },
-            {
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "test-script",
-              "script": "test:coverage"
-            },
-            {
-              "from": "internal-packages/clickhouse/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "internal-packages/clickhouse/src/client/client.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/namespace-migration.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/queryVocabulary.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/taskRuns.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/tsql.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/tsconfig.test.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "scripts/v1-ledger.test.mjs",
-              "kind": "reference",
-              "line": 533
-            }
-          ],
-          "reversePaths": [
-            [
-              "apps/agent/src/observability/observability-erasure-contract.test.ts",
-              "apps/agent/src/observability/observability-erasure-contract.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/package.json",
-              "internal-packages/clickhouse/package.json"
-            ],
-            [
-              "internal-packages/clickhouse/src/client/client.test.ts",
-              "internal-packages/clickhouse/src/client/client.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/namespace-migration.test.ts",
-              "internal-packages/clickhouse/src/namespace-migration.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/queryVocabulary.test.ts",
-              "internal-packages/clickhouse/src/queryVocabulary.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/taskRuns.test.ts",
-              "internal-packages/clickhouse/src/taskRuns.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
-              "internal-packages/clickhouse/src/telemetryNamespace.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/tsql.test.ts",
-              "internal-packages/clickhouse/src/tsql.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/tsconfig.test.json",
-              "internal-packages/clickhouse/tsconfig.test.json"
-            ],
-            [
-              "scripts/v1-ledger.test.mjs",
-              "scripts/v1-ledger.test.mjs"
-            ]
-          ],
-          "roots": [
-            "apps/agent/src/observability/observability-erasure-contract.test.ts",
-            "internal-packages/clickhouse/package.json",
-            "internal-packages/clickhouse/src/client/client.test.ts",
-            "internal-packages/clickhouse/src/namespace-migration.test.ts",
-            "internal-packages/clickhouse/src/queryVocabulary.test.ts",
-            "internal-packages/clickhouse/src/taskRuns.test.ts",
-            "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
-            "internal-packages/clickhouse/src/tsql.test.ts",
-            "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-            "internal-packages/clickhouse/tsconfig.test.json",
-            "scripts/v1-ledger.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "f41b582d92fb40bc7355598e443339c2112ca4fddbd7b99e435150aa33dc1b6c",
-      "manifestSha256": "02f623c4a1a2e6b77a46a6bfb4215027c5caa12f9c14f276a5ab78d90f9b5e2a",
-      "name": "@internal/clickhouse",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "internal-packages/clickhouse",
       "private": true,
       "repositoryDevClosure": {
         "reachable": false,
@@ -29234,7 +28371,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 195
+              "line": 197
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -29298,7 +28435,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 173
+              "line": 179
             },
             {
               "from": "docs/entity-connect.md",
@@ -30087,7 +29224,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "736a7fcea9a0ce6007310c061e34c12d946f42f5875880eb4ed809969b338bf1",
+      "evidenceSha256": "f5e43684db1daa619389fa109bb1f78b69a007a88d2d6643b623ad4ced0d2527",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -30265,7 +29402,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 25
+              "line": 31
             },
             {
               "from": "internal-packages/docs/package.json",
@@ -30635,7 +29772,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "f61d914549ead3496b718926a90d3c480b286469a0760ac53470d480babd3072",
+      "evidenceSha256": "a59f9b16a0d778d8bb77ecba19dbb773d04772cc41a7f6e968148c37202b4ab8",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -30790,7 +29927,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 174
+              "line": 180
             },
             {
               "from": "docs/env-vars.md",
@@ -30855,7 +29992,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 1092
+              "line": 1078
             },
             {
               "from": "docs/wait-until.mdx",
@@ -31146,7 +30283,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "de05883add903510e2fd42e8274c4551d21b9f013bcf8c82b3a4bb3d16ab0cad",
+      "evidenceSha256": "112b2886241c960361a0e6a50561c308e9c867f160d8ee3a39ea216c95bc7c5b",
       "manifestSha256": "99df9851329461a6766ed5a1fbcb3a4da24ed2d061451fb1f446250e51984355",
       "name": "emails",
       "ociImageClosure": {
@@ -31687,7 +30824,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 542
+              "line": 534
             }
           ],
           "reversePaths": [
@@ -31707,7 +30844,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3bc91a97cd757fd31ceda6c1b546b38277438e821a9643d9cc00a1b1e3b083bc",
+      "evidenceSha256": "07a0cd27afc0fa36ccde078e1d709afab97f8608b31447e630b34900495ba220",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -31799,6 +30936,11 @@
               "line": 39
             },
             {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 887
+            },
+            {
               "from": "internal-packages/redis/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -31810,12 +30952,17 @@
               "ai/references/tests.md"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
               "internal-packages/redis/README.md",
               "internal-packages/redis/README.md"
             ]
           ],
           "roots": [
             "ai/references/tests.md",
+            "docs/audits/win253-removals/clickhouse-split.json",
             "internal-packages/redis/README.md"
           ]
         },
@@ -31909,18 +31056,6 @@
               "file": "internal-packages/cache/src/stores/redis.ts",
               "from": "internal-packages/cache",
               "line": 4,
-              "specifier": "@internal/redis"
-            },
-            {
-              "file": "internal-packages/replication/src/client.ts",
-              "from": "internal-packages/replication",
-              "line": 2,
-              "specifier": "@internal/redis"
-            },
-            {
-              "file": "internal-packages/replication/src/client.ts",
-              "from": "internal-packages/replication",
-              "line": 6,
               "specifier": "@internal/redis"
             },
             {
@@ -32080,10 +31215,6 @@
               "internal-packages/cache/src/stores/redis.ts"
             ],
             [
-              "internal-packages/replication",
-              "internal-packages/replication/src/client.ts"
-            ],
-            [
               "internal-packages/run-engine",
               "internal-packages/run-engine/src/batch-queue/completionTracker.ts"
             ],
@@ -32186,7 +31317,6 @@
           ],
           "roots": [
             "internal-packages/cache",
-            "internal-packages/replication",
             "internal-packages/run-engine",
             "internal-packages/schedule-engine",
             "packages/redis-worker",
@@ -32349,7 +31479,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "cd5f4c523ba5d529b1e7cf0e6a115dc97665e8343266e169af49bc38b1dc6f10",
+      "evidenceSha256": "6fa04225fba8b6bb2c185126630ad1ffb49b5c9643bed20f1c9694f861e36139",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -32436,327 +31566,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 214
-            },
-            {
-              "from": "internal-packages/replication/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "internal-packages/replication/README.md",
-              "internal-packages/replication/README.md"
-            ]
-          ],
-          "roots": [
-            "docs/audits/M0.5-dependency-sbom.md",
-            "internal-packages/replication/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "command": "pnpm run clean && tsc -p tsconfig.build.json",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "rimraf dist",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tsc --watch  -p tsconfig.build.json",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism --coverage.enabled",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "test:coverage"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc --noEmit -p tsconfig.build.json",
-              "from": "internal-packages/replication/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/replication/package.json",
-              "internal-packages/replication/package.json"
-            ],
-            [
-              "package.json",
-              "package.json"
-            ]
-          ],
-          "roots": [
-            "internal-packages/replication/package.json",
-            "package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "internal-packages/replication",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/replication",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            },
-            {
-              "dependency": "redlock@5.0.0-beta.2",
-              "file": "patches/redlock@5.0.0-beta.2.patch",
-              "from": "internal-packages/replication",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/replication",
-                  "snapshot:redlock@5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)"
-                ]
-              ],
-              "snapshotKeys": [
-                "redlock@5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/replication",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ],
-            [
-              "internal-packages/replication",
-              "snapshot:redlock@5.0.0-beta.2(patch_hash=52b17ac642f5f9776bf05e2229f4dd79588d37b0039d835c7684c478464632f2)"
-            ]
-          ],
-          "roots": [
-            "internal-packages/replication"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "internal-packages/replication/package.json",
-              "kind": "test-script",
-              "script": "test:coverage"
-            },
-            {
-              "from": "internal-packages/replication/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "internal-packages/replication/src/client.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/replication/tsconfig.test.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/replication/package.json",
-              "internal-packages/replication/package.json"
-            ],
-            [
-              "internal-packages/replication/src/client.test.ts",
-              "internal-packages/replication/src/client.test.ts"
-            ],
-            [
-              "internal-packages/replication/tsconfig.test.json",
-              "internal-packages/replication/tsconfig.test.json"
-            ]
-          ],
-          "roots": [
-            "internal-packages/replication/package.json",
-            "internal-packages/replication/src/client.test.ts",
-            "internal-packages/replication/tsconfig.test.json"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "d53ca3420938b519a8189e80a0703a602585a767e60fbeb69203353a222a59ad",
-      "manifestSha256": "5e3d15029606582dbb2e2b0dccb3664493cb1468bbf8acd43311839d8de7dd7a",
-      "name": "@internal/replication",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "internal-packages/replication",
-      "private": true,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": false,
-        "externalPublicReasons": [],
-        "kind": "embedded-private-implementation",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-repository-referenced"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
               "from": "docs/architecture.md",
               "kind": "reference",
               "line": 291
@@ -32764,7 +31573,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 214
+              "line": 45
             },
             {
               "from": "docs/refactor/platos-trigger-refactor.md",
@@ -33166,7 +31975,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 534
+              "line": 533
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33391,7 +32200,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "29ab531052a19bc61b2521982a30e6d460774a1598ea4979f9ef578056f6cfc7",
+      "evidenceSha256": "baaf3f832274e89c45f3621cc5f1680676ba8899a92b992321cfa085894c1aee",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -34345,12 +33154,27 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 27
+              "line": 33
+            },
+            {
+              "from": "docs/audits/sbom/closure-contract.md",
+              "kind": "reference",
+              "line": 212
             },
             {
               "from": "docs/audits/win-234-route-capability-parity.json",
               "kind": "reference",
               "line": 3103
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 1825
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.md",
+              "kind": "reference",
+              "line": 86
             },
             {
               "from": "docs/authentication.md",
@@ -34373,8 +33197,20 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/sbom/closure-contract.md",
+              "docs/audits/sbom/closure-contract.md"
+            ],
+            [
               "docs/audits/win-234-route-capability-parity.json",
               "docs/audits/win-234-route-capability-parity.json"
+            ],
+            [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
+              "docs/audits/win253-removals/clickhouse-split.md",
+              "docs/audits/win253-removals/clickhouse-split.md"
             ],
             [
               "docs/authentication.md",
@@ -34388,7 +33224,10 @@
           "roots": [
             "ai/references/repo.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/sbom/closure-contract.md",
             "docs/audits/win-234-route-capability-parity.json",
+            "docs/audits/win253-removals/clickhouse-split.json",
+            "docs/audits/win253-removals/clickhouse-split.md",
             "docs/authentication.md",
             "internal-packages/tenancy-database/README.md"
           ]
@@ -35738,7 +34577,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "f83850e4377b23fd4cd06c135234ca4a91a598cb487471e749105b2fcc22eb95",
+      "evidenceSha256": "fcb024f0ac81cedfc61a91763fe4ac3f931a6d7dc0b99354761f78049f24a98d",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -35934,7 +34773,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 292
+              "line": 291
             }
           ],
           "reversePaths": [
@@ -36066,7 +34905,7 @@
           "internal-packages/tenancy-database/migration-image"
         ]
       },
-      "evidenceSha256": "2aa06a54566cbab903c69652694a8c195e29c046d113b8a16494bf954cdcaa74",
+      "evidenceSha256": "17d79c29708db585ffc04bc5706f20eee7794267cdabcf427611f2b46c95c42a",
       "manifestSha256": "506c8ea91345cd9dbe3edbbc3d60bd5b44b487845c9f8190d07375afd36c0c28",
       "name": "@platos/tenancy-migration-image",
       "ociImageClosure": {
@@ -36168,7 +35007,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 195
+              "line": 197
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -36217,7 +35056,17 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 173
+              "line": 179
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 1859
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.md",
+              "kind": "reference",
+              "line": 91
             },
             {
               "from": "docs/security-audit-2026-07-16.md",
@@ -36244,6 +35093,14 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
+              "docs/audits/win253-removals/clickhouse-split.md",
+              "docs/audits/win253-removals/clickhouse-split.md"
+            ],
+            [
               "docs/security-audit-2026-07-16.md",
               "docs/security-audit-2026-07-16.md"
             ],
@@ -36256,6 +35113,8 @@
             "ai/references/repo.md",
             "ai/references/tests.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/win253-removals/clickhouse-split.json",
+            "docs/audits/win253-removals/clickhouse-split.md",
             "docs/security-audit-2026-07-16.md",
             "internal-packages/testcontainers/README.md"
           ]
@@ -36358,34 +35217,9 @@
               "line": 4
             },
             {
-              "from": "internal-packages/clickhouse/src/client/client.test.ts",
-              "kind": "reference",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/taskRuns.test.ts",
-              "kind": "reference",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/tsql.test.ts",
-              "kind": "reference",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "kind": "reference",
-              "line": 1
-            },
-            {
               "from": "internal-packages/llm-model-catalog/src/sync.test.ts",
               "kind": "reference",
               "line": 2
-            },
-            {
-              "from": "internal-packages/replication/src/client.test.ts",
-              "kind": "reference",
-              "line": 1
             },
             {
               "from": "internal-packages/run-engine/src/batch-queue/tests/index.test.ts",
@@ -36624,28 +35458,8 @@
               "apps/agent/src/auth/cross-scope-isolation.test.ts"
             ],
             [
-              "internal-packages/clickhouse/src/client/client.test.ts",
-              "internal-packages/clickhouse/src/client/client.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/taskRuns.test.ts",
-              "internal-packages/clickhouse/src/taskRuns.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/tsql.test.ts",
-              "internal-packages/clickhouse/src/tsql.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts"
-            ],
-            [
               "internal-packages/llm-model-catalog/src/sync.test.ts",
               "internal-packages/llm-model-catalog/src/sync.test.ts"
-            ],
-            [
-              "internal-packages/replication/src/client.test.ts",
-              "internal-packages/replication/src/client.test.ts"
             ],
             [
               "internal-packages/run-engine/src/batch-queue/tests/index.test.ts",
@@ -36834,12 +35648,7 @@
           ],
           "roots": [
             "apps/agent/src/auth/cross-scope-isolation.test.ts",
-            "internal-packages/clickhouse/src/client/client.test.ts",
-            "internal-packages/clickhouse/src/taskRuns.test.ts",
-            "internal-packages/clickhouse/src/tsql.test.ts",
-            "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
             "internal-packages/llm-model-catalog/src/sync.test.ts",
-            "internal-packages/replication/src/client.test.ts",
             "internal-packages/run-engine/src/batch-queue/tests/index.test.ts",
             "internal-packages/run-engine/src/engine/tests/attemptFailures.test.ts",
             "internal-packages/run-engine/src/engine/tests/batchTrigger.test.ts",
@@ -36895,7 +35704,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5162552f6302df5a8caa2d39191f6d6c75497e7d0d8fe5d69841a146b341d8ea",
+      "evidenceSha256": "e8095c075b79a091c0ecd90555a6f4074492fa2625c8ca8189ecd2ddce18e30d",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -37010,7 +35819,12 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 101
+              "line": 107
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 870
             },
             {
               "from": "internal-packages/tracing/README.md",
@@ -37024,12 +35838,17 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
               "internal-packages/tracing/README.md",
               "internal-packages/tracing/README.md"
             ]
           ],
           "roots": [
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/win253-removals/clickhouse-split.json",
             "internal-packages/tracing/README.md"
           ]
         },
@@ -37119,18 +35938,6 @@
         "sourceStatic": {
           "reachable": true,
           "reasons": [
-            {
-              "file": "internal-packages/clickhouse/src/client/client.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 12,
-              "specifier": "@internal/tracing"
-            },
-            {
-              "file": "internal-packages/replication/src/client.ts",
-              "from": "internal-packages/replication",
-              "line": 10,
-              "specifier": "@internal/tracing"
-            },
             {
               "file": "internal-packages/run-engine/src/batch-queue/index.ts",
               "from": "internal-packages/run-engine",
@@ -37272,14 +36079,6 @@
           ],
           "reversePaths": [
             [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/client.ts"
-            ],
-            [
-              "internal-packages/replication",
-              "internal-packages/replication/src/client.ts"
-            ],
-            [
               "internal-packages/run-engine",
               "internal-packages/run-engine/src/batch-queue/index.ts"
             ],
@@ -37369,8 +36168,6 @@
             ]
           ],
           "roots": [
-            "internal-packages/clickhouse",
-            "internal-packages/replication",
             "internal-packages/run-engine",
             "internal-packages/schedule-engine",
             "internal-packages/zod-worker",
@@ -37723,7 +36520,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6ea3868e0a3e611639cc3a26327666c48b950afa6f083e8b7215dd1366803d5c",
+      "evidenceSha256": "9dc8d9440e78ef988ca59ccb539ae038fe6806845739a39df9c9edaead2cc088",
       "manifestSha256": "1794136d4ad02d644e8a8af5c3f80f4f8ea883f9fcb2ce66e4cd8bc949d5b98e",
       "name": "@internal/tracing",
       "ociImageClosure": {
@@ -37733,479 +36530,6 @@
         "roots": []
       },
       "path": "internal-packages/tracing",
-      "private": true,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": false,
-        "externalPublicReasons": [],
-        "kind": "embedded-private-implementation",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-repository-referenced"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 196
-            },
-            {
-              "from": "docs/v1-ledger-rules.json",
-              "kind": "reference",
-              "line": 910
-            },
-            {
-              "from": "internal-packages/tsql/NOTICE.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/v1-ledger-rules.json",
-              "docs/v1-ledger-rules.json"
-            ],
-            [
-              "internal-packages/tsql/NOTICE.md",
-              "internal-packages/tsql/NOTICE.md"
-            ],
-            [
-              "internal-packages/tsql/README.md",
-              "internal-packages/tsql/README.md"
-            ]
-          ],
-          "roots": [
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/v1-ledger-rules.json",
-            "internal-packages/tsql/NOTICE.md",
-            "internal-packages/tsql/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "internal-packages/tsql/NOTICE.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/tsql/NOTICE.md",
-              "internal-packages/tsql/NOTICE.md"
-            ]
-          ],
-          "roots": [
-            "internal-packages/tsql/NOTICE.md"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "command": "cat src/grammar/TSQLLexer.typescript.g4 > src/grammar/TSQLLexer.g4 && tail -n +2 src/grammar/TSQLLexer.common.g4 |sed s/isOpeningTag/self.isOpeningTag/ >> src/grammar/TSQLLexer.g4 && antlr4ts src/grammar/TSQLLexer.g4 && rm src/grammar/TSQLLexer.g4 && antlr4ts -visitor -no-listener -Dlanguage=TypeScript src/grammar/TSQLParser.g4",
-              "from": "internal-packages/tsql/package.json",
-              "kind": "workspace-script",
-              "script": "grammar:build:typescript"
-            },
-            {
-              "command": "pnpm grammar:build:typescript",
-              "from": "internal-packages/tsql/package.json",
-              "kind": "workspace-script",
-              "script": "grammar:build"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism --coverage.enabled",
-              "from": "internal-packages/tsql/package.json",
-              "kind": "workspace-script",
-              "script": "test:coverage"
-            },
-            {
-              "command": "vitest --sequence.concurrent=false --no-file-parallelism",
-              "from": "internal-packages/tsql/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc --noEmit",
-              "from": "internal-packages/tsql/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/tsql/package.json",
-              "internal-packages/tsql/package.json"
-            ],
-            [
-              "package.json",
-              "package.json"
-            ]
-          ],
-          "roots": [
-            "internal-packages/tsql/package.json",
-            "package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "antlr4ts@0.5.0-alpha.4",
-              "file": "patches/antlr4ts@0.5.0-alpha.4.patch",
-              "from": "internal-packages/tsql",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/tsql",
-                  "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-                ]
-              ],
-              "snapshotKeys": [
-                "antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-              ]
-            },
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "internal-packages/tsql",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/tsql",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/tsql",
-              "snapshot:antlr4ts@0.5.0-alpha.4(patch_hash=b5d41129ddbf7c4cbb0288244b2c8d041ee0803c5102c1181c180408d3b579f4)"
-            ],
-            [
-              "internal-packages/tsql",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "internal-packages/tsql"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": true,
-          "reasons": [
-            {
-              "file": "internal-packages/clickhouse/src/client/tsql.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 10,
-              "specifier": "@internal/tsql"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/client/tsql.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 22,
-              "specifier": "@internal/tsql"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/index.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 84,
-              "specifier": "@internal/tsql"
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/tsql.ts"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/index.ts"
-            ]
-          ],
-          "roots": [
-            "internal-packages/clickhouse"
-          ]
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "internal-packages/clickhouse/src/tsql.test.ts",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "internal-packages/tsql/package.json",
-              "kind": "test-script",
-              "script": "test:coverage"
-            },
-            {
-              "from": "internal-packages/tsql/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "internal-packages/tsql/src/grammar/parser.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/index.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/escape.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/parser.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/printer.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/results.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/schema.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/security.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/time_buckets.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/tsql/src/query/validator.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "scripts/v1-ledger.test.mjs",
-              "kind": "reference",
-              "line": 537
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/clickhouse/src/tsql.test.ts",
-              "internal-packages/clickhouse/src/tsql.test.ts"
-            ],
-            [
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-              "internal-packages/clickhouse/src/tsqlFunctions.test.ts"
-            ],
-            [
-              "internal-packages/tsql/package.json",
-              "internal-packages/tsql/package.json"
-            ],
-            [
-              "internal-packages/tsql/src/grammar/parser.test.ts",
-              "internal-packages/tsql/src/grammar/parser.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/index.test.ts",
-              "internal-packages/tsql/src/index.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/escape.test.ts",
-              "internal-packages/tsql/src/query/escape.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/parser.test.ts",
-              "internal-packages/tsql/src/query/parser.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/printer.test.ts",
-              "internal-packages/tsql/src/query/printer.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/results.test.ts",
-              "internal-packages/tsql/src/query/results.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/schema.test.ts",
-              "internal-packages/tsql/src/query/schema.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/security.test.ts",
-              "internal-packages/tsql/src/query/security.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/time_buckets.test.ts",
-              "internal-packages/tsql/src/query/time_buckets.test.ts"
-            ],
-            [
-              "internal-packages/tsql/src/query/validator.test.ts",
-              "internal-packages/tsql/src/query/validator.test.ts"
-            ],
-            [
-              "scripts/v1-ledger.test.mjs",
-              "scripts/v1-ledger.test.mjs"
-            ]
-          ],
-          "roots": [
-            "internal-packages/clickhouse/src/tsql.test.ts",
-            "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
-            "internal-packages/tsql/package.json",
-            "internal-packages/tsql/src/grammar/parser.test.ts",
-            "internal-packages/tsql/src/index.test.ts",
-            "internal-packages/tsql/src/query/escape.test.ts",
-            "internal-packages/tsql/src/query/parser.test.ts",
-            "internal-packages/tsql/src/query/printer.test.ts",
-            "internal-packages/tsql/src/query/results.test.ts",
-            "internal-packages/tsql/src/query/schema.test.ts",
-            "internal-packages/tsql/src/query/security.test.ts",
-            "internal-packages/tsql/src/query/time_buckets.test.ts",
-            "internal-packages/tsql/src/query/validator.test.ts",
-            "scripts/v1-ledger.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "d9855866dab789749b6f4eaa981f70f9c1b6ba832b403110853f08dacfdfe928",
-      "manifestSha256": "256cf1c4e56acc151727ac50c05b43fe9deac112e7ba5b8a13ff1a7e18a3cca2",
-      "name": "@internal/tsql",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "internal-packages/tsql",
       "private": true,
       "repositoryDevClosure": {
         "reachable": false,
@@ -38749,7 +37073,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 183
+              "line": 194
             }
           ],
           "reversePaths": [
@@ -38883,7 +37207,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "03905f71fd545916f8160446718ad043710e1fae0c3dd10034b23782c7450d53",
+      "evidenceSha256": "95f017b0601ce86ac78ce03dbd80af7ade0ecdfbd69fd423ced6214875d9ecfc",
       "manifestSha256": "2568326aebd0fca05e86b46e0c588e9dce424bd4749cd5807c3224d6d89dc2ee",
       "name": "@internal/zod-worker",
       "ociImageClosure": {
@@ -43352,7 +41676,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 99
+              "line": 105
             },
             {
               "from": "docs/config/extensions/custom.mdx",
@@ -43622,7 +41946,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "7117f1009efd563c8379c3fa553f907a2fc916a551ad8a775ff4d24d26cad807",
+      "evidenceSha256": "2a789624ab47bf7884ed49ca70fc8e5ac150d60bd29b53d40053b33f3dbd469f",
       "manifestSha256": "45fb3b83186603512b34e8630d9744155a6b6bc223f96e3390f434a20ad7189d",
       "name": "@platos/build",
       "ociImageClosure": {
@@ -54986,7 +53310,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 204
+              "line": 206
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -55063,7 +53387,12 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 173
+              "line": 179
+            },
+            {
+              "from": "docs/audits/win253-removals/clickhouse-split.json",
+              "kind": "reference",
+              "line": 872
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -55107,6 +53436,10 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/win253-removals/clickhouse-split.json",
+              "docs/audits/win253-removals/clickhouse-split.json"
+            ],
+            [
               "docs/launch/release-notes-v1.0.0.md",
               "docs/launch/release-notes-v1.0.0.md"
             ],
@@ -55126,6 +53459,7 @@
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/win253-removals/clickhouse-split.json",
             "docs/launch/release-notes-v1.0.0.md",
             "docs/refactor/platos-trigger-refactor.md",
             "packages/core/CHANGELOG.md"
@@ -55345,42 +53679,6 @@
           "reachable": true,
           "reasons": [
             {
-              "file": "internal-packages/clickhouse/src/client/client.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 13,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/client/client.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 28,
-              "specifier": "@platos/core/logger"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/client/noop.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/client/tsql.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 23,
-              "specifier": "@platos/core/logger"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/client/types.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "internal-packages/clickhouse/src/index.ts",
-              "from": "internal-packages/clickhouse",
-              "line": 50,
-              "specifier": "@platos/core/logger"
-            },
-            {
               "file": "internal-packages/llm-model-catalog/src/seed.ts",
               "from": "internal-packages/llm-model-catalog",
               "line": 2,
@@ -55390,18 +53688,6 @@
               "file": "internal-packages/redis/src/index.ts",
               "from": "internal-packages/redis",
               "line": 2,
-              "specifier": "@platos/core/logger"
-            },
-            {
-              "file": "internal-packages/replication/src/client.ts",
-              "from": "internal-packages/replication",
-              "line": 1,
-              "specifier": "@platos/core/utils"
-            },
-            {
-              "file": "internal-packages/replication/src/client.ts",
-              "from": "internal-packages/replication",
-              "line": 7,
               "specifier": "@platos/core/logger"
             },
             {
@@ -56259,36 +54545,12 @@
           ],
           "reversePaths": [
             [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/client.ts"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/noop.ts"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/tsql.ts"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/client/types.ts"
-            ],
-            [
-              "internal-packages/clickhouse",
-              "internal-packages/clickhouse/src/index.ts"
-            ],
-            [
               "internal-packages/llm-model-catalog",
               "internal-packages/llm-model-catalog/src/seed.ts"
             ],
             [
               "internal-packages/redis",
               "internal-packages/redis/src/index.ts"
-            ],
-            [
-              "internal-packages/replication",
-              "internal-packages/replication/src/client.ts"
             ],
             [
               "internal-packages/run-engine",
@@ -56644,10 +54906,8 @@
             ]
           ],
           "roots": [
-            "internal-packages/clickhouse",
             "internal-packages/llm-model-catalog",
             "internal-packages/redis",
-            "internal-packages/replication",
             "internal-packages/run-engine",
             "internal-packages/schedule-engine",
             "internal-packages/testcontainers",
@@ -57177,7 +55437,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "bea52cd4d20eae0950ec803785de86aa28a47a6bb8069389f0d9b43e758bbb0b",
+      "evidenceSha256": "06039c2d3ad463b651818f75e0b7583565847951b4c1fd2696bc67625cdf9b0e",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -59366,7 +57626,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 292
+              "line": 291
             },
             {
               "from": "docs/audits/sbom/closure-contract.md",
@@ -59849,7 +58109,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "974c23d20e0d603cf181a7afb50c051ded802480fb0735fbf1925455ac27ee11",
+      "evidenceSha256": "aa230c3bcea9a9a5de6503aa1ddc7e80031c3b6b5a8b76c9dc3242419546941f",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -60010,7 +58270,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 170
+              "line": 176
             },
             {
               "from": "docs/audits/sbom/closure-contract.md",
@@ -60577,7 +58837,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "c0f9f8809d5c640ce6eecb9b88c115b1a90553c185114c65c9c6a642117388c5",
+      "evidenceSha256": "7a54eabe53410dbb0acbb27a6068114e4de2baf2dcf83b28c051de0cda072f6f",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -61339,7 +59599,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 173
+              "line": 179
             },
             {
               "from": "examples/platos-nextjs-starter/app/platos/token/route.ts",
@@ -61658,7 +59918,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6c7ceec8fd830e8faf94a9c2d9d78096bb468e05fd5ccb1d9a21ccc22d0c352c",
+      "evidenceSha256": "980ddb00e473341a79c08f7636a64880e286342d9f0f33767ea1f4d9786acd45",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
@@ -62152,7 +60412,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 284
+              "line": 285
             },
             {
               "from": "docs/refactor/platos-trigger-refactor.md",
@@ -62534,7 +60794,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3f8fec8d28456e7e47c7639a9fdc43a177777ec925aff4e29f8c2d984c667e16",
+      "evidenceSha256": "e15d1b6c6434134c5efbbdb1e668adef9d81653101a8a5e9d488d7ab662f7992",
       "manifestSha256": "9e88758002295b4e87f4bd0e2ba50586b0ffa4141d0694d2f14e5eab3b016e28",
       "name": "@platos/react-hooks",
       "ociImageClosure": {
@@ -62630,7 +60890,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 284
+              "line": 285
             },
             {
               "from": "docs/refactor/platos-trigger-refactor.md",
@@ -63085,7 +61345,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "4ed430e7eb29c38cf662130c54123d8fac13873c8547a905168c94eb682c143d",
+      "evidenceSha256": "0edcbff4a326df9005d210074e4d573279eada72e469d5e262bcbf598ad2199d",
       "manifestSha256": "ef514ac499b1a401341cdaeed75e735f1b90b64989f1dd77b791966f0ab45c7e",
       "name": "@platos/redis-worker",
       "ociImageClosure": {
@@ -63181,7 +61441,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 284
+              "line": 285
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -63427,7 +61687,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "7c75aaabbe7a1cf917da80eddcc4ab1cc426963945f707cdfdc83a3f1060d223",
+      "evidenceSha256": "93b003eb048580605c46e7f7f7f9c434c67628da001ab1f6200d50c9d3d8918a",
       "manifestSha256": "59017430cf7407beeabb246a9ef119f566fa5534bcd24f81b43f5f8e6137643a",
       "name": "@platos/rsc",
       "ociImageClosure": {
@@ -63523,7 +61783,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 284
+              "line": 285
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -63816,7 +62076,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "04a973aab65a5033305aa09091088bab745be132f385c112259df40df546c19b",
+      "evidenceSha256": "b90d6546e7129a51a100add80d1f064c2e3f9d3ae7dd6859778eb21f43c2b48f",
       "manifestSha256": "5a482f324760df697e8421fdfa04eed0cdbf9be87c6b97a1d0450f9faf8e2b78",
       "name": "@platos/schema-to-json",
       "ociImageClosure": {
@@ -63927,7 +62187,7 @@
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
               "kind": "reference",
-              "line": 285
+              "line": 286
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -64421,7 +62681,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "7986988b820b7963ba10eed2284a4c1d6f8cc3cfd4ebf8b3e31c245630dfd2e8",
+      "evidenceSha256": "ff227083305fd0142f6af1c8b49d805ba8cabc67de6623288f129cd43da583dc",
       "manifestSha256": "f8049bed60d4c451828074161305394062548358da20d220e9d744fbef783ecd",
       "name": "@platos/sdk",
       "ociImageClosure": {

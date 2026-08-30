@@ -3,15 +3,15 @@
   "purpose": "One row per tracked file for the V1 refactor. Within an area the FIRST rule whose glob matches the path wins; array order IS the precedence. Rules are ordered pins-first: individually-verified rules (a legal obligation, a named-consumer pin, a reachability-proven orphan) are declared ahead of the broad fallback buckets, so a specific verified decision is never overridden by a generic rule.",
   "precedence": "First-match-wins is deliberately NOT a monotonic safety gradient: a delete pin is declared ahead of the archive bucket that also matches its files, which is the mechanism by which the verified orphan wins. The generator does not claim safer-always-first; instead it ENFORCES the property that matters for the destructive case in scripts/v1-ledger.mjs checkInvariants -- every delete row must be an exact literal path (validation rejects a wildcard in a delete rule) AND be confirmed unreferenced by a live scan of every tracked text file at check time. A tracked file that matches no rule, or a delete candidate found referenced, is a hard error. Globs match dotfiles: the matcher has no leading-dot special case.",
   "baseline": {
-    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force. M0 INTEGRATION RE-BASELINE (tejas/m0-integration, base origin/v1 06d47ca): the single M0 close-out integration adds 35 tracked files, lifting the total from 3385 to 3420 and leaving apps-webapp (180) and packages (550) untouched. apps-agent 507->509 (+2): WIN-293/296 auth tests env-internal-auth-sentinel.test.ts and auth.service.access-key-bootstrap.test.ts. internal-packages 1268->1269 (+1): the WIN-296 AccessKeyBootstrapGrant migration (20260828120000). docs-content 675->692 (+17): the M0 ADRs (M0.3-bounded-contexts, M0.4-contract-versioning) and durable audit artifacts (M0.2 capability matrix json+md, M0.4 design-contract-map json+md, M0.5-dependency-sbom.md, and the ten docs/audits/sbom/* SBOM/advisory/licence/closure-receipt evidence files). root-infra 205->220 (+15): the WIN-248/249 arch-boundary tooling (.dependency-cruiser.js + scripts/arch/*, five files) with its fixture test, the WIN-250 supply-chain tooling (scripts/audit-{sbom,advisory,licenses}.mjs, scripts/lib/pnpm-closure.mjs, scripts/verify-sbom-nonvacuity.mjs, scripts/audit-sbom.test.mjs), scripts/capability-matrix.mjs (WIN-247), the WIN-295 scripts/vocabulary-boundary.nul.test.mjs adversarial NUL test, and renovate.json (WIN-250 update automation, newly classified by rule root-infra.automation.renovate). Every added file is enumerated above and conserves exactly to these deltas; this re-baseline is submitted for ledger-owner review in the M0 integration PR, not to silence a check. Any further drift from 3420 is again a finding to report, not a number to force. M0 COMPLETION RE-BASELINE (tejas/m0-completion, base v1 fb28444): WIN-294 census adds 8 tracked files, 3420->3428. root-infra 220->225 (+5): the independent REST census (scripts/rest-census-independent.mjs + .test.mjs), the webapp/BFF census (scripts/webapp-bff-matrix.mjs + .test.mjs), and scripts/operator-operations.mjs (WIN-293 clause 2). docs-content 692->695 (+3): docs/audits/M0.9-rest-census-independent.json, docs/audits/M0.9-webapp-bff-matrix.json, and docs/audits/M0.8-operator-operations.md. apps-agent/apps-webapp/packages/internal-packages untouched. Every added file conserves to these deltas; submitted for ledger-owner review in the M0 completion PR, not a force-to-green. M0.6/M0.8 evidence docs add 2 tracked files, 3428->3430 (docs-content 695->697): docs/audits/M0.6-admin-access-containment.md (WIN-291 repo-side evidence + operator runbook) and docs/audits/M0.8-operator-auth-boundary.md (WIN-293 boundary + residual). Attributed; owner-review. WIN-293 CLAUSE 4 (workload identity) adds 4 tracked files, 3430->3434. internal-packages 1269->1272 (+3): the new @internal/workload-identity package (package.json, src/index.ts Ed25519 signer/verifier, src/index.test.ts adversarial suite). root-infra 225->226 (+1): scripts/workload-identity-keygen.mjs (operator keygen/rotation helper). Attributed; owner-review. WIN-290 (M1.6) adds 3 tracked files, 3434->3437 (apps-agent 509->512): src/shared/clickhouse-deadline.ts (central deadline policy), its unit test, and src/monitoring/spans.clickhouse-deadline.test.ts (hung-server abort proof). Attributed; owner-review. WIN-252 (M1.2) legal-distribution gate adds 1 tracked file, 3437->3438 (root-infra 226->227): scripts/license-distribution.test.mjs, the Apache-2.0 s4(a)/s4(d) tripwire proving LICENSE+NOTICE reach every shipped image. Attributed; owner-review. WIN-251 (M1.1) blocker 1: the ledger could not classify the ADR M0.3 §4 layout at all. assignArea() returned null for apps/core-api/** and apps/mcp-stdio/** (hard fail), and the glob compiler compiles '*' to '[^/]*' so packages/*/src/**/*.ts could not reach packages/contexts/<ctx>/**. Fixed by adding two AREAS (apps-core-api, apps-mcp-stdio — 'area' is a data field hashed into the classification fingerprint, so labelling a core-api file apps-agent would be false data) and PREPENDING 12 nested packages.* rules at index 1. Prepended, not appended, because '**' mid-glob already crosses separators, so the legacy packages/*/**/*.md|json rules would otherwise wrongly claim nested context/adapter files under owner 'Public SDKs'. '*' was deliberately NOT widened — that would silently broaden every existing rule. No file counts change here (the skeleton lands next); only the classification digest moves, because the RULES changed. Attributed; owner-review. WIN-251 (M1.1) SKELETON: the approved ADR M0.3 §4 layout is materialised, adding 169 tracked files, 3438->3607. apps-core-api 0->10 and apps-mcp-stdio 0->3 (the two new deployables), packages 550->705 (+155: packages/kernel, 17 packages/contexts/*, 12 packages/adapters/*), root-infra 227->228 (+1: scripts/arch/gen-v1-skeleton.mjs, the generator that owns every one of those files). Conserves exactly (10+3+155+1=169). Generated, not hand-written: the generator reads CONTEXT_NAMES from scripts/arch/boundary-rules.mjs so the skeleton and the boundary rules cannot name different contexts, and --check byte-compares all 168 files so a hand-edited placeholder is caught. Vocabulary stayed at 20482 with ZERO new exceptions while scanning 169 more files — the point of the vendor-free adapter directory. Attributed; owner-review. WIN-255 TRANCHE A adds 1 tracked file, 3607->3608 (root-infra 228->229): scripts/ci-policy.test.mjs, the table-driven CI/image-build mutation policy suite classified by root-infra.test.script-suites. Attributed; owner-review. WIN-251 FOUNDATION COMPLETION adds 40 tracked files, 3608->3648. packages 705->735 (+30): one composite tsconfig for packages/kernel, each of 17 contexts, and each of 12 adapters. apps-core-api 10->11 and apps-mcp-stdio 3->4 (+2): one composite tsconfig per app. docs-content 697->698 (+1): docs/agent-worktrees.md, the fail-closed linked-worktree procedure. root-infra 229->236 (+7): root solution tsconfig.json; scripts/arch/{v1-project-graph,max-file-lines}.mjs and their two mutation suites; scripts/install-git-hooks.mjs and its focused suite. The 33 tsconfigs plus six scripts/tests plus one document conserve exactly to 40. Existing generated manifests/placeholders, the immutable ADR amendment, package/workspace/CI wiring, and regenerated lockfile change tracked bytes but add no files. Attributed; owner-review. WIN-251 RELEASE-BLOCKER TESTING adds 3 tracked root-infra files, 3648->3651 (root-infra 236->239): scripts/arch/clean-v1.mjs provides reference-derived safe dist cleanup; scripts/arch/clean-v1.test.mjs proves all 32 projects build and leave no dist trees; scripts/arch/gen-v1-skeleton.test.mjs directly mutation-tests generator ownership. Existing package/CI/policy wiring changes bytes but adds no files. Conserves exactly; attributed for ledger-owner review. WIN-252 ROOT GOVERNANCE: exact attributable conservation is 3651-11+6=3646. Eleven tracked files are deleted: .eslintignore, DOCKER_INSTALLATION.md, root playwright.config.ts, four inactive scripts (build-dockerfile, enhance-release-pr, generate-github-release, publish-prerelease), and four broken legacy root browser-suite files (tests/e2e/e2e.spec.ts, tests/global.setup.ts, tests/global.teardown.ts, tests/utils.ts). Thirteen files move without count change from root-infra to docs-content: ten stale .changeset notes, two .server-changes notes, and PROGRESS.md. Six files are added: scripts/root-entry-manifest.mjs + .test.mjs, scripts/hook-policy.mjs + .test.mjs (root-infra +4), and generated docs/audits/win-252-root-entry-manifest.{json,md} (docs-content +2). Area conservation: root-infra 239-13-11+4=219; docs-content 698+13+2=713; every other area unchanged. A dedicated Repository Governance rule precedes the generic audit-doc rule. Attributed for ledger-owner review. WIN-252 PACKAGE LICENSE COMPLETENESS adds four package-local Apache-2.0 LICENSE copies under packages/react-hooks, packages/redis-worker, packages/rsc, and packages/schema-to-json, lifting 3646->3650 and packages 735->739. No other area changes. Attributed for ledger-owner review. WIN-253 WORKSPACE REACHABILITY GATE adds 4 tracked files, 3650->3654. docs-content 713->715 (+2): the generated JSON and Markdown reachability evidence. root-infra 219->221 (+2): scripts/workspace-reachability.mjs and its 25-control mutation suite. Exact rules precede generic generated-audit and script buckets. Conserves exactly; attributed for ledger-owner review. WIN-290 CANCELLATION COVERAGE adds 1 prospective-tree file, 3654->3655 (apps-agent 512->513): apps/agent/src/monitoring/trace-request-abort.test.ts, the shipping HTTP/MCP/SSE/stdio cancellation and fallback-telemetry regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review. WIN-290 REDIS DLQ PROCESSING COVERAGE adds 1 prospective-tree file, 3655->3656 (apps-agent 513->514): apps/agent/src/monitoring/spans.dlq.redis.test.ts, the real Redis claim/interruption/write-failure regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review.",
-    "totalFiles": 3656,
+    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force. M0 INTEGRATION RE-BASELINE (tejas/m0-integration, base origin/v1 06d47ca): the single M0 close-out integration adds 35 tracked files, lifting the total from 3385 to 3420 and leaving apps-webapp (180) and packages (550) untouched. apps-agent 507->509 (+2): WIN-293/296 auth tests env-internal-auth-sentinel.test.ts and auth.service.access-key-bootstrap.test.ts. internal-packages 1268->1269 (+1): the WIN-296 AccessKeyBootstrapGrant migration (20260828120000). docs-content 675->692 (+17): the M0 ADRs (M0.3-bounded-contexts, M0.4-contract-versioning) and durable audit artifacts (M0.2 capability matrix json+md, M0.4 design-contract-map json+md, M0.5-dependency-sbom.md, and the ten docs/audits/sbom/* SBOM/advisory/licence/closure-receipt evidence files). root-infra 205->220 (+15): the WIN-248/249 arch-boundary tooling (.dependency-cruiser.js + scripts/arch/*, five files) with its fixture test, the WIN-250 supply-chain tooling (scripts/audit-{sbom,advisory,licenses}.mjs, scripts/lib/pnpm-closure.mjs, scripts/verify-sbom-nonvacuity.mjs, scripts/audit-sbom.test.mjs), scripts/capability-matrix.mjs (WIN-247), the WIN-295 scripts/vocabulary-boundary.nul.test.mjs adversarial NUL test, and renovate.json (WIN-250 update automation, newly classified by rule root-infra.automation.renovate). Every added file is enumerated above and conserves exactly to these deltas; this re-baseline is submitted for ledger-owner review in the M0 integration PR, not to silence a check. Any further drift from 3420 is again a finding to report, not a number to force. M0 COMPLETION RE-BASELINE (tejas/m0-completion, base v1 fb28444): WIN-294 census adds 8 tracked files, 3420->3428. root-infra 220->225 (+5): the independent REST census (scripts/rest-census-independent.mjs + .test.mjs), the webapp/BFF census (scripts/webapp-bff-matrix.mjs + .test.mjs), and scripts/operator-operations.mjs (WIN-293 clause 2). docs-content 692->695 (+3): docs/audits/M0.9-rest-census-independent.json, docs/audits/M0.9-webapp-bff-matrix.json, and docs/audits/M0.8-operator-operations.md. apps-agent/apps-webapp/packages/internal-packages untouched. Every added file conserves to these deltas; submitted for ledger-owner review in the M0 completion PR, not a force-to-green. M0.6/M0.8 evidence docs add 2 tracked files, 3428->3430 (docs-content 695->697): docs/audits/M0.6-admin-access-containment.md (WIN-291 repo-side evidence + operator runbook) and docs/audits/M0.8-operator-auth-boundary.md (WIN-293 boundary + residual). Attributed; owner-review. WIN-293 CLAUSE 4 (workload identity) adds 4 tracked files, 3430->3434. internal-packages 1269->1272 (+3): the new @internal/workload-identity package (package.json, src/index.ts Ed25519 signer/verifier, src/index.test.ts adversarial suite). root-infra 225->226 (+1): scripts/workload-identity-keygen.mjs (operator keygen/rotation helper). Attributed; owner-review. WIN-290 (M1.6) adds 3 tracked files, 3434->3437 (apps-agent 509->512): src/shared/clickhouse-deadline.ts (central deadline policy), its unit test, and src/monitoring/spans.clickhouse-deadline.test.ts (hung-server abort proof). Attributed; owner-review. WIN-252 (M1.2) legal-distribution gate adds 1 tracked file, 3437->3438 (root-infra 226->227): scripts/license-distribution.test.mjs, the Apache-2.0 s4(a)/s4(d) tripwire proving LICENSE+NOTICE reach every shipped image. Attributed; owner-review. WIN-251 (M1.1) blocker 1: the ledger could not classify the ADR M0.3 §4 layout at all. assignArea() returned null for apps/core-api/** and apps/mcp-stdio/** (hard fail), and the glob compiler compiles '*' to '[^/]*' so packages/*/src/**/*.ts could not reach packages/contexts/<ctx>/**. Fixed by adding two AREAS (apps-core-api, apps-mcp-stdio — 'area' is a data field hashed into the classification fingerprint, so labelling a core-api file apps-agent would be false data) and PREPENDING 12 nested packages.* rules at index 1. Prepended, not appended, because '**' mid-glob already crosses separators, so the legacy packages/*/**/*.md|json rules would otherwise wrongly claim nested context/adapter files under owner 'Public SDKs'. '*' was deliberately NOT widened — that would silently broaden every existing rule. No file counts change here (the skeleton lands next); only the classification digest moves, because the RULES changed. Attributed; owner-review. WIN-251 (M1.1) SKELETON: the approved ADR M0.3 §4 layout is materialised, adding 169 tracked files, 3438->3607. apps-core-api 0->10 and apps-mcp-stdio 0->3 (the two new deployables), packages 550->705 (+155: packages/kernel, 17 packages/contexts/*, 12 packages/adapters/*), root-infra 227->228 (+1: scripts/arch/gen-v1-skeleton.mjs, the generator that owns every one of those files). Conserves exactly (10+3+155+1=169). Generated, not hand-written: the generator reads CONTEXT_NAMES from scripts/arch/boundary-rules.mjs so the skeleton and the boundary rules cannot name different contexts, and --check byte-compares all 168 files so a hand-edited placeholder is caught. Vocabulary stayed at 20482 with ZERO new exceptions while scanning 169 more files — the point of the vendor-free adapter directory. Attributed; owner-review. WIN-255 TRANCHE A adds 1 tracked file, 3607->3608 (root-infra 228->229): scripts/ci-policy.test.mjs, the table-driven CI/image-build mutation policy suite classified by root-infra.test.script-suites. Attributed; owner-review. WIN-251 FOUNDATION COMPLETION adds 40 tracked files, 3608->3648. packages 705->735 (+30): one composite tsconfig for packages/kernel, each of 17 contexts, and each of 12 adapters. apps-core-api 10->11 and apps-mcp-stdio 3->4 (+2): one composite tsconfig per app. docs-content 697->698 (+1): docs/agent-worktrees.md, the fail-closed linked-worktree procedure. root-infra 229->236 (+7): root solution tsconfig.json; scripts/arch/{v1-project-graph,max-file-lines}.mjs and their two mutation suites; scripts/install-git-hooks.mjs and its focused suite. The 33 tsconfigs plus six scripts/tests plus one document conserve exactly to 40. Existing generated manifests/placeholders, the immutable ADR amendment, package/workspace/CI wiring, and regenerated lockfile change tracked bytes but add no files. Attributed; owner-review. WIN-251 RELEASE-BLOCKER TESTING adds 3 tracked root-infra files, 3648->3651 (root-infra 236->239): scripts/arch/clean-v1.mjs provides reference-derived safe dist cleanup; scripts/arch/clean-v1.test.mjs proves all 32 projects build and leave no dist trees; scripts/arch/gen-v1-skeleton.test.mjs directly mutation-tests generator ownership. Existing package/CI/policy wiring changes bytes but adds no files. Conserves exactly; attributed for ledger-owner review. WIN-252 ROOT GOVERNANCE: exact attributable conservation is 3651-11+6=3646. Eleven tracked files are deleted: .eslintignore, DOCKER_INSTALLATION.md, root playwright.config.ts, four inactive scripts (build-dockerfile, enhance-release-pr, generate-github-release, publish-prerelease), and four broken legacy root browser-suite files (tests/e2e/e2e.spec.ts, tests/global.setup.ts, tests/global.teardown.ts, tests/utils.ts). Thirteen files move without count change from root-infra to docs-content: ten stale .changeset notes, two .server-changes notes, and PROGRESS.md. Six files are added: scripts/root-entry-manifest.mjs + .test.mjs, scripts/hook-policy.mjs + .test.mjs (root-infra +4), and generated docs/audits/win-252-root-entry-manifest.{json,md} (docs-content +2). Area conservation: root-infra 239-13-11+4=219; docs-content 698+13+2=713; every other area unchanged. A dedicated Repository Governance rule precedes the generic audit-doc rule. Attributed for ledger-owner review. WIN-252 PACKAGE LICENSE COMPLETENESS adds four package-local Apache-2.0 LICENSE copies under packages/react-hooks, packages/redis-worker, packages/rsc, and packages/schema-to-json, lifting 3646->3650 and packages 735->739. No other area changes. Attributed for ledger-owner review. WIN-253 WORKSPACE REACHABILITY GATE adds 4 tracked files, 3650->3654. docs-content 713->715 (+2): the generated JSON and Markdown reachability evidence. root-infra 219->221 (+2): scripts/workspace-reachability.mjs and its 25-control mutation suite. Exact rules precede generic generated-audit and script buckets. Conserves exactly; attributed for ledger-owner review. WIN-290 CANCELLATION COVERAGE adds 1 prospective-tree file, 3654->3655 (apps-agent 512->513): apps/agent/src/monitoring/trace-request-abort.test.ts, the shipping HTTP/MCP/SSE/stdio cancellation and fallback-telemetry regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review. WIN-290 REDIS DLQ PROCESSING COVERAGE adds 1 prospective-tree file, 3655->3656 (apps-agent 513->514): apps/agent/src/monitoring/spans.dlq.redis.test.ts, the real Redis claim/interruption/write-failure regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review. WIN-253 CLICKHOUSE SPLIT INTEGRATION: from the 3656-file primary tree, the executable Git-derived audit removes 91 tracked files (90 retired package/Docker files plus the antlr4ts patch) and adds four durable audit artifacts (two docs-content reports and two root-infra scripts), yielding 3569 files. internal-packages 1272->1182, docs-content 715->717, root-infra 221->222; every other area remains unchanged. The 34 ClickHouse schema files and WIN-144 observability migration remain byte-identical and hash-protected. Counts are derived by the assembled-tree audit and ledger, not copied from the isolated source branch.",
+    "totalFiles": 3569,
     "areaCounts": {
       "apps-agent": 514,
       "apps-webapp": 180,
       "packages": 739,
-      "internal-packages": 1272,
-      "docs-content": 715,
-      "root-infra": 221,
+      "internal-packages": 1182,
+      "docs-content": 717,
+      "root-infra": 222,
       "apps-core-api": 11,
       "apps-mcp-stdio": 4
     }
@@ -907,7 +907,7 @@
         "reached_via": [
           "license-obligation"
         ],
-        "evidence": "PRECEDENCE: declared first in this area so legal retention always beats the later archive and config rules. internal-packages/tsql/NOTICE.md is the ONLY PostHog MIT attribution in the repository, verified by `grep -i posthog NOTICE LICENSE README.md` returning nothing: the root NOTICE credits only the upstream project. internal-packages/otlp-importer/LICENSE is the OpenTelemetry attribution and would otherwise have been swept up by a package-config rule and archived.",
+        "evidence": "PRECEDENCE: declared first in this area so legal retention always beats the later archive and config rules. Package-local licences and notices remain with the code they govern; internal-packages/otlp-importer/LICENSE is the OpenTelemetry attribution and would otherwise have been swept up by a package-config rule and archived.",
         "protected": true
       },
       {
@@ -938,20 +938,6 @@
         "evidence": "Byte-pinned forward-upgrade baseline, anchored as an exact exclusion in docs/vocabulary-boundary-exceptions.json; removal makes the gate report a stale exclusion."
       },
       {
-        "id": "internal-packages.generated.grammar",
-        "match": [
-          "internal-packages/*/src/grammar/*.interp",
-          "internal-packages/*/src/grammar/*.tokens"
-        ],
-        "kind": "generated",
-        "owner_capability": "Query Platform",
-        "disposition": "regenerate",
-        "reached_via": [
-          "generated-asset"
-        ],
-        "evidence": "PRECEDENCE: declared ahead of every archive rule so regenerate wins the first-match race for these four files. ANTLR emits them beside the .g4 grammar in the same directory; the grammar is the source of truth, so preserving a stale copy in an archive would be strictly worse than rebuilding."
-      },
-      {
         "id": "internal-packages.infra.container",
         "match": [
           "internal-packages/*/Dockerfile",
@@ -963,7 +949,7 @@
         "reached_via": [
           "compose"
         ],
-        "evidence": "PRECEDENCE: declared ahead of any removal rule so retain wins the first-match race. internal-packages/clickhouse/Dockerfile builds the analytics store image the root compose stacks start, and the migration image builds the schema-upgrade container."
+        "evidence": "PRECEDENCE: declared ahead of any removal rule so retain wins the first-match race. The retained internal-package Dockerfiles build schema-upgrade images referenced by shipping Compose and CI definitions."
       },
       {
         "id": "internal-packages.doc.diagram",
@@ -1567,7 +1553,7 @@
         "reached_via": [
           "license-obligation"
         ],
-        "evidence": "Repository license and attribution. The root NOTICE credits the upstream project only; the PostHog attribution lives separately in internal-packages/tsql/NOTICE.md.",
+        "evidence": "Repository license and attribution distributed with every shipping image.",
         "protected": true
       },
       {
@@ -1870,38 +1856,38 @@
     ]
   },
   "expected": {
-    "totalFiles": 3656,
+    "totalFiles": 3569,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 11,
       "apps-mcp-stdio": 4,
       "apps-webapp": 180,
-      "docs-content": 715,
-      "internal-packages": 1272,
+      "docs-content": 717,
+      "internal-packages": 1182,
       "packages": 739,
-      "root-infra": 221
+      "root-infra": 222
     },
     "kindCounts": {
       "asset": 154,
-      "config": 305,
-      "doc": 600,
-      "fixture": 18,
-      "generated": 49,
-      "legal": 19,
+      "config": 287,
+      "doc": 597,
+      "fixture": 16,
+      "generated": 47,
+      "legal": 18,
       "lockfile": 3,
       "migration": 894,
-      "source": 1168,
-      "test": 446
+      "source": 1124,
+      "test": 429
     },
     "dispositionCounts": {
       "archive": 522,
       "delete": 7,
-      "move-refactor": 1746,
-      "regenerate": 40,
-      "retain": 1339,
+      "move-refactor": 1664,
+      "regenerate": 38,
+      "retain": 1336,
       "unresolved": 2
     },
-    "protectedCount": 937,
+    "protectedCount": 936,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -1937,7 +1923,7 @@
       "docs-content.design.canvas-assets": 5,
       "docs-content.design.canvas-style": 4,
       "docs-content.design.index": 1,
-      "docs-content.generated.audit": 23,
+      "docs-content.generated.audit": 25,
       "docs-content.governance.root-history": 13,
       "docs-content.governance.root-manifest": 2,
       "docs-content.governance.workspace-reachability": 2,
@@ -1956,25 +1942,22 @@
       "docs-content.upstream.agent-rules-manifest": 1,
       "docs-content.upstream.pages": 312,
       "docs-content.upstream.site-config": 6,
-      "internal-packages.config.package": 73,
+      "internal-packages.config.package": 57,
       "internal-packages.doc.diagram": 1,
-      "internal-packages.doc.package": 13,
+      "internal-packages.doc.package": 10,
       "internal-packages.email.templates": 15,
       "internal-packages.fixture.compat-modules": 15,
-      "internal-packages.fixture.snapshot": 2,
       "internal-packages.fixture.upgrade-baseline": 1,
-      "internal-packages.generated.grammar": 4,
       "internal-packages.generated.release-history": 2,
-      "internal-packages.grammar.source": 3,
-      "internal-packages.infra.container": 2,
-      "internal-packages.legal.attribution": 2,
+      "internal-packages.infra.container": 1,
+      "internal-packages.legal.attribution": 1,
       "internal-packages.lockfile.migration-image": 1,
       "internal-packages.migration.canonical": 857,
       "internal-packages.migration.image": 4,
       "internal-packages.schema.analytics": 34,
       "internal-packages.schema.prisma": 3,
-      "internal-packages.source.typescript": 150,
-      "internal-packages.test.suites": 81,
+      "internal-packages.source.typescript": 108,
+      "internal-packages.test.suites": 63,
       "internal-packages.tooling.scripts": 9,
       "packages.adapters.config": 24,
       "packages.adapters.doc": 12,
@@ -2006,7 +1989,7 @@
       "root-infra.ci.workflows": 4,
       "root-infra.compose.stacks": 2,
       "root-infra.config.dotfiles": 7,
-      "root-infra.deps.patches": 8,
+      "root-infra.deps.patches": 7,
       "root-infra.doc.root-notes": 3,
       "root-infra.doc.self-host": 1,
       "root-infra.editor.workspace": 13,
@@ -2022,11 +2005,11 @@
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
       "root-infra.test.harness": 51,
-      "root-infra.test.script-suites": 15,
+      "root-infra.test.script-suites": 16,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 50,
+      "root-infra.tooling.scripts": 51,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "99272332fe16eaed6837f3920e8f89fc9c204e2cfb758c49a35d78f2c4524bb0"
+    "classificationSha256": "70f73a9da1ba3482b4985c0362f4fa3e702220debfbeea38824187bcb1786a78"
   }
 }

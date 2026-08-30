@@ -79,7 +79,6 @@ export const PROTECTED_GLOBS = [
   "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.md",
   "**/prisma/migrations/**",
-  "internal-packages/tsql/NOTICE.md",
 ];
 
 export const PROTECTED_DISPOSITIONS = new Set(["retain", "move-refactor", "regenerate"]);
