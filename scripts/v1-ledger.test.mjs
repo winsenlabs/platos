@@ -11,6 +11,7 @@ import {
   KINDS,
   PROTECTED_DISPOSITIONS,
   REACHED_VIA,
+  WORKSPACE_REACHABILITY_ARTIFACTS,
   assignArea,
   buildLedger,
   byteCompare,
@@ -391,6 +392,24 @@ test("an emitted ledger artifact is excluded from the corpus by its shape", () =
   try {
     const result = buildLedger(repo, orphanRulesDoc);
     assert.deepEqual(result.deleteReferences, []);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("generated workspace reachability artifacts are data, not live path references", () => {
+  const repo = realRepoFixture({
+    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
+    [WORKSPACE_REACHABILITY_ARTIFACTS[0]]: JSON.stringify({ evidence: "docs/img/orphan.png" }),
+    [WORKSPACE_REACHABILITY_ARTIFACTS[1]]: "Evidence for `docs/img/orphan.png`\n",
+  });
+  try {
+    const result = buildLedger(repo, orphanRulesDoc);
+    assert.deepEqual(result.deleteReferences, []);
+
+    const control = buildLedger(repo, orphanRulesDoc, { corpusExclude: [] });
+    assert.equal(control.deleteReferences.length, 1);
+    assert.deepEqual(control.deleteReferences[0].referencedBy, WORKSPACE_REACHABILITY_ARTIFACTS);
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }

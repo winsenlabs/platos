@@ -19,6 +19,10 @@ import { RULES as VOCABULARY_RULES } from "./vocabulary-boundary.mjs";
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const defaultRulesPath = "docs/v1-ledger-rules.json";
 const vocabularyManifestPath = "docs/vocabulary-boundary-exceptions.json";
+export const WORKSPACE_REACHABILITY_ARTIFACTS = [
+  "docs/audits/win-253-workspace-reachability.json",
+  "docs/audits/win-253-workspace-reachability.md",
+];
 
 export const AREAS = [
   "apps-agent",
@@ -451,7 +455,7 @@ export function buildLedger(root, document, options = {}) {
   // resolved to repo-relative real paths so the result never depends on how the
   // --rules or --out argument was spelled.
   const corpusExclude = new Set(
-    (options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out])
+    (options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out, ...WORKSPACE_REACHABILITY_ARTIFACTS])
       .map((candidate) => toRepoRelative(root, candidate))
       .filter((candidate) => candidate !== null)
   );

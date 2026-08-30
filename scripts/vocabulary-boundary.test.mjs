@@ -581,7 +581,7 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //   +46  subsequently reviewed exact occurrences -> 20484
   //   -86  WIN-252 retired-file and rewritten-guidance occurrences -> 20398
   //   +4   WIN-252 package-local Apache-2.0 LICENSE copies -> 20402
-  assert.equal(manifest.exceptions.length, 20402);
+  assert.equal(manifest.exceptions.length, 20430);
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {

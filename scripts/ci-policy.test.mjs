@@ -89,6 +89,10 @@ const repositoryGovernanceCommands = [
   "pnpm audit:hook-policy",
   "pnpm test:hook-policy",
 ];
+const workspaceReachabilityCommands = [
+  "pnpm test:workspace-reachability",
+  "pnpm audit:workspace-reachability",
+];
 const expectedV1EvidenceCommands = [
   "pnpm test:ci-policy",
   ...repositoryGovernanceCommands,
@@ -123,6 +127,11 @@ const expectedRepositoryGovernanceScripts = new Map([
   ["test:root-manifest", "node --test scripts/root-entry-manifest.test.mjs"],
   ["audit:hook-policy", "node scripts/hook-policy.mjs"],
   ["test:hook-policy", "node --test scripts/hook-policy.test.mjs"],
+]);
+const expectedWorkspaceReachabilityScripts = new Map([
+  ["generate:workspace-reachability", "node scripts/workspace-reachability.mjs generate"],
+  ["audit:workspace-reachability", "node scripts/workspace-reachability.mjs check"],
+  ["test:workspace-reachability", "node --test scripts/workspace-reachability.test.mjs"],
 ]);
 const expectedV1PackageScripts = new Map([
   ["build:v1", "tsc -b tsconfig.json"],
@@ -655,6 +664,24 @@ function policyViolations(input) {
 
   const ciWorkflow = workflows.get("ci").workflow;
   const ciJobs = workflowJobs(ciWorkflow);
+  const typecheckSteps = workflowSteps(ciJobs.get("typecheck"));
+  const reachabilitySteps = typecheckSteps.filter((step) => step.name === "WIN-253 workspace reachability evidence");
+  if (reachabilitySteps.length !== 1) violations.push("CI must contain exactly one WIN-253 workspace reachability evidence step");
+  const reachabilityStep = reachabilitySteps[0] ?? {};
+  if (reachabilityStep.if !== undefined || reachabilityStep["continue-on-error"] !== undefined || reachabilityStep.shell !== undefined) {
+    violations.push("WIN-253 workspace reachability evidence step must be unconditional and fail-fast");
+  }
+  const typecheckJob = ciJobs.get("typecheck") ?? {};
+  if (typecheckJob.if !== undefined || typecheckJob["continue-on-error"] !== undefined) {
+    violations.push("WIN-253 workspace reachability job must be unconditional and fail-fast");
+  }
+  if (ciWorkflow.defaults?.run?.shell !== undefined || typecheckJob.defaults?.run?.shell !== undefined) {
+    violations.push("WIN-253 workspace reachability step must not inherit workflow or job shell defaults");
+  }
+  const reviewedReachability = reviewedTopLevelCommands(reachabilityStep.run);
+  if (!reviewedReachability.valid || JSON.stringify(reviewedReachability.commands) !== JSON.stringify(workspaceReachabilityCommands)) {
+    violations.push("WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence");
+  }
   const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter((step) => step.name === "V1 M0 executable evidence gates");
   if (v1EvidenceSteps.length !== 1) violations.push("CI must contain exactly one V1 executable evidence step");
   const v1EvidenceStep = v1EvidenceSteps[0] ?? {};
@@ -668,6 +695,11 @@ function policyViolations(input) {
   const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()].flatMap((job) => executableRunValues(job))
     .flatMap((run) => run.split("\n").map((line) => line.trim()).filter(Boolean));
+  for (const command of workspaceReachabilityCommands) {
+    if (countExact(allCiLines, command) !== 1) {
+      violations.push(`CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`);
+    }
+  }
   let previousGateIndex = -1;
   for (const command of v1ReleaseGateCommands) {
     const gateIndex = v1Lines.indexOf(command);
@@ -707,6 +739,9 @@ function policyViolations(input) {
   }
   for (const [name, target] of expectedRepositoryGovernanceScripts) {
     if (packageScripts[name] !== target) violations.push(`package.json must wire exact repository governance script ${name}: ${target}`);
+  }
+  for (const [name, target] of expectedWorkspaceReachabilityScripts) {
+    if (packageScripts[name] !== target) violations.push(`package.json must wire exact workspace reachability script ${name}: ${target}`);
   }
   if (packageScripts.prepare !== `node ${prepareTarget}`) {
     violations.push(`package.json prepare must execute ${prepareTarget}`);
@@ -934,6 +969,7 @@ test("committed CI and image-build policy is executable, correlated, and complet
   assert.equal(relocatedCommands.length, 7, "relocated command selector must cover all seven commands");
   assert.equal(v1ReleaseGateCommands.length, 8, "V1 release gate selector must cover generator, foundation, and six commands");
   assert.equal(repositoryGovernanceCommands.length, 5, "repository governance selector must cover manifest and hook policy commands");
+  assert.equal(workspaceReachabilityCommands.length, 2, "workspace reachability selector must cover test then audit");
   assert.deepEqual(policyViolations(fixtures()), []);
 });
 
@@ -1021,6 +1057,39 @@ test("CI policy controls fail under generated semantic source mutations", async 
         mutate: (input) => insertWorkflowJobStep(input, "ci", "cross-scope-isolation", { name: "Duplicate governance gate", run: command }),
       },
     ]),
+    ...workspaceReachabilityCommands.flatMap((command) => [
+      {
+        name: `skipped WIN-253 workspace reachability gate ${command}`,
+        expected: `CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`,
+        mutate: (input) => mutateFixture(input, "ci", command, `echo skipped # ${command}`),
+      },
+      {
+        name: `globally duplicated WIN-253 workspace reachability gate ${command}`,
+        expected: `CI must execute fail-fast WIN-253 workspace reachability gate exactly once in order: ${command}`,
+        mutate: (input) => insertWorkflowJobStep(input, "ci", "cross-scope-isolation", { name: "Duplicate reachability gate", run: command }),
+      },
+    ]),
+    {
+      name: "reordered WIN-253 workspace reachability gates",
+      expected: "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
+      mutate: (input) => mutateFixture(
+        input,
+        "ci",
+        workspaceReachabilityCommands.join("\n          "),
+        [...workspaceReachabilityCommands].reverse().join("\n          ")
+      ),
+    },
+    ...[
+      ["if false", ["if false; then", workspaceReachabilityCommands[0], "fi"]],
+      ["subshell", ["(", workspaceReachabilityCommands[0], ")"]],
+      ["interpreter wrapper", [`bash -c '${workspaceReachabilityCommands[0]}'`]],
+      ["exit 0", ["exit 0", workspaceReachabilityCommands[0]]],
+      ["exec true", ["exec true", workspaceReachabilityCommands[0]]],
+    ].map(([name, lines]) => ({
+      name: `WIN-253 workspace reachability ${name} cannot hide or terminate the gate`,
+      expected: "WIN-253 workspace reachability evidence script must contain only the exact reviewed command sequence",
+      mutate: (input) => wrapEvidenceCommand(input, workspaceReachabilityCommands[0], lines),
+    })),
     ...[
       ["if false", ["if false; then", repositoryGovernanceCommands[0], "fi"]],
       ["case", ["case x in", `x) ${repositoryGovernanceCommands[0]} ;;`, "esac"]],
@@ -1063,6 +1132,41 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: `package.json must wire exact repository governance script ${name}: ${target}`,
       mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
     })),
+    ...[...expectedWorkspaceReachabilityScripts].map(([name, target]) => ({
+      name: `successful no-op workspace reachability package script ${name}`,
+      expected: `package.json must wire exact workspace reachability script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
+    })),
+    {
+      name: "conditional WIN-253 workspace reachability evidence step is unreachable",
+      expected: "WIN-253 workspace reachability evidence step must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "      - name: WIN-253 workspace reachability evidence\n        run:", "      - name: WIN-253 workspace reachability evidence\n        if: ${{ false }}\n        run:"),
+    },
+    {
+      name: "continue-on-error weakens WIN-253 workspace reachability evidence step",
+      expected: "WIN-253 workspace reachability evidence step must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "      - name: WIN-253 workspace reachability evidence\n        run:", "      - name: WIN-253 workspace reachability evidence\n        continue-on-error: true\n        run:"),
+    },
+    {
+      name: "workflow shell default wraps WIN-253 workspace reachability evidence",
+      expected: "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
+      mutate: (input) => mutateFixture(input, "ci", "jobs:\n", "defaults:\n  run:\n    shell: bash {0} || true\n\njobs:\n"),
+    },
+    {
+      name: "job shell default wraps WIN-253 workspace reachability evidence",
+      expected: "WIN-253 workspace reachability step must not inherit workflow or job shell defaults",
+      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    defaults:\n      run:\n        shell: bash {0} || true\n    runs-on:"),
+    },
+    {
+      name: "conditional typecheck job bypasses WIN-253 workspace reachability evidence",
+      expected: "WIN-253 workspace reachability job must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    if: ${{ false }}\n    runs-on:"),
+    },
+    {
+      name: "continue-on-error typecheck job weakens WIN-253 workspace reachability evidence",
+      expected: "WIN-253 workspace reachability job must be unconditional and fail-fast",
+      mutate: (input) => mutateFixture(input, "ci", "  typecheck:\n    runs-on:", "  typecheck:\n    continue-on-error: true\n    runs-on:"),
+    },
     {
       name: "webapp pruned prepare target availability",
       expected: `apps/webapp/Dockerfile.platos must make ${prepareTarget} available in base before both shipping installs`,
@@ -1491,7 +1595,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  assert.equal(controls.length, 138, "semantic mutation control table must cover every declared checkpoint");
+  assert.equal(controls.length, 157, "semantic mutation control table must cover every declared checkpoint");
   for (const control of controls) {
     await t.test(control.name, () => {
       const mutation = control.mutate(pristine);

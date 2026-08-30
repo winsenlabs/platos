@@ -48,6 +48,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: WIN-253 workspace reachability evidence
+        run: |
+          pnpm test:workspace-reachability
+          pnpm audit:workspace-reachability
+
       - name: Install dependencies
         # --ignore-scripts: skip native addon builds (re2). CI needs only types
         # (typecheck) and the testcontainer suite; neither loads re2, and its
