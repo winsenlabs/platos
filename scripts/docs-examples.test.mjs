@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { copyFileSync, mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { validateDocsExamples } from "./docs-examples.mjs";
+import { QUICK_START_PATHS, quickStartEnvironmentErrors, validateDocsExamples } from "./docs-examples.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -56,6 +57,33 @@ test("authored examples match generated contracts without a local server", () =>
   assert.ok(result.stats.guides >= 28);
   assert.ok(result.stats.examples >= 20);
   assert.ok(result.stats.requests >= 10);
+});
+
+test("every Compose quick-start creates and explains .env before model evaluation", () => {
+  assert.deepEqual(quickStartEnvironmentErrors(repositoryRoot), []);
+  assert.ok(QUICK_START_PATHS.length >= 8, "quick-start selector must remain non-vacuous");
+
+  const rootReadme = readFileSync(join(repositoryRoot, "README.md"), "utf8");
+  const missingCopy = new Map([["README.md", rootReadme.replace("cp .env.example .env", "# omitted environment setup")]]);
+  assert.ok(quickStartEnvironmentErrors(repositoryRoot, missingCopy).some((error) => error.includes("must create .env")));
+
+  const lateCopy = new Map([["README.md", rootReadme.replace("cp .env.example .env", "").replace(
+    "docker compose -f docker-compose.platos.yml up -d",
+    "docker compose -f docker-compose.platos.yml up -d\ncp .env.example .env",
+  )]]);
+  assert.ok(quickStartEnvironmentErrors(repositoryRoot, lateCopy).some((error) => error.includes("must create .env")));
+});
+
+test("the documented environment setup permits Compose model evaluation in a fresh fixture", () => {
+  const root = mkdtempSync(join("/var/tmp", "platos-compose-quick-start-"));
+  try {
+    copyFileSync(join(repositoryRoot, ".env.example"), join(root, ".env.example"));
+    copyFileSync(join(repositoryRoot, "docker-compose.platos.yml"), join(root, "docker-compose.platos.yml"));
+    execFileSync("cp", [".env.example", ".env"], { cwd: root });
+    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], { cwd: root });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("the harness rejects an HTTP example absent from generated OpenAPI", () => {

@@ -2,7 +2,7 @@
   "name": "@platos/sdk",
   "version": "4.4.4",
   "description": "trigger.dev Node.JS SDK",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

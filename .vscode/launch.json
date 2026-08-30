@@ -1,14 +1,11 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
       "type": "node-terminal",
       "request": "launch",
-      "name": "Debug WebApp",
-      "command": "pnpm run dev --filter webapp",
+      "name": "Debug webapp",
+      "command": "pnpm --filter webapp dev",
       "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceFolder}",
       "sourceMaps": true
@@ -16,26 +13,8 @@
     {
       "type": "node-terminal",
       "request": "launch",
-      "name": "Debug realtimeStreams.test.ts",
-      "command": "pnpm run test -t RealtimeStreams",
-      "envFile": "${workspaceFolder}/.env",
-      "cwd": "${workspaceFolder}/apps/webapp",
-      "sourceMaps": true
-    },
-    {
-      "type": "node-terminal",
-      "request": "launch",
-      "name": "Debug triggerTask.test.ts",
-      "command": "pnpm run test --run ./test/engine/triggerTask.test.ts",
-      "envFile": "${workspaceFolder}/.env",
-      "cwd": "${workspaceFolder}/apps/webapp",
-      "sourceMaps": true
-    },
-    {
-      "type": "node-terminal",
-      "request": "launch",
       "name": "Debug opened test file",
-      "command": "pnpm run test -- ./${relativeFile}",
+      "command": "pnpm test -- ./${relativeFile}",
       "envFile": "${workspaceFolder}/.env",
       "cwd": "${workspaceFolder}",
       "sourceMaps": true
@@ -50,16 +29,8 @@
     {
       "type": "node-terminal",
       "request": "launch",
-      "name": "Debug RunEngine tests",
-      "command": "pnpm run test ./src/engine/tests/releaseConcurrencyTokenBucketQueue.test.ts -t 'Should retrieve metrics for all queues via getQueueMetrics'",
-      "cwd": "${workspaceFolder}/internal-packages/run-engine",
-      "sourceMaps": true
-    },
-    {
-      "type": "node-terminal",
-      "request": "launch",
-      "name": "Debug RunQueue tests",
-      "command": "pnpm run test ./src/run-queue/index.test.ts --run",
+      "name": "Debug Run Queue test",
+      "command": "pnpm test ./src/run-queue/index.test.ts --run",
       "cwd": "${workspaceFolder}/internal-packages/run-engine",
       "sourceMaps": true
     }

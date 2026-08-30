@@ -78,19 +78,6 @@
       "outputs": [],
       "cache": false
     },
-    "test:e2e:dev": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [],
-      "cache": false
-    },
-    "test:e2e:ci": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": []
-    },
     "typecheck": {
       "dependsOn": [
         "^build"

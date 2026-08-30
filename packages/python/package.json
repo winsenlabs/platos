@@ -2,7 +2,7 @@
   "name": "@platos/python",
   "version": "4.4.4",
   "description": "Python runtime and build extension for Trigger.dev",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

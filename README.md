@@ -37,10 +37,14 @@ You own the infra, the data, and the model choice. No vendor seat license, no te
 ```bash
 git clone https://github.com/winsenlabs/platos.git
 cd platos
-cp .env.example .env                       # set ANTHROPIC_API_KEY (or OPENAI_API_KEY, etc.)
+cp .env.example .env
+# Before Compose model evaluation, replace every required development sentinel
+# listed in content/docs/self-hosting.md with an independently generated value.
 docker compose -f docker-compose.platos.yml up -d
 open http://localhost:3030                 # magic-link login → Agents → Create
 ```
+
+Provider credentials are configured for an authenticated Environment in the dashboard after sign-in; they are not read from the root process environment.
 
 Chat-ready in ~2 minutes. Full walkthrough: [platos.dev/guides/quickstart](https://platos.dev/guides/quickstart).
 

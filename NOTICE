@@ -12,9 +12,11 @@ trigger.dev code and to Platos additions.
   the LICENSE file in this repository is the Apache-2.0 text. Earlier revisions
   of this NOTICE referred to "MIT"; that was an error and Apache-2.0 governs.
   Individual npm packages published from this monorepo should declare
-  "Apache-2.0" in their package.json `license` field; any package still
-  declaring "MIT" is a residue of the rename and should be corrected — see
-  docs/audits/sbom/licence-resolution.md.)
+  "Apache-2.0" in their package.json `license` field. The checked production
+  closure and licence decisions are recorded in
+  docs/audits/sbom/closure-contract.md,
+  docs/audits/sbom/closure-receipts.json, and
+  docs/audits/sbom/license-index.json.)
 
 Upstream credit:
   - trigger.dev, Copyright (c) Trigger.dev, Inc. — Apache-2.0
@@ -34,7 +36,9 @@ CycloneDX SBOM set under docs/audits/sbom/:
   - docs/audits/sbom/platos-agent.cdx.json   (agent image production closure)
   - docs/audits/sbom/platos-webapp.cdx.json  (webapp image production closure)
 
-Regenerate with `pnpm audit:sbom` and verify with `pnpm audit:sbom:check`.
+Regenerate with `pnpm audit:sbom` and verify with `pnpm audit:sbom:check` plus
+`pnpm audit:sbom:nonvacuity`. The closure contract and receipts above record the
+actual checked image set and fail-loud evidence boundary.
 
 Recorded licence elections (dual-licensed dependencies)
 -------------------------------------------------------

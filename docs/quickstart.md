@@ -7,8 +7,8 @@ Zero to first agent reply in ~20 minutes. By the end of this guide you will have
 | Tool | Version | Check |
 |---|---|---|
 | Docker | 24+ (with Compose v2) | `docker compose version` |
-| Node | 20 LTS or newer | `node -v` |
-| pnpm | 9+ | `pnpm -v` |
+| Node | 22.14.0 | `node -v` |
+| pnpm | 10.23.0 | `pnpm -v` |
 | An Anthropic API key | Any tier | [console.anthropic.com](https://console.anthropic.com) |
 
 You do **not** need trigger.dev cloud keys. The stack ships with a local durable engine. A `TRIGGER_SECRET_KEY` is only needed if you want the `spawn_job` runtime tool to register with a remote engine — otherwise Platos transparently falls back to a Redis-backed stub.
@@ -21,26 +21,9 @@ cd platos
 cp .env.example .env
 ```
 
-Open `.env` and set at minimum:
+Before Compose model evaluation, replace every required development sentinel in `.env` with an independently generated value. Copying the example alone is not sufficient for a usable stack. The authoritative required-variable list and generation rules are in [`content/docs/self-hosting.md`](../content/docs/self-hosting.md#required-compose-variables).
 
-```bash
-# Session and login-link signing
-SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-
-# Three independent AES-256-GCM domains; new values are 64 hex chars / 32 bytes
-ENCRYPTION_KEY=$(openssl rand -hex 32)
-PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
-PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
-PLATOS_MESSAGE_ENCRYPTION_KEY_V=1
-
-# At least one provider
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-> Generate each encryption key separately. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` deployments remain valid; do not replace that value without re-encrypting historical ciphertext. Platos rejects malformed keys and configured domains that reuse the same bytes.
-
-`.env.example` documents everything. See [env-vars.md](./env-vars.md) for the full list.
+Provider credentials are configured for an authenticated Environment in the dashboard after sign-in. Do not put Anthropic, OpenAI, or other provider keys in the root `.env`; the agent does not fall back to process-environment provider keys.
 
 > Rotating these secrets invalidates sessions and encrypted columns — rotate only with the key-rotation flow in [self-hosting.md](./self-hosting.md#key-rotation).
 
@@ -203,7 +186,7 @@ This is the trigger.dev run engine — you get the same observability you'd get 
 
 **Chat hangs on "Connecting…".** The browser couldn't reach `ws://localhost:3100`. If you're behind a reverse proxy, make sure `/agent` (Socket.IO path) is upgraded correctly and `APP_ORIGIN` in `.env` matches the browser origin.
 
-**LLM call errors with 401.** The `ANTHROPIC_API_KEY` linked to the current scope in **Side menu → Providers** (route: `/agent-providers`) is wrong or expired. Open the provider card, click the linked env var, paste a fresh key, and hit **Test** to confirm. The value in the root `.env` is only used as a seed for bootstrap; the scoped Environment Variables value is what streams.
+**LLM call errors with 401.** The `ANTHROPIC_API_KEY` linked to the current scope in **Side menu → Providers** (route: `/agent-providers`) is wrong or expired. Open the provider card, click the linked env var, paste a fresh key, and hit **Test** to confirm. The root `.env` is not a provider-credential source; the scoped Environment Variables value is what streams.
 
 ## Next steps
 

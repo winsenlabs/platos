@@ -2,7 +2,7 @@
   "name": "@platos/rsc",
   "version": "4.4.4",
   "description": "trigger.dev rsc",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

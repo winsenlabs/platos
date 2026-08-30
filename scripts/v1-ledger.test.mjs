@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -23,7 +22,6 @@ import {
   looksLikeLedgerArtifact,
   measureFile,
   readVocabularyPinnedPaths,
-  referenceNeedles,
   summarize,
   validateRulesDocument,
 } from "./v1-ledger.mjs";
@@ -286,20 +284,12 @@ test("a delete candidate referenced anywhere in the corpus is a hard failure", (
   assert.ok(failures.some((f) => f.includes("is classified delete but is referenced by scripts/page.md")));
 });
 
-test("referenceNeedles covers the path, the site-root path, and the basename", () => {
-  assert.deepEqual(referenceNeedles("docs/images/x.png"), [
-    "docs/images/x.png",
-    "/docs/images/x.png",
-    "x.png",
-  ]);
-});
-
 // Builds a throwaway git repository on disk and stages files, so buildLedger
 // runs its REAL enumeration and file-reading corpus path with no injected
 // corpus or measure -- the code that mutation N4 disabled while all the
 // injected-corpus tests above stayed green.
 function realRepoFixture(files) {
-  const root = mkdtempSync(join(tmpdir(), "platos-ledger-"));
+  const root = mkdtempSync(join("/var/tmp", "platos-ledger-"));
   execFileSync("git", ["init", "-q"], { cwd: root });
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -308,6 +298,38 @@ function realRepoFixture(files) {
   execFileSync("git", ["add", "--all"], { cwd: root });
   return root;
 }
+
+test("prospective-tree enumeration includes additions and removes absent index paths", () => {
+  const root = realRepoFixture({ "tracked.txt": "old\n" });
+  try {
+    rmSync(join(root, "tracked.txt"));
+    writeFileSync(join(root, "new\nfile.txt"), "new\n");
+    assert.deepEqual(listTrackedFiles(root), ["new\nfile.txt"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prospective-tree enumeration rejects invalid UTF-8 and retains dangling symlinks", () => {
+  const invalidRoot = realRepoFixture({ "valid.txt": "valid\n" });
+  try {
+    const invalidPath = Buffer.concat([Buffer.from(`${invalidRoot}/invalid-`), Buffer.from([0xff])]);
+    writeFileSync(invalidPath, "invalid\n");
+    execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
+    assert.throws(() => listTrackedFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+  } finally {
+    rmSync(invalidRoot, { recursive: true, force: true });
+  }
+
+  const symlinkRoot = realRepoFixture({ "valid.txt": "valid\n" });
+  try {
+    symlinkSync("missing-target", join(symlinkRoot, "dangling-link"));
+    execFileSync("git", ["add", "--", "dangling-link"], { cwd: symlinkRoot });
+    assert.deepEqual(listTrackedFiles(symlinkRoot), ["dangling-link", "valid.txt"]);
+  } finally {
+    rmSync(symlinkRoot, { recursive: true, force: true });
+  }
+});
 
 const orphanRulesDoc = docWithArea("docs-content", [
   { ...goodRule, id: "orphan-delete", match: ["docs/img/orphan.png"], kind: "asset", disposition: "delete", reached_via: ["NONE"] },

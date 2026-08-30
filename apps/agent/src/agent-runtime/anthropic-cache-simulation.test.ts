@@ -26,7 +26,8 @@ import {
  *
  * So this proves the MECHANISM moves tokens from full-price to cache-read, and
  * by how much, on the real code path. It does not prove a number on an invoice.
- * The operator gate in PROGRESS.md still has to confirm against live usage.
+ * The operator gate in docs/audits/history/win-252/prompt-caching-progress.md
+ * still has to confirm against live usage.
  *
  * Token counts here are `bytes / 4`, applied identically to both arms, so the
  * ratio between arms is meaningful even though the absolute values are not

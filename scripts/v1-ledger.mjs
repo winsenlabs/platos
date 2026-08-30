@@ -8,12 +8,12 @@
 // same `git ls-files -z` enumeration, the same text/non-text heuristic, the
 // same "print a report, set process.exitCode" command shape.
 
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { findSemanticPathReferences, listRepositoryFiles } from "./root-entry-manifest.mjs";
 import { RULES as VOCABULARY_RULES } from "./vocabulary-boundary.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -97,10 +97,7 @@ const ROOT_INFRA_ROOTS = new Set([
 // ---------------------------------------------------------------------------
 
 export function listTrackedFiles(root) {
-  return execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-    .split("\0")
-    .filter(Boolean)
-    .sort(byteCompare);
+  return listRepositoryFiles(root);
 }
 
 // LC_ALL=C ordering: compare the UTF-8 bytes, never the locale collation.
@@ -409,15 +406,6 @@ export function readVocabularyPinnedPaths(root) {
   return pinned;
 }
 
-// The literal forms under which a reference to a file would appear in another
-// tracked text file: its full repository path, that path with a leading slash
-// (a site-root URL), and its bare basename (how documentation and audits cite
-// media and config). Basename is the load-bearing signal for assets.
-export function referenceNeedles(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  return [...new Set([path, `/${path}`, basename])];
-}
-
 // Normalise a caller-supplied path to the repository-relative form that corpus
 // keys use, so an exclusion works regardless of how the argument was spelled
 // (`./docs/x.json`, `docs/x.json`, or an absolute path all collapse to the same
@@ -445,23 +433,6 @@ export function looksLikeLedgerArtifact(text) {
   } catch {
     return false;
   }
-}
-
-function scanReachability(deletePaths, corpus) {
-  const references = [];
-  for (const path of deletePaths) {
-    const needles = referenceNeedles(path);
-    const referencedBy = [];
-    for (const [source, text] of corpus) {
-      if (source === path) continue;
-      if (needles.some((needle) => text.includes(needle))) {
-        referencedBy.push(source);
-        if (referencedBy.length >= 5) break;
-      }
-    }
-    if (referencedBy.length) references.push({ path, referencedBy });
-  }
-  return references.sort((left, right) => byteCompare(left.path, right.path));
 }
 
 export function buildLedger(root, document, options = {}) {
@@ -541,7 +512,18 @@ export function buildLedger(root, document, options = {}) {
   // literal reference anywhere means the file is reachable and its delete claim
   // is false. An edit that references a delete candidate now fails --check.
   const deletePaths = rows.filter((row) => row.disposition === "delete").map((row) => row.path);
-  const deleteReferences = deletePaths.length ? scanReachability(deletePaths, corpus) : [];
+  const deleteReferences = deletePaths.length ? findSemanticPathReferences(deletePaths, corpus, {
+    includeBasename: true,
+    exclusions: [
+      "docs/v1-ledger-rules.json",
+      "docs/audits/win-252-root-entry-manifest.json",
+      "docs/audits/win-252-root-entry-manifest.md",
+      "scripts/root-entry-manifest.mjs",
+      "scripts/root-entry-manifest.test.mjs",
+      "scripts/v1-ledger.mjs",
+      "scripts/v1-ledger.test.mjs",
+    ],
+  }) : [];
 
   return { rows, unmatched, unassigned, errors: [], trackedFiles, deleteReferences };
 }

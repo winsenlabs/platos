@@ -1,0 +1,633 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/root-entry-manifest.mjs",
+  "enumeration": "git ls-files -z --cached --others --exclude-standard; pathname bytes validated as UTF-8; absent index paths removed with lstat; UTF-8 byte sort",
+  "rootEntryCount": 49,
+  "corpusExclusions": [
+    "docs/audits/win-252-root-entry-manifest.json",
+    "docs/audits/win-252-root-entry-manifest.md",
+    "docs/v1-ledger-rules.json",
+    "scripts/root-entry-manifest.mjs",
+    "scripts/root-entry-manifest.test.mjs"
+  ],
+  "entries": [
+    {
+      "entry": ".changeset",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Release Governance",
+      "consumer": "Changesets CLI",
+      "evidence": "Manual package-version intent for current non-private packages.",
+      "fixedName": true,
+      "externalBoundary": "npm"
+    },
+    {
+      "entry": ".configs",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "TypeScript project graph",
+      "evidence": "Shared compiler configuration extended by tracked projects.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": ".cursor",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Cursor",
+      "evidence": "Repository guidance discovered by its fixed directory name.",
+      "fixedName": true,
+      "externalBoundary": "Cursor"
+    },
+    {
+      "entry": ".cursorignore",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Cursor",
+      "evidence": "Repository indexing boundary discovered by fixed filename.",
+      "fixedName": true,
+      "externalBoundary": "Cursor"
+    },
+    {
+      "entry": ".dependency-cruiser.js",
+      "kind": "file",
+      "disposition": "regenerate",
+      "owner": "Architecture",
+      "consumer": "dependency-cruiser",
+      "evidence": "Generated from scripts/arch/boundary-rules.mjs and byte-checked.",
+      "fixedName": true,
+      "externalBoundary": "dependency-cruiser"
+    },
+    {
+      "entry": ".dockerignore",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "Docker builders",
+      "evidence": "Build-context and legal-distribution boundary.",
+      "fixedName": true,
+      "externalBoundary": "Docker"
+    },
+    {
+      "entry": ".env.example",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "Contributors and Compose",
+      "evidence": "Safe configuration template with non-secret sentinels.",
+      "fixedName": true,
+      "externalBoundary": null
+    },
+    {
+      "entry": ".github",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "GitHub",
+      "evidence": "Workflows and repository metadata discovered by GitHub.",
+      "fixedName": true,
+      "externalBoundary": "GitHub"
+    },
+    {
+      "entry": ".gitignore",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "Git",
+      "evidence": "Local artifact and secret exclusion boundary.",
+      "fixedName": true,
+      "externalBoundary": "Git"
+    },
+    {
+      "entry": ".gitmodules",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Observability",
+      "consumer": "Git submodule plumbing",
+      "evidence": "Pins the OpenTelemetry protocol source boundary.",
+      "fixedName": true,
+      "externalBoundary": "Git/OpenTelemetry"
+    },
+    {
+      "entry": ".gstack",
+      "kind": "directory",
+      "disposition": "regenerate",
+      "owner": "Test Platform",
+      "consumer": "Browser evidence tooling",
+      "evidence": "Generated browser evidence retained as requested.",
+      "fixedName": true,
+      "externalBoundary": "gstack"
+    },
+    {
+      "entry": ".nvmrc",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "Node version managers and CI",
+      "evidence": "Exact Node 22.14.0 runtime pin.",
+      "fixedName": true,
+      "externalBoundary": "Node.js"
+    },
+    {
+      "entry": ".platos",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "docker-compose.platos.yml",
+      "evidence": "Tracked ClickHouse configuration mounted by Compose.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": ".prettierignore",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Prettier",
+      "evidence": "Intentional root editor/formatter boundary discovered by fixed filename.",
+      "fixedName": true,
+      "externalBoundary": "Prettier"
+    },
+    {
+      "entry": ".vscode",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Visual Studio Code",
+      "evidence": "Useful launch and workspace settings with verified paths.",
+      "fixedName": true,
+      "externalBoundary": "VS Code"
+    },
+    {
+      "entry": ".zed",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Zed",
+      "evidence": "Useful project task discovered by fixed directory name.",
+      "fixedName": true,
+      "externalBoundary": "Zed"
+    },
+    {
+      "entry": "CHANGESETS.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Release Governance",
+      "consumer": "Contributors",
+      "evidence": "Defines manual package-version intent and the npm non-authorization boundary.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "CODE_OF_CONDUCT.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "Community participants",
+      "evidence": "Official Contributor Covenant 2.1 with monitored enforcement contact.",
+      "fixedName": true,
+      "externalBoundary": "Contributor Covenant"
+    },
+    {
+      "entry": "CONTRIBUTING.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "Contributors",
+      "evidence": "Truthful source, Compose, package, candidate, and hook guidance.",
+      "fixedName": true,
+      "externalBoundary": null
+    },
+    {
+      "entry": "LICENSE",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Legal",
+      "consumer": "Repository and distributed images",
+      "evidence": "Apache-2.0 licence text required for distribution.",
+      "fixedName": true,
+      "externalBoundary": "Apache-2.0"
+    },
+    {
+      "entry": "NOTICE",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Legal",
+      "consumer": "Repository and distributed images",
+      "evidence": "Attribution and checked SBOM closure references.",
+      "fixedName": true,
+      "externalBoundary": "Apache-2.0"
+    },
+    {
+      "entry": "README.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Documentation",
+      "consumer": "Repository visitors",
+      "evidence": "Primary repository entry document.",
+      "fixedName": true,
+      "externalBoundary": null
+    },
+    {
+      "entry": "RELEASE.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Release Governance",
+      "consumer": "Release operators",
+      "evidence": "OCI and environment authorization process; explicitly excludes npm authority.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "SECURITY.md",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Security",
+      "consumer": "Security reporters",
+      "evidence": "Fixed public vulnerability-reporting policy.",
+      "fixedName": true,
+      "externalBoundary": null
+    },
+    {
+      "entry": "ai",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Repository assistants",
+      "evidence": "Current repository, test, and migration references.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "apps",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Application Engineering",
+      "consumer": "Workspace and image builds",
+      "evidence": "Shipping applications and V1 composition roots.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "content",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Documentation",
+      "consumer": "Documentation site",
+      "evidence": "Product documentation source.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "deploy",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "Release operators",
+      "evidence": "Reverse-proxy and host operation assets.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "design",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Design System",
+      "consumer": "Product development",
+      "evidence": "Protected V1 design evidence.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "docker-compose.deploy.yml",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Release Governance",
+      "consumer": "Docker Compose",
+      "evidence": "Immutable-image Compose override.",
+      "fixedName": false,
+      "externalBoundary": "Docker"
+    },
+    {
+      "entry": "docker-compose.platos.yml",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "Docker Compose",
+      "evidence": "Current local full-stack and supporting-store definition.",
+      "fixedName": false,
+      "externalBoundary": "Docker"
+    },
+    {
+      "entry": "docs",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Documentation",
+      "consumer": "Documentation and policy checks",
+      "evidence": "Documentation plus durable generated and historical audit evidence.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "examples",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Documentation",
+      "consumer": "Contributors",
+      "evidence": "Runnable examples checked by docs-example policy.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "hosting",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Infrastructure",
+      "consumer": "Host operators",
+      "evidence": "Hosted environment configuration boundary.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "internal-packages",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Application Engineering",
+      "consumer": "pnpm workspace",
+      "evidence": "Private application implementation packages.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "lefthook.yml",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "Pinned local Lefthook runtime",
+      "evidence": "Rejects direct commits on exact main and v1 refs; local bypass remains possible.",
+      "fixedName": true,
+      "externalBoundary": "Lefthook"
+    },
+    {
+      "entry": "package.json",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "Corepack and pnpm",
+      "evidence": "Root scripts, exact package-manager pin, and policy reachability; no duplicate workspace graph.",
+      "fixedName": true,
+      "externalBoundary": "pnpm"
+    },
+    {
+      "entry": "packages",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "SDK and Architecture",
+      "consumer": "pnpm workspace",
+      "evidence": "Apache-2.0 publishable SDKs plus the V1 context/adapter graph; metadata is mutation-tested.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "patches",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "pnpm",
+      "evidence": "Tracked dependency patches referenced by package.json.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "pnpm-lock.yaml",
+      "kind": "file",
+      "disposition": "regenerate",
+      "owner": "Build Platform",
+      "consumer": "pnpm",
+      "evidence": "Frozen dependency graph checked by install and CI.",
+      "fixedName": true,
+      "externalBoundary": "pnpm"
+    },
+    {
+      "entry": "pnpm-workspace.yaml",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "pnpm",
+      "evidence": "Sole authoritative workspace discovery graph and dependency-age policy.",
+      "fixedName": true,
+      "externalBoundary": "pnpm"
+    },
+    {
+      "entry": "prettier.config.js",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Prettier",
+      "evidence": "Repository formatter configuration.",
+      "fixedName": true,
+      "externalBoundary": "Prettier"
+    },
+    {
+      "entry": "references",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Developer Experience",
+      "consumer": "Reference workspaces",
+      "evidence": "Tracked development integration references.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "renovate.json",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Supply Chain",
+      "consumer": "Renovate",
+      "evidence": "Dependency update governance.",
+      "fixedName": true,
+      "externalBoundary": "Renovate"
+    },
+    {
+      "entry": "rules",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Repository Governance",
+      "consumer": "Repository assistants",
+      "evidence": "Tracked assistant rule assets.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "scripts",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "package.json and CI",
+      "evidence": "Repository-owned checks and operators with exact semantic reachability.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "tests",
+      "kind": "directory",
+      "disposition": "retain",
+      "owner": "Test Platform",
+      "consumer": "Package scripts and CI",
+      "evidence": "Current release and evidence suites; broken legacy root browser suite removed.",
+      "fixedName": false,
+      "externalBoundary": null
+    },
+    {
+      "entry": "tsconfig.json",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Architecture",
+      "consumer": "TypeScript",
+      "evidence": "Root V1 solution graph.",
+      "fixedName": true,
+      "externalBoundary": "TypeScript"
+    },
+    {
+      "entry": "turbo.json",
+      "kind": "file",
+      "disposition": "retain",
+      "owner": "Build Platform",
+      "consumer": "Turbo",
+      "evidence": "Workspace task graph.",
+      "fixedName": true,
+      "externalBoundary": "Turbo"
+    }
+  ],
+  "archivedMoves": [
+    {
+      "source": ".changeset/ctx-sdk-context.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/ctx-sdk-context.md",
+      "sha256": "913115a6292dd9434022d1b9f6b37e9d160c2eb5d1117eabc969d696fa267713"
+    },
+    {
+      "source": ".changeset/eobd-80-platos-client-publish-prep.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/eobd-80-platos-client-publish-prep.md",
+      "sha256": "272ed7d9508b46ca334e6f3df45ab4459532e9e9cf6709efbaff7236ee224d32"
+    },
+    {
+      "source": ".changeset/eobd-82-platools-sdk-publish-prep.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/eobd-82-platools-sdk-publish-prep.md",
+      "sha256": "d1a2cd19cdc8ba8bc55b8735e04be7f5e70cbf18b6e5d14b5f7e282f4b380fe0"
+    },
+    {
+      "source": ".changeset/eobd-85-86-94-platos-client-namespaces.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/eobd-85-86-94-platos-client-namespaces.md",
+      "sha256": "1c335b32577e8a757dfdd606336b887ce7fbaef16708bdba4ce2779fbd7ea11c"
+    },
+    {
+      "source": ".changeset/eobd-89-90-95-97-public-embed.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/eobd-89-90-95-97-public-embed.md",
+      "sha256": "89729b6a8ca134c45f41ccd1d07296fa8a3c815a670ce9770b0d41572e305aae"
+    },
+    {
+      "source": ".changeset/platos-client-model-routing.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/platos-client-model-routing.md",
+      "sha256": "a8559e79167a2b682b93cab94387c854afcce7a6abc0546eb6e6214303228233"
+    },
+    {
+      "source": ".changeset/ppr-29-platools-js-strict-context.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/ppr-29-platools-js-strict-context.md",
+      "sha256": "f1ef351b88e41193e4bad3dfbd91820508824561991dd41094e4b95e72d4d6de"
+    },
+    {
+      "source": ".changeset/ppr-34-platos-client-mvp.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/ppr-34-platos-client-mvp.md",
+      "sha256": "0574b038f222a1ff44dbd37844b95377b834cc62cea975cdb38567a2c0d57662"
+    },
+    {
+      "source": ".changeset/ppr-71-nonce-replay-guard.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/ppr-71-nonce-replay-guard.md",
+      "sha256": "b6a517c7c9930c1d1479f68dedc68070763957c72af7eedae58b2aa6cf5c0797"
+    },
+    {
+      "source": ".changeset/sdk-context-pop-bump.md",
+      "destination": "docs/audits/history/win-252/stale-changesets/sdk-context-pop-bump.md",
+      "sha256": "4836a65786edba4aa75b01918b30072f784204962c805919f8ce9462ad258432"
+    },
+    {
+      "source": ".server-changes/login-passcode-backdoor.md",
+      "destination": "docs/audits/history/win-252/server-changes/login-passcode-backdoor.md",
+      "sha256": "650b8ba16cc3cbf7ecda176e77254464f6a104c6c4ad1ec25a968cee852af08c"
+    },
+    {
+      "source": ".server-changes/prompt-caching-and-billing.md",
+      "destination": "docs/audits/history/win-252/server-changes/prompt-caching-and-billing.md",
+      "sha256": "126acebf33e52541c347935cf31ec925c2144140c22296be13edcb960bdd6e27"
+    },
+    {
+      "source": "PROGRESS.md",
+      "destination": "docs/audits/history/win-252/prompt-caching-progress.md",
+      "sha256": "a6c8392d7644950df02c93eaf881bf640d78740564f273d9caae7eaec13578e9"
+    }
+  ],
+  "deletedPaths": [
+    {
+      "path": ".eslintignore",
+      "referenceCount": 0
+    },
+    {
+      "path": "DOCKER_INSTALLATION.md",
+      "referenceCount": 0
+    },
+    {
+      "path": "playwright.config.ts",
+      "referenceCount": 0
+    },
+    {
+      "path": "scripts/build-dockerfile.sh",
+      "referenceCount": 0
+    },
+    {
+      "path": "scripts/enhance-release-pr.mjs",
+      "referenceCount": 0
+    },
+    {
+      "path": "scripts/generate-github-release.mjs",
+      "referenceCount": 0
+    },
+    {
+      "path": "scripts/publish-prerelease.sh",
+      "referenceCount": 0
+    },
+    {
+      "path": "tests/e2e/e2e.spec.ts",
+      "referenceCount": 0
+    },
+    {
+      "path": "tests/global.setup.ts",
+      "referenceCount": 0
+    },
+    {
+      "path": "tests/global.teardown.ts",
+      "referenceCount": 0
+    },
+    {
+      "path": "tests/utils.ts",
+      "referenceCount": 0
+    }
+  ],
+  "removedPackageScripts": [
+    "docker",
+    "docker:stop",
+    "dev:docker",
+    "dev:docker:build",
+    "dev:docker:stop",
+    "test:e2e",
+    "test:e2e:ui",
+    "test:e2e:dev",
+    "test:e2e:ci",
+    "changeset:version",
+    "changeset:release",
+    "changeset:v4",
+    "changeset:normal"
+  ]
+}

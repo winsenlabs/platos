@@ -82,6 +82,48 @@ const v1ReleaseGateCommands = [
   "pnpm test:max-file-lines",
   "pnpm build:v1",
 ];
+const repositoryGovernanceCommands = [
+  "pnpm audit:root-manifest",
+  "pnpm test:root-manifest",
+  "pnpm exec lefthook validate",
+  "pnpm audit:hook-policy",
+  "pnpm test:hook-policy",
+];
+const expectedV1EvidenceCommands = [
+  "pnpm test:ci-policy",
+  ...repositoryGovernanceCommands,
+  "node --test scripts/vocabulary-boundary.nul.test.mjs",
+  "node --test scripts/v1-ledger.test.mjs",
+  "node scripts/v1-ledger.mjs --check",
+  "pnpm audit:capability-matrix",
+  "node scripts/rest-census-independent.mjs --check",
+  "node --test scripts/rest-census-independent.test.mjs",
+  "node scripts/webapp-bff-matrix.mjs --check",
+  "node --test scripts/webapp-bff-matrix.test.mjs",
+  "node scripts/operator-operations.mjs --check",
+  "node --test scripts/license-distribution.test.mjs",
+  "node scripts/arch/gen-v1-skeleton.mjs --check",
+  "pnpm test:v1-foundation",
+  "pnpm test:install-git-hooks",
+  "pnpm audit:v1-project-graph",
+  "pnpm test:v1-project-graph",
+  "pnpm audit:arch-boundaries",
+  "pnpm test:arch-boundaries",
+  "pnpm audit:max-file-lines",
+  "pnpm test:max-file-lines",
+  "pnpm build:v1",
+  "node scripts/arch/contract-map.mjs --check",
+  "pnpm audit:sbom:check",
+  "pnpm audit:sbom:nonvacuity",
+  "pnpm test:sbom",
+];
+const expectedRepositoryGovernanceScripts = new Map([
+  ["generate:root-manifest", "node scripts/root-entry-manifest.mjs --write"],
+  ["audit:root-manifest", "node scripts/root-entry-manifest.mjs --check"],
+  ["test:root-manifest", "node --test scripts/root-entry-manifest.test.mjs"],
+  ["audit:hook-policy", "node scripts/hook-policy.mjs"],
+  ["test:hook-policy", "node --test scripts/hook-policy.test.mjs"],
+]);
 const expectedV1PackageScripts = new Map([
   ["build:v1", "tsc -b tsconfig.json"],
   ["clean:v1", "node scripts/arch/clean-v1.mjs"],
@@ -294,6 +336,28 @@ function executableShellArgv(segment) {
 
 function executableRunCommands(job) {
   return executableRunValues(job).flatMap(shellSegments);
+}
+
+const forbiddenEvidenceKeywords = new Set([
+  "if", "then", "else", "elif", "fi", "case", "esac", "for", "select", "while", "until", "do", "done",
+  "function", "eval", "source", ".", "bash", "sh", "dash", "zsh", "ksh", "ash",
+]);
+
+function reviewedTopLevelCommands(run) {
+  if (typeof run !== "string") return { commands: [], valid: false };
+  const commands = [];
+  for (const rawLine of run.split("\n")) {
+    const line = rawLine.trim();
+    if (line === "") continue;
+    const words = line.split(/\s+/u);
+    if (
+      !/^[A-Za-z0-9_./:@*+=,-]+(?:\s+[A-Za-z0-9_./:@*+=,-]+)*$/u.test(line) ||
+      words.some((word) => forbiddenEvidenceKeywords.has(word.toLowerCase())) ||
+      ((words[0] === "node" || words[0] === "python" || words[0] === "python3") && words.some((word) => ["-e", "-p", "-c"].includes(word)))
+    ) return { commands: [], valid: false };
+    commands.push(line);
+  }
+  return { commands, valid: commands.length > 0 };
 }
 
 function dockerRunInstructions(dockerfile) {
@@ -597,9 +661,11 @@ function policyViolations(input) {
   if (v1EvidenceStep.if !== undefined || v1EvidenceStep["continue-on-error"] !== undefined || v1EvidenceStep.shell !== undefined) {
     violations.push("V1 evidence step must be unconditional and fail-fast");
   }
-  const v1Lines = typeof v1EvidenceStep.run === "string"
-    ? v1EvidenceStep.run.split("\n").map((line) => line.trim()).filter(Boolean)
-    : [];
+  const reviewedEvidence = reviewedTopLevelCommands(v1EvidenceStep.run);
+  if (!reviewedEvidence.valid || JSON.stringify(reviewedEvidence.commands) !== JSON.stringify(expectedV1EvidenceCommands)) {
+    violations.push("V1 evidence script must contain only reviewed top-level simple commands");
+  }
+  const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()].flatMap((job) => executableRunValues(job))
     .flatMap((run) => run.split("\n").map((line) => line.trim()).filter(Boolean));
   let previousGateIndex = -1;
@@ -609,6 +675,14 @@ function policyViolations(input) {
       violations.push(`CI must execute fail-fast V1 gate exactly once in order: ${command}`);
     }
     previousGateIndex = gateIndex;
+  }
+  let previousGovernanceIndex = v1Lines.indexOf("pnpm test:ci-policy");
+  for (const command of repositoryGovernanceCommands) {
+    const gateIndex = v1Lines.indexOf(command);
+    if (countExact(v1Lines, command) !== 1 || countExact(allCiLines, command) !== 1 || gateIndex <= previousGovernanceIndex) {
+      violations.push(`CI must execute fail-fast repository governance gate exactly once in order: ${command}`);
+    }
+    previousGovernanceIndex = gateIndex;
   }
   const typecheckCommands = normalizedRunCommands(ciJobs.get("typecheck"));
   const allCiCommands = [...ciJobs.values()].flatMap((job) => normalizedRunCommands(job));
@@ -625,8 +699,14 @@ function policyViolations(input) {
     violations.push("package.json must remain valid JSON");
   }
   const packageScripts = packageManifest.scripts ?? {};
+  if (Object.hasOwn(packageManifest, "workspaces")) {
+    violations.push("package.json must not declare workspaces; pnpm-workspace.yaml is authoritative");
+  }
   for (const [name, target] of expectedV1PackageScripts) {
     if (packageScripts[name] !== target) violations.push(`package.json must wire exact V1 script ${name}: ${target}`);
+  }
+  for (const [name, target] of expectedRepositoryGovernanceScripts) {
+    if (packageScripts[name] !== target) violations.push(`package.json must wire exact repository governance script ${name}: ${target}`);
   }
   if (packageScripts.prepare !== `node ${prepareTarget}`) {
     violations.push(`package.json prepare must execute ${prepareTarget}`);
@@ -788,6 +868,10 @@ function mutateFixture(input, key, before, after, options = {}) {
   return { ...input, [key]: changed };
 }
 
+function wrapEvidenceCommand(input, command, lines) {
+  return mutateFixture(input, "ci", command, lines.join("\n          "));
+}
+
 function mutateDockerfile(input, file, before, after, options = {}) {
   const original = input.dockerfiles[file];
   assert.equal(typeof original, "string", `missing Dockerfile fixture ${file}`);
@@ -849,6 +933,7 @@ test("committed CI and image-build policy is executable, correlated, and complet
   );
   assert.equal(relocatedCommands.length, 7, "relocated command selector must cover all seven commands");
   assert.equal(v1ReleaseGateCommands.length, 8, "V1 release gate selector must cover generator, foundation, and six commands");
+  assert.equal(repositoryGovernanceCommands.length, 5, "repository governance selector must cover manifest and hook policy commands");
   assert.deepEqual(policyViolations(fixtures()), []);
 });
 
@@ -924,6 +1009,40 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: `CI must execute fail-fast V1 gate exactly once in order: ${command}`,
       mutate: (input) => mutateFixture(input, "ci", command, `${command} || true`),
     })),
+    ...repositoryGovernanceCommands.flatMap((command) => [
+      {
+        name: `fail-fast repository governance gate ${command}`,
+        expected: `CI must execute fail-fast repository governance gate exactly once in order: ${command}`,
+        mutate: (input) => mutateFixture(input, "ci", command, `echo skipped # ${command}`),
+      },
+      {
+        name: `globally unique repository governance gate ${command}`,
+        expected: `CI must execute fail-fast repository governance gate exactly once in order: ${command}`,
+        mutate: (input) => insertWorkflowJobStep(input, "ci", "cross-scope-isolation", { name: "Duplicate governance gate", run: command }),
+      },
+    ]),
+    ...[
+      ["if false", ["if false; then", repositoryGovernanceCommands[0], "fi"]],
+      ["case", ["case x in", `x) ${repositoryGovernanceCommands[0]} ;;`, "esac"]],
+      ["for loop", ["for x in one; do", repositoryGovernanceCommands[0], "done"]],
+      ["while loop", ["while false; do", repositoryGovernanceCommands[0], "done"]],
+      ["until loop", ["until true; do", repositoryGovernanceCommands[0], "done"]],
+      ["function", ["governance_gate() {", repositoryGovernanceCommands[0], "}", "governance_gate"]],
+      ["subshell", ["(", repositoryGovernanceCommands[0], ")"]],
+      ["eval", [`eval '${repositoryGovernanceCommands[0]}'`]],
+      ["interpreter wrapper", [`bash -c '${repositoryGovernanceCommands[0]}'`]],
+      ["exit 0", ["exit 0", repositoryGovernanceCommands[0]]],
+      ["exec true", ["exec true", repositoryGovernanceCommands[0]]],
+    ].map(([name, lines]) => ({
+      name: `V1 evidence ${name} cannot hide a required command`,
+      expected: "V1 evidence script must contain only reviewed top-level simple commands",
+      mutate: (input) => wrapEvidenceCommand(input, repositoryGovernanceCommands[0], lines),
+    })),
+    {
+      name: "root package workspace graph cannot reappear",
+      expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
+      mutate: (input) => mutateFixture(input, "packageJson", '"private": true,', '"private": true,\n  "workspaces": ["apps/*"],'),
+    },
     {
       name: "conditional V1 evidence step is unreachable",
       expected: "V1 evidence step must be unconditional and fail-fast",
@@ -937,6 +1056,11 @@ test("CI policy controls fail under generated semantic source mutations", async 
     ...[...expectedV1PackageScripts].map(([name, target]) => ({
       name: `successful no-op V1 package script ${name}`,
       expected: `package.json must wire exact V1 script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
+    })),
+    ...[...expectedRepositoryGovernanceScripts].map(([name, target]) => ({
+      name: `successful no-op repository governance package script ${name}`,
+      expected: `package.json must wire exact repository governance script ${name}: ${target}`,
       mutate: (input) => mutateFixture(input, "packageJson", target, "node -p 0"),
     })),
     {
@@ -1367,7 +1491,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  assert.equal(controls.length, 111, "semantic mutation control table must cover every declared checkpoint");
+  assert.equal(controls.length, 138, "semantic mutation control table must cover every declared checkpoint");
   for (const control of controls) {
     await t.test(control.name, () => {
       const mutation = control.mutate(pristine);

@@ -2,7 +2,7 @@
   "name": "@platos/redis-worker",
   "version": "4.4.4",
   "description": "Redis worker for trigger.dev",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

@@ -11,7 +11,7 @@
 // regression, and each carries a negative control proving it can fail.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
@@ -40,6 +40,80 @@ const EXPECTED_SHIPPED_CANDIDATES = [
   },
 ];
 const LEGAL_FILES = ["LICENSE", "NOTICE"];
+const INHERITED_SDK_DIRECTORY = `packages/${["trig", "ger-sdk"].join("")}`;
+const EXPECTED_PUBLISHABLE_PACKAGES = [
+  "packages/build/package.json",
+  "packages/core/package.json",
+  "packages/platools-js/package.json",
+  "packages/platos-client/package.json",
+  "packages/platos-embed/package.json",
+  "packages/platos-react-widget/package.json",
+  "packages/platos-token-mint/package.json",
+  "packages/python/package.json",
+  "packages/react-hooks/package.json",
+  "packages/redis-worker/package.json",
+  "packages/rsc/package.json",
+  "packages/schema-to-json/package.json",
+  `${INHERITED_SDK_DIRECTORY}/package.json`,
+];
+
+function workspaceManifestPaths(root) {
+  const document = parseDocument(readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"));
+  if (document.errors.length > 0) throw new Error("pnpm-workspace.yaml must remain valid YAML");
+  const patterns = document.toJS()?.packages;
+  if (!Array.isArray(patterns) || patterns.length === 0 || !patterns.every((pattern) => typeof pattern === "string")) {
+    throw new Error("pnpm-workspace.yaml must declare a non-empty packages graph");
+  }
+  const manifests = new Set();
+  for (const pattern of patterns) {
+    const excluded = pattern.startsWith("!");
+    const workspacePattern = (excluded ? pattern.slice(1) : pattern).replace(/\/+$/u, "");
+    for (const path of globSync(`${workspacePattern}/package.json`, { cwd: root })) {
+      if (excluded) manifests.delete(path);
+      else manifests.add(path);
+    }
+  }
+  return [...manifests].sort();
+}
+
+export function firstPartyLegalMetadataErrors(root, overrides = {}) {
+  const manifestOverrides = overrides.manifests ?? new Map();
+  const licenseOverrides = overrides.licenses ?? new Map();
+  let manifestPaths = [];
+  const errors = [];
+  try {
+    manifestPaths = workspaceManifestPaths(root);
+  } catch (error) {
+    errors.push(error.message);
+  }
+  const publishable = [];
+  for (const path of manifestPaths) {
+    const source = manifestOverrides.has(path) ? manifestOverrides.get(path) : readFileSync(join(root, path), "utf8");
+    if (source === null) continue;
+    let manifest;
+    try {
+      manifest = JSON.parse(source);
+    } catch {
+      errors.push(`${path} must remain valid JSON`);
+      continue;
+    }
+    if (manifest.private === true) continue;
+    publishable.push(path);
+    if (manifest.license !== "Apache-2.0") errors.push(`${path} must declare license Apache-2.0`);
+    if (manifest.publishConfig?.access !== "public") errors.push(`${path} must retain publishConfig.access public`);
+  }
+  if (JSON.stringify(publishable) !== JSON.stringify(EXPECTED_PUBLISHABLE_PACKAGES)) {
+    errors.push("publishable first-party package discovery must remain exact and non-vacuous");
+  }
+
+  const repositoryLicense = readFileSync(join(root, "LICENSE"));
+  for (const manifestPath of publishable) {
+    const path = `${manifestPath.slice(0, -"package.json".length)}LICENSE`;
+    const source = licenseOverrides.has(path) ? licenseOverrides.get(path) : (existsSync(join(root, path)) ? readFileSync(join(root, path)) : null);
+    if (!Buffer.isBuffer(source) || !source.equals(repositoryLicense)) errors.push(`${path} must byte-match the repository Apache-2.0 LICENSE`);
+  }
+  return errors;
+}
 
 export function shippedCandidates(workflowSource) {
   const document = parseDocument(workflowSource);
@@ -137,6 +211,10 @@ test("the repository actually ships Apache-2.0 with a NOTICE (premise of this ga
   assert.ok(read("NOTICE").trim().length > 0, "NOTICE must not be empty");
 });
 
+test("every first-party publishable package declares and ships the governing Apache-2.0 metadata", () => {
+  assert.deepEqual(firstPartyLegalMetadataErrors(ROOT), []);
+});
+
 test("LICENSE and NOTICE reach the Docker build context", () => {
   const di = read(".dockerignore");
   for (const f of LEGAL_FILES) {
@@ -195,4 +273,46 @@ test("NEGATIVE CONTROL: the COPY matcher requires an exact legal source in the f
   assert.equal(dockerfileCopies('FROM base\nCOPY ["NOTICE.md", "./NOTICE"]', "NOTICE"), false);
   // a mention in a comment must NOT count as shipping it
   assert.equal(dockerfileCopies("FROM base\n# remember to add LICENSE\nCOPY x y", "LICENSE"), false);
+});
+
+test("NEGATIVE CONTROLS: package metadata discovery and package-local license bytes cannot drift", () => {
+  const buildManifestPath = "packages/build/package.json";
+  const buildManifest = read(buildManifestPath);
+  assert.match(buildManifest, /"license": "Apache-2.0"/u);
+
+  const mit = new Map([[buildManifestPath, buildManifest.replace('"license": "Apache-2.0"', '"license": "MIT"')]]);
+  assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: mit }).some((error) => error.includes("must declare license Apache-2.0")));
+
+  const omitted = new Map([[buildManifestPath, null]]);
+  assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: omitted }).some((error) => error.includes("discovery must remain exact")));
+
+  const privateManifest = JSON.parse(buildManifest);
+  privateManifest.private = true;
+  const madePrivate = new Map([[buildManifestPath, JSON.stringify(privateManifest)]]);
+  assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: madePrivate }).some((error) => error.includes("discovery must remain exact")));
+
+  const removedLicense = new Map([["packages/build/LICENSE", null]]);
+  assert.ok(firstPartyLegalMetadataErrors(ROOT, { licenses: removedLicense }).some((error) => error.includes("must byte-match")));
+
+  const alteredLicense = new Map([["packages/build/LICENSE", Buffer.from("not Apache-2.0\n")]]);
+  assert.ok(firstPartyLegalMetadataErrors(ROOT, { licenses: alteredLicense }).some((error) => error.includes("must byte-match")));
+
+  for (const nestedManifestPath of [
+    "packages/contexts/agents/package.json",
+    "packages/adapters/channel-slack/package.json",
+  ]) {
+    const nestedManifest = JSON.parse(read(nestedManifestPath));
+    nestedManifest.private = false;
+    nestedManifest.license = "Apache-2.0";
+    nestedManifest.publishConfig = { access: "public" };
+    const nestedPublishable = new Map([[nestedManifestPath, JSON.stringify(nestedManifest)]]);
+    const nestedLicensePath = `${nestedManifestPath.slice(0, -"package.json".length)}LICENSE`;
+    assert.ok(
+      firstPartyLegalMetadataErrors(ROOT, { manifests: nestedPublishable })
+        .some((error) => error.includes(`${nestedLicensePath} must byte-match`)),
+      `${nestedManifestPath} must not escape its package-local LICENSE requirement when made publishable`,
+    );
+  }
+
+  assert.ok(EXPECTED_PUBLISHABLE_PACKAGES.length > 0, "selectors must be non-vacuous");
 });

@@ -1,10 +1,19 @@
 ## Platos webapp — powered by Remix
 
-To start, run with `pnpm run dev --filter webapp`
-
-### Build the docker image locally:
+Start the supporting stores from the repository root, then run the webapp source
+development server:
 
 ```sh
-pnpm run docker:build:webapp
-docker run -it platos-webapp sh
+cp .env.example .env
+# Before Compose model evaluation, replace every required development sentinel
+# documented in content/docs/self-hosting.md.
+docker compose -f docker-compose.platos.yml up -d postgres redis clickhouse minio
+pnpm --filter webapp dev
+```
+
+To build the complete local compose stack, including the application images:
+
+```sh
+# Reuse the populated root .env created above.
+docker compose -f docker-compose.platos.yml up -d --build
 ```

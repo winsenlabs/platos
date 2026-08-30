@@ -3,6 +3,9 @@
 A merge is source integration only. It does not authorize image publication,
 Trigger deployment, test deployment, production promotion, or rollback. Each
 operational action has its own immutable inputs, evidence record, and approval.
+This process governs OCI and environment operations only. It does not authorize
+npm publication; a Changesets entry records package version intent and nothing
+in this document grants package-registry write authority.
 
 ## 1. Review and merge
 
@@ -12,6 +15,7 @@ operational action has its own immutable inputs, evidence record, and approval.
   post-merge evidence when the landed SHA differs.
 - A `main` push builds and gates OCI candidates but has no package-write or
   external-deployment authority.
+- Candidate archives are build evidence, not publication or environment mutation.
 
 ## 2. Build and gate the landed SHA
 
@@ -99,3 +103,8 @@ requires the authorized deployment and acceptance records for the intended
 environment. Preserve all action run IDs, approvers, immutable identities,
 recovery evidence, migration evidence, and rollback identities in the release
 record.
+
+No OCI publication, environment mutation, promotion, acceptance, or rollback approval in
+this process authorizes npm publication. Package publication requires a separate
+owner decision and mechanism outside this repository; none is currently
+provided here.

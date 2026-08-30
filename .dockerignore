@@ -71,7 +71,6 @@ README.md
 # into the image builder. /deploy and /hosting hold edge routing + runbooks.
 /deploy
 /hosting
-/.server-changes
 
 # Agent worktrees are created INSIDE the repo at .claude/worktrees/. Without this
 # they re-enter the build context carrying a full second copy of the tree.

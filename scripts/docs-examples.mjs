@@ -8,6 +8,16 @@ import ts from "typescript";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const contentDirectories = ["content/docs", "content/guides"];
+export const QUICK_START_PATHS = [
+  "README.md",
+  "apps/agent/README.md",
+  "apps/webapp/README.md",
+  "examples/simple-agent/README.md",
+  "ai/references/repo.md",
+  "docs/quickstart.md",
+  "content/guides/quickstart.md",
+  "content/guides/install-self-host.md",
+];
 const openApiPath = "apps/agent/src/openapi/openapi.generated.json";
 const schemaPath = "internal-packages/tenancy-database/prisma/schema.prisma";
 const composePath = "docker-compose.platos.yml";
@@ -43,6 +53,23 @@ function authoredPages(root) {
         source: readFileSync(resolve(root, directory, name), "utf8"),
       })),
   );
+}
+
+export function quickStartEnvironmentErrors(root, overrides = new Map()) {
+  const errors = [];
+  for (const path of QUICK_START_PATHS) {
+    const source = overrides.has(path) ? overrides.get(path) : readFileSync(resolve(root, path), "utf8");
+    const composeIndex = source.search(/docker compose\s+-f\s+docker-compose\.platos\.yml/iu);
+    if (composeIndex === -1) {
+      errors.push(`${path} must retain a Compose quick-start command`);
+      continue;
+    }
+    const prefix = source.slice(0, composeIndex);
+    const copyIndex = prefix.indexOf("cp .env.example .env");
+    if (copyIndex === -1) errors.push(`${path} must create .env from .env.example before Compose`);
+    if (!/sentinel/iu.test(prefix)) errors.push(`${path} must require replacing development sentinels before Compose model evaluation`);
+  }
+  return errors;
 }
 
 function openApiOperations(spec) {

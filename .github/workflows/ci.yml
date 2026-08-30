@@ -74,6 +74,11 @@ jobs:
       - name: V1 M0 executable evidence gates
         run: |
           pnpm test:ci-policy
+          pnpm audit:root-manifest
+          pnpm test:root-manifest
+          pnpm exec lefthook validate
+          pnpm audit:hook-policy
+          pnpm test:hook-policy
           node --test scripts/vocabulary-boundary.nul.test.mjs
           node --test scripts/v1-ledger.test.mjs
           node scripts/v1-ledger.mjs --check

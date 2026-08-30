@@ -2,7 +2,7 @@
   "name": "@platos/react-hooks",
   "version": "4.4.4",
   "description": "Platos consumer React hooks for agent streaming, artifacts, and context.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },

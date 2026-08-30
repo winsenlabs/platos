@@ -11,19 +11,23 @@ A minimal example of deploying an agent on Platos. This agent:
 1. Start Platos services:
 ```bash
 cd /path/to/platos
-docker compose -f docker/docker-compose.yml up -d database redis
+cp .env.example .env
+# Before Compose model evaluation, replace every required development sentinel
+# documented in content/docs/self-hosting.md.
+docker compose -f docker-compose.platos.yml up -d postgres redis clickhouse minio
 pnpm run db:migrate
 ```
 
 2. Start the agent service:
 ```bash
 cd apps/agent
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres" \
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/platos_control" \
 REDIS_URL="redis://localhost:6379" \
-ANTHROPIC_API_KEY="sk-ant-your-key" \
 PLATOS_TEST_MODE="true" \
 node dist/main.js
 ```
+
+For real model calls, configure a provider credential for the authenticated Environment in the dashboard. The agent does not fall back to a provider key in its process environment.
 
 3. Register an org and test tools:
 ```bash
