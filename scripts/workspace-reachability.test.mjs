@@ -211,13 +211,13 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
 
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
   const report = repositoryReport();
-  assert.equal(report.summary.registeredWorkspaceCount, 66);
+  assert.equal(report.summary.registeredWorkspaceCount, 60);
   assert.equal(report.summary.ociImageWorkspaceCount, 6);
   assert.equal(report.summary.applicationDeployableWorkspaceCount, 37);
   assert.equal(report.summary.deploymentUnionWorkspaceCount, 38);
   assert.equal(report.summary.repositoryDevWorkspaceCount, 10);
-  assert.equal(report.summary.installTraversalWorkspaceCount, 66);
-  assert.equal(report.summary.reviewCandidateCount, 28);
+  assert.equal(report.summary.installTraversalWorkspaceCount, 60);
+  assert.equal(report.summary.reviewCandidateCount, 22);
   const applicationRootKinds = new Set(
     Object.values(report.roots.applicationDeployable.reasons)
       .flat()
@@ -236,6 +236,19 @@ test("committed baseline independently captures OCI, application/deployable, and
   );
   assert.equal(report.derivation.manualReachabilityAssertionsAccepted, false);
   assert.equal(report.derivation.deletionAuthorized, false);
+  const vendoredBuildReceipts = new Set([
+    "docs/audits/win253-removals/vendored-build.json",
+    "docs/audits/win253-removals/vendored-build.md",
+  ]);
+  for (const workspace of report.workspaces) {
+    for (const channel of Object.values(workspace.channels)) {
+      assert.equal(
+        channel.reasons.some(({ from }) => vendoredBuildReceipts.has(from)),
+        false,
+        `${workspace.path} reachability must not derive from WIN-253 removal receipts`
+      );
+    }
+  }
 });
 
 test("the entire root-referenced V1 application graph is retained, never classified as review candidates", () => {
@@ -278,7 +291,7 @@ test("a development dependency remains excluded from every production image clos
 test("published package and embedded server implementation boundaries stay distinct", () => {
   const report = repositoryReport();
   const publishedSdk = report.workspaces.find(
-    (workspace) => workspace.path === "packages/trigger-sdk"
+    (workspace) => workspace.path === "packages/platos-client"
   );
   const embeddedEngine = report.workspaces.find(
     (workspace) => workspace.path === "internal-packages/run-engine"

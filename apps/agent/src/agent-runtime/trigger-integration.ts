@@ -31,7 +31,7 @@
  * The trigger.dev task definitions below are registered with the platform
  * service (apps/webapp) and executed by the supervisor infrastructure.
  *
- * NOTE: These task definitions use the @platos/sdk API. They would
+ * NOTE: These task definitions use the external @trigger.dev/sdk API. They would
  * be defined in a Platos project that connects to the platform.
  * For the NestJS service, we call these tasks via the Platos API
  * using tasks.trigger() or tasks.triggerAndWait().
@@ -45,7 +45,7 @@
  * Example task definition for a durable agent conversation:
  *
  * ```typescript
- * import { task, wait } from "@platos/sdk";
+ * import { task, wait } from "@trigger.dev/sdk";
  *
  * export const agentConversation = task({
  *   id: "platos-agent-conversation",

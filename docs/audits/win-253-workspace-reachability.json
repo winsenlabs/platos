@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9b25f780bf6fdfe9805540a4f64a6e0a6ebbc36571811994ece15c910f5b1a11",
+  "evidenceSha256": "2fd6daf178147e71e1d0261ac37ff1f0463b0c6cb9aba2f6acd421a364ccb765",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "db32f0baa92119e38a585db5899b13dd462852ca7fa12b93cb5460c4ee08507c",
+    "aggregateSha256": "d7f2ecadb3d5858e58c1243e437a1cd496302a9a0e3a9b21d858c0a2b8176392",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -121,7 +121,7 @@
       },
       {
         "path": ".changeset/eobd-83-followup-package-repo-urls.md",
-        "sha256": "17610303fdbada8e71f8648d3d6a6c4ebe8bfdba1adff7aea126299b918979ca"
+        "sha256": "e9753b7fd8eb49f8c36c0190494fcbc90198ab9ddb7e17f06748d8789787b0f3"
       },
       {
         "path": ".changeset/eobd-83-react-hooks-metadata.md",
@@ -213,7 +213,7 @@
       },
       {
         "path": ".cursorignore",
-        "sha256": "50a713ada549f7583133346b9f76c7f6a93ab2c046525b3c8a3b58c3686212e8"
+        "sha256": "75c8391db27c318b828ec3d0446eaea2dc5fd5f0e049c89d7f3db7e61d0bfed7"
       },
       {
         "path": ".dependency-cruiser.js",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "f8d0d8ad1241688db19092e326bd478ba8eb6109b49c9f55c4fb046860828fc4"
+        "sha256": "4fb73ab04f0f40fa04c1953cc4f8714b4c9876e8b9f6ccdb775fd9f52da3d541"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -273,7 +273,7 @@
       },
       {
         "path": ".gitignore",
-        "sha256": "32522755c0027cea8a031e5b6df91ecda43c9d3674fcedd057e98e8aecb8d8eb"
+        "sha256": "143cce80de141388410af2cdb31bee03399ce5980b7a2dd50f197f17356b56e0"
       },
       {
         "path": ".gitmodules",
@@ -369,7 +369,7 @@
       },
       {
         "path": "ai/references/repo.md",
-        "sha256": "0ca6169ff933a96cf59c842df7c6d73f9c56df137ac2a749638664bbab289ca6"
+        "sha256": "483317004cff6f4fafbd0dda6c96e575ed34e7fe1eeeae8cd2c9913d6d2e8fce"
       },
       {
         "path": "ai/references/tests.md",
@@ -781,7 +781,7 @@
       },
       {
         "path": "apps/agent/src/agent-runtime/trigger-integration.ts",
-        "sha256": "5137451570de03c1806cb6588bd4519a357374f60121d8809c88f81de9de577c"
+        "sha256": "2e27eef2309258e05399b63e331b53e022c11ac5643b4b3002c0dec23bf16e05"
       },
       {
         "path": "apps/agent/src/agent-runtime/turn-dispatch.service.spec.ts",
@@ -1249,7 +1249,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/trigger.ts",
-        "sha256": "ebd3f386417ce3269858d7bc6a04be096e07fe283afc744ee091075ad3232949"
+        "sha256": "86741b9d0053471ce761963e22b455af89193451d4c1162faba6f674369350a6"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/unavailable-legacy-surfaces.test.ts",
@@ -2281,7 +2281,7 @@
       },
       {
         "path": "apps/agent/src/trigger-bridge/schedules.service.ts",
-        "sha256": "70134aba97280b5c23dea2df7f1654bcae5145dad57c436abdf957cde56f8959"
+        "sha256": "71b73e0f345d747d6779882ab1d2ce50ba7e2c836282dc34734815ae79a0f24e"
       },
       {
         "path": "apps/agent/src/trigger-bridge/trigger-bridge.module.ts",
@@ -3809,7 +3809,7 @@
       },
       {
         "path": "docs/ai-sdk-v7-upgrade-plan.md",
-        "sha256": "09c190438330416af46c23c993cca4591cf0d76044f008c6c2cf719ad3f1ab88"
+        "sha256": "3ef5525a9df0824cc646f22989e9883434e0140dc1ea26f26fc473053c74bac6"
       },
       {
         "path": "docs/apikeys.mdx",
@@ -3821,7 +3821,7 @@
       },
       {
         "path": "docs/architecture/INTEGRATIONS_AUDIT.md",
-        "sha256": "9b91342c6d89a456127ca2163f09d8fef81596a0d595077fc9f7175f231539ed"
+        "sha256": "c0766fad4c6a4bad21786697517416b8cdacee865a220c9fba3d55f40cba486e"
       },
       {
         "path": "docs/audit-cross-agent-tenancy-2026-07-16.md",
@@ -3937,11 +3937,11 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "50db2cc88681909337a3326ba31b4334f4e366c649489f58f3382e46a11c2ada"
+        "sha256": "70468e2c30dc58b22be63b7b4575bcc75cdde284a611221d2446a61ec4602dec"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
-        "sha256": "e1cfaf45f18403abb8cc8e0b075417124d3715fe1bd604742456f1c232f8f214"
+        "sha256": "23b6a77d97e31c4820a91e8eae68a03d76d9f6163d9c9fcb04206e9ba8bd649f"
       },
       {
         "path": "docs/audits/sbom/license-overlay.json",
@@ -4093,7 +4093,7 @@
       },
       {
         "path": "docs/config/extensions/custom.mdx",
-        "sha256": "97924267d18209a1f2db3495d04c621c6222ff090de40f874a232c4b14351c3a"
+        "sha256": "e89466f64fa2831d30f127e737cdb6c9ad7ba19a987175764d63c88a0690337c"
       },
       {
         "path": "docs/config/extensions/emitDecoratorMetadata.mdx",
@@ -5109,7 +5109,7 @@
       },
       {
         "path": "docs/launch/release-notes-v1.0.0.md",
-        "sha256": "b454aef49ba881ba0e5214dee41458faa04fa525003bd2f3c7d0556bd88bd723"
+        "sha256": "37d9133843e1b3e892c567129423a7289029899c76431557d84823c2f6faa619"
       },
       {
         "path": "docs/limits.mdx",
@@ -5369,7 +5369,7 @@
       },
       {
         "path": "docs/migrating-from-v3.mdx",
-        "sha256": "dbf8bd907df3dfcbfc6f407f45ae5ce922b982b5be5959a758736f8f2d8a81ec"
+        "sha256": "05d39ae78ed4ab54659fc5dc82050684cdc2e6daa7446ec568bebad701e0eaa1"
       },
       {
         "path": "docs/migration-defer.mdx",
@@ -5497,11 +5497,11 @@
       },
       {
         "path": "docs/refactor/IMPLEMENTATION-STATUS.md",
-        "sha256": "01c13e0fc907665a1601c50daee703d9425436186d180da9c1a02faf6fc8bdbd"
+        "sha256": "2d23da358b323a98345d29d841ff7c897cac80f8674d484eed400f407d22c1cc"
       },
       {
         "path": "docs/refactor/platos-trigger-refactor.md",
-        "sha256": "05e1ff02da1af3007ae22b380e05843cc8d65de9cea5f9ad87c5f0d12c6da530"
+        "sha256": "5f50180a759f06069df264dd77f806c425170104338a5a8b2582d7ace4f63281"
       },
       {
         "path": "docs/replaying.mdx",
@@ -5709,7 +5709,7 @@
       },
       {
         "path": "docs/snippets/migrate-v4-using-ai.mdx",
-        "sha256": "4264980e32667029bfd1f707d1351460732c1c0fb1be6c00782cf304a8a6f0e4"
+        "sha256": "776c41c3de11d07d0ecde7c91fc75ce1dd6ba02009c9274642bcb23c21b6b300"
       },
       {
         "path": "docs/snippets/nextjs-button-syntax.mdx",
@@ -5853,7 +5853,7 @@
       },
       {
         "path": "docs/trigger-integration.md",
-        "sha256": "24bec78d3ba06a4c10cfc386bed222bf116e55a5255f45565ff84652454b1353"
+        "sha256": "a2101b0c38e62009c3b4ca14564f9284dd0d7c5a4ce84e1703fd135e2c07a82f"
       },
       {
         "path": "docs/triggering.mdx",
@@ -5885,7 +5885,7 @@
       },
       {
         "path": "docs/upgrading-from-trigger.md",
-        "sha256": "c338a20cb9e66f3bbbfb87232b56f34122ea1ee71fa6fbe94afa4a347e1860c5"
+        "sha256": "49a33e54caea210a696083d8789d734afaa043d26c942a6eca68d4f1c78be158"
       },
       {
         "path": "docs/upgrading-packages.mdx",
@@ -5897,7 +5897,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "5ace69c7988f4890ffb4e75d291a75e1f245ee7e0904cb9347837516c2856f1a"
+        "sha256": "f8a33f03246924a85955720388eb49d1982cc89dccbc68a3b751b226639a0927"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5917,7 +5917,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "33b610e7938e4481af3d473220999dab651174a08677d96560a1ef73025e9125"
+        "sha256": "f9de617f60578032ea9e5a2ecb438a6b6d955dbf4bb0bc0334eefe90a9500ea9"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -5949,7 +5949,7 @@
       },
       {
         "path": "docs/writing-agents.md",
-        "sha256": "920d8a39f05956cc115bc2db8bf8bc224d4e5f983169ae0cea54c68c3c69b9d5"
+        "sha256": "8cc650c516dc467fa517c50533745f35f006ace58c7a990348d9b9114f10483e"
       },
       {
         "path": "docs/writing-tasks-introduction.mdx",
@@ -10001,7 +10001,7 @@
       },
       {
         "path": "internal-packages/run-engine/README.md",
-        "sha256": "f6beb0346cafbfa79e6b78931ae19fe59394a3a04ba2a7cbe7b978a254407f91"
+        "sha256": "6098e6906b6917e7db39aa6ec44f4316c522e34a10dadcd0f9de39d872d3ce25"
       },
       {
         "path": "internal-packages/run-engine/package.json",
@@ -10400,86 +10400,6 @@
         "sha256": "f70815bf4eb2eb287777ecaec658a3008d0b49ee5429093c15b2e6eed34ab97b"
       },
       {
-        "path": "internal-packages/sdk-compat-tests/package.json",
-        "sha256": "1743df938914919cc4281332f61db37ac5bbc7ac3563274602ae10ca8183d42d"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
-        "sha256": "e866a163d402fbb04fdb696803cb79684d77b5a30e4613a972439afe124c0fea"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-        "sha256": "eb62bc3c27eafa2d1dd23aa8964cd42f9e82f760f2eca9b90c08219569ace35b"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
-        "sha256": "1496347704aff51dbd43e1666e5c3fffaebf281db70dc2c548367ab157e082d9"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-        "sha256": "4a7e0b329c7aa83df2ac9d5a3e5cd0865329bdbaca9340723ed008c2c9a71262"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
-        "sha256": "35abfed62b8b129acf7ea7419f500716cf88acf3c3d1a2798e64612acb8d438b"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-        "sha256": "1930c555a3b5564a0da274cd256107c02910a30f9eb8994d4fb2e08af9f21bf0"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
-        "sha256": "6a087b94c48fc1f173958e1beea1a91bdee6960cefd558bbdb87e6005fc2cdf8"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
-        "sha256": "0d1b0afbaa01987a91d1361021b6a9e7ef01f719040277ce9835aff577e55e05"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-        "sha256": "3748b6f81cd61d3df37e33b71d46d786b8e069e760efd99011ea303b016ce8e4"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
-        "sha256": "3519b91aa0443f3ec402634aa88ba0947875d1e06fdd9bb134ce723c32498e8a"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-        "sha256": "0207b474de87c60bd6e7df8a5cec629c39444447f453e7d0893322a1edb828b2"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-        "sha256": "50d73b6e2fd8413672977d795ac0303d8f5c2a199b11eecdadc1f584a9aa5b41"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
-        "sha256": "9b6cf7b02f3923b892125c135431a2e130aa726b76c07eedfda5ec3c4bbd27e3"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-        "sha256": "e0c4864ff113455e99337fe6ab63e6f0864fc1d58d635b359756b37097bea2a1"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
-        "sha256": "3f5928f9a06843ba7dcc7a5fc24c873430c54ec000adacb95215d2b049865936"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-        "sha256": "fe0a9680892ff26c7a41c1b65d4142a9dc15f94a8e63c803ac193142fcf8af07"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-        "sha256": "656104bc82d1dd26dbb00d23cb73d387517e26b0aeb3b4a604a051178c92748a"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/tsconfig.json",
-        "sha256": "8c8593d2565b80b78d0b700724d8c9cebfbc4a6c874b9b676b67e261a50a8f6c"
-      },
-      {
-        "path": "internal-packages/sdk-compat-tests/vitest.config.ts",
-        "sha256": "b186b8ea5ab8be613a278d161f559ee159540a60230ca6f37c2eb5c2ac03446e"
-      },
-      {
         "path": "internal-packages/tenancy-database/.gitignore",
         "sha256": "6ae24d1c078524ba5518f13f524a8238a4d115b9cf335feb3b4e34340d8a90b8"
       },
@@ -10769,7 +10689,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "51c30df8672fe54db8c3e956aac424ae9287844366261189eb72a217a4f4e338"
+        "sha256": "4459eaa92ce90f459a55b4668f5b87b524124b85bfae7cc4a75e4b70173a46fd"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -11010,118 +10930,6 @@
       {
         "path": "packages/adapters/redis-streams/tsconfig.json",
         "sha256": "ab53e292cb866433953294938911733a5cb2dd104a53eb7d40ac380f7bd0715b"
-      },
-      {
-        "path": "packages/build/CHANGELOG.md",
-        "sha256": "c178a48a17ba79d6fb8547427d26410f1b6bf046c95328bfad5599c624424a15"
-      },
-      {
-        "path": "packages/build/LICENSE",
-        "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
-      },
-      {
-        "path": "packages/build/README.md",
-        "sha256": "63b51b4d048fbc358bbb0e1bf4129f4d0948f16abf2c080a100634ad8ad020e3"
-      },
-      {
-        "path": "packages/build/package.json",
-        "sha256": "45fb3b83186603512b34e8630d9744155a6b6bc223f96e3390f434a20ad7189d"
-      },
-      {
-        "path": "packages/build/src/extensions/audioWaveform.ts",
-        "sha256": "d81e4011cbd1cc72a860263f03ee839a26d700ecb32dd3fea9a6579b0c516ed9"
-      },
-      {
-        "path": "packages/build/src/extensions/core.ts",
-        "sha256": "020b430d011d404d91dafd976fe19c104b29b3bbbd6c26fa771112a1ded98b48"
-      },
-      {
-        "path": "packages/build/src/extensions/core/additionalFiles.ts",
-        "sha256": "9afbab1190c5c97bc9f8e5c14d35fc2c0660f19f521ed3ec980a2f450f8bc089"
-      },
-      {
-        "path": "packages/build/src/extensions/core/additionalPackages.ts",
-        "sha256": "45e29e13cd731594d26901114be118af9307670dbc2053bd7888b4c09d953df0"
-      },
-      {
-        "path": "packages/build/src/extensions/core/aptGet.ts",
-        "sha256": "44617aaf879bab4aa02b1e56d4f246295c8cb20e81adc8a0eb4c9b5ca93ad234"
-      },
-      {
-        "path": "packages/build/src/extensions/core/ffmpeg.ts",
-        "sha256": "f0c6f56799628369380522aec3b159c1020586eda45077512a469235b380707f"
-      },
-      {
-        "path": "packages/build/src/extensions/core/neonSyncEnvVars.ts",
-        "sha256": "8b15fa27c31a690a7a8d968a641ce810e600b528c2a90c7423d44228c3f713f0"
-      },
-      {
-        "path": "packages/build/src/extensions/core/syncEnvVars.ts",
-        "sha256": "4aec6721ee7bd3933ac139a591baeded740c8bd980fc46a853b82e0d3a9ffe22"
-      },
-      {
-        "path": "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
-        "sha256": "8017664d0167d6dc98e5035031b8ede2c1a92e874c4d7fe9d1b81468c7773812"
-      },
-      {
-        "path": "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
-        "sha256": "4440d13492180a9859bc0fa86bb568ef294d6d4e40858b465356136fd371315f"
-      },
-      {
-        "path": "packages/build/src/extensions/index.ts",
-        "sha256": "d136ec8e842a4bb74c281784f74a850b499f461f2f4265fc3d49b34b9c61ed2e"
-      },
-      {
-        "path": "packages/build/src/extensions/lightpanda.ts",
-        "sha256": "44d3aeca9b1ed0ace49bf670733f3811ffe77c28f604dad9c8c5617c2fac7752"
-      },
-      {
-        "path": "packages/build/src/extensions/playwright.ts",
-        "sha256": "d5cda9fe23c12d59eca2229d709cc00663cf81fcc05de9d709de1a96833325fd"
-      },
-      {
-        "path": "packages/build/src/extensions/prisma.ts",
-        "sha256": "6aabe81b664dfdfbfadda4898fc076172fc766d7f404db7b471d60932730561b"
-      },
-      {
-        "path": "packages/build/src/extensions/puppeteer.ts",
-        "sha256": "ee53f1f89254a2a1e427ebcf3297bcb75418c08f0a74aa4c79a0225f60cd9941"
-      },
-      {
-        "path": "packages/build/src/extensions/typescript.ts",
-        "sha256": "4372096c6170cbf001a99a2f25c0d8a40520a3f5344bd8fab9494cd4033be569"
-      },
-      {
-        "path": "packages/build/src/imports/mlly-cjs.cts",
-        "sha256": "1a0fb247cf4176f48ad4691b8d8d010d04e165940de48984efa6626105683d19"
-      },
-      {
-        "path": "packages/build/src/imports/mlly.ts",
-        "sha256": "dc53b26538a5449c61a97152d354df50afac9676010f2c1368b2fe91e3592770"
-      },
-      {
-        "path": "packages/build/src/index.ts",
-        "sha256": "aa5702c031cecf6e5351e0750d7a1998a5ac33135f4e66fecc6022ce1eaf60bd"
-      },
-      {
-        "path": "packages/build/src/internal.ts",
-        "sha256": "e60812b275e79b95f799f44ee17945085c9cdf5a313753253bb0b540f41da576"
-      },
-      {
-        "path": "packages/build/src/internal/additionalFiles.ts",
-        "sha256": "d16168e44e283222474667abe60599fdea23c8f93838a8af026352767b18ac1b"
-      },
-      {
-        "path": "packages/build/src/version.ts",
-        "sha256": "1af39e6ade8c28757c5bc04483f06ec60743edea296a75aac2bb14555f09308d"
-      },
-      {
-        "path": "packages/build/tsconfig.json",
-        "sha256": "5d30c6528c8d45723101341071720998db74857456826db9eaec0dfe4e0d950b"
-      },
-      {
-        "path": "packages/build/tsconfig.src.json",
-        "sha256": "d46ebe47f5c5cd16a19c19292c213028a0efc62ecee994b1c07ed2549e686ee0"
       },
       {
         "path": "packages/contexts/agents/README.md",
@@ -11841,7 +11649,7 @@
       },
       {
         "path": "packages/core/src/v3/idempotencyKeys.ts",
-        "sha256": "ce4b071243aae5904707c486636b38bab5b81d4d536f1a70931b7e6069f314dd"
+        "sha256": "e1f436c2daf4d1e300e9e430634f65dc5b554bfed86d0e05f4631267a40ee4d6"
       },
       {
         "path": "packages/core/src/v3/imports/superjson-cjs.cts",
@@ -12413,7 +12221,7 @@
       },
       {
         "path": "packages/core/src/v3/types/tasks.ts",
-        "sha256": "fcb6cb7d16a7e204745dc8a5942776b29ea655437a8e5c4667b9875324f48893"
+        "sha256": "8475ddede1de9efa587a3b430f9bffb7360ccb20e9fe909552c0a3f1c883ca06"
       },
       {
         "path": "packages/core/src/v3/types/tools.ts",
@@ -13232,42 +13040,6 @@
         "sha256": "b4cbb076aa74bec1ca38d3227b54f39e2a1756856ba9e223509736356978977f"
       },
       {
-        "path": "packages/python/CHANGELOG.md",
-        "sha256": "37e406097f2d33803a624f5be25cbffd65b91878f08068a0e37e96bde03cf30c"
-      },
-      {
-        "path": "packages/python/LICENSE",
-        "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
-      },
-      {
-        "path": "packages/python/README.md",
-        "sha256": "987b3bc45d0718690146825567cba3bb734b543cfc7b8cce8211f7a80868ed34"
-      },
-      {
-        "path": "packages/python/package.json",
-        "sha256": "1b8fe8a56116c8d273fb7f8ac9660d04ad5db4c1563138d99640f186f5c5f4c3"
-      },
-      {
-        "path": "packages/python/src/extension.ts",
-        "sha256": "5a03c3a9f1702f644a7a36224b95f1ee02b8c3538287afd8182281f090d630a3"
-      },
-      {
-        "path": "packages/python/src/index.ts",
-        "sha256": "b7f21552dedf29fd95ef0df7e535b48f677b89f1cd6cd88228c735647de4b898"
-      },
-      {
-        "path": "packages/python/src/utils/tempFiles.ts",
-        "sha256": "359d1cbe4f497ac7679f5c23fc6e8c1a3c7a3d4e4e94b0cc525f51b057e14215"
-      },
-      {
-        "path": "packages/python/tsconfig.json",
-        "sha256": "5d30c6528c8d45723101341071720998db74857456826db9eaec0dfe4e0d950b"
-      },
-      {
-        "path": "packages/python/tsconfig.src.json",
-        "sha256": "d46ebe47f5c5cd16a19c19292c213028a0efc62ecee994b1c07ed2549e686ee0"
-      },
-      {
         "path": "packages/react-hooks/CHANGELOG.md",
         "sha256": "3a6cb245170a530bfc43317bed4661ce3a630056ee40625c211743ff7f0080ea"
       },
@@ -13468,266 +13240,6 @@
         "sha256": "bb75d9e9b0e2bea17302e75ba3a3a83679fa92e3535895813658ca4dbfa3ce52"
       },
       {
-        "path": "packages/rsc/CHANGELOG.md",
-        "sha256": "f32873bc698121911029db3036012fffac9e08eed7dc637cb49e59c7f8b7ffc7"
-      },
-      {
-        "path": "packages/rsc/LICENSE",
-        "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
-      },
-      {
-        "path": "packages/rsc/README.md",
-        "sha256": "a41c0d0687f10a9c82fccef8ed2c5579f8941ebdb60c217b6aa2298cc0bb65ff"
-      },
-      {
-        "path": "packages/rsc/package.json",
-        "sha256": "59017430cf7407beeabb246a9ef119f566fa5534bcd24f81b43f5f8e6137643a"
-      },
-      {
-        "path": "packages/rsc/src/build.ts",
-        "sha256": "7a800777ac14166d976ca23d6f682e2d795fcfa4b56ae005fe17977d50e87076"
-      },
-      {
-        "path": "packages/rsc/src/index.ts",
-        "sha256": "76467d780d5d7e6c81c1d191c8e4e56d23e0130bb1ffffcf94318a9a6623e5ac"
-      },
-      {
-        "path": "packages/rsc/src/sourceDir-cjs.cts",
-        "sha256": "8c861f93ecb45b1695b62e3e3a3160c94ea9990caf4e44f9436ce74e6e230d64"
-      },
-      {
-        "path": "packages/rsc/src/sourceDir.ts",
-        "sha256": "f0a0fb8844039b8979f5d87e1625bba7f1e38407566ced10e8c45a6898a46fe0"
-      },
-      {
-        "path": "packages/rsc/tsconfig.json",
-        "sha256": "73ca30348f0a78e68c6080faa51b8598f5a7bab4f2ed4db56ff3e4d3849bf82a"
-      },
-      {
-        "path": "packages/schema-to-json/.gitignore",
-        "sha256": "fc13aa2fc93c8c5f482bcb523c78ab765edfc4b589e891ccf054ec31fc46f157"
-      },
-      {
-        "path": "packages/schema-to-json/CHANGELOG.md",
-        "sha256": "d0a4071129a8fe45d11169701fc405bca01ee4baa21144101bb92fbc9f14a5ce"
-      },
-      {
-        "path": "packages/schema-to-json/LICENSE",
-        "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
-      },
-      {
-        "path": "packages/schema-to-json/README.md",
-        "sha256": "bc9784f326eed802d9eec93f952dd91c3754eb0c8454b5d4cc062d965aa636ac"
-      },
-      {
-        "path": "packages/schema-to-json/package.json",
-        "sha256": "5a482f324760df697e8421fdfa04eed0cdbf9be87c6b97a1d0450f9faf8e2b78"
-      },
-      {
-        "path": "packages/schema-to-json/src/index.ts",
-        "sha256": "16e9e040cd733e2dd145b76f88730de89f689de75c8d0884172b30df90dcab91"
-      },
-      {
-        "path": "packages/schema-to-json/tests/index.test.ts",
-        "sha256": "d8c1794561f70d9037dac6ca376f607ec065654e8079ba2b0b3d52e0e4c9f4df"
-      },
-      {
-        "path": "packages/schema-to-json/tsconfig.json",
-        "sha256": "c0d37209b80ac7680ee1eafde64b8f378c49189cd7161048ac94cceffd72758e"
-      },
-      {
-        "path": "packages/schema-to-json/tsconfig.src.json",
-        "sha256": "251f87fb8f11a7a0d205a892851290347e5991ffd12a360fc78db2b17155cad1"
-      },
-      {
-        "path": "packages/schema-to-json/tsconfig.test.json",
-        "sha256": "81b459eaa91913bb64dac606d4bd8b50a11304e99aa867d01dd64fc3763961f4"
-      },
-      {
-        "path": "packages/schema-to-json/vitest.config.ts",
-        "sha256": "f316d0370e945a482556399d38ab87b99c40c9d00fa8b9a72306f010238d57f2"
-      },
-      {
-        "path": "packages/trigger-sdk/CHANGELOG.md",
-        "sha256": "d9cfd8db23e9e0b9ef9887c2943f1b21d9a5c39de1c2b7eacdc855aad2210329"
-      },
-      {
-        "path": "packages/trigger-sdk/LICENSE",
-        "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
-      },
-      {
-        "path": "packages/trigger-sdk/README.md",
-        "sha256": "415ec31b54fe9435f18845da2128d3fc9e8e08ab914434fbbd617a497f18215b"
-      },
-      {
-        "path": "packages/trigger-sdk/package.json",
-        "sha256": "f8049bed60d4c451828074161305394062548358da20d220e9d744fbef783ecd"
-      },
-      {
-        "path": "packages/trigger-sdk/src/imports/uncrypto-cjs.cts",
-        "sha256": "1f9084205a9b6479eacf9b8d1b90d409938c8167615a9d8f880285c06fd79fae"
-      },
-      {
-        "path": "packages/trigger-sdk/src/imports/uncrypto.ts",
-        "sha256": "56fa625e698ce7ef304dba5b0549daf87593941183e51580f44848022606db09"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/auth.ts",
-        "sha256": "5fbbfa48c71dad426792f41e346b0bc843934bb33c04d62ce9ee31c1f53aa4d5"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/batch.ts",
-        "sha256": "db6692d733f98a2e519eb6068e91555ae4d7d70fd037140468f861ac45ff67d4"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/cache.ts",
-        "sha256": "2fcaa5b95135093776f542732cd982f7f32093a6226a12843704e63b240748f3"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/config.ts",
-        "sha256": "b6c6b844ad5cc5076d1237ab49eab9636947cdc75e412316169984d3015c2b40"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/envvars.ts",
-        "sha256": "38e4bd514a49803c417ab0e528b295252ef89ae12979de19a14f882cd5ada451"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/heartbeats.ts",
-        "sha256": "e9df1a47c77db30eb5e0cfdf753d63e46640c0f72d8c3e0f8ed1de61b3bb1dc0"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/hooks.ts",
-        "sha256": "faf7465f4917f953a0fb8dd692ebfb85de0bdbd56524718dd09d499eafc78ed1"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
-        "sha256": "4d142fbee7091772de48318f4ef560d501c084f02699fcd0eb1d2ee9de454d47"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/index-browser.mts",
-        "sha256": "19937006b7a32c3abb9dd6b4736237cbad614c049ecdaebc42651a0a4d5c2959"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/index.ts",
-        "sha256": "3681bdd0f72acb14a538fd5e9a39841a0b5c1e7e9cd5e4dac9b2de2958dde17e"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/locals.ts",
-        "sha256": "0f020abf182598432ebf20068369f950f74e1c1011e97962502bff236a4091ed"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/metadata.ts",
-        "sha256": "1e5c4bee3b5deb7781c099743076c9887e3fc707752d910ecf961b9439df8e3b"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/otel.ts",
-        "sha256": "dad90ce303dc69507ecc21108a13d11bb0fb15c72c46d4b31d1c360d477baa5a"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/prompt.ts",
-        "sha256": "d13b2bb1c2fa91bfd2957891df9f1aff77ed74143ec7fc45df2a26b6dbdaac8d"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/promptManagement.ts",
-        "sha256": "ea650ecb3e506edb607b9d09dcd3463970912f1151541d5504a143b57da06003"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/prompts.ts",
-        "sha256": "406cd0b577538de37cc9195c10f049d43192e2db7350b2926318559d3c380a91"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/query.ts",
-        "sha256": "83e906f746e0ffc7017989e8cfb6899977f341ad873241eb828ace811d140136"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/queues.ts",
-        "sha256": "ed1b4d3e62623f0dd45d61b60e0590d9761421681b6b0c4e5ebde816a0ee29f3"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/retry.ts",
-        "sha256": "3df094206e27cff1377baceeca678af52e8e4437ddf046680c8ee8209b67f4b6"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/runs.ts",
-        "sha256": "7d5422cdfee8164371c3f66010077548a177a3d320e8c8f61ade4b901fd81e7d"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/schedules/api.ts",
-        "sha256": "4f5c858aeaa3ff173016c606aa064cc9d1de4bf5ebfacdd1ab547766a955210f"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/schedules/index.ts",
-        "sha256": "b2297e8e1a02fc5ea57619683a5a90e0de7fd51df758369ae1f22c2c80b6156b"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/schemas.ts",
-        "sha256": "45ca45af9c2ff8d5ab90c173ebce37e9ab844e35f567da6259ef6a2f32c1c6ce"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/shared.test.ts",
-        "sha256": "8b8d8a366512c0d81aab523800d6325dd369bc6d020d23e1960ba0fbc6b80557"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/shared.ts",
-        "sha256": "8fa103e18cdc927e8c98261aad12825dae0c390b8bf585c8b5151a09f70d20fb"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/streams.test.ts",
-        "sha256": "c05e7e3cd5efb516d859f6d1d6bf8553a9a7f3ae1029c377aa20b7b5d82ba3f4"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/streams.ts",
-        "sha256": "746d0fa5172b72558ec42bd0c22beacb0ce8acf1f64f910d411f91608bea051c"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/tags.ts",
-        "sha256": "aa4c344aa87191fc951ca5990c53e7f1b41f8fd08f472c3e3cb82f11c3a1e540"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/tasks.ts",
-        "sha256": "23bece7e58bd8caf23f5a19a366fac4de451374dfddcc48b3860a8525ca0f2eb"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/timeout.ts",
-        "sha256": "ac1bc3215c6850bc28d7589d365c611a103870072cbc399d26bcbe34878cf49f"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/tracer.ts",
-        "sha256": "967345f8214d4ba24bcd3ff24213317e0a4723859faf588ce2b02ef03427dc90"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/usage.ts",
-        "sha256": "da0c6925cd00c3f675537d2a9c8d749aaa20e9eabb7813290312a8df9fd3e546"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/wait.ts",
-        "sha256": "02dcafc9381d0426a0314fc855136736d50adc2142ce6fe5799182a6793d5005"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/waitUntil.ts",
-        "sha256": "7da2dc387e4402f4171fb5ef9f25bb883d7e80b39d58a907ef18e6d056967dce"
-      },
-      {
-        "path": "packages/trigger-sdk/src/v3/webhooks.ts",
-        "sha256": "732e3d8e12cb08e88bd7e8e79cff3aa939324375775c8d14398e00a3a3e57514"
-      },
-      {
-        "path": "packages/trigger-sdk/src/version.ts",
-        "sha256": "1af39e6ade8c28757c5bc04483f06ec60743edea296a75aac2bb14555f09308d"
-      },
-      {
-        "path": "packages/trigger-sdk/tsconfig.build.json",
-        "sha256": "3b07d3af258358074400f565a5708e9f2e18d02a6e5af2f3362c5b47ece405ef"
-      },
-      {
-        "path": "packages/trigger-sdk/tsconfig.json",
-        "sha256": "ed57cf62e565e67604c3ee86dd9e3465c208fe76c15c3c47a92b80c23c0bf7da"
-      },
-      {
-        "path": "packages/trigger-sdk/vitest.config.ts",
-        "sha256": "c553247fbb6c009683089b05247e29fabb1f0f66b4b27115c0ce9ccb46a27d1f"
-      },
-      {
         "path": "patches/@changesets__assemble-release-plan@5.2.4.patch",
         "sha256": "a7a12643e8d89a00d5322f750c292e8567b5ee0fc9c613a238a1184c25533e4b"
       },
@@ -13757,7 +13269,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "f0edd6c5fb83f28af035564a99fd2ac826c2d45f79ddd7b2b2226c8ff34982a8"
+        "sha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -13977,7 +13489,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "5b67aa09eee79751387f3db6ac4ddc1ade2d8cf96964ebe350d058908456f7a5"
+        "sha256": "1c812c65ff2d86923d6534a283568eb47a69eb0dc4c169d6a9404bc2aac4ee58"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -14025,7 +13537,7 @@
       },
       {
         "path": "scripts/license-distribution.test.mjs",
-        "sha256": "8a2082286bad1d4f45cf81381b5da050516a2c53f23dd4032dca77640234db3c"
+        "sha256": "20e6602824cf4e2b47a6a0f3e28623da21eb5bb849108b42cda10463364f434b"
       },
       {
         "path": "scripts/operator-operations.mjs",
@@ -14097,7 +13609,15 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "7854c28bc50f59a601f008206d1ee59a12c8d27acf4a2fd086984824fbadc697"
+        "sha256": "57907aef020363f495fe747f9b405051953b17f1cc35fcb1cbc8268d1fd788da"
+      },
+      {
+        "path": "scripts/vendored-build-audit.mjs",
+        "sha256": "4527987c5f18e27591f7aeeaf5a8f4af3da6fa2c4ada7776e08acd36fb172cc1"
+      },
+      {
+        "path": "scripts/vendored-build-audit.test.mjs",
+        "sha256": "15bf53ef85b2c682da183ec27c11287ed1cbcdce29ddd74bce1797dced464c48"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -14113,7 +13633,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "38ad1ebdf4a32122c7416c5c4bc9f7fbe56a7cef2404a6711f85f904dba65715"
+        "sha256": "ec9bb9179c8415405e00ec329bd7825b6135448d43f0cbef5d311b651358c013"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -14161,11 +13681,11 @@
       },
       {
         "path": "scripts/workspace-reachability.mjs",
-        "sha256": "e83d8b5ac33265b3ce33250990669642355dd669f21812ea785cf4f67a4379d4"
+        "sha256": "102bbf2555ecb8566c7271f8b3cad7208ca5d25c9e1e75ebb20fbc373cfa2557"
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "b2f69f84f8e8a2949578a9685e91ae3f59798c8880221870c404d6202abc924e"
+        "sha256": "63b07e308085aa3a9b44bda504f06e8138b0ce47352c96b0564a76a9732668bc"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -14592,23 +14112,6 @@
             ]
           },
           {
-            "importer": "internal-packages/sdk-compat-tests",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "internal-packages/sdk-compat-tests",
-                "packages/trigger-sdk",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
             "importer": "internal-packages/testcontainers",
             "kind": "lockfile-dev-only-snapshot-closure",
             "reversePaths": [
@@ -14646,22 +14149,6 @@
             "reversePaths": [
               [
                 "internal-packages/zod-worker",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "packages/build",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "packages/build",
                 "packages/core",
                 "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
                 "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
@@ -14719,75 +14206,11 @@
             ]
           },
           {
-            "importer": "packages/python",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "packages/python",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
             "importer": "packages/redis-worker",
             "kind": "lockfile-production-snapshot-closure",
             "reversePaths": [
               [
                 "packages/redis-worker",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "packages/rsc",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "packages/rsc",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "packages/schema-to-json",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "packages/schema-to-json",
-                "packages/core",
-                "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            ],
-            "snapshotKeys": [
-              "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          },
-          {
-            "importer": "packages/trigger-sdk",
-            "kind": "lockfile-production-snapshot-closure",
-            "reversePaths": [
-              [
-                "packages/trigger-sdk",
                 "packages/core",
                 "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
                 "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
@@ -15207,7 +14630,6 @@
       "internal-packages/redis",
       "internal-packages/run-engine",
       "internal-packages/schedule-engine",
-      "internal-packages/sdk-compat-tests",
       "internal-packages/tenancy-database",
       "internal-packages/tenancy-database/migration-image",
       "internal-packages/testcontainers",
@@ -15226,7 +14648,6 @@
       "packages/adapters/redis-cache",
       "packages/adapters/redis-ratelimit",
       "packages/adapters/redis-streams",
-      "packages/build",
       "packages/contexts/agents",
       "packages/contexts/channels",
       "packages/contexts/conversations",
@@ -15251,12 +14672,8 @@
       "packages/platos-embed",
       "packages/platos-react-widget",
       "packages/platos-token-mint",
-      "packages/python",
       "packages/react-hooks",
-      "packages/redis-worker",
-      "packages/rsc",
-      "packages/schema-to-json",
-      "packages/trigger-sdk"
+      "packages/redis-worker"
     ],
     "shippingDockerfiles": {
       "apps/agent/Dockerfile": "apps/agent",
@@ -15268,16 +14685,16 @@
   "summary": {
     "applicationDeployableWorkspaceCount": 37,
     "channelReachableCounts": {
-      "ci": 66,
+      "ci": 60,
       "dockerImage": 7,
-      "docsExamples": 63,
+      "docsExamples": 58,
       "generated": 40,
-      "license": 50,
-      "packageScripts": 66,
-      "patches": 21,
+      "license": 45,
+      "packageScripts": 60,
+      "patches": 15,
       "sourceDynamic": 0,
-      "sourceStatic": 17,
-      "testsFixtures": 46
+      "sourceStatic": 15,
+      "testsFixtures": 40
     },
     "configuredPatchCount": 7,
     "deploymentUnionWorkspaceCount": 38,
@@ -15285,13 +14702,13 @@
       "agent": 718,
       "webapp": 1637
     },
-    "installTraversalWorkspaceCount": 66,
+    "installTraversalWorkspaceCount": 60,
     "ociImageWorkspaceCount": 6,
-    "publicBoundaryCount": 13,
+    "publicBoundaryCount": 8,
     "reconciledPatchCount": 7,
-    "registeredWorkspaceCount": 66,
+    "registeredWorkspaceCount": 60,
     "repositoryDevWorkspaceCount": 10,
-    "reviewCandidateCount": 28
+    "reviewCandidateCount": 22
   },
   "workspaces": [
     {
@@ -15725,7 +15142,7 @@
             {
               "from": "docs/upgrading-from-trigger.md",
               "kind": "reference",
-              "line": 48
+              "line": 49
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -17515,7 +16932,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 274
+              "line": 287
             },
             {
               "from": "tests/persisted-state-gate/non-browser-evidence-contract.json",
@@ -18763,7 +18180,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "8172702020a1f938f2c902d857b3bcfc64f2ac130eeaef0ffac3ed08ff2e2199",
+      "evidenceSha256": "223f4bfc263bdf898d3779f2a7bf57e0193a2afeb2255f3dbd3ab37558243047",
       "manifestSha256": "b9b8eed2d98a23eb5bb4a10b2d8c59357d4893ba11d025dc063a29de9c708944",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -21579,7 +20996,7 @@
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
               "kind": "reference",
-              "line": 381
+              "line": 382
             },
             {
               "from": "scripts/webapp-bff-matrix.test.mjs",
@@ -21589,7 +21006,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 363
+              "line": 376
             },
             {
               "from": "tests/browser-evidence/artifact-schema.json",
@@ -22055,7 +21472,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "84e6148075da90a8567e13fea82af5b74c2b037d088f0b7b9ac044ba0f63bf1a",
+      "evidenceSha256": "ba069094d4cca110f065219dba6fea8907c74de6a08ecfbc39bfe874711a7c97",
       "manifestSha256": "6026965044352a11f70b85b067c972dc67310139a065fe8bf96b91532b19f44a",
       "name": "webapp",
       "ociImageClosure": {
@@ -22889,7 +22306,7 @@
             {
               "from": "docs/config/extensions/custom.mdx",
               "kind": "workspace-owned-file",
-              "line": 1
+              "line": 380
             },
             {
               "from": "docs/config/extensions/emitDecoratorMetadata.mdx",
@@ -24597,16 +24014,6 @@
               "line": 4
             },
             {
-              "from": "packages/build/CHANGELOG.md",
-              "kind": "reference",
-              "line": 529
-            },
-            {
-              "from": "packages/build/README.md",
-              "kind": "reference",
-              "line": 6
-            },
-            {
               "from": "packages/core/CHANGELOG.md",
               "kind": "reference",
               "line": 45
@@ -24647,16 +24054,6 @@
               "line": 123
             },
             {
-              "from": "packages/python/CHANGELOG.md",
-              "kind": "reference",
-              "line": 187
-            },
-            {
-              "from": "packages/python/README.md",
-              "kind": "reference",
-              "line": 138
-            },
-            {
               "from": "packages/react-hooks/CHANGELOG.md",
               "kind": "reference",
               "line": 157
@@ -24670,21 +24067,6 @@
               "from": "packages/redis-worker/CHANGELOG.md",
               "kind": "reference",
               "line": 149
-            },
-            {
-              "from": "packages/rsc/CHANGELOG.md",
-              "kind": "reference",
-              "line": 147
-            },
-            {
-              "from": "packages/trigger-sdk/CHANGELOG.md",
-              "kind": "reference",
-              "line": 258
-            },
-            {
-              "from": "packages/trigger-sdk/README.md",
-              "kind": "reference",
-              "line": 15
             },
             {
               "from": "README.md",
@@ -26598,14 +25980,6 @@
               "internal-packages/docs/src/repository.ts"
             ],
             [
-              "packages/build/CHANGELOG.md",
-              "packages/build/CHANGELOG.md"
-            ],
-            [
-              "packages/build/README.md",
-              "packages/build/README.md"
-            ],
-            [
               "packages/core/CHANGELOG.md",
               "packages/core/CHANGELOG.md"
             ],
@@ -26638,14 +26012,6 @@
               "packages/platos-token-mint/README.md"
             ],
             [
-              "packages/python/CHANGELOG.md",
-              "packages/python/CHANGELOG.md"
-            ],
-            [
-              "packages/python/README.md",
-              "packages/python/README.md"
-            ],
-            [
               "packages/react-hooks/CHANGELOG.md",
               "packages/react-hooks/CHANGELOG.md"
             ],
@@ -26656,18 +26022,6 @@
             [
               "packages/redis-worker/CHANGELOG.md",
               "packages/redis-worker/CHANGELOG.md"
-            ],
-            [
-              "packages/rsc/CHANGELOG.md",
-              "packages/rsc/CHANGELOG.md"
-            ],
-            [
-              "packages/trigger-sdk/CHANGELOG.md",
-              "packages/trigger-sdk/CHANGELOG.md"
-            ],
-            [
-              "packages/trigger-sdk/README.md",
-              "packages/trigger-sdk/README.md"
             ],
             [
               "README.md",
@@ -27165,8 +26519,6 @@
             "internal-packages/docs/src/markdown.ts",
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/docs/src/repository.ts",
-            "packages/build/CHANGELOG.md",
-            "packages/build/README.md",
             "packages/core/CHANGELOG.md",
             "packages/platools-js/README.md",
             "packages/platools-py/README.md",
@@ -27175,14 +26527,9 @@
             "packages/platos-embed/README.md",
             "packages/platos-react-widget/README.md",
             "packages/platos-token-mint/README.md",
-            "packages/python/CHANGELOG.md",
-            "packages/python/README.md",
             "packages/react-hooks/CHANGELOG.md",
             "packages/react-hooks/README.md",
             "packages/redis-worker/CHANGELOG.md",
-            "packages/rsc/CHANGELOG.md",
-            "packages/trigger-sdk/CHANGELOG.md",
-            "packages/trigger-sdk/README.md",
             "references/entity-docs-mcp-bridge/README.md",
             "references/entity-hello-world/README.md"
           ]
@@ -27472,9 +26819,14 @@
               "line": 32
             },
             {
+              "from": "scripts/vendored-build-audit.test.mjs",
+              "kind": "reference",
+              "line": 106
+            },
+            {
               "from": "scripts/vocabulary-boundary.test.mjs",
               "kind": "reference",
-              "line": 150
+              "line": 151
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -27589,6 +26941,10 @@
               "scripts/v1-ledger.test.mjs"
             ],
             [
+              "scripts/vendored-build-audit.test.mjs",
+              "scripts/vendored-build-audit.test.mjs"
+            ],
+            [
               "scripts/vocabulary-boundary.test.mjs",
               "scripts/vocabulary-boundary.test.mjs"
             ],
@@ -27638,6 +26994,7 @@
             "scripts/root-entry-manifest.test.mjs",
             "scripts/route-capability-completion-audit.test.mjs",
             "scripts/v1-ledger.test.mjs",
+            "scripts/vendored-build-audit.test.mjs",
             "scripts/vocabulary-boundary.test.mjs",
             "scripts/workspace-reachability.test.mjs",
             "tests/browser-evidence/artifact-schema.json",
@@ -27654,7 +27011,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0f96de9b36cf01ae6cf5949c99035a0291700858074c0141720b7e39486f8be6",
+      "evidenceSha256": "b303764c134ba9b3f78c112d17faf7d50e9e963ea7652409da61f6660ebc5b8c",
       "manifestSha256": "3c417b8f7bd7a07e1d17a6f3d37555005c99588f6cc952f079b9be2d6da82328",
       "name": "docs",
       "ociImageClosure": {
@@ -28371,7 +27728,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 197
+              "line": 199
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -28470,7 +27827,7 @@
             {
               "from": "docs/upgrading-from-trigger.md",
               "kind": "reference",
-              "line": 40
+              "line": 41
             },
             {
               "from": "internal-packages/database/CHANGELOG.md",
@@ -29224,7 +28581,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f5e43684db1daa619389fa109bb1f78b69a007a88d2d6643b623ad4ced0d2527",
+      "evidenceSha256": "3c86b463c24870d4abebd91de00efcf9034dcae4ef745738f29c6357ea901273",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -29992,7 +29349,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 1078
+              "line": 1065
             },
             {
               "from": "docs/wait-until.mdx",
@@ -30283,7 +29640,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "112b2886241c960361a0e6a50561c308e9c867f160d8ee3a39ea216c95bc7c5b",
+      "evidenceSha256": "fc5e2efb45d92a61926632a3873fbdedb4590e8ed80b63c49f26cdd1a216c449",
       "manifestSha256": "99df9851329461a6766ed5a1fbcb3a4da24ed2d061451fb1f446250e51984355",
       "name": "emails",
       "ociImageClosure": {
@@ -30678,7 +30035,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 910
+              "line": 897
             },
             {
               "from": "internal-packages/otlp-importer/CHANGELOG.md",
@@ -30844,7 +30201,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "07a0cd27afc0fa36ccde078e1d709afab97f8608b31447e630b34900495ba220",
+      "evidenceSha256": "90f21ab0c471a34c9bb716282792524563ac0d5e0c5193df696a7dd7ec2f68ba",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -31980,7 +31337,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 284
+              "line": 297
             }
           ],
           "reversePaths": [
@@ -32200,7 +31557,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "baaf3f832274e89c45f3621cc5f1680676ba8899a92b992321cfa085894c1aee",
+      "evidenceSha256": "d86b1c14d058836ab83edabc08712934201dac5648f6a85337318111252f46f3",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -32542,404 +31899,6 @@
         "roots": []
       },
       "path": "internal-packages/schedule-engine",
-      "private": true,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": false,
-        "externalPublicReasons": [],
-        "kind": "embedded-private-implementation",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-repository-referenced"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "command": "vitest",
-              "from": "internal-packages/sdk-compat-tests/package.json",
-              "kind": "workspace-script",
-              "script": "test:watch"
-            },
-            {
-              "command": "vitest",
-              "from": "internal-packages/sdk-compat-tests/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc --noEmit",
-              "from": "internal-packages/sdk-compat-tests/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/sdk-compat-tests/package.json",
-              "internal-packages/sdk-compat-tests/package.json"
-            ],
-            [
-              "package.json",
-              "package.json"
-            ]
-          ],
-          "roots": [
-            "internal-packages/sdk-compat-tests/package.json",
-            "package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "internal-packages/sdk-compat-tests",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "internal-packages/sdk-compat-tests",
-                  "packages/trigger-sdk",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/sdk-compat-tests",
-              "packages/trigger-sdk",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "internal-packages/sdk-compat-tests"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "internal-packages/sdk-compat-tests/package.json",
-              "kind": "test-script",
-              "script": "test:watch"
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/sdk-compat-tests/package.json",
-              "internal-packages/sdk-compat-tests/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-              "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-              "internal-packages/sdk-compat-tests/src/tests/import.test.ts"
-            ]
-          ],
-          "roots": [
-            "internal-packages/sdk-compat-tests/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
-            "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
-            "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
-            "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-            "internal-packages/sdk-compat-tests/src/tests/import.test.ts"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "088bb62e76be8c4ddb00c2211d217e6b81d4f261b7283af8e8868e220a751ef2",
-      "manifestSha256": "1743df938914919cc4281332f61db37ac5bbc7ac3563274602ae10ca8183d42d",
-      "name": "@internal/sdk-compat-tests",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "internal-packages/sdk-compat-tests",
       "private": true,
       "repositoryDevClosure": {
         "reachable": false,
@@ -35007,7 +33966,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 197
+              "line": 199
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35449,7 +34408,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 274
+              "line": 287
             }
           ],
           "reversePaths": [
@@ -35704,7 +34663,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e8095c075b79a091c0ecd90555a6f4074492fa2625c8ca8189ecd2ddce18e30d",
+      "evidenceSha256": "ecf297845ca237b57f050c890f2bb0d3f4b741b16570fc6deca97538af40eb44",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -37435,7 +36394,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 302
+              "line": 296
             }
           ],
           "reversePaths": [
@@ -37518,7 +36477,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 302
+              "line": 296
             }
           ],
           "reversePaths": [
@@ -37587,7 +36546,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "d2c6e8e3e3a1764243478c82a6a8efaa173b736a4210ded6dfb180e8e6cf6c71",
+      "evidenceSha256": "343236dc0175a8ebddfefc7afa170f9e915f7aa3fce786b63e3c961d52d0f606",
       "manifestSha256": "1a96d65bdf3ef715636b959dbc9e51bd4cb1340b7339539dca003fe7a18fb41e",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -41600,372 +40559,6 @@
     },
     {
       "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": true,
-        "externalPublicReasons": [
-          "package.json does not set private:true"
-        ],
-        "kind": "external-public-package",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-public-boundary"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".changeset/eobd-83-followup-package-repo-urls.md",
-              "kind": "reference",
-              "line": 2
-            },
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 105
-            },
-            {
-              "from": "docs/config/extensions/custom.mdx",
-              "kind": "reference",
-              "line": 380
-            },
-            {
-              "from": "docs/launch/release-notes-v1.0.0.md",
-              "kind": "reference",
-              "line": 57
-            },
-            {
-              "from": "packages/build/CHANGELOG.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/build/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              ".changeset/eobd-83-followup-package-repo-urls.md",
-              ".changeset/eobd-83-followup-package-repo-urls.md"
-            ],
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/config/extensions/custom.mdx",
-              "docs/config/extensions/custom.mdx"
-            ],
-            [
-              "docs/launch/release-notes-v1.0.0.md",
-              "docs/launch/release-notes-v1.0.0.md"
-            ],
-            [
-              "packages/build/CHANGELOG.md",
-              "packages/build/CHANGELOG.md"
-            ],
-            [
-              "packages/build/README.md",
-              "packages/build/README.md"
-            ]
-          ],
-          "roots": [
-            ".changeset/eobd-83-followup-package-repo-urls.md",
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/config/extensions/custom.mdx",
-            "docs/launch/release-notes-v1.0.0.md",
-            "packages/build/CHANGELOG.md",
-            "packages/build/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/build/LICENSE",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/build/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            },
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 45
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/build/LICENSE",
-              "packages/build/LICENSE"
-            ],
-            [
-              "packages/build/package.json",
-              "packages/build/package.json"
-            ],
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/build/LICENSE",
-            "packages/build/package.json",
-            "scripts/license-distribution.test.mjs"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "check-exports"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            },
-            {
-              "command": "tshy && pnpm run update-version",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "attw --pack .",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "check-exports"
-            },
-            {
-              "command": "rimraf dist .tshy .tshy-build .turbo",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tshy --watch",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "tsc --noEmit -p tsconfig.src.json",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "command": "tsx ../../scripts/updateVersion.ts",
-              "from": "packages/build/package.json",
-              "kind": "workspace-script",
-              "script": "update-version"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/build/package.json",
-              "packages/build/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/build/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "packages/build",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "packages/build",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/build",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "packages/build"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": true,
-          "reasons": [
-            {
-              "file": "packages/python/src/extension.ts",
-              "from": "packages/python",
-              "line": 3,
-              "specifier": "@platos/build/internal"
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/python",
-              "packages/python/src/extension.ts"
-            ]
-          ],
-          "roots": [
-            "packages/python"
-          ]
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 45
-            }
-          ],
-          "reversePaths": [
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "scripts/license-distribution.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "2a789624ab47bf7884ed49ca70fc8e5ac150d60bd29b53d40053b33f3dbd469f",
-      "manifestSha256": "45fb3b83186603512b34e8630d9744155a6b6bc223f96e3390f434a20ad7189d",
-      "name": "@platos/build",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/build",
-      "private": false,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
         "reachable": true,
         "reasons": [
           {
@@ -42256,7 +40849,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 301
+              "line": 295
             }
           ],
           "reversePaths": [
@@ -42339,7 +40932,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 301
+              "line": 295
             }
           ],
           "reversePaths": [
@@ -42452,7 +41045,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "963d1a1a1c1133d3903697ea9a671062f7b2287d4d5ff94e09ad8ef74b51bd6a",
+      "evidenceSha256": "f78d4ef331044c197c532ec68326ded79112d60a927fcf46d982cd98fa29da8e",
       "manifestSha256": "59b0cd6327b884a5f29a551b72f392f79e87bd08169ce7dc38890fe7f2091133",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -53310,7 +51903,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 206
+              "line": 208
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -53362,12 +51955,12 @@
             {
               "from": ".changeset/eobd-83-followup-package-repo-urls.md",
               "kind": "reference",
-              "line": 3
+              "line": 2
             },
             {
               "from": "ai/references/repo.md",
               "kind": "reference",
-              "line": 14
+              "line": 13
             },
             {
               "from": "apps/core-api/README.md",
@@ -53382,7 +51975,7 @@
             {
               "from": "docs/architecture/INTEGRATIONS_AUDIT.md",
               "kind": "reference",
-              "line": 17
+              "line": 18
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -53397,7 +51990,7 @@
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
               "kind": "reference",
-              "line": 56
+              "line": 57
             },
             {
               "from": "docs/refactor/platos-trigger-refactor.md",
@@ -53510,7 +52103,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 46
+              "line": 44
             }
           ],
           "reversePaths": [
@@ -54015,174 +52608,6 @@
               "specifier": "@platos/core/logger"
             },
             {
-              "file": "packages/build/src/extensions/audioWaveform.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/extensions/audioWaveform.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/additionalFiles.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/additionalPackages.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/aptGet.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/ffmpeg.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/neonSyncEnvVars.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/syncEnvVars.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/index.ts",
-              "from": "packages/build",
-              "line": 14,
-              "specifier": "@platos/core/v3/schemas"
-            },
-            {
-              "file": "packages/build/src/extensions/index.ts",
-              "from": "packages/build",
-              "line": 16,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/index.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/lightpanda.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/playwright.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/playwright.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/extensions/prisma.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/extensions/prisma.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/puppeteer.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/extensions/puppeteer.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/extensions/typescript.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/build/src/internal/additionalFiles.ts",
-              "from": "packages/build",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/build/src/internal/additionalFiles.ts",
-              "from": "packages/build",
-              "line": 2,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/python/src/extension.ts",
-              "from": "packages/python",
-              "line": 4,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/python/src/extension.ts",
-              "from": "packages/python",
-              "line": 5,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/python/src/index.ts",
-              "from": "packages/python",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/python/src/index.ts",
-              "from": "packages/python",
-              "line": 8,
-              "specifier": "@platos/core/v3/otel"
-            },
-            {
               "file": "packages/redis-worker/src/fair-queue/index.ts",
               "from": "packages/redis-worker",
               "line": 3,
@@ -54253,294 +52678,6 @@
               "from": "packages/redis-worker",
               "line": 17,
               "specifier": "@platos/core/v3/serverOnly"
-            },
-            {
-              "file": "packages/rsc/src/build.ts",
-              "from": "packages/rsc",
-              "line": 1,
-              "specifier": "@platos/core/v3/build"
-            },
-            {
-              "file": "packages/schema-to-json/src/index.ts",
-              "from": "packages/schema-to-json",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/auth.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/auth.ts",
-              "from": "packages/trigger-sdk",
-              "line": 6,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/batch.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/cache.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/config.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/config.ts",
-              "from": "packages/trigger-sdk",
-              "line": 3,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/envvars.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/envvars.ts",
-              "from": "packages/trigger-sdk",
-              "line": 12,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/heartbeats.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/hooks.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/index.ts",
-              "from": "packages/trigger-sdk",
-              "line": 25,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/index.ts",
-              "from": "packages/trigger-sdk",
-              "line": 27,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/locals.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/metadata.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/metadata.ts",
-              "from": "packages/trigger-sdk",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/otel.ts",
-              "from": "packages/trigger-sdk",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/prompt.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/promptManagement.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/query.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/query.ts",
-              "from": "packages/trigger-sdk",
-              "line": 10,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/query.ts",
-              "from": "packages/trigger-sdk",
-              "line": 7,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/queues.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/retry.ts",
-              "from": "packages/trigger-sdk",
-              "line": 10,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/runs.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/runs.ts",
-              "from": "packages/trigger-sdk",
-              "line": 20,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/runs.ts",
-              "from": "packages/trigger-sdk",
-              "line": 32,
-              "specifier": "@platos/core/v3/utils/ioSerialization"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/schedules/api.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/schedules/index.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/schedules/index.ts",
-              "from": "packages/trigger-sdk",
-              "line": 14,
-              "specifier": "@platos/core/v3/zodfetch"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/schemas.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/shared.ts",
-              "from": "packages/trigger-sdk",
-              "line": 2,
-              "specifier": "@platos/core"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/shared.ts",
-              "from": "packages/trigger-sdk",
-              "line": 3,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/shared.ts",
-              "from": "packages/trigger-sdk",
-              "line": 36,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/streams.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/streams.ts",
-              "from": "packages/trigger-sdk",
-              "line": 31,
-              "specifier": "@platos/core/v3/utils/ioSerialization"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/tags.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/tags.ts",
-              "from": "packages/trigger-sdk",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/timeout.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/tracer.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3/tracer"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/usage.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/wait.ts",
-              "from": "packages/trigger-sdk",
-              "line": 2,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/wait.ts",
-              "from": "packages/trigger-sdk",
-              "line": 25,
-              "specifier": "@platos/core/v3/utils/ioSerialization"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/wait.ts",
-              "from": "packages/trigger-sdk",
-              "line": 358,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/waitUntil.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
-            },
-            {
-              "file": "packages/trigger-sdk/src/v3/webhooks.ts",
-              "from": "packages/trigger-sdk",
-              "line": 1,
-              "specifier": "@platos/core/v3"
             }
           ],
           "reversePaths": [
@@ -54673,78 +52810,6 @@
               "internal-packages/zod-worker/src/pgListen.server.ts"
             ],
             [
-              "packages/build",
-              "packages/build/src/extensions/audioWaveform.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/additionalFiles.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/additionalPackages.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/aptGet.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/ffmpeg.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/neonSyncEnvVars.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/syncEnvVars.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/syncSupabaseEnvVars.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/core/vercelSyncEnvVars.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/index.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/lightpanda.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/playwright.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/prisma.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/puppeteer.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/extensions/typescript.ts"
-            ],
-            [
-              "packages/build",
-              "packages/build/src/internal/additionalFiles.ts"
-            ],
-            [
-              "packages/python",
-              "packages/python/src/extension.ts"
-            ],
-            [
-              "packages/python",
-              "packages/python/src/index.ts"
-            ],
-            [
               "packages/redis-worker",
               "packages/redis-worker/src/fair-queue/index.ts"
             ],
@@ -54775,134 +52840,6 @@
             [
               "packages/redis-worker",
               "packages/redis-worker/src/worker.ts"
-            ],
-            [
-              "packages/rsc",
-              "packages/rsc/src/build.ts"
-            ],
-            [
-              "packages/schema-to-json",
-              "packages/schema-to-json/src/index.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/auth.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/batch.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/cache.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/config.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/envvars.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/heartbeats.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/hooks.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/idempotencyKeys.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/index.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/locals.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/metadata.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/otel.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/prompt.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/promptManagement.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/query.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/queues.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/retry.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/runs.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/schedules/api.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/schedules/index.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/schemas.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/shared.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/streams.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/tags.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/timeout.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/tracer.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/usage.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/wait.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/waitUntil.ts"
-            ],
-            [
-              "packages/trigger-sdk",
-              "packages/trigger-sdk/src/v3/webhooks.ts"
             ]
           ],
           "roots": [
@@ -54913,12 +52850,7 @@
             "internal-packages/testcontainers",
             "internal-packages/tracing",
             "internal-packages/zod-worker",
-            "packages/build",
-            "packages/python",
-            "packages/redis-worker",
-            "packages/rsc",
-            "packages/schema-to-json",
-            "packages/trigger-sdk"
+            "packages/redis-worker"
           ]
         },
         "testsFixtures": {
@@ -55155,14 +53087,9 @@
               "line": 2
             },
             {
-              "from": "packages/trigger-sdk/src/v3/streams.test.ts",
-              "kind": "reference",
-              "line": 3
-            },
-            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 46
+              "line": 44
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -55170,9 +53097,14 @@
               "line": 91
             },
             {
+              "from": "scripts/vendored-build-audit.test.mjs",
+              "kind": "reference",
+              "line": 148
+            },
+            {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 274
+              "line": 287
             }
           ],
           "reversePaths": [
@@ -55361,16 +53293,16 @@
               "packages/redis-worker/src/worker.test.ts"
             ],
             [
-              "packages/trigger-sdk/src/v3/streams.test.ts",
-              "packages/trigger-sdk/src/v3/streams.test.ts"
-            ],
-            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ],
             [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
+            ],
+            [
+              "scripts/vendored-build-audit.test.mjs",
+              "scripts/vendored-build-audit.test.mjs"
             ],
             [
               "scripts/workspace-reachability.test.mjs",
@@ -55424,9 +53356,9 @@
             "packages/redis-worker/src/cron.test.ts",
             "packages/redis-worker/src/queue.test.ts",
             "packages/redis-worker/src/worker.test.ts",
-            "packages/trigger-sdk/src/v3/streams.test.ts",
             "scripts/license-distribution.test.mjs",
             "scripts/v1-ledger.test.mjs",
+            "scripts/vendored-build-audit.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
         }
@@ -55437,7 +53369,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "06039c2d3ad463b651818f75e0b7583565847951b4c1fd2696bc67625cdf9b0e",
+      "evidenceSha256": "feb073b4afa7eed1d86f46bf8e899de6dda6c32949a149f6851eaf2a9bdd7dc7",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -56287,7 +54219,7 @@
             {
               "from": "ai/references/repo.md",
               "kind": "reference",
-              "line": 15
+              "line": 14
             },
             {
               "from": "docs/adr/M0.3-bounded-contexts.md",
@@ -56297,7 +54229,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 587
+              "line": 574
             },
             {
               "from": "packages/kernel/README.md",
@@ -56697,7 +54629,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 471
+              "line": 484
             }
           ],
           "reversePaths": [
@@ -57472,7 +55404,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "8113a4889ced8bec7749509d9eb36f752ffcc51a4ff507e67e32f8c98ccaad30",
+      "evidenceSha256": "a2f179cdaa7b98a07602fd5da548ddd2fcfd5f2db8a13cb6d1ce6752bc65150e",
       "manifestSha256": "efa8a35750f2151c8ed1db29bba5b2cb179b8fc43e390fa10136230db86d1606",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -57596,7 +55528,7 @@
             {
               "from": "ai/references/repo.md",
               "kind": "reference",
-              "line": 16
+              "line": 15
             },
             {
               "from": "content/docs/connected-entities.md",
@@ -57804,7 +55736,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 47
+              "line": 45
             }
           ],
           "reversePaths": [
@@ -58014,7 +55946,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 47
+              "line": 45
             }
           ],
           "reversePaths": [
@@ -58109,7 +56041,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aa230c3bcea9a9a5de6503aa1ddc7e80031c3b6b5a8b76c9dc3242419546941f",
+      "evidenceSha256": "61cdb0cfd036f2d0d5027f2277efe8f4c03f3686057337afc918af85294750f5",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -58210,7 +56142,7 @@
             {
               "from": "ai/references/repo.md",
               "kind": "reference",
-              "line": 16
+              "line": 15
             },
             {
               "from": "content/docs/artifacts.md",
@@ -58263,6 +56195,11 @@
               "line": 167
             },
             {
+              "from": "docs/architecture/INTEGRATIONS_AUDIT.md",
+              "kind": "reference",
+              "line": 17
+            },
+            {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
               "line": 5069
@@ -58278,9 +56215,29 @@
               "line": 214
             },
             {
+              "from": "docs/launch/release-notes-v1.0.0.md",
+              "kind": "reference",
+              "line": 56
+            },
+            {
               "from": "docs/sdk-v1-migration.md",
               "kind": "reference",
               "line": 36
+            },
+            {
+              "from": "docs/trigger-integration.md",
+              "kind": "reference",
+              "line": 288
+            },
+            {
+              "from": "docs/upgrading-from-trigger.md",
+              "kind": "reference",
+              "line": 34
+            },
+            {
+              "from": "docs/writing-agents.md",
+              "kind": "reference",
+              "line": 32
             },
             {
               "from": "examples/platos-client-react-widget/ChatWidget.tsx",
@@ -58402,6 +56359,10 @@
               "docs/adr/M0.4-contract-versioning.md"
             ],
             [
+              "docs/architecture/INTEGRATIONS_AUDIT.md",
+              "docs/architecture/INTEGRATIONS_AUDIT.md"
+            ],
+            [
               "docs/audits/M0.2-capability-matrix.json",
               "docs/audits/M0.2-capability-matrix.json"
             ],
@@ -58414,8 +56375,24 @@
               "docs/audits/sbom/closure-contract.md"
             ],
             [
+              "docs/launch/release-notes-v1.0.0.md",
+              "docs/launch/release-notes-v1.0.0.md"
+            ],
+            [
               "docs/sdk-v1-migration.md",
               "docs/sdk-v1-migration.md"
+            ],
+            [
+              "docs/trigger-integration.md",
+              "docs/trigger-integration.md"
+            ],
+            [
+              "docs/upgrading-from-trigger.md",
+              "docs/upgrading-from-trigger.md"
+            ],
+            [
+              "docs/writing-agents.md",
+              "docs/writing-agents.md"
             ],
             [
               "examples/platos-client-react-widget/ChatWidget.tsx",
@@ -58485,10 +56462,15 @@
             "content/guides/chat-stream-disconnects.md",
             "content/guides/publish-postman-template.md",
             "docs/adr/M0.4-contract-versioning.md",
+            "docs/architecture/INTEGRATIONS_AUDIT.md",
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/sbom/closure-contract.md",
+            "docs/launch/release-notes-v1.0.0.md",
             "docs/sdk-v1-migration.md",
+            "docs/trigger-integration.md",
+            "docs/upgrading-from-trigger.md",
+            "docs/writing-agents.md",
             "examples/platos-client-react-widget/ChatWidget.tsx",
             "examples/platos-client-react-widget/README.md",
             "examples/platos-client-react-widget/package.json",
@@ -58537,7 +56519,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 48
+              "line": 46
             }
           ],
           "reversePaths": [
@@ -58772,7 +56754,17 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 48
+              "line": 46
+            },
+            {
+              "from": "scripts/vendored-build-audit.test.mjs",
+              "kind": "reference",
+              "line": 125
+            },
+            {
+              "from": "scripts/workspace-reachability.test.mjs",
+              "kind": "reference",
+              "line": 294
             }
           ],
           "reversePaths": [
@@ -58815,6 +56807,14 @@
             [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
+            ],
+            [
+              "scripts/vendored-build-audit.test.mjs",
+              "scripts/vendored-build-audit.test.mjs"
+            ],
+            [
+              "scripts/workspace-reachability.test.mjs",
+              "scripts/workspace-reachability.test.mjs"
             ]
           ],
           "roots": [
@@ -58827,7 +56827,9 @@
             "packages/platos-react-widget/tests/usePlatosChat.test.tsx",
             "scripts/arch/clean-v1.test.mjs",
             "scripts/docs-examples.test.mjs",
-            "scripts/license-distribution.test.mjs"
+            "scripts/license-distribution.test.mjs",
+            "scripts/vendored-build-audit.test.mjs",
+            "scripts/workspace-reachability.test.mjs"
           ]
         }
       },
@@ -58837,7 +56839,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "7a54eabe53410dbb0acbb27a6068114e4de2baf2dcf83b28c051de0cda072f6f",
+      "evidenceSha256": "3764832df6c2a868b1dc408a7c8fc624dc0cfeb1c6a07cbdafa3af6a20fcb27b",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -59003,7 +57005,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 49
+              "line": 47
             }
           ],
           "reversePaths": [
@@ -59123,7 +57125,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 49
+              "line": 47
             }
           ],
           "reversePaths": [
@@ -59153,7 +57155,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "17edb02c4e11ffc2d15a23acc955fcc9334de8c03324162334c7423bbf0e41b7",
+      "evidenceSha256": "26f83fd504a22a2c301f7adab5a95ea9f7bdcbb3a77067fb283584368b1297ba",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -59309,7 +57311,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 50
+              "line": 48
             }
           ],
           "reversePaths": [
@@ -59458,7 +57460,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 50
+              "line": 48
             }
           ],
           "reversePaths": [
@@ -59488,7 +57490,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "233c38646ad75a4bb3234e454c7883ad4ae1f684db424bf47f2c9214f9222ae4",
+      "evidenceSha256": "87406163254db53ea2e28d2e96682e369d0e1a2f7e2c363717d46d12ae2f9bf5",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -59724,7 +57726,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 51
+              "line": 49
             }
           ],
           "reversePaths": [
@@ -59873,7 +57875,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 51
+              "line": 49
             }
           ],
           "reversePaths": [
@@ -59918,7 +57920,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "980ddb00e473341a79c08f7636a64880e286342d9f0f33767ea1f4d9786acd45",
+      "evidenceSha256": "ca24a95683867ecfa57090779d9a81a42fcbcd683e25ca859c6d4588d59894f8",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
@@ -59960,328 +57962,6 @@
         "roots": [
           "apps/agent"
         ]
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": true,
-        "externalPublicReasons": [
-          "package.json does not set private:true"
-        ],
-        "kind": "external-public-package",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-public-boundary"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".changeset/eobd-83-followup-package-repo-urls.md",
-              "kind": "reference",
-              "line": 4
-            },
-            {
-              "from": "packages/python/CHANGELOG.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/python/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              ".changeset/eobd-83-followup-package-repo-urls.md",
-              ".changeset/eobd-83-followup-package-repo-urls.md"
-            ],
-            [
-              "packages/python/CHANGELOG.md",
-              "packages/python/CHANGELOG.md"
-            ],
-            [
-              "packages/python/README.md",
-              "packages/python/README.md"
-            ]
-          ],
-          "roots": [
-            ".changeset/eobd-83-followup-package-repo-urls.md",
-            "packages/python/CHANGELOG.md",
-            "packages/python/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/python/LICENSE",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/python/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            },
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 52
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/python/LICENSE",
-              "packages/python/LICENSE"
-            ],
-            [
-              "packages/python/package.json",
-              "packages/python/package.json"
-            ],
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/python/LICENSE",
-            "packages/python/package.json",
-            "scripts/license-distribution.test.mjs"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "check-exports"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            },
-            {
-              "command": "tshy && pnpm run update-version",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "attw --pack .",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "check-exports"
-            },
-            {
-              "command": "rimraf dist",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tshy --watch",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "tsc --noEmit -p tsconfig.src.json",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "command": "tsx ../../scripts/updateVersion.ts",
-              "from": "packages/python/package.json",
-              "kind": "workspace-script",
-              "script": "update-version"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/python/package.json",
-              "packages/python/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/python/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "packages/python",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "packages/python",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/python",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "packages/python"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 52
-            }
-          ],
-          "reversePaths": [
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "scripts/license-distribution.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "336b7a6857b5033078456b1e6e43f3942084f794db67c13e1c5364fcb62e289d",
-      "manifestSha256": "1b8fe8a56116c8d273fb7f8ac9660d04ad5db4c1563138d99640f186f5c5f4c3",
-      "name": "@platos/python",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/python",
-      "private": false,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
       }
     },
     {
@@ -60622,7 +58302,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 53
+              "line": 50
             }
           ],
           "reversePaths": [
@@ -60774,7 +58454,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 53
+              "line": 50
             }
           ],
           "reversePaths": [
@@ -60794,7 +58474,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e15d1b6c6434134c5efbbdb1e668adef9d81653101a8a5e9d488d7ab662f7992",
+      "evidenceSha256": "ec8d23d1883e1f8b44552be424742ec47acb954804c72b8f202fe3a6f91ee568",
       "manifestSha256": "9e88758002295b4e87f4bd0e2ba50586b0ffa4141d0694d2f14e5eab3b016e28",
       "name": "@platos/react-hooks",
       "ociImageClosure": {
@@ -60885,7 +58565,7 @@
             {
               "from": ".changeset/eobd-83-followup-package-repo-urls.md",
               "kind": "reference",
-              "line": 5
+              "line": 3
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -60970,7 +58650,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 54
+              "line": 51
             }
           ],
           "reversePaths": [
@@ -61255,7 +58935,7 @@
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
-              "line": 54
+              "line": 51
             }
           ],
           "reversePaths": [
@@ -61345,7 +59025,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0edcbff4a326df9005d210074e4d573279eada72e469d5e262bcbf598ad2199d",
+      "evidenceSha256": "75274ab8b956db4d67d0060da00da2455d7ab31ce8b8b78cd2b4b05ce8d27338",
       "manifestSha256": "ef514ac499b1a401341cdaeed75e735f1b90b64989f1dd77b791966f0ab45c7e",
       "name": "@platos/redis-worker",
       "ociImageClosure": {
@@ -61355,1342 +59035,6 @@
         "roots": []
       },
       "path": "packages/redis-worker",
-      "private": false,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": true,
-        "externalPublicReasons": [
-          "package.json does not set private:true"
-        ],
-        "kind": "external-public-package",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-public-boundary"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".changeset/eobd-83-followup-package-repo-urls.md",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 285
-            },
-            {
-              "from": "docs/v1-ledger-rules.json",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "packages/rsc/CHANGELOG.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/rsc/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              ".changeset/eobd-83-followup-package-repo-urls.md",
-              ".changeset/eobd-83-followup-package-repo-urls.md"
-            ],
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/v1-ledger-rules.json",
-              "docs/v1-ledger-rules.json"
-            ],
-            [
-              "packages/rsc/CHANGELOG.md",
-              "packages/rsc/CHANGELOG.md"
-            ],
-            [
-              "packages/rsc/README.md",
-              "packages/rsc/README.md"
-            ]
-          ],
-          "roots": [
-            ".changeset/eobd-83-followup-package-repo-urls.md",
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/v1-ledger-rules.json",
-            "packages/rsc/CHANGELOG.md",
-            "packages/rsc/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/rsc/LICENSE",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/rsc/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            },
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 55
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/rsc/LICENSE",
-              "packages/rsc/LICENSE"
-            ],
-            [
-              "packages/rsc/package.json",
-              "packages/rsc/package.json"
-            ],
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/rsc/LICENSE",
-            "packages/rsc/package.json",
-            "scripts/license-distribution.test.mjs"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "check-exports"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            },
-            {
-              "command": "tshy && pnpm run update-version",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "attw --pack .",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "check-exports"
-            },
-            {
-              "command": "rimraf dist .tshy .tshy-build .turbo",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tshy --watch",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "tsc --noEmit",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "command": "tsx ../../scripts/updateVersion.ts",
-              "from": "packages/rsc/package.json",
-              "kind": "workspace-script",
-              "script": "update-version"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/rsc/package.json",
-              "packages/rsc/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/rsc/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "packages/rsc",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "packages/rsc",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/rsc",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "packages/rsc"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 55
-            }
-          ],
-          "reversePaths": [
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "scripts/license-distribution.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "93b003eb048580605c46e7f7f7f9c434c67628da001ab1f6200d50c9d3d8918a",
-      "manifestSha256": "59017430cf7407beeabb246a9ef119f566fa5534bcd24f81b43f5f8e6137643a",
-      "name": "@platos/rsc",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/rsc",
-      "private": false,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": true,
-        "externalPublicReasons": [
-          "package.json does not set private:true"
-        ],
-        "kind": "external-public-package",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-public-boundary"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".changeset/eobd-83-followup-package-repo-urls.md",
-              "kind": "reference",
-              "line": 7
-            },
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 285
-            },
-            {
-              "from": "docs/v1-ledger-rules.json",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "packages/schema-to-json/CHANGELOG.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/schema-to-json/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              ".changeset/eobd-83-followup-package-repo-urls.md",
-              ".changeset/eobd-83-followup-package-repo-urls.md"
-            ],
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/v1-ledger-rules.json",
-              "docs/v1-ledger-rules.json"
-            ],
-            [
-              "packages/schema-to-json/CHANGELOG.md",
-              "packages/schema-to-json/CHANGELOG.md"
-            ],
-            [
-              "packages/schema-to-json/README.md",
-              "packages/schema-to-json/README.md"
-            ]
-          ],
-          "roots": [
-            ".changeset/eobd-83-followup-package-repo-urls.md",
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/v1-ledger-rules.json",
-            "packages/schema-to-json/CHANGELOG.md",
-            "packages/schema-to-json/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/schema-to-json/LICENSE",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/schema-to-json/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            },
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 56
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/schema-to-json/LICENSE",
-              "packages/schema-to-json/LICENSE"
-            ],
-            [
-              "packages/schema-to-json/package.json",
-              "packages/schema-to-json/package.json"
-            ],
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/schema-to-json/LICENSE",
-            "packages/schema-to-json/package.json",
-            "scripts/license-distribution.test.mjs"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "check-exports"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            },
-            {
-              "command": "tshy",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "build:tshy"
-            },
-            {
-              "command": "pnpm run clean && pnpm run build:tshy && pnpm run update-version",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "attw --pack .",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "check-exports"
-            },
-            {
-              "command": "rimraf dist",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tshy --watch",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "vitest",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc -p tsconfig.src.json --noEmit",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "command": "tsx ../../scripts/updateVersion.ts",
-              "from": "packages/schema-to-json/package.json",
-              "kind": "workspace-script",
-              "script": "update-version"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/schema-to-json/package.json",
-              "packages/schema-to-json/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/schema-to-json/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "packages/schema-to-json",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "packages/schema-to-json",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/schema-to-json",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "packages/schema-to-json"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/schema-to-json/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "packages/schema-to-json/tests/index.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/schema-to-json/tsconfig.test.json",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "scripts/license-distribution.test.mjs",
-              "kind": "reference",
-              "line": 56
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/schema-to-json/package.json",
-              "packages/schema-to-json/package.json"
-            ],
-            [
-              "packages/schema-to-json/tests/index.test.ts",
-              "packages/schema-to-json/tests/index.test.ts"
-            ],
-            [
-              "packages/schema-to-json/tsconfig.test.json",
-              "packages/schema-to-json/tsconfig.test.json"
-            ],
-            [
-              "scripts/license-distribution.test.mjs",
-              "scripts/license-distribution.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/schema-to-json/package.json",
-            "packages/schema-to-json/tests/index.test.ts",
-            "packages/schema-to-json/tsconfig.test.json",
-            "scripts/license-distribution.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "b90d6546e7129a51a100add80d1f064c2e3f9d3ae7dd6859778eb21f43c2b48f",
-      "manifestSha256": "5a482f324760df697e8421fdfa04eed0cdbf9be87c6b97a1d0450f9faf8e2b78",
-      "name": "@platos/schema-to-json",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/schema-to-json",
-      "private": false,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "boundaries": {
-        "externalPublic": true,
-        "externalPublicReasons": [
-          "package.json does not set private:true"
-        ],
-        "kind": "external-public-package",
-        "ownerDecisionReasons": [
-          "non-production classification is candidate evidence only; deletion requires separate authorization"
-        ],
-        "ownerDecisionRequired": true
-      },
-      "candidate": {
-        "basis": "No OCI image or application/deployable dependency path; channel evidence is retained for owner review and is not deletion authorization.",
-        "deletionAuthorized": false,
-        "reviewCandidate": true,
-        "status": "owner-review-public-boundary"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".changeset/eobd-83-followup-package-repo-urls.md",
-              "kind": "reference",
-              "line": 8
-            },
-            {
-              "from": "ai/references/repo.md",
-              "kind": "reference",
-              "line": 13
-            },
-            {
-              "from": "docs/ai-sdk-v7-upgrade-plan.md",
-              "kind": "reference",
-              "line": 16
-            },
-            {
-              "from": "docs/architecture/INTEGRATIONS_AUDIT.md",
-              "kind": "reference",
-              "line": 16
-            },
-            {
-              "from": "docs/audits/M0.5-dependency-sbom.md",
-              "kind": "reference",
-              "line": 286
-            },
-            {
-              "from": "docs/launch/release-notes-v1.0.0.md",
-              "kind": "reference",
-              "line": 55
-            },
-            {
-              "from": "docs/refactor/IMPLEMENTATION-STATUS.md",
-              "kind": "reference",
-              "line": 19
-            },
-            {
-              "from": "docs/refactor/platos-trigger-refactor.md",
-              "kind": "reference",
-              "line": 81
-            },
-            {
-              "from": "docs/trigger-integration.md",
-              "kind": "reference",
-              "line": 12
-            },
-            {
-              "from": "docs/upgrading-from-trigger.md",
-              "kind": "reference",
-              "line": 33
-            },
-            {
-              "from": "docs/writing-agents.md",
-              "kind": "reference",
-              "line": 32
-            },
-            {
-              "from": "internal-packages/run-engine/README.md",
-              "kind": "reference",
-              "line": 215
-            },
-            {
-              "from": "packages/trigger-sdk/CHANGELOG.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/trigger-sdk/README.md",
-              "kind": "workspace-owned-file",
-              "line": 19
-            }
-          ],
-          "reversePaths": [
-            [
-              ".changeset/eobd-83-followup-package-repo-urls.md",
-              ".changeset/eobd-83-followup-package-repo-urls.md"
-            ],
-            [
-              "ai/references/repo.md",
-              "ai/references/repo.md"
-            ],
-            [
-              "docs/ai-sdk-v7-upgrade-plan.md",
-              "docs/ai-sdk-v7-upgrade-plan.md"
-            ],
-            [
-              "docs/architecture/INTEGRATIONS_AUDIT.md",
-              "docs/architecture/INTEGRATIONS_AUDIT.md"
-            ],
-            [
-              "docs/audits/M0.5-dependency-sbom.md",
-              "docs/audits/M0.5-dependency-sbom.md"
-            ],
-            [
-              "docs/launch/release-notes-v1.0.0.md",
-              "docs/launch/release-notes-v1.0.0.md"
-            ],
-            [
-              "docs/refactor/IMPLEMENTATION-STATUS.md",
-              "docs/refactor/IMPLEMENTATION-STATUS.md"
-            ],
-            [
-              "docs/refactor/platos-trigger-refactor.md",
-              "docs/refactor/platos-trigger-refactor.md"
-            ],
-            [
-              "docs/trigger-integration.md",
-              "docs/trigger-integration.md"
-            ],
-            [
-              "docs/upgrading-from-trigger.md",
-              "docs/upgrading-from-trigger.md"
-            ],
-            [
-              "docs/writing-agents.md",
-              "docs/writing-agents.md"
-            ],
-            [
-              "internal-packages/run-engine/README.md",
-              "internal-packages/run-engine/README.md"
-            ],
-            [
-              "packages/trigger-sdk/CHANGELOG.md",
-              "packages/trigger-sdk/CHANGELOG.md"
-            ],
-            [
-              "packages/trigger-sdk/README.md",
-              "packages/trigger-sdk/README.md"
-            ]
-          ],
-          "roots": [
-            ".changeset/eobd-83-followup-package-repo-urls.md",
-            "ai/references/repo.md",
-            "docs/ai-sdk-v7-upgrade-plan.md",
-            "docs/architecture/INTEGRATIONS_AUDIT.md",
-            "docs/audits/M0.5-dependency-sbom.md",
-            "docs/launch/release-notes-v1.0.0.md",
-            "docs/refactor/IMPLEMENTATION-STATUS.md",
-            "docs/refactor/platos-trigger-refactor.md",
-            "docs/trigger-integration.md",
-            "docs/upgrading-from-trigger.md",
-            "docs/writing-agents.md",
-            "internal-packages/run-engine/README.md",
-            "packages/trigger-sdk/CHANGELOG.md",
-            "packages/trigger-sdk/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/trigger-sdk/LICENSE",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/trigger-sdk/LICENSE",
-              "packages/trigger-sdk/LICENSE"
-            ],
-            [
-              "packages/trigger-sdk/package.json",
-              "packages/trigger-sdk/package.json"
-            ]
-          ],
-          "roots": [
-            "packages/trigger-sdk/LICENSE",
-            "packages/trigger-sdk/package.json"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "check-exports"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "dev"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "typecheck"
-            },
-            {
-              "command": "tshy && pnpm run update-version",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "attw --pack .",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "check-exports"
-            },
-            {
-              "command": "rimraf dist .tshy .tshy-build .turbo",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "tshy --watch",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "dev"
-            },
-            {
-              "command": "vitest",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            },
-            {
-              "command": "tsc --noEmit",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "typecheck"
-            },
-            {
-              "command": "tsx ../../scripts/updateVersion.ts",
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "workspace-script",
-              "script": "update-version"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/trigger-sdk/package.json",
-              "packages/trigger-sdk/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/trigger-sdk/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": true,
-          "reasons": [
-            {
-              "dependency": "engine.io-parser@5.2.2",
-              "file": "patches/engine.io-parser@5.2.2.patch",
-              "from": "packages/trigger-sdk",
-              "kind": "lockfile-production-snapshot-closure",
-              "reversePaths": [
-                [
-                  "packages/trigger-sdk",
-                  "packages/core",
-                  "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-                  "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-                ]
-              ],
-              "snapshotKeys": [
-                "engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-              ]
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/trigger-sdk",
-              "packages/core",
-              "snapshot:socket.io@4.7.4(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.5.4(bufferutil@4.0.9)",
-              "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
-            ]
-          ],
-          "roots": [
-            "packages/trigger-sdk"
-          ]
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": true,
-          "reasons": [
-            {
-              "file": "apps/agent/src/agent-runtime/trigger-integration.ts",
-              "from": "apps/agent",
-              "line": 48,
-              "specifier": "@platos/sdk"
-            },
-            {
-              "file": "packages/core/src/v3/idempotencyKeys.ts",
-              "from": "packages/core",
-              "line": 107,
-              "specifier": "@platos/sdk/v3"
-            },
-            {
-              "file": "packages/core/src/v3/types/tasks.ts",
-              "from": "packages/core",
-              "line": 737,
-              "specifier": "@platos/sdk/v3"
-            },
-            {
-              "file": "packages/core/src/v3/types/tasks.ts",
-              "from": "packages/core",
-              "line": 775,
-              "specifier": "@platos/sdk/v3"
-            },
-            {
-              "file": "packages/python/src/index.ts",
-              "from": "packages/python",
-              "line": 7,
-              "specifier": "@platos/sdk/v3"
-            }
-          ],
-          "reversePaths": [
-            [
-              "apps/agent",
-              "apps/agent/src/agent-runtime/trigger-integration.ts"
-            ],
-            [
-              "packages/core",
-              "packages/core/src/v3/idempotencyKeys.ts"
-            ],
-            [
-              "packages/core",
-              "packages/core/src/v3/types/tasks.ts"
-            ],
-            [
-              "packages/python",
-              "packages/python/src/index.ts"
-            ]
-          ],
-          "roots": [
-            "apps/agent",
-            "packages/core",
-            "packages/python"
-          ]
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-              "kind": "reference",
-              "line": 8
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-              "kind": "reference",
-              "line": 12
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-              "kind": "reference",
-              "line": 9
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-              "kind": "reference",
-              "line": 9
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-              "kind": "reference",
-              "line": 8
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-              "kind": "reference",
-              "line": 9
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-              "kind": "reference",
-              "line": 21
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-              "kind": "reference",
-              "line": 25
-            },
-            {
-              "from": "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-              "kind": "reference",
-              "line": 17
-            },
-            {
-              "from": "packages/trigger-sdk/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "packages/trigger-sdk/src/v3/shared.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/trigger-sdk/src/v3/streams.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "scripts/workspace-reachability.test.mjs",
-              "kind": "reference",
-              "line": 281
-            }
-          ],
-          "reversePaths": [
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-              "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-              "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-              "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts"
-            ],
-            [
-              "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-              "internal-packages/sdk-compat-tests/src/tests/import.test.ts"
-            ],
-            [
-              "packages/trigger-sdk/package.json",
-              "packages/trigger-sdk/package.json"
-            ],
-            [
-              "packages/trigger-sdk/src/v3/shared.test.ts",
-              "packages/trigger-sdk/src/v3/shared.test.ts"
-            ],
-            [
-              "packages/trigger-sdk/src/v3/streams.test.ts",
-              "packages/trigger-sdk/src/v3/streams.test.ts"
-            ],
-            [
-              "scripts/workspace-reachability.test.mjs",
-              "scripts/workspace-reachability.test.mjs"
-            ]
-          ],
-          "roots": [
-            "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
-            "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
-            "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
-            "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
-            "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
-            "packages/trigger-sdk/package.json",
-            "packages/trigger-sdk/src/v3/shared.test.ts",
-            "packages/trigger-sdk/src/v3/streams.test.ts",
-            "scripts/workspace-reachability.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "evidenceSha256": "ff227083305fd0142f6af1c8b49d805ba8cabc67de6623288f129cd43da583dc",
-      "manifestSha256": "f8049bed60d4c451828074161305394062548358da20d220e9d744fbef783ecd",
-      "name": "@platos/sdk",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/trigger-sdk",
       "private": false,
       "repositoryDevClosure": {
         "reachable": false,

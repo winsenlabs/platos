@@ -13,7 +13,7 @@ _Status: researched, NOT yet built. Awaiting a go/no-go on the ESM re-platform (
 
 | Package | Declared | Resolved | Where |
 |---|---|---|---|
-| `ai` | `^6.0.172` | 6.0.172 | agent, webapp, packages/core (dev), packages/trigger-sdk (dev) |
+| `ai` | `^6.0.172` | 6.0.172 | agent, webapp, packages/core (dev) |
 | `@ai-sdk/anthropic` | `^3.0.73` | 3.0.73 | agent |
 | `@ai-sdk/openai` | `^3.0.55` | 3.0.55 | agent, webapp |
 | `@ai-sdk/google` | `^3.0.66` | 3.0.66 | agent |
@@ -23,7 +23,6 @@ _Status: researched, NOT yet built. Awaiting a go/no-go on the ESM re-platform (
 - **apps/agent** — CommonJS (`tsconfig.module=commonjs`, `nest build`, runtime `require()` e.g. `shared/database.provider.ts`). Node 20 (`node:20-slim`).
 - **apps/webapp** — Remix `serverModuleFormat: "cjs"`, Node 20 (`node:20.20-bullseye-slim`). engines `>=18.19 || >=20.6`.
 - **packages/core** — ESM (`type:module`, tshy dual build); uses `ai` for **types only** (devDep). No blocker.
-- **packages/trigger-sdk** — ESM; runtime-uses `ai` schema utils (`dynamicTool, jsonSchema, zodSchema, ToolCallOptions`). peerDep tops out at `^6` → must add `^7`.
 - **Client:** Platos does NOT use `@ai-sdk/react`. It has its own `useAgentStream` protocol. No client-side AI SDK migration.
 
 ## 2. The AI SDK surface (what actually touches the SDK)
@@ -38,7 +37,6 @@ _Status: researched, NOT yet built. Awaiting a go/no-go on the ESM re-platform (
   - Model construction `resolveModel` (210–309): `createAnthropic/createOpenAI/createGoogleGenerativeAI/createVertex`.
 - **`apps/agent/src/{evals,memory}/*.service.ts`** — `generateText` judge calls.
 - **`apps/webapp/app/v3/*`** — `generateText`+`Output.object`+`tool`+`stepCountIs`+`experimental_telemetry` (aiRunFilter), `generateText` (aiQueryTitle), `generateObject` (humanToCron).
-- **`packages/trigger-sdk/src/v3/ai.ts`** — `dynamicTool, jsonSchema, zodSchema, Schema, Tool, ToolCallOptions`.
 - **`packages/core/src/v3/types/tools.ts`** — `type Schema` only.
 
 ## 3. Code changes for v7 (the easy part — mostly codemod)
@@ -51,7 +49,6 @@ Codemod-handled renames that apply here:
 - `stepCountIs` → `isStepCount` (agent 5712; webapp aiRunFilter).
 - `system` → `instructions` (sub-agent 4269; webapp services; humanToCron).
 - `experimental_telemetry` → `telemetry` (webapp) — plus register OTel globally via `@ai-sdk/otel` (telemetry is now on-by-default).
-- `ToolCallOptions` → `ToolExecutionOptions` (trigger-sdk ai.ts).
 - `replace-anthropic-cache-creation-input-tokens` — check `cacheWriteTokens` usage (agent 5747).
 
 Manual verification after codemod (**cost-critical**, do NOT skip):
@@ -67,8 +64,7 @@ Manual verification after codemod (**cost-critical**, do NOT skip):
 2. **`apps/agent` CommonJS → ESM (the risk center):** add `"type":"module"`, `tsconfig module` → `nodenext`/`esnext`, replace runtime `require()` (`shared/database.provider.ts` + any others) with imports or `await import()`, verify `reflect-metadata` + Nest decorators + DI under ESM, fix `__dirname`→`import.meta.url`, and check every transitive dep has an ESM build. NestJS-on-ESM is doable but fiddly; this is where the schedule risk lives.
 3. **`apps/webapp`:** flip Remix `serverModuleFormat: "cjs"` → `"esm"`; verify server bundle + Express boot.
 4. **Provider bumps** (verify exact latest at build time): `@ai-sdk/anthropic ^4`, `@ai-sdk/openai ^4`, `@ai-sdk/google ^4`, `@ai-sdk/google-vertex ^5`, `@ai-sdk/provider-utils ^5`.
-5. **trigger-sdk peerDep:** add `|| ^7.0.0`.
-6. **Verify:** full Docker build (the real typecheck) + smoke every model path — Anthropic w/ prompt cache, OpenAI, Google, Vertex, reasoning model, structured output, sub-agent delegation — and confirm cost numbers land correctly (see §3 manual checks).
+5. **Verify:** full Docker build (the real typecheck) + smoke every model path — Anthropic w/ prompt cache, OpenAI, Google, Vertex, reasoning model, structured output, sub-agent delegation — and confirm cost numbers land correctly (see §3 manual checks).
 
 ## 5. Risk register
 

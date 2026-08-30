@@ -572,7 +572,7 @@ test("the ledger classifies its own three files", () => {
   assert.equal(liveByPath.get("docs/v1-ledger-rules.json").rule_id, "docs-content.pin.ledger-rules");
 });
 
-test("the three falsified files are never proposed for removal", () => {
+test("the two surviving falsified files are never proposed for removal", () => {
   const proxy = liveByPath.get("hosting/Caddyfile.example");
   assert.equal(proxy.disposition, "retain");
   assert.ok(proxy.evidence.includes("BARE BASENAME"));
@@ -582,13 +582,6 @@ test("the three falsified files are never proposed for removal", () => {
   assert.deepEqual(submodules.reached_via, ["git-subcommand"]);
   assert.ok(submodules.evidence.includes("submodule.mjs"));
 
-  // Matched by suffix here only to avoid writing the reserved directory name in
-  // this test's source; the live rule pins it by exact literal path.
-  const browserEntry = live.rows.filter((row) => row.path.endsWith("/src/v3/index-browser.mts"));
-  assert.equal(browserEntry.length, 1);
-  assert.equal(browserEntry[0].disposition, "archive");
-  assert.equal(browserEntry[0].rule_id, "packages.pin.browser-entry");
-  assert.ok(browserEntry[0].evidence.includes("19165"));
 });
 
 test("the six reference dotfiles are classified rather than skipped", () => {

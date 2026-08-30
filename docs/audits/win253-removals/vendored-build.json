@@ -1,0 +1,4715 @@
+{
+  "schemaVersion": 1,
+  "workItem": "WIN-253",
+  "cluster": "vendored-build-sdk",
+  "reviewedSource": {
+    "base": "fcf39fa227cb9265b7e532f14ef181a3b65ff061",
+    "baseTreeOid": "73dc9fc4f98be95595c3020c2223627796d7410c",
+    "commit": "e720b7618e58b27d3ff4f9aff5a5ca9ac6670130",
+    "commitTreeOid": "4ec093841e408a31be4ed07fda4660f9d0757202",
+    "branch": "vorflux/win253-vendored-build",
+    "deletion": {
+      "workspaceCount": 6,
+      "actualFileCount": 120,
+      "actualBytes": 574551,
+      "manifestSha256": "76bc625092b418dfd1f3d1003330dbb0a8a6c83e5c979d7095fa01bf186561e6",
+      "pathspec": [
+        "internal-packages/sdk-compat-tests/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
+        "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
+        "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
+        "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
+        "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
+        "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
+        "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
+        "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
+        "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
+        "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
+        "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
+        "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
+        "internal-packages/sdk-compat-tests/tsconfig.json",
+        "internal-packages/sdk-compat-tests/vitest.config.ts",
+        "packages/build/CHANGELOG.md",
+        "packages/build/LICENSE",
+        "packages/build/README.md",
+        "packages/build/package.json",
+        "packages/build/src/extensions/audioWaveform.ts",
+        "packages/build/src/extensions/core.ts",
+        "packages/build/src/extensions/core/additionalFiles.ts",
+        "packages/build/src/extensions/core/additionalPackages.ts",
+        "packages/build/src/extensions/core/aptGet.ts",
+        "packages/build/src/extensions/core/ffmpeg.ts",
+        "packages/build/src/extensions/core/neonSyncEnvVars.ts",
+        "packages/build/src/extensions/core/syncEnvVars.ts",
+        "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
+        "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
+        "packages/build/src/extensions/index.ts",
+        "packages/build/src/extensions/lightpanda.ts",
+        "packages/build/src/extensions/playwright.ts",
+        "packages/build/src/extensions/prisma.ts",
+        "packages/build/src/extensions/puppeteer.ts",
+        "packages/build/src/extensions/typescript.ts",
+        "packages/build/src/imports/mlly-cjs.cts",
+        "packages/build/src/imports/mlly.ts",
+        "packages/build/src/index.ts",
+        "packages/build/src/internal.ts",
+        "packages/build/src/internal/additionalFiles.ts",
+        "packages/build/src/version.ts",
+        "packages/build/tsconfig.json",
+        "packages/build/tsconfig.src.json",
+        "packages/python/CHANGELOG.md",
+        "packages/python/LICENSE",
+        "packages/python/README.md",
+        "packages/python/package.json",
+        "packages/python/src/extension.ts",
+        "packages/python/src/index.ts",
+        "packages/python/src/utils/tempFiles.ts",
+        "packages/python/tsconfig.json",
+        "packages/python/tsconfig.src.json",
+        "packages/rsc/CHANGELOG.md",
+        "packages/rsc/README.md",
+        "packages/rsc/package.json",
+        "packages/rsc/src/build.ts",
+        "packages/rsc/src/index.ts",
+        "packages/rsc/src/sourceDir-cjs.cts",
+        "packages/rsc/src/sourceDir.ts",
+        "packages/rsc/tsconfig.json",
+        "packages/schema-to-json/.gitignore",
+        "packages/schema-to-json/CHANGELOG.md",
+        "packages/schema-to-json/README.md",
+        "packages/schema-to-json/package.json",
+        "packages/schema-to-json/src/index.ts",
+        "packages/schema-to-json/tests/index.test.ts",
+        "packages/schema-to-json/tsconfig.json",
+        "packages/schema-to-json/tsconfig.src.json",
+        "packages/schema-to-json/tsconfig.test.json",
+        "packages/schema-to-json/vitest.config.ts",
+        "packages/trigger-sdk/CHANGELOG.md",
+        "packages/trigger-sdk/LICENSE",
+        "packages/trigger-sdk/README.md",
+        "packages/trigger-sdk/package.json",
+        "packages/trigger-sdk/src/imports/uncrypto-cjs.cts",
+        "packages/trigger-sdk/src/imports/uncrypto.ts",
+        "packages/trigger-sdk/src/v3/auth.ts",
+        "packages/trigger-sdk/src/v3/batch.ts",
+        "packages/trigger-sdk/src/v3/cache.ts",
+        "packages/trigger-sdk/src/v3/config.ts",
+        "packages/trigger-sdk/src/v3/envvars.ts",
+        "packages/trigger-sdk/src/v3/heartbeats.ts",
+        "packages/trigger-sdk/src/v3/hooks.ts",
+        "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
+        "packages/trigger-sdk/src/v3/index-browser.mts",
+        "packages/trigger-sdk/src/v3/index.ts",
+        "packages/trigger-sdk/src/v3/locals.ts",
+        "packages/trigger-sdk/src/v3/metadata.ts",
+        "packages/trigger-sdk/src/v3/otel.ts",
+        "packages/trigger-sdk/src/v3/prompt.ts",
+        "packages/trigger-sdk/src/v3/promptManagement.ts",
+        "packages/trigger-sdk/src/v3/prompts.ts",
+        "packages/trigger-sdk/src/v3/query.ts",
+        "packages/trigger-sdk/src/v3/queues.ts",
+        "packages/trigger-sdk/src/v3/retry.ts",
+        "packages/trigger-sdk/src/v3/runs.ts",
+        "packages/trigger-sdk/src/v3/schedules/api.ts",
+        "packages/trigger-sdk/src/v3/schedules/index.ts",
+        "packages/trigger-sdk/src/v3/schemas.ts",
+        "packages/trigger-sdk/src/v3/shared.test.ts",
+        "packages/trigger-sdk/src/v3/shared.ts",
+        "packages/trigger-sdk/src/v3/streams.test.ts",
+        "packages/trigger-sdk/src/v3/streams.ts",
+        "packages/trigger-sdk/src/v3/tags.ts",
+        "packages/trigger-sdk/src/v3/tasks.ts",
+        "packages/trigger-sdk/src/v3/timeout.ts",
+        "packages/trigger-sdk/src/v3/tracer.ts",
+        "packages/trigger-sdk/src/v3/usage.ts",
+        "packages/trigger-sdk/src/v3/wait.ts",
+        "packages/trigger-sdk/src/v3/waitUntil.ts",
+        "packages/trigger-sdk/src/v3/webhooks.ts",
+        "packages/trigger-sdk/src/version.ts",
+        "packages/trigger-sdk/tsconfig.build.json",
+        "packages/trigger-sdk/tsconfig.json",
+        "packages/trigger-sdk/vitest.config.ts"
+      ]
+    },
+    "integrationCoverage": {
+      "representedReviewedDeletionCount": 120,
+      "missingReviewedDeletions": [],
+      "primaryBaseAdditions": [
+        {
+          "path": "packages/rsc/LICENSE",
+          "reason": "WIN-252 added the package-local Apache-2.0 license after the reviewed source base.",
+          "mode": "100644",
+          "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+          "bytes": 10935
+        },
+        {
+          "path": "packages/schema-to-json/LICENSE",
+          "reason": "WIN-252 added the package-local Apache-2.0 license after the reviewed source base.",
+          "mode": "100644",
+          "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+          "bytes": 10935
+        }
+      ]
+    }
+  },
+  "integrationBase": {
+    "sha": "34c41bc10bd23c90271e83592148fab3bf26aa38",
+    "treeOid": "71bbe1ee5f333c69130ffef908593fe2a2a500b2",
+    "trackedFiles": 3569
+  },
+  "packages": [
+    {
+      "path": "packages/trigger-sdk",
+      "name": "@platos/sdk",
+      "private": false
+    },
+    {
+      "path": "internal-packages/sdk-compat-tests",
+      "name": "@internal/sdk-compat-tests",
+      "private": true
+    },
+    {
+      "path": "packages/build",
+      "name": "@platos/build",
+      "private": false
+    },
+    {
+      "path": "packages/python",
+      "name": "@platos/python",
+      "private": false
+    },
+    {
+      "path": "packages/rsc",
+      "name": "@platos/rsc",
+      "private": false
+    },
+    {
+      "path": "packages/schema-to-json",
+      "name": "@platos/schema-to-json",
+      "private": false
+    }
+  ],
+  "deletion": {
+    "workspaceCount": 6,
+    "actualFileCount": 122,
+    "actualBytes": 626057,
+    "manifestSha256": "52ffd3c502ccbddfa919bb73d2eae5a095be3e73b242ac0440865e52ecb04568",
+    "files": [
+      {
+        "path": "internal-packages/sdk-compat-tests/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "43a8f9162c0048f353be9a2e83b2c23fc9e29f89",
+        "integrationBaseSha256": "1743df938914919cc4281332f61db37ac5bbc7ac3563274602ae10ca8183d42d",
+        "bytes": 391
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c69e2dd23e3ef0b0540c4cff27b36328b22f6ee4",
+        "integrationBaseSha256": "e866a163d402fbb04fdb696803cb79684d77b5a30e4613a972439afe124c0fea",
+        "bytes": 67
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "0bf0f8896f0cab59d6df70caa81604eb884b7f16",
+        "integrationBaseSha256": "eb62bc3c27eafa2d1dd23aa8964cd42f9e82f760f2eca9b90c08219569ace35b",
+        "bytes": 1442
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "953ed7d2db7c5d937bd7a44961d27c3dfd145b20",
+        "integrationBaseSha256": "1496347704aff51dbd43e1666e5c3fffaebf281db70dc2c548367ab157e082d9",
+        "bytes": 55
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e706e846a5f52db9874e8dc2cc5287479cf80a2b",
+        "integrationBaseSha256": "4a7e0b329c7aa83df2ac9d5a3e5cd0865329bdbaca9340723ed008c2c9a71262",
+        "bytes": 1557
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d9fca987c339c4205e67636f8e9f7be829007ffb",
+        "integrationBaseSha256": "35abfed62b8b129acf7ea7419f500716cf88acf3c3d1a2798e64612acb8d438b",
+        "bytes": 209
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7f15e022640cd5e1eba27ed1a93631f124efed02",
+        "integrationBaseSha256": "1930c555a3b5564a0da274cd256107c02910a30f9eb8994d4fb2e08af9f21bf0",
+        "bytes": 1146
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f038e47bb6ff5317fdd9578e52afb48eb938bfdd",
+        "integrationBaseSha256": "6a087b94c48fc1f173958e1beea1a91bdee6960cefd558bbdb87e6005fc2cdf8",
+        "bytes": 121
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4525b34d3e2bff15639f24cc4a0f42d5e00dae7f",
+        "integrationBaseSha256": "0d1b0afbaa01987a91d1361021b6a9e7ef01f719040277ce9835aff577e55e05",
+        "bytes": 119
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8397df684e5252ba72cff8d2d2ac60ee234ffb9f",
+        "integrationBaseSha256": "3748b6f81cd61d3df37e33b71d46d786b8e069e760efd99011ea303b016ce8e4",
+        "bytes": 1656
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c0d56cd02fa70e0eb738e0b1259d5fb198d56c23",
+        "integrationBaseSha256": "3519b91aa0443f3ec402634aa88ba0947875d1e06fdd9bb134ce723c32498e8a",
+        "bytes": 74
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5277560086d7123cbc145bcf8c0d9981d085ac1f",
+        "integrationBaseSha256": "0207b474de87c60bd6e7df8a5cec629c39444447f453e7d0893322a1edb828b2",
+        "bytes": 1586
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c3d927a0e94e2f0e7e93d0ab41a38298ac5a0fee",
+        "integrationBaseSha256": "50d73b6e2fd8413672977d795ac0303d8f5c2a199b11eecdadc1f584a9aa5b41",
+        "bytes": 1515
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7663bc7aca3f8876ad51234cb45c8e088fe6814b",
+        "integrationBaseSha256": "9b6cf7b02f3923b892125c135431a2e130aa726b76c07eedfda5ec3c4bbd27e3",
+        "bytes": 74
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a1117d4c49cd09b5ee950270f6abc895b27b0d24",
+        "integrationBaseSha256": "e0c4864ff113455e99337fe6ab63e6f0864fc1d58d635b359756b37097bea2a1",
+        "bytes": 1492
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "432fff32adea8acb31f01faf0f80e1fabfe707ad",
+        "integrationBaseSha256": "3f5928f9a06843ba7dcc7a5fc24c873430c54ec000adacb95215d2b049865936",
+        "bytes": 237
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f1ed489a81e468a3b07275011a6216f681ed89c7",
+        "integrationBaseSha256": "fe0a9680892ff26c7a41c1b65d4142a9dc15f94a8e63c803ac193142fcf8af07",
+        "bytes": 3309
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7d81ccce259de20d8e94cbde0e0405076c16d104",
+        "integrationBaseSha256": "656104bc82d1dd26dbb00d23cb73d387517e26b0aeb3b4a604a051178c92748a",
+        "bytes": 2509
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "05afb6f355a781b50965cba738e0dbb5bef2b97a",
+        "integrationBaseSha256": "8c8593d2565b80b78d0b700724d8c9cebfbc4a6c874b9b676b67e261a50a8f6c",
+        "bytes": 376
+      },
+      {
+        "path": "internal-packages/sdk-compat-tests/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2617dd10185483c1f984da39d98b982af73a878d",
+        "integrationBaseSha256": "b186b8ea5ab8be613a278d161f559ee159540a60230ca6f37c2eb5c2ac03446e",
+        "bytes": 265
+      },
+      {
+        "path": "packages/build/CHANGELOG.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "3902bf19d7b36816df5aa35f063c3db519beb6b2",
+        "integrationBaseSha256": "c178a48a17ba79d6fb8547427d26410f1b6bf046c95328bfad5599c624424a15",
+        "bytes": 25439
+      },
+      {
+        "path": "packages/build/LICENSE",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+        "integrationBaseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+        "bytes": 10935
+      },
+      {
+        "path": "packages/build/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "eeb9bd91e2c9dd39bd28c1ff015fdaffc85e87d0",
+        "integrationBaseSha256": "63b51b4d048fbc358bbb0e1bf4129f4d0948f16abf2c080a100634ad8ad020e3",
+        "bytes": 211
+      },
+      {
+        "path": "packages/build/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a988629d9bf13c8b092e065798f1d5081b213768",
+        "integrationBaseSha256": "45fb3b83186603512b34e8630d9744155a6b6bc223f96e3390f434a20ad7189d",
+        "bytes": 6667
+      },
+      {
+        "path": "packages/build/src/extensions/audioWaveform.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "eaab5978f8ecf50493e84ed64d4ea54d9a2e005e",
+        "integrationBaseSha256": "d81e4011cbd1cc72a860263f03ee839a26d700ecb32dd3fea9a6579b0c516ed9",
+        "bytes": 1618
+      },
+      {
+        "path": "packages/build/src/extensions/core.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d8269fa1d95ce26b348167dbe2c48388e8fd0e8d",
+        "integrationBaseSha256": "020b430d011d404d91dafd976fe19c104b29b3bbbd6c26fa771112a1ded98b48",
+        "bytes": 331
+      },
+      {
+        "path": "packages/build/src/extensions/core/additionalFiles.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "031bbae7fd3ec373493a61e004c66327ee884c94",
+        "integrationBaseSha256": "9afbab1190c5c97bc9f8e5c14d35fc2c0660f19f521ed3ec980a2f450f8bc089",
+        "bytes": 468
+      },
+      {
+        "path": "packages/build/src/extensions/core/additionalPackages.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b2c92d672db4b4930e3362822d227832af2a6450",
+        "integrationBaseSha256": "45e29e13cd731594d26901114be118af9307670dbc2053bd7888b4c09d953df0",
+        "bytes": 2948
+      },
+      {
+        "path": "packages/build/src/extensions/core/aptGet.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "45e2f0ba3fdad54aaa304ecda71badc4951a4967",
+        "integrationBaseSha256": "44617aaf879bab4aa02b1e56d4f246295c8cb20e81adc8a0eb4c9b5ca93ad234",
+        "bytes": 533
+      },
+      {
+        "path": "packages/build/src/extensions/core/ffmpeg.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "ddadcf444a42ddc872c2e246ec02832f959b9481",
+        "integrationBaseSha256": "f0c6f56799628369380522aec3b159c1020586eda45077512a469235b380707f",
+        "bytes": 3036
+      },
+      {
+        "path": "packages/build/src/extensions/core/neonSyncEnvVars.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "925443da6741cc7a1ab03917dfb4417922aaa752",
+        "integrationBaseSha256": "8b15fa27c31a690a7a8d968a641ce810e600b528c2a90c7423d44228c3f713f0",
+        "bytes": 9334
+      },
+      {
+        "path": "packages/build/src/extensions/core/syncEnvVars.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "61f6c8bdba180e797d90f45da38146eb73d2bd98",
+        "integrationBaseSha256": "4aec6721ee7bd3933ac139a591baeded740c8bd980fc46a853b82e0d3a9ffe22",
+        "bytes": 4828
+      },
+      {
+        "path": "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "67ab2d405a1cb7aca3b6e1834619d9a7936c0c3a",
+        "integrationBaseSha256": "8017664d0167d6dc98e5035031b8ede2c1a92e874c4d7fe9d1b81468c7773812",
+        "bytes": 8145
+      },
+      {
+        "path": "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7814f253f9d5d2325dff9b5ffa53ebe7eb4eebf4",
+        "integrationBaseSha256": "4440d13492180a9859bc0fa86bb568ef294d6d4e40858b465356136fd371315f",
+        "bytes": 3833
+      },
+      {
+        "path": "packages/build/src/extensions/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "99f8ead50e65a739bfcce6845783003adfe3a6ac",
+        "integrationBaseSha256": "d136ec8e842a4bb74c281784f74a850b499f461f2f4265fc3d49b34b9c61ed2e",
+        "bytes": 378
+      },
+      {
+        "path": "packages/build/src/extensions/lightpanda.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f3dd9e505e0398539b8964f8c4ad9a7ee04a7083",
+        "integrationBaseSha256": "44d3aeca9b1ed0ace49bf670733f3811ffe77c28f604dad9c8c5617c2fac7752",
+        "bytes": 999
+      },
+      {
+        "path": "packages/build/src/extensions/playwright.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6f402f43a4e05921914a19ebf4af0204cd1f3272",
+        "integrationBaseSha256": "d5cda9fe23c12d59eca2229d709cc00663cf81fcc05de9d709de1a96833325fd",
+        "bytes": 12010
+      },
+      {
+        "path": "packages/build/src/extensions/prisma.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7ed6e374aca9bf822a5961b172fb243ace2b7cbd",
+        "integrationBaseSha256": "6aabe81b664dfdfbfadda4898fc076172fc766d7f404db7b471d60932730561b",
+        "bytes": 29753
+      },
+      {
+        "path": "packages/build/src/extensions/puppeteer.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "763b963e7c55dd9a56bb7af457b9a4a5f873d26c",
+        "integrationBaseSha256": "ee53f1f89254a2a1e427ebcf3297bcb75418c08f0a74aa4c79a0225f60cd9941",
+        "bytes": 1189
+      },
+      {
+        "path": "packages/build/src/extensions/typescript.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "1bf09f8112b4abea9a2838bfad7ef3439193cd1c",
+        "integrationBaseSha256": "4372096c6170cbf001a99a2f25c0d8a40520a3f5344bd8fab9494cd4033be569",
+        "bytes": 2112
+      },
+      {
+        "path": "packages/build/src/imports/mlly-cjs.cts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "cd89f8df66cba181479db612428f9870d1be1dd4",
+        "integrationBaseSha256": "1a0fb247cf4176f48ad4691b8d8d010d04e165940de48984efa6626105683d19",
+        "bytes": 124
+      },
+      {
+        "path": "packages/build/src/imports/mlly.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d0bf9ffb85e13a8c649897990e7e341d49157f79",
+        "integrationBaseSha256": "dc53b26538a5449c61a97152d354df50afac9676010f2c1368b2fe91e3592770",
+        "bytes": 97
+      },
+      {
+        "path": "packages/build/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e720bdd54a59ebe114cbe6b5de65a9012f6a1035",
+        "integrationBaseSha256": "aa5702c031cecf6e5351e0750d7a1998a5ac33135f4e66fecc6022ce1eaf60bd",
+        "bytes": 57
+      },
+      {
+        "path": "packages/build/src/internal.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "54f785a6106240546e9d3f666483d10fba4dee06",
+        "integrationBaseSha256": "e60812b275e79b95f799f44ee17945085c9cdf5a313753253bb0b540f41da576",
+        "bytes": 47
+      },
+      {
+        "path": "packages/build/src/internal/additionalFiles.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "636d4e72a3c73b91b08415d7c7a1b4575e3fbf9d",
+        "integrationBaseSha256": "d16168e44e283222474667abe60599fdea23c8f93838a8af026352767b18ac1b",
+        "bytes": 2799
+      },
+      {
+        "path": "packages/build/src/version.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2e47a8868286c686605887f76a8d2fae7cd484ab",
+        "integrationBaseSha256": "1af39e6ade8c28757c5bc04483f06ec60743edea296a75aac2bb14555f09308d",
+        "bytes": 32
+      },
+      {
+        "path": "packages/build/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "16881b51b6e068eb1e55f5ad3cafe01e09c69e39",
+        "integrationBaseSha256": "5d30c6528c8d45723101341071720998db74857456826db9eaec0dfe4e0d950b",
+        "bytes": 124
+      },
+      {
+        "path": "packages/build/tsconfig.src.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "db06c53317ec36847adc7e7ce6f423bf661dada8",
+        "integrationBaseSha256": "d46ebe47f5c5cd16a19c19292c213028a0efc62ecee994b1c07ed2549e686ee0",
+        "bytes": 226
+      },
+      {
+        "path": "packages/python/CHANGELOG.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "57b16c19fd76a240e7dde99fbe654af3365cb2db",
+        "integrationBaseSha256": "37e406097f2d33803a624f5be25cbffd65b91878f08068a0e37e96bde03cf30c",
+        "bytes": 9252
+      },
+      {
+        "path": "packages/python/LICENSE",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+        "integrationBaseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+        "bytes": 10935
+      },
+      {
+        "path": "packages/python/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "37d960d386fa16112a7847145fb4ed4484da3dc2",
+        "integrationBaseSha256": "987b3bc45d0718690146825567cba3bb734b543cfc7b8cce8211f7a80868ed34",
+        "bytes": 4523
+      },
+      {
+        "path": "packages/python/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "05e3ffc8d72597076e61a3611583281c3f516cea",
+        "integrationBaseSha256": "1b8fe8a56116c8d273fb7f8ac9660d04ad5db4c1563138d99640f186f5c5f4c3",
+        "bytes": 2413
+      },
+      {
+        "path": "packages/python/src/extension.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "89a637bc74b861fd3ce54a91542038fbb192ce18",
+        "integrationBaseSha256": "5a03c3a9f1702f644a7a36224b95f1ee02b8c3538287afd8182281f090d630a3",
+        "bytes": 4532
+      },
+      {
+        "path": "packages/python/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "0c657523af9ca71579a79c50d289ba556a95136e",
+        "integrationBaseSha256": "b7f21552dedf29fd95ef0df7e535b48f677b89f1cd6cd88228c735647de4b898",
+        "bytes": 10217
+      },
+      {
+        "path": "packages/python/src/utils/tempFiles.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "819e4864639e6422166a5b8d8aa21b3576a0c47e",
+        "integrationBaseSha256": "359d1cbe4f497ac7679f5c23fc6e8c1a3c7a3d4e4e94b0cc525f51b057e14215",
+        "bytes": 1385
+      },
+      {
+        "path": "packages/python/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "16881b51b6e068eb1e55f5ad3cafe01e09c69e39",
+        "integrationBaseSha256": "5d30c6528c8d45723101341071720998db74857456826db9eaec0dfe4e0d950b",
+        "bytes": 124
+      },
+      {
+        "path": "packages/python/tsconfig.src.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "db06c53317ec36847adc7e7ce6f423bf661dada8",
+        "integrationBaseSha256": "d46ebe47f5c5cd16a19c19292c213028a0efc62ecee994b1c07ed2549e686ee0",
+        "bytes": 226
+      },
+      {
+        "path": "packages/rsc/CHANGELOG.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b7e9091d78523a39e1a5cccd99b8770d21871f60",
+        "integrationBaseSha256": "f32873bc698121911029db3036012fffac9e08eed7dc637cb49e59c7f8b7ffc7",
+        "bytes": 7325
+      },
+      {
+        "path": "packages/rsc/LICENSE",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+        "integrationBaseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+        "bytes": 10935
+      },
+      {
+        "path": "packages/rsc/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "36865313f637c0199821557fd0d2ffa00f336307",
+        "integrationBaseSha256": "a41c0d0687f10a9c82fccef8ed2c5579f8941ebdb60c217b6aa2298cc0bb65ff",
+        "bytes": 19
+      },
+      {
+        "path": "packages/rsc/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2f7c3e3ceb5a9bb1a9af83c504707a8a025fb6a2",
+        "integrationBaseSha256": "59017430cf7407beeabb246a9ef119f566fa5534bcd24f81b43f5f8e6137643a",
+        "bytes": 1803
+      },
+      {
+        "path": "packages/rsc/src/build.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "af4101b55ab02682268eaf642a45aaef9b9e642b",
+        "integrationBaseSha256": "7a800777ac14166d976ca23d6f682e2d795fcfa4b56ae005fe17977d50e87076",
+        "bytes": 3518
+      },
+      {
+        "path": "packages/rsc/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "11739b46fa038ab52b6db0f27f7fa6262fb236b5",
+        "integrationBaseSha256": "76467d780d5d7e6c81c1d191c8e4e56d23e0130bb1ffffcf94318a9a6623e5ac",
+        "bytes": 28
+      },
+      {
+        "path": "packages/rsc/src/sourceDir-cjs.cts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8b3e67e6a7609c24f7c8674a13957507de4d5d9d",
+        "integrationBaseSha256": "8c861f93ecb45b1695b62e3e3a3160c94ea9990caf4e44f9436ce74e6e230d64",
+        "bytes": 165
+      },
+      {
+        "path": "packages/rsc/src/sourceDir.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "85489ac4970e35d2f98718d2010ed227eb122000",
+        "integrationBaseSha256": "f0a0fb8844039b8979f5d87e1625bba7f1e38407566ced10e8c45a6898a46fe0",
+        "bytes": 126
+      },
+      {
+        "path": "packages/rsc/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f73f5bea4b49d4bee3af31bedca9cf575735115f",
+        "integrationBaseSha256": "73ca30348f0a78e68c6080faa51b8598f5a7bab4f2ed4db56ff3e4d3849bf82a",
+        "bytes": 238
+      },
+      {
+        "path": "packages/schema-to-json/.gitignore",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c887152393cac89339b1dfcce7de6697d5fae8b5",
+        "integrationBaseSha256": "fc13aa2fc93c8c5f482bcb523c78ab765edfc4b589e891ccf054ec31fc46f157",
+        "bytes": 51
+      },
+      {
+        "path": "packages/schema-to-json/CHANGELOG.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8a62977d4801d4dd6bceebafe602f3eff9dd2e5a",
+        "integrationBaseSha256": "d0a4071129a8fe45d11169701fc405bca01ee4baa21144101bb92fbc9f14a5ce",
+        "bytes": 2159
+      },
+      {
+        "path": "packages/schema-to-json/LICENSE",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+        "integrationBaseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+        "bytes": 10935
+      },
+      {
+        "path": "packages/schema-to-json/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "9576b6e8007486002bdbbcb90d8dd91f80f26c8c",
+        "integrationBaseSha256": "bc9784f326eed802d9eec93f952dd91c3754eb0c8454b5d4cc062d965aa636ac",
+        "bytes": 3982
+      },
+      {
+        "path": "packages/schema-to-json/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e3cfa6b0a87135997db28b3d9a1b0c9a262015a4",
+        "integrationBaseSha256": "5a482f324760df697e8421fdfa04eed0cdbf9be87c6b97a1d0450f9faf8e2b78",
+        "bytes": 2221
+      },
+      {
+        "path": "packages/schema-to-json/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "eef193426462788956df470cb328d5a03df04d5d",
+        "integrationBaseSha256": "16e9e040cd733e2dd145b76f88730de89f689de75c8d0884172b30df90dcab91",
+        "bytes": 4644
+      },
+      {
+        "path": "packages/schema-to-json/tests/index.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b266a42b3b058f10437c58abd6906521462cb873",
+        "integrationBaseSha256": "d8c1794561f70d9037dac6ca376f607ec065654e8079ba2b0b3d52e0e4c9f4df",
+        "bytes": 7854
+      },
+      {
+        "path": "packages/schema-to-json/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5bf5eba8d50c1f1755a46f69842111edf3848780",
+        "integrationBaseSha256": "c0d37209b80ac7680ee1eafde64b8f378c49189cd7161048ac94cceffd72758e",
+        "bytes": 173
+      },
+      {
+        "path": "packages/schema-to-json/tsconfig.src.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "93f59a20f5c8f59ad656a4cabe383fc080d00c23",
+        "integrationBaseSha256": "251f87fb8f11a7a0d205a892851290347e5991ffd12a360fc78db2b17155cad1",
+        "bytes": 261
+      },
+      {
+        "path": "packages/schema-to-json/tsconfig.test.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c68227ee3962cb4b715b2d4cab95a3ab437a3fb5",
+        "integrationBaseSha256": "81b459eaa91913bb64dac606d4bd8b50a11304e99aa867d01dd64fc3763961f4",
+        "bytes": 263
+      },
+      {
+        "path": "packages/schema-to-json/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c7da6b38e146c8f7d68b99a70e339d81e3c2a789",
+        "integrationBaseSha256": "f316d0370e945a482556399d38ab87b99c40c9d00fa8b9a72306f010238d57f2",
+        "bytes": 139
+      },
+      {
+        "path": "packages/trigger-sdk/CHANGELOG.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "9dccca3fc2f0e8dba76c265e2abf44b6c14ad0ec",
+        "integrationBaseSha256": "d9cfd8db23e9e0b9ef9887c2943f1b21d9a5c39de1c2b7eacdc855aad2210329",
+        "bytes": 91849
+      },
+      {
+        "path": "packages/trigger-sdk/LICENSE",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+        "integrationBaseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+        "bytes": 10935
+      },
+      {
+        "path": "packages/trigger-sdk/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4ee6188f874dc55d60e5f8e1d3e14a3a8e617e35",
+        "integrationBaseSha256": "415ec31b54fe9435f18845da2128d3fc9e8e08ab914434fbbd617a497f18215b",
+        "bytes": 3279
+      },
+      {
+        "path": "packages/trigger-sdk/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "73d299f22bf9892415f00e1a44ea42e7986d9e6d",
+        "integrationBaseSha256": "f8049bed60d4c451828074161305394062548358da20d220e9d744fbef783ecd",
+        "bytes": 2815
+      },
+      {
+        "path": "packages/trigger-sdk/src/imports/uncrypto-cjs.cts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a9e17c27e58a1ec7d166bb4273a313a0c47f2950",
+        "integrationBaseSha256": "1f9084205a9b6479eacf9b8d1b90d409938c8167615a9d8f880285c06fd79fae",
+        "bytes": 101
+      },
+      {
+        "path": "packages/trigger-sdk/src/imports/uncrypto.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8e4a594949ccf76e68753d1e1bdd1642237df44e",
+        "integrationBaseSha256": "56fa625e698ce7ef304dba5b0549daf87593941183e51580f44848022606db09",
+        "bytes": 83
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/auth.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a282ae06b2b8d6debd1cfbb966c174dc8acfe93a",
+        "integrationBaseSha256": "5fbbfa48c71dad426792f41e346b0bc843934bb33c04d62ce9ee31c1f53aa4d5",
+        "bytes": 11452
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/batch.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "ca0ed792fd0265ac0c6d33aaf83cdf1844fedba6",
+        "integrationBaseSha256": "db6692d733f98a2e519eb6068e91555ae4d7d70fd037140468f861ac45ff67d4",
+        "bytes": 1839
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/cache.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "577c61df2bd12a6055f16e322bfe1a3f9bfb5c67",
+        "integrationBaseSha256": "2fcaa5b95135093776f542732cd982f7f32093a6226a12843704e63b240748f3",
+        "bytes": 2682
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e9000f61105b75db5f2a653329487ab285e2427c",
+        "integrationBaseSha256": "b6c6b844ad5cc5076d1237ab49eab9636947cdc75e412316169984d3015c2b40",
+        "bytes": 371
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/envvars.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "9ecb41e948215ef9228e07fbc9a3f72e66ea573a",
+        "integrationBaseSha256": "38e4bd514a49803c417ab0e528b295252ef89ae12979de19a14f882cd5ada451",
+        "bytes": 10573
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/heartbeats.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6561a43f6da065933bce6075e2326c38c8d4c9c5",
+        "integrationBaseSha256": "e9df1a47c77db30eb5e0cfdf753d63e46640c0f72d8c3e0f8ed1de61b3bb1dc0",
+        "bytes": 1421
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/hooks.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "acadeadd7d87777c5448dba91bf233e4d9b1ce15",
+        "integrationBaseSha256": "faf7465f4917f953a0fb8dd692ebfb85de0bdbd56524718dd09d499eafc78ed1",
+        "bytes": 5929
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "3fb793738de504d9e026078d201c2355f59edf0c",
+        "integrationBaseSha256": "4d142fbee7091772de48318f4ef560d501c084f02699fcd0eb1d2ee9de454d47",
+        "bytes": 230
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/index-browser.mts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "450cfb37383c60db372d9d4c90e2f48aadcca852",
+        "integrationBaseSha256": "19937006b7a32c3abb9dd6b4736237cbad614c049ecdaebc42651a0a4d5c2959",
+        "bytes": 112
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d024dcf5a9362ff20a1abc6d0bc042d1c8e41e97",
+        "integrationBaseSha256": "3681bdd0f72acb14a538fd5e9a39841a0b5c1e7e9cd5e4dac9b2de2958dde17e",
+        "bytes": 1614
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/locals.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5d375b57fefb83a1ab28ec41280c0966bbbb4513",
+        "integrationBaseSha256": "0f020abf182598432ebf20068369f950f74e1c1011e97962502bff236a4091ed",
+        "bytes": 127
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/metadata.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b7c4b24bcc367efe99fafe18cf205cf2005748e9",
+        "integrationBaseSha256": "1e5c4bee3b5deb7781c099743076c9887e3fc707752d910ecf961b9439df8e3b",
+        "bytes": 7600
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/otel.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "49b16dbab39b36c0b42670f0143e525f18572847",
+        "integrationBaseSha256": "dad90ce303dc69507ecc21108a13d11bb0fb15c72c46d4b31d1c360d477baa5a",
+        "bytes": 229
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/prompt.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "655a43fc93cd8d510c48ef65da0a838bf213c238",
+        "integrationBaseSha256": "d13b2bb1c2fa91bfd2957891df9f1aff77ed74143ec7fc45df2a26b6dbdaac8d",
+        "bytes": 7862
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/promptManagement.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "87e207e3cd5c3609f794a047da27ca572805192f",
+        "integrationBaseSha256": "ea650ecb3e506edb607b9d09dcd3463970912f1151541d5504a143b57da06003",
+        "bytes": 7683
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/prompts.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "df41915793aeaf68d7461186385cd9127e681733",
+        "integrationBaseSha256": "406cd0b577538de37cc9195c10f049d43192e2db7350b2926318559d3c380a91",
+        "bytes": 537
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/query.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f7c4c10c8e4eb3c21c6a4ad41024973bb9c94d13",
+        "integrationBaseSha256": "83e906f746e0ffc7017989e8cfb6899977f341ad873241eb828ace811d140136",
+        "bytes": 5456
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/queues.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "37abe38876a856dd79744fbd4f05767767628a57",
+        "integrationBaseSha256": "ed1b4d3e62623f0dd45d61b60e0590d9761421681b6b0c4e5ebde816a0ee29f3",
+        "bytes": 6348
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/retry.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5c49de320b38a704acd891173c64f4e85bfb0f9e",
+        "integrationBaseSha256": "3df094206e27cff1377baceeca678af52e8e4437ddf046680c8ee8209b67f4b6",
+        "bytes": 16809
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/runs.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "fb99c3449aa8f342aa5b2fd260936bf3586771ce",
+        "integrationBaseSha256": "7d5422cdfee8164371c3f66010077548a177a3d320e8c8f61ade4b901fd81e7d",
+        "bytes": 14587
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/schedules/api.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8b425d294b9a3036cacad31ebfe45d2bb61aa23a",
+        "integrationBaseSha256": "4f5c858aeaa3ff173016c606aa064cc9d1de4bf5ebfacdd1ab547766a955210f",
+        "bytes": 137
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/schedules/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "572e96cbbcc171b6afb805029557c138a4b5964e",
+        "integrationBaseSha256": "b2297e8e1a02fc5ea57619683a5a90e0de7fd51df758369ae1f22c2c80b6156b",
+        "bytes": 9220
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/schemas.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b4de9bee5d32f3d30977e5eff9544070b17a8cd5",
+        "integrationBaseSha256": "45ca45af9c2ff8d5ab90c173ebce37e9ab844e35f567da6259ef6a2f32c1c6ce",
+        "bytes": 102
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/shared.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4a0509b6b3bab46a8331ac4282cec6a1fceb9c64",
+        "integrationBaseSha256": "8b8d8a366512c0d81aab523800d6325dd369bc6d020d23e1960ba0fbc6b80557",
+        "bytes": 5844
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/shared.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "dbaa62057eb9c5a615243aba85cd66ecc57d544e",
+        "integrationBaseSha256": "8fa103e18cdc927e8c98261aad12825dae0c390b8bf585c8b5151a09f70d20fb",
+        "bytes": 89686
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/streams.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "98ee8c0c62448af486f35a48ba510e4aa2b7f8c6",
+        "integrationBaseSha256": "c05e7e3cd5efb516d859f6d1d6bf8553a9a7f3ae1029c377aa20b7b5d82ba3f4",
+        "bytes": 1938
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/streams.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "100fa1b905c256272888f2603686e7352baad0a8",
+        "integrationBaseSha256": "746d0fa5172b72558ec42bd0c22beacb0ce8acf1f64f910d411f91608bea051c",
+        "bytes": 26091
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/tags.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "17d29db08ada08252cb536020f0fa5360f90f878",
+        "integrationBaseSha256": "aa4c344aa87191fc951ca5990c53e7f1b41f8fd08f472c3e3cb82f11c3a1e540",
+        "bytes": 1363
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/tasks.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2660126ad4940b77c39b3f494b6939dccfcf1af0",
+        "integrationBaseSha256": "23bece7e58bd8caf23f5a19a366fac4de451374dfddcc48b3860a8525ca0f2eb",
+        "bytes": 1890
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/timeout.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e73e89ad70874883974b5f357d2ed374768ceb08",
+        "integrationBaseSha256": "ac1bc3215c6850bc28d7589d365c611a103870072cbc399d26bcbe34878cf49f",
+        "bytes": 190
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/tracer.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "aec1ba033ee27a84d8b9a21bc090e5f87f1bd724",
+        "integrationBaseSha256": "967345f8214d4ba24bcd3ff24213317e0a4723859faf588ce2b02ef03427dc90",
+        "bytes": 182
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/usage.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5296b69db4369222f48a85e6cf1f1468b8af1fa5",
+        "integrationBaseSha256": "da0c6925cd00c3f675537d2a9c8d749aaa20e9eabb7813290312a8df9fd3e546",
+        "bytes": 3860
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/wait.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "fc3e41cf6bc405154158188ecbc4d22812e49351",
+        "integrationBaseSha256": "02dcafc9381d0426a0314fc855136736d50adc2142ce6fe5799182a6793d5005",
+        "bytes": 20028
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/waitUntil.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f91f004a5de16e669c8da82b38767c3150043789",
+        "integrationBaseSha256": "7da2dc387e4402f4171fb5ef9f25bb883d7e80b39d58a907ef18e6d056967dce",
+        "bytes": 562
+      },
+      {
+        "path": "packages/trigger-sdk/src/v3/webhooks.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "88155b02677e1c6328191f2b0bdc0ca7a152d9e4",
+        "integrationBaseSha256": "732e3d8e12cb08e88bd7e8e79cff3aa939324375775c8d14398e00a3a3e57514",
+        "bytes": 4851
+      },
+      {
+        "path": "packages/trigger-sdk/src/version.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2e47a8868286c686605887f76a8d2fae7cd484ab",
+        "integrationBaseSha256": "1af39e6ade8c28757c5bc04483f06ec60743edea296a75aac2bb14555f09308d",
+        "bytes": 32
+      },
+      {
+        "path": "packages/trigger-sdk/tsconfig.build.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "66caf10a581e2dbb153532530d02b318e5aee45c",
+        "integrationBaseSha256": "3b07d3af258358074400f565a5708e9f2e18d02a6e5af2f3362c5b47ece405ef",
+        "bytes": 188
+      },
+      {
+        "path": "packages/trigger-sdk/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "637f4f8d59f83a0beef8c0c16a35bdee3dd45c06",
+        "integrationBaseSha256": "ed57cf62e565e67604c3ee86dd9e3465c208fe76c15c3c47a92b80c23c0bf7da",
+        "bytes": 276
+      },
+      {
+        "path": "packages/trigger-sdk/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8387992eaae072289feb5ac2f167ba87cbede60c",
+        "integrationBaseSha256": "c553247fbb6c009683089b05247e29fabb1f0f66b4b27115c0ce9ccb46a27d1f",
+        "bytes": 175
+      }
+    ]
+  },
+  "tombstones": {
+    "roots": [
+      "packages/trigger-sdk",
+      "internal-packages/sdk-compat-tests",
+      "packages/build",
+      "packages/python",
+      "packages/rsc",
+      "packages/schema-to-json"
+    ],
+    "inventory": "direct candidate-root existence checks, including tracked, untracked, ignored, and empty retired roots",
+    "currentTreeViolations": []
+  },
+  "restore": {
+    "argv": [
+      "git",
+      "restore",
+      "--source=34c41bc10bd23c90271e83592148fab3bf26aa38",
+      "--",
+      "internal-packages/sdk-compat-tests/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
+      "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
+      "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
+      "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
+      "internal-packages/sdk-compat-tests/tsconfig.json",
+      "internal-packages/sdk-compat-tests/vitest.config.ts",
+      "packages/build/CHANGELOG.md",
+      "packages/build/LICENSE",
+      "packages/build/README.md",
+      "packages/build/package.json",
+      "packages/build/src/extensions/audioWaveform.ts",
+      "packages/build/src/extensions/core.ts",
+      "packages/build/src/extensions/core/additionalFiles.ts",
+      "packages/build/src/extensions/core/additionalPackages.ts",
+      "packages/build/src/extensions/core/aptGet.ts",
+      "packages/build/src/extensions/core/ffmpeg.ts",
+      "packages/build/src/extensions/core/neonSyncEnvVars.ts",
+      "packages/build/src/extensions/core/syncEnvVars.ts",
+      "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
+      "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
+      "packages/build/src/extensions/index.ts",
+      "packages/build/src/extensions/lightpanda.ts",
+      "packages/build/src/extensions/playwright.ts",
+      "packages/build/src/extensions/prisma.ts",
+      "packages/build/src/extensions/puppeteer.ts",
+      "packages/build/src/extensions/typescript.ts",
+      "packages/build/src/imports/mlly-cjs.cts",
+      "packages/build/src/imports/mlly.ts",
+      "packages/build/src/index.ts",
+      "packages/build/src/internal.ts",
+      "packages/build/src/internal/additionalFiles.ts",
+      "packages/build/src/version.ts",
+      "packages/build/tsconfig.json",
+      "packages/build/tsconfig.src.json",
+      "packages/python/CHANGELOG.md",
+      "packages/python/LICENSE",
+      "packages/python/README.md",
+      "packages/python/package.json",
+      "packages/python/src/extension.ts",
+      "packages/python/src/index.ts",
+      "packages/python/src/utils/tempFiles.ts",
+      "packages/python/tsconfig.json",
+      "packages/python/tsconfig.src.json",
+      "packages/rsc/CHANGELOG.md",
+      "packages/rsc/LICENSE",
+      "packages/rsc/README.md",
+      "packages/rsc/package.json",
+      "packages/rsc/src/build.ts",
+      "packages/rsc/src/index.ts",
+      "packages/rsc/src/sourceDir-cjs.cts",
+      "packages/rsc/src/sourceDir.ts",
+      "packages/rsc/tsconfig.json",
+      "packages/schema-to-json/.gitignore",
+      "packages/schema-to-json/CHANGELOG.md",
+      "packages/schema-to-json/LICENSE",
+      "packages/schema-to-json/README.md",
+      "packages/schema-to-json/package.json",
+      "packages/schema-to-json/src/index.ts",
+      "packages/schema-to-json/tests/index.test.ts",
+      "packages/schema-to-json/tsconfig.json",
+      "packages/schema-to-json/tsconfig.src.json",
+      "packages/schema-to-json/tsconfig.test.json",
+      "packages/schema-to-json/vitest.config.ts",
+      "packages/trigger-sdk/CHANGELOG.md",
+      "packages/trigger-sdk/LICENSE",
+      "packages/trigger-sdk/README.md",
+      "packages/trigger-sdk/package.json",
+      "packages/trigger-sdk/src/imports/uncrypto-cjs.cts",
+      "packages/trigger-sdk/src/imports/uncrypto.ts",
+      "packages/trigger-sdk/src/v3/auth.ts",
+      "packages/trigger-sdk/src/v3/batch.ts",
+      "packages/trigger-sdk/src/v3/cache.ts",
+      "packages/trigger-sdk/src/v3/config.ts",
+      "packages/trigger-sdk/src/v3/envvars.ts",
+      "packages/trigger-sdk/src/v3/heartbeats.ts",
+      "packages/trigger-sdk/src/v3/hooks.ts",
+      "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
+      "packages/trigger-sdk/src/v3/index-browser.mts",
+      "packages/trigger-sdk/src/v3/index.ts",
+      "packages/trigger-sdk/src/v3/locals.ts",
+      "packages/trigger-sdk/src/v3/metadata.ts",
+      "packages/trigger-sdk/src/v3/otel.ts",
+      "packages/trigger-sdk/src/v3/prompt.ts",
+      "packages/trigger-sdk/src/v3/promptManagement.ts",
+      "packages/trigger-sdk/src/v3/prompts.ts",
+      "packages/trigger-sdk/src/v3/query.ts",
+      "packages/trigger-sdk/src/v3/queues.ts",
+      "packages/trigger-sdk/src/v3/retry.ts",
+      "packages/trigger-sdk/src/v3/runs.ts",
+      "packages/trigger-sdk/src/v3/schedules/api.ts",
+      "packages/trigger-sdk/src/v3/schedules/index.ts",
+      "packages/trigger-sdk/src/v3/schemas.ts",
+      "packages/trigger-sdk/src/v3/shared.test.ts",
+      "packages/trigger-sdk/src/v3/shared.ts",
+      "packages/trigger-sdk/src/v3/streams.test.ts",
+      "packages/trigger-sdk/src/v3/streams.ts",
+      "packages/trigger-sdk/src/v3/tags.ts",
+      "packages/trigger-sdk/src/v3/tasks.ts",
+      "packages/trigger-sdk/src/v3/timeout.ts",
+      "packages/trigger-sdk/src/v3/tracer.ts",
+      "packages/trigger-sdk/src/v3/usage.ts",
+      "packages/trigger-sdk/src/v3/wait.ts",
+      "packages/trigger-sdk/src/v3/waitUntil.ts",
+      "packages/trigger-sdk/src/v3/webhooks.ts",
+      "packages/trigger-sdk/src/version.ts",
+      "packages/trigger-sdk/tsconfig.build.json",
+      "packages/trigger-sdk/tsconfig.json",
+      "packages/trigger-sdk/vitest.config.ts"
+    ],
+    "pathspec": [
+      "internal-packages/sdk-compat-tests/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/bun/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/bun/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/cjs-require/test.cjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/src/index.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/cloudflare-worker/wrangler.toml",
+      "internal-packages/sdk-compat-tests/src/fixtures/deno/deno.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/deno/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/superjson-test.mjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/esm-import/test.mjs",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/package.json",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/test.ts",
+      "internal-packages/sdk-compat-tests/src/fixtures/typescript/tsconfig.json",
+      "internal-packages/sdk-compat-tests/src/tests/bundler.test.ts",
+      "internal-packages/sdk-compat-tests/src/tests/import.test.ts",
+      "internal-packages/sdk-compat-tests/tsconfig.json",
+      "internal-packages/sdk-compat-tests/vitest.config.ts",
+      "packages/build/CHANGELOG.md",
+      "packages/build/LICENSE",
+      "packages/build/README.md",
+      "packages/build/package.json",
+      "packages/build/src/extensions/audioWaveform.ts",
+      "packages/build/src/extensions/core.ts",
+      "packages/build/src/extensions/core/additionalFiles.ts",
+      "packages/build/src/extensions/core/additionalPackages.ts",
+      "packages/build/src/extensions/core/aptGet.ts",
+      "packages/build/src/extensions/core/ffmpeg.ts",
+      "packages/build/src/extensions/core/neonSyncEnvVars.ts",
+      "packages/build/src/extensions/core/syncEnvVars.ts",
+      "packages/build/src/extensions/core/syncSupabaseEnvVars.ts",
+      "packages/build/src/extensions/core/vercelSyncEnvVars.ts",
+      "packages/build/src/extensions/index.ts",
+      "packages/build/src/extensions/lightpanda.ts",
+      "packages/build/src/extensions/playwright.ts",
+      "packages/build/src/extensions/prisma.ts",
+      "packages/build/src/extensions/puppeteer.ts",
+      "packages/build/src/extensions/typescript.ts",
+      "packages/build/src/imports/mlly-cjs.cts",
+      "packages/build/src/imports/mlly.ts",
+      "packages/build/src/index.ts",
+      "packages/build/src/internal.ts",
+      "packages/build/src/internal/additionalFiles.ts",
+      "packages/build/src/version.ts",
+      "packages/build/tsconfig.json",
+      "packages/build/tsconfig.src.json",
+      "packages/python/CHANGELOG.md",
+      "packages/python/LICENSE",
+      "packages/python/README.md",
+      "packages/python/package.json",
+      "packages/python/src/extension.ts",
+      "packages/python/src/index.ts",
+      "packages/python/src/utils/tempFiles.ts",
+      "packages/python/tsconfig.json",
+      "packages/python/tsconfig.src.json",
+      "packages/rsc/CHANGELOG.md",
+      "packages/rsc/LICENSE",
+      "packages/rsc/README.md",
+      "packages/rsc/package.json",
+      "packages/rsc/src/build.ts",
+      "packages/rsc/src/index.ts",
+      "packages/rsc/src/sourceDir-cjs.cts",
+      "packages/rsc/src/sourceDir.ts",
+      "packages/rsc/tsconfig.json",
+      "packages/schema-to-json/.gitignore",
+      "packages/schema-to-json/CHANGELOG.md",
+      "packages/schema-to-json/LICENSE",
+      "packages/schema-to-json/README.md",
+      "packages/schema-to-json/package.json",
+      "packages/schema-to-json/src/index.ts",
+      "packages/schema-to-json/tests/index.test.ts",
+      "packages/schema-to-json/tsconfig.json",
+      "packages/schema-to-json/tsconfig.src.json",
+      "packages/schema-to-json/tsconfig.test.json",
+      "packages/schema-to-json/vitest.config.ts",
+      "packages/trigger-sdk/CHANGELOG.md",
+      "packages/trigger-sdk/LICENSE",
+      "packages/trigger-sdk/README.md",
+      "packages/trigger-sdk/package.json",
+      "packages/trigger-sdk/src/imports/uncrypto-cjs.cts",
+      "packages/trigger-sdk/src/imports/uncrypto.ts",
+      "packages/trigger-sdk/src/v3/auth.ts",
+      "packages/trigger-sdk/src/v3/batch.ts",
+      "packages/trigger-sdk/src/v3/cache.ts",
+      "packages/trigger-sdk/src/v3/config.ts",
+      "packages/trigger-sdk/src/v3/envvars.ts",
+      "packages/trigger-sdk/src/v3/heartbeats.ts",
+      "packages/trigger-sdk/src/v3/hooks.ts",
+      "packages/trigger-sdk/src/v3/idempotencyKeys.ts",
+      "packages/trigger-sdk/src/v3/index-browser.mts",
+      "packages/trigger-sdk/src/v3/index.ts",
+      "packages/trigger-sdk/src/v3/locals.ts",
+      "packages/trigger-sdk/src/v3/metadata.ts",
+      "packages/trigger-sdk/src/v3/otel.ts",
+      "packages/trigger-sdk/src/v3/prompt.ts",
+      "packages/trigger-sdk/src/v3/promptManagement.ts",
+      "packages/trigger-sdk/src/v3/prompts.ts",
+      "packages/trigger-sdk/src/v3/query.ts",
+      "packages/trigger-sdk/src/v3/queues.ts",
+      "packages/trigger-sdk/src/v3/retry.ts",
+      "packages/trigger-sdk/src/v3/runs.ts",
+      "packages/trigger-sdk/src/v3/schedules/api.ts",
+      "packages/trigger-sdk/src/v3/schedules/index.ts",
+      "packages/trigger-sdk/src/v3/schemas.ts",
+      "packages/trigger-sdk/src/v3/shared.test.ts",
+      "packages/trigger-sdk/src/v3/shared.ts",
+      "packages/trigger-sdk/src/v3/streams.test.ts",
+      "packages/trigger-sdk/src/v3/streams.ts",
+      "packages/trigger-sdk/src/v3/tags.ts",
+      "packages/trigger-sdk/src/v3/tasks.ts",
+      "packages/trigger-sdk/src/v3/timeout.ts",
+      "packages/trigger-sdk/src/v3/tracer.ts",
+      "packages/trigger-sdk/src/v3/usage.ts",
+      "packages/trigger-sdk/src/v3/wait.ts",
+      "packages/trigger-sdk/src/v3/waitUntil.ts",
+      "packages/trigger-sdk/src/v3/webhooks.ts",
+      "packages/trigger-sdk/src/version.ts",
+      "packages/trigger-sdk/tsconfig.build.json",
+      "packages/trigger-sdk/tsconfig.json",
+      "packages/trigger-sdk/vitest.config.ts"
+    ]
+  },
+  "reachability": {
+    "candidateNames": [
+      "@platos/sdk",
+      "@internal/sdk-compat-tests",
+      "@platos/build",
+      "@platos/python",
+      "@platos/rsc",
+      "@platos/schema-to-json"
+    ],
+    "channels": {
+      "package-dependencies": [],
+      "static-imports": [],
+      "side-effect-imports": [],
+      "dynamic-imports": [],
+      "filesystem-loaders": [],
+      "ts-references": [],
+      "ci": [],
+      "scripts": [
+        {
+          "path": "apps/agent/scripts/audit-production-dependencies.mjs",
+          "line": 5,
+          "kind": "scripts",
+          "token": "@platos/sdk"
+        },
+        {
+          "path": "scripts/audit-platos-build.mjs",
+          "line": 51,
+          "kind": "scripts",
+          "token": "@platos/sdk"
+        }
+      ],
+      "docker": [],
+      "test-config": [],
+      "docs": []
+    },
+    "allowedNegativeGuards": [
+      {
+        "channel": "scripts",
+        "path": "apps/agent/scripts/audit-production-dependencies.mjs",
+        "line": 5,
+        "kind": "scripts",
+        "token": "@platos/sdk"
+      },
+      {
+        "channel": "scripts",
+        "path": "scripts/audit-platos-build.mjs",
+        "line": 51,
+        "kind": "scripts",
+        "token": "@platos/sdk"
+      }
+    ]
+  },
+  "apiBoundary": {
+    "legacyImports": [],
+    "runtimeImports": [
+      {
+        "path": "apps/agent/scripts/probe-session-continuation.mjs",
+        "line": 5,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "sessions",
+          "runs"
+        ]
+      },
+      {
+        "path": "apps/agent/src/agent-runtime/trigger-integration.ts",
+        "line": 48,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/agent-batch.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/agent-durable-approval-wait.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/agent-scheduled-run.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/agent-subrun.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/agent-tool-block.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/approvals-expiry-sweep.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/attachment-retention.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/budget-alert.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/chat-session-reaper.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/compaction.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/cost-reconcile.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/durable-turn.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/employee-run.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/eval-sample.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/litellm-cost-refresh.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/memory-extraction.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/observability-dlq-drain.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/platos-custom-task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata",
+          "logger"
+        ]
+      },
+      {
+        "path": "apps/agent/src/trigger-tasks/skill-run.task.ts",
+        "line": 1,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/building-with-ai.mdx",
+        "line": 88,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/building-with-ai.mdx",
+        "line": 111,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/building-with-ai.mdx",
+        "line": 151,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "retry",
+          "AbortTaskRunError"
+        ]
+      },
+      {
+        "path": "docs/building-with-ai.mdx",
+        "line": 195,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/config/extensions/playwright.mdx",
+        "line": 127,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "tasks",
+          "locals"
+        ]
+      },
+      {
+        "path": "docs/config/extensions/pythonExtension.mdx",
+        "line": 32,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/config/extensions/pythonExtension.mdx",
+        "line": 67,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/config/extensions/pythonExtension.mdx",
+        "line": 138,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/config/extensions/pythonExtension.mdx",
+        "line": 168,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/context.mdx",
+        "line": 16,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/deploy-environment-variables.mdx",
+        "line": 121,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/deploy-environment-variables.mdx",
+        "line": 149,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/deploy-environment-variables.mdx",
+        "line": 395,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 36,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 75,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "retry"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 111,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "retry"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 208,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 314,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "AbortTaskRunError"
+        ]
+      },
+      {
+        "path": "docs/errors-retrying.mdx",
+        "line": 340,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/ai-agents/generate-translate-copy.mdx",
+        "line": 27,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/ai-agents/respond-and-check-content.mdx",
+        "line": 26,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "batch",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/ai-agents/route-question.mdx",
+        "line": 27,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/ai-agents/translate-and-refine.mdx",
+        "line": 26,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/ai-agents/verify-news-article.mdx",
+        "line": 29,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "batch",
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/example-projects/anchor-browser-web-scraper.mdx",
+        "line": 49,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/dall-e3-generate-image.mdx",
+        "line": 14,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/deepgram-transcribe-audio.mdx",
+        "line": 20,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/fal-ai-image-to-cartoon.mdx",
+        "line": 33,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/ffmpeg-video-processing.mdx",
+        "line": 55,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/ffmpeg-video-processing.mdx",
+        "line": 167,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/ffmpeg-video-processing.mdx",
+        "line": 280,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/firecrawl-url-crawl.mdx",
+        "line": 24,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/firecrawl-url-crawl.mdx",
+        "line": 69,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/hookdeck-webhook.mdx",
+        "line": 49,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/libreoffice-pdf-conversion.mdx",
+        "line": 58,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/lightpanda.mdx",
+        "line": 37,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/lightpanda.mdx",
+        "line": 115,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/lightpanda.mdx",
+        "line": 147,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/open-ai-with-retrying.mdx",
+        "line": 14,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/pdf-to-image.mdx",
+        "line": 30,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/puppeteer.mdx",
+        "line": 62,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/puppeteer.mdx",
+        "line": 94,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/puppeteer.mdx",
+        "line": 162,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/react-email.mdx",
+        "line": 26,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/react-email.mdx",
+        "line": 296,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/react-pdf.mdx",
+        "line": 16,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/replicate-image-generation.mdx",
+        "line": 15,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/scrape-hacker-news.mdx",
+        "line": 82,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "schedules",
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/sentry-error-tracking.mdx",
+        "line": 103,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/sentry-error-tracking.mdx",
+        "line": 138,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/sharp-image-processing.mdx",
+        "line": 52,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/stripe-webhook.mdx",
+        "line": 35,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/stripe-webhook.mdx",
+        "line": 86,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/stripe-webhook.mdx",
+        "line": 130,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/supabase-database-operations.mdx",
+        "line": 30,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/supabase-database-operations.mdx",
+        "line": 120,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "AbortTaskRunError",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/supabase-storage-upload.mdx",
+        "line": 25,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/supabase-storage-upload.mdx",
+        "line": 95,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/examples/vercel-ai-sdk.mdx",
+        "line": 22,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/bun.mdx",
+        "line": 73,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/drizzle.mdx",
+        "line": 54,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nango.mdx",
+        "line": 155,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs-webhooks.mdx",
+        "line": 39,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs-webhooks.mdx",
+        "line": 63,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs.mdx",
+        "line": 69,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs.mdx",
+        "line": 109,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs.mdx",
+        "line": 222,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/nextjs.mdx",
+        "line": 372,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/prisma.mdx",
+        "line": 54,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/remix-webhooks.mdx",
+        "line": 31,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/remix.mdx",
+        "line": 53,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/remix.mdx",
+        "line": 94,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/sequin.mdx",
+        "line": 43,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/sequin.mdx",
+        "line": 162,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/guides/frameworks/supabase-edge-functions-database-webhooks.mdx",
+        "line": 149,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/python/python-crawl4ai.mdx",
+        "line": 126,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "schemaTask",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/python/python-doc-to-markdown.mdx",
+        "line": 74,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/python/python-pdf-form-extractor.mdx",
+        "line": 75,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/use-cases/upgrading-from-v2.mdx",
+        "line": 62,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/use-cases/upgrading-from-v2.mdx",
+        "line": 139,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/guides/use-cases/upgrading-from-v2.mdx",
+        "line": 261,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/hidden-tasks.mdx",
+        "line": 9,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/hidden-tasks.mdx",
+        "line": 23,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/hidden-tasks.mdx",
+        "line": 47,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/how-it-works.mdx",
+        "line": 14,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/how-it-works.mdx",
+        "line": 88,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/how-it-works.mdx",
+        "line": 168,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/how-it-works.mdx",
+        "line": 252,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/how-it-works.mdx",
+        "line": 290,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger"
+        ]
+      },
+      {
+        "path": "docs/how-to-reduce-your-spend.mdx",
+        "line": 146,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "AbortTaskRunError"
+        ]
+      },
+      {
+        "path": "docs/how-to-reduce-your-spend.mdx",
+        "line": 182,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 44,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 69,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 89,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 114,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 141,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 169,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 196,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 251,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 280,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 342,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 386,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/idempotency.mdx",
+        "line": 416,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/logging.mdx",
+        "line": 19,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger"
+        ]
+      },
+      {
+        "path": "docs/logging.mdx",
+        "line": 57,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/logging.mdx",
+        "line": 94,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "otel"
+        ]
+      },
+      {
+        "path": "docs/machines.mdx",
+        "line": 9,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/machines.mdx",
+        "line": 854,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/machines.mdx",
+        "line": 911,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/machines.mdx",
+        "line": 932,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/management/advanced-usage.mdx",
+        "line": 12,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/management/authentication.mdx",
+        "line": 18,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "configure",
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/management/auto-pagination.mdx",
+        "line": 11,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/management/auto-pagination.mdx",
+        "line": 27,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/management/errors-and-retries.mdx",
+        "line": 12,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "APIError"
+        ]
+      },
+      {
+        "path": "docs/management/errors-and-retries.mdx",
+        "line": 52,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/management/overview.mdx",
+        "line": 32,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "configure",
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/manual-setup.mdx",
+        "line": 190,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/manual-setup.mdx",
+        "line": 450,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/manual-setup.mdx",
+        "line": 571,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/manual-setup.mdx",
+        "line": 593,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 109,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 119,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 199,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "queue",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 248,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 260,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migrating-from-v3.mdx",
+        "line": 273,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-defer.mdx",
+        "line": 207,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-defer.mdx",
+        "line": 262,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/migration-mergent.mdx",
+        "line": 51,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-mergent.mdx",
+        "line": 86,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 97,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 121,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 142,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 161,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 190,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 226,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 247,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/migration-n8n.mdx",
+        "line": 284,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/quick-start.mdx",
+        "line": 41,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/input-streams.mdx",
+        "line": 113,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/overview.mdx",
+        "line": 36,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/streams.mdx",
+        "line": 395,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 14,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 32,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 50,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 68,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 88,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 133,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 168,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/backend/subscribe.mdx",
+        "line": 202,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/how-it-works.mdx",
+        "line": 30,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/realtime/how-it-works.mdx",
+        "line": 48,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/how-it-works.mdx",
+        "line": 60,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/realtime/react-hooks/use-wait-token.mdx",
+        "line": 9,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/realtime/run-object.mdx",
+        "line": 129,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/realtime/run-object.mdx",
+        "line": 151,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/run-usage.mdx",
+        "line": 11,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "usage",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/run-usage.mdx",
+        "line": 68,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/run-usage.mdx",
+        "line": 76,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 97,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 111,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 259,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 278,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 288,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 307,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 315,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 327,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 342,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 352,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 362,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 372,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs.mdx",
+        "line": 382,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/runs/heartbeats.mdx",
+        "line": 12,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "heartbeats"
+        ]
+      },
+      {
+        "path": "docs/runs/max-duration.mdx",
+        "line": 41,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "usage"
+        ]
+      },
+      {
+        "path": "docs/runs/max-duration.mdx",
+        "line": 63,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/runs/max-duration.mdx",
+        "line": 79,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "timeout"
+        ]
+      },
+      {
+        "path": "docs/runs/max-duration.mdx",
+        "line": 126,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 25,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 44,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 82,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 122,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 144,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 166,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 185,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 206,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 230,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 251,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 279,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 307,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 341,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 377,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 396,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 417,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 535,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 562,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 596,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 629,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 680,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "docs/runs/metadata.mdx",
+        "line": 723,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/snippets/code/openai-retry.mdx",
+        "line": 2,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/snippets/migrate-v4-using-ai.mdx",
+        "line": 12,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/snippets/migrate-v4-using-ai.mdx",
+        "line": 18,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/snippets/migrate-v4-using-ai.mdx",
+        "line": 34,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "locals",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/snippets/migrate-v4-using-ai.mdx",
+        "line": 133,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "queue",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tags.mdx",
+        "line": 63,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "tags"
+        ]
+      },
+      {
+        "path": "docs/tags.mdx",
+        "line": 114,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 14,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 172,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 192,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 217,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 281,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "locals"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 319,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 370,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 400,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 431,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 462,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 500,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "tasks",
+          "schemaTask"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 554,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "logger",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/overview.mdx",
+        "line": 619,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/scheduled.mdx",
+        "line": 16,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/tasks/scheduled.mdx",
+        "line": 252,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/tasks/schemaTask.mdx",
+        "line": 37,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 102,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 155,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 183,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 248,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 279,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 295,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 319,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 344,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 370,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 564,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 677,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 752,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "metadata",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 765,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/tasks/streams.mdx",
+        "line": 807,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "streams",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/trigger-integration.md",
+        "line": 76,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger"
+        ]
+      },
+      {
+        "path": "docs/trigger-integration.md",
+        "line": 113,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/trigger-integration.md",
+        "line": 127,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/trigger-integration.md",
+        "line": 161,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/trigger-integration.md",
+        "line": 211,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 52,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 75,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 103,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 126,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 149,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 210,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 227,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 388,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "SubtaskUnwrapError"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 537,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "batch",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 586,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "batch",
+          "task",
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 622,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "batch",
+          "task",
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 721,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 729,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 796,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 822,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 1128,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 1177,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks",
+          "BatchTriggerError"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 1205,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "BatchTriggerError"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 1250,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/triggering.mdx",
+        "line": 1304,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/upgrading-from-trigger.md",
+        "line": 113,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks",
+          "schedules",
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/upgrading-from-trigger.md",
+        "line": 142,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "docs/upgrading-from-trigger.md",
+        "line": 168,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/upgrading-from-trigger.md",
+        "line": 182,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 46,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 88,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 123,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 166,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 198,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 232,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 266,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 295,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 359,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 430,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 713,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "metadata",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 783,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1471,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1608,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1663,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1687,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1733,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "configure"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1761,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "configure"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1831,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 1903,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2039,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2095,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2156,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "envvars",
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2212,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2333,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2402,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 2952,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 3055,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 3145,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 3204,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/v3-openapi.yaml",
+        "line": 3250,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 22,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 33,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 52,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 67,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 109,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 182,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 216,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 351,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 447,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/wait-for-token.mdx",
+        "line": 523,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "docs/writing-agents.md",
+        "line": 176,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "internal-packages/run-engine/README.md",
+        "line": 215,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "wait"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 531,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "batch",
+          "task",
+          "runs"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 810,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 1250,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "packages/core/src/v3/idempotencyKeys.ts",
+        "line": 107,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "packages/core/src/v3/types/tasks.ts",
+        "line": 746,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "task"
+        ]
+      },
+      {
+        "path": "packages/core/src/v3/types/tasks.ts",
+        "line": 775,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "idempotencyKeys",
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 8,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "tags"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 42,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "queue"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 85,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "retry",
+          "AbortTaskRunError"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 169,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "idempotencyKeys"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 211,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 357,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/advanced-tasks.md",
+        "line": 399,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "usage"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/basic-tasks.md",
+        "line": 8,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/basic-tasks.md",
+        "line": 50,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/basic-tasks.md",
+        "line": 72,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/basic-tasks.md",
+        "line": 137,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/claude-code-agent.md",
+        "line": 31,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/claude-code-agent.md",
+        "line": 94,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/realtime.md",
+        "line": 46,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/realtime.md",
+        "line": 71,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "rules/4.0.0/scheduled-tasks.md",
+        "line": 8,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "schedules"
+        ]
+      },
+      {
+        "path": "rules/4.1.0/realtime.md",
+        "line": 46,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "runs",
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 8,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "tags"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 181,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "queue"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 224,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "retry",
+          "AbortTaskRunError"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 308,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "idempotencyKeys"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 350,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "metadata"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/advanced-tasks.md",
+        "line": 405,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "logger"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/basic-tasks.md",
+        "line": 8,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/basic-tasks.md",
+        "line": 52,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "tasks"
+        ]
+      },
+      {
+        "path": "rules/4.3.0/basic-tasks.md",
+        "line": 150,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task",
+          "wait"
+        ]
+      },
+      {
+        "path": "scripts/vocabulary-boundary.test.mjs",
+        "line": 91,
+        "specifier": "@trigger.dev/sdk",
+        "symbols": [
+          "task"
+        ]
+      }
+    ],
+    "clientImports": [
+      {
+        "path": "README.md",
+        "line": 128,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "content/docs/events-and-polling.md",
+        "line": 31,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "content/docs/sdks.md",
+        "line": 59,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "docs/upgrading-from-trigger.md",
+        "line": 116,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "docs/writing-agents.md",
+        "line": 32,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "examples/platos-client-react-widget/ChatWidget.tsx",
+        "line": 16,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "examples/platos-client-ts-node/cli.ts",
+        "line": 12,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient",
+          "PlatosError"
+        ]
+      },
+      {
+        "path": "examples/platos-nextjs-starter/app/chat/page.tsx",
+        "line": 3,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "packages/platos-client/README.md",
+        "line": 22,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "packages/platos-react-widget/src/usePlatosChat.ts",
+        "line": 2,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      },
+      {
+        "path": "packages/platos-token-mint/README.md",
+        "line": 48,
+        "specifier": "@platosdev/client",
+        "symbols": [
+          "PlatosClient"
+        ]
+      }
+    ],
+    "deprecatedSubpathImports": [],
+    "permittedHistoricalDeprecatedSubpathImports": [
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 510,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "batch"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 531,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "batch",
+          "task",
+          "runs"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 796,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "TriggerConfig"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 810,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "task"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 1236,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "TriggerConfig"
+        ]
+      },
+      {
+        "path": "packages/core/CHANGELOG.md",
+        "line": 1250,
+        "specifier": "@trigger.dev/sdk/v3",
+        "symbols": [
+          "task"
+        ]
+      }
+    ],
+    "misroutedRuntimeImports": [],
+    "misroutedClientImports": []
+  },
+  "protectedTrees": [
+    {
+      "path": "packages/platools-js",
+      "integrationBaseTreeOid": "7d34644e66e4ec98a1158539db78df1f7c2ee4be",
+      "trackedFiles": 41,
+      "trackedBytes": 218494,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platos-client",
+      "integrationBaseTreeOid": "82e0fbb9b2d32e8168a731856034695a2f0235e5",
+      "trackedFiles": 21,
+      "trackedBytes": 94958,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platos-embed",
+      "integrationBaseTreeOid": "d19dd2ef79dd240e3a48321f90d5647824fe793c",
+      "trackedFiles": 6,
+      "trackedBytes": 22348,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platos-react-widget",
+      "integrationBaseTreeOid": "18bf2d9326a82789154f1eec407848539816dad0",
+      "trackedFiles": 12,
+      "trackedBytes": 71825,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platos-token-mint",
+      "integrationBaseTreeOid": "0fcd94ddd1c45d4dfda4563389f3a43c1a5291fc",
+      "trackedFiles": 6,
+      "trackedBytes": 24363,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platools-py",
+      "integrationBaseTreeOid": "fdb5617a39bdc95c0f6b2ef7b0060d98cb96748a",
+      "trackedFiles": 46,
+      "trackedBytes": 297916,
+      "byteIdentical": true
+    },
+    {
+      "path": "packages/platos-client-py",
+      "integrationBaseTreeOid": "88b67ab00e4073390951b8b59d645782784ac599",
+      "trackedFiles": 13,
+      "trackedBytes": 51370,
+      "byteIdentical": true
+    }
+  ],
+  "integration": {
+    "lockfileSha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782",
+    "vocabularySha256": "f9de617f60578032ea9e5a2ecb438a6b6d955dbf4bb0bc0334eefe90a9500ea9",
+    "ledgerRulesSha256": "f8a33f03246924a85955720388eb49d1982cc89dccbc68a3b751b226639a0927",
+    "reachabilitySha256": "f2150c47f9ce68f9c4972730cade4ad34635c836610e6706cffc510b9ac903f7",
+    "staleVocabularyRows": 0,
+    "obsoleteLedgerPins": 0,
+    "staleReachabilityWorkspaces": 0
+  },
+  "licensing": {
+    "removedPackageLocalLicenseFiles": [
+      "packages/build/LICENSE",
+      "packages/python/LICENSE",
+      "packages/rsc/LICENSE",
+      "packages/schema-to-json/LICENSE",
+      "packages/trigger-sdk/LICENSE"
+    ],
+    "repositoryLicenseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+    "repositoryNoticeSha256": "d72d73d8541f0000e1857cc4d662b6f414d43e7111402c2293bf4ab45261cb95"
+  }
+}

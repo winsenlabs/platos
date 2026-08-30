@@ -1,8 +1,8 @@
 /**
  * Theme K.6 — Platform MCP tools for trigger.dev meta-operations.
  *
- * These wrappers delegate to the webapp's Trigger REST API (the same
- * surface `@platos/sdk` consumers hit). Transport: plain `fetch` against
+ * These wrappers delegate to the webapp's Trigger REST API. Durable runtime
+ * consumers use `@trigger.dev/sdk`; these wrappers use plain `fetch` against
  * `PLATOS_TRIGGER_API_URL` with `PLATOS_TRIGGER_API_KEY`. There is NO
  * new agent-side endpoint — the agent is a thin forwarder.
  *

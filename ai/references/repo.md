@@ -10,10 +10,10 @@ This is a Node 22.14.0 and pnpm 10.23.0 monorepo using the root `turbo.json`.
 
 ## Public packages
 
-- `<root>/packages/trigger-sdk` is the `@platos/sdk` package.
 - `<root>/packages/core` is the shared `@platos/core` package.
 - `<root>/packages/contexts/*`, `<root>/packages/adapters/*`, and `<root>/packages/kernel` form the V1 project graph.
-- `<root>/packages/platools-js` is `@platosdev/platools-sdk`; `<root>/packages/platos-client` is `@platosdev/client`.
+- `<root>/packages/platools-js` is `@platosdev/platools-sdk`; `<root>/packages/platos-client` is the REST/WebSocket client package `@platosdev/client`.
+- Durable Trigger task APIs come from the external `@trigger.dev/sdk` package.
 
 ## Internal packages
 

@@ -29,7 +29,7 @@ When something breaks, call create_ticket with severity.
 ### Config (create via UI or SDK)
 
 ```ts
-import { PlatosClient } from "@platos/sdk";
+import { PlatosClient } from "@platosdev/client";
 
 const client = new PlatosClient({
   apiKey: process.env.PLATOS_API_KEY!,
@@ -173,7 +173,7 @@ Register a trigger.dev task in your project:
 
 ```ts
 // trigger/research.ts
-import { task } from "@trigger.dev/sdk/v3";
+import { task } from "@trigger.dev/sdk";
 import { Anthropic } from "@anthropic-ai/sdk";
 
 export const fetchAndSummarize = task({

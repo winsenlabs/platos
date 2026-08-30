@@ -23,6 +23,8 @@
     "audit:scope": "node scripts/audit-scope.mjs",
     "audit:win253-clickhouse-split": "node scripts/clickhouse-split-audit.mjs --check",
     "test:win253-clickhouse-split": "node --test scripts/clickhouse-split-audit.test.mjs",
+    "audit:win253-vendored-build": "node scripts/vendored-build-audit.mjs",
+    "test:win253-vendored-build": "node --test scripts/vendored-build-audit.test.mjs",
     "audit:platos-build": "node scripts/audit-platos-build.mjs",
     "audit:route-parity": "node scripts/route-capability-parity.mjs",
     "audit:route-parity:completion": "node scripts/route-capability-parity.mjs --completion",

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   anchorKey,
@@ -87,7 +88,7 @@ function findingsWithoutExceptions(root, manifest, now = "2026-08-24") {
 
 test("an exact reviewed @trigger.dev SDK context passes", () => {
   const { root, manifest } = fixture({
-    "src/external-runtime.ts": 'import { task } from "@trigger.dev/sdk/v3";\n',
+    "src/external-runtime.ts": 'import { task } from "@trigger.dev/sdk";\n',
   });
   const [finding] = findingsWithoutExceptions(root, manifest);
   manifest.exceptions = [exceptionFor(finding)];
@@ -582,11 +583,59 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //   -86  WIN-252 retired-file and rewritten-guidance occurrences --> 20398
   //   +4   WIN-252 package-local Apache-2.0 LICENSE copies --> 20402
   //   +28  subsequently integrated primary evidence rows --> 20430
-  //   -455 WIN-253 exact rows still present after the primary overlays were resolved by deleting the inherited ClickHouse
-  //        package/parser/replication cluster and updating its live commentary
-  //        --> 19974. The generated removal report is an exact exclusion because
-  //        it recursively records predecessor paths rather than product wording.
-  assert.equal(manifest.exceptions.length, 19975);
+  //   -1170 WIN-253 exact rows removed or re-anchored after retiring the inherited
+  //         ClickHouse and vendored build/SDK clusters --> 19260
+  //   +572  exact boundary-spec rows in the executable vendored build/SDK receipts
+  //         --> 19832
+  //   +45   reviewed-source deletion pathset rows, minus 2 resolved tombstone
+  //         fixture literals --> 19875
+  //   -617  exact-excluded vendored receipt rows break the receipt/vocabulary
+  //         evidence cycle --> 19258
+  //   +5    reviewed deprecated-subpath mutation controls --> 19263.
+  assert.equal(manifest.exceptions.length, 19263);
+});
+
+test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const manifest = JSON.parse(
+    readFileSync(new URL("../docs/vocabulary-boundary-exceptions.json", import.meta.url), "utf8")
+  );
+  const receiptPaths = [
+    "docs/audits/win253-removals/vendored-build.json",
+    "docs/audits/win253-removals/vendored-build.md",
+  ];
+  const excludedPaths = new Set(manifest.exclusions.map(({ path }) => path));
+  for (const path of receiptPaths) {
+    assert(excludedPaths.has(path), `${path} must remain an exact exclusion`);
+    assert.equal(
+      manifest.exceptions.filter((exception) => exception.path === path).length,
+      0,
+      `${path} must not retain receipt-anchored exception rows`
+    );
+  }
+
+  const excluded = scanRepository(root, manifest, { now: new Date("2026-08-30T12:00:00Z") });
+  assert.deepEqual(
+    excluded.excludedFiles.filter((path) => receiptPaths.includes(path)),
+    receiptPaths,
+    "both receipt artifacts must be excluded by exact path"
+  );
+  assert.equal(excluded.findings.filter(({ path }) => receiptPaths.includes(path)).length, 0);
+
+  const mutation = scanRepository(
+    root,
+    {
+      ...manifest,
+      exclusions: manifest.exclusions.filter(({ path }) => !receiptPaths.includes(path)),
+    },
+    { now: new Date("2026-08-30T12:00:00Z") }
+  );
+  for (const path of receiptPaths) {
+    assert(
+      mutation.findings.some((finding) => finding.path === path),
+      `${path} must contain non-vacuous vocabulary evidence when its exclusion is removed`
+    );
+  }
 });
 
 test("fixture: a pure rename keeps the occurrence and rebinds only the path anchor", () => {

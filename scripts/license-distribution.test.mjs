@@ -40,21 +40,15 @@ const EXPECTED_SHIPPED_CANDIDATES = [
   },
 ];
 const LEGAL_FILES = ["LICENSE", "NOTICE"];
-const INHERITED_SDK_DIRECTORY = `packages/${["trig", "ger-sdk"].join("")}`;
 const EXPECTED_PUBLISHABLE_PACKAGES = [
-  "packages/build/package.json",
   "packages/core/package.json",
   "packages/platools-js/package.json",
   "packages/platos-client/package.json",
   "packages/platos-embed/package.json",
   "packages/platos-react-widget/package.json",
   "packages/platos-token-mint/package.json",
-  "packages/python/package.json",
   "packages/react-hooks/package.json",
   "packages/redis-worker/package.json",
-  "packages/rsc/package.json",
-  "packages/schema-to-json/package.json",
-  `${INHERITED_SDK_DIRECTORY}/package.json`,
 ];
 
 function workspaceManifestPaths(root) {
@@ -276,25 +270,25 @@ test("NEGATIVE CONTROL: the COPY matcher requires an exact legal source in the f
 });
 
 test("NEGATIVE CONTROLS: package metadata discovery and package-local license bytes cannot drift", () => {
-  const buildManifestPath = "packages/build/package.json";
-  const buildManifest = read(buildManifestPath);
-  assert.match(buildManifest, /"license": "Apache-2.0"/u);
+  const packageManifestPath = "packages/core/package.json";
+  const packageManifest = read(packageManifestPath);
+  assert.match(packageManifest, /"license": "Apache-2.0"/u);
 
-  const mit = new Map([[buildManifestPath, buildManifest.replace('"license": "Apache-2.0"', '"license": "MIT"')]]);
+  const mit = new Map([[packageManifestPath, packageManifest.replace('"license": "Apache-2.0"', '"license": "MIT"')]]);
   assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: mit }).some((error) => error.includes("must declare license Apache-2.0")));
 
-  const omitted = new Map([[buildManifestPath, null]]);
+  const omitted = new Map([[packageManifestPath, null]]);
   assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: omitted }).some((error) => error.includes("discovery must remain exact")));
 
-  const privateManifest = JSON.parse(buildManifest);
+  const privateManifest = JSON.parse(packageManifest);
   privateManifest.private = true;
-  const madePrivate = new Map([[buildManifestPath, JSON.stringify(privateManifest)]]);
+  const madePrivate = new Map([[packageManifestPath, JSON.stringify(privateManifest)]]);
   assert.ok(firstPartyLegalMetadataErrors(ROOT, { manifests: madePrivate }).some((error) => error.includes("discovery must remain exact")));
 
-  const removedLicense = new Map([["packages/build/LICENSE", null]]);
+  const removedLicense = new Map([["packages/core/LICENSE", null]]);
   assert.ok(firstPartyLegalMetadataErrors(ROOT, { licenses: removedLicense }).some((error) => error.includes("must byte-match")));
 
-  const alteredLicense = new Map([["packages/build/LICENSE", Buffer.from("not Apache-2.0\n")]]);
+  const alteredLicense = new Map([["packages/core/LICENSE", Buffer.from("not Apache-2.0\n")]]);
   assert.ok(firstPartyLegalMetadataErrors(ROOT, { licenses: alteredLicense }).some((error) => error.includes("must byte-match")));
 
   for (const nestedManifestPath of [

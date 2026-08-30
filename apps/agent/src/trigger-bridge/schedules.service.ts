@@ -3,7 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 /**
  * Wraps trigger.dev schedule CRUD for agent-layer use.
  *
- * BLOCK 2: all methods call @platos/sdk's `schedules.*` with proper
+ * BLOCK 2: all methods call @trigger.dev/sdk's `schedules.*` with proper
  * externalId = `agent:{agentId}` so schedules are discoverable per-agent.
  */
 export interface CreateAgentScheduleOptions {

@@ -1,8 +1,8 @@
 {
   "$schema": "platos.audit.license-index/v1",
   "note": "Frozen registry.npmjs.org licence snapshot for the union production closure. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock.",
-  "resolvedAgainstLockfileSha256": "603cd67f4564fe644852b01fa409c75d65a9cdf015f251bb79ce723846360f69",
-  "resolvedAt": "2026-08-29T05:08:53.049Z",
+  "resolvedAgainstLockfileSha256": "9e6a1e1b41e1e00ffd97dddc3f417dc3e1fc6740b2dc4206521f1df50f798782",
+  "resolvedAt": "2026-08-30T11:21:45.494Z",
   "registry": "https://registry.npmjs.org",
   "componentCount": 1897,
   "unresolvedCount": 3,

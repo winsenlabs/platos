@@ -83,6 +83,8 @@ const relocatedCommands = [
 const v1ReleaseGateCommands = [
   "pnpm test:win253-clickhouse-split",
   "pnpm audit:win253-clickhouse-split",
+  "pnpm test:win253-vendored-build",
+  "pnpm audit:win253-vendored-build",
   "node scripts/arch/gen-v1-skeleton.mjs --check",
   "pnpm test:v1-foundation",
   "pnpm test:install-git-hooks",
@@ -111,6 +113,8 @@ const expectedV1EvidenceCommands = [
   "node scripts/v1-ledger.mjs --check",
   "pnpm test:win253-clickhouse-split",
   "pnpm audit:win253-clickhouse-split",
+  "pnpm test:win253-vendored-build",
+  "pnpm audit:win253-vendored-build",
   "pnpm audit:capability-matrix",
   "node scripts/rest-census-independent.mjs --check",
   "node --test scripts/rest-census-independent.test.mjs",
@@ -169,6 +173,8 @@ const expectedV1PackageScripts = new Map([
   ["test:install-git-hooks", "node --test scripts/install-git-hooks.test.mjs"],
   ["test:win253-clickhouse-split", "node --test scripts/clickhouse-split-audit.test.mjs"],
   ["audit:win253-clickhouse-split", "node scripts/clickhouse-split-audit.mjs --check"],
+  ["test:win253-vendored-build", "node --test scripts/vendored-build-audit.test.mjs"],
+  ["audit:win253-vendored-build", "node scripts/vendored-build-audit.mjs"],
   ["audit:v1-project-graph", "node scripts/arch/v1-project-graph.mjs"],
   ["test:v1-project-graph", "node --test scripts/arch/v1-project-graph.test.mjs"],
   ["audit:max-file-lines", "node scripts/arch/max-file-lines.mjs"],
@@ -1269,8 +1275,8 @@ test("committed CI and image-build policy is executable, correlated, and complet
   );
   assert.equal(
     v1ReleaseGateCommands.length,
-    10,
-    "V1 release gate selector must cover generator, foundation, WIN-253, and six commands"
+    12,
+    "V1 release gate selector must cover generator, foundation, both WIN-253 clusters, and six commands"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -2218,7 +2224,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    179,
+    183,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

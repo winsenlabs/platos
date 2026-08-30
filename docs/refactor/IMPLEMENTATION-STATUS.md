@@ -16,7 +16,7 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | Item | Status | Notes |
 |---|---|---|
 | `PlatosAgent.executionMode` field (`"direct"`\|`"durable"`, default `direct`) | ✅ | String field, matches `historyMode`/`toolMode` convention; version snapshot (JSON) captures it. |
-| New trigger tasks: `durable-turn`, `employee-run`, `skill-run` | ✅ | Written + registered in `index.ts`, typecheck-green. Thin-shell (variant A): call back to `/internal/*` (added next). Use existing `@platos/sdk` (proven `task()`/`metadata`/`logger`). |
+| New trigger tasks: `durable-turn`, `employee-run`, `skill-run` | ✅ | Written + registered in `index.ts`, typecheck-green. Thin-shell (variant A): call back to `/internal/*` (added next). Use external `@trigger.dev/sdk` (`task()`/`metadata`/`logger`). |
 | `approval-waitpoint` task | ✅ | Already exists as `agentDurableApprovalWait` (`wait.forToken`). Wiring `request_approval`→it is a staged agent-code change. |
 | `agent-session` (chat.agent / Sessions) | 🔒 | Needs the real `@trigger.dev/sdk` — `chat.agent`/Sessions are not in the vendored fork. Lands with the SDK swap. |
 | Callback endpoints `POST /api/v1/agent/internal/{durable-turn,employee-run}` | ✅ | In `agent.controller.ts` (admin-token gated, same pattern as `internal/compaction`), reuse `executeNonStreamingTurn`; scope-guard bypass extended (`scope.guard.ts`). durable-turn + employee-run tasks now functional. |
@@ -45,7 +45,7 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | Item | Why staged |
 |---|---|
 | 🔒 Delete `internal-packages/{run-engine,run-queue,schedule-engine}` | `apps/webapp` imports run-engine; deleting breaks webapp typecheck until webapp track (P5) lands. |
-| 🔒 Delete `packages/{trigger-sdk,core,redis-worker,react-hooks}` | Same — cascade through webapp + build graph. |
+| ✅ Delete the reviewed vendored SDK workspace | Completed by WIN-253 after consumer and restore proofs were added. |
 | 🔒 Drop 68 trigger runtime Prisma models | Destructive migration; needs review + data plan (play.platos.dev resettable, real deploys not). |
 | 🔒 Retire/repoint `apps/webapp` run-engine role + `worker` compose service | The webapp *is* the forked platform; needs the standalone-console decision (§13). |
 

@@ -212,7 +212,7 @@ A more advanced SDK which would require uses to explicitly create a waitpoint. W
 
 ```ts
 // Your backend
-import { wait } from "@platos/sdk";
+import { wait } from "@trigger.dev/sdk";
 
 type ApprovalToken = {
   status: "approved" | "rejected";

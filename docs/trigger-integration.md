@@ -9,7 +9,7 @@ If you're new to trigger.dev: it's a durable task platform for TypeScript. You d
 
 ## The bridge
 
-`apps/agent/src/trigger-bridge/` is the only place the agent service talks to trigger.dev. It wraps the `@trigger.dev/sdk` (re-exported as `@platos/sdk`) with:
+`apps/agent/src/trigger-bridge/` is the only place the agent service talks to trigger.dev. It wraps the external `@trigger.dev/sdk` with:
 
 - A graceful fallback when `TRIGGER_SECRET_KEY` is not set (local dev)
 - An explicitly configured vendor client for realtime subscriptions (uses `PLATOS_TRIGGER_API_KEY`)
@@ -73,7 +73,7 @@ Standard trigger.dev. In your `trigger/` directory:
 
 ```ts
 // trigger/research.ts
-import { task, logger } from "@trigger.dev/sdk/v3";
+import { task, logger } from "@trigger.dev/sdk";
 
 export const fetchAndSummarize = task({
   id: "fetch_and_summarize",
@@ -110,7 +110,7 @@ Internally this uses `runs.poll()` with a 1s interval and a 10-minute timeout.
 The UI gets the `publicAccessToken` and subscribes:
 
 ```ts
-import { runs } from "@platos/sdk";
+import { runs } from "@trigger.dev/sdk";
 
 for await (const update of runs.subscribeToRun(runId, { accessToken })) {
   console.log(update.status, update.output);
@@ -124,7 +124,7 @@ Pattern B is better UX for long runs — the user sees progress logs. Pattern A 
 Trigger's schedules are exposed unchanged. To build an agent that fires on cron, define a scheduled task:
 
 ```ts
-import { schedules } from "@trigger.dev/sdk/v3";
+import { schedules } from "@trigger.dev/sdk";
 
 export const dailyDigest = schedules.task({
   id: "daily_digest",
@@ -158,7 +158,7 @@ Dedup key means calling it twice is idempotent.
 For fan-out: summarize 100 documents, send 500 emails, etc. Use `batchTrigger`:
 
 ```ts
-import { tasks } from "@trigger.dev/sdk/v3";
+import { tasks } from "@trigger.dev/sdk";
 
 const handle = await tasks.batchTrigger("summarize_doc",
   documents.map(doc => ({ payload: { docId: doc.id } })),
@@ -208,7 +208,7 @@ Human-in-the-loop approvals come in two flavors:
 
 ```ts
 // trigger/deploy.ts
-import { task, wait } from "@trigger.dev/sdk/v3";
+import { task, wait } from "@trigger.dev/sdk";
 
 export const deployToProduction = task({
   id: "deploy_to_production",
@@ -266,7 +266,7 @@ For local development of tasks that agents will invoke:
 
 ```bash
 # In your project root (not Platos's repo — your consumer project)
-pnpm add @platos/sdk @trigger.dev/sdk
+pnpm add @trigger.dev/sdk
 pnpm exec trigger.dev@latest init --projectRef proj_...
 
 # Then, in one terminal:
@@ -285,7 +285,7 @@ Your tasks are bundled, uploaded, and registered. Platos agents can immediately 
 
 ## Upgrade notes
 
-Platos tracks upstream trigger.dev. When trigger ships a new SDK version, we bump `@platos/sdk` to re-export it and test for breaking changes in the agent bridge. See [upgrading-from-trigger.md](./upgrading-from-trigger.md) for the full compat story.
+Platos tracks the published `@trigger.dev/sdk` version directly and tests upgrades against the agent bridge. Platos REST/WebSocket client APIs remain separate in `@platosdev/client`. See [upgrading-from-trigger.md](./upgrading-from-trigger.md) for the compatibility boundary.
 
 ## Further reading
 
