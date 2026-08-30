@@ -155,7 +155,7 @@
           "bytes": 10935
         }
       ],
-      "additionalReviewedDeletions": [
+      "separatelyAuthorizedOutsideRootDeletions": [
         {
           "path": "patches/@upstash__ratelimit.patch",
           "reason": "WIN-253 removed the unreachable @upstash/ratelimit package and its obsolete tracked patch."
@@ -209,6 +209,12 @@
     "actualFileCount": 124,
     "actualBytes": 628213,
     "manifestSha256": "070843c227818eb8c40a5846acdd69d8e79e2231248fd25dc8da3fb35198186e",
+    "composition": {
+      "reviewedSourceSixRootFileCount": 120,
+      "primaryBaseSixRootAdditionCount": 2,
+      "separatelyAuthorizedOutsideRootFileCount": 2,
+      "totalFileCount": 124
+    },
     "files": [
       {
         "path": "internal-packages/sdk-compat-tests/package.json",
@@ -4723,8 +4729,8 @@
   "integration": {
     "lockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
     "vocabularySha256": "d142cd9e30cbfe9458b8ab37d122a77df7d0dd986b9f2081c7a9d2037c783cb4",
-    "ledgerRulesSha256": "b1b3a0b6682046ef4b31c884bb433c6325678508f99a7fad07a88d93afca929b",
-    "reachabilitySha256": "f152323352e610429705ded11b63eb5b154a9b6e9ccc512a5b44e9cefb3f79ba",
+    "ledgerRulesSha256": "e1e881dc86856bbcca21ddf48f3a01edcc0ee398e8cfac1b1521f84429f260be",
+    "reachabilitySha256": "ea80c88da323a95df802620308ad4918d1781097421890d45ae1fef1cf32f0e1",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

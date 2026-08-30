@@ -23,7 +23,7 @@ reconciles external snapshots and importer-linked workspaces separately.
 | `platos-webapp.cdx.json` | CycloneDX 1.5 SBOM — exact webapp Docker image inventory (**330 components / 303 names**) | `89c8d9d5d6948ea3…` |
 | `platos-webapp.image-inventory.json` | exact `linux/amd64` external and linked-workspace packages installed in the webapp Docker `production-deps` stage | `9b745000948ff883…` |
 | `closure-receipts.json` | machine-readable receipts: per-image SBOM/inventory sha256, counts, roots; input hashes | regenerated |
-| `license-index.json` | frozen registry.npmjs.org licence snapshot for the 881-component lock closure plus two linked first-party workspaces | `ff816ea2d0cfa6a6…` |
+| `license-index.json` | frozen registry.npmjs.org licence snapshot for the 881-component lock closure plus two linked first-party workspaces | `db522b9f17757a1c…` |
 | `license-overlay.json` | curated licence elections/corrections, first-party Apache-2.0 dispositions, and absent-image GPL canary | `db436a3bfad82b7…` |
 | `license-policy.json` | machine-readable copyleft/commercial gate + dispositioned baseline | `2c47d8ec03aed511…` |
 | `advisory/osv-report.json` | OSV receipt for agent lock closure plus exact webapp image inventory | `1de28eb2d07c22fb…` |

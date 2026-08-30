@@ -109,6 +109,16 @@ const workspaceReachabilityCommands = [
   "pnpm test:workspace-reachability",
   "pnpm audit:workspace-reachability",
 ];
+const workloadPackageTestCommand = "pnpm test:workload-identity-package";
+const agentRuntimeSmokeTestCommand = "pnpm test:agent-runtime-smoke";
+const licenseDeterminismTestCommand = "pnpm test:licenses";
+const workloadPackageTestTarget = "node --test scripts/workload-identity-package.test.mjs";
+const agentRuntimeSmokeTestTarget = "node --test tests/persisted-state-gate/agent-runtime-health.test.mjs";
+const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mjs";
+const agentBuildScriptTarget =
+  "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies";
+const agentRuntimeSmokeInvocation =
+  "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
 const expectedV1EvidenceCommands = [
   "pnpm test:ci-policy",
   ...repositoryGovernanceCommands,
@@ -1069,6 +1079,18 @@ function policyViolations(input) {
   if (packageScripts["test:ci-policy"] !== "node --test scripts/ci-policy.test.mjs") {
     violations.push("package.json must wire the CI policy test executable");
   }
+  if (packageScripts["build:platos:agent"] !== agentBuildScriptTarget) {
+    violations.push("package.json must build workload identity before the strict Agent shipping build");
+  }
+  if (packageScripts["test:workload-identity-package"] !== workloadPackageTestTarget) {
+    violations.push("package.json must wire the workload identity shipping package test");
+  }
+  if (packageScripts["test:agent-runtime-smoke"] !== agentRuntimeSmokeTestTarget) {
+    violations.push("package.json must wire the exact Agent runtime health smoke test");
+  }
+  if (packageScripts["test:licenses"] !== licenseDeterminismTestTarget) {
+    violations.push("package.json must wire the deterministic licence generation test");
+  }
   if (packageScripts["audit:webapp-image-inventory"] !== webappInventoryPackageScript) {
     violations.push(`package.json must wire exact webapp inventory script: ${webappInventoryPackageScript}`);
   }
@@ -1077,6 +1099,15 @@ function policyViolations(input) {
   }
   if (countExact(typecheckCommands, "pnpm test:ci-policy") !== 1) {
     violations.push("typecheck job must execute the wired CI policy test exactly once");
+  }
+  for (const [command, label] of [
+    [workloadPackageTestCommand, "workload identity shipping package"],
+    [agentRuntimeSmokeTestCommand, "exact Agent runtime health smoke"],
+    [licenseDeterminismTestCommand, "deterministic licence generation"],
+  ]) {
+    if (countExact(typecheckCommands, command) !== 1 || countExact(allCiCommands, command) !== 1) {
+      violations.push(`CI must execute the ${label} test exactly once in typecheck`);
+    }
   }
   if (packageScripts["test:win-290"] !== win290ScriptTarget) {
     violations.push("package.json must wire the exact focused WIN-290 suite");
@@ -1170,6 +1201,21 @@ function policyViolations(input) {
   ];
   if (countExact(allInventoryCommands, webappInventoryCommand) !== 1) {
     violations.push("webapp candidate inventory package command must execute exactly once in build-images");
+  }
+  const startCandidatesStep = persistedStateSteps[startCandidatesIndex] ?? {};
+  const startCandidatesRun =
+    typeof startCandidatesStep.run === "string" ? startCandidatesStep.run : "";
+  if (
+    countSubstring([input.buildImages], "tests/persisted-state-gate/smoke-agent-runtime-image.sh") !== 1 ||
+    !startCandidatesRun.includes(agentRuntimeSmokeInvocation) ||
+    startCandidatesRun.indexOf(agentRuntimeSmokeInvocation) <=
+      startCandidatesRun.indexOf(
+        "docker compose up --detach --no-build --wait --wait-timeout 300 agent webapp"
+      )
+  ) {
+    violations.push(
+      "persisted-state must run the exact Agent runtime package and health smoke after starting the candidate"
+    );
   }
 
   const inventoryShellCommands = normalizedShellCommands(input.webappInventoryAudit);
@@ -2395,6 +2441,65 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "Agent workload identity build ordering",
+      expected: "package.json must build workload identity before the strict Agent shipping build",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          agentBuildScriptTarget,
+          agentBuildScriptTarget.replace("pnpm --filter @internal/workload-identity build && ", "")
+        ),
+    },
+    {
+      name: "workload identity package test wiring",
+      expected: "package.json must wire the workload identity shipping package test",
+      mutate: (input) =>
+        mutateFixture(input, "packageJson", workloadPackageTestTarget, "node -p 0"),
+    },
+    {
+      name: "licence determinism test wiring",
+      expected: "package.json must wire the deterministic licence generation test",
+      mutate: (input) =>
+        mutateFixture(input, "packageJson", licenseDeterminismTestTarget, "node -p 0"),
+    },
+    {
+      name: "Agent runtime health smoke test wiring",
+      expected: "package.json must wire the exact Agent runtime health smoke test",
+      mutate: (input) =>
+        mutateFixture(input, "packageJson", agentRuntimeSmokeTestTarget, "node -p 0"),
+    },
+    {
+      name: "workload identity package test skipped in CI",
+      expected: "CI must execute the workload identity shipping package test exactly once in typecheck",
+      mutate: (input) =>
+        mutateFixture(input, "ci", workloadPackageTestCommand, `echo skipped # ${workloadPackageTestCommand}`),
+    },
+    {
+      name: "licence determinism test skipped in CI",
+      expected: "CI must execute the deterministic licence generation test exactly once in typecheck",
+      mutate: (input) =>
+        mutateFixture(input, "ci", licenseDeterminismTestCommand, `echo skipped # ${licenseDeterminismTestCommand}`),
+    },
+    {
+      name: "Agent runtime health smoke test skipped in CI",
+      expected: "CI must execute the exact Agent runtime health smoke test exactly once in typecheck",
+      mutate: (input) =>
+        mutateFixture(input, "ci", agentRuntimeSmokeTestCommand, `echo skipped # ${agentRuntimeSmokeTestCommand}`),
+    },
+    {
+      name: "Agent runtime image smoke skipped",
+      expected:
+        "persisted-state must run the exact Agent runtime package and health smoke after starting the candidate",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+          "echo skipped-agent-runtime-smoke"
+        ),
+    },
+    {
       name: "exact YAML parser dependency",
       expected: "package.json must pin yaml 2.6.1 as an exact root devDependency",
       mutate: (input) => mutateFixture(input, "packageJson", '"yaml": "2.6.1"', '"yaml": "^2.6.1"'),
@@ -2608,7 +2713,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    228,
+    236,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

@@ -279,6 +279,8 @@ jobs:
           set -euo pipefail
           docker compose up --detach --no-build --wait --wait-timeout 300 agent webapp \
             2>&1 | tee artifacts/win235/compose-apps.log
+          tests/persisted-state-gate/smoke-agent-runtime-image.sh \
+            2>&1 | tee artifacts/win235/agent-runtime-smoke.log
 
       - name: Record tested candidate identities
         shell: bash

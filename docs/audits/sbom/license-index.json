@@ -1,4425 +1,5311 @@
 {
   "$schema": "platos.audit.license-index/v1",
-  "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock.",
+  "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock. resolvedAt is the latest immutable publication timestamp among successful external resolutions, not the generator wall clock. Every successful external resolution must provide a valid publication timestamp; non-success statuses are excluded.",
   "resolvedAgainstLockfileSha256": "165295fd0a82cb3f5007dbdbded28b673e373f101ee16bdc25305fb7ba55f766",
-  "resolvedAt": "2026-08-30T14:36:06.224Z",
+  "resolvedAt": "2026-07-18T09:43:18.346Z",
+  "resolvedAtPolicy": "maximum registry version publication timestamp across successful external resolutions; every successful resolution is timestamped; non-success statuses are excluded",
   "registry": "https://registry.npmjs.org",
   "componentCount": 883,
+  "successfulResolutionCount": 881,
+  "resolvedAtExcludedCount": 2,
   "unresolvedCount": 2,
   "index": {
     "@acemir/cssom@0.9.31": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/anthropic@4.0.15": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/gateway@4.0.20": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/google-vertex@5.0.20": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/google@4.0.16": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/openai-compatible@3.0.10": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/openai@4.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/provider-utils@5.0.10": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@ai-sdk/provider@4.0.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@asamuzakjp/css-color@5.1.11": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@asamuzakjp/dom-selector@6.8.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@asamuzakjp/generational-cache@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@asamuzakjp/nwsapi@2.3.9": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/crc32@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/crc32c@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/sha1-browser@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/sha256-browser@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/sha256-js@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/supports-web-crypto@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-crypto/util@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/client-s3@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/client-sso@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/core@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-env@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-http@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-ini@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-login@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-node@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-process@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-sso@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/credential-provider-web-identity@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-bucket-endpoint@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-expect-continue@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-flexible-checksums@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-host-header@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-location-constraint@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-logger@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-recursion-detection@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-sdk-s3@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-ssec@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/middleware-user-agent@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/nested-clients@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/region-config-resolver@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/s3-request-presigner@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/signature-v4-multi-region@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/token-providers@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/types@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-arn-parser@3.893.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-endpoints@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-format-url@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-locate-window@3.893.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-user-agent-browser@3.936.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/util-user-agent-node@3.940.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws-sdk/xml-builder@3.930.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@aws/lambda-invoke-store@0.2.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@babel/helper-string-parser@7.27.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@babel/helper-validator-identifier@7.27.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@babel/parser@7.27.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@babel/types@7.27.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@borewit/text-codec@0.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@bramus/specificity@2.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@bufbuild/protobuf@2.11.0": {
       "license": "(Apache-2.0 AND BSD-3-Clause)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@bugsnag/cuid@3.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/discord@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/shared@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/slack@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/state-pg@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/telegram@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@chat-adapter/whatsapp@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@connectrpc/connect-web@2.0.0-rc.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@connectrpc/connect@2.0.0-rc.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/color-helpers@6.0.2": {
       "license": "MIT-0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/css-calc@3.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/css-color-parser@4.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/css-parser-algorithms@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/css-syntax-patches-for-csstree@1.1.3": {
       "license": "MIT-0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@csstools/css-tokenizer@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/builders@1.14.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/collection@1.5.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/collection@2.1.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/formatters@0.6.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/rest@2.6.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/util@1.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@discordjs/ws@1.2.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@e2b/code-interpreter@2.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@electric-sql/client@1.0.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@exodus/bytes@1.15.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@google-cloud/precise-date@4.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@hono/node-server@1.19.9": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@internal/workload-identity@0.0.1": {
       "license": null,
       "resolvedFrom": "not-found",
+      "resolutionStatus": "not-found",
       "status": 404
     },
     "@ioredis/commands@1.5.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@isaacs/cliui@8.0.2": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@isaacs/cliui@9.0.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@isaacs/fs-minipass@4.0.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@jsonhero/path@1.0.21": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@lukeed/csprng@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@microsoft/fetch-event-source@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@modelcontextprotocol/sdk@1.26.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/common@11.1.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/core@11.1.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/platform-express@11.1.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/platform-socket.io@11.1.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/schedule@6.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nestjs/websockets@11.1.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@nuxt/opencollective@0.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api-logs@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api-logs@0.52.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api-logs@0.57.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api-logs@0.57.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api@1.9.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/api@1.9.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/context-async-hooks@1.30.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/context-async-hooks@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/core@1.30.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/core@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/exporter-logs-otlp-http@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/exporter-metrics-otlp-http@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/exporter-trace-otlp-http@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/host-metrics@0.38.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-amqplib@0.46.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-connect@0.43.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-connect@0.43.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-dataloader@0.16.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-dataloader@0.16.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-express@0.47.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-express@0.47.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-fastify@0.44.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-fs@0.19.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-fs@0.19.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-generic-pool@0.43.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-generic-pool@0.43.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-graphql@0.47.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-graphql@0.47.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-hapi@0.45.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-hapi@0.45.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-http@0.57.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-http@0.57.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-ioredis@0.47.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-ioredis@0.47.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-kafkajs@0.7.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-kafkajs@0.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-knex@0.44.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-knex@0.44.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-koa@0.47.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-koa@0.47.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-lru-memoizer@0.44.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-lru-memoizer@0.44.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mongodb@0.51.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mongodb@0.52.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mongoose@0.46.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mongoose@0.46.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mysql2@0.45.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mysql2@0.45.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mysql@0.45.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-mysql@0.45.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-nestjs-core@0.44.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-pg@0.50.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-pg@0.51.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-redis-4@0.46.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-redis-4@0.46.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-tedious@0.18.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-tedious@0.18.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-undici@0.10.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation-undici@0.10.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation@0.52.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation@0.57.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/instrumentation@0.57.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/otlp-exporter-base@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/otlp-transformer@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/redis-common@0.36.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/resources@1.30.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/resources@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sdk-logs@0.218.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sdk-metrics@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sdk-trace-base@1.30.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sdk-trace-base@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sdk-trace-node@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/semantic-conventions@1.27.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/semantic-conventions@1.28.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/semantic-conventions@1.36.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/semantic-conventions@1.41.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@opentelemetry/sql-common@0.40.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@pkgjs/parseargs@0.11.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@platos/tenancy-database@0.0.1": {
       "license": null,
       "resolvedFrom": "not-found",
+      "resolutionStatus": "not-found",
       "status": 404
     },
     "@prisma/client@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/config@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/debug@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/engines-version@6.14.0-25.717184b7b35ea05dfa71a3236b7af656013e1e49": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/engines@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/fetch-engine@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/get-platform@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/instrumentation@5.22.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@prisma/instrumentation@6.11.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@protobuf-ts/runtime@2.11.1": {
       "license": "(Apache-2.0 AND BSD-3-Clause)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/express@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/node@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/react@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/router@1.10.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/router@1.15.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/server-runtime@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/web-blob@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/web-fetch@4.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/web-file@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/web-form-data@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@remix-run/web-stream@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@rollup/rollup-darwin-arm64@4.53.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@s2-dev/streamstore@0.22.10": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sapphire/async-queue@1.5.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sapphire/shapeshift@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sapphire/snowflake@3.5.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry-internal/browser-utils@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry-internal/feedback@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry-internal/replay-canvas@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry-internal/replay@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/browser@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-darwin@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-linux-arm64@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-linux-arm@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-linux-i686@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-linux-x64@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-win32-arm64@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-win32-i686@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli-win32-x64@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/cli@2.50.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/core@8.55.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/core@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/node-core@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/node@8.55.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/node@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/opentelemetry@8.55.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/opentelemetry@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/react@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@sentry/remix@9.46.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@slack/logger@4.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@slack/socket-mode@2.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@slack/types@2.22.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@slack/web-api@7.19.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/abort-controller@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/chunked-blob-reader-native@4.2.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/chunked-blob-reader@5.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/config-resolver@4.4.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/core@3.18.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/credential-provider-imds@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/eventstream-codec@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/eventstream-serde-browser@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/eventstream-serde-config-resolver@4.3.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/eventstream-serde-node@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/eventstream-serde-universal@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/fetch-http-handler@5.3.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/hash-blob-browser@4.2.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/hash-node@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/hash-stream-node@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/invalid-dependency@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/is-array-buffer@2.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/is-array-buffer@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/md5-js@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/middleware-content-length@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/middleware-endpoint@4.3.12": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/middleware-retry@4.4.12": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/middleware-serde@4.2.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/middleware-stack@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/node-config-provider@4.3.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/node-http-handler@4.4.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/property-provider@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/protocol-http@5.3.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/querystring-builder@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/querystring-parser@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/service-error-classification@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/shared-ini-file-loader@4.4.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/signature-v4@5.3.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/smithy-client@4.9.8": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/types@4.9.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/url-parser@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-base64@4.3.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-body-length-browser@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-body-length-node@4.2.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-buffer-from@2.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-buffer-from@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-config-provider@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-defaults-mode-browser@4.3.11": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-defaults-mode-node@4.2.14": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-endpoints@3.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-hex-encoding@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-middleware@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-retry@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-stream@4.5.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-uri-escape@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-utf8@2.3.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-utf8@4.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/util-waiter@4.2.5": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@smithy/uuid@1.1.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@socket.io/component-emitter@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@standard-schema/spec@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@tokenizer/inflate@0.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@tokenizer/token@0.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@trigger.dev/core@4.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@trigger.dev/sdk@4.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/connect@3.4.36": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/connect@3.4.38": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/cookie@0.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/cors@2.8.17": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/debug@4.1.12": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/luxon@3.7.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/mdast@4.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/ms@0.7.31": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/mysql@2.15.26": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/node@20.14.14": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/pg-pool@2.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/pg@8.11.14": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/pg@8.6.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/retry@0.12.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/shimmer@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/tedious@4.0.14": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/trusted-types@2.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/unist@3.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@types/ws@8.5.13": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@vercel/oidc@3.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@vercel/sandbox@2.7.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@vladfrangu/async_event_emitter@2.4.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@web3-storage/multipart-parser@1.0.0": {
       "license": "(Apache-2.0 AND MIT)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@workflow/serde@4.1.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@workflow/serde@4.1.0-beta.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "@zxing/text-encoding@0.9.0": {
       "license": "(Unlicense OR Apache-2.0)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "abbrev@5.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "abort-controller@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "accepts@1.3.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "accepts@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "acorn-import-attributes@1.9.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "acorn@8.16.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "agent-base@6.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "agent-base@7.1.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ai@7.0.28": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ajv-formats@3.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ajv@8.18.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ansi-regex@5.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ansi-regex@6.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ansi-styles@4.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ansi-styles@6.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "append-field@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "array-flatten@1.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "async-retry@1.3.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "asynckit@0.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "available-typed-arrays@1.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "axios@1.18.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "b4a@1.6.6": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bail@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "balanced-match@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "balanced-match@4.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bare-events@2.8.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "base64-js@1.5.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "base64id@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bidi-js@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bignumber.js@9.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bintrees@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "body-parser@1.20.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "body-parser@2.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bowser@2.12.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "brace-expansion@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "brace-expansion@5.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "buffer-equal-constant-time@1.0.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "buffer-from@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bufferutil@4.0.9": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "busboy@1.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bytes@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "bytes@3.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "c12@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "call-bind-apply-helpers@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "call-bind@1.0.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "call-bound@1.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ccount@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "chalk@5.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "character-entities@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "chat@4.34.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "chokidar@4.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "chownr@3.0.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "citty@0.1.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cjs-module-lexer@1.2.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cjs-module-lexer@2.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cliui@8.0.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "clsx@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cluster-key-slot@1.1.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "color-convert@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "color-name@1.1.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "combined-stream@1.0.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "compare-versions@6.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "compressible@2.0.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "compression@1.7.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "concat-stream@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "confbox@0.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "consola@3.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "content-disposition@0.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "content-disposition@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "content-type@1.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cookie-signature@1.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cookie-signature@1.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cookie@0.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cookie@0.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cookie@0.7.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cors@2.8.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cron@4.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cronstrue@2.61.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cross-env@7.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cross-spawn@7.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "css-tree@3.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "cssstyle@6.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "data-uri-to-buffer@3.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "data-uri-to-buffer@4.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "data-urls@7.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "debug@2.6.9": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "debug@4.3.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "debug@4.4.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "decimal.js@10.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "decode-named-character-reference@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "deepmerge-ts@7.1.5": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "define-data-property@1.1.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "defu@6.1.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "delayed-stream@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "denque@2.1.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "depd@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "dequal@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "destr@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "destroy@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "devlop@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "discord-api-types@0.37.120": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "discord-api-types@0.38.50": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "discord-interactions@4.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "discord.js@14.27.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "dockerfile-ast@0.7.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "dompurify@3.4.0": {
       "license": "(MPL-2.0 OR Apache-2.0)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "dotenv@16.6.1": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "dunder-proto@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "e2b@2.19.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "eastasianwidth@0.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ecdsa-sig-formatter@1.0.11": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ee-first@1.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "effect@3.16.12": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "emoji-regex@8.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "emoji-regex@9.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "empathic@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "encodeurl@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "encodeurl@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "encoding@0.1.13": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "engine.io-client@6.5.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "engine.io-parser@5.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "engine.io@6.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "engine.io@6.6.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "entities@6.0.1": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "env-paths@2.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "es-define-property@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "es-errors@1.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "es-object-atoms@1.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "es-set-tostringtag@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "escalade@3.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "escape-html@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "escape-string-regexp@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "etag@1.8.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "event-target-shim@5.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "eventemitter3@4.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "eventemitter3@5.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "eventsource-parser@3.0.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "eventsource@3.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "evt@2.4.13": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "execa@8.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "exponential-backoff@3.1.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "express-rate-limit@8.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "express@4.20.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "express@5.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "exsolve@1.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "extend@3.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-check@3.23.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-deep-equal@3.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-equals@4.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-fifo@1.3.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-safe-stringify@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-uri@3.0.6": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fast-xml-parser@5.2.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fdir@6.4.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fetch-blob@3.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "file-type@21.3.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "finalhandler@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "finalhandler@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "follow-redirects@1.16.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "for-each@0.3.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "foreground-child@3.3.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "form-data@4.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "formdata-polyfill@4.0.10": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "forwarded-parse@2.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "forwarded@0.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fresh@0.5.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "fresh@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "function-bind@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "gaxios@7.1.4": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "gcp-metadata@8.1.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "get-caller-file@2.0.5": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "get-intrinsic@1.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "get-proto@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "get-stream@8.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "giget@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "glob@10.4.5": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "glob@11.1.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "google-auth-library@10.6.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "google-logging-utils@1.1.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "gopd@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "graceful-fs@4.2.11": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "has-property-descriptors@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "has-symbols@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "has-tostringtag@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "hasown@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "hoist-non-react-statics@3.3.2": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "hono@4.11.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "html-encoding-sniffer@6.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "http-errors@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "http-errors@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "http-proxy-agent@7.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "https-proxy-agent@5.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "https-proxy-agent@7.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "human-signals@5.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "humanize-duration@3.27.3": {
       "license": "Unlicense",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "iconv-lite@0.4.24": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "iconv-lite@0.6.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "iconv-lite@0.7.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ieee754@1.2.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "import-in-the-middle@1.11.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "import-in-the-middle@1.14.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "import-in-the-middle@3.0.1": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "inherits@2.0.4": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "install-artifact-from-github@1.7.0": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ioredis@5.10.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ip-address@10.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ipaddr.js@1.9.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-arguments@1.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-callable@1.2.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-core-module@2.14.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-electron@2.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-fullwidth-code-point@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-generator-function@1.0.10": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-plain-obj@4.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-potential-custom-element-name@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-promise@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-stream@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-stream@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "is-typed-array@1.1.13": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "isexe@2.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "isexe@4.0.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "isomorphic-dompurify@2.36.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "iterare@1.2.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jackspeak@3.4.3": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jackspeak@4.2.3": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jiti@2.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jose@5.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jose@6.2.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "js-tokens@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jsdom@28.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "json-bigint@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "json-schema-traverse@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "json-schema-typed@8.0.2": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "json-schema@0.4.0": {
       "license": "(AFL-2.1 OR BSD-3-Clause)",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jsonlines@0.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jwa@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "jws@4.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "load-esm@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lodash.defaults@4.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lodash.isarguments@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lodash.snakecase@4.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lodash@4.17.23": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "longest-streak@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "loose-envify@1.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lru-cache@10.4.3": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lru-cache@11.3.5": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "lucide-react@0.229.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "luxon@3.7.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "magic-bytes.js@1.13.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "magicast@0.3.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "markdown-table@3.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "marked@4.2.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "math-intrinsics@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-find-and-replace@3.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-from-markdown@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm-autolink-literal@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm-footnote@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm-strikethrough@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm-table@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm-task-list-item@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-gfm@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-phrasing@4.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-to-markdown@2.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdast-util-to-string@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mdn-data@2.27.1": {
       "license": "CC0-1.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "media-typer@0.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "media-typer@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "merge-descriptors@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "merge-descriptors@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "merge-stream@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "methods@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-core-commonmark@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-autolink-literal@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-footnote@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-strikethrough@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-table@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-tagfilter@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm-task-list-item@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-extension-gfm@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-factory-destination@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-factory-label@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-factory-space@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-factory-title@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-factory-whitespace@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-character@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-chunked@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-classify-character@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-combine-extensions@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-decode-numeric-character-reference@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-decode-string@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-encode@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-html-tag-name@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-normalize-identifier@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-resolve-all@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-sanitize-uri@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-subtokenize@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-symbol@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark-util-types@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "micromark@4.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mime-db@1.52.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mime-db@1.54.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mime-types@2.1.35": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mime-types@3.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mime@1.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mimic-fn@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "minimal-polyfills@2.2.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "minimatch@10.2.5": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "minimatch@9.0.5": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "minipass@7.1.3": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "minizlib@3.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "module-details-from-path@1.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "module-details-from-path@1.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "mrmime@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ms@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ms@2.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "multer@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "nan@2.28.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "nanoid@3.3.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "negotiator@0.6.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "negotiator@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-domexception@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-fetch-native@1.6.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-fetch@2.6.12": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-fetch@3.3.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-gyp-build@4.8.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "node-gyp@13.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "nopt@10.0.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "npm-run-path@5.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "nypm@0.6.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "object-assign@4.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "object-hash@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "object-inspect@1.13.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "obuf@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ohash@2.0.11": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "on-finished@2.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "on-headers@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "once@1.4.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "onetime@6.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "openapi-fetch@0.14.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "openapi-typescript-helpers@0.0.15": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "os-paths@4.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "p-finally@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "p-queue@6.6.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "p-retry@4.6.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "p-timeout@3.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "package-json-from-dist@1.0.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "parse5@8.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "parseurl@1.3.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-key@3.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-key@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-parse@1.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-scurry@1.11.1": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-scurry@2.0.2": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-to-regexp@0.1.10": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "path-to-regexp@8.4.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pathe@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "perfect-debounce@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-cloudflare@1.2.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-cloudflare@1.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-connection-string@2.14.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-connection-string@2.9.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-int8@1.0.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-numeric@1.0.2": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-pool@3.10.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-pool@3.14.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-protocol@1.10.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-protocol@1.15.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-types@2.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg-types@4.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg@8.15.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pg@8.22.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pgpass@1.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "picocolors@1.1.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "picomatch@4.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pkce-challenge@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pkg-types@2.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "platform@1.3.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "possible-typed-array-names@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-array@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-array@3.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-bytea@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-bytea@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-date@1.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-date@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-interval@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-interval@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "postgres-range@1.1.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "prisma@6.14.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "proc-log@7.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "progress@2.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "prom-client@15.1.3": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "prop-types@15.8.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "proxy-addr@2.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "proxy-from-env@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "proxy-from-env@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "punycode@2.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "pure-rand@6.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "qs@6.14.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "range-parser@1.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "raw-body@2.5.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "raw-body@3.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "rc9@2.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "re2@1.26.0": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-dom@18.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-draggable@4.5.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-grid-layout@2.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-is@16.13.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-resizable@3.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-router-dom@6.17.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react-router@6.17.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "react@18.3.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "readable-stream@3.6.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "readdirp@4.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "redis-errors@1.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "redis-parser@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "reflect-metadata@0.2.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "remark-gfm@4.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "remark-parse@11.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "remark-stringify@11.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "remend@1.3.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "require-directory@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "require-from-string@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "require-in-the-middle@7.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "require-in-the-middle@8.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "resize-observer-polyfill@1.5.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "resolve@1.22.8": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "retry@0.13.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "router@2.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "run-exclusive@2.2.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "rxjs@7.8.2": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "safe-buffer@5.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "safe-buffer@5.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "safer-buffer@2.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "saxes@6.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "scheduler@0.23.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "semver@7.7.3": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "send@0.18.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "send@0.19.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "send@1.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "serve-static@1.16.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "serve-static@2.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "set-cookie-parser@2.6.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "set-function-length@1.2.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "setprototypeof@1.2.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "shebang-command@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "shebang-regex@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "shimmer@1.2.1": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "side-channel-list@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "side-channel-map@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "side-channel-weakmap@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "side-channel@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "signal-exit@4.1.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "slug@6.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "socket.io-adapter@2.5.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "socket.io-client@4.7.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "socket.io-parser@4.2.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "socket.io@4.7.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "socket.io@4.8.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "source-map-js@1.2.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "source-map-support@0.5.21": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "source-map@0.6.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "source-map@0.7.4": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "split2@4.2.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "standard-as-callback@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "statuses@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "statuses@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "std-env@3.9.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "stream-slice@0.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "streamsearch@1.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "streamx@2.22.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "string-width@4.2.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "string-width@5.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "string_decoder@1.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "strip-ansi@6.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "strip-ansi@7.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "strip-final-newline@3.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "strnum@2.1.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "strtok3@10.3.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "supports-preserve-symlinks-flag@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "symbol-tree@3.2.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "systeminformation@5.31.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tar-stream@3.1.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tar@7.5.13": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tdigest@0.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "text-decoder@1.2.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tinyexec@0.3.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tinyexec@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tinyglobby@0.2.13": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tldts-core@7.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tldts@7.0.7": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "toidentifier@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "token-types@6.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tough-cookie@6.0.1": {
       "license": "BSD-3-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tr46@0.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tr46@6.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "trough@2.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ts-mixer@6.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tsafe@1.4.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "tslib@2.8.1": {
       "license": "0BSD",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "type-is@1.6.18": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "type-is@2.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "typedarray@0.0.6": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "typescript@5.5.4": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "uid@2.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "uint8array-extras@1.4.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ulid@2.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "uncrypto@0.1.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "undici-types@5.26.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "undici@6.27.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "undici@7.25.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "undici@7.28.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "undici@8.7.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unified@11.0.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unist-util-is@6.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unist-util-stringify-position@4.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unist-util-visit-parents@6.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unist-util-visit@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "unpipe@1.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "util-deprecate@1.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "util@0.12.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "utils-merge@1.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "vary@1.1.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "vfile-message@4.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "vfile@6.0.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "vscode-languageserver-textdocument@1.0.12": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "vscode-languageserver-types@3.17.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "w3c-xmlserializer@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "web-encoding@1.1.5": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "web-streams-polyfill@3.2.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "webidl-conversions@3.0.1": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "webidl-conversions@8.0.1": {
       "license": "BSD-2-Clause",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "whatwg-mimetype@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "whatwg-url@16.0.1": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "whatwg-url@5.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "which-typed-array@1.1.15": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "which@2.0.2": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "which@7.0.0": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "wrap-ansi@7.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "wrap-ansi@8.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "wrappy@1.0.2": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ws@8.11.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ws@8.18.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "ws@8.18.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xdg-app-paths@5.1.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xdg-portable@7.3.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xml-name-validator@5.0.0": {
       "license": "Apache-2.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xmlchars@2.2.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xmlhttprequest-ssl@2.0.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "xtend@4.0.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "y18n@5.0.8": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "yallist@5.0.0": {
       "license": "BlueOak-1.0.0",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "yargs-parser@21.1.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "yargs@17.7.2": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zod-error@1.5.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zod-to-json-schema@3.25.1": {
       "license": "ISC",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zod-validation-error@1.5.0": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zod@3.25.76": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zod@4.4.3": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     },
     "zwitch@2.0.4": {
       "license": "MIT",
       "resolvedFrom": "version",
+      "resolutionStatus": "resolved",
       "status": 200
     }
   }

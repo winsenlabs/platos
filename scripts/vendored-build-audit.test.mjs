@@ -12,10 +12,12 @@ import {
   REVIEWED_SOURCE_COMMIT,
   auditRepository,
   existingRetiredRoots,
+  isTombstonedPath,
   markdownText,
   reportText,
   scanApiBoundary,
   scanReachability,
+  validateDeletionComposition,
   validateDeletionSet,
 } from "./vendored-build-audit.mjs";
 
@@ -231,8 +233,24 @@ test("live audit is green and derives every deletion from the exact primary base
     ["packages/rsc/LICENSE", "packages/schema-to-json/LICENSE"]
   );
   assert.deepEqual(
-    report.reviewedSource.integrationCoverage.additionalReviewedDeletions.map(({ path }) => path),
+    report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions.map(({ path }) => path),
     ["patches/@upstash__ratelimit.patch", "patches/@window-splitter__state@0.4.1.patch"]
+  );
+  assert.deepEqual(report.deletion.composition, {
+    reviewedSourceSixRootFileCount: 120,
+    primaryBaseSixRootAdditionCount: 2,
+    separatelyAuthorizedOutsideRootFileCount: 2,
+    totalFileCount: 124,
+  });
+  assert.ok(
+    report.reviewedSource.integrationCoverage.primaryBaseAdditions.every(({ path }) => isTombstonedPath(path)),
+    "the later LICENSE additions must remain inside the six-root cluster"
+  );
+  assert.ok(
+    report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions.every(
+      ({ path }) => !isTombstonedPath(path)
+    ),
+    "the obsolete patch deletions must remain outside the six-root cluster"
   );
   assert.ok(
     report.reviewedSource.integrationCoverage.primaryBaseAdditions.every(({ reason }) => reason.includes("WIN-252")),
@@ -256,12 +274,22 @@ test("live audit is green and derives every deletion from the exact primary base
 });
 
 test("reviewed-source provenance rejects incorrect source SHAs and pathsets", () => {
+  const authorizedOutsideRootDeletions =
+    cleanAudit.report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions;
   for (const [label, options] of [
     ["base SHA", { reviewedSourceBase: INTEGRATION_BASE }],
     ["commit SHA", { reviewedSourceCommit: REVIEWED_SOURCE_BASE }],
     ["pathset", { reviewedSourceRoots: candidateRoots.slice(1) }],
     ["missing primary-base explanation", { allowedPrimaryBaseAdditions: [] }],
-    ["missing additional integration deletion explanation", { allowedAdditionalIntegrationDeletions: [] }],
+    ["patch paths treated as reviewed-source roots", { reviewedSourceRoots: [...candidateRoots, "patches"] }],
+    ["missing first outside-root authorization", { allowedAdditionalIntegrationDeletions: authorizedOutsideRootDeletions.slice(1) }],
+    ["missing second outside-root authorization", { allowedAdditionalIntegrationDeletions: authorizedOutsideRootDeletions.slice(0, 1) }],
+    ["outside-root deletion mislabeled as six-root", {
+      allowedAdditionalIntegrationDeletions: [
+        cleanAudit.report.reviewedSource.integrationCoverage.primaryBaseAdditions[0],
+        ...authorizedOutsideRootDeletions,
+      ],
+    }],
   ]) {
     const mutated = auditRepository(root, options);
     assert.ok(
@@ -271,14 +299,41 @@ test("reviewed-source provenance rejects incorrect source SHAs and pathsets", ()
   }
 });
 
+test("deletion composition rejects an unauthorized outside-root path", () => {
+  const reviewedSourcePaths = cleanAudit.report.reviewedSource.deletion.pathspec;
+  const primaryBaseAdditionPaths =
+    cleanAudit.report.reviewedSource.integrationCoverage.primaryBaseAdditions.map(({ path }) => path);
+  const separatelyAuthorizedOutsideRootPaths =
+    cleanAudit.report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions.map(
+      ({ path }) => path
+    );
+  const clean = validateDeletionComposition({
+    reviewedSourcePaths,
+    primaryBaseAdditionPaths,
+    separatelyAuthorizedOutsideRootPaths,
+    actualPaths: cleanAudit.report.deletion.files.map(({ path }) => path),
+  });
+  assert.deepEqual(clean.violations, []);
+
+  const mutated = validateDeletionComposition({
+    reviewedSourcePaths,
+    primaryBaseAdditionPaths,
+    separatelyAuthorizedOutsideRootPaths,
+    actualPaths: [...clean.actual, "patches/unauthorized.patch"],
+  });
+  assert.ok(
+    mutated.violations.includes("unauthorized deletion is present: patches/unauthorized.patch")
+  );
+});
+
 test("reported restore argv recreates every deletion byte-for-byte", () => {
   const { report, violations } = cleanAudit;
   assert.deepEqual(violations, []);
   withDetachedWorktree("platos-win253-vendored-restore", INTEGRATION_BASE, (worktree) => {
-    for (const candidateRoot of candidateRoots) rmSync(resolve(worktree, candidateRoot), { recursive: true, force: true });
+    for (const path of report.restore.pathspec) rmSync(resolve(worktree, path), { force: true });
     const [command, ...args] = report.restore.argv;
     execFileSync(command, args, { cwd: worktree, stdio: "ignore" });
-    execFileSync("git", ["diff", "--exit-code", INTEGRATION_BASE, "--", ...candidateRoots], {
+    execFileSync("git", ["diff", "--exit-code", INTEGRATION_BASE, "--", ...report.restore.pathspec], {
       cwd: worktree,
       stdio: "ignore",
     });

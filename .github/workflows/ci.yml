@@ -75,6 +75,12 @@ jobs:
         # so focused Vitest runs need its package entry emitted from a fresh checkout.
         run: pnpm --filter @platos/tenancy-database build
 
+      - name: Prove the workload identity shipping package boundary
+        run: |
+          pnpm test:workload-identity-package
+          pnpm test:agent-runtime-smoke
+          pnpm test:licenses
+
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
 

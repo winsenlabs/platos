@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9ab470a61ee3cb49685af8fe5962182a198b9ec53c2d37cec9da1ee3573f8be7",
+  "evidenceSha256": "3abfb19feed008085b0c6a0bb572de9ab86b640eda73ac72169af81d575b97d0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ce154c8a0d01298b77c811c34d080852213765daa31b0a01cec8b100592468df",
+    "aggregateSha256": "c31da5470f39bb39f1cf48e03d36e09eff63f57e3316c94c2f3b85c4daaa572c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -257,11 +257,11 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "9b4aa9d0a51febbf6607f79054aabadf6754b47c47b9c555d6ae9ca813a01b02"
+        "sha256": "e03739c765d87b132e70d845284ae3237753267b72b97927ac5d602dbc1e37ea"
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "9757d25ee1da84dd7fca06c0b224198c9e97af2f6e2a34096653496f9e014951"
+        "sha256": "5ebc96daad6b112b553ed8498221151c34bf3e194c762271e81eb08e4a268573"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -3945,15 +3945,15 @@
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
-        "sha256": "20cbc3592c1abdf55100e72afce0267854b2b7e44d86e764bd0b1634022a8c83"
+        "sha256": "2599cad4f7b91e4a8123b96f18c8b0d8637252db7e9c9c79a0690d2972bd12a8"
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "8cb6d5b76a84fe40bf656277889a32d2b1d140a83af97eb6e51ec7ca3f0d6ab4"
+        "sha256": "74e284c2b90812782c2bec098e4e0fb3b966921c0395992f60174e1acc013b70"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
-        "sha256": "ff816ea2d0cfa6a67693614ba41593de1b18bafd685bcf192c54c614e73a9e12"
+        "sha256": "db522b9f17757a1c656088d9486ada891222c5eba36faa5fca5a5dcf10f64b2e"
       },
       {
         "path": "docs/audits/sbom/license-overlay.json",
@@ -5913,7 +5913,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "b1b3a0b6682046ef4b31c884bb433c6325678508f99a7fad07a88d93afca929b"
+        "sha256": "e1e881dc86856bbcca21ddf48f3a01edcc0ee398e8cfac1b1521f84429f260be"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -10669,7 +10669,7 @@
       },
       {
         "path": "internal-packages/workload-identity/package.json",
-        "sha256": "14cc61dfe3b0756d3a1cda1988781b78a9cdfdaa2d6df538e4b5436d0be3c0f5"
+        "sha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7"
       },
       {
         "path": "internal-packages/workload-identity/src/index.test.ts",
@@ -10678,6 +10678,14 @@
       {
         "path": "internal-packages/workload-identity/src/index.ts",
         "sha256": "5a78217a648a13865597b150051ebed1bc65aef454d7a0ac8d7effcf519d8c93"
+      },
+      {
+        "path": "internal-packages/workload-identity/tsconfig.build.json",
+        "sha256": "724b9bb10e4c93f26ebbb7c84316c1b4388fa9be883bc554b78efbba51bffd4b"
+      },
+      {
+        "path": "internal-packages/workload-identity/tsconfig.json",
+        "sha256": "35a921ea09b60730bbf37d81ad978feee691866bcd5b6f73e05957dc9a4600dd"
       },
       {
         "path": "internal-packages/zod-worker/package.json",
@@ -10705,7 +10713,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "9330da1a90a493b5eb642603f4d7a9778a57e36675a509511c1d270e9e99d150"
+        "sha256": "e281dd728aa151d64ca4f17b948a22aef0895218144678e77a7c45ed95d07cf8"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -13473,7 +13481,11 @@
       },
       {
         "path": "scripts/audit-licenses.mjs",
-        "sha256": "312d024992c62fe594db18f84a5edde53b9f34ab244cc1674713b206a9e90808"
+        "sha256": "adedc681ac22df14a802a6f8cb3aff0a28b22edd9c111bbdc2f5e4589d8b2d1e"
+      },
+      {
+        "path": "scripts/audit-licenses.test.mjs",
+        "sha256": "adc5373eafb9c2ee7429afc332642ca34b915a5fc84fc4e2624ec10c2d4e4286"
       },
       {
         "path": "scripts/audit-platos-build.mjs",
@@ -13505,7 +13517,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "7532c8ef5c8d168eef33fcd291da2ab6f419043f294ae46888bb2901a97b50af"
+        "sha256": "4d9144927e94bdcac8aeeb9b89abc04ac07555d526c342f6140010fb701b1a2a"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -13641,11 +13653,11 @@
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
-        "sha256": "bec8b6995118069d8172f601c5d46a0200ee8c4afd6a8c3a8b9700ebb914ea14"
+        "sha256": "154fc91c5e0d5db31bb98ed9166bdbadb0e95022251c2cb95190a032ba06aa5d"
       },
       {
         "path": "scripts/vendored-build-audit.test.mjs",
-        "sha256": "4ac267f6efd0e9e6bf896a4f2d747eefc06d0932d7efbd23487ea28f11418608"
+        "sha256": "6fb6bb9cf5ad8aa96381a62f4fb3b583d4c81ad41a76a827c63e90ec73631154"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -13724,6 +13736,10 @@
         "sha256": "0586ffc081ed2b11a09f6c34378c40a3edd69d0be95e9f768b2cda14d28b9430"
       },
       {
+        "path": "scripts/workload-identity-package.test.mjs",
+        "sha256": "4ac3de0fe69ef9a6d59405955bbe01cbc9f35e56d8efab2d8519f995e57f913e"
+      },
+      {
         "path": "scripts/workspace-reachability.mjs",
         "sha256": "102bbf2555ecb8566c7271f8b3cad7208ca5d25c9e1e75ebb20fbc373cfa2557"
       },
@@ -13782,6 +13798,14 @@
       {
         "path": "tests/browser-evidence/visual-projects.ts",
         "sha256": "f6a72993521078747d01c995c209db53ffff22a00e182d63e74dc6e234bf1c86"
+      },
+      {
+        "path": "tests/persisted-state-gate/agent-runtime-health.mjs",
+        "sha256": "6a628607b1b47068a4bd43183d54325bae1e5ff9f0458dded21932b261738bd2"
+      },
+      {
+        "path": "tests/persisted-state-gate/agent-runtime-health.test.mjs",
+        "sha256": "0488d67cb5fd111e0e06efd23f1e3475b352da15b636859a7af5d8a1a3f15a74"
       },
       {
         "path": "tests/persisted-state-gate/artifact-schema.json",
@@ -13870,6 +13894,10 @@
       {
         "path": "tests/persisted-state-gate/seed.ts",
         "sha256": "ee0cd35d8b946871e1354304093405c7ed0caf14f64993bc9c5000385ccff5dd"
+      },
+      {
+        "path": "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+        "sha256": "450b64c9be4ac4172121d874c574d8180ad59d26a1a0119ce272c50b530bb81b"
       },
       {
         "path": "tests/persisted-state-gate/verify-artifacts.mjs",
@@ -14341,6 +14369,14 @@
             "script": "build:platos:agent"
           }
         ],
+        "internal-packages/workload-identity": [
+          {
+            "from": "package.json",
+            "kind": "ci-build-entrypoint",
+            "packageName": "@internal/workload-identity",
+            "script": "build:platos:agent"
+          }
+        ],
         "packages/adapters/channel-slack": [
           {
             "from": "tsconfig.json",
@@ -14529,6 +14565,7 @@
         "apps/webapp",
         "internal-packages/docs",
         "internal-packages/tenancy-database",
+        "internal-packages/workload-identity",
         "packages/adapters/channel-slack",
         "packages/adapters/clickhouse-observability",
         "packages/adapters/durable-runtime",
@@ -14569,6 +14606,7 @@
       "internal-packages/docs",
       "internal-packages/tenancy-database",
       "internal-packages/tenancy-database/migration-image",
+      "internal-packages/workload-identity",
       "packages/adapters/channel-slack",
       "packages/adapters/clickhouse-observability",
       "packages/adapters/durable-runtime",
@@ -15684,7 +15722,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -16922,9 +16960,24 @@
               "line": 154
             },
             {
+              "from": "scripts/workload-identity-package.test.mjs",
+              "kind": "reference",
+              "line": 69
+            },
+            {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
               "line": 287
+            },
+            {
+              "from": "tests/persisted-state-gate/agent-runtime-health.mjs",
+              "kind": "reference",
+              "line": 6
+            },
+            {
+              "from": "tests/persisted-state-gate/agent-runtime-health.test.mjs",
+              "kind": "reference",
+              "line": 14
             },
             {
               "from": "tests/persisted-state-gate/non-browser-evidence-contract.json",
@@ -16955,6 +17008,11 @@
               "from": "tests/persisted-state-gate/run-performance.mjs",
               "kind": "reference",
               "line": 818
+            },
+            {
+              "from": "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+              "kind": "reference",
+              "line": 21
             },
             {
               "from": "tests/persisted-state-gate/verify-performance-artifacts.mjs",
@@ -17858,8 +17916,20 @@
               "scripts/vocabulary-boundary.nul.test.mjs"
             ],
             [
+              "scripts/workload-identity-package.test.mjs",
+              "scripts/workload-identity-package.test.mjs"
+            ],
+            [
               "scripts/workspace-reachability.test.mjs",
               "scripts/workspace-reachability.test.mjs"
+            ],
+            [
+              "tests/persisted-state-gate/agent-runtime-health.mjs",
+              "tests/persisted-state-gate/agent-runtime-health.mjs"
+            ],
+            [
+              "tests/persisted-state-gate/agent-runtime-health.test.mjs",
+              "tests/persisted-state-gate/agent-runtime-health.test.mjs"
             ],
             [
               "tests/persisted-state-gate/non-browser-evidence-contract.json",
@@ -17884,6 +17954,10 @@
             [
               "tests/persisted-state-gate/run-performance.mjs",
               "tests/persisted-state-gate/run-performance.mjs"
+            ],
+            [
+              "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+              "tests/persisted-state-gate/smoke-agent-runtime-image.sh"
             ],
             [
               "tests/persisted-state-gate/verify-performance-artifacts.mjs",
@@ -18120,13 +18194,17 @@
             "scripts/route-capability-parity.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vocabulary-boundary.nul.test.mjs",
+            "scripts/workload-identity-package.test.mjs",
             "scripts/workspace-reachability.test.mjs",
+            "tests/persisted-state-gate/agent-runtime-health.mjs",
+            "tests/persisted-state-gate/agent-runtime-health.test.mjs",
             "tests/persisted-state-gate/non-browser-evidence-contract.json",
             "tests/persisted-state-gate/prepare-candidate-images.sh",
             "tests/persisted-state-gate/release-authorization-contract.test.mjs",
             "tests/persisted-state-gate/run-non-browser-evidence.mjs",
             "tests/persisted-state-gate/run-non-browser-evidence.test.mjs",
             "tests/persisted-state-gate/run-performance.mjs",
+            "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
             "tests/persisted-state-gate/verify-performance-artifacts.mjs",
             "tests/persisted-state-gate/verify-performance-artifacts.test.mjs",
             "tests/postgres-memory-evidence/run.mjs"
@@ -18182,7 +18260,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "d9d4ede505564d693d93b9c4c1da26bc4fbfc70ed7e0d346ef30b9d1467d99e0",
+      "evidenceSha256": "208781881a15f4787e1f54b714e9ce0d3443e00edb9c1dac42723993dca706e3",
       "manifestSha256": "b9b8eed2d98a23eb5bb4a10b2d8c59357d4893ba11d025dc063a29de9c708944",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -26753,7 +26831,7 @@
               "script": "audit:docs-examples"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -26882,6 +26960,11 @@
               "line": 26
             },
             {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 119
+            },
+            {
               "from": "scripts/clickhouse-split-audit.test.mjs",
               "kind": "reference",
               "line": 133
@@ -26909,7 +26992,7 @@
             {
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
-              "line": 106
+              "line": 108
             },
             {
               "from": "scripts/verify-webapp-image-inventory.test.mjs",
@@ -27014,6 +27097,10 @@
               "scripts/audit-sbom.test.mjs"
             ],
             [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
+            ],
+            [
               "scripts/clickhouse-split-audit.test.mjs",
               "scripts/clickhouse-split-audit.test.mjs"
             ],
@@ -27086,6 +27173,7 @@
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/tenancy-database/src/model-pricing.test.ts",
             "scripts/audit-sbom.test.mjs",
+            "scripts/ci-policy.test.mjs",
             "scripts/clickhouse-split-audit.test.mjs",
             "scripts/docs-examples.test.mjs",
             "scripts/root-entry-manifest.test.mjs",
@@ -27109,7 +27197,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3b77d35d004a3510064dab11b3a5891b14fff901e0271e462d22bdba6701f6b2",
+      "evidenceSha256": "21e0f12ed4bd87e4426d30d182acc9b0896a6799ff6f90664d735f288e924b7e",
       "manifestSha256": "3c417b8f7bd7a07e1d17a6f3d37555005c99588f6cc952f079b9be2d6da82328",
       "name": "docs",
       "ociImageClosure": {
@@ -27826,7 +27914,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 203
+              "line": 209
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -28679,7 +28767,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e3e2ba53e59f2ddf8339b9061f4609e92a52ff23bc048c6cbc1e9b81f400c2c8",
+      "evidenceSha256": "4cdbe051c900c30549586f5f184bfc129225699679587462471e716efb8d28d4",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -29016,7 +29104,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -29121,6 +29209,11 @@
               "from": "internal-packages/docs/src/repository.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
+            },
+            {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 119
             }
           ],
           "reversePaths": [
@@ -29143,6 +29236,10 @@
             [
               "internal-packages/docs/src/repository.test.ts",
               "internal-packages/docs/src/repository.test.ts"
+            ],
+            [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
             ]
           ],
           "roots": [
@@ -29150,7 +29247,8 @@
             "internal-packages/docs/package.json",
             "internal-packages/docs/src/frontmatter.test.ts",
             "internal-packages/docs/src/markdown.test.ts",
-            "internal-packages/docs/src/repository.test.ts"
+            "internal-packages/docs/src/repository.test.ts",
+            "scripts/ci-policy.test.mjs"
           ]
         }
       },
@@ -29227,7 +29325,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "a59f9b16a0d778d8bb77ecba19dbb773d04772cc41a7f6e968148c37202b4ab8",
+      "evidenceSha256": "51a6fb9dc4f5f1f6f5abb560f24465dfa349c22eed5f628571893a89546e97fc",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -32226,7 +32324,7 @@
             {
               "from": "docs/audits/sbom/license-index.json",
               "kind": "reference",
-              "line": 930
+              "line": 1117
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -32351,7 +32449,7 @@
             {
               "from": "docs/audits/sbom/license-index.json",
               "kind": "reference",
-              "line": 930
+              "line": 1117
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -32436,7 +32534,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -33262,7 +33360,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 24
+              "line": 119
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -33714,7 +33812,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "249f85a402c87bf02e912d9241f0aa1cfb6e2dabdd30797910dddb7fc554371d",
+      "evidenceSha256": "c5f738a1309cc23bc9ef05868fcfed5840e63c96731b295c3d0613acf65d5915",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -34131,7 +34229,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 203
+              "line": 209
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -34828,7 +34926,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0d7c47994bfc67e6784fb638a7699f1cbc63e57de056e9365d5de623b3a52d54",
+      "evidenceSha256": "a381751b406c8891914f7c9b2b971d8a3932534e29faaede127067e10c68746e",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -35719,6 +35817,24 @@
                 "kind": "executable-manifest"
               }
             ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "internal-packages/workload-identity"
+            ],
+            "root": "internal-packages/workload-identity",
+            "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@internal/workload-identity",
+                "script": "build:platos:agent"
+              }
+            ]
           }
         ],
         "reversePaths": [
@@ -35729,11 +35845,15 @@
           [
             "apps/webapp",
             "internal-packages/workload-identity"
+          ],
+          [
+            "internal-packages/workload-identity"
           ]
         ],
         "roots": [
           "apps/agent",
-          "apps/webapp"
+          "apps/webapp",
+          "internal-packages/workload-identity"
         ]
       },
       "boundaries": {
@@ -35808,7 +35928,7 @@
             {
               "from": "docs/audits/sbom/license-index.json",
               "kind": "reference",
-              "line": 455
+              "line": 547
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -35883,7 +36003,7 @@
             {
               "from": "docs/audits/sbom/license-index.json",
               "kind": "reference",
-              "line": 455
+              "line": 547
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -35910,10 +36030,38 @@
           "reachable": true,
           "reasons": [
             {
+              "command": "pnpm run clean && tsc --project tsconfig.build.json",
+              "from": "internal-packages/workload-identity/package.json",
+              "kind": "workspace-script",
+              "script": "build"
+            },
+            {
+              "command": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+              "from": "internal-packages/workload-identity/package.json",
+              "kind": "workspace-script",
+              "script": "clean"
+            },
+            {
               "command": "tsc --noEmit",
               "from": "internal-packages/workload-identity/package.json",
               "kind": "workspace-script",
               "script": "typecheck"
+            },
+            {
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "build:platos:agent"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "build"
+            },
+            {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "clean"
             },
             {
               "from": "package.json",
@@ -35998,9 +36146,24 @@
               "line": 110
             },
             {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 119
+            },
+            {
               "from": "scripts/image-package-inventory.test.mjs",
               "kind": "reference",
               "line": 55
+            },
+            {
+              "from": "scripts/workload-identity-package.test.mjs",
+              "kind": "reference",
+              "line": 17
+            },
+            {
+              "from": "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+              "kind": "reference",
+              "line": 9
             }
           ],
           "reversePaths": [
@@ -36017,15 +36180,30 @@
               "scripts/audit-sbom.test.mjs"
             ],
             [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
+            ],
+            [
               "scripts/image-package-inventory.test.mjs",
               "scripts/image-package-inventory.test.mjs"
+            ],
+            [
+              "scripts/workload-identity-package.test.mjs",
+              "scripts/workload-identity-package.test.mjs"
+            ],
+            [
+              "tests/persisted-state-gate/smoke-agent-runtime-image.sh",
+              "tests/persisted-state-gate/smoke-agent-runtime-image.sh"
             ]
           ],
           "roots": [
             "apps/agent/src/auth/scope.guard.test.ts",
             "internal-packages/workload-identity/src/index.test.ts",
             "scripts/audit-sbom.test.mjs",
-            "scripts/image-package-inventory.test.mjs"
+            "scripts/ci-policy.test.mjs",
+            "scripts/image-package-inventory.test.mjs",
+            "scripts/workload-identity-package.test.mjs",
+            "tests/persisted-state-gate/smoke-agent-runtime-image.sh"
           ]
         }
       },
@@ -36093,6 +36271,24 @@
                 "kind": "executable-manifest"
               }
             ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "internal-packages/workload-identity"
+            ],
+            "root": "internal-packages/workload-identity",
+            "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@internal/workload-identity",
+                "script": "build:platos:agent"
+              }
+            ]
           }
         ],
         "reversePaths": [
@@ -36103,15 +36299,19 @@
           [
             "apps/webapp",
             "internal-packages/workload-identity"
+          ],
+          [
+            "internal-packages/workload-identity"
           ]
         ],
         "roots": [
           "apps/agent",
-          "apps/webapp"
+          "apps/webapp",
+          "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "d1c7944f2993f95a74a4d88bc55362a0cf157de980075244f00064ff8726b878",
-      "manifestSha256": "14cc61dfe3b0756d3a1cda1988781b78a9cdfdaa2d6df538e4b5436d0be3c0f5",
+      "evidenceSha256": "3dab3b63b79a98767ce72dad29c300f4e33d70e1051f8a5c95f8844a5662ba53",
+      "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
         "reachable": true,
@@ -52171,7 +52371,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 212
+              "line": 218
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -53367,7 +53567,7 @@
             {
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
-              "line": 148
+              "line": 150
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -53637,7 +53837,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b719a2b9a0e191db45ea019331b687547fc7a58e3380638bc786d203f0a2b153",
+      "evidenceSha256": "d7a163cbc05b241d06aa456be4300563e8168928308e84b6c8eea2d9fa86c3c0",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -57027,7 +57227,7 @@
             {
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
-              "line": 125
+              "line": 127
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -57107,7 +57307,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9d908630ff8b4eed753775ea3b976fcc67ddba2c4ef61fb97c324cf54c9db033",
+      "evidenceSha256": "511d16fa1d0d186a57da047c3bd00e7be6248b0cfe2a55e142c7164abd4f0f0f",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {

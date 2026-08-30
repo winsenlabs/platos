@@ -153,6 +153,35 @@ export function validateDeletionSet(expectedPaths, actualPaths) {
   };
 }
 
+export function validateDeletionComposition({
+  reviewedSourcePaths,
+  primaryBaseAdditionPaths,
+  separatelyAuthorizedOutsideRootPaths,
+  actualPaths,
+}) {
+  const expected = [
+    ...reviewedSourcePaths,
+    ...primaryBaseAdditionPaths,
+    ...separatelyAuthorizedOutsideRootPaths,
+  ];
+  const deletionSet = validateDeletionSet(expected, actualPaths);
+  const violations = [
+    ...deletionSet.missing.map((path) => `authorized deletion is absent: ${path}`),
+    ...deletionSet.unrecorded.map((path) => `unauthorized deletion is present: ${path}`),
+  ];
+  for (const path of primaryBaseAdditionPaths) {
+    if (!isTombstonedPath(path)) {
+      violations.push(`primary-base addition is outside the six-workspace roots: ${path}`);
+    }
+  }
+  for (const path of separatelyAuthorizedOutsideRootPaths) {
+    if (isTombstonedPath(path)) {
+      violations.push(`separately authorized deletion must remain outside the six-workspace roots: ${path}`);
+    }
+  }
+  return { ...deletionSet, violations };
+}
+
 export function existingRetiredRoots(root) {
   return candidateRoots.filter((path) => {
     try {
@@ -445,12 +474,13 @@ export function validateReviewedSourceProvenance(root, {
   for (const path of additionSet.missing) violations.push(`explained primary-base addition is absent: ${path}`);
   for (const path of additionSet.unrecorded) violations.push(`primary base adds unexplained candidate path: ${path}`);
   const allowedDeletionPaths = allowedAdditionalDeletions.map(({ path }) => path);
-  const coverageAdditions = validateDeletionSet(
-    [...allowedPaths, ...allowedDeletionPaths],
-    coverage.unrecorded,
-  );
-  for (const path of coverageAdditions.missing) violations.push(`explained primary-base addition is absent from current deletion set: ${path}`);
-  for (const path of coverageAdditions.unrecorded) violations.push(`current integration deletion lacks a primary-base addition explanation: ${path}`);
+  const composition = validateDeletionComposition({
+    reviewedSourcePaths: sourceDeletedPaths,
+    primaryBaseAdditionPaths: allowedPaths,
+    separatelyAuthorizedOutsideRootPaths: allowedDeletionPaths,
+    actualPaths: integrationDeletedPaths,
+  });
+  for (const violation of composition.violations) violations.push(`reviewed source composition: ${violation}`);
   for (const addition of allowedAdditions) {
     if (!addition.reason?.trim()) violations.push(`primary-base addition lacks an explanation: ${addition.path}`);
   }
@@ -494,7 +524,7 @@ export function validateReviewedSourceProvenance(root, {
             bytes: entry?.bytes ?? null,
           };
         }),
-        additionalReviewedDeletions: allowedAdditionalDeletions,
+        separatelyAuthorizedOutsideRootDeletions: allowedAdditionalDeletions,
       },
     },
   };
@@ -651,6 +681,13 @@ export function auditRepository(root = repositoryRoot, options = {}) {
       actualFileCount: deletedFiles.length,
       actualBytes: deletedFiles.reduce((total, file) => total + file.bytes, 0),
       manifestSha256: sha256(deletionManifest),
+      composition: {
+        reviewedSourceSixRootFileCount: reviewedSource.deletion?.actualFileCount ?? null,
+        primaryBaseSixRootAdditionCount: reviewedSource.integrationCoverage?.primaryBaseAdditions?.length ?? null,
+        separatelyAuthorizedOutsideRootFileCount:
+          reviewedSource.integrationCoverage?.separatelyAuthorizedOutsideRootDeletions?.length ?? null,
+        totalFileCount: deletedFiles.length,
+      },
       files: deletedFiles,
     },
     tombstones: {
@@ -687,7 +724,9 @@ export function markdownText(report) {
   const protectedRows = report.protectedTrees
     .map(({ path, integrationBaseTreeOid, trackedFiles, byteIdentical }) => `| \`${path}\` | \`${integrationBaseTreeOid}\` | ${trackedFiles} | ${byteIdentical ? "yes" : "no"} |`)
     .join("\n");
-  return `# WIN-253 vendored build/SDK retirement\n\n## Result\n\nThe assembled tree removes exactly six inherited Trigger workspaces from integration base \`${report.integrationBase.sha}\`:\n\n${report.packages.map(({ path, name }) => `- \`${path}\` (\`${name}\`)`).join("\n")}\n\nThe executable receipt derives ${report.deletion.actualFileCount} deleted files and ${report.deletion.actualBytes} bytes from Git. The restore argv in \`${REPORT_PATH}\` restores every deleted blob from the integration base and is exercised byte-for-byte by \`scripts/vendored-build-audit.test.mjs\`.\n\n## Reviewed-source provenance\n\nGit derives ${report.reviewedSource.deletion.actualFileCount} reviewed deletions from \`${report.reviewedSource.base}..${report.reviewedSource.commit}\`; all ${report.reviewedSource.integrationCoverage.representedReviewedDeletionCount} are represented in the current integration-base deletion set. The only primary-base path additions are ${report.reviewedSource.integrationCoverage.primaryBaseAdditions.map(({ path }) => `\`${path}\``).join(" and ")}, each explicitly explained in the JSON receipt.\n\n## Consumer and tombstone proof\n\nAll manifest, import, dynamic-load, filesystem-load, TypeScript-reference, script, CI, Docker, test-config, and active-doc channels are empty. The only surviving retired package-name references are the two explicit production negative guards recorded in the JSON receipt. Tombstone checks inspect tracked, untracked, ignored, and empty retired roots.\n\nDurable runtime examples map \`task\`, \`tasks\`, \`runs\`, \`schedules\`, and \`wait\` to \`@trigger.dev/sdk\`. \`PlatosClient\` and the Platos REST/WebSocket surface map to \`@platosdev/client\`; the audit rejects either boundary when routed through the other package.\n\n## Protected Platos SDKs\n\n| Tree | Integration-base tree | Files | Byte-identical |\n| --- | --- | ---: | --- |\n${protectedRows}\n\n## Shared artifacts\n\nThe current lockfile, changesets, vocabulary exceptions, V1 ledger fingerprint, workspace reachability report, SBOM/licence receipts, root manifest, docs, and ignore files are regenerated or checked on the assembled tree. The obsolete \`packages.pin.browser-entry\` ledger rule is absent.\n\n## Rollback\n\nExecute the exact \`restore.argv\` array from \`${REPORT_PATH}\` without shell interpolation. It restores only the ${report.deletion.actualFileCount} Git-derived deletion paths from \`${report.integrationBase.sha}\`.\n`;
+  const primaryAdditions = report.reviewedSource.integrationCoverage.primaryBaseAdditions;
+  const outsideRootDeletions = report.reviewedSource.integrationCoverage.separatelyAuthorizedOutsideRootDeletions;
+  return `# WIN-253 vendored build/SDK retirement\n\n## Result\n\nThe assembled tree removes exactly six inherited Trigger workspaces from integration base \`${report.integrationBase.sha}\`:\n\n${report.packages.map(({ path, name }) => `- \`${path}\` (\`${name}\`)`).join("\n")}\n\nThe six-root cluster contributes exactly ${report.deletion.composition.reviewedSourceSixRootFileCount + report.deletion.composition.primaryBaseSixRootAdditionCount} integration-base files: ${report.deletion.composition.reviewedSourceSixRootFileCount} reviewed-source deletions plus ${report.deletion.composition.primaryBaseSixRootAdditionCount} later primary-base additions (${primaryAdditions.map(({ path }) => `\`${path}\``).join(" and ")}). Separately, ${report.deletion.composition.separatelyAuthorizedOutsideRootFileCount} obsolete patch files outside those six roots are authorized for deletion (${outsideRootDeletions.map(({ path }) => `\`${path}\``).join(" and ")}). The executable receipt therefore derives ${report.deletion.actualFileCount} total deleted files (${report.deletion.composition.reviewedSourceSixRootFileCount} + ${report.deletion.composition.primaryBaseSixRootAdditionCount} + ${report.deletion.composition.separatelyAuthorizedOutsideRootFileCount}) and ${report.deletion.actualBytes} bytes from Git.\n\n## Reviewed-source provenance\n\nGit derives ${report.reviewedSource.deletion.actualFileCount} reviewed deletions from \`${report.reviewedSource.base}..${report.reviewedSource.commit}\`; all ${report.reviewedSource.integrationCoverage.representedReviewedDeletionCount} are represented in the current integration-base deletion set. The two later LICENSE files remain classified inside the six-root cluster, while the two obsolete patch deletions remain separately authorized outside it; neither category is silently folded into the reviewed-source count.\n\n## Consumer and tombstone proof\n\nAll manifest, import, dynamic-load, filesystem-load, TypeScript-reference, script, CI, Docker, test-config, and active-doc channels are empty. The only surviving retired package-name references are the two explicit production negative guards recorded in the JSON receipt. Tombstone checks inspect tracked, untracked, ignored, and empty retired roots.\n\nDurable runtime examples map \`task\`, \`tasks\`, \`runs\`, \`schedules\`, and \`wait\` to \`@trigger.dev/sdk\`. \`PlatosClient\` and the Platos REST/WebSocket surface map to \`@platosdev/client\`; the audit rejects either boundary when routed through the other package.\n\n## Protected Platos SDKs\n\n| Tree | Integration-base tree | Files | Byte-identical |\n| --- | --- | ---: | --- |\n${protectedRows}\n\n## Shared artifacts\n\nThe current lockfile, changesets, vocabulary exceptions, V1 ledger fingerprint, workspace reachability report, SBOM/licence receipts, root manifest, docs, and ignore files are regenerated or checked on the assembled tree. The obsolete \`packages.pin.browser-entry\` ledger rule is absent.\n\n## Rollback\n\nExecute the exact \`restore.argv\` array from \`${REPORT_PATH}\` without shell interpolation. It restores exactly the ${report.deletion.actualFileCount} Git-derived deletion paths (${report.deletion.composition.reviewedSourceSixRootFileCount} reviewed-source files, ${report.deletion.composition.primaryBaseSixRootAdditionCount} later six-root additions, and ${report.deletion.composition.separatelyAuthorizedOutsideRootFileCount} separately authorized outside-root patches) from \`${report.integrationBase.sha}\`. The byte-for-byte rollback test deletes that full pathset before exercising the argv.\n`;
 }
 
 function main() {

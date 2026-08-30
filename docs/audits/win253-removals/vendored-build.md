@@ -11,11 +11,11 @@ The assembled tree removes exactly six inherited Trigger workspaces from integra
 - `packages/rsc` (`@platos/rsc`)
 - `packages/schema-to-json` (`@platos/schema-to-json`)
 
-The executable receipt derives 124 deleted files and 628213 bytes from Git. The restore argv in `docs/audits/win253-removals/vendored-build.json` restores every deleted blob from the integration base and is exercised byte-for-byte by `scripts/vendored-build-audit.test.mjs`.
+The six-root cluster contributes exactly 122 integration-base files: 120 reviewed-source deletions plus 2 later primary-base additions (`packages/rsc/LICENSE` and `packages/schema-to-json/LICENSE`). Separately, 2 obsolete patch files outside those six roots are authorized for deletion (`patches/@upstash__ratelimit.patch` and `patches/@window-splitter__state@0.4.1.patch`). The executable receipt therefore derives 124 total deleted files (120 + 2 + 2) and 628213 bytes from Git.
 
 ## Reviewed-source provenance
 
-Git derives 120 reviewed deletions from `fcf39fa227cb9265b7e532f14ef181a3b65ff061..e720b7618e58b27d3ff4f9aff5a5ca9ac6670130`; all 120 are represented in the current integration-base deletion set. The only primary-base path additions are `packages/rsc/LICENSE` and `packages/schema-to-json/LICENSE`, each explicitly explained in the JSON receipt.
+Git derives 120 reviewed deletions from `fcf39fa227cb9265b7e532f14ef181a3b65ff061..e720b7618e58b27d3ff4f9aff5a5ca9ac6670130`; all 120 are represented in the current integration-base deletion set. The two later LICENSE files remain classified inside the six-root cluster, while the two obsolete patch deletions remain separately authorized outside it; neither category is silently folded into the reviewed-source count.
 
 ## Consumer and tombstone proof
 
@@ -41,4 +41,4 @@ The current lockfile, changesets, vocabulary exceptions, V1 ledger fingerprint, 
 
 ## Rollback
 
-Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores only the 124 Git-derived deletion paths from `34c41bc10bd23c90271e83592148fab3bf26aa38`.
+Execute the exact `restore.argv` array from `docs/audits/win253-removals/vendored-build.json` without shell interpolation. It restores exactly the 124 Git-derived deletion paths (120 reviewed-source files, 2 later six-root additions, and 2 separately authorized outside-root patches) from `34c41bc10bd23c90271e83592148fab3bf26aa38`. The byte-for-byte rollback test deletes that full pathset before exercising the argv.
