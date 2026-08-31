@@ -498,7 +498,7 @@ test("every tracked file produces exactly one row and no file is left over", () 
   assert.deepEqual(checkInvariants(live, tracked, pinnedPaths), []);
 });
 
-test("area counts reconcile against the independently derived baseline plus exact WIN-254 additions", () => {
+test("area counts reconcile against the baseline plus exact WIN-254 and legal-provenance additions", () => {
   const summary = summarize(live.rows);
   const expectedDeltas = {
     "apps-agent": 0,
@@ -507,10 +507,12 @@ test("area counts reconcile against the independently derived baseline plus exac
     "apps-mcp-stdio": 0,
     packages: 0,
     "internal-packages": 0,
-    "docs-content": 4,
+    // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
+    // exact evidence files under docs/audits/sbom.
+    "docs-content": 9,
     "root-infra": 10,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 14);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 19);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -519,7 +521,7 @@ test("area counts reconcile against the independently derived baseline plus exac
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 14
+    rulesDocument.baseline.totalFiles + 19
   );
 });
 

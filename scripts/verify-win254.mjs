@@ -14,6 +14,7 @@ export const WIN254_COMMANDS = Object.freeze([
   ["pnpm", ["audit:evidence-lifecycle"]],
   ["pnpm", ["audit:docs-build"]],
   ["pnpm", ["audit:root-manifest"]],
+  ["node", ["--test", "scripts/v1-ledger.test.mjs"]],
   ["pnpm", ["audit:v1-ledger"]],
   ["pnpm", ["test:vocabulary"]],
   ["pnpm", ["audit:vocabulary"]],
