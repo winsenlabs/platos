@@ -598,8 +598,10 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         --> 19284
   //   -5    stale M0.5 current-state vendor references --> 19279
   //   +16   reviewed WIN-254 assembled-tree documentation and governance
-  //         occurrences --> 19295.
-  assert.equal(manifest.exceptions.length, 19295);
+  //         occurrences --> 19295
+  //   +83   reviewed WIN-252 legal-provenance and protected-evidence
+  //         occurrences --> 19378.
+  assert.equal(manifest.exceptions.length, 19378);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

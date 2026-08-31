@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0397b9b20cd229d91b5fe691644760f56f546bc961d93c9934cb024af1c71496",
+  "evidenceSha256": "9e79144ec3a4113a5af9a0fa1eac2a57708c1c77097d903a002a4bdc05ca20aa",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "aef76b74b13ed09658094514a621a79bf3c8627c5e1e9bb4ce62515d613bcf29",
+    "aggregateSha256": "0e806b75314e3ff65f43bcb8edc8d4dc3dd25fdcc2172b1ca313d2e8dbc108df",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -13737,11 +13737,11 @@
       },
       {
         "path": "scripts/verify-win254.mjs",
-        "sha256": "018bd016dd496fc2f176b021fabd42ddf967d07b24b4ad5610cf2a189d3bbb37"
+        "sha256": "7e46d5cc6b9737cc35f5baa1b9a144d7d77423351ce922fae85b56a47f88417f"
       },
       {
         "path": "scripts/verify-win254.test.mjs",
-        "sha256": "dc7df1e0e54e48e83a60671e03a21d95c94a2d227a8f4d276ab3d57018ef20a7"
+        "sha256": "d244f69ddfdcf8622eab3f65aec212871eb1213f4bba9bfceed33148e559e220"
       },
       {
         "path": "scripts/vocabulary-boundary.mjs",
@@ -13753,7 +13753,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "5e8c96b74b4ef6754ada6eb8e6beb67debaf12d21a0811724e0c47f33fb91080"
+        "sha256": "37ad1e9565fe205e58e096b91ca79690a50eb755824176432c425a53be130f41"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",

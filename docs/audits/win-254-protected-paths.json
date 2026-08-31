@@ -1023,12 +1023,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "1f5e18fe216a703ff8801eff14f4e4fe654f360347504d522693e67f32ba4502"
+      "sha256": "c9f9b21f9b88bd05fe00469158c7b4b3958bce04346d52c604dac518b34764f7"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "1fe4dcb298abdb2c3e7e30bbb0de4bc84978445a8eb83e58862628cd5da57e87"
+      "sha256": "aa43d1eafb13eaf45a2e1c0d6ad8e2d32c5d8ec1cc141927a9715d0f76392986"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1043,7 +1043,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "8046dad4c89460d76699849ad49cf80081cbd11c6abfa40dec447e88b85538a4"
+      "sha256": "ff5d1017204e92678f378a3118cfb2ff2232769af7bed29054976bc436150600"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3883,12 +3883,12 @@
     {
       "path": "scripts/verify-win254.mjs",
       "mode": "100644",
-      "sha256": "018bd016dd496fc2f176b021fabd42ddf967d07b24b4ad5610cf2a189d3bbb37"
+      "sha256": "7e46d5cc6b9737cc35f5baa1b9a144d7d77423351ce922fae85b56a47f88417f"
     },
     {
       "path": "scripts/verify-win254.test.mjs",
       "mode": "100644",
-      "sha256": "dc7df1e0e54e48e83a60671e03a21d95c94a2d227a8f4d276ab3d57018ef20a7"
+      "sha256": "d244f69ddfdcf8622eab3f65aec212871eb1213f4bba9bfceed33148e559e220"
     },
     {
       "path": "scripts/vocabulary-boundary.mjs",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "5e8c96b74b4ef6754ada6eb8e6beb67debaf12d21a0811724e0c47f33fb91080"
+      "sha256": "37ad1e9565fe205e58e096b91ca79690a50eb755824176432c425a53be130f41"
     },
     {
       "path": "scripts/workspace-reachability.mjs",

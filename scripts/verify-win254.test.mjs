@@ -21,6 +21,7 @@ const expected = [
   "pnpm audit:docs-build",
   "pnpm audit:root-manifest",
   "pnpm audit:v1-ledger",
+  "pnpm test:vocabulary",
   "pnpm audit:vocabulary",
   "pnpm audit:win253-clickhouse-split",
   "pnpm audit:sbom:check",
@@ -96,40 +97,24 @@ test("canonical regeneration executes every generator exactly once", () => {
   assert.deepEqual(result, { ok: true, commandCount: expectedRegeneration.length });
 });
 
-test("combined verifier is fail-fast and does not execute later checks after failure", () => {
-  const called = [];
-  const result = verifyWin254("/tmp", {
-    spawn(executable, args) {
-      const command = [executable, ...args].join(" ");
-      called.push(command);
-      return { status: called.length === 4 ? 7 : 0 };
-    },
-  });
-  assert.deepEqual(called, expected.slice(0, 4));
-  assert.deepEqual(result, { ok: false, command: expected[3], status: 7 });
-});
-
-test("combined verifier cannot omit or continue past contract-map drift", () => {
-  const called = [];
-  const contractMapIndex = expected.indexOf("pnpm audit:contract-map");
-  const result = verifyWin254("/var/tmp", {
-    spawn(executable, args) {
-      const command = [executable, ...args].join(" ");
-      called.push(command);
-      return { status: command === expected[contractMapIndex] ? 9 : 0 };
-    },
-  });
-  assert.deepEqual(called, expected.slice(0, contractMapIndex + 1));
-  assert.deepEqual(result, {
-    ok: false,
-    command: "pnpm audit:contract-map",
-    status: 9,
-  });
+test("combined verifier fails closed at every composed check", () => {
+  for (const [failureIndex, failedCommand] of expected.entries()) {
+    const called = [];
+    const result = verifyWin254("/var/tmp", {
+      spawn(executable, args) {
+        const command = [executable, ...args].join(" ");
+        called.push(command);
+        return { status: command === failedCommand ? 7 : 0 };
+      },
+    });
+    assert.deepEqual(called, expected.slice(0, failureIndex + 1));
+    assert.deepEqual(result, { ok: false, command: failedCommand, status: 7 });
+  }
 });
 
 test("combined verifier reports success only after every composed check runs", () => {
   const called = [];
-  const result = verifyWin254("/tmp", {
+  const result = verifyWin254("/var/tmp", {
     spawn(executable, args) {
       called.push([executable, ...args].join(" "));
       return { status: 0 };

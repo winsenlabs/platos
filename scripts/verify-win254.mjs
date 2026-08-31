@@ -15,6 +15,7 @@ export const WIN254_COMMANDS = Object.freeze([
   ["pnpm", ["audit:docs-build"]],
   ["pnpm", ["audit:root-manifest"]],
   ["pnpm", ["audit:v1-ledger"]],
+  ["pnpm", ["test:vocabulary"]],
   ["pnpm", ["audit:vocabulary"]],
   ["pnpm", ["audit:win253-clickhouse-split"]],
   ["pnpm", ["audit:sbom:check"]],
