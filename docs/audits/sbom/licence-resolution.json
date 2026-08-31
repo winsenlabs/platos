@@ -1,0 +1,1885 @@
+{
+  "$schema": "platos.audit.licence-resolution/v2",
+  "schemaVersion": 2,
+  "generatedBy": "WIN-252 reviewed provenance construction; local Git and vendored artifact verification: node --test scripts/audit-licenses.test.mjs",
+  "legalDecision": {
+    "status": "OPEN_HUMAN_LEGAL_DECISION_REQUIRED",
+    "decided": false,
+    "question": "Whether the imported package-level MIT permission notice must be retained alongside current Apache-2.0 materials.",
+    "scope": "Evidence only; this receipt records facts and does not make a legal determination."
+  },
+  "sources": {
+    "upstreamGit": {
+      "repository": "https://github.com/triggerdotdev/trigger.dev",
+      "tag": "v4.4.4",
+      "tagRefUrl": "https://github.com/triggerdotdev/trigger.dev/releases/tag/v4.4.4",
+      "commit": "5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+      "commitUrl": "https://github.com/triggerdotdev/trigger.dev/commit/5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+      "treeUrl": "https://github.com/triggerdotdev/trigger.dev/tree/5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+      "tagMapping": {
+        "classification": "EXTERNALLY_REVIEWED_POINT_IN_TIME_FACT",
+        "offlineVerified": false,
+        "reviewedAt": "2026-08-31",
+        "statement": "The v4.4.4 to 5ea36e08f25728ff2a75a31dfd82f4fe9c981002 mapping was externally observed at review time; this repository does not independently verify the live tag mapping offline.",
+        "mappingObservationSourceUrl": "https://github.com/triggerdotdev/trigger.dev.git",
+        "immutableCommitUrl": "https://github.com/triggerdotdev/trigger.dev/commit/5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+        "snapshot": {
+          "path": "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
+          "sha256": "dd9bfccc23e5d92c68c7fb8d8af8817996c5760b1806897d8d4d2324a5090e6c",
+          "size": 664,
+          "schema": "platos.external-git-ref-observation/v1"
+        }
+      },
+      "rootTree": {
+        "path": "",
+        "url": "https://github.com/triggerdotdev/trigger.dev/tree/5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+        "object": {
+          "id": "bfb46fce073cb70c2140ddc153e968759792441f",
+          "type": "tree",
+          "sha256": "b7d171bf9f05d7d912a46f5261625d976164c2455d015a4998e1f8cb826afb3d",
+          "size": 1874
+        },
+        "contentBase64": "NDAwMDAgLmNoYW5nZXNldAB4DmDzxgIMragcQ3mwJefgtEUjwzQwMDAwIC5jbGF1ZGUAAXG8faSVAEFjqQskGKOs7/IHuv40MDAwMCAuY29uZmlncwCjQXQYDerR9o1w2OzCmtgWrl1ThjQwMDAwIC5jdXJzb3IAepUlKLHaFlXtq10ropAZip4/PigxMDA2NDQgLmN1cnNvcmlnbm9yZQCEMM42X7in8T0yqLzOoFpX4h/YNjEwMDY0NCAuZG9ja2VyaWdub3JlAKPqTbjuwMqDiSL261q3C+xu3LsEMTAwNjQ0IC5lbnYuZXhhbXBsZQBp1azcVgyZmE53t/SwNzsOAvJ6VzEwMDY0NCAuZXNsaW50aWdub3JlAIJzRPH5bUfzK4fvLHM/xSMUn+aTNDAwMDAgLmdpdGh1YgCXw1zyynvk49/8CQOp1k74Q6a/OTEwMDY0NCAuZ2l0aWdub3JlAF9q3dugo64K4ziw91ol5ZSS1jjXMTAwNjQ0IC5naXRtb2R1bGVzAOzwjLGk1e7qvJfsFZMehL1oBZsiMTAwNzU1IC5pbmZpc2ljYWwuanNvbgB2aMjEyOtuCGEsJq5e3coiEvtsFTEwMDY0NCAubnZtcmMAfGY+Cgva/qWcT6VxtTtp9+/MaGwxMDA2NDQgLnByZXR0aWVyaWdub3JlAKNER91F2GLxxN7eV7irUlDBMwXONDAwMDAgLnNlcnZlci1jaGFuZ2VzAJSJH5vwDG/oE0gBdOrxBeiOq6kTMTAwNjQ0IC52b3VjaC55bWwAipZoOS0zN1Taur9gYdhtwaSqsrQ0MDAwMCAudnNjb2RlAAqDAZDj8abr6XgXQbsYeVmzHT4xNDAwMDAgLnplZABDypdkCls6UpJCzX1NBtKtUn2i3TEwMDY0NCBBR0VOVFMubWQAmUlvkb3oEJ72SLyvUy2/LljkdMoxMDA2NDQgQ0hBTkdFU0VUUy5tZAAuIlua005PWLJhD2kB86MdM6ExkzEwMDY0NCBDTEFVREUubWQAClTM7Wcs2CjiMuidS56FnwlbfsIxMDA2NDQgQ09ERV9PRl9DT05EVUNULm1kADLJs6mxF0Yqw72/SQ4mlbCcQa+EMTAwNjQ0IENPTlRSSUJVVElORy5tZACI4ky6TwISMdgb6qIEDYq/auJMBDEwMDY0NCBET0NLRVJfSU5TVEFMTEFUSU9OLm1kAH4TW9b4Q8fTuHPzDoGQEl5buf0HMTAwNjQ0IExJQ0VOU0UAXkaOUHhTBwfrjSj+KMrS9y+2S/AxMDA2NDQgUkVBRE1FLm1kAA1/HKKTAXmSWgOGPkVMZZRH5CVEMTAwNjQ0IFJFTEVBU0UubWQAi6PstQB7DdFITIxQt2mkTfEogng0MDAwMCBhaQBr6iVydaJti/nSiKLXepxJDgHAQDEwMDY0NCBhaWxvZ2dlci1vdXRwdXQubG9nAOad4puy0dZDS4sprnda2MLkjFORNDAwMDAgYXBwcwC9EUwtCHZXMzI0X4nTm2kB52OqFTEwMDY0NCBkZXBvdC5qc29uAGD9kMbs7M7/NuL8JP/sr3iNcDwhNDAwMDAgZG9ja2VyAAljN4XgaAOFDHNKf4GBZqF/o4VRNDAwMDAgZG9jcwDeCJTc3BXFKYeogYZTV/v6L6bxaDQwMDAwIGhvc3RpbmcAuAvhCc4oaWqvVCOIgUdEtuv37V80MDAwMCBpbnRlcm5hbC1wYWNrYWdlcwD12J2+VwVLY/+eyxsYth7cylr4zDEwMDY0NCBsZWZ0aG9vay55bWwALoIS0zzOgVloib+/W/e0BpK+0tkxMDA2NDQgcGFja2FnZS5qc29uAGd3vvchufnAHZq6CZRiztMgxjIPNDAwMDAgcGFja2FnZXMAyCBKQmyYi9cyVun1FswMWl6qPlc0MDAwMCBwYXRjaGVzAEWGsaQdxG6V36GCK+RWrAq96Pz2MTAwNjQ0IHBsYXl3cmlnaHQuY29uZmlnLnRzAHFnViNv6jre+Y27KUSut6Ec1ZrfMTAwNjQ0IHBucG0tbG9jay55YW1sAP1FPdLEMo6+R6OGzSbsoSVf1cWrMTAwNjQ0IHBucG0td29ya3NwYWNlLnlhbWwAJfZ59r8KlLTSYzN/0jg4t83l18IxMDA2NDQgcHJldHRpZXIuY29uZmlnLmpzAGjeL+XJym4TEtnTGAgulfyzsd1uNDAwMDAgcmVmZXJlbmNlcwB3tCuJGYDJfmOOyCIcTSnJxCjS/TQwMDAwIHJ1bGVzAMp3XM+VrND6g6EHy3ZewthUcQ6HNDAwMDAgc2NyaXB0cwDZNlxcj+MqVAnXHXg6dUDe6YfT1jEwMDY0NCBzZXJ2ZXIuanNvbgBXuJ/xk6/q+/10izAqGskVO/1TCTQwMDAwIHRlc3RzAGAMbwas40d+cCeDHy2xGCNHt9RdMTAwNjQ0IHR1cmJvLmpzb24AAlpyJkcnDmIoX/LyXYPKDWcZHyY="
+      },
+      "coreTree": {
+        "path": "packages/core",
+        "url": "https://github.com/triggerdotdev/trigger.dev/tree/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/packages/core",
+        "object": {
+          "id": "665d3692f317b0eaa1071d80692ad0d197916d63",
+          "type": "tree",
+          "sha256": "ccb7120a4a3a4750fdbc52a7af2d3acfd0e1a46777a0d8feb6bc5b093a37b83e",
+          "size": 423
+        },
+        "fileCount": 259,
+        "files": [
+          {
+            "path": "CHANGELOG.md",
+            "mode": "100644",
+            "blob": "78fd93088bce6adf5a76326a673065c6efa35319"
+          },
+          {
+            "path": "CLAUDE.md",
+            "mode": "100644",
+            "blob": "78e438387e63581edb46fe8b596f3839f3cf13a0"
+          },
+          {
+            "path": "LICENSE",
+            "mode": "100644",
+            "blob": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b"
+          },
+          {
+            "path": "package.json",
+            "mode": "100644",
+            "blob": "35e60bd7c897b3bb55bbf23241ef9aaf0ed3806c"
+          },
+          {
+            "path": "scripts/bundle-superjson.mjs",
+            "mode": "100644",
+            "blob": "c4e9a7b001886aac73bb305fb046e41fa48c6918"
+          },
+          {
+            "path": "src/debounce.ts",
+            "mode": "100644",
+            "blob": "130bfc17acde7e470813b644734d513095218aef"
+          },
+          {
+            "path": "src/eventFilterMatches.ts",
+            "mode": "100644",
+            "blob": "599f2418091d6cb71b27acdaa60f05a26cc4aeae"
+          },
+          {
+            "path": "src/index.ts",
+            "mode": "100644",
+            "blob": "845b6b431064db95e1cc72a05029681c002236fe"
+          },
+          {
+            "path": "src/logger.ts",
+            "mode": "100644",
+            "blob": "3d5620a9d23a92cf2cb7520079dcf22974e15fd3"
+          },
+          {
+            "path": "src/retry.ts",
+            "mode": "100644",
+            "blob": "92d090bea554f81883c8992a942b051761cea222"
+          },
+          {
+            "path": "src/schemas/eventFilter.ts",
+            "mode": "100644",
+            "blob": "81be2e7c12e45db6bbb080fc5272f487b4bea0b8"
+          },
+          {
+            "path": "src/schemas/index.ts",
+            "mode": "100644",
+            "blob": "2e037be3eb15ad4460d9ff553b66dace6b2822be"
+          },
+          {
+            "path": "src/schemas/json.ts",
+            "mode": "100644",
+            "blob": "79384db156a622def9f554352bbe32d5d3f1ab66"
+          },
+          {
+            "path": "src/types.ts",
+            "mode": "100644",
+            "blob": "7d0697bf60dcfcd97a6c3f83a9ed9664104197dc"
+          },
+          {
+            "path": "src/utils.ts",
+            "mode": "100644",
+            "blob": "2930f61415bce3cb34b5c888f142c03ff25c2797"
+          },
+          {
+            "path": "src/v3/apiClient/core.ts",
+            "mode": "100644",
+            "blob": "5541bb2a9a13cc16f67c06a9cd674b8317acc44d"
+          },
+          {
+            "path": "src/v3/apiClient/errors.ts",
+            "mode": "100644",
+            "blob": "14f69b31302342233a3d232867d39e084f6ec691"
+          },
+          {
+            "path": "src/v3/apiClient/getBranch.ts",
+            "mode": "100644",
+            "blob": "cf1f1f2d441d9e7ce1ba5f3c77cc1982c8e8e2f0"
+          },
+          {
+            "path": "src/v3/apiClient/index.ts",
+            "mode": "100644",
+            "blob": "89a551954f0a1de1f11e3156566cdf9048ce80c1"
+          },
+          {
+            "path": "src/v3/apiClient/pagination.ts",
+            "mode": "100644",
+            "blob": "7613651babed4f75b92868a97325759b501bd561"
+          },
+          {
+            "path": "src/v3/apiClient/runStream.ts",
+            "mode": "100644",
+            "blob": "520ecd8dc2b2c3a075fa45013a2076967e6574cd"
+          },
+          {
+            "path": "src/v3/apiClient/stream.ts",
+            "mode": "100644",
+            "blob": "fc7bcf3db1308fcbc97d303da24d044916781880"
+          },
+          {
+            "path": "src/v3/apiClient/streamBatchItems.test.ts",
+            "mode": "100644",
+            "blob": "23a42b57329241e15356a3e62181f1b313a42757"
+          },
+          {
+            "path": "src/v3/apiClient/types.ts",
+            "mode": "100644",
+            "blob": "79baaf74ef78b51b1b34bf2419cb49dcce10d668"
+          },
+          {
+            "path": "src/v3/apiClient/version.ts",
+            "mode": "100644",
+            "blob": "4b2cf3afe6cc0d5660256c2d8215c3ea560ea36c"
+          },
+          {
+            "path": "src/v3/apiClientManager-api.ts",
+            "mode": "100644",
+            "blob": "d866bebde6bb0619cd9fffe5b318ef034b498970"
+          },
+          {
+            "path": "src/v3/apiClientManager/index.ts",
+            "mode": "100644",
+            "blob": "96a4bc8e534a4f8216599805fe0c226598b4a6db"
+          },
+          {
+            "path": "src/v3/apiClientManager/types.ts",
+            "mode": "100644",
+            "blob": "8cdb185146d9607ac0239d1d80168a5209eeece6"
+          },
+          {
+            "path": "src/v3/apps/backoff.ts",
+            "mode": "100644",
+            "blob": "d09e6d75fd59647f7ca15e7c3d4bea936ce7633a"
+          },
+          {
+            "path": "src/v3/apps/exec.ts",
+            "mode": "100644",
+            "blob": "2ebd977e977e6170f79b4be2c3b03dfefda1418d"
+          },
+          {
+            "path": "src/v3/apps/http.ts",
+            "mode": "100644",
+            "blob": "7e41f35f4aadaaa815c925b18d9897cb0e121ad2"
+          },
+          {
+            "path": "src/v3/apps/index.ts",
+            "mode": "100644",
+            "blob": "80cc2d5a91637b8f9e0a53e4b7bded2f9fd373fb"
+          },
+          {
+            "path": "src/v3/apps/isExecaChildProcess.ts",
+            "mode": "100644",
+            "blob": "559705f5de657276ce63f9de87b0fc739f0f03cb"
+          },
+          {
+            "path": "src/v3/apps/logger.ts",
+            "mode": "100644",
+            "blob": "7e1e99feb5099c5e3c849437fed329f535fedfc3"
+          },
+          {
+            "path": "src/v3/apps/process.ts",
+            "mode": "100644",
+            "blob": "1c90eb86eaa42ac1ec81980afe700a18dfe51460"
+          },
+          {
+            "path": "src/v3/apps/provider.ts",
+            "mode": "100644",
+            "blob": "8cfeb81aee8258e90e544f251cf008efe95930b5"
+          },
+          {
+            "path": "src/v3/build/extensions.ts",
+            "mode": "100644",
+            "blob": "3b809040eaa6831cf6e286b585f1368479ab84ad"
+          },
+          {
+            "path": "src/v3/build/externals.ts",
+            "mode": "100644",
+            "blob": "795bed73863dc7afc36f3e521688315047128176"
+          },
+          {
+            "path": "src/v3/build/flags.test.ts",
+            "mode": "100644",
+            "blob": "694934b7b04cd5c4494bf2b52a4579c20319d12e"
+          },
+          {
+            "path": "src/v3/build/flags.ts",
+            "mode": "100644",
+            "blob": "8f6c00349da1d6e04baec97d460b81851866b6c5"
+          },
+          {
+            "path": "src/v3/build/index.ts",
+            "mode": "100644",
+            "blob": "c29a82da2ef2c610934bc0a740d0ec67e15b91f2"
+          },
+          {
+            "path": "src/v3/build/resolvedConfig.ts",
+            "mode": "100644",
+            "blob": "06caa8d2564dc7fa3d435c3e9e6290a010152945"
+          },
+          {
+            "path": "src/v3/build/runtime.ts",
+            "mode": "100644",
+            "blob": "1618a50ffd4721e308ed62315aea249c118e114d"
+          },
+          {
+            "path": "src/v3/clock-api.ts",
+            "mode": "100644",
+            "blob": "7bb61a8d82c09e46f2053342c78151725c05dc6a"
+          },
+          {
+            "path": "src/v3/clock/clock.ts",
+            "mode": "100644",
+            "blob": "cb2181ba4cb05269ff40a412cf15b5c4cf17dce2"
+          },
+          {
+            "path": "src/v3/clock/index.ts",
+            "mode": "100644",
+            "blob": "3fe92e881e54658a93afdc292338ba70c427339b"
+          },
+          {
+            "path": "src/v3/clock/preciseWallClock.ts",
+            "mode": "100644",
+            "blob": "2d516bb9e1b5b89cfc7cbac735c5dd9d700f8402"
+          },
+          {
+            "path": "src/v3/clock/simpleClock.ts",
+            "mode": "100644",
+            "blob": "9798f238e4001eb79e8dfe245a001fa46eba3fec"
+          },
+          {
+            "path": "src/v3/config.ts",
+            "mode": "100644",
+            "blob": "40334f0428052b819be358f35ec4c2155788ff10"
+          },
+          {
+            "path": "src/v3/consoleInterceptor.ts",
+            "mode": "100644",
+            "blob": "c24b827e205d6bf01ced429e9a0f23717b9cadb0"
+          },
+          {
+            "path": "src/v3/errors.ts",
+            "mode": "100644",
+            "blob": "87fff767d7b806580b41c671010c0daeaba82a07"
+          },
+          {
+            "path": "src/v3/heartbeats-api.ts",
+            "mode": "100644",
+            "blob": "f0e9a269e5c1591b90833cfc374ed0154541eebb"
+          },
+          {
+            "path": "src/v3/heartbeats/api.ts",
+            "mode": "100644",
+            "blob": "27dfeac213ad304f14c807b2579e74e037631b67"
+          },
+          {
+            "path": "src/v3/heartbeats/manager.ts",
+            "mode": "100644",
+            "blob": "2648d49256565addd5e8fd5e1ceeba7ddbfd5291"
+          },
+          {
+            "path": "src/v3/heartbeats/types.ts",
+            "mode": "100644",
+            "blob": "f93dfa514bc7081bb5656127d40587333865490f"
+          },
+          {
+            "path": "src/v3/icons.ts",
+            "mode": "100644",
+            "blob": "7129dc0138cf4967f7effe0d17a953f97f849e55"
+          },
+          {
+            "path": "src/v3/idempotency-key-catalog-api.ts",
+            "mode": "100644",
+            "blob": "d83b62d8825aeecf529c1878ed46cc4348913233"
+          },
+          {
+            "path": "src/v3/idempotency-key-catalog/catalog.ts",
+            "mode": "100644",
+            "blob": "bcc74c90c9bccecc5dee7e16ea37caf9e22dc4da"
+          },
+          {
+            "path": "src/v3/idempotency-key-catalog/index.ts",
+            "mode": "100644",
+            "blob": "685639ed498855bdf52a37ff127e646cae988f0f"
+          },
+          {
+            "path": "src/v3/idempotency-key-catalog/lruIdempotencyKeyCatalog.test.ts",
+            "mode": "100644",
+            "blob": "ba523f6040731f39f47af9759020c34b32c13f18"
+          },
+          {
+            "path": "src/v3/idempotency-key-catalog/lruIdempotencyKeyCatalog.ts",
+            "mode": "100644",
+            "blob": "2fcd072d15c5b510597685cf48d5490aba57ab35"
+          },
+          {
+            "path": "src/v3/idempotencyKeys.ts",
+            "mode": "100644",
+            "blob": "3a6946ccbd0e4598298bb5c4068fa5bc90b52d0f"
+          },
+          {
+            "path": "src/v3/imports/superjson-cjs.cts",
+            "mode": "100644",
+            "blob": "89ed3d2458de7b96d12049be8d7921bac22af026"
+          },
+          {
+            "path": "src/v3/imports/superjson.ts",
+            "mode": "100644",
+            "blob": "1545c083e04cf3c0cd1973d6efca53655a648295"
+          },
+          {
+            "path": "src/v3/index.ts",
+            "mode": "100644",
+            "blob": "2757363f4be3204f9ec667c9a3b31b4ad6322b9d"
+          },
+          {
+            "path": "src/v3/input-streams-api.ts",
+            "mode": "100644",
+            "blob": "17875db50530e64c0a4202b1661335f924eb952f"
+          },
+          {
+            "path": "src/v3/inputStreams/index.ts",
+            "mode": "100644",
+            "blob": "4a871d6bfcc0cc84f6c1de61f59ae6a2aa19b4f0"
+          },
+          {
+            "path": "src/v3/inputStreams/manager.ts",
+            "mode": "100644",
+            "blob": "f393f4a169af11628e3542f56081a3cbf92ed288"
+          },
+          {
+            "path": "src/v3/inputStreams/noopManager.ts",
+            "mode": "100644",
+            "blob": "6d72d9e2f769bac877af0d8a616eb1c5da0a6fe6"
+          },
+          {
+            "path": "src/v3/inputStreams/types.ts",
+            "mode": "100644",
+            "blob": "0816c06493f61e9cbd93ea8f7cde148911d5aac7"
+          },
+          {
+            "path": "src/v3/isomorphic/consts.ts",
+            "mode": "100644",
+            "blob": "6789d897a995255ce1f8c44f4c7ffac46f869e20"
+          },
+          {
+            "path": "src/v3/isomorphic/dates.ts",
+            "mode": "100644",
+            "blob": "53a0542d7e63fcc5265a48d581293be3cad1daba"
+          },
+          {
+            "path": "src/v3/isomorphic/duration.ts",
+            "mode": "100644",
+            "blob": "9315f79683d555825e6c1feebd9da8e6b67e2762"
+          },
+          {
+            "path": "src/v3/isomorphic/friendlyId.ts",
+            "mode": "100644",
+            "blob": "a230f8c7450534ed452583527a11f31e02672d5c"
+          },
+          {
+            "path": "src/v3/isomorphic/index.ts",
+            "mode": "100644",
+            "blob": "d220acd515d7aae0f045946a2d3f6c1c3ab3a3ed"
+          },
+          {
+            "path": "src/v3/isomorphic/maxDuration.ts",
+            "mode": "100644",
+            "blob": "b19d2786fd5b85daf78af2c5d0e4f57212772c12"
+          },
+          {
+            "path": "src/v3/isomorphic/queueName.ts",
+            "mode": "100644",
+            "blob": "141614897883b1c46f5e8e4d8a7f4704a22f2fb1"
+          },
+          {
+            "path": "src/v3/isomorphic/traceContext.ts",
+            "mode": "100644",
+            "blob": "b91b6619240a02ed82f38e0363891fd4b9be2350"
+          },
+          {
+            "path": "src/v3/jwt.ts",
+            "mode": "100644",
+            "blob": "d71f1e7f1e8a221ace66e25252dfd0c143f855de"
+          },
+          {
+            "path": "src/v3/lifecycle-hooks-api.ts",
+            "mode": "100644",
+            "blob": "e08bd66671c25517e4037398f7524b345b677956"
+          },
+          {
+            "path": "src/v3/lifecycleHooks/index.ts",
+            "mode": "100644",
+            "blob": "0011bd5d5a7854f473dcbb61903e9c5ab15b471a"
+          },
+          {
+            "path": "src/v3/lifecycleHooks/manager.ts",
+            "mode": "100644",
+            "blob": "e755e66d3f9a3f19197b9a622639ef81bce4360f"
+          },
+          {
+            "path": "src/v3/lifecycleHooks/types.ts",
+            "mode": "100644",
+            "blob": "51518a165a92c98777fe40b3f7cdb20d5a285b3e"
+          },
+          {
+            "path": "src/v3/limits.ts",
+            "mode": "100644",
+            "blob": "61313c7c5864f51eba387511ca7a65f62c172d60"
+          },
+          {
+            "path": "src/v3/links.ts",
+            "mode": "100644",
+            "blob": "d04284e73fe592d7518d5c400004379354a94014"
+          },
+          {
+            "path": "src/v3/locals-api.ts",
+            "mode": "100644",
+            "blob": "a9f86494a675881ded9416d6a99d42f294e0877e"
+          },
+          {
+            "path": "src/v3/locals/index.ts",
+            "mode": "100644",
+            "blob": "def860238433fb413a19a593a45b34d3aeea7fa0"
+          },
+          {
+            "path": "src/v3/locals/manager.ts",
+            "mode": "100644",
+            "blob": "6984d9f4146d6f2f6b87ed41d53b33eb8daf6296"
+          },
+          {
+            "path": "src/v3/locals/types.ts",
+            "mode": "100644",
+            "blob": "aab683df0918df6f5a3acd45bedcfa0a235c4082"
+          },
+          {
+            "path": "src/v3/logger-api.ts",
+            "mode": "100644",
+            "blob": "54dc5e03d7fb6f3c9bd4bcafdb9c4b68e599e692"
+          },
+          {
+            "path": "src/v3/logger/index.ts",
+            "mode": "100644",
+            "blob": "22027d5736e62b613884606af79abab140dc24d4"
+          },
+          {
+            "path": "src/v3/logger/taskLogger.ts",
+            "mode": "100644",
+            "blob": "59ba2602e73b57bf962c50901c227582b8a857f5"
+          },
+          {
+            "path": "src/v3/machines/index.ts",
+            "mode": "100644",
+            "blob": "e5dcb097dc59582a897d85f96f4eca7c2483a228"
+          },
+          {
+            "path": "src/v3/machines/max-old-space.test.ts",
+            "mode": "100644",
+            "blob": "425b81976242ea1a45182217d9fc549d4c6e487b"
+          },
+          {
+            "path": "src/v3/otel/diskIoMetrics.ts",
+            "mode": "100644",
+            "blob": "4018b58e5c74210bce992b12932ec760658733c6"
+          },
+          {
+            "path": "src/v3/otel/filesystemMetrics.ts",
+            "mode": "100644",
+            "blob": "aa22e9900f73ec53d56a93ce94f8164c5d1cd47d"
+          },
+          {
+            "path": "src/v3/otel/index.ts",
+            "mode": "100644",
+            "blob": "a62813d3601f8ecb0d53aa4a25b17b1e2faaa89d"
+          },
+          {
+            "path": "src/v3/otel/machineId.ts",
+            "mode": "100644",
+            "blob": "79f7bc4ba2a105a574bbd1df67ab221e3414510a"
+          },
+          {
+            "path": "src/v3/otel/nodejsRuntimeMetrics.ts",
+            "mode": "100644",
+            "blob": "aeb4ce4bee506618c7b14ba20a12ee88f5b82f42"
+          },
+          {
+            "path": "src/v3/otel/tracingSDK.ts",
+            "mode": "100644",
+            "blob": "a301946c75522a2b5a87b94e222c682ea524f4f3"
+          },
+          {
+            "path": "src/v3/otel/utils.ts",
+            "mode": "100644",
+            "blob": "8ce83549e7a19af1c0a0d78c279dcef722a080c9"
+          },
+          {
+            "path": "src/v3/realtime-streams-api.ts",
+            "mode": "100644",
+            "blob": "0bc0665c052f93a9e926c88ba78a5def6547e543"
+          },
+          {
+            "path": "src/v3/realtimeStreams/index.ts",
+            "mode": "100644",
+            "blob": "2a35b38befdd2c5194983e2d86216e5f5d92c8ba"
+          },
+          {
+            "path": "src/v3/realtimeStreams/manager.ts",
+            "mode": "100644",
+            "blob": "323735df106f0dd1a7f9bd808090f846e733c0db"
+          },
+          {
+            "path": "src/v3/realtimeStreams/noopManager.ts",
+            "mode": "100644",
+            "blob": "542e66fd53a971599d6fcc266ce61c10f6923db6"
+          },
+          {
+            "path": "src/v3/realtimeStreams/streamInstance.ts",
+            "mode": "100644",
+            "blob": "6d8106ffe6cfd462d3297ca3cc0a5581f25650e8"
+          },
+          {
+            "path": "src/v3/realtimeStreams/streamsWriterV1.ts",
+            "mode": "100644",
+            "blob": "2f2b4af16824f3fa0234de679edc67fcb218b68c"
+          },
+          {
+            "path": "src/v3/realtimeStreams/streamsWriterV2.ts",
+            "mode": "100644",
+            "blob": "91713630dbe221b6731d890c3ac3f214b340e5cd"
+          },
+          {
+            "path": "src/v3/realtimeStreams/types.ts",
+            "mode": "100644",
+            "blob": "174970c283039e9da90fc85ce3dddad7c8a3b7ce"
+          },
+          {
+            "path": "src/v3/resource-catalog-api.ts",
+            "mode": "100644",
+            "blob": "172e3bcda894509ad1f7b13d6b284cf38b95eb08"
+          },
+          {
+            "path": "src/v3/resource-catalog/catalog.ts",
+            "mode": "100644",
+            "blob": "5b3ab0236393eef5d2fb500c9fa7b8dd09af61d1"
+          },
+          {
+            "path": "src/v3/resource-catalog/index.ts",
+            "mode": "100644",
+            "blob": "9ce7dee64cf61a8b7447badac44b80f3d19d092c"
+          },
+          {
+            "path": "src/v3/resource-catalog/noopResourceCatalog.ts",
+            "mode": "100644",
+            "blob": "8f77544f05c6643648b5a321e8969d582354ba38"
+          },
+          {
+            "path": "src/v3/resource-catalog/standardResourceCatalog.ts",
+            "mode": "100644",
+            "blob": "ea134a45663544d917447bfe3f30de1efc288b19"
+          },
+          {
+            "path": "src/v3/run-metadata-api.ts",
+            "mode": "100644",
+            "blob": "34532356b5cd8692506e8a0e33bfb6c91587653d"
+          },
+          {
+            "path": "src/v3/run-timeline-metrics-api.ts",
+            "mode": "100644",
+            "blob": "0c92cf2ed2ef43b49f4c1188e21b0b5b2a19c524"
+          },
+          {
+            "path": "src/v3/runEngineWorker/consts.ts",
+            "mode": "100644",
+            "blob": "29dc76b53581c964d054a6bdd79243ad2e64f4ee"
+          },
+          {
+            "path": "src/v3/runEngineWorker/index.ts",
+            "mode": "100644",
+            "blob": "50617df11af43b22eae8d6c7e397f31c77590869"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/consumerPool.test.ts",
+            "mode": "100644",
+            "blob": "6093790b0129bd30589b0058b42f9d3c5d9a9994"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/consumerPool.ts",
+            "mode": "100644",
+            "blob": "d72cef75c7c564dfd3c62451497fb72462be62d5"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/consumerPoolMetrics.ts",
+            "mode": "100644",
+            "blob": "8f65fa07750a9937c3fc784e21b76022847f8752"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/events.ts",
+            "mode": "100644",
+            "blob": "df4a93686a90a8fdcd367baec847122a8c421849"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/http.ts",
+            "mode": "100644",
+            "blob": "aee6c6bf652bc5d33f901bf740da73c434f0c632"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/queueConsumer.ts",
+            "mode": "100644",
+            "blob": "76faee40809838b50768622198df0b96e0f6c67a"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/queueMetricsProcessor.test.ts",
+            "mode": "100644",
+            "blob": "ac6a19a04846e6bc515d22062718d6bf506b491d"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/queueMetricsProcessor.ts",
+            "mode": "100644",
+            "blob": "5f628f432cedb5afd1bd10df6d922cf21046ba0f"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/scalingStrategies.test.ts",
+            "mode": "100644",
+            "blob": "3d6f4062e54be8115c010e18a907073362f09b36"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/scalingStrategies.ts",
+            "mode": "100644",
+            "blob": "665c689d649432018446d3a11574f06c6faf0f4f"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/schemas.ts",
+            "mode": "100644",
+            "blob": "a49fd53a0960c2e7c88aff1d93fb015a08534878"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/session.ts",
+            "mode": "100644",
+            "blob": "b2d344fb3dc4041ab9dddc6e9b4685395a790da8"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/types.ts",
+            "mode": "100644",
+            "blob": "a61e89e46d3537efa2a99a2f02a1edf03dd9e3a8"
+          },
+          {
+            "path": "src/v3/runEngineWorker/supervisor/util.ts",
+            "mode": "100644",
+            "blob": "07b662b0d917e550ad25749f5ba42c1f6712baec"
+          },
+          {
+            "path": "src/v3/runEngineWorker/types.ts",
+            "mode": "100644",
+            "blob": "b54d23ccde792add544dbada03b1d54d891c0f01"
+          },
+          {
+            "path": "src/v3/runEngineWorker/util.ts",
+            "mode": "100644",
+            "blob": "a2358c6026c6f2d06194b75a71a4aafbc3c64417"
+          },
+          {
+            "path": "src/v3/runEngineWorker/workload/http.ts",
+            "mode": "100644",
+            "blob": "93fa7bf03c02ed23a893328b57c3141340dd98ae"
+          },
+          {
+            "path": "src/v3/runEngineWorker/workload/schemas.ts",
+            "mode": "100644",
+            "blob": "14f3b8efe351620cce42cc2c028f5d658d22b1d7"
+          },
+          {
+            "path": "src/v3/runEngineWorker/workload/types.ts",
+            "mode": "100644",
+            "blob": "13926748cd9d0bc7c2028622174460c13abc11cc"
+          },
+          {
+            "path": "src/v3/runEngineWorker/workload/util.ts",
+            "mode": "100644",
+            "blob": "74f58d9bb82c5eff32662ce2243306799dcf7e30"
+          },
+          {
+            "path": "src/v3/runMetadata/index.ts",
+            "mode": "100644",
+            "blob": "edc8475fb865c7f443bab6678d8d77bb7b5a4438"
+          },
+          {
+            "path": "src/v3/runMetadata/manager.ts",
+            "mode": "100644",
+            "blob": "992c63594f5e945175c7320c5a01457da3e7535c"
+          },
+          {
+            "path": "src/v3/runMetadata/noopManager.ts",
+            "mode": "100644",
+            "blob": "28366b066b3d91c5cb640f6980cbabe275f27959"
+          },
+          {
+            "path": "src/v3/runMetadata/operations.ts",
+            "mode": "100644",
+            "blob": "6a6444326072461c3bd0201151850cd842787d07"
+          },
+          {
+            "path": "src/v3/runMetadata/types.ts",
+            "mode": "100644",
+            "blob": "53a3a211332075bdab22f23256fd0761dd93f70b"
+          },
+          {
+            "path": "src/v3/runTimelineMetrics/index.ts",
+            "mode": "100644",
+            "blob": "7ce1133c619e24b6fe8cf03b29c8d2ca4d764786"
+          },
+          {
+            "path": "src/v3/runTimelineMetrics/runTimelineMetricsManager.ts",
+            "mode": "100644",
+            "blob": "3261e475247948b80e19a15cbcdec3eae4d2054a"
+          },
+          {
+            "path": "src/v3/runTimelineMetrics/types.ts",
+            "mode": "100644",
+            "blob": "043bfcaac0b17d7974e1cb305e3c5b27cf95c97c"
+          },
+          {
+            "path": "src/v3/runtime-api.ts",
+            "mode": "100644",
+            "blob": "28a1b96c01525ad918b2836cbffaff787ab2d39a"
+          },
+          {
+            "path": "src/v3/runtime/index.ts",
+            "mode": "100644",
+            "blob": "39e874f986f4ad16f642cc1b9a0a3b8ffb8ecd5c"
+          },
+          {
+            "path": "src/v3/runtime/manager.ts",
+            "mode": "100644",
+            "blob": "ec7b5f1c1821942a16dbafd9ac1f31eeee7a6717"
+          },
+          {
+            "path": "src/v3/runtime/noopRuntimeManager.ts",
+            "mode": "100644",
+            "blob": "0650cf4e0d281b3701f65a6300290819b065b695"
+          },
+          {
+            "path": "src/v3/runtime/preventMultipleWaits.ts",
+            "mode": "100644",
+            "blob": "160483191547eb0114c7593d68888a8fcc8d17e1"
+          },
+          {
+            "path": "src/v3/runtime/sharedRuntimeManager.ts",
+            "mode": "100644",
+            "blob": "09c718c1f6c0d15bdae790fa501fb095088af627"
+          },
+          {
+            "path": "src/v3/schemas/api-type.test.ts",
+            "mode": "100644",
+            "blob": "c936b3c769d4559fc104824268f4d28738e99295"
+          },
+          {
+            "path": "src/v3/schemas/api.ts",
+            "mode": "100644",
+            "blob": "6d324a10d11095db208f8827d9682011e4f9ce8c"
+          },
+          {
+            "path": "src/v3/schemas/build.ts",
+            "mode": "100644",
+            "blob": "bda5efb0ad9a3d89bd049ce5b9b5cb9f664eb2c3"
+          },
+          {
+            "path": "src/v3/schemas/checkpoints.ts",
+            "mode": "100644",
+            "blob": "d255c035cf829153fd883ecfced0ed66a68570f0"
+          },
+          {
+            "path": "src/v3/schemas/common.ts",
+            "mode": "100644",
+            "blob": "f3757208335e98b1dfa03f80810046bbeb5c3fb5"
+          },
+          {
+            "path": "src/v3/schemas/config.ts",
+            "mode": "100644",
+            "blob": "f94098f28021882c653b6de0c61ac7f430fd4cbf"
+          },
+          {
+            "path": "src/v3/schemas/eventFilter.ts",
+            "mode": "100644",
+            "blob": "6ddda362108532063faebe39f1beae767942f3ed"
+          },
+          {
+            "path": "src/v3/schemas/fetch.ts",
+            "mode": "100644",
+            "blob": "eace74628e5f1b34317b0891b43cb7ba105347a7"
+          },
+          {
+            "path": "src/v3/schemas/index.ts",
+            "mode": "100644",
+            "blob": "11857d6197f1e4f01ed4c46308479dfa9caeb567"
+          },
+          {
+            "path": "src/v3/schemas/messages.ts",
+            "mode": "100644",
+            "blob": "b58babba7171e6b5b9d30cd46c5d7b5d26f91e52"
+          },
+          {
+            "path": "src/v3/schemas/openTelemetry.ts",
+            "mode": "100644",
+            "blob": "47d9d9a50d9e1ff5e921893f61f67a3143e21ed0"
+          },
+          {
+            "path": "src/v3/schemas/query.ts",
+            "mode": "100644",
+            "blob": "3910ab4f5d764679e01771b94a24288c3a8c0c0a"
+          },
+          {
+            "path": "src/v3/schemas/queues.ts",
+            "mode": "100644",
+            "blob": "34a47b34e3eea98a1884fe6dae38d768fed1f4c9"
+          },
+          {
+            "path": "src/v3/schemas/resources.ts",
+            "mode": "100644",
+            "blob": "e681c728416ea6bf6d9806dfe9c218aab3d9a3cf"
+          },
+          {
+            "path": "src/v3/schemas/runEngine.ts",
+            "mode": "100644",
+            "blob": "9378b29027058c0f27cfb6589ba71d1bbb78cff4"
+          },
+          {
+            "path": "src/v3/schemas/schemas.ts",
+            "mode": "100644",
+            "blob": "4ec559ebf415ff86d91ed88ec4aa474155803bae"
+          },
+          {
+            "path": "src/v3/schemas/style.ts",
+            "mode": "100644",
+            "blob": "2f833b800acdab48f870aeabc8fac59a1248b7e7"
+          },
+          {
+            "path": "src/v3/schemas/tokens.ts",
+            "mode": "100644",
+            "blob": "ba01f240cdfe2cb186ef8c4ab7216ffc529d7bca"
+          },
+          {
+            "path": "src/v3/schemas/warmStart.ts",
+            "mode": "100644",
+            "blob": "1d0e43268e4c88fb7b9c5b4354c4759aa2f74f65"
+          },
+          {
+            "path": "src/v3/schemas/webhooks.ts",
+            "mode": "100644",
+            "blob": "b5ed927602edee5ca571d02cf8b8d0f2cbdffdf7"
+          },
+          {
+            "path": "src/v3/semanticInternalAttributes.ts",
+            "mode": "100644",
+            "blob": "3fb20a064990ad8062c0aff00e7052007f9ab799"
+          },
+          {
+            "path": "src/v3/serverOnly/checkpointClient.ts",
+            "mode": "100644",
+            "blob": "57bdb09ab36e7dd74ee28a5347b8adb37efe70ca"
+          },
+          {
+            "path": "src/v3/serverOnly/checkpointTest.ts",
+            "mode": "100644",
+            "blob": "4778b07bcd0c91498c87b07817d765611c136bad"
+          },
+          {
+            "path": "src/v3/serverOnly/httpServer.ts",
+            "mode": "100644",
+            "blob": "4c4fa4eeb1e0cc1422fbb633c0d7394a44f71d55"
+          },
+          {
+            "path": "src/v3/serverOnly/idempotencyKeys.ts",
+            "mode": "100644",
+            "blob": "91dac04fd43c192eb3d514873499b614721b2a70"
+          },
+          {
+            "path": "src/v3/serverOnly/index.ts",
+            "mode": "100644",
+            "blob": "8f56f0e330737a75b2a660db55d288d318679902"
+          },
+          {
+            "path": "src/v3/serverOnly/jumpHash.ts",
+            "mode": "100644",
+            "blob": "ac13deb5f7821dd9e1803a90774a241e4a68e1a5"
+          },
+          {
+            "path": "src/v3/serverOnly/k8s.ts",
+            "mode": "100644",
+            "blob": "4234e15c4905aa85ae2f7dc464f07320c9dbbc7f"
+          },
+          {
+            "path": "src/v3/serverOnly/placementTags.ts",
+            "mode": "100644",
+            "blob": "244aad5be079194549ad6c344a1fdfa10a91a645"
+          },
+          {
+            "path": "src/v3/serverOnly/resourceMonitor.ts",
+            "mode": "100644",
+            "blob": "2d91d2e23d520c1f4894b276117278b14c50f1c9"
+          },
+          {
+            "path": "src/v3/serverOnly/shutdownManager.test.ts",
+            "mode": "100644",
+            "blob": "8c66af777d0a9ceef414837395263d01ef00805c"
+          },
+          {
+            "path": "src/v3/serverOnly/shutdownManager.ts",
+            "mode": "100644",
+            "blob": "c2aa807781bddcfacf059c5fe572be749ac5412b"
+          },
+          {
+            "path": "src/v3/serverOnly/singleton.ts",
+            "mode": "100644",
+            "blob": "8f96dc6d8c1ef76f337949da9a2e32928cf58e3d"
+          },
+          {
+            "path": "src/v3/streams/asyncIterableStream.ts",
+            "mode": "100644",
+            "blob": "b3cf1eaa091e025ba043aa2c535f385f9d46569e"
+          },
+          {
+            "path": "src/v3/task-context-api.ts",
+            "mode": "100644",
+            "blob": "c31a61e79ad7bce24ce720bb806eac58c2672855"
+          },
+          {
+            "path": "src/v3/taskContext/index.ts",
+            "mode": "100644",
+            "blob": "f76671160a6da288c55d772c1b1b2efd59984a0c"
+          },
+          {
+            "path": "src/v3/taskContext/otelProcessors.ts",
+            "mode": "100644",
+            "blob": "1c0958d655d5b2fc0fc60bf766d31c065a618c30"
+          },
+          {
+            "path": "src/v3/taskContext/types.ts",
+            "mode": "100644",
+            "blob": "e60b54ad2beecad59f84adfa0993071cfb002a81"
+          },
+          {
+            "path": "src/v3/timeout-api.ts",
+            "mode": "100644",
+            "blob": "1b30af4a55b14fe7c8cda0f0d4e5cae48e04dbcc"
+          },
+          {
+            "path": "src/v3/timeout/api.ts",
+            "mode": "100644",
+            "blob": "dd211bc42c071a7ee5acf579b581e72070cec5c7"
+          },
+          {
+            "path": "src/v3/timeout/types.ts",
+            "mode": "100644",
+            "blob": "6978689676802690b5c3e92d9fff32473b40070d"
+          },
+          {
+            "path": "src/v3/timeout/usageTimeoutManager.ts",
+            "mode": "100644",
+            "blob": "3a6a196dcee4f6e1bd2b66781b65489081e99141"
+          },
+          {
+            "path": "src/v3/trace-context-api.ts",
+            "mode": "100644",
+            "blob": "1a4333fbe20f2dde9bf10be280bcc6c8b0bcd6f9"
+          },
+          {
+            "path": "src/v3/traceContext/api.ts",
+            "mode": "100644",
+            "blob": "3b21e0668a1d4f90d182ba784d645a51019a1112"
+          },
+          {
+            "path": "src/v3/traceContext/manager.ts",
+            "mode": "100644",
+            "blob": "f61b7c7af71a287d065bd62391bcc620cf15d6b2"
+          },
+          {
+            "path": "src/v3/traceContext/types.ts",
+            "mode": "100644",
+            "blob": "dc30cf6f479be9a006db8f9e08f5d81bd776c3ca"
+          },
+          {
+            "path": "src/v3/tracer.ts",
+            "mode": "100644",
+            "blob": "5b21391759256c02e22e98bc28fc77debcc50388"
+          },
+          {
+            "path": "src/v3/tryCatch.ts",
+            "mode": "100644",
+            "blob": "cc890a006157cb48077c36c787d5b0aea4ce48f6"
+          },
+          {
+            "path": "src/v3/types/idempotencyKeys.ts",
+            "mode": "100644",
+            "blob": "920f1b30dbff45d14defacbb0eb06112b4af2dc0"
+          },
+          {
+            "path": "src/v3/types/index.ts",
+            "mode": "100644",
+            "blob": "ea2bc8d5580bdaccfb3066bacd7e653ebd50bbe1"
+          },
+          {
+            "path": "src/v3/types/jsonSchema.ts",
+            "mode": "100644",
+            "blob": "7abf241a662e8e99546ae4d5efc6952eaa867532"
+          },
+          {
+            "path": "src/v3/types/queues.ts",
+            "mode": "100644",
+            "blob": "9e87f136e2ef5b69d00a7bf5955806cb51c48a6a"
+          },
+          {
+            "path": "src/v3/types/schemas.ts",
+            "mode": "100644",
+            "blob": "e5ae9c3d88ec17588adba4a86955d85954af2d4d"
+          },
+          {
+            "path": "src/v3/types/tasks.ts",
+            "mode": "100644",
+            "blob": "d04d088ef1a81a2e7d44539ec09e6967e6d3ebfc"
+          },
+          {
+            "path": "src/v3/types/tools.ts",
+            "mode": "100644",
+            "blob": "8c3aac80bf1672be98b4d9ea1a16d7a8079c6504"
+          },
+          {
+            "path": "src/v3/types/utils.ts",
+            "mode": "100644",
+            "blob": "4a6b90fec8cb35a1adb8231bc659681548848e6c"
+          },
+          {
+            "path": "src/v3/usage-api.ts",
+            "mode": "100644",
+            "blob": "be0f0d1c28784a8ac9c4be90d9aea34272256400"
+          },
+          {
+            "path": "src/v3/usage/api.ts",
+            "mode": "100644",
+            "blob": "c3a05fc9f3ae049cbb5418d342110c8acf449c82"
+          },
+          {
+            "path": "src/v3/usage/devUsageManager.ts",
+            "mode": "100644",
+            "blob": "510213b26023b7f4c77ab11426e59a68f0ce529e"
+          },
+          {
+            "path": "src/v3/usage/noopUsageManager.ts",
+            "mode": "100644",
+            "blob": "d044f1738d8e2a415d662a393454fd038ee0e7c2"
+          },
+          {
+            "path": "src/v3/usage/prodUsageManager.ts",
+            "mode": "100644",
+            "blob": "7cfd038d019285e61b5cd23e41931e1a344cc178"
+          },
+          {
+            "path": "src/v3/usage/types.ts",
+            "mode": "100644",
+            "blob": "45fd32e63b7ada659f74eab15699b7a0614bfa26"
+          },
+          {
+            "path": "src/v3/usage/usageClient.ts",
+            "mode": "100644",
+            "blob": "374481c376003f117bc48146a313169478f8583d"
+          },
+          {
+            "path": "src/v3/utils/crypto.ts",
+            "mode": "100644",
+            "blob": "03e0b40773294695772aa7fd62fb8d3a0e03a9f4"
+          },
+          {
+            "path": "src/v3/utils/durations.ts",
+            "mode": "100644",
+            "blob": "7bec968fe6e01677177eab34ecde1bdff65473ac"
+          },
+          {
+            "path": "src/v3/utils/flattenAttributes.ts",
+            "mode": "100644",
+            "blob": "83d1a14f2cd951a2449569a6037ce73da601a569"
+          },
+          {
+            "path": "src/v3/utils/getEnv.ts",
+            "mode": "100644",
+            "blob": "ee7698c4b515af9c89c6a0b62d9396163b20ba09"
+          },
+          {
+            "path": "src/v3/utils/globals.ts",
+            "mode": "100644",
+            "blob": "08b62d379b23cbb62cc809f160b6a473c4058e7e"
+          },
+          {
+            "path": "src/v3/utils/imageRef.ts",
+            "mode": "100644",
+            "blob": "88efba0fdf648dd38e5c462d29945b56d5002ce5"
+          },
+          {
+            "path": "src/v3/utils/interval.ts",
+            "mode": "100644",
+            "blob": "7ea74347185eb2ebc3a12c6361e54dc48796def8"
+          },
+          {
+            "path": "src/v3/utils/ioSerialization.ts",
+            "mode": "100644",
+            "blob": "35e3d41061a400373a4e3598759a926a229169ef"
+          },
+          {
+            "path": "src/v3/utils/omit.ts",
+            "mode": "100644",
+            "blob": "db7f3ec14d6ee0148f0465faa9b62dc9fd2b1235"
+          },
+          {
+            "path": "src/v3/utils/platform.ts",
+            "mode": "100644",
+            "blob": "794e313eff91a3dc4b41979a8a426c3878a9fca7"
+          },
+          {
+            "path": "src/v3/utils/retries.ts",
+            "mode": "100644",
+            "blob": "ac750fb605af44ee4f6fdf1d092de4df5a3e22f0"
+          },
+          {
+            "path": "src/v3/utils/safeAsyncLocalStorage.ts",
+            "mode": "100644",
+            "blob": "60c01dcca584b5ce9d04f714cc54930078158e47"
+          },
+          {
+            "path": "src/v3/utils/structuredLogger.ts",
+            "mode": "100644",
+            "blob": "1aae399bbf8c5926eb2a10f1ba65cb815c8d18a9"
+          },
+          {
+            "path": "src/v3/utils/styleAttributes.ts",
+            "mode": "100644",
+            "blob": "681cad6d6d2d17d333fdc2a2922ec3f97ecf231e"
+          },
+          {
+            "path": "src/v3/utils/timers.ts",
+            "mode": "100644",
+            "blob": "97071c9239fb3408f103423ee5673a58af49b097"
+          },
+          {
+            "path": "src/v3/wait-until-api.ts",
+            "mode": "100644",
+            "blob": "67a6e3aaac3387c7796c52aa09e35987d21e49d2"
+          },
+          {
+            "path": "src/v3/waitUntil/index.ts",
+            "mode": "100644",
+            "blob": "b1632af0ee26f04273c69aaf92dc45ec2fb7615f"
+          },
+          {
+            "path": "src/v3/waitUntil/manager.ts",
+            "mode": "100644",
+            "blob": "24789270e42d94cf349c9196deb9d7c939ad6fd2"
+          },
+          {
+            "path": "src/v3/waitUntil/types.ts",
+            "mode": "100644",
+            "blob": "1034f0888ff29d62bb54bcfc89d0d2f378b2bb81"
+          },
+          {
+            "path": "src/v3/waitpoints/index.ts",
+            "mode": "100644",
+            "blob": "fc70ff57f21fd4bbed253d8022b4d2192c746af9"
+          },
+          {
+            "path": "src/v3/workers/index.ts",
+            "mode": "100644",
+            "blob": "e5f8eecff9856e15ec84d23e22b029c361d2f920"
+          },
+          {
+            "path": "src/v3/workers/populateEnv.ts",
+            "mode": "100644",
+            "blob": "b21673c3fa65d210a6c6559ec345214726c5430f"
+          },
+          {
+            "path": "src/v3/workers/taskExecutor.ts",
+            "mode": "100644",
+            "blob": "2b9ffecf15125efbebec2923f0a040651bff0cae"
+          },
+          {
+            "path": "src/v3/workers/warmStartClient.ts",
+            "mode": "100644",
+            "blob": "d087d18cb9689edac55d72a0bc0fb893d7ced7bb"
+          },
+          {
+            "path": "src/v3/zodIpc.ts",
+            "mode": "100644",
+            "blob": "8879c7d0538f6ef3d69245ca79f208e0b35d1d2d"
+          },
+          {
+            "path": "src/v3/zodMessageHandler.ts",
+            "mode": "100644",
+            "blob": "7e1f71fd55cc7d5f79daae376abdabed6f4609a9"
+          },
+          {
+            "path": "src/v3/zodNamespace.ts",
+            "mode": "100644",
+            "blob": "38316d6618405cfb1d4082e7dfc60e1ec2a04069"
+          },
+          {
+            "path": "src/v3/zodSocket.ts",
+            "mode": "100644",
+            "blob": "5ec1f179a4f2cc58512a1f6b15874351594e6c7d"
+          },
+          {
+            "path": "src/v3/zodfetch.ts",
+            "mode": "100644",
+            "blob": "0d459244576b0dcc49eef8dd4194f22a1091944d"
+          },
+          {
+            "path": "src/version.ts",
+            "mode": "100644",
+            "blob": "2e47a8868286c686605887f76a8d2fae7cd484ab"
+          },
+          {
+            "path": "test/duration.test.ts",
+            "mode": "100644",
+            "blob": "bb12839624179e65a700d601518b753850bd3073"
+          },
+          {
+            "path": "test/eventFilterMatches.test.ts",
+            "mode": "100644",
+            "blob": "4df17fa235a38929d1d22f981a903f0f1c311bd0"
+          },
+          {
+            "path": "test/flattenAttributes.test.ts",
+            "mode": "100644",
+            "blob": "28f137deaf93b376cd44af675243aaaf330cf00f"
+          },
+          {
+            "path": "test/ioSerialization.test.ts",
+            "mode": "100644",
+            "blob": "d7bd90add832d34436c7e7d8d2bc86d39d5f3e6b"
+          },
+          {
+            "path": "test/jumpHash.test.ts",
+            "mode": "100644",
+            "blob": "8f9a3d97ed0962428af4cafcfd6629dfc9a0664e"
+          },
+          {
+            "path": "test/runStream.test.ts",
+            "mode": "100644",
+            "blob": "0bf7f17432c0f8bb790bf594b1e3dc342cd37ced"
+          },
+          {
+            "path": "test/standardMetadataManager.test.ts",
+            "mode": "100644",
+            "blob": "9385a2130dcb23caa2fc5a6493a301a4b23d954c"
+          },
+          {
+            "path": "test/streamsWriterV1.test.ts",
+            "mode": "100644",
+            "blob": "8111870cd7d51f123c39e769b0889ab148c31ea0"
+          },
+          {
+            "path": "test/taskExecutor.test.ts",
+            "mode": "100644",
+            "blob": "f7d14f5ba132f8e66884b35dbe22eeea3ff1b9a8"
+          },
+          {
+            "path": "test/utils.test.ts",
+            "mode": "100644",
+            "blob": "a822f8851d748207753f08e2d0feff584d9ed755"
+          },
+          {
+            "path": "tsconfig.json",
+            "mode": "100644",
+            "blob": "cc79a63894261d8a38ab8359ed15d35bbc8b7f6f"
+          },
+          {
+            "path": "tsconfig.src.json",
+            "mode": "100644",
+            "blob": "db06c53317ec36847adc7e7ce6f423bf661dada8"
+          },
+          {
+            "path": "tsconfig.test.json",
+            "mode": "100644",
+            "blob": "fb90f380ec7f4e2366e795a81867908be39993fd"
+          },
+          {
+            "path": "vitest.config.ts",
+            "mode": "100644",
+            "blob": "8db9c42ae0c5dbff11692d84a5476d4d6bac71b3"
+          }
+        ]
+      },
+      "otlpTree": {
+        "path": "internal-packages/otlp-importer",
+        "url": "https://github.com/triggerdotdev/trigger.dev/tree/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/internal-packages/otlp-importer",
+        "object": {
+          "id": "8d9b3e38529a09463164680b0002a95759a2009b",
+          "type": "tree",
+          "sha256": "491b0037482211eded3365177f4c7bb5ad6878eb84e9117162a36e581c1f4920",
+          "size": 413
+        },
+        "fileCount": 22,
+        "files": [
+          {
+            "path": ".gitignore",
+            "mode": "100644",
+            "blob": "cad26be8bd7e556843d28851d897a961e7ab9dbc"
+          },
+          {
+            "path": "CHANGELOG.md",
+            "mode": "100644",
+            "blob": "ba33ad5eb05c778468ec37048320a2d2210c8748"
+          },
+          {
+            "path": "LICENSE",
+            "mode": "100644",
+            "blob": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b"
+          },
+          {
+            "path": "README.md",
+            "mode": "100644",
+            "blob": "e2551ed50b39b6b18ad2c8556154e7bc3704c264"
+          },
+          {
+            "path": "jest.config.js",
+            "mode": "100644",
+            "blob": "e21cd117ce125d6aea0679c84cebdddc096905f8"
+          },
+          {
+            "path": "package.json",
+            "mode": "100644",
+            "blob": "72e46c2f9d3bdb9681f144726e1c38adce711b64"
+          },
+          {
+            "path": "protos",
+            "mode": "160000",
+            "blob": "c451441d7b73f702d1647574c730daf7786f188c"
+          },
+          {
+            "path": "scripts/generate-protos.mjs",
+            "mode": "100644",
+            "blob": "9b27010fb02726dd3ae2305297f6deaee27f22bf"
+          },
+          {
+            "path": "scripts/generate-protos.sh",
+            "mode": "100755",
+            "blob": "6770a4966228a25293b54648d4473eacdbbbb1ce"
+          },
+          {
+            "path": "scripts/submodule.mjs",
+            "mode": "100644",
+            "blob": "1b1c66a0999af93fa4152474456fa366485c72ad"
+          },
+          {
+            "path": "scripts/utils.mjs",
+            "mode": "100644",
+            "blob": "2138f7a8bce859f24f00c3a07b74f4401be68457"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/collector/logs/v1/logs_service.ts",
+            "mode": "100644",
+            "blob": "fa4a1e3666f1050be55fe190c98428d45b23880b"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/collector/metrics/v1/metrics_service.ts",
+            "mode": "100644",
+            "blob": "53bda7b01d8f2962c8732ae3f92a1ca788f152a7"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/collector/trace/v1/trace_service.ts",
+            "mode": "100644",
+            "blob": "608e6c91279a515fd017332fe204a21c01fee4d1"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/common/v1/common.ts",
+            "mode": "100644",
+            "blob": "7db2022e71f080dbbe15f8196ed11c0ac0b38dbf"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/logs/v1/logs.ts",
+            "mode": "100644",
+            "blob": "503abbb7e0556c4ddb0a3673d18a0decdc9f386e"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/metrics/v1/metrics.ts",
+            "mode": "100644",
+            "blob": "a09922a4ec7d0584cf22f9f68207ae5d55a52765"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/resource/v1/resource.ts",
+            "mode": "100644",
+            "blob": "b634f23134d3f4dfbdf2a9c25104cbf8b9b0a325"
+          },
+          {
+            "path": "src/generated/opentelemetry/proto/trace/v1/trace.ts",
+            "mode": "100644",
+            "blob": "835205809bf5413a716c8453b37ee509edccc3ec"
+          },
+          {
+            "path": "src/index.ts",
+            "mode": "100644",
+            "blob": "3a70776ddff6577ecf0716a31f35919f588e2bd4"
+          },
+          {
+            "path": "tsconfig.json",
+            "mode": "100644",
+            "blob": "ec09e52a400016f198d41bd20f5775d36b4a8a6b"
+          },
+          {
+            "path": "tsup.config.ts",
+            "mode": "100644",
+            "blob": "d4d7058053926d98de6a40077e54acff6f82b5bc"
+          }
+        ]
+      },
+      "artifacts": {
+        "rootLicense": {
+          "path": "LICENSE",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/LICENSE",
+          "object": {
+            "id": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+            "type": "blob",
+            "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+            "size": 10935
+          },
+          "fields": {
+            "spdx": "Apache-2.0"
+          }
+        },
+        "coreManifest": {
+          "path": "packages/core/package.json",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/packages/core/package.json",
+          "object": {
+            "id": "35e60bd7c897b3bb55bbf23241ef9aaf0ed3806c",
+            "type": "blob",
+            "sha256": "681b1acd25e389ec222b73d9747a386d6d263c47707226df34d3e9ce4d46fa21",
+            "size": 18863
+          },
+          "fields": {
+            "name": "@trigger.dev/core",
+            "version": "4.4.4",
+            "private": false,
+            "license": "MIT",
+            "publishAccess": "public"
+          }
+        },
+        "coreLicense": {
+          "path": "packages/core/LICENSE",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/packages/core/LICENSE",
+          "object": {
+            "id": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+            "type": "blob",
+            "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+            "size": 1068
+          },
+          "fields": {
+            "spdx": "MIT"
+          }
+        },
+        "coreChangelog": {
+          "path": "packages/core/CHANGELOG.md",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/packages/core/CHANGELOG.md",
+          "object": {
+            "id": "78fd93088bce6adf5a76326a673065c6efa35319",
+            "type": "blob",
+            "sha256": "539c9c1f9f0a84eb4feb840e383f953d368a10fda45da277e9a7112518edd861",
+            "size": 60915
+          }
+        },
+        "otlpManifest": {
+          "path": "internal-packages/otlp-importer/package.json",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/internal-packages/otlp-importer/package.json",
+          "object": {
+            "id": "72e46c2f9d3bdb9681f144726e1c38adce711b64",
+            "type": "blob",
+            "sha256": "23aaf8d139db296f51c07f5670320e9f18eacc8d697a57c52dc1600a0c1622b2",
+            "size": 1023
+          },
+          "fields": {
+            "name": "@trigger.dev/otlp-importer",
+            "version": "3.0.0",
+            "private": true,
+            "license": "MIT",
+            "publishAccess": null
+          }
+        },
+        "otlpLicense": {
+          "path": "internal-packages/otlp-importer/LICENSE",
+          "url": "https://github.com/triggerdotdev/trigger.dev/blob/5ea36e08f25728ff2a75a31dfd82f4fe9c981002/internal-packages/otlp-importer/LICENSE",
+          "object": {
+            "id": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+            "type": "blob",
+            "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+            "size": 1068
+          },
+          "fields": {
+            "spdx": "MIT"
+          }
+        }
+      }
+    },
+    "npm": {
+      "package": "@trigger.dev/core",
+      "version": "4.4.4",
+      "packageVersionUrl": "https://www.npmjs.com/package/@trigger.dev/core/v/4.4.4",
+      "registryMetadataUrl": "https://registry.npmjs.org/@trigger.dev%2fcore/4.4.4",
+      "metadataSnapshot": {
+        "classification": "EXTERNALLY_REVIEWED_POINT_IN_TIME_FACT",
+        "snapshotAuthenticityOfflineVerified": false,
+        "path": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+        "sha256": "f98b0ed73d3fe62ff23d73f69d7735b45f5b03fffd3ede1ed216af23d0794e1c",
+        "size": 863,
+        "schema": "platos.external-registry-version-snapshot/v1"
+      },
+      "manifestFields": {
+        "name": "@trigger.dev/core",
+        "version": "4.4.4",
+        "license": "MIT"
+      },
+      "tarball": {
+        "url": "https://registry.npmjs.org/@trigger.dev/core/-/core-4.4.4.tgz",
+        "shasum": "9544b5ded8dd8deb2371081389961792bccfde4e",
+        "integrity": "sha512-m748W6tF/eIGzEaFjuvlicCqxop5GFxnt/eSb7kg0g9ZC2VW0iBa/rOx4aCQlkHd4MKn3B+t2LQLhn/eI9kHDw==",
+        "sha256": "d3c73beaca7283514b1498eb9f06e3f592590f0f968373d90c323d61bb00eef7",
+        "size": 873352,
+        "fileCount": 1440,
+        "unpackedSize": 10406874,
+        "localPath": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.tgz",
+        "sha512Hex": "9bbe3c5bab45fde206cc46858eebe589c0aac68a79185c67b7f7926fb920d20f590b6556d2205afeb3b1e1a0909641dde0c2a7dc1fadd8b40b867fde23d9070f"
+      },
+      "extracted": {
+        "manifest": {
+          "path": "package/package.json",
+          "gitBlob": "56b200edb9dd877a0c96a9627c8bd0392e6d5287",
+          "sha256": "3f3bb585b1d01e4914961abab7ff4ab9f67e2bf295798e62a234a943e03ae7eb",
+          "size": 18856,
+          "fields": {
+            "name": "@trigger.dev/core",
+            "version": "4.4.4",
+            "private": false,
+            "license": "MIT",
+            "publishAccess": "public"
+          }
+        },
+        "license": {
+          "path": "package/LICENSE",
+          "gitBlob": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+          "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+          "size": 1068,
+          "spdx": "MIT"
+        }
+      }
+    }
+  },
+  "initialImport": {
+    "commit": "f5be33998fa7039884ffb7bd32274f0cb6bed6d9",
+    "rootTree": {
+      "path": "",
+      "object": {
+        "id": "8ce606709a0ec60fb49d1c2c1aa8f0811b1e283a",
+        "type": "tree",
+        "sha256": "5fe3b81d042ecb7ac50beb19a7f189b3148906b4b5c1155492a81acf3af90604",
+        "size": 1754
+      }
+    },
+    "coreTree": {
+      "path": "packages/core",
+      "object": {
+        "id": "c5872b84f617c7dadcba1f1b4ebf9a9bc07ebe8a",
+        "type": "tree",
+        "sha256": "a5d7b572baa85f9eb03a4776a4cc15deb90662692e327116a6c399862c69b73c",
+        "size": 386
+      }
+    },
+    "otlpTree": {
+      "path": "internal-packages/otlp-importer",
+      "object": {
+        "id": "3bfbf2d6a47680a0f6592ecf640f32d30ddb5ad8",
+        "type": "tree",
+        "sha256": "c5766d8978cd79c8f6751fa04751c156816c2d1a177b8d7d8ec17a837dd9bd5c",
+        "size": 379
+      }
+    },
+    "artifacts": {
+      "rootLicense": {
+        "path": "LICENSE",
+        "object": {
+          "id": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+          "type": "blob",
+          "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+          "size": 10935
+        }
+      },
+      "coreManifest": {
+        "path": "packages/core/package.json",
+        "object": {
+          "id": "eff7a19bdb28f7493b6a708afc28d770f889d38f",
+          "type": "blob",
+          "sha256": "c86f42adbcbc2dad04f471cf44130d34c8af41e42884e2f0fcba618e9fda168e",
+          "size": 18847
+        },
+        "fields": {
+          "name": "@platos/core",
+          "version": "4.4.4",
+          "private": false,
+          "license": "MIT",
+          "publishAccess": "public"
+        }
+      },
+      "coreLicense": {
+        "path": "packages/core/LICENSE",
+        "object": {
+          "id": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+          "type": "blob",
+          "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+          "size": 1068
+        }
+      },
+      "coreChangelog": {
+        "path": "packages/core/CHANGELOG.md",
+        "object": {
+          "id": "78fd93088bce6adf5a76326a673065c6efa35319",
+          "type": "blob",
+          "sha256": "539c9c1f9f0a84eb4feb840e383f953d368a10fda45da277e9a7112518edd861",
+          "size": 60915
+        }
+      },
+      "otlpManifest": {
+        "path": "internal-packages/otlp-importer/package.json",
+        "object": {
+          "id": "792b00a347e431b1bf60afcc29a6d51986a1b1d4",
+          "type": "blob",
+          "sha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
+          "size": 1018
+        },
+        "fields": {
+          "name": "@platos/otlp-importer",
+          "version": "3.0.0",
+          "private": true,
+          "license": "MIT",
+          "publishAccess": null
+        }
+      },
+      "otlpLicense": {
+        "path": "internal-packages/otlp-importer/LICENSE",
+        "object": {
+          "id": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+          "type": "blob",
+          "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+          "size": 1068
+        }
+      }
+    },
+    "equality": {
+      "rootLicenseBlobEqual": true,
+      "coreLicenseBlobEqual": true,
+      "coreChangelogBlobEqual": true,
+      "otlpLicenseBlobEqual": true
+    },
+    "coreComparison": {
+      "upstreamFileCount": 259,
+      "importFileCount": 258,
+      "commonPathCount": 258,
+      "identicalBlobAndModeCount": 250,
+      "differingCommonPathCount": 8,
+      "differingCommonPaths": [
+        {
+          "path": "package.json",
+          "upstreamMode": "100644",
+          "upstreamBlob": "35e60bd7c897b3bb55bbf23241ef9aaf0ed3806c",
+          "importMode": "100644",
+          "importBlob": "eff7a19bdb28f7493b6a708afc28d770f889d38f"
+        },
+        {
+          "path": "src/v3/idempotencyKeys.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "3a6946ccbd0e4598298bb5c4068fa5bc90b52d0f",
+          "importMode": "100644",
+          "importBlob": "2f0a2b356462394310c4be353a4efc13f0badb91"
+        },
+        {
+          "path": "src/v3/schemas/common.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "f3757208335e98b1dfa03f80810046bbeb5c3fb5",
+          "importMode": "100644",
+          "importBlob": "d52a1265853ee570c7338e8a301f8b26c4df1364"
+        },
+        {
+          "path": "src/v3/schemas/runEngine.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "9378b29027058c0f27cfb6589ba71d1bbb78cff4",
+          "importMode": "100644",
+          "importBlob": "0efda2dc5c4552e7133793dcb061a034dc76f4ab"
+        },
+        {
+          "path": "src/v3/serverOnly/k8s.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "4234e15c4905aa85ae2f7dc464f07320c9dbbc7f",
+          "importMode": "100644",
+          "importBlob": "188f4c6f40ea38161f4300e7dd1f3518fc5bc628"
+        },
+        {
+          "path": "src/v3/serverOnly/shutdownManager.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "c2aa807781bddcfacf059c5fe572be749ac5412b",
+          "importMode": "100644",
+          "importBlob": "a440a401f2bac340bbca0412a15f8520ef655a41"
+        },
+        {
+          "path": "src/v3/types/tasks.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "d04d088ef1a81a2e7d44539ec09e6967e6d3ebfc",
+          "importMode": "100644",
+          "importBlob": "f7a229e366191f5166bf733705feb3d9b2382141"
+        },
+        {
+          "path": "src/v3/utils/getEnv.ts",
+          "upstreamMode": "100644",
+          "upstreamBlob": "ee7698c4b515af9c89c6a0b62d9396163b20ba09",
+          "importMode": "100644",
+          "importBlob": "cc7e841285e67e88ef2f700c335ad087ef7036ff"
+        }
+      ],
+      "upstreamOnlyCount": 1,
+      "upstreamOnly": [
+        {
+          "path": "CLAUDE.md",
+          "mode": "100644",
+          "blob": "78e438387e63581edb46fe8b596f3839f3cf13a0"
+        }
+      ],
+      "importOnlyCount": 0,
+      "importOnly": []
+    },
+    "limitation": {
+      "mergeBasePreserved": false,
+      "laterSourceCommitsShareRelevantCoreTree": true,
+      "canonicalAnchorIsPhysicalCheckoutProof": false,
+      "statement": "Later source commits share the relevant core tree, no merge base is preserved, and the physical checkout used for the import is unproven."
+    }
+  },
+  "currentState": {
+    "baselineCommit": "8ee9f5ec8ea28436134c7fca113b0412eed73a61",
+    "core": {
+      "manifest": {
+        "path": "packages/core/package.json",
+        "object": {
+          "id": "83756089298811b41df97554b7b8a1666526e4f8",
+          "type": "blob",
+          "sha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
+          "size": 18853
+        },
+        "fields": {
+          "name": "@platos/core",
+          "version": "4.4.4",
+          "private": false,
+          "license": "Apache-2.0",
+          "publishAccess": "public"
+        }
+      },
+      "license": {
+        "path": "packages/core/LICENSE",
+        "object": {
+          "id": "5e468e5078530707eb8d28fe28cad2f72fb64bf0",
+          "type": "blob",
+          "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
+          "size": 10935
+        },
+        "spdx": "Apache-2.0"
+      }
+    },
+    "otlpImporter": {
+      "manifest": {
+        "path": "internal-packages/otlp-importer/package.json",
+        "object": {
+          "id": "792b00a347e431b1bf60afcc29a6d51986a1b1d4",
+          "type": "blob",
+          "sha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
+          "size": 1018
+        },
+        "fields": {
+          "name": "@platos/otlp-importer",
+          "version": "3.0.0",
+          "private": true,
+          "license": "MIT",
+          "publishAccess": null
+        }
+      },
+      "license": {
+        "path": "internal-packages/otlp-importer/LICENSE",
+        "object": {
+          "id": "e51e7b10aa6e13f878b34a8ae347c3f9feb76e4b",
+          "type": "blob",
+          "sha256": "08ba90c393a607a7dc83a3dbf6db16a31617925f27b378cd6f959640c3bfa59f",
+          "size": 1068
+        },
+        "spdx": "MIT"
+      },
+      "inheritedMetadata": true,
+      "private": true
+    },
+    "shippingSbomAbsence": [
+      {
+        "path": "docs/audits/sbom/platos-agent.cdx.json",
+        "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108",
+        "size": 541834,
+        "packageName": "@platos/otlp-importer",
+        "absent": true
+      },
+      {
+        "path": "docs/audits/sbom/platos-webapp.cdx.json",
+        "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+        "size": 247926,
+        "packageName": "@platos/otlp-importer",
+        "absent": true
+      },
+      {
+        "path": "docs/audits/sbom/platos-webapp.image-inventory.json",
+        "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419",
+        "size": 24107,
+        "packageName": "@platos/otlp-importer",
+        "absent": true
+      }
+    ]
+  }
+}

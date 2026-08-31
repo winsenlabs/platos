@@ -10,7 +10,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const MANIFEST_PATH = "docs/audits/win-254-protected-paths.json";
 export const LIFECYCLE_PATH = "docs/audits/win-254-evidence-lifecycle.json";
 export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
-export const EXPECTED_PATH_SET_SHA256 = "ef2779982f88697540e965d5404ca4a3749173661e9107c26ae17e05a47ba3e2";
+export const EXPECTED_PATH_SET_SHA256 = "23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

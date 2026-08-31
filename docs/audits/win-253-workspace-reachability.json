@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "22c01f96b93532a5b4568657143fe07adb55f9a9f9abd71c076d6a30f77f931c",
+  "evidenceSha256": "0397b9b20cd229d91b5fe691644760f56f546bc961d93c9934cb024af1c71496",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "01dc87f1a89ad8ece46b007e5b0909fb885239fae3b7d0384bfe980ee0c2684c",
+    "aggregateSha256": "aef76b74b13ed09658094514a621a79bf3c8627c5e1e9bb4ce62515d613bcf29",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -349,7 +349,7 @@
       },
       {
         "path": "NOTICE",
-        "sha256": "d72d73d8541f0000e1857cc4d662b6f414d43e7111402c2293bf4ab45261cb95"
+        "sha256": "4cff8218ed00e4553dcb1c6f4b8ad826dcaed72793de286687cc85f9f2fcf2d8"
       },
       {
         "path": "README.md",
@@ -3949,11 +3949,19 @@
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
-        "sha256": "2599cad4f7b91e4a8123b96f18c8b0d8637252db7e9c9c79a0690d2972bd12a8"
+        "sha256": "5b7cfef5909ff30ab18aa5e483e07cf6257c803f764f918440d3318b877531e9"
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
         "sha256": "2ed4df6d173b771c7d37bfbcc4151a591c88409655db320ad2d12b93e2760216"
+      },
+      {
+        "path": "docs/audits/sbom/licence-resolution.json",
+        "sha256": "c621501c553d1f0b651e9723bcf20fc0158fc0b967015ffddf0ba1b7dd4cd1d4"
+      },
+      {
+        "path": "docs/audits/sbom/licence-resolution.md",
+        "sha256": "0dcf72a3801d618c6880fbe0dd30c9ccb122a6ec0aaf1fbd3990903c85e2903b"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
@@ -3980,6 +3988,18 @@
         "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419"
       },
       {
+        "path": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+        "sha256": "f98b0ed73d3fe62ff23d73f69d7735b45f5b03fffd3ede1ed216af23d0794e1c"
+      },
+      {
+        "path": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.tgz",
+        "sha256": "d3c73beaca7283514b1498eb9f06e3f592590f0f968373d90c323d61bb00eef7"
+      },
+      {
+        "path": "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
+        "sha256": "dd9bfccc23e5d92c68c7fb8d8af8817996c5760b1806897d8d4d2324a5090e6c"
+      },
+      {
         "path": "docs/audits/win-234-route-capability-parity.generated.md",
         "sha256": "1bbfbe0e607b7905d4877ddffee6d1192f17091b62634232b91178cb7177370d"
       },
@@ -3997,7 +4017,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "701c5ef56ebedb96fe62b1a82973029fcfc1a31b3286d0c3b19f22658a74907d"
+        "sha256": "f1f2a66c75a4ef1872342742310e2d0f63bd29989b1c779fe63c1456158acbc9"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -5921,7 +5941,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "51e2a67b30eb9be3ab68fb892781035cf26987b011261354011849872df13d97"
+        "sha256": "1adce64257234eb3a072f819ec391e1c7c4f0ca940b2c0f53f47995248d64053"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5941,7 +5961,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "bc4e0023d28859816538dc6cc6bf0998c936f287a02b096a6a6ea3cb2b6e8203"
+        "sha256": "63f8fd1112073235a71ce4d347b9230a7d5923faca356e0524c95dcf4fb72835"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -13493,7 +13513,7 @@
       },
       {
         "path": "scripts/audit-licenses.test.mjs",
-        "sha256": "adc5373eafb9c2ee7429afc332642ca34b915a5fc84fc4e2624ec10c2d4e4286"
+        "sha256": "5edb0135ba29af55590b7c899bff0be743234cc49a1fb9998fc8a990865fecbc"
       },
       {
         "path": "scripts/audit-platos-build.mjs",
@@ -13565,15 +13585,15 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "fbe1abcda9a055c1782c85728e34e7d37e78d1243aa89411582c448e41d8fb7f"
+        "sha256": "1767ac0251f64c0f93dce5579c3b8c031722d2d2a0457dc67c7e436ce411570e"
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "d6d292c9c24172c2888ceb349de1c9b240dd87cb1aedf03eca5a2abf1c5688ad"
+        "sha256": "c8862bcf4bd68a104ee5e928c304798c4fd5656efa830f95d287b5904f473b58"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "043db8dfd2886bab27a5c8e04e5ac681965b9f608cb02ba6f6fcd0a9360bf640"
+        "sha256": "a071b397e2bd4b6d8126af5f7d203206afa495ea140e36233a513427fea8faac"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -13617,7 +13637,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "1b6b6f61b3c610ad9aead905c42324e12324c7ee38df9f4a6f563e3a01a89a42"
+        "sha256": "860c3943d5ddb6a684b70e28a7e8f75bd83b15b06671f3268f14c3523f8b95ab"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -15103,12 +15123,17 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 105
+              "line": 102
             },
             {
               "from": "docs/audits/sbom/closure-receipts.json",
               "kind": "reference",
               "line": 17
+            },
+            {
+              "from": "docs/audits/sbom/licence-resolution.json",
+              "kind": "reference",
+              "line": 1863
             },
             {
               "from": "docs/audits/sbom/README.md",
@@ -15413,6 +15438,10 @@
               "docs/audits/sbom/closure-receipts.json"
             ],
             [
+              "docs/audits/sbom/licence-resolution.json",
+              "docs/audits/sbom/licence-resolution.json"
+            ],
+            [
               "docs/audits/sbom/README.md",
               "docs/audits/sbom/README.md"
             ],
@@ -15591,6 +15620,7 @@
             "docs/audits/sbom/README.md",
             "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/closure-receipts.json",
+            "docs/audits/sbom/licence-resolution.json",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/control-plane-parity.generated.md",
@@ -15659,7 +15689,12 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 36
+              "line": 49
+            },
+            {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 271
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -15673,12 +15708,17 @@
               "NOTICE"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
           ],
           "roots": [
             "NOTICE",
+            "scripts/audit-licenses.test.mjs",
             "scripts/license-distribution.test.mjs"
           ]
         },
@@ -16991,6 +17031,11 @@
               "line": 7
             },
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 271
+            },
+            {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 12
@@ -17954,6 +17999,10 @@
               "packages/platos-embed/tests/embed.test.ts"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/ci-policy.test.mjs",
               "scripts/ci-policy.test.mjs"
             ],
@@ -18253,6 +18302,7 @@
             "internal-packages/docs/src/frontmatter.test.ts",
             "packages/platos-client/tests/generated-contracts.test.ts",
             "packages/platos-embed/tests/embed.test.ts",
+            "scripts/audit-licenses.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/deploy-platos.test.mjs",
             "scripts/docs-examples.test.mjs",
@@ -18326,7 +18376,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "f4cdd2accedffbd7fff9886eaa9ac93e38f14298317c6f3e1a0b9bfe5cf95a90",
+      "evidenceSha256": "868ce9d416f552007822b6c33c933281893f55e60bf6e9c98cc53aa743a98500",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -19908,6 +19958,11 @@
               "line": 27
             },
             {
+              "from": "docs/audits/sbom/licence-resolution.json",
+              "kind": "reference",
+              "line": 1870
+            },
+            {
               "from": "docs/audits/sbom/license-overlay.json",
               "kind": "reference",
               "line": 7
@@ -20273,6 +20328,10 @@
               "docs/audits/sbom/closure-receipts.json"
             ],
             [
+              "docs/audits/sbom/licence-resolution.json",
+              "docs/audits/sbom/licence-resolution.json"
+            ],
+            [
               "docs/audits/sbom/license-overlay.json",
               "docs/audits/sbom/license-overlay.json"
             ],
@@ -20500,6 +20559,7 @@
             "docs/audits/sbom/README.md",
             "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/closure-receipts.json",
+            "docs/audits/sbom/licence-resolution.json",
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
@@ -20572,12 +20632,17 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 37
+              "line": 50
             },
             {
               "from": "scripts/audit-licenses.mjs",
               "kind": "reference",
               "line": 26
+            },
+            {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 272
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -20599,6 +20664,10 @@
               "scripts/audit-licenses.mjs"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
@@ -20607,6 +20676,7 @@
             "NOTICE",
             "docs/audits/sbom/license-overlay.json",
             "scripts/audit-licenses.mjs",
+            "scripts/audit-licenses.test.mjs",
             "scripts/license-distribution.test.mjs"
           ]
         },
@@ -21101,6 +21171,11 @@
               "line": 34
             },
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 272
+            },
+            {
               "from": "scripts/audit-sbom.test.mjs",
               "kind": "reference",
               "line": 27
@@ -21441,6 +21516,10 @@
               "scripts/audit-advisory.test.mjs"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/audit-sbom.test.mjs",
               "scripts/audit-sbom.test.mjs"
             ],
@@ -21620,6 +21699,7 @@
             "internal-packages/workload-identity/src/index.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/audit-advisory.test.mjs",
+            "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/clickhouse-split-audit.test.mjs",
@@ -21694,7 +21774,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "40e6df5d19af67f26f258735eeaf9e4e7e1e2d667c61b9c545347818559ccdac",
+      "evidenceSha256": "afcbbfe1513fc27c58c30077e68509aa9e296358b01772ac43d6d54c7a4d8752",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -22341,6 +22421,16 @@
               "line": 12
             },
             {
+              "from": "docs/audits/sbom/licence-resolution.json",
+              "kind": "workspace-owned-file",
+              "line": 27
+            },
+            {
+              "from": "docs/audits/sbom/licence-resolution.md",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "docs/audits/sbom/license-index.json",
               "kind": "workspace-owned-file",
               "line": 1
@@ -22362,6 +22452,16 @@
             },
             {
               "from": "docs/audits/sbom/platos-webapp.image-inventory.json",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -24692,6 +24792,14 @@
               "docs/audits/sbom/closure-receipts.json"
             ],
             [
+              "docs/audits/sbom/licence-resolution.json",
+              "docs/audits/sbom/licence-resolution.json"
+            ],
+            [
+              "docs/audits/sbom/licence-resolution.md",
+              "docs/audits/sbom/licence-resolution.md"
+            ],
+            [
               "docs/audits/sbom/license-index.json",
               "docs/audits/sbom/license-index.json"
             ],
@@ -24710,6 +24818,14 @@
             [
               "docs/audits/sbom/platos-webapp.image-inventory.json",
               "docs/audits/sbom/platos-webapp.image-inventory.json"
+            ],
+            [
+              "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+              "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json"
+            ],
+            [
+              "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
+              "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json"
             ],
             [
               "docs/audits/sbom/README.md",
@@ -26379,10 +26495,14 @@
             "docs/audits/sbom/README.md",
             "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/closure-receipts.json",
+            "docs/audits/sbom/licence-resolution.json",
+            "docs/audits/sbom/licence-resolution.md",
             "docs/audits/sbom/license-index.json",
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/sbom/license-policy.json",
             "docs/audits/sbom/platos-webapp.image-inventory.json",
+            "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+            "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win-252-root-entry-manifest.json",
@@ -26848,12 +26968,17 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 17
+              "line": 20
             },
             {
               "from": "scripts/audit-licenses.mjs",
               "kind": "reference",
               "line": 9
+            },
+            {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 241
             }
           ],
           "reversePaths": [
@@ -26876,6 +27001,10 @@
             [
               "scripts/audit-licenses.mjs",
               "scripts/audit-licenses.mjs"
+            ],
+            [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
             ]
           ],
           "roots": [
@@ -26883,7 +27012,8 @@
             "docs/audits/sbom/license-index.json",
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/sbom/license-policy.json",
-            "scripts/audit-licenses.mjs"
+            "scripts/audit-licenses.mjs",
+            "scripts/audit-licenses.test.mjs"
           ]
         },
         "packageScripts": {
@@ -27095,6 +27225,11 @@
               "line": 23
             },
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 241
+            },
+            {
               "from": "scripts/audit-sbom.test.mjs",
               "kind": "reference",
               "line": 26
@@ -27253,6 +27388,10 @@
               "internal-packages/tenancy-database/src/model-pricing.test.ts"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/audit-sbom.test.mjs",
               "scripts/audit-sbom.test.mjs"
             ],
@@ -27348,6 +27487,7 @@
             "apps/webapp/test/referenceRouteManifest.test.ts",
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/tenancy-database/src/model-pricing.test.ts",
+            "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/clickhouse-split-audit.test.mjs",
@@ -27377,7 +27517,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6c8dc9abadfeb5924884078b5284423f9ad5ba9bc12bb8c0a27779a94b3b0083",
+      "evidenceSha256": "f739f7c7b76d2ec5b6852a1dfda2baafbaeb85fa9fc158df95aa1f2eaedf3b08",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -30409,6 +30549,21 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/audits/sbom/closure-contract.md",
+              "kind": "reference",
+              "line": 88
+            },
+            {
+              "from": "docs/audits/sbom/licence-resolution.json",
+              "kind": "reference",
+              "line": 1696
+            },
+            {
+              "from": "docs/audits/sbom/licence-resolution.md",
+              "kind": "reference",
+              "line": 25
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 897
@@ -30426,6 +30581,18 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/sbom/closure-contract.md",
+              "docs/audits/sbom/closure-contract.md"
+            ],
+            [
+              "docs/audits/sbom/licence-resolution.json",
+              "docs/audits/sbom/licence-resolution.json"
+            ],
+            [
+              "docs/audits/sbom/licence-resolution.md",
+              "docs/audits/sbom/licence-resolution.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ],
@@ -30439,6 +30606,9 @@
             ]
           ],
           "roots": [
+            "docs/audits/sbom/closure-contract.md",
+            "docs/audits/sbom/licence-resolution.json",
+            "docs/audits/sbom/licence-resolution.md",
             "docs/v1-ledger-rules.json",
             "internal-packages/otlp-importer/CHANGELOG.md",
             "internal-packages/otlp-importer/README.md"
@@ -30462,6 +30632,16 @@
               "from": "internal-packages/otlp-importer/package.json",
               "kind": "manifest-license",
               "license": "MIT"
+            },
+            {
+              "from": "NOTICE",
+              "kind": "reference",
+              "line": 16
+            },
+            {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 683
             }
           ],
           "reversePaths": [
@@ -30472,11 +30652,21 @@
             [
               "internal-packages/otlp-importer/package.json",
               "internal-packages/otlp-importer/package.json"
+            ],
+            [
+              "NOTICE",
+              "NOTICE"
+            ],
+            [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
             ]
           ],
           "roots": [
+            "NOTICE",
             "internal-packages/otlp-importer/LICENSE",
-            "internal-packages/otlp-importer/package.json"
+            "internal-packages/otlp-importer/package.json",
+            "scripts/audit-licenses.test.mjs"
           ]
         },
         "packageScripts": {
@@ -30555,6 +30745,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 683
+            },
+            {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
               "line": 552
@@ -30562,11 +30757,16 @@
           ],
           "reversePaths": [
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
+            "scripts/audit-licenses.test.mjs",
             "scripts/v1-ledger.test.mjs"
           ]
         }
@@ -30577,7 +30777,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "27aa74d625bc879ef05446009b2e606b457703cd395ae541b88ddd45feef8523",
+      "evidenceSha256": "a0b09cbd9ace2461f518fb2c52f8023629e0a7061ca156b746165dcc8b631a2d",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -32494,7 +32694,7 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 230
+              "line": 227
             },
             {
               "from": "docs/audits/sbom/closure-receipts.json",
@@ -33992,7 +34192,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "6a8d8415ab49437aec81c7225f60cc7937577f348762f62467518bea4571c5a3",
+      "evidenceSha256": "49f15c5460ed1ecaca0ebaf624babaf51164c20d2b9b39756a69a32a76e2b622",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -52641,6 +52841,21 @@
               "line": 186
             },
             {
+              "from": "docs/audits/sbom/licence-resolution.json",
+              "kind": "reference",
+              "line": 1662
+            },
+            {
+              "from": "docs/audits/sbom/licence-resolution.md",
+              "kind": "reference",
+              "line": 24
+            },
+            {
+              "from": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+              "kind": "reference",
+              "line": 14
+            },
+            {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
               "line": 888
@@ -52687,6 +52902,18 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/sbom/licence-resolution.json",
+              "docs/audits/sbom/licence-resolution.json"
+            ],
+            [
+              "docs/audits/sbom/licence-resolution.md",
+              "docs/audits/sbom/licence-resolution.md"
+            ],
+            [
+              "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+              "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json"
+            ],
+            [
               "docs/audits/win253-removals/clickhouse-split.json",
               "docs/audits/win253-removals/clickhouse-split.json"
             ],
@@ -52710,6 +52937,9 @@
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/sbom/licence-resolution.json",
+            "docs/audits/sbom/licence-resolution.md",
+            "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/launch/release-notes-v1.0.0.md",
             "docs/refactor/platos-trigger-refactor.md",
@@ -52749,6 +52979,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "NOTICE",
+              "kind": "reference",
+              "line": 15
+            },
+            {
               "from": "packages/core/LICENSE",
               "kind": "workspace-owned-file",
               "line": 1
@@ -52759,12 +52994,21 @@
               "license": "Apache-2.0"
             },
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 820
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 44
             }
           ],
           "reversePaths": [
+            [
+              "NOTICE",
+              "NOTICE"
+            ],
             [
               "packages/core/LICENSE",
               "packages/core/LICENSE"
@@ -52774,13 +53018,19 @@
               "packages/core/package.json"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
           ],
           "roots": [
+            "NOTICE",
             "packages/core/LICENSE",
             "packages/core/package.json",
+            "scripts/audit-licenses.test.mjs",
             "scripts/license-distribution.test.mjs"
           ]
         },
@@ -53745,6 +53995,11 @@
               "line": 2
             },
             {
+              "from": "scripts/audit-licenses.test.mjs",
+              "kind": "reference",
+              "line": 820
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 44
@@ -53951,6 +54206,10 @@
               "packages/redis-worker/src/worker.test.ts"
             ],
             [
+              "scripts/audit-licenses.test.mjs",
+              "scripts/audit-licenses.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ],
@@ -54014,6 +54273,7 @@
             "packages/redis-worker/src/cron.test.ts",
             "packages/redis-worker/src/queue.test.ts",
             "packages/redis-worker/src/worker.test.ts",
+            "scripts/audit-licenses.test.mjs",
             "scripts/license-distribution.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vendored-build-audit.test.mjs",
@@ -54027,7 +54287,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5392b395de4f5dd2b316374a8b21569cba26b697c89dda0ee91ca9ab2fe99223",
+      "evidenceSha256": "119191e24ee6ec759beeaacec5e8eedaa95ea39ecfcbb0346b93f8c2ba389e86",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -56221,7 +56481,7 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 106
+              "line": 103
             },
             {
               "from": "docs/entity-connect.md",
@@ -56699,7 +56959,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6b3f8dccd2a8770a17cfa974b80c9e9d824acd379ef6f6b8e394cf9a5f7f7702",
+      "evidenceSha256": "1629d12204bbdeed0793c848fcb01eeefe21f17e4810a62894bd6279267e9b7c",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -56870,7 +57130,7 @@
             {
               "from": "docs/audits/sbom/closure-contract.md",
               "kind": "reference",
-              "line": 232
+              "line": 229
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -57497,7 +57757,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "461e6518b0de878c92464fd147416b6a862cb847bf4e5d21dab4fcadb4ca3b8b",
+      "evidenceSha256": "a4b1e028b6c20a75527b1868073040827b1a8fa40206d1044a530a32cd472c1d",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {

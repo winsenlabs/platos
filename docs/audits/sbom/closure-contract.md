@@ -48,19 +48,15 @@ and the removed legacy UI/AI dependency graph no longer enter the runtime closur
 
 ## 2. Licence resolution (M0.5 deliverable #3)
 
-### 2.1 LICENSE (Apache-2.0) vs NOTICE (MIT) — RESOLVED → Apache-2.0
+### 2.1 Root Apache-2.0 and package-level MIT provenance — HUMAN/LEGAL DECISION OPEN
 
-**Decision: Apache-2.0 governs. `NOTICE` has been corrected.** This is not a close legal call:
-
-- `LICENSE` contains the full **Apache-2.0** text (its appendix reads `Copyright [2023] [Trigger.dev]
-  … Apache License, Version 2.0`).
-- Upstream **trigger.dev is itself Apache-2.0** — so the old NOTICE claim that upstream is "MIT" was
-  simply factually wrong.
-- Five `@platosdev/*` packages already declare `Apache-2.0`.
-
-The prior `NOTICE` asserted MIT in two places; both are corrected to Apache-2.0, an explanatory note
-records the fix, and licence elections are recorded (below). No human legal call is required to pick
-the licence; the only remaining human item is cosmetic (§2.5).
+The root Apache-2.0 and package-level MIT facts remain distinct. The canonical offline evidence is
+[`licence-resolution.json`](./licence-resolution.json), with a concise human summary in
+[`licence-resolution.md`](./licence-resolution.md). It records commit-pinned upstream objects, the
+vendored npm artifact, the 250/258 import comparison, the no-merge-base/physical-checkout limitation,
+and current protected package states. The tag mapping is an externally reviewed point-in-time fact,
+not an offline-verified live ref assertion. This contract makes no legal determination; retention of
+the imported core MIT permission notice remains an open human/legal gate.
 
 ### 2.2 Copyleft and unused commercial dependencies — REMOVED
 
@@ -82,17 +78,18 @@ The frozen registry index records both npm lookups as not found. The curated ove
 first-party manifests to the repository's Apache-2.0 grant rather than pretending registry metadata
 exists.
 
-### 2.4 Recorded elections and the per-package `MIT` residue
+### 2.4 Recorded elections and inherited package-level MIT metadata
 
 Elections (machine-readable in `license-overlay.json`, human-readable in `NOTICE`):
 `dompurify` (MPL-2.0 OR Apache-2.0) → **Apache-2.0**; `json-schema` (AFL-2.1 OR BSD-3-Clause) →
 **BSD-3-Clause**; `jsonify` "Public Domain" → **CC0-1.0**; `@electric-sql/{client,react}` non-SPDX
 `"Apache-2"` → **Apache-2.0**.
 
-**Human item (cosmetic, non-blocking):** several private/published packages still carry
-`license: "MIT"` in their `package.json` — rename residue that contradicts the Apache-2.0 repo licence.
-Recommendation: correct those fields to `Apache-2.0`. Owner: whoever owns the `@platos` rename
-(M0.5 §6 item 15). This does not change the governing licence.
+`internal-packages/otlp-importer` remains private `@platos/otlp-importer@3.0.0` with its inherited
+`license: "MIT"` manifest field and exact inherited MIT `LICENSE` bytes. It is absent from both checked
+shipping SBOMs and the checked webapp image inventory. This is a non-shipping closure fact, not a legal
+conclusion; provenance and the open decision are recorded in
+[`licence-resolution.json`](./licence-resolution.json).
 
 ---
 
@@ -212,15 +209,15 @@ require every mutation to fail the policy gate.
 
 Every item from the M0.5 report's decision list, with its status here. **CLOSED** = resolved in this
 change. **STAGED** = fix specified, requires a relock/manifest change out of scope for a no-install
-audit. **DECISION** = genuinely needs a human (legal/founder/owner) call; recorded as an explicit
-disposition, not a blocker.
+audit. **DECISION** = genuinely needs a human founder/owner call. **LEGAL GATE** = provenance is
+recorded but an authorized human/legal decision is still required before that item can be closed.
 
 | # | item | status | disposition |
 |---|---|---|---|
 | 1 | No advisory scan had been run | **CLOSED** | `audit:advisory` scans both closures against OSV; receipt retained; all 8 named items adjudicated (§4). |
 | 2 | `cookie` override missing | **STAGED** | Add `overrides['cookie']='>=0.7.2'` + session round-trip test; relock required. Routed to `auth-crypto` group. Owner: webapp/auth. |
 | 3 | `breakword` GPL-2.0 | **CLOSED** | Root release tooling is excluded from the filtered production install; no waiver remains. |
-| 4 | LICENSE vs NOTICE | **CLOSED** | Apache-2.0 governs; `NOTICE` corrected (§2.1). |
+| 4 | Root Apache vs package MIT provenance | **LEGAL GATE** | Decide whether the imported package MIT permission notice must be retained alongside current Apache-2.0 materials; see §2.1 and `licence-resolution.json`. |
 | 5 | `@platos` npm scope ownership | **DECISION** | Founder must confirm/claim the scope or treat squatting as live risk. Cannot be resolved from the repo. |
 | 6 | inherited ClickHouse parser/replication cluster | **CLOSED** | WIN-253 removed the unreachable npm packages and parser patch after executable multi-channel proof. `internal-packages/clickhouse/schema/` remains shipping content and is hash-protected by the cluster audit. |
 | 7 | `@fingerprintjs/fingerprintjs-pro` commercial | **CLOSED** | Removed unused `@kapaai/react-sdk`; the proprietary transitive SDK is absent from the shipping closure. |
@@ -231,7 +228,7 @@ disposition, not a blocker.
 | 12 | Second/third lockfiles (migration-image, references/*) | **NOTED** | migration-image is `ignorePaths`-excluded from renovate and flagged for folding into the root workspace. Owner: platform. |
 | 13 | Python packages under no lock policy | **NOTED** | `packages/platools-py`, `packages/platos-client-py` are out of the pnpm/renovate scope; bring under an equivalent lock+cooldown or declare out of V1 scope. Owner: SDK. |
 | 14 | Changelogs not read (semver arithmetic only) | **CLOSED (policy)** | Resolved per-ecosystem in the renovate group contract tests / migration issues (M0.5 §5.2 gate 5). |
-| 15 | Root `workspaces` field + `.changeset` rename residue + `docs/package.json` | **DECISION** | Rename-residue cleanup, incl. per-package `license: MIT` (§2.5). Owner: `@platos` rename owner. |
+| 15 | Root `workspaces` field + `.changeset` rename residue + `docs/package.json` | **DECISION** | Repository-layout and stale-note cleanup remains with the `@platos` rename owner. Package-level licence provenance is excluded from this residue item and handled by item 4. |
 
 ---
 

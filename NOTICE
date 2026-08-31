@@ -4,27 +4,40 @@ Platos
 Platos is an open-source agent runtime platform maintained by Winsen Labs.
 
 Platos is built on top of, and incorporates code from, the trigger.dev project.
-The governing licence for this repository is the Apache License, Version 2.0.
-See the LICENSE file for the full Apache-2.0 terms that apply to upstream
-trigger.dev code and to Platos additions.
+The repository root LICENSE is the Apache License, Version 2.0. At the reviewed
+upstream v4.4.4/5ea36e08 source anchor, trigger.dev's root LICENSE is also
+Apache-2.0, while the public @trigger.dev/core package and private
+@trigger.dev/otlp-importer package each declare MIT and carry a package-level
+MIT LICENSE. Those root and package facts are distinct. The tag-to-commit
+mapping is an externally reviewed point-in-time fact, not an offline-verified
+live ref assertion.
 
-  (The upstream trigger.dev project is itself distributed under Apache-2.0, and
-  the LICENSE file in this repository is the Apache-2.0 text. Earlier revisions
-  of this NOTICE referred to "MIT"; that was an error and Apache-2.0 governs.
-  Individual npm packages published from this monorepo should declare
-  "Apache-2.0" in their package.json `license` field. The checked production
-  closure and licence decisions are recorded in
-  docs/audits/sbom/closure-contract.md,
-  docs/audits/sbom/closure-receipts.json, and
-  docs/audits/sbom/license-index.json.)
+  (The current public @platos/core manifest and package LICENSE are Apache-2.0.
+  The private @platos/otlp-importer manifest and package LICENSE preserve the
+  inherited upstream MIT metadata and bytes. Whether the imported core MIT
+  permission notice must be retained alongside the current Apache-2.0 materials
+  is an open human/legal decision. This NOTICE does not decide it. See
+  docs/audits/sbom/licence-resolution.json for the canonical offline
+  provenance receipt and docs/audits/sbom/licence-resolution.md for its human
+  summary and explicit decision gate. The checked production closure is recorded in
+  docs/audits/sbom/closure-contract.md and
+  docs/audits/sbom/closure-receipts.json.)
 
 Upstream credit:
-  - trigger.dev, Copyright (c) Trigger.dev, Inc. — Apache-2.0
+  - trigger.dev, Copyright (c) Trigger.dev, Inc. — upstream root Apache-2.0;
+    package-level MIT provenance recorded in the resolution linked above
     https://github.com/triggerdotdev/trigger.dev
 
-Platos additions (the @platos/* packages, apps/agent, Platos-specific
-schema migrations, and documentation) are Copyright (c) 2026 Winsen Labs,
-distributed under the Apache License, Version 2.0.
+Platos-authored additions, including apps/agent, Platos-specific schema
+migrations, and documentation, are Copyright (c) 2026 Winsen Labs and are
+distributed under the Apache License, Version 2.0. Current package-level
+metadata and package-license state, including the current public @platos/core
+manifest and LICENSE, are recorded in the provenance receipt above.
+
+Those statements explicitly exclude inherited package metadata. In particular,
+they do not classify the private @platos/otlp-importer's inherited MIT manifest
+and LICENSE as Apache-2.0. Treatment of inherited package metadata remains
+subject to the open human/legal decision recorded above.
 
 Third-party dependency licences
 -------------------------------

@@ -31,8 +31,8 @@ function has(errors, text) {
 
 test("committed lifecycle manifest classifies every approved evidence path exactly once", () => {
   const manifest = committed();
-  assert.equal(manifest.entryCount, 241, "exact protected evidence corpus includes the design provenance receipt");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 216, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
+  assert.equal(manifest.entryCount, 246, "exact protected evidence corpus includes the design and licence provenance receipts plus vendored source artifacts");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 221, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 20);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

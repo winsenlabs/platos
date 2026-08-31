@@ -2012,13 +2012,13 @@
     ]
   },
   "expected": {
-    "totalFiles": 3483,
+    "totalFiles": 3488,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 11,
       "apps-mcp-stdio": 4,
       "apps-webapp": 183,
-      "docs-content": 724,
+      "docs-content": 729,
       "internal-packages": 1164,
       "packages": 637,
       "root-infra": 246
@@ -2026,9 +2026,9 @@
     "kindCounts": {
       "asset": 155,
       "config": 267,
-      "doc": 603,
+      "doc": 604,
       "fixture": 1,
-      "generated": 37,
+      "generated": 41,
       "legal": 13,
       "lockfile": 3,
       "migration": 894,
@@ -2038,11 +2038,11 @@
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1575,
-      "regenerate": 32,
-      "retain": 1867,
+      "regenerate": 36,
+      "retain": 1868,
       "unresolved": 2
     },
-    "protectedCount": 1617,
+    "protectedCount": 1622,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2081,10 +2081,10 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 9,
-      "docs-content.evidence.audit-receipts": 13,
+      "docs-content.evidence.audit-notes": 10,
+      "docs-content.evidence.audit-receipts": 16,
       "docs-content.evidence.lifecycle-controls": 2,
-      "docs-content.generated.audit": 1,
+      "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
       "docs-content.governance.workspace-reachability": 2,
       "docs-content.lifecycle.draft": 1,
@@ -2169,6 +2169,6 @@
       "root-infra.tooling.scripts": 62,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "8e02c507790b1b5d83987ac3d49c3df9e8d04f9098284ff5f61ad387c978f021"
+    "classificationSha256": "d305b782743a0634745856380c8c282991cf22f77ab59c0ea2315b69f2c00e38"
   }
 }

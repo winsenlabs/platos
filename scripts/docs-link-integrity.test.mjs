@@ -95,14 +95,14 @@ function hasError(errors, fragment) {
 test("the live corpora are enumerated with exact non-vacuous counts", () => {
   const result = validateDocsLinkIntegrity(repositoryRoot, { minimums: false });
   assert.deepEqual(result.stats, {
-    docsMarkdownFiles: 391,
+    docsMarkdownFiles: 392,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,
     moduleImports: 186,
     snippetImports: 186,
     rootAssets: 95,
-    relativeLinks: 62,
+    relativeLinks: 69,
     anchorReferences: 207,
     contentInternalLinks: 207,
     designSourceFiles: 51,
