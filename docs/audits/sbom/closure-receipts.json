@@ -86,10 +86,10 @@
         },
         {
           "file": "scripts/lib/webapp-inventory-contract.mjs",
-          "sha256": "5dcc926c0a51ff937800a91fab36685602491164992ba7ed3e146098b6c6f1c4"
+          "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "cea98f76e98b70516b9952a04ba9f6204e01cb0a3dd8e9f3ce940f53b0961937"
+      "buildInputsSha256": "1d3c40e826d22f7e48bd47faf36cc24962a1351bc4c9c5386f70c59d6e111c05"
     }
   }
 }

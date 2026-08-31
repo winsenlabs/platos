@@ -152,6 +152,14 @@ const expectedWin254Scripts = new Map([
 const workloadPackageTestCommand = "pnpm test:workload-identity-package";
 const agentRuntimeSmokeTestCommand = "pnpm test:agent-runtime-smoke";
 const licenseDeterminismTestCommand = "pnpm test:licenses";
+const compiledAgentDependenciesStepName = "Generate and build compiled Agent dependencies";
+const compiledAgentDependenciesCommand =
+  "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build";
+const installDependenciesStepName = "Install dependencies";
+const focusedDirectAgentTestStepName =
+  "Reproduce clean hosted-CI focused Agent Vitest consumers";
+const focusedDirectAgentTestCommand =
+  "pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts";
 const workloadPackageTestTarget = "node --test scripts/workload-identity-package.test.mjs";
 const agentRuntimeSmokeTestTarget = "node --test tests/persisted-state-gate/agent-runtime-health.test.mjs";
 const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mjs";
@@ -246,12 +254,14 @@ const webappInventoryPackageScript = "bash scripts/audit-webapp-image-inventory.
 const webappInventoryCommand = "pnpm audit:webapp-image-inventory";
 const webappInventoryStepName = "Verify distinct production-deps and exact final webapp candidate inventories";
 const webappInventoryUploadStepName = "Retain verified webapp candidate inventory provenance";
+const webappFinalImageAssignment =
+  'final_image="win253.local/platos-webapp:verified-$candidate_digest_hex"';
 const expectedWebappInventoryVerifierCommands = [
   "node scripts/verify-webapp-image-inventory.mjs --image $production_image --stage production-deps --evidence $evidence_dir/production-deps.json --candidate-archive $WEBAPP_CANDIDATE_ARCHIVE --candidate-manifest-digest $candidate_digest --candidate-archive-sha256 $WIN235_WEBAPP_ARCHIVE_SHA256",
   "node scripts/verify-webapp-image-inventory.mjs --image $final_image --stage final --evidence $evidence_dir/final.json --candidate-archive $WEBAPP_CANDIDATE_ARCHIVE --candidate-manifest-digest $candidate_digest --candidate-archive-sha256 $WIN235_WEBAPP_ARCHIVE_SHA256",
 ];
 const webappPublicationValidatorCommand =
-  "node scripts/verify-webapp-publication-provenance.mjs --candidate-identities artifacts/gate/candidate-images.json --inventory-root artifacts/webapp-inventory";
+  "node scripts/verify-webapp-publication-provenance.mjs --candidate-identities artifacts/gate/candidate-images.json --inventory-root artifacts/webapp-inventory --candidate-archive artifacts/candidates/webapp.oci.tar";
 const requiredWebappPublicationValidatorControls = [
   [
     "source-run candidate identities",
@@ -266,8 +276,26 @@ const requiredWebappPublicationValidatorControls = [
   ["evidence stage", "requireEqual(evidence.stage, stage", "requireEqual(stage, stage"],
   ["source run ID", "requireEqual(evidence.sourceRunId, sourceRunId", "requireEqual(sourceRunId, sourceRunId"],
   ["source run attempt", "requireEqual(evidence.sourceRunAttempt, sourceRunAttempt", "requireEqual(sourceRunAttempt, sourceRunAttempt"],
-  ["candidate manifest digest", "requireEqual(evidence.candidateManifestDigest, manifestDigest", "requireEqual(manifestDigest, manifestDigest"],
-  ["candidate archive checksum", "requireEqual(evidence.candidateArchiveSha256, archiveSha256", "requireEqual(archiveSha256, archiveSha256"],
+  [
+    "independent archive identity derivation",
+    "archiveIdentity = deriveOciArchiveIdentity({",
+    "archiveIdentity = deriveOciArchiveIdentityNoOp({",
+  ],
+  [
+    "candidate manifest digest",
+    "evidence.candidateManifestDigest,\n    archiveIdentity.manifestDigest,",
+    "archiveIdentity.manifestDigest,\n    archiveIdentity.manifestDigest,",
+  ],
+  [
+    "candidate config digest",
+    "evidence.candidateConfigDigest,\n    archiveIdentity.configDigest,",
+    "archiveIdentity.configDigest,\n    archiveIdentity.configDigest,",
+  ],
+  [
+    "candidate archive checksum",
+    "evidence.candidateArchiveSha256,\n    archiveIdentity.archiveSha256,",
+    "archiveIdentity.archiveSha256,\n    archiveIdentity.archiveSha256,",
+  ],
   ["target platform", 'requireEqual(evidence.platform, WEBAPP_TARGET_PLATFORM', 'requireEqual(WEBAPP_TARGET_PLATFORM, WEBAPP_TARGET_PLATFORM'],
   ["Git revision", "requireEqual(evidence.gitHead, candidateSha", "requireEqual(candidateSha, candidateSha"],
   ["image revision label", "requireEqual(evidence.imageRevisionLabel, candidateSha", "requireEqual(candidateSha, candidateSha"],
@@ -280,6 +308,19 @@ const requiredWebappPublicationValidatorControls = [
     "evidence.generatedInventorySha256,\n    evidence.generatedInventorySha256,",
   ],
   ["distinct production-deps and final images", "assertDistinctStageImageIds(production, final)", "assertDistinctStageImageIds(final, final)"],
+  [
+    "final archive image identity",
+    "finalImageMatchesArchiveIdentity(evidence, archiveIdentity)",
+    "finalImageMatchesArchiveIdentity(archiveIdentity, archiveIdentity)",
+  ],
+];
+const requiredPerformanceArchiveIdentityControls = [
+  "archiveIdentity = deriveOciArchiveIdentity({",
+  "expectedManifestDigest: manifestDigest,",
+  "evidence.candidateConfigDigest,\n    archiveIdentity.configDigest,",
+  "evidence.candidateArchiveSha256,\n    archiveIdentity.archiveSha256,",
+  "finalImageMatchesArchiveIdentity(evidence, archiveIdentity)",
+  "webappCandidateArchivePath(root)",
 ];
 const shippingDockerfiles = [...expectedInstallInstructions.keys()];
 const prepareTarget = "scripts/install-git-hooks.mjs";
@@ -310,7 +351,10 @@ function fixtures() {
     publishImages: source(".github/workflows/publish-images.yml"),
     webappInventoryAudit: source("scripts/audit-webapp-image-inventory.sh"),
     webappInventoryVerifier: source("scripts/verify-webapp-image-inventory.mjs"),
+    webappInventoryContract: source("scripts/lib/webapp-inventory-contract.mjs"),
     webappPublicationValidator: source("scripts/verify-webapp-publication-provenance.mjs"),
+    performanceVerifier: source("tests/persisted-state-gate/verify-performance-artifacts.mjs"),
+    performanceRunner: source("tests/persisted-state-gate/run-performance.mjs"),
     dockerfiles: Object.fromEntries(shippingDockerfiles.map((file) => [file, source(file)])),
   };
 }
@@ -859,6 +903,32 @@ function policyViolations(input) {
   )) {
     violations.push("webapp publication validator must enforce every bound provenance field");
   }
+  if (
+    requiredPerformanceArchiveIdentityControls.some(
+      (control) => !input.performanceVerifier.includes(control)
+    ) ||
+    !input.performanceRunner.includes("webappCandidateArchivePath(artifactDirectory)")
+  ) {
+    violations.push(
+      "performance runner and verifier must independently enforce archive-derived webapp identity"
+    );
+  }
+  const requiredSharedArchiveIdentityControls = [
+    "manifestSize !== descriptor.size",
+    "manifestDigest !== descriptor.digest",
+    "const configDigest = manifest?.config?.digest",
+    "evidence?.imageId === archiveIdentity?.configDigest",
+    "evidence?.imageDescriptorDigest === archiveIdentity?.manifestDigest",
+  ];
+  if (
+    requiredSharedArchiveIdentityControls.some(
+      (control) => !input.webappInventoryContract.includes(control)
+    )
+  ) {
+    violations.push(
+      "shared webapp archive contract must bind descriptor, manifest, config, and portable image identity"
+    );
+  }
 
   const buildCandidatesJob = buildJobs.get("build-candidates");
   const candidates = imageCandidates(buildCandidatesJob);
@@ -1054,6 +1124,80 @@ function policyViolations(input) {
     JSON.stringify(reviewedWin254.commands) !== JSON.stringify(win254EvidenceCommands)
   ) {
     violations.push("WIN-254 evidence script must contain only the exact reviewed command sequence");
+  }
+  const installDependenciesSteps = typecheckSteps.filter(
+    (step) => step.name === installDependenciesStepName
+  );
+  const compiledAgentDependenciesSteps = typecheckSteps.filter(
+    (step) => step.name === compiledAgentDependenciesStepName
+  );
+  const directAgentTestSteps = typecheckSteps.filter(
+    (step) => step.name === focusedDirectAgentTestStepName
+  );
+  if (compiledAgentDependenciesSteps.length !== 1) {
+    violations.push("CI must contain exactly one compiled Agent dependencies build step");
+  }
+  const compiledAgentDependenciesStep = compiledAgentDependenciesSteps[0] ?? {};
+  if (
+    compiledAgentDependenciesStep.run !== compiledAgentDependenciesCommand ||
+    compiledAgentDependenciesStep.if !== undefined ||
+    compiledAgentDependenciesStep["continue-on-error"] !== undefined ||
+    compiledAgentDependenciesStep.shell !== undefined
+  ) {
+    violations.push(
+      "compiled Agent dependencies step must fail-fast on the exact tenancy and workload-identity dist builds"
+    );
+  }
+  const installDependenciesIndex = typecheckSteps.indexOf(installDependenciesSteps[0]);
+  const compiledAgentDependenciesIndex = typecheckSteps.indexOf(compiledAgentDependenciesStep);
+  const directAgentTestsIndex = typecheckSteps.indexOf(directAgentTestSteps[0]);
+  const directAgentVitestIndices = typecheckSteps.flatMap((step, index) =>
+    typeof step.run === "string" &&
+    normalizedShellCommands(step.run).some((command) =>
+      command.startsWith("pnpm --filter platos-agent exec vitest run ")
+    )
+      ? [index]
+      : []
+  );
+  const directAgentVitestSteps = directAgentVitestIndices.map((index) => typecheckSteps[index]);
+  if (
+    directAgentVitestSteps.some(
+      (step) =>
+        step.if !== undefined ||
+        step["continue-on-error"] !== undefined ||
+        step.shell !== undefined
+    )
+  ) {
+    violations.push("every direct Agent Vitest step must be unconditional and fail-fast");
+  }
+  const focusedDirectAgentTestStep = directAgentTestSteps[0] ?? {};
+  if (
+    directAgentTestSteps.length !== 1 ||
+    focusedDirectAgentTestStep.run !== focusedDirectAgentTestCommand ||
+    focusedDirectAgentTestStep.if !== undefined ||
+    focusedDirectAgentTestStep["continue-on-error"] !== undefined ||
+    focusedDirectAgentTestStep.shell !== undefined
+  ) {
+    violations.push(
+      "focused direct Agent hosted-CI reproduction must be one dedicated exact fail-fast run step"
+    );
+  }
+  if (
+    installDependenciesSteps.length !== 1 ||
+    directAgentTestSteps.length !== 1 ||
+    installDependenciesIndex === -1 ||
+    compiledAgentDependenciesIndex <= installDependenciesIndex ||
+    directAgentTestsIndex === -1 ||
+    compiledAgentDependenciesIndex >= directAgentTestsIndex ||
+    directAgentVitestIndices.length === 0 ||
+    directAgentVitestIndices.some((index) => index <= compiledAgentDependenciesIndex)
+  ) {
+    violations.push(
+      "compiled Agent dependencies must build after install and before every direct Agent Vitest consumer"
+    );
+  }
+  if (countExact(normalizedRunCommands(typecheckJob), focusedDirectAgentTestCommand) !== 1) {
+    violations.push("CI must retain the exact focused direct Agent hosted-CI reproduction command");
   }
   const v1EvidenceSteps = workflowSteps(ciJobs.get("typecheck")).filter(
     (step) => step.name === "V1 M0 executable evidence gates"
@@ -1354,13 +1498,20 @@ function policyViolations(input) {
   if (!input.webappInventoryAudit.includes("printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$final_image\" >> \"$GITHUB_ENV\"")) {
     violations.push("release gate must consume the archive-derived verified webapp runtime image");
   }
+  if (countSubstring([input.webappInventoryAudit], webappFinalImageAssignment) !== 1) {
+    violations.push(
+      "webapp inventory audit must assign the exact manifest-derived verified final image"
+    );
+  }
   const requiredVerifierControls = [
     "if (platform !== WEBAPP_TARGET_PLATFORM)",
     "labels['org.opencontainers.image.revision'] !== gitHead",
     "labels['dev.winsen.platos.webapp-inventory-inputs-sha256'] !== inputEvidence.sha256",
     "const inventoryByteMatch = generated === committed",
     "if (!inventoryByteMatch || generatedInventorySha256 !== committedInventorySha256)",
-    "candidateDescriptor.digest !== config.candidateManifestDigest",
+    "const archiveIdentity = deriveOciArchiveIdentity({",
+    "? assertFinalImageMatchesArchive(inspect, archiveIdentity)",
+    "finalImageMatchesArchiveIdentity(evidence, archiveIdentity)",
   ];
   if (requiredVerifierControls.some((control) => !input.webappInventoryVerifier.includes(control))) {
     violations.push("webapp inventory verifier must enforce platform, labels, archive digest, and byte equality");
@@ -1845,6 +1996,150 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "compiled Agent dependencies build step removal",
+      expected: "CI must contain exactly one compiled Agent dependencies build step",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const index = steps.findIndex(
+            (step) => step.name === compiledAgentDependenciesStepName
+          );
+          assert.notEqual(index, -1);
+          steps.splice(index, 1);
+        }),
+    },
+    {
+      name: "workload-identity dist build removal",
+      expected:
+        "compiled Agent dependencies step must fail-fast on the exact tenancy and workload-identity dist builds",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          compiledAgentDependenciesCommand,
+          "pnpm --filter @platos/tenancy-database build"
+        ),
+    },
+    {
+      name: "compiled Agent dependencies reordered before install",
+      expected:
+        "compiled Agent dependencies must build after install and before every direct Agent Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledAgentDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          const [buildStep] = steps.splice(buildIndex, 1);
+          const installIndex = steps.findIndex((step) => step.name === installDependenciesStepName);
+          assert.notEqual(installIndex, -1);
+          steps.splice(installIndex, 0, buildStep);
+        }),
+    },
+    {
+      name: "compiled Agent dependencies reordered after direct Agent tests",
+      expected:
+        "compiled Agent dependencies must build after install and before every direct Agent Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledAgentDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          const [buildStep] = steps.splice(buildIndex, 1);
+          const consumerIndex = steps.findIndex(
+            (step) => step.name === focusedDirectAgentTestStepName
+          );
+          assert.notEqual(consumerIndex, -1);
+          steps.splice(consumerIndex + 1, 0, buildStep);
+        }),
+    },
+    {
+      name: "workload-identity source-alias bypass",
+      expected:
+        "compiled Agent dependencies step must fail-fast on the exact tenancy and workload-identity dist builds",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          compiledAgentDependenciesCommand,
+          "pnpm --filter @platos/tenancy-database build && echo '@internal/workload-identity=internal-packages/workload-identity/src/index.ts' > /var/tmp/agent-source-alias"
+        ),
+    },
+    {
+      name: "workload-identity build no-op bypass",
+      expected:
+        "compiled Agent dependencies step must fail-fast on the exact tenancy and workload-identity dist builds",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          compiledAgentDependenciesCommand,
+          `${compiledAgentDependenciesCommand} || true`
+        ),
+    },
+    {
+      name: "focused direct Agent Vitest true-or bypass",
+      expected:
+        "focused direct Agent hosted-CI reproduction must be one dedicated exact fail-fast run step",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === focusedDirectAgentTestStepName
+          );
+          assert.ok(step);
+          step.run = `${focusedDirectAgentTestCommand} || true`;
+        }),
+    },
+    {
+      name: "focused direct Agent Vitest exit-zero dead code",
+      expected:
+        "focused direct Agent hosted-CI reproduction must be one dedicated exact fail-fast run step",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === focusedDirectAgentTestStepName
+          );
+          assert.ok(step);
+          step.run = `exit 0\n${focusedDirectAgentTestCommand}`;
+        }),
+    },
+    {
+      name: "conditional direct Agent Vitest step",
+      expected: "every direct Agent Vitest step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === focusedDirectAgentTestStepName
+          );
+          assert.ok(step);
+          step.if = "${{ false }}";
+        }),
+    },
+    {
+      name: "continue-on-error direct Agent Vitest step",
+      expected: "every direct Agent Vitest step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === focusedDirectAgentTestStepName
+          );
+          assert.ok(step);
+          step["continue-on-error"] = true;
+        }),
+    },
+    {
+      name: "shell override direct Agent Vitest step",
+      expected: "every direct Agent Vitest step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === focusedDirectAgentTestStepName
+          );
+          assert.ok(step);
+          step.shell = "bash {0} || true";
+        }),
+    },
+    {
       name: "successful no-op webapp publication provenance validator",
       expected: "publish-images must execute the exact webapp publication provenance validator once",
       mutate: (input) =>
@@ -1972,14 +2267,86 @@ test("CI policy controls fail under generated semantic source mutations", async 
       mutate: (input) => mutateFixture(input, "webappInventoryVerifier", "const inventoryByteMatch = generated === committed", "const inventoryByteMatch = true"),
     },
     {
-      name: "missing candidate archive manifest comparison",
+      name: "missing candidate archive manifest blob comparison",
+      expected:
+        "shared webapp archive contract must bind descriptor, manifest, config, and portable image identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryContract",
+          "manifestDigest !== descriptor.digest",
+          "manifestDigest === descriptor.digest"
+        ),
+    },
+    {
+      name: "missing final archive config image ID comparison",
       expected: "webapp inventory verifier must enforce platform, labels, archive digest, and byte equality",
       mutate: (input) =>
         mutateFixture(
           input,
           "webappInventoryVerifier",
-          "candidateDescriptor.digest !== config.candidateManifestDigest",
-          "candidateDescriptor.digest === config.candidateManifestDigest"
+          "? assertFinalImageMatchesArchive(inspect, archiveIdentity)",
+          "? assertFinalImageMatchesUnreviewedArchive(inspect, archiveIdentity)"
+        ),
+    },
+    {
+      name: "no-op shared archive image identity predicate",
+      expected:
+        "shared webapp archive contract must bind descriptor, manifest, config, and portable image identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryContract",
+          "evidence?.imageId === archiveIdentity?.configDigest",
+          "archiveIdentity?.configDigest === archiveIdentity?.configDigest"
+        ),
+    },
+    {
+      name: "missing shared archive descriptor size comparison",
+      expected:
+        "shared webapp archive contract must bind descriptor, manifest, config, and portable image identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryContract",
+          "manifestSize !== descriptor.size",
+          "manifestSize === descriptor.size"
+        ),
+    },
+    {
+      name: "deleted performance archive identity derivation",
+      expected:
+        "performance runner and verifier must independently enforce archive-derived webapp identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "performanceVerifier",
+          "archiveIdentity = deriveOciArchiveIdentity({",
+          "archiveIdentity = deriveOciArchiveIdentityNoOp({"
+        ),
+    },
+    {
+      name: "no-op performance archive image identity predicate",
+      expected:
+        "performance runner and verifier must independently enforce archive-derived webapp identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "performanceVerifier",
+          "finalImageMatchesArchiveIdentity(evidence, archiveIdentity)",
+          "finalImageMatchesArchiveIdentity(archiveIdentity, archiveIdentity)"
+        ),
+    },
+    {
+      name: "performance runner omits exact candidate archive path",
+      expected:
+        "performance runner and verifier must independently enforce archive-derived webapp identity",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "performanceRunner",
+          "webappCandidateArchivePath(artifactDirectory)",
+          "undefined"
         ),
     },
     {
@@ -2034,6 +2401,18 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "webappInventoryAudit",
           "printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$final_image\"",
           "printf 'WIN235_WEBAPP_RUNTIME_IMAGE=%s\\n' \"$production_image\""
+        ),
+    },
+    {
+      name: "webapp inventory changes exact final image assignment",
+      expected:
+        "webapp inventory audit must assign the exact manifest-derived verified final image",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "webappInventoryAudit",
+          webappFinalImageAssignment,
+          'final_image="win235.local/platos-webapp:sha256-$candidate_digest_hex"'
         ),
     },
     ...v1ReleaseGateCommands.map((command) => ({
@@ -3018,7 +3397,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    285,
+    306,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

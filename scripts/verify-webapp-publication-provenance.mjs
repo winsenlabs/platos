@@ -10,6 +10,8 @@ import {
   assertDistinctStageImageIds,
   buildInputReceipts,
   buildInputsSha256,
+  deriveOciArchiveIdentity,
+  finalImageMatchesArchiveIdentity,
 } from "./lib/webapp-inventory-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -37,12 +39,22 @@ function requireEqual(actual, expected, description) {
   }
 }
 
+function requireFinalArchiveImageIdentity(evidence, archiveIdentity) {
+  if (!finalImageMatchesArchiveIdentity(evidence, archiveIdentity)) {
+    throw new Error(
+      "final image ID does not match the archive config or exact descriptor-bound manifest",
+    );
+  }
+}
+
 const candidateIdentitiesPath = flag("--candidate-identities");
 const inventoryRoot = flag("--inventory-root");
-if (!candidateIdentitiesPath || !inventoryRoot) {
+const candidateArchivePath = flag("--candidate-archive");
+if (!candidateIdentitiesPath || !inventoryRoot || !candidateArchivePath) {
   console.error(
     "usage: node scripts/verify-webapp-publication-provenance.mjs " +
-      "--candidate-identities <candidate-images.json> --inventory-root <directory>",
+      "--candidate-identities <candidate-images.json> --inventory-root <directory> " +
+      "--candidate-archive <webapp.oci.tar>",
   );
   process.exit(1);
 }
@@ -80,14 +92,37 @@ const evidenceRoot = path.resolve(inventoryRoot, digestKey);
 const production = readJson(path.join(evidenceRoot, "production-deps.json"));
 const final = readJson(path.join(evidenceRoot, "final.json"));
 const currentBuildInputsSha256 = buildInputsSha256(buildInputReceipts(ROOT));
+let archiveIdentity;
+try {
+  archiveIdentity = deriveOciArchiveIdentity({
+    candidateArchive: path.resolve(candidateArchivePath),
+    expectedManifestDigest: manifestDigest,
+    expectedArchiveSha256: archiveSha256,
+  });
+} catch (error) {
+  throw new Error(`webapp publication candidate archive is invalid: ${error.message}`);
+}
 
 for (const [stage, evidence] of [["production-deps", production], ["final", final]]) {
   requireEqual(evidence.$schema, WEBAPP_INVENTORY_EVIDENCE_SCHEMA, `${stage} evidence schema`);
   requireEqual(evidence.stage, stage, `${stage} evidence stage`);
   requireEqual(evidence.sourceRunId, sourceRunId, `${stage} evidence source run ID`);
   requireEqual(evidence.sourceRunAttempt, sourceRunAttempt, `${stage} evidence source run attempt`);
-  requireEqual(evidence.candidateManifestDigest, manifestDigest, `${stage} candidate manifest digest`);
-  requireEqual(evidence.candidateArchiveSha256, archiveSha256, `${stage} candidate archive checksum`);
+  requireEqual(
+    evidence.candidateManifestDigest,
+    archiveIdentity.manifestDigest,
+    `${stage} candidate manifest digest`,
+  );
+  requireEqual(
+    evidence.candidateConfigDigest,
+    archiveIdentity.configDigest,
+    `${stage} candidate config digest`,
+  );
+  requireEqual(
+    evidence.candidateArchiveSha256,
+    archiveIdentity.archiveSha256,
+    `${stage} candidate archive checksum`,
+  );
   requireEqual(evidence.platform, WEBAPP_TARGET_PLATFORM, `${stage} target platform`);
   requireEqual(evidence.gitHead, candidateSha, `${stage} Git revision`);
   requireEqual(evidence.imageRevisionLabel, candidateSha, `${stage} image revision label`);
@@ -100,6 +135,7 @@ for (const [stage, evidence] of [["production-deps", production], ["final", fina
     `${stage} inventory hashes`,
   );
 }
+requireFinalArchiveImageIdentity(final, archiveIdentity);
 assertDistinctStageImageIds(production, final);
 
 console.log(

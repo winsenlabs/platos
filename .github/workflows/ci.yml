@@ -91,10 +91,10 @@ jobs:
           node --test scripts/verify-win254.test.mjs
           pnpm verify:win254
 
-      - name: Generate and build database clients
-        # The clean tenancy package is the agent's compiled persistence dependency,
-        # so focused Vitest runs need its package entry emitted from a fresh checkout.
-        run: pnpm --filter @platos/tenancy-database build
+      - name: Generate and build compiled Agent dependencies
+        # These packages expose only compiled dist entries, so focused Agent Vitest
+        # runs need both package boundaries emitted from a fresh checkout.
+        run: pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build
 
       - name: Prove the workload identity shipping package boundary
         run: |
@@ -155,9 +155,10 @@ jobs:
           pnpm test:sbom
 
       - name: External Trigger configuration and direct-dispatch tests
-        run: |
-          pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
-          pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
+        run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
+
+      - name: Reproduce clean hosted-CI focused Agent Vitest consumers
+        run: pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
 
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290

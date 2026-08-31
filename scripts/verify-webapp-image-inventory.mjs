@@ -10,6 +10,8 @@ import {
   WEBAPP_TARGET_PLATFORM,
   buildInputReceipts,
   buildInputsSha256,
+  deriveOciArchiveIdentity,
+  finalImageMatchesArchiveIdentity,
   sha256,
   validateInventoryDocument,
 } from './lib/webapp-inventory-contract.mjs';
@@ -42,6 +44,20 @@ function parseJson(bytes, description) {
   } catch (error) {
     throw new Error(`${description} is malformed JSON: ${error.message}`);
   }
+}
+
+function assertFinalImageMatchesArchive(inspect, archiveIdentity) {
+  const evidence = {
+    imageId: inspect.Id,
+    imageDescriptorDigest: inspect.Descriptor?.digest,
+  };
+  if (!finalImageMatchesArchiveIdentity(evidence, archiveIdentity)) {
+    throw new Error(
+      `final image ID is ${inspect.Id ?? 'missing'}; expected archive config ${archiveIdentity.configDigest}` +
+        ` or exact archive manifest ${archiveIdentity.manifestDigest} with a matching Docker descriptor`,
+    );
+  }
+  return evidence.imageDescriptorDigest ?? null;
 }
 
 export function currentBuildInputEvidence(root = ROOT, readFile = fs.readFileSync) {
@@ -78,28 +94,14 @@ export function verifyWebappImageInventory(config, dependencies = {}) {
   }
 
   const candidateArchive = path.resolve(config.candidateArchive);
-  const archiveBytes = readFile(candidateArchive);
-  const actualArchiveSha256 = sha256(archiveBytes);
-  if (actualArchiveSha256 !== config.candidateArchiveSha256) {
-    throw new Error(`candidate archive sha256 is ${actualArchiveSha256}; expected ${config.candidateArchiveSha256}`);
-  }
-  const candidateIndex = parseJson(
-    run('tar', ['-xOf', candidateArchive, 'index.json'], { cwd: root }),
-    'candidate OCI archive index',
-  );
-  if (!Array.isArray(candidateIndex.manifests) || candidateIndex.manifests.length !== 1) {
-    throw new Error('candidate OCI archive must contain exactly one manifest');
-  }
-  const candidateDescriptor = candidateIndex.manifests[0];
-  if (candidateDescriptor.digest !== config.candidateManifestDigest) {
-    throw new Error(
-      `candidate OCI archive manifest is ${candidateDescriptor.digest}; expected ${config.candidateManifestDigest}`,
-    );
-  }
-  const candidatePlatform = `${candidateDescriptor.platform?.os ?? 'missing'}/${candidateDescriptor.platform?.architecture ?? 'missing'}`;
-  if (candidatePlatform !== WEBAPP_TARGET_PLATFORM) {
-    throw new Error(`candidate OCI archive platform is ${candidatePlatform}; expected ${WEBAPP_TARGET_PLATFORM}`);
-  }
+  const archiveIdentity = deriveOciArchiveIdentity({
+    candidateArchive,
+    expectedManifestDigest: config.candidateManifestDigest,
+    expectedArchiveSha256: config.candidateArchiveSha256,
+    readFile,
+    extractArchiveFile: (archive, entry) =>
+      run('tar', ['-xOf', archive, entry], { cwd: root }),
+  });
 
   const inspected = parseJson(
     run('docker', ['image', 'inspect', config.image], { cwd: root }),
@@ -109,6 +111,9 @@ export function verifyWebappImageInventory(config, dependencies = {}) {
     throw new Error('docker image inspect must return exactly one image');
   }
   const inspect = inspected[0];
+  const imageDescriptorDigest = config.stage === 'final'
+    ? assertFinalImageMatchesArchive(inspect, archiveIdentity)
+    : inspect.Descriptor?.digest ?? null;
   const platform = `${inspect.Os}/${inspect.Architecture}`;
   if (platform !== WEBAPP_TARGET_PLATFORM) {
     throw new Error(`image platform is ${platform}; expected ${WEBAPP_TARGET_PLATFORM}`);
@@ -155,10 +160,12 @@ export function verifyWebappImageInventory(config, dependencies = {}) {
     gitHead,
     stage: config.stage,
     candidateManifestDigest: config.candidateManifestDigest,
+    candidateConfigDigest: archiveIdentity.configDigest,
     candidateArchive: path.basename(candidateArchive),
-    candidateArchiveSha256: actualArchiveSha256,
+    candidateArchiveSha256: archiveIdentity.archiveSha256,
     imageRef: config.image,
     imageId: inspect.Id,
+    imageDescriptorDigest,
     repoDigests: [...(inspect.RepoDigests ?? [])].sort(),
     rootfsDiffIds: [...(inspect.RootFS?.Layers ?? [])],
     platform,

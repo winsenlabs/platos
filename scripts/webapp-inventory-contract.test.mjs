@@ -11,6 +11,9 @@ import {
   WEBAPP_TARGET_PLATFORM,
   buildInputReceipts,
   buildInputsSha256,
+  deriveOciArchiveIdentity,
+  finalImageMatchesArchiveIdentity,
+  sha256,
 } from './lib/webapp-inventory-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,4 +42,51 @@ test('the shared platform, evidence schema, path list, and digest are determinis
   const receipts = buildInputReceipts(root);
   assert.deepEqual(receipts.map(({ file }) => file), [...WEBAPP_BUILD_INPUTS]);
   assert.match(buildInputsSha256(receipts), /^[a-f0-9]{64}$/u);
+});
+
+test('the shared archive derivation hashes the descriptor-bound manifest and derives config identity', () => {
+  const configDigest = `sha256:${'7'.repeat(64)}`;
+  const manifest = JSON.stringify({ config: { digest: configDigest } });
+  const manifestDigest = `sha256:${sha256(manifest)}`;
+  const archive = Buffer.from('exact archive bytes');
+  const index = JSON.stringify({
+    manifests: [{
+      digest: manifestDigest,
+      size: Buffer.byteLength(manifest),
+      platform: { os: 'linux', architecture: 'amd64' },
+    }],
+  });
+  const identity = deriveOciArchiveIdentity({
+    candidateArchive: '/unused/candidate.oci.tar',
+    expectedManifestDigest: manifestDigest,
+    expectedArchiveSha256: sha256(archive),
+    readFile: () => archive,
+    extractArchiveFile: (_candidateArchive, entry) => entry === 'index.json' ? index : manifest,
+  });
+
+  assert.deepEqual(identity, {
+    archiveSha256: sha256(archive),
+    configDigest,
+    descriptorSize: Buffer.byteLength(manifest),
+    manifestDigest,
+    platform: 'linux/amd64',
+  });
+  assert.equal(
+    finalImageMatchesArchiveIdentity({ imageId: configDigest }, identity),
+    true,
+  );
+  assert.equal(
+    finalImageMatchesArchiveIdentity(
+      { imageId: manifestDigest, imageDescriptorDigest: manifestDigest },
+      identity,
+    ),
+    true,
+  );
+  assert.equal(
+    finalImageMatchesArchiveIdentity(
+      { imageId: manifestDigest, imageDescriptorDigest: null },
+      identity,
+    ),
+    false,
+  );
 });

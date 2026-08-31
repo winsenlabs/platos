@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "e028c9fca3de0c11b1d75553e93803e5dc8ef53a65aa6b60182ef559a344eb7b"
+      "sha256": "4efddd6c5e2aa139b82ab4337ccbe13a10f78631af087705f5ea1108daf7654a"
     },
     {
       "path": "LICENSE",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "2f04bdeece47cc7026157c4de71262dfe407b62df69178074c7c69a63836836f"
+      "sha256": "2ed4df6d173b771c7d37bfbcc4151a591c88409655db320ad2d12b93e2760216"
     },
     {
       "path": "docs/audits/sbom/license-index.json",
@@ -998,17 +998,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "1e021892a6deb545018f8dd0662c6b2f833467c4ae97be58b84d1d3398147c3d"
+      "sha256": "44e1a23d0985fbd7fcbead954f9af34c22e3de884ad1f60e0a3627facc7cb946"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0b091ed56009ca1ad4de83f076b2552cc5a24bd017dde6ca3a896a8a84efcc98"
+      "sha256": "7565652d65119b2b9d4a03e38d8d6c1b29a560844eef51b516539405c0f9ab2f"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "116e4dbe7d6b4d2ed38315db2fbf52e349dd924d52a8980e4b31b7d826701693"
+      "sha256": "701c5ef56ebedb96fe62b1a82973029fcfc1a31b3286d0c3b19f22658a74907d"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1018,7 +1018,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "3592eb0ec27b78e7fa37aa2b1c873bd6004ebff3a08627e79d69e72846db1d84"
+      "sha256": "042e68d3b8ded31764c85d64812b06b472f9a8705e27b977548fa7391a1e6356"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3448,7 +3448,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "91b4cba3a28330c03f0d3bdabedb45791eb6db8c10654f2f0e47ee449a6ad5ed"
+      "sha256": "bc4e0023d28859816538dc6cc6bf0998c936f287a02b096a6a6ea3cb2b6e8203"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3818,7 +3818,7 @@
     {
       "path": "scripts/lib/webapp-inventory-contract.mjs",
       "mode": "100644",
-      "sha256": "5dcc926c0a51ff937800a91fab36685602491164992ba7ed3e146098b6c6f1c4"
+      "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
     },
     {
       "path": "scripts/protected-paths.mjs",

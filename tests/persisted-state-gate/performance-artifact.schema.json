@@ -75,8 +75,8 @@
           "additionalProperties": false,
           "required": ["agent", "webapp"],
           "properties": {
-            "agent": { "$ref": "#/$defs/runtimeCandidate" },
-            "webapp": { "$ref": "#/$defs/runtimeCandidate" }
+            "agent": { "$ref": "#/$defs/agentRuntimeCandidate" },
+            "webapp": { "$ref": "#/$defs/webappRuntimeCandidate" }
           }
         }
       }
@@ -176,8 +176,7 @@
       "properties": {
         "containerId": { "type": "string", "pattern": "^[a-f0-9]{12,64}$" },
         "runtimeReference": {
-          "type": "string",
-          "pattern": "^win235\\.local/.+:sha256-[a-f0-9]{64}$"
+          "type": "string"
         },
         "imageId": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
         "manifestDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
@@ -185,6 +184,34 @@
         "config": { "$ref": "#/$defs/runtimeConfig" },
         "configSha256": { "$ref": "#/$defs/sha256" }
       }
+    },
+    "agentRuntimeCandidate": {
+      "allOf": [
+        { "$ref": "#/$defs/runtimeCandidate" },
+        {
+          "type": "object",
+          "properties": {
+            "runtimeReference": {
+              "type": "string",
+              "pattern": "^win235\\.local/platos-agent:sha256-[a-f0-9]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "webappRuntimeCandidate": {
+      "allOf": [
+        { "$ref": "#/$defs/runtimeCandidate" },
+        {
+          "type": "object",
+          "properties": {
+            "runtimeReference": {
+              "type": "string",
+              "pattern": "^win253\\.local/platos-webapp:verified-[a-f0-9]{64}$"
+            }
+          }
+        }
+      ]
     },
     "summary": {
       "type": "object",

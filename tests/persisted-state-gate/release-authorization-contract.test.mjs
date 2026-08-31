@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -7,7 +8,11 @@ import test from "node:test";
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const workflowRoot = path.join(repositoryRoot, ".github/workflows");
 const publicationValidatorCommand =
-  "node scripts/verify-webapp-publication-provenance.mjs --candidate-identities artifacts/gate/candidate-images.json --inventory-root artifacts/webapp-inventory";
+  "node scripts/verify-webapp-publication-provenance.mjs --candidate-identities artifacts/gate/candidate-images.json --inventory-root artifacts/webapp-inventory --candidate-archive artifacts/candidates/webapp.oci.tar";
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
 
 function source(relativePath) {
   return readFileSync(path.join(repositoryRoot, relativePath), "utf8");
@@ -34,11 +39,34 @@ function insertExecutableJobStep(fixture, jobName, stepYaml) {
 
 function publicationProvenanceFixture() {
   const root = mkdtempSync(path.join("/var/tmp", "platos-publication-provenance-"));
-  const digest = `sha256:${"1".repeat(64)}`;
+  const configDigest = `sha256:${"7".repeat(64)}`;
+  const manifestBytes = JSON.stringify({ config: { digest: configDigest } });
+  const digest = `sha256:${sha256(manifestBytes)}`;
   const digestKey = digest.slice("sha256:".length);
   const inventoryRoot = path.join(root, "inventory");
   const evidenceRoot = path.join(inventoryRoot, digestKey);
   const candidateIdentitiesPath = path.join(root, "candidate-images.json");
+  const candidateArchivePath = path.join(root, "candidates", "webapp.oci.tar");
+  const archiveRoot = path.join(root, "archive");
+  mkdirSync(path.join(archiveRoot, "blobs", "sha256"), { recursive: true });
+  writeFileSync(
+    path.join(archiveRoot, "index.json"),
+    JSON.stringify({
+      manifests: [{
+        digest,
+        size: Buffer.byteLength(manifestBytes),
+        platform: { os: "linux", architecture: "amd64" },
+      }],
+    }),
+  );
+  writeFileSync(path.join(archiveRoot, "blobs", "sha256", digestKey), manifestBytes);
+  mkdirSync(path.dirname(candidateArchivePath), { recursive: true });
+  const tarResult = spawnSync(
+    "tar",
+    ["-cf", candidateArchivePath, "-C", archiveRoot, "index.json", "blobs"],
+    { encoding: "utf8" },
+  );
+  assert.equal(tarResult.status, 0, tarResult.stderr);
   const buildInputsSha256 = spawnSync(
     process.execPath,
     ["scripts/verify-webapp-image-inventory.mjs", "--print-build-inputs-sha256"],
@@ -50,7 +78,7 @@ function publicationProvenanceFixture() {
     WIN235_AGENT_IMAGE: `ghcr.io/example/platos-agent@sha256:${"2".repeat(64)}`,
     WIN235_WEBAPP_IMAGE: `ghcr.io/example/platos-webapp@${digest}`,
     WIN235_MIGRATIONS_IMAGE: `ghcr.io/example/platos-migrations@sha256:${"3".repeat(64)}`,
-    WIN235_WEBAPP_ARCHIVE_SHA256: "4".repeat(64),
+    WIN235_WEBAPP_ARCHIVE_SHA256: sha256(readFileSync(candidateArchivePath)),
     SOURCE_RUN_ID: "123456",
     SOURCE_RUN_ATTEMPT: "2",
   };
@@ -67,8 +95,10 @@ function publicationProvenanceFixture() {
     gitHead: env.PLATOS_CANDIDATE_SHA,
     stage,
     candidateManifestDigest: digest,
+    candidateConfigDigest: configDigest,
     candidateArchiveSha256: env.WIN235_WEBAPP_ARCHIVE_SHA256,
     imageId,
+    imageDescriptorDigest: null,
     platform: "linux/amd64",
     imageRevisionLabel: env.PLATOS_CANDIDATE_SHA,
     imageBuildInputsLabel: buildInputsSha256,
@@ -97,6 +127,8 @@ function publicationProvenanceFixture() {
         candidateIdentitiesPath,
         "--inventory-root",
         inventoryRoot,
+        "--candidate-archive",
+        candidateArchivePath,
       ],
       { cwd: repositoryRoot, env, encoding: "utf8" },
     );
@@ -257,6 +289,10 @@ test("webapp publication validator rejects every mutated provenance binding", as
   try {
     const result = valid.run();
     assert.equal(result.status, 0, result.stderr);
+    valid.final.imageId = valid.final.candidateManifestDigest;
+    valid.final.imageDescriptorDigest = valid.final.candidateManifestDigest;
+    const containerdResult = valid.run();
+    assert.equal(containerdResult.status, 0, containerdResult.stderr);
   } finally {
     rmSync(valid.root, { recursive: true, force: true });
   }
@@ -271,6 +307,7 @@ test("webapp publication validator rejects every mutated provenance binding", as
     ["source run ID", ({ production }) => (production.sourceRunId = "999999")],
     ["source run attempt", ({ production }) => (production.sourceRunAttempt = "3")],
     ["candidate manifest digest", ({ production }) => (production.candidateManifestDigest = `sha256:${"8".repeat(64)}`)],
+    ["candidate config digest", ({ production }) => (production.candidateConfigDigest = `sha256:${"8".repeat(64)}`)],
     ["candidate archive checksum", ({ production }) => (production.candidateArchiveSha256 = "8".repeat(64))],
     ["target platform", ({ production }) => (production.platform = "linux/arm64")],
     ["Git revision", ({ production }) => (production.gitHead = "b".repeat(40))],
@@ -279,6 +316,27 @@ test("webapp publication validator rejects every mutated provenance binding", as
     ["evidence build-input hash", ({ production }) => (production.buildInputsSha256 = "8".repeat(64))],
     ["inventory byte equality", ({ production }) => (production.inventoryByteMatch = false)],
     ["inventory hash equality", ({ production }) => (production.generatedInventorySha256 = "8".repeat(64))],
+    [
+      "final image and claimed config identity drift together",
+      ({ final }) => {
+        final.imageId = `sha256:${"8".repeat(64)}`;
+        final.candidateConfigDigest = final.imageId;
+      },
+    ],
+    [
+      "descriptor-bound manifest identity lacks descriptor",
+      ({ final }) => {
+        final.imageId = final.candidateManifestDigest;
+        final.imageDescriptorDigest = null;
+      },
+    ],
+    [
+      "descriptor-bound manifest identity has mismatched descriptor",
+      ({ final }) => {
+        final.imageId = final.candidateManifestDigest;
+        final.imageDescriptorDigest = `sha256:${"8".repeat(64)}`;
+      },
+    ],
     ["distinct production and final images", ({ production, final }) => (final.imageId = production.imageId)],
   ];
 

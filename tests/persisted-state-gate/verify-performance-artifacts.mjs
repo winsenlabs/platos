@@ -7,6 +7,11 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  WEBAPP_INVENTORY_EVIDENCE_SCHEMA,
+  deriveOciArchiveIdentity,
+  finalImageMatchesArchiveIdentity,
+} from "../../scripts/lib/webapp-inventory-contract.mjs";
+import {
   createPerformanceVerificationReceipt,
   PERFORMANCE_ARTIFACT_FILE,
   PERFORMANCE_RECEIPT_FILE,
@@ -18,6 +23,97 @@ const DEFAULT_BUDGET_FILE = "tests/persisted-state-gate/budgets.v1.json";
 const MEMORY_BROWSER_METRICS = ["fcpMs", "lcpMs", "cls", "inpMs", "interactionLatencyMs"];
 const AGENT_BROWSER_METRICS = ["inpMs", "interactionLatencyMs"];
 const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+
+export function canonicalRuntimeReference(service, manifestDigest) {
+  assert.match(
+    manifestDigest,
+    /^sha256:[a-f0-9]{64}$/,
+    `${service} runtime manifest digest must be an exact lowercase SHA-256 identity`
+  );
+  const digest = manifestDigest.slice("sha256:".length);
+  if (service === "agent") return `win235.local/platos-agent:sha256-${digest}`;
+  if (service === "webapp") return `win253.local/platos-webapp:verified-${digest}`;
+  throw new Error(`unknown runtime candidate service: ${service}`);
+}
+
+export function webappFinalInventoryEvidencePath(artifactDirectory, logicalImage) {
+  assert.match(
+    logicalImage,
+    /^ghcr\.io\/[^/]+\/platos-webapp@(sha256:[a-f0-9]{64})$/,
+    "webapp logical image must be its exact immutable GHCR identity"
+  );
+  const manifestDigest = logicalImage.slice(logicalImage.lastIndexOf("@") + 1);
+  return path.resolve(
+    artifactDirectory,
+    "..",
+    "webapp-image-inventory",
+    manifestDigest.slice("sha256:".length),
+    "final.json"
+  );
+}
+
+export function webappCandidateArchivePath(artifactDirectory) {
+  return path.resolve(artifactDirectory, "..", "candidates", "webapp.oci.tar");
+}
+
+export function verifyWebappFinalInventoryIdentity(
+  evidence,
+  logicalImage,
+  expectedCommit,
+  candidateArchive
+) {
+  const manifestDigest = logicalImage.slice(logicalImage.lastIndexOf("@") + 1);
+  const runtimeReference = canonicalRuntimeReference("webapp", manifestDigest);
+  let archiveIdentity;
+  try {
+    archiveIdentity = deriveOciArchiveIdentity({
+      candidateArchive,
+      expectedManifestDigest: manifestDigest,
+    });
+  } catch (error) {
+    throw new Error(`webapp final candidate archive is invalid: ${error.message}`);
+  }
+  assert.equal(
+    evidence?.$schema,
+    WEBAPP_INVENTORY_EVIDENCE_SCHEMA,
+    "webapp final inventory evidence schema drifted"
+  );
+  assert.equal(evidence.stage, "final", "webapp inventory evidence is not final");
+  assert.equal(
+    evidence.candidateManifestDigest,
+    archiveIdentity.manifestDigest,
+    "webapp final inventory manifest digest drifted"
+  );
+  assert.equal(
+    evidence.candidateArchiveSha256,
+    archiveIdentity.archiveSha256,
+    "webapp final inventory archive checksum drifted"
+  );
+  assert.equal(
+    evidence.candidateConfigDigest,
+    archiveIdentity.configDigest,
+    "webapp final inventory config digest drifted"
+  );
+  assert.match(evidence.imageId, /^sha256:[a-f0-9]{64}$/, "webapp final image ID is invalid");
+  assert.ok(
+    finalImageMatchesArchiveIdentity(evidence, archiveIdentity),
+    "webapp final inventory image ID differs from the archive config and descriptor-bound manifest"
+  );
+  assert.equal(evidence.imageRef, runtimeReference, "webapp final inventory reference drifted");
+  assert.equal(evidence.gitHead, expectedCommit, "webapp final inventory revision drifted");
+  assert.equal(
+    evidence.imageRevisionLabel,
+    expectedCommit,
+    "webapp final inventory image revision label drifted"
+  );
+  assert.equal(evidence.inventoryByteMatch, true, "webapp final inventory byte check did not pass");
+  assert.equal(
+    evidence.generatedInventorySha256,
+    evidence.committedInventorySha256,
+    "webapp final inventory hashes drifted"
+  );
+  return evidence.imageId;
+}
 
 export async function verifyPerformanceArtifactDirectory(directory, options = {}) {
   const repositoryRoot = path.resolve(
@@ -71,13 +167,34 @@ export async function verifyPerformanceArtifactDirectory(directory, options = {}
       cwd: repositoryRoot,
       encoding: "utf8",
     }).trim();
+  const webappFinalInventoryEvidence = await readJson(
+    webappFinalInventoryEvidencePath(root, candidateImages.webapp)
+  );
+  const expectedWebappImageId = verifyWebappFinalInventoryIdentity(
+    webappFinalInventoryEvidence,
+    candidateImages.webapp,
+    expectedCommit,
+    webappCandidateArchivePath(root)
+  );
 
   if (options.inspectSourceCheckout !== false) {
     verifySourceCheckout(repositoryRoot, expectedCommit);
   }
-  verifyTopLevel(artifact, budgets, budgetRaw, fixture, candidateImages, expectedCommit);
+  verifyTopLevel(
+    artifact,
+    budgets,
+    budgetRaw,
+    fixture,
+    candidateImages,
+    expectedCommit,
+    expectedWebappImageId
+  );
   if (options.inspectRuntimeCandidates !== false) {
-    verifyRunningRuntimeCandidates(repositoryRoot, artifact.runtime.candidates);
+    verifyRunningRuntimeCandidates(
+      repositoryRoot,
+      artifact.runtime.candidates,
+      expectedWebappImageId
+    );
   }
   verifyLatency(artifact.measurements.latency, budgets);
   verifyBrowser(artifact.measurements.browser, budgets);
@@ -130,7 +247,7 @@ function verifySourceCheckout(repositoryRoot, expectedCommit) {
   );
 }
 
-function verifyRunningRuntimeCandidates(repositoryRoot, candidates) {
+function verifyRunningRuntimeCandidates(repositoryRoot, candidates, expectedWebappImageId) {
   for (const [service, candidate] of Object.entries(candidates)) {
     const composeContainerId = execFileSync("docker", ["compose", "ps", "--quiet", service], {
       cwd: repositoryRoot,
@@ -159,6 +276,13 @@ function verifyRunningRuntimeCandidates(repositoryRoot, candidates) {
     );
     assert.equal(container.Image, candidate.imageId, `${service} live container image ID drifted`);
     assert.equal(image.Id, candidate.imageId, `${service} live image ID drifted`);
+    if (service === "webapp") {
+      assert.equal(
+        image.Id,
+        expectedWebappImageId,
+        "webapp live image ID differs from final archive inventory"
+      );
+    }
     const revision = image.Config?.Labels?.["org.opencontainers.image.revision"];
     assert.equal(revision, candidate.revision, `${service} live OCI revision drifted`);
     const config = {
@@ -229,7 +353,15 @@ function validateSchemas(repositoryRoot, contracts) {
   }
 }
 
-function verifyTopLevel(artifact, budgets, budgetRaw, fixture, candidateImages, expectedCommit) {
+function verifyTopLevel(
+  artifact,
+  budgets,
+  budgetRaw,
+  fixture,
+  candidateImages,
+  expectedCommit,
+  expectedWebappImageId
+) {
   assert.equal(artifact.schemaVersion, 1, "unexpected performance artifact schema version");
   assert.equal(artifact.gate, "win235-measured-performance", "unexpected performance gate name");
   assert.equal(artifact.status, "measured", "performance artifact is not measured");
@@ -305,13 +437,19 @@ function verifyTopLevel(artifact, budgets, budgetRaw, fixture, candidateImages, 
     "webapp",
     artifact.runtime.candidates.webapp,
     expectedImages.webapp,
-    expectedCommit
+    expectedCommit,
+    expectedWebappImageId
   );
 }
 
-function verifyRuntimeCandidate(service, candidate, logicalImage, expectedCommit) {
+function verifyRuntimeCandidate(
+  service,
+  candidate,
+  logicalImage,
+  expectedCommit,
+  expectedWebappImageId
+) {
   const manifestDigest = logicalImage.slice(logicalImage.indexOf("@") + 1);
-  const repositoryName = service === "agent" ? "platos-agent" : "platos-webapp";
   assert.equal(
     candidate.manifestDigest,
     manifestDigest,
@@ -319,10 +457,17 @@ function verifyRuntimeCandidate(service, candidate, logicalImage, expectedCommit
   );
   assert.equal(
     candidate.runtimeReference,
-    `win235.local/${repositoryName}:sha256-${manifestDigest.slice("sha256:".length)}`,
+    canonicalRuntimeReference(service, manifestDigest),
     `${service} runtime reference drifted`
   );
   assert.equal(candidate.revision, expectedCommit, `${service} runtime revision drifted`);
+  if (service === "webapp") {
+    assert.equal(
+      candidate.imageId,
+      expectedWebappImageId,
+      "webapp runtime image ID differs from final archive inventory"
+    );
+  }
   assert.equal(candidate.config.revision, expectedCommit, `${service} OCI config revision drifted`);
   assert.equal(
     candidate.configSha256,

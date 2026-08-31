@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -21,6 +22,121 @@ export const WEBAPP_BUILD_INPUTS = Object.freeze([
 
 export function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
+}
+
+function parseArchiveJson(bytes, description) {
+  try {
+    return JSON.parse(bytes);
+  } catch (error) {
+    throw new Error(`${description} is malformed JSON: ${error.message}`);
+  }
+}
+
+function defaultExtractArchiveFile(candidateArchive, entry) {
+  const result = spawnSync('tar', ['-xOf', candidateArchive, entry], {
+    encoding: null,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `candidate OCI archive entry is unreadable: ${entry}: ${String(result.stderr ?? '').trim()}`,
+    );
+  }
+  return result.stdout;
+}
+
+export function deriveOciArchiveIdentity({
+  candidateArchive,
+  expectedManifestDigest,
+  expectedArchiveSha256,
+  expectedPlatform = WEBAPP_TARGET_PLATFORM,
+  readFile = fs.readFileSync,
+  extractArchiveFile = defaultExtractArchiveFile,
+}) {
+  if (!candidateArchive) throw new Error('candidate OCI archive path is required');
+  if (!/^sha256:[a-f0-9]{64}$/u.test(expectedManifestDigest ?? '')) {
+    throw new Error(`candidate manifest digest is invalid: ${expectedManifestDigest ?? 'missing'}`);
+  }
+  if (
+    expectedArchiveSha256 !== undefined &&
+    !/^[a-f0-9]{64}$/u.test(expectedArchiveSha256)
+  ) {
+    throw new Error(`candidate archive sha256 is invalid: ${expectedArchiveSha256}`);
+  }
+
+  const archiveBytes = readFile(candidateArchive);
+  const archiveSha256 = sha256(archiveBytes);
+  if (expectedArchiveSha256 !== undefined && archiveSha256 !== expectedArchiveSha256) {
+    throw new Error(
+      `candidate archive sha256 is ${archiveSha256}; expected ${expectedArchiveSha256}`,
+    );
+  }
+
+  const index = parseArchiveJson(
+    extractArchiveFile(candidateArchive, 'index.json'),
+    'candidate OCI archive index',
+  );
+  if (!Array.isArray(index.manifests) || index.manifests.length !== 1) {
+    throw new Error('candidate OCI archive must contain exactly one manifest');
+  }
+  const descriptor = index.manifests[0];
+  if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor)) {
+    throw new Error('candidate OCI archive manifest descriptor is invalid');
+  }
+  if (descriptor.digest !== expectedManifestDigest) {
+    throw new Error(
+      `candidate OCI archive manifest is ${descriptor.digest ?? 'missing'}; expected ${expectedManifestDigest}`,
+    );
+  }
+  if (!Number.isSafeInteger(descriptor.size) || descriptor.size <= 0) {
+    throw new Error(
+      `candidate OCI archive manifest descriptor size is invalid: ${descriptor.size ?? 'missing'}`,
+    );
+  }
+  const platform = `${descriptor.platform?.os ?? 'missing'}/${descriptor.platform?.architecture ?? 'missing'}`;
+  if (platform !== expectedPlatform) {
+    throw new Error(`candidate OCI archive platform is ${platform}; expected ${expectedPlatform}`);
+  }
+
+  const manifestBytes = extractArchiveFile(
+    candidateArchive,
+    `blobs/sha256/${expectedManifestDigest.slice('sha256:'.length)}`,
+  );
+  const manifestSize = Buffer.byteLength(manifestBytes);
+  if (manifestSize !== descriptor.size) {
+    throw new Error(
+      `candidate OCI archive manifest size is ${manifestSize}; descriptor declares ${descriptor.size}`,
+    );
+  }
+  const manifestDigest = `sha256:${sha256(manifestBytes)}`;
+  if (manifestDigest !== descriptor.digest) {
+    throw new Error(
+      `candidate OCI archive manifest blob digest is ${manifestDigest}; descriptor declares ${descriptor.digest}`,
+    );
+  }
+  const manifest = parseArchiveJson(manifestBytes, 'candidate OCI archive manifest');
+  const configDigest = manifest?.config?.digest;
+  if (!/^sha256:[a-f0-9]{64}$/u.test(configDigest ?? '')) {
+    throw new Error(
+      `candidate OCI archive config digest is invalid: ${configDigest ?? 'missing'}`,
+    );
+  }
+
+  return {
+    archiveSha256,
+    configDigest,
+    descriptorSize: descriptor.size,
+    manifestDigest,
+    platform,
+  };
+}
+
+export function finalImageMatchesArchiveIdentity(evidence, archiveIdentity) {
+  return (
+    evidence?.imageId === archiveIdentity?.configDigest ||
+    (evidence?.imageId === archiveIdentity?.manifestDigest &&
+      evidence?.imageDescriptorDigest === archiveIdentity?.manifestDigest)
+  );
 }
 
 export function componentId({ name, version }) {

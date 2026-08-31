@@ -150,7 +150,8 @@ jobs:
           set +a
           node scripts/verify-webapp-publication-provenance.mjs \
             --candidate-identities artifacts/gate/candidate-images.json \
-            --inventory-root artifacts/webapp-inventory
+            --inventory-root artifacts/webapp-inventory \
+            --candidate-archive artifacts/candidates/webapp.oci.tar
 
       - name: Log in to GHCR only after source revalidation
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0

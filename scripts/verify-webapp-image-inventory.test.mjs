@@ -15,7 +15,9 @@ import {
 } from './lib/webapp-inventory-contract.mjs';
 import { verifyWebappImageInventory } from './verify-webapp-image-inventory.mjs';
 
-const manifestDigest = `sha256:${'a'.repeat(64)}`;
+const configDigest = `sha256:${'d'.repeat(64)}`;
+const manifestBytes = JSON.stringify({ config: { digest: configDigest } });
+const manifestDigest = `sha256:${sha256(manifestBytes)}`;
 const gitHead = 'b'.repeat(40);
 
 function inventory(component = { name: 'alpha', version: '1.0.0' }) {
@@ -52,13 +54,20 @@ function fixture(overrides = {}) {
   fs.writeFileSync(expectedInventoryPath, committed);
   const scannerPath = path.join(root, 'scripts/image-package-inventory.mjs');
   const inputHash = buildInputsSha256(buildInputReceipts(root));
+  const extractedManifest = overrides.extractedManifestBytes ?? JSON.stringify({
+    config: { digest: overrides.archiveConfigDigest ?? configDigest },
+  });
   const descriptor = {
     digest: overrides.archiveManifestDigest ?? manifestDigest,
+    size: overrides.archiveManifestSize ?? Buffer.byteLength(extractedManifest),
     platform: overrides.archivePlatform ?? { os: 'linux', architecture: 'amd64' },
   };
   const index = { manifests: overrides.manifests ?? [descriptor] };
   const inspect = {
-    Id: 'sha256:image',
+    Id: overrides.imageId ?? configDigest,
+    Descriptor: overrides.imageDescriptorDigest === undefined
+      ? undefined
+      : { digest: overrides.imageDescriptorDigest },
     Os: overrides.imageOs ?? 'linux',
     Architecture: overrides.imageArchitecture ?? 'amd64',
     Config: {
@@ -75,7 +84,8 @@ function fixture(overrides = {}) {
   if (overrides.removeInputLabel) delete inspect.Config.Labels['dev.winsen.platos.webapp-inventory-inputs-sha256'];
   const generated = `${JSON.stringify(overrides.generatedInventory ?? inventory(), null, 2)}\n`;
   const run = (command, args) => {
-    if (command === 'tar') return JSON.stringify(index);
+    if (command === 'tar' && args.at(-1) === 'index.json') return JSON.stringify(index);
+    if (command === 'tar' && args.at(-1).startsWith('blobs/sha256/')) return extractedManifest;
     if (command === 'git') return `${gitHead}\n`;
     if (command === 'docker' && args[0] === 'image') return JSON.stringify([inspect]);
     if (command === 'docker' && args[0] === 'run') {
@@ -141,6 +151,50 @@ test('rejects multiple OCI manifests', () => {
 test('rejects a wrong candidate manifest digest and platform', () => {
   rejects({ archiveManifestDigest: `sha256:${'c'.repeat(64)}` }, null, /candidate OCI archive manifest is/);
   rejects({ archivePlatform: { os: 'linux', architecture: 'arm64' } }, null, /archive platform is linux\/arm64/);
+});
+
+test('rejects manifest descriptor size and digest mismatches', () => {
+  rejects({ archiveManifestSize: Buffer.byteLength(manifestBytes) + 1 }, null, /manifest size is/);
+  rejects(
+    { extractedManifestBytes: JSON.stringify({ config: { digest: configDigest }, drift: true }) },
+    null,
+    /manifest blob digest is/,
+  );
+  rejects(
+    { manifests: [{ digest: manifestDigest, platform: { os: 'linux', architecture: 'amd64' } }] },
+    null,
+    /descriptor size is invalid/,
+  );
+});
+
+test('rejects a final image ID that differs from the archive config digest', () => {
+  const containerdFiles = fixture({
+    imageId: manifestDigest,
+    imageDescriptorDigest: manifestDigest,
+  });
+  try {
+    verifyWebappImageInventory(containerdFiles.config, { run: containerdFiles.run });
+    const evidence = JSON.parse(fs.readFileSync(containerdFiles.config.evidencePath, 'utf8'));
+    assert.equal(evidence.imageId, manifestDigest);
+  } finally {
+    fs.rmSync(containerdFiles.root, { recursive: true, force: true });
+  }
+  rejects({ imageId: `sha256:${'e'.repeat(64)}` }, null, /expected archive config/);
+  rejects(
+    { imageId: manifestDigest, imageDescriptorDigest: `sha256:${'e'.repeat(64)}` },
+    null,
+    /matching Docker descriptor/,
+  );
+  const invalidConfigManifest = JSON.stringify({ config: { digest: 'sha256:short' } });
+  const invalidConfigManifestDigest = `sha256:${sha256(invalidConfigManifest)}`;
+  rejects(
+    {
+      archiveConfigDigest: 'sha256:short',
+      archiveManifestDigest: invalidConfigManifestDigest,
+    },
+    (config) => { config.candidateManifestDigest = invalidConfigManifestDigest; },
+    /config digest is invalid/,
+  );
 });
 
 test('rejects a wrong Docker image platform', () => {
