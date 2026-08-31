@@ -47,6 +47,18 @@ jobs:
           # archaeology commit instead of trusting counts stored in the matrix.
           fetch-depth: 0
 
+      - name: Fetch exact WIN-253 vendored-build reviewed source
+        env:
+          REVIEWED_SOURCE_TAG: refs/tags/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+          REVIEWED_SOURCE_COMMIT: e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+          REVIEWED_SOURCE_REF: refs/platos-ci/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --force origin \
+            "${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}"
+          resolved_commit="$(git rev-parse --verify "${REVIEWED_SOURCE_REF}^{commit}")"
+          test "$resolved_commit" = "$REVIEWED_SOURCE_COMMIT"
+
       - name: Install pnpm
         uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
         with:

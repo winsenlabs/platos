@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "886e896b20320efc09bf8e7e8eb587b5304ce7876d6ba4f92db565304ac1fc65"
+      "sha256": "e028c9fca3de0c11b1d75553e93803e5dc8ef53a65aa6b60182ef559a344eb7b"
     },
     {
       "path": "LICENSE",
@@ -998,12 +998,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "6dc08d09e5b275eefa6d1acf9616e78d562905380f91fd4ca7919c762fdf1462"
+      "sha256": "1e021892a6deb545018f8dd0662c6b2f833467c4ae97be58b84d1d3398147c3d"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "3b85bd1ec249e033685be7577d9aa236d54def01baaf88b4fd30ec313659f2bd"
+      "sha256": "0b091ed56009ca1ad4de83f076b2552cc5a24bd017dde6ca3a896a8a84efcc98"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1018,7 +1018,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "5f2cd5ae3d3ef5618ba0cdef9cb3a5711c80f1471fbd3f7aa7736fbb3ad6b6ef"
+      "sha256": "3592eb0ec27b78e7fa37aa2b1c873bd6004ebff3a08627e79d69e72846db1d84"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

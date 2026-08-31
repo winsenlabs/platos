@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0f046896e6a600165d0beb4a0ae618fcc84305fda34ff34f8b226f20cf5936dd",
+  "evidenceSha256": "d554128091f634bbab8afad606bf168c40238c9c550461abf77d13fc4fb6a5f5",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9381165eb5be6b1755f13d536116632eeb39f1992b4659d9ffbfab9642a699ee",
+    "aggregateSha256": "75579374ac304a4f4be0a530315d076e9982bdbc59882b97b0511c322c27077c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -257,11 +257,11 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "e03739c765d87b132e70d845284ae3237753267b72b97927ac5d602dbc1e37ea"
+        "sha256": "b7b5f66d462cc8e0f0025f5440e4e797515c3a6443e66223d651d0674ec6d404"
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "886e896b20320efc09bf8e7e8eb587b5304ce7876d6ba4f92db565304ac1fc65"
+        "sha256": "e028c9fca3de0c11b1d75553e93803e5dc8ef53a65aa6b60182ef559a344eb7b"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -10601,7 +10601,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
-        "sha256": "9ec2b2c51aedfa25e0e7dd67278ff204d3796090944eca7230ad2f180c58967e"
+        "sha256": "c6207d00b87ccac121af7db6f62a22c0e4ea6b4ec014529365222a36e29dcda5"
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
@@ -13525,7 +13525,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "79e5ce3e8d4fb11218469ab0c463bafe58aa8e9eab7affa1e1ca835f21a97064"
+        "sha256": "ab11d65016d432cd19d9b2d43534e9cd3bad92604bddbc294ee9cd4cb22b7b4e"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -13697,7 +13697,7 @@
       },
       {
         "path": "scripts/vendored-build-audit.test.mjs",
-        "sha256": "6fb6bb9cf5ad8aa96381a62f4fb3b583d4c81ad41a76a827c63e90ec73631154"
+        "sha256": "4587e6fd32b7f855dd526dfd2d594630b579cb9f97ca35a99715f86ad488f078"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -21796,7 +21796,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 73
+              "line": 85
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -27102,7 +27102,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 112
+              "line": 125
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -27377,7 +27377,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e17c649379478891a876278b235ab7d105a77a817101890ac1db5b1fdc6755f3",
+      "evidenceSha256": "277a03b4e8a285c98f77f4f4d6a52d23b2edbd106d64dbf61d05a07d9b5fc721",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -28094,7 +28094,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 218
+              "line": 230
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -28947,7 +28947,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1cdb2d488faaabb640cc7556c97e0e8ef34f126bdf5fab29a34d52d91501d7df",
+      "evidenceSha256": "92eefe538a24665326961a7ebee4987d6d1e638ab87a318bbae4affbfba04c48",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -29393,7 +29393,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 146
+              "line": 159
             }
           ],
           "reversePaths": [
@@ -29505,7 +29505,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "e48a83576c841340306976d06a66c700331b6ef5bf2a8b50f1b8c02b90ddd31a",
+      "evidenceSha256": "2e92b4422fa872b39db76d9fe7c3b514206959ec9e5d7f62de3a615f596c47e0",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -32412,7 +32412,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 85
+              "line": 97
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -33520,7 +33520,7 @@
             {
               "from": "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
               "kind": "workspace-owned-file",
-              "line": 113
+              "line": 61
             },
             {
               "from": "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
@@ -33540,7 +33540,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 146
+              "line": 159
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -33992,7 +33992,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "eaf5ced87673cad00e432e2d02f9e1783f03e3c1ca16bab4a51d67233e3f6de6",
+      "evidenceSha256": "b1fc1193cd76f9b5ae4f59a77c86390d22097963922d0f1f3f9aa20bfabda6d5",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -34409,7 +34409,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 218
+              "line": 230
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35106,7 +35106,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b5550d599d102d3977eb93560da939ebb9576fb3c5f74c40f93c978d5b586414",
+      "evidenceSha256": "900fabce3b93cd8000f36f86fa858be73d4dec974f66d339c2f0a2cb94a461e5",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -36328,7 +36328,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 146
+              "line": 159
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -36490,7 +36490,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "02d337cc1ec1b97de5f149640604d73abec9735d53f92e19f6297d4e0de43bba",
+      "evidenceSha256": "35b4f8e066c0b1b8bcb2ed5d5a6b79604795056ca8512226e49cb398a0db44ca",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -52551,7 +52551,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 227
+              "line": 239
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54017,7 +54017,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "56b45c0966b216a5ada40134e5bda941d8a06c772012cd3209868026087d3e91",
+      "evidenceSha256": "a960e276d515e163f983f82f8c4f4e98a61be9705280dd34b273c2fd3ed781be",
       "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
       "name": "@platos/core",
       "ociImageClosure": {

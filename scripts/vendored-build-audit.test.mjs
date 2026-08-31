@@ -299,6 +299,22 @@ test("reviewed-source provenance rejects incorrect source SHAs and pathsets", ()
   }
 });
 
+test("reviewed-source provenance fails closed when the pinned commit object is unavailable", () => {
+  const unavailableCommit = "0".repeat(40);
+  const { report, violations } = auditRepository(root, {
+    reviewedSourceCommit: unavailableCommit,
+  });
+  assert.equal(report.reviewedSource.commit, unavailableCommit);
+  assert.ok(report.reviewedSource.derivationError, "the unavailable object must not be tolerated");
+  assert.ok(
+    violations.some((violation) =>
+      violation.startsWith("reviewed source provenance could not be derived:")
+    ),
+    violations.join("; ")
+  );
+  assert.equal(report.deletion.composition.reviewedSourceSixRootFileCount, null);
+});
+
 test("deletion composition rejects an unauthorized outside-root path", () => {
   const reviewedSourcePaths = cleanAudit.report.reviewedSource.deletion.pathspec;
   const primaryBaseAdditionPaths =

@@ -217,6 +217,7 @@ jobs:
         run: pnpm --filter @platos/tenancy-database build
 
       - name: Rehearse the ordered tenancy upgrade before evidence
+        shell: bash
         run: |
           CI=true pnpm --filter @platos/tenancy-database exec vitest run \
             src/upgrade-contract.test.ts \

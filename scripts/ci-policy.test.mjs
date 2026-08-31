@@ -109,6 +109,19 @@ const workspaceReachabilityCommands = [
   "pnpm test:workspace-reachability",
   "pnpm audit:workspace-reachability",
 ];
+const reviewedSourceFetchStepName = "Fetch exact WIN-253 vendored-build reviewed source";
+const reviewedSourceTag =
+  "refs/tags/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130";
+const reviewedSourceCommit = "e720b7618e58b27d3ff4f9aff5a5ca9ac6670130";
+const reviewedSourceRef =
+  "refs/platos-ci/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130";
+const reviewedSourceFetchScript = [
+  "set -euo pipefail",
+  "git fetch --no-tags --force origin \\",
+  '  "${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}"',
+  'resolved_commit="$(git rev-parse --verify "${REVIEWED_SOURCE_REF}^{commit}")"',
+  'test "$resolved_commit" = "$REVIEWED_SOURCE_COMMIT"',
+].join("\n") + "\n";
 const win254EvidenceStepName = "WIN-254 docs, design, protection, and lifecycle evidence";
 const win254EvidenceCommands = [
   "pnpm test:docs-link-integrity",
@@ -940,6 +953,48 @@ function policyViolations(input) {
   const ciWorkflow = workflows.get("ci").workflow;
   const ciJobs = workflowJobs(ciWorkflow);
   const typecheckSteps = workflowSteps(ciJobs.get("typecheck"));
+  const typecheckCheckoutSteps = typecheckSteps.filter(
+    (step) =>
+      typeof step.uses === "string" && step.uses.startsWith("actions/checkout@")
+  );
+  if (
+    typecheckCheckoutSteps.length !== 1 ||
+    typecheckCheckoutSteps[0].with?.["fetch-depth"] !== 0
+  ) {
+    violations.push("typecheck checkout must retain fetch-depth 0");
+  }
+  const reviewedSourceFetchSteps = typecheckSteps.filter(
+    (step) => step.name === reviewedSourceFetchStepName
+  );
+  if (reviewedSourceFetchSteps.length !== 1) {
+    violations.push("CI must contain exactly one reviewed-source immutable tag fetch step");
+  }
+  const reviewedSourceFetchStep = reviewedSourceFetchSteps[0] ?? {};
+  const checkoutIndex = typecheckSteps.indexOf(typecheckCheckoutSteps[0]);
+  const reviewedSourceFetchIndex = typecheckSteps.indexOf(reviewedSourceFetchStep);
+  if (checkoutIndex === -1 || reviewedSourceFetchIndex !== checkoutIndex + 1) {
+    violations.push("reviewed-source immutable tag fetch must run immediately after typecheck checkout");
+  }
+  if (
+    reviewedSourceFetchStep.if !== undefined ||
+    reviewedSourceFetchStep["continue-on-error"] !== undefined ||
+    reviewedSourceFetchStep.shell !== undefined
+  ) {
+    violations.push("reviewed-source immutable tag fetch must be unconditional and fail-fast");
+  }
+  if (
+    JSON.stringify(reviewedSourceFetchStep.env) !==
+      JSON.stringify({
+        REVIEWED_SOURCE_TAG: reviewedSourceTag,
+        REVIEWED_SOURCE_COMMIT: reviewedSourceCommit,
+        REVIEWED_SOURCE_REF: reviewedSourceRef,
+      }) ||
+    reviewedSourceFetchStep.run !== reviewedSourceFetchScript
+  ) {
+    violations.push(
+      "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check"
+    );
+  }
   const reachabilitySteps = typecheckSteps.filter(
     (step) => step.name === "WIN-253 workspace reachability evidence"
   );
@@ -1536,6 +1591,21 @@ function insertWorkflowJobStep(input, key, jobName, step) {
   return { ...input, [key]: changed };
 }
 
+function mutateWorkflowJobSteps(input, key, jobName, mutate) {
+  const original = input[key];
+  assert.equal(typeof original, "string", `missing workflow fixture ${key}`);
+  const document = parseDocument(original, { prettyErrors: false, uniqueKeys: true });
+  assert.deepEqual(document.errors, [], `${key} fixture must be valid YAML`);
+  const workflow = document.toJS();
+  const steps = workflow?.jobs?.[jobName]?.steps;
+  assert.ok(Array.isArray(steps), `${jobName} job is missing steps in ${key}`);
+  mutate(steps);
+  document.contents = document.createNode(workflow);
+  const changed = String(document);
+  assert.notEqual(changed, original, "workflow job step mutation must change source");
+  return { ...input, [key]: changed };
+}
+
 test("committed CI and image-build policy is executable, correlated, and complete", () => {
   assert.equal(expectedCandidates.length, 3, "candidate selector must be non-empty and explicit");
   assert.equal(
@@ -1664,6 +1734,116 @@ test("CI policy controls fail under generated semantic source mutations", async 
   }
 
   controls.push(
+    {
+      name: "typecheck checkout depth change",
+      expected: "typecheck checkout must retain fetch-depth 0",
+      mutate: (input) => mutateFixture(input, "ci", "fetch-depth: 0", "fetch-depth: 1"),
+    },
+    {
+      name: "typecheck checkout depth removal",
+      expected: "typecheck checkout must retain fetch-depth 0",
+      mutate: (input) => mutateFixture(input, "ci", "fetch-depth: 0", "fetch-depth: null"),
+    },
+    {
+      name: "reviewed-source fetch step removal",
+      expected: "CI must contain exactly one reviewed-source immutable tag fetch step",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const index = steps.findIndex((step) => step.name === reviewedSourceFetchStepName);
+          assert.notEqual(index, -1);
+          steps.splice(index, 1);
+        }),
+    },
+    {
+      name: "reviewed-source fetch reordered after setup",
+      expected: "reviewed-source immutable tag fetch must run immediately after typecheck checkout",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "ci", "typecheck", (steps) => {
+          const index = steps.findIndex((step) => step.name === reviewedSourceFetchStepName);
+          assert.notEqual(index, -1);
+          const [step] = steps.splice(index, 1);
+          steps.splice(index + 1, 0, step);
+        }),
+    },
+    {
+      name: "reviewed-source fetch exact tag change",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) => mutateFixture(input, "ci", reviewedSourceTag, `${reviewedSourceTag.slice(0, -1)}1`),
+    },
+    {
+      name: "reviewed-source fetch exact commit change",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) =>
+        mutateFixture(input, "ci", `REVIEWED_SOURCE_COMMIT: ${reviewedSourceCommit}`, `REVIEWED_SOURCE_COMMIT: ${reviewedSourceCommit.slice(0, -1)}1`),
+    },
+    {
+      name: "reviewed-source mutable branch fetch",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) => mutateFixture(input, "ci", "refs/tags/provenance/", "refs/heads/"),
+    },
+    {
+      name: "reviewed-source raw SHA fetch",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          '"${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}"',
+          '"${REVIEWED_SOURCE_COMMIT}:${REVIEWED_SOURCE_REF}"'
+        ),
+    },
+    {
+      name: "reviewed-source public local branch ref",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) => mutateFixture(input, "ci", "refs/platos-ci/provenance/", "refs/heads/"),
+    },
+    {
+      name: "reviewed-source fetch success bypass",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) =>
+        mutateFixture(input, "ci", '"${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}"', '"${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}" || true'),
+    },
+    {
+      name: "reviewed-source peel removal",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) => mutateFixture(input, "ci", "${REVIEWED_SOURCE_REF}^{commit}", "${REVIEWED_SOURCE_REF}"),
+    },
+    {
+      name: "reviewed-source equality self-comparison",
+      expected:
+        "reviewed-source fetch must use the exact immutable tag, private ref, peeled commit, and equality check",
+      mutate: (input) =>
+        mutateFixture(input, "ci", 'test "$resolved_commit" = "$REVIEWED_SOURCE_COMMIT"', 'test "$resolved_commit" = "$resolved_commit"'),
+    },
+    {
+      name: "conditional reviewed-source fetch",
+      expected: "reviewed-source immutable tag fetch must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${reviewedSourceFetchStepName}\n        env:`,
+          `      - name: ${reviewedSourceFetchStepName}\n        if: \${{ false }}\n        env:`
+        ),
+    },
+    {
+      name: "continue-on-error reviewed-source fetch",
+      expected: "reviewed-source immutable tag fetch must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${reviewedSourceFetchStepName}\n        env:`,
+          `      - name: ${reviewedSourceFetchStepName}\n        continue-on-error: true\n        env:`
+        ),
+    },
     {
       name: "successful no-op webapp publication provenance validator",
       expected: "publish-images must execute the exact webapp publication provenance validator once",
@@ -2838,7 +3018,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    271,
+    285,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
