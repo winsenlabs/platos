@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "7c5015f2a0423d0ba65f09ea9e36e918e1d3d0a108d9cfba9a5f8932f550a7a4",
+  "evidenceSha256": "22c01f96b93532a5b4568657143fe07adb55f9a9f9abd71c076d6a30f77f931c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "114e5927f54f0bc5e825298c5615b2585a0d40531e86bcf5ee1fd75df5f50e1e",
+    "aggregateSha256": "01dc87f1a89ad8ece46b007e5b0909fb885239fae3b7d0384bfe980ee0c2684c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -257,7 +257,7 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "b7b5f66d462cc8e0f0025f5440e4e797515c3a6443e66223d651d0674ec6d404"
+        "sha256": "0daade8d9424f5f713cc601a1c67a6c0eb5277cf85f67aff1ee77e76b59eb9f3"
       },
       {
         "path": ".github/workflows/ci.yml",
@@ -13525,7 +13525,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "95c7d25744148ad35abe0954b6c5aa0664369d0d79029364bc8127796768acbc"
+        "sha256": "d5d874197e7cc703277ad884312d0db85d23e0f17390b0077017ab20b74d2dcf"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -29393,7 +29393,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 167
+              "line": 186
             }
           ],
           "reversePaths": [
@@ -29505,7 +29505,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "4016bd8d0412e00f411643cbe46f54c2ee7fdfc44471b8bab884cf5ffcf63314",
+      "evidenceSha256": "5660eed2a492dd87661139189fbbef35718cbdb48db9c1bf726c35604cc60504",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -36058,6 +36058,11 @@
               "kind": "workspace-wide-install"
             },
             {
+              "from": ".github/workflows/build-images.yml",
+              "kind": "reference",
+              "line": 217
+            },
+            {
               "from": ".github/workflows/ci.yml",
               "kind": "workspace-wide-install"
             },
@@ -36333,7 +36338,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2065
+              "line": 2342
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -36495,7 +36500,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "e93e7ed3bc699a57069da7c1d3b746d6db7f8480a1d0ac610795aaceca8789f8",
+      "evidenceSha256": "77f5312f5e02a7650f441b2aebf2c3dcdb6157496c57ebb09b9ca3a90d180a7d",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {

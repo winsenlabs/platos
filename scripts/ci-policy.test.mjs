@@ -160,6 +160,25 @@ const focusedDirectAgentTestStepName =
   "Reproduce clean hosted-CI focused Agent Vitest consumers";
 const focusedDirectAgentTestCommand =
   "pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts";
+const compiledWebappDependenciesStepName =
+  "Generate and build compiled Webapp test dependencies";
+const persistedStateInstallDependenciesStepName = "Install lockfile-backed test dependencies";
+const persistedStateInstallDependenciesCommand =
+  "pnpm install --frozen-lockfile --ignore-scripts";
+const webappMemoryPolicyStepName = "Webapp memory-policy tests";
+const webappMemoryPolicyCommand =
+  "pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts";
+const persistedStateIntegrationStepName =
+  "Exercise live Remix adapters, generated links, and Agent controllers";
+const persistedStateIntegrationScriptName = "test:persisted-state:integration";
+const persistedStateIntegrationTarget =
+  "pnpm --filter webapp exec vitest run test/persistedStateGate.integration.test.ts";
+const persistedStateIntegrationRun = [
+  "set -euo pipefail",
+  "pnpm test:persisted-state:integration \\",
+  "  2>&1 | tee artifacts/win235/integration.log",
+  "",
+].join("\n");
 const workloadPackageTestTarget = "node --test scripts/workload-identity-package.test.mjs";
 const agentRuntimeSmokeTestTarget = "node --test tests/persisted-state-gate/agent-runtime-health.test.mjs";
 const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mjs";
@@ -848,6 +867,83 @@ function normalizedShellCommands(sourceText) {
     .map((argv) => argv.join(" "));
 }
 
+function effectiveStepWorkingDirectory(step, job, workflow) {
+  return (
+    step?.["working-directory"] ??
+    job?.defaults?.run?.["working-directory"] ??
+    workflow?.defaults?.run?.["working-directory"]
+  );
+}
+
+function pnpmFilterTargetsWebapp(argv, execIndex) {
+  for (let index = 1; index < execIndex; index += 1) {
+    const argument = argv[index];
+    if (
+      (argument === "--filter" || argument === "-F") &&
+      argv[index + 1] === "webapp"
+    ) {
+      return true;
+    }
+    if (argument === "--filter=webapp" || argument === "-F=webapp") return true;
+  }
+  return false;
+}
+
+function directWebappVitestInvocations(step, job, workflow) {
+  if (typeof step?.run !== "string") return [];
+  const workingDirectory = effectiveStepWorkingDirectory(step, job, workflow);
+  return shellSegments(step.run).flatMap((segment) => {
+    const argv = executableShellArgv(segment);
+    if (argv[0] !== "pnpm") return [];
+    const integrationScriptIndex = argv.findIndex(
+      (argument, index) =>
+        argument === persistedStateIntegrationScriptName &&
+        (index === 1 || (index === 2 && argv[1] === "run"))
+    );
+    if (integrationScriptIndex !== -1) {
+      return [{ vitestArguments: argv.slice(integrationScriptIndex + 1) }];
+    }
+    const execIndex = argv.findIndex(
+      (argument, index) =>
+        argument === "exec" && argv[index + 1] === "vitest" && argv[index + 2] === "run"
+    );
+    if (execIndex === -1) return [];
+    const scopedByFilter = pnpmFilterTargetsWebapp(argv, execIndex);
+    const scopedByWorkingDirectory =
+      workingDirectory === "apps/webapp" || workingDirectory === "./apps/webapp";
+    return scopedByFilter || scopedByWorkingDirectory
+      ? [{ vitestArguments: argv.slice(execIndex + 3) }]
+      : [];
+  });
+}
+
+function hasDirectConsumerSuppression(run) {
+  if (typeof run !== "string") return true;
+  return (
+    /\|\|/u.test(run) ||
+    /\b(?:exit|return)\s+0\b/u.test(run) ||
+    /(?:^|[;\n(])\s*(?:true|:|false)\s*&&/u.test(run) ||
+    /(?:^|[^A-Za-z0-9_])(?:if|then|elif|else|fi|case|esac|while|until)\b/u.test(run)
+  );
+}
+
+function hasDirectConsumerSourceAlias(invocations) {
+  return invocations.some(({ vitestArguments }) =>
+    vitestArguments.some(
+      (argument) =>
+        argument === "--alias" ||
+        argument.startsWith("--alias=") ||
+        argument === "--config" ||
+        argument.startsWith("--config=") ||
+        argument === "-c" ||
+        argument.startsWith("-c=") ||
+        /@internal\/workload-identity=|internal-packages\/workload-identity\/src/u.test(
+          argument
+        )
+    )
+  );
+}
+
 function relocatedSelector(command) {
   const vitestMarker = " exec vitest run ";
   return command.includes(vitestMarker)
@@ -1350,6 +1446,173 @@ function policyViolations(input) {
   if (packageScripts["test:licenses"] !== licenseDeterminismTestTarget) {
     violations.push("package.json must wire the deterministic licence generation test");
   }
+  if (packageScripts[persistedStateIntegrationScriptName] !== persistedStateIntegrationTarget) {
+    violations.push(
+      `package.json must wire exact persisted-state integration alias: ${persistedStateIntegrationTarget}`
+    );
+  }
+  const persistedStateJob = buildJobs.get("persisted-state");
+  const persistedStateSteps = workflowSteps(persistedStateJob);
+  if (
+    persistedStateJob?.if !== undefined ||
+    persistedStateJob?.["continue-on-error"] !== undefined ||
+    buildWorkflow.defaults?.run?.shell !== undefined ||
+    persistedStateJob?.defaults?.run?.shell !== undefined
+  ) {
+    violations.push(
+      "persisted-state job must be unconditional, fail-fast, and free of default-shell bypasses"
+    );
+  }
+  const persistedInstallSteps = persistedStateSteps.filter(
+    (step) => step.name === persistedStateInstallDependenciesStepName
+  );
+  const persistedInstallStep = persistedInstallSteps[0] ?? {};
+  const persistedInstallIndex = persistedStateSteps.indexOf(persistedInstallStep);
+  const persistedSetupNodeIndices = persistedStateSteps.flatMap((step, index) =>
+    typeof step.uses === "string" && step.uses.startsWith("actions/setup-node@") ? [index] : []
+  );
+  if (
+    persistedInstallSteps.length !== 1 ||
+    persistedInstallStep.run !== persistedStateInstallDependenciesCommand ||
+    persistedInstallStep.if !== undefined ||
+    persistedInstallStep["continue-on-error"] !== undefined ||
+    persistedInstallStep.shell !== undefined
+  ) {
+    violations.push(
+      "persisted-state install must be the exact unconditional fail-fast frozen lockfile command"
+    );
+  }
+  if (
+    persistedSetupNodeIndices.length !== 1 ||
+    persistedInstallIndex <= persistedSetupNodeIndices[0]
+  ) {
+    violations.push("persisted-state exact dependency install must run after setup-node");
+  }
+  const freshCheckoutWebappWorkflows = [
+    ["ci", ciWorkflow, ciJobs],
+    ["build-images", buildWorkflow, buildJobs],
+  ];
+  const reviewedWebappJobs = new Set(["ci/typecheck", "build-images/persisted-state"]);
+  const observedWebappJobs = new Set();
+  for (const [workflowLabel, workflow, jobs] of freshCheckoutWebappWorkflows) {
+    for (const [jobName, job] of jobs) {
+      const steps = workflowSteps(job);
+      const consumerInvocations = steps.map((step) =>
+        directWebappVitestInvocations(step, job, workflow)
+      );
+      const consumerIndices = consumerInvocations.flatMap((invocations, index) =>
+        invocations.length > 0 ? [index] : []
+      );
+      if (consumerIndices.length === 0) continue;
+      const jobKey = `${workflowLabel}/${jobName}`;
+      observedWebappJobs.add(jobKey);
+      const expectedBuildStepName =
+        jobKey === "ci/typecheck"
+          ? compiledAgentDependenciesStepName
+          : compiledWebappDependenciesStepName;
+      const expectedInstallStepName =
+        jobKey === "build-images/persisted-state"
+          ? persistedStateInstallDependenciesStepName
+          : installDependenciesStepName;
+      const buildSteps = steps.filter((step) => step.name === expectedBuildStepName);
+      const installSteps = steps.filter((step) => step.name === expectedInstallStepName);
+      if (buildSteps.length !== 1) {
+        violations.push(
+          `${jobKey} must contain exactly one accurate compiled Webapp dependency build step`
+        );
+      }
+      const buildStep = buildSteps[0] ?? {};
+      if (
+        buildStep.run !== compiledAgentDependenciesCommand ||
+        buildStep.if !== undefined ||
+        buildStep["continue-on-error"] !== undefined ||
+        buildStep.shell !== undefined
+      ) {
+        violations.push(
+          `${jobKey} compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides`
+        );
+      }
+      const buildIndex = steps.indexOf(buildStep);
+      const installIndex = steps.indexOf(installSteps[0]);
+      if (
+        installSteps.length !== 1 ||
+        installIndex === -1 ||
+        buildIndex <= installIndex ||
+        consumerIndices.some((index) => index <= buildIndex)
+      ) {
+        violations.push(
+          `${jobKey} compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer`
+        );
+      }
+      if (
+        workflow.defaults?.run?.shell !== undefined ||
+        job.defaults?.run?.shell !== undefined
+      ) {
+        violations.push(`${jobKey} Webapp dependency and test steps must not inherit shell defaults`);
+      }
+      for (const index of consumerIndices) {
+        const step = steps[index];
+        const expectedShell =
+          jobKey === "build-images/persisted-state" &&
+          step.name === persistedStateIntegrationStepName
+            ? "bash"
+            : undefined;
+        if (
+          step.if !== undefined ||
+          step["continue-on-error"] !== undefined ||
+          step.shell !== expectedShell
+        ) {
+          violations.push(
+            `${jobKey} direct Webapp Vitest steps must be unconditional and use reviewed fail-fast shells`
+          );
+        }
+        if (hasDirectConsumerSuppression(step.run)) {
+          violations.push(
+            `${jobKey} direct Webapp Vitest consumers must reject dead-code and control-flow suppression`
+          );
+        }
+        if (hasDirectConsumerSourceAlias(consumerInvocations[index])) {
+          violations.push(
+            `${jobKey} direct Webapp Vitest consumers must reject source-alias arguments and config`
+          );
+        }
+      }
+    }
+  }
+  if (
+    observedWebappJobs.size !== reviewedWebappJobs.size ||
+    [...reviewedWebappJobs].some((jobKey) => !observedWebappJobs.has(jobKey))
+  ) {
+    violations.push("fresh-checkout workflows must retain the exact reviewed Webapp Vitest jobs");
+  }
+  const memoryPolicySteps = typecheckSteps.filter(
+    (step) => step.name === webappMemoryPolicyStepName
+  );
+  const memoryPolicyStep = memoryPolicySteps[0] ?? {};
+  if (
+    memoryPolicySteps.length !== 1 ||
+    memoryPolicyStep.run !== webappMemoryPolicyCommand ||
+    memoryPolicyStep.if !== undefined ||
+    memoryPolicyStep["continue-on-error"] !== undefined ||
+    memoryPolicyStep.shell !== undefined
+  ) {
+    violations.push("typecheck must retain the exact fail-fast Webapp memory-policy Vitest step");
+  }
+  const persistedIntegrationSteps = persistedStateSteps.filter(
+    (step) => step.name === persistedStateIntegrationStepName
+  );
+  const persistedIntegrationStep = persistedIntegrationSteps[0] ?? {};
+  if (
+    persistedIntegrationSteps.length !== 1 ||
+    persistedIntegrationStep.run !== persistedStateIntegrationRun ||
+    persistedIntegrationStep.shell !== "bash" ||
+    persistedIntegrationStep.if !== undefined ||
+    persistedIntegrationStep["continue-on-error"] !== undefined
+  ) {
+    violations.push(
+      "persisted-state must retain the exact fail-fast Webapp integration Vitest step"
+    );
+  }
   if (packageScripts["audit:webapp-image-inventory"] !== webappInventoryPackageScript) {
     violations.push(`package.json must wire exact webapp inventory script: ${webappInventoryPackageScript}`);
   }
@@ -1434,7 +1697,6 @@ function policyViolations(input) {
   }
 
   const persistedStateCommands = normalizedRunCommands(buildJobs.get("persisted-state"));
-  const persistedStateSteps = workflowSteps(buildJobs.get("persisted-state"));
   const inventorySteps = persistedStateSteps.filter((step) => step.name === webappInventoryStepName);
   if (inventorySteps.length !== 1) {
     violations.push("persisted-state must contain exactly one webapp candidate inventory step");
@@ -1754,6 +2016,21 @@ function mutateWorkflowJobSteps(input, key, jobName, mutate) {
   document.contents = document.createNode(workflow);
   const changed = String(document);
   assert.notEqual(changed, original, "workflow job step mutation must change source");
+  return { ...input, [key]: changed };
+}
+
+function mutateWorkflowJob(input, key, jobName, mutate) {
+  const original = input[key];
+  assert.equal(typeof original, "string", `missing workflow fixture ${key}`);
+  const document = parseDocument(original, { prettyErrors: false, uniqueKeys: true });
+  assert.deepEqual(document.errors, [], `${key} fixture must be valid YAML`);
+  const workflow = document.toJS();
+  const job = workflow?.jobs?.[jobName];
+  assert.ok(job !== null && typeof job === "object", `${jobName} job is missing in ${key}`);
+  mutate(job);
+  document.contents = document.createNode(workflow);
+  const changed = String(document);
+  assert.notEqual(changed, original, "workflow job mutation must change source");
   return { ...input, [key]: changed };
 }
 
@@ -3367,6 +3644,469 @@ test("CI policy controls fail under generated semantic source mutations", async 
     }
   );
 
+  controls.push(
+    {
+      name: "persisted-state dependency install no-op",
+      expected:
+        "persisted-state install must be the exact unconditional fail-fast frozen lockfile command",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateInstallDependenciesStepName
+          );
+          assert.ok(step);
+          step.run = "node -e 'process.exit(0)'";
+        }),
+    },
+    {
+      name: "conditional persisted-state dependency install",
+      expected:
+        "persisted-state install must be the exact unconditional fail-fast frozen lockfile command",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateInstallDependenciesStepName
+          );
+          assert.ok(step);
+          step.if = "${{ false }}";
+        }),
+    },
+    {
+      name: "persisted-state dependency install or-true fail-open",
+      expected:
+        "persisted-state install must be the exact unconditional fail-fast frozen lockfile command",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateInstallDependenciesStepName
+          );
+          assert.ok(step);
+          step.run = `${persistedStateInstallDependenciesCommand} || true`;
+        }),
+    },
+    {
+      name: "continue-on-error persisted-state dependency install",
+      expected:
+        "persisted-state install must be the exact unconditional fail-fast frozen lockfile command",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateInstallDependenciesStepName
+          );
+          assert.ok(step);
+          step["continue-on-error"] = true;
+        }),
+    },
+    {
+      name: "shell override persisted-state dependency install",
+      expected:
+        "persisted-state install must be the exact unconditional fail-fast frozen lockfile command",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateInstallDependenciesStepName
+          );
+          assert.ok(step);
+          step.shell = "bash {0} || true";
+        }),
+    },
+    {
+      name: "persisted-state dependency install reordered before setup-node",
+      expected: "persisted-state exact dependency install must run after setup-node",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const installIndex = steps.findIndex(
+            (step) => step.name === persistedStateInstallDependenciesStepName
+          );
+          assert.notEqual(installIndex, -1);
+          const [installStep] = steps.splice(installIndex, 1);
+          const setupIndex = steps.findIndex(
+            (step) =>
+              typeof step.uses === "string" && step.uses.startsWith("actions/setup-node@")
+          );
+          assert.notEqual(setupIndex, -1);
+          steps.splice(setupIndex, 0, installStep);
+        }),
+    },
+    {
+      name: "conditional persisted-state job",
+      expected:
+        "persisted-state job must be unconditional, fail-fast, and free of default-shell bypasses",
+      mutate: (input) =>
+        mutateWorkflowJob(input, "buildImages", "persisted-state", (job) => {
+          job.if = "${{ false }}";
+        }),
+    },
+    {
+      name: "continue-on-error persisted-state job",
+      expected:
+        "persisted-state job must be unconditional, fail-fast, and free of default-shell bypasses",
+      mutate: (input) =>
+        mutateWorkflowJob(input, "buildImages", "persisted-state", (job) => {
+          job["continue-on-error"] = true;
+        }),
+    },
+    {
+      name: "persisted-state job default-shell bypass",
+      expected:
+        "persisted-state job must be unconditional, fail-fast, and free of default-shell bypasses",
+      mutate: (input) =>
+        mutateWorkflowJob(input, "buildImages", "persisted-state", (job) => {
+          job.defaults = { run: { shell: "bash {0} || true" } };
+        }),
+    },
+    {
+      name: "persisted-state compiled Webapp dependency step removed",
+      expected:
+        "build-images/persisted-state must contain exactly one accurate compiled Webapp dependency build step",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const index = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(index, -1);
+          steps.splice(index, 1);
+        }),
+    },
+    {
+      name: "persisted-state workload-identity build removed",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          compiledAgentDependenciesCommand,
+          "pnpm --filter @platos/tenancy-database build"
+        ),
+    },
+    {
+      name: "persisted-state compiled Webapp dependencies reordered before install",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          const [buildStep] = steps.splice(buildIndex, 1);
+          const installIndex = steps.findIndex(
+            (step) => step.name === persistedStateInstallDependenciesStepName
+          );
+          assert.notEqual(installIndex, -1);
+          steps.splice(installIndex, 0, buildStep);
+        }),
+    },
+    {
+      name: "persisted-state compiled Webapp dependencies reordered after integration",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          const [buildStep] = steps.splice(buildIndex, 1);
+          const integrationIndex = steps.findIndex(
+            (step) => step.name === persistedStateIntegrationStepName
+          );
+          assert.notEqual(integrationIndex, -1);
+          steps.splice(integrationIndex + 1, 0, buildStep);
+        }),
+    },
+    {
+      name: "new pre-build direct Webapp Vitest consumer",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex, 0, {
+            name: "Mutation pre-build Webapp Vitest consumer",
+            run: "pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "new pre-build equals-filter Webapp Vitest consumer",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex, 0, {
+            name: "Mutation equals-filter pre-build Webapp consumer",
+            run: "pnpm --filter=webapp exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "new pre-build short-filter Webapp Vitest consumer",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex, 0, {
+            name: "Mutation short-filter pre-build Webapp consumer",
+            run: "pnpm -F webapp exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "new pre-build working-directory Webapp Vitest consumer",
+      expected:
+        "build-images/persisted-state compiled Webapp dependencies must build after install and before every direct Webapp Vitest consumer",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex, 0, {
+            name: "Mutation working-directory pre-build Webapp consumer",
+            "working-directory": "apps/webapp",
+            run: "pnpm exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "generic direct Webapp Vitest true-or suppression",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest consumers must reject dead-code and control-flow suppression",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex + 1, 0, {
+            name: "Mutation suppressed Webapp consumer",
+            run: "true || pnpm --filter=webapp exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "generic direct Webapp Vitest exit-zero suppression",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest consumers must reject dead-code and control-flow suppression",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex + 1, 0, {
+            name: "Mutation dead-code Webapp consumer",
+            run: "exit 0\npnpm -F webapp exec vitest run test/memoryPolicy.test.ts",
+          });
+        }),
+    },
+    {
+      name: "generic direct Webapp Vitest source-alias argument",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest consumers must reject source-alias arguments and config",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex + 1, 0, {
+            name: "Mutation source-alias Webapp consumer",
+            run: "pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts --alias=@internal/workload-identity=../../internal-packages/workload-identity/src/index.ts",
+          });
+        }),
+    },
+    {
+      name: "generic direct Webapp Vitest source-alias config",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest consumers must reject source-alias arguments and config",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const buildIndex = steps.findIndex(
+            (step) => step.name === compiledWebappDependenciesStepName
+          );
+          assert.notEqual(buildIndex, -1);
+          steps.splice(buildIndex + 1, 0, {
+            name: "Mutation source-config Webapp consumer",
+            run: "pnpm --filter=webapp exec vitest run test/memoryPolicy.test.ts --config config/vitest-source-alias.ts",
+          });
+        }),
+    },
+    {
+      name: "persisted-state workload-identity source-alias bypass",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          compiledAgentDependenciesCommand,
+          "pnpm --filter @platos/tenancy-database build && echo '@internal/workload-identity=internal-packages/workload-identity/src/index.ts' > /var/tmp/webapp-source-alias"
+        ),
+    },
+    {
+      name: "persisted-state compiled Webapp dependency or-true bypass",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          compiledAgentDependenciesCommand,
+          `${compiledAgentDependenciesCommand} || true`
+        ),
+    },
+    {
+      name: "persisted-state compiled Webapp dependency true-or bypass",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          compiledAgentDependenciesCommand,
+          `true || ${compiledAgentDependenciesCommand}`
+        ),
+    },
+    {
+      name: "persisted-state compiled Webapp dependency exit-zero dead code",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === compiledWebappDependenciesStepName
+          );
+          assert.ok(step);
+          step.run = `exit 0\n${compiledAgentDependenciesCommand}`;
+        }),
+    },
+    {
+      name: "conditional persisted-state compiled Webapp dependency step",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === compiledWebappDependenciesStepName
+          );
+          assert.ok(step);
+          step.if = "${{ false }}";
+        }),
+    },
+    {
+      name: "continue-on-error persisted-state compiled Webapp dependency step",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === compiledWebappDependenciesStepName
+          );
+          assert.ok(step);
+          step["continue-on-error"] = true;
+        }),
+    },
+    {
+      name: "shell override persisted-state compiled Webapp dependency step",
+      expected:
+        "build-images/persisted-state compiled Webapp dependency step must run exact tenancy and workload-identity builds without execution overrides",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === compiledWebappDependenciesStepName
+          );
+          assert.ok(step);
+          step.shell = "bash {0} || true";
+        }),
+    },
+    {
+      name: "conditional persisted-state direct Webapp Vitest step",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest steps must be unconditional and use reviewed fail-fast shells",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateIntegrationStepName
+          );
+          assert.ok(step);
+          step.if = "${{ false }}";
+        }),
+    },
+    {
+      name: "continue-on-error persisted-state direct Webapp Vitest step",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest steps must be unconditional and use reviewed fail-fast shells",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateIntegrationStepName
+          );
+          assert.ok(step);
+          step["continue-on-error"] = true;
+        }),
+    },
+    {
+      name: "shell override persisted-state direct Webapp Vitest step",
+      expected:
+        "build-images/persisted-state direct Webapp Vitest steps must be unconditional and use reviewed fail-fast shells",
+      mutate: (input) =>
+        mutateWorkflowJobSteps(input, "buildImages", "persisted-state", (steps) => {
+          const step = steps.find(
+            (candidate) => candidate.name === persistedStateIntegrationStepName
+          );
+          assert.ok(step);
+          step.shell = "bash {0} || true";
+        }),
+    },
+    {
+      name: "persisted-state integration no-op root alias",
+      expected: "package.json must wire exact persisted-state integration alias",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          persistedStateIntegrationTarget,
+          "node -e 'process.exit(0)'"
+        ),
+    },
+    {
+      name: "persisted-state integration different-test root alias",
+      expected: "package.json must wire exact persisted-state integration alias",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          persistedStateIntegrationTarget,
+          "pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts"
+        ),
+    },
+    {
+      name: "persisted-state integration source-bypassing root alias",
+      expected: "package.json must wire exact persisted-state integration alias",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "packageJson",
+          persistedStateIntegrationTarget,
+          "pnpm --filter webapp exec vitest run --alias @internal/workload-identity=../../internal-packages/workload-identity/src/index.ts test/persistedStateGate.integration.test.ts"
+        ),
+    }
+  );
+
   for (const command of relocatedCommands) {
     controls.push(
       {
@@ -3397,7 +4137,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    306,
+    340,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

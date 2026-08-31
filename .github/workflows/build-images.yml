@@ -213,8 +213,8 @@ jobs:
       - name: Install the pinned Chromium evidence runtime
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Generate and build the canonical tenancy client for the external test runner
-        run: pnpm --filter @platos/tenancy-database build
+      - name: Generate and build compiled Webapp test dependencies
+        run: pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build
 
       - name: Rehearse the ordered tenancy upgrade before evidence
         shell: bash
