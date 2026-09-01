@@ -75,7 +75,10 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  assert.equal(result.fileCount, 74);
+  // 74 -> 263. WIN-256 made packages/kernel and four contexts real, so the ADR
+  // M0.3 §6 file-size budget now applies to real production source rather than
+  // to placeholders. Every one of the 263 is inside the 400/500-line budget.
+  assert.equal(result.fileCount, 263);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

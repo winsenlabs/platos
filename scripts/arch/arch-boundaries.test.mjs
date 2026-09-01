@@ -218,7 +218,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    assert.equal(result.fileCount, 104, "the generated V1 source census must stay exact");
+    // 104 -> 310. The 104 was the all-placeholder skeleton. WIN-256 made
+    // packages/kernel and four contexts real (identity-access, secrets, tenancy,
+    // files), so the gate now polices 310 files of which ~206 are hand-written
+    // production source. This is the first time these rules have judged real
+    // code, and no rule needed changing to accommodate it.
+    assert.equal(result.fileCount, 310, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
