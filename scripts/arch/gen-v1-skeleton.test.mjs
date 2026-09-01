@@ -71,7 +71,9 @@ test("writing a complete generated tree is byte-idempotent", () => {
 
 test("stale, missing, and extra owned files each fail closed", () => {
   for (const [kind, mutate, expected] of [
-    ["stale", (root) => writeFileSync(join(root, "packages/kernel/src/index.ts"), "stale\n"), "STALE   packages/kernel/src/index.ts"],
+    // Sample an UNADOPTED placeholder: an adopted project's source tree is
+    // released by design, and its own controls live in the adoption tests below.
+    ["stale", (root) => writeFileSync(join(root, "packages/contexts/tools/domain/index.ts"), "stale\n"), "STALE   packages/contexts/tools/domain/index.ts"],
     ["missing", (root) => rmSync(join(root, "apps/mcp-stdio/src/main.ts")), "MISSING apps/mcp-stdio/src/main.ts"],
     ["extra", (root) => write(root, "packages/contexts/tools/extra.ts", "export {};\n"), "EXTRA   packages/contexts/tools/extra.ts"],
   ]) {
