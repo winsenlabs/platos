@@ -94,6 +94,7 @@ export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
 // ---------------------------------------------------------------------------
 export const ADOPTED_PROJECTS = [
   "packages/kernel", // WIN-256 — the nine decoupling ports and the value objects
+  "packages/contexts/identity-access", // WIN-256 — the DAG leaf: sessions, MFA, tokens, scopes
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption
