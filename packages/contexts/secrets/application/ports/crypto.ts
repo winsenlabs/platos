@@ -1,0 +1,84 @@
+// The cryptography ports. ADR M0.3 §2: domain and application see infrastructure
+// ONLY as Platos-owned port interfaces.
+//
+// WHY CRYPTOGRAPHY IS A PORT AND NOT A DOMAIN SERVICE. Put `node:crypto` in the
+// domain and every rule that depends on it becomes untestable without real keys,
+// real entropy and real timing. Behind a port, a fake cipher and a fake ring make
+// the rotation rules, the fail-closed paths and the retirement lifecycle
+// exercisable in memory — which is the only way the negative controls below can
+// exist at all. The real adapter still does real AES-256-GCM; it just does it in
+// exactly one place.
+//
+// THE DOMAIN NEVER SEES KEY BYTES. `RootKeyHandle` is opaque: it names a version
+// and carries nothing else across the boundary. A use case can therefore reason
+// about which key sealed what without ever being able to leak one.
+
+import type { Result } from "@platos/kernel";
+
+import type { EnvelopeBinding, SealedEnvelope } from "../../domain/envelope.js";
+import type { RootKeyRingState } from "../../domain/key-ring.js";
+import type { RootKeyVersion } from "../../domain/ids.js";
+import type { SecretMaterial } from "../../domain/secret-material.js";
+
+declare const rootKeyHandle: unique symbol;
+
+/**
+ * A usable reference to one root key. Opaque by construction: the adapter that
+ * minted it can resolve it to bytes, and nothing else can.
+ */
+export type RootKeyHandle = {
+  readonly rootKeyVersion: RootKeyVersion;
+} & { readonly [rootKeyHandle]: "secrets.rootKeyHandle" };
+
+/**
+ * The versioned key ring. Sole holder of the data-encryption keys ADR M0.3 §1
+ * row 3 says this context alone may hold.
+ */
+export interface KeyRing {
+  /** Which versions exist and which one seals new envelopes. */
+  state(): Promise<Result<RootKeyRingState>>;
+  /**
+   * Resolve one version. Fails when the version has been rotated out — the
+   * fail-closed path, and the reason a rotated-out envelope yields an error
+   * rather than its ciphertext.
+   */
+  handle(version: RootKeyVersion): Promise<Result<RootKeyHandle>>;
+}
+
+export interface SealRequest {
+  readonly key: RootKeyHandle;
+  readonly binding: EnvelopeBinding;
+  /** The only direction plaintext travels: inward, once, at seal time. */
+  readonly plaintext: SecretMaterial;
+}
+
+export interface OpenRequest {
+  readonly key: RootKeyHandle;
+  readonly binding: EnvelopeBinding;
+  readonly envelope: SealedEnvelope;
+}
+
+/**
+ * Authenticated encryption with associated data.
+ *
+ * The port owns randomness: `seal` produces the salt and the nonce, so no caller
+ * can supply a reused one. `open` returns ONE undifferentiated failure for a
+ * wrong key, a tampered tag, a tampered ciphertext and a relocated binding — the
+ * extraction source's pure test pins exactly that collapse.
+ */
+export interface AeadCipher {
+  seal(request: SealRequest): Promise<Result<SealedEnvelope>>;
+  open(request: OpenRequest): Promise<Result<SecretMaterial>>;
+}
+
+/**
+ * One-way hashing, for the transitional `Credential.secretHash` verifier the
+ * schema flags. It is a port rather than a domain function for the same reason
+ * the cipher is, and it is deliberately separate from the cipher so a hash can
+ * never be mistaken for a reversible envelope.
+ */
+export interface Hasher {
+  hash(value: SecretMaterial): Promise<Result<string>>;
+  /** Constant-time in the adapter. The domain must not compare digests itself. */
+  verify(value: SecretMaterial, digest: string): Promise<Result<boolean>>;
+}
