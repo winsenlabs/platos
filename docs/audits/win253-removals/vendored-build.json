@@ -4728,9 +4728,9 @@
   ],
   "integration": {
     "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
-    "vocabularySha256": "63f8fd1112073235a71ce4d347b9230a7d5923faca356e0524c95dcf4fb72835",
-    "ledgerRulesSha256": "1adce64257234eb3a072f819ec391e1c7c4f0ca940b2c0f53f47995248d64053",
-    "reachabilitySha256": "c5282aa0f2b0d7fc37479794d78844973ca0bc55833cab9dd304fea609b35ae2",
+    "vocabularySha256": "1c1a829c8b4aa34f067218100771a11b6d9c018c36964090a9f65421ab9277d3",
+    "ledgerRulesSha256": "78fee4329bfe68b9f9a9dcfc50421ea5b4fb72c9209787d0516abdf9dbbb6696",
+    "reachabilitySha256": "503896bb462fe1e9ddee016428a18b670d8af191b6e7e0f5ac3c184396fdd4a7",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0
@@ -4744,6 +4744,6 @@
       "packages/trigger-sdk/LICENSE"
     ],
     "repositoryLicenseSha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1",
-    "repositoryNoticeSha256": "4cff8218ed00e4553dcb1c6f4b8ad826dcaed72793de286687cc85f9f2fcf2d8"
+    "repositoryNoticeSha256": "da3aa69f1e897d4a2c776bffb6139dd227b5fcf408c1b0133f1436bb3f04d325"
   }
 }

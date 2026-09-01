@@ -315,9 +315,22 @@ test("prospective-tree enumeration rejects invalid UTF-8 and retains dangling sy
   const invalidRoot = realRepoFixture({ "valid.txt": "valid\n" });
   try {
     const invalidPath = Buffer.concat([Buffer.from(`${invalidRoot}/invalid-`), Buffer.from([0xff])]);
-    writeFileSync(invalidPath, "invalid\n");
-    execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
-    assert.throws(() => listTrackedFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+    // APFS/HFS+ enforce UTF-8 filenames and reject this with EILSEQ, so the
+    // bypass being asserted here is not constructible on macOS. Linux ext4/xfs
+    // accept arbitrary bytes, so the assertion runs there -- where CI runs. Only
+    // EILSEQ is tolerated; any other error still fails, so this never skips
+    // silently.
+    let constructible = true;
+    try {
+      writeFileSync(invalidPath, "invalid\n");
+    } catch (error) {
+      if (error?.code !== "EILSEQ") throw error;
+      constructible = false;
+    }
+    if (constructible) {
+      execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
+      assert.throws(() => listTrackedFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+    }
   } finally {
     rmSync(invalidRoot, { recursive: true, force: true });
   }
@@ -505,14 +518,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "apps-webapp": 0,
     "apps-core-api": 0,
     "apps-mcp-stdio": 0,
-    packages: 0,
+    // WIN-252 owner decision adds packages/core/NOTICE: the upstream MIT
+    // attribution, kept out of LICENSE so every publishable package's LICENSE
+    // stays byte-identical to the repository Apache-2.0 text.
+    packages: 1,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     "docs-content": 9,
     "root-infra": 10,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 19);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 20);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -521,7 +537,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 19
+    rulesDocument.baseline.totalFiles + 20
   );
 });
 

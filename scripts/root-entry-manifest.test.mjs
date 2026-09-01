@@ -58,9 +58,21 @@ test("Git enumeration rejects invalid UTF-8 path bytes and retains dangling syml
   temporaryRoots.push(invalidRoot);
   execFileSync("git", ["init", "-q"], { cwd: invalidRoot });
   const invalidPath = Buffer.concat([Buffer.from(`${invalidRoot}/invalid-`), Buffer.from([0xff])]);
-  writeFileSync(invalidPath, "invalid pathname bytes\n");
-  execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
-  assert.throws(() => listRepositoryFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+  // APFS/HFS+ enforce UTF-8 filenames and reject this with EILSEQ, so the bypass
+  // being asserted here is not constructible on macOS. Linux ext4/xfs accept
+  // arbitrary bytes, so the assertion runs there -- where CI runs. Only EILSEQ is
+  // tolerated; any other error still fails, so this can never skip silently.
+  let constructible = true;
+  try {
+    writeFileSync(invalidPath, "invalid pathname bytes\n");
+  } catch (error) {
+    if (error?.code !== "EILSEQ") throw error;
+    constructible = false;
+  }
+  if (constructible) {
+    execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
+    assert.throws(() => listRepositoryFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+  }
 
   const symlinkRoot = mkdtempSync(join("/var/tmp", "platos-root-manifest-symlink-"));
   temporaryRoots.push(symlinkRoot);

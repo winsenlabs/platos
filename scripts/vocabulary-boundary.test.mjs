@@ -600,8 +600,14 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //   +16   reviewed WIN-254 assembled-tree documentation and governance
   //         occurrences --> 19295
   //   +83   reviewed WIN-252 legal-provenance and protected-evidence
-  //         occurrences --> 19378.
-  assert.equal(manifest.exceptions.length, 19378);
+  //         occurrences --> 19378
+  //   +7    reviewed WIN-252 owner-decision occurrences: the retained upstream
+  //         MIT notice in packages/core/LICENSE (3) and the decision recorded in
+  //         licence-resolution.json (2) and licence-resolution.md (2) --> 19385
+  //   +2    reviewed occurrences in the licence guard itself, where the
+  //         retained-attribution invariant must name the exact upstream notice
+  //         strings it protects --> 19387.
+  assert.equal(manifest.exceptions.length, 19387);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

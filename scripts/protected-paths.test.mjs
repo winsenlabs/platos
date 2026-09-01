@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
@@ -13,7 +13,11 @@ import {
 } from "./protected-paths.mjs";
 
 function fixture(files) {
-  const root = mkdtempSync("/var/tmp/platos-protected-");
+  // realpath the fixture root: on macOS /var is a symlink to /private/var, so an
+  // un-canonicalised root makes every path inside it look like it escapes the
+  // repository root and the containment guard fires before the assertion under
+  // test. Canonical on Linux too, so this is behaviour-preserving there.
+  const root = realpathSync(mkdtempSync("/var/tmp/platos-protected-"));
   execFileSync("git", ["init", "-q"], { cwd: root });
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -81,9 +85,21 @@ test("NUL-safe inventory rejects newline and invalid-UTF8 pathname bypasses", ()
   const invalidRoot = fixture({ "docs/good.md": "ok\n" });
   try {
     const invalid = Buffer.concat([Buffer.from(`${invalidRoot}/docs/invalid-`), Buffer.from([0xff])]);
-    writeFileSync(invalid, "bad\n");
-    execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
-    assert.throws(() => listProspectiveEntries(invalidRoot), /invalid UTF-8 bytes/u);
+    // APFS/HFS+ enforce UTF-8 filenames and reject this with EILSEQ, so the
+    // bypass being asserted here is not constructible on macOS. Linux ext4/xfs
+    // accept arbitrary bytes, so the assertion runs there — where CI runs — and
+    // is never silently skipped: an unexpected error still fails the test.
+    let constructible = true;
+    try {
+      writeFileSync(invalid, "bad\n");
+    } catch (error) {
+      if (error?.code !== "EILSEQ") throw error;
+      constructible = false;
+    }
+    if (constructible) {
+      execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
+      assert.throws(() => listProspectiveEntries(invalidRoot), /invalid UTF-8 bytes/u);
+    }
   } finally {
     rmSync(invalidRoot, { recursive: true, force: true });
   }
