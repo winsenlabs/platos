@@ -101,6 +101,7 @@
     "test:gen-v1-skeleton": "node --test scripts/arch/gen-v1-skeleton.test.mjs",
     "test:clean-v1": "node --test scripts/arch/clean-v1.test.mjs",
     "test:v1-foundation": "pnpm test:gen-v1-skeleton && pnpm test:clean-v1",
+    "test:v1-packages": "turbo run test --concurrency=1 --filter @platos/kernel --filter \"@platos/context-*\" --filter \"@platos/adapter-*\"",
     "audit:sole-writer": "node scripts/arch/sole-writer.mjs",
     "test:sole-writer": "node --test scripts/arch/sole-writer.test.mjs",
     "audit:kernel-content": "node scripts/arch/kernel-content.mjs",

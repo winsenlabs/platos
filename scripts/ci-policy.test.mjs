@@ -92,11 +92,22 @@ const v1ReleaseGateCommands = [
   "pnpm test:v1-project-graph",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites, ordered after build:v1 because a
+  // context test resolves its peers through their built dist/ entrypoints.
+  "pnpm test:v1-packages",
 ];
 const repositoryGovernanceCommands = [
   "pnpm audit:root-manifest",
@@ -212,11 +223,22 @@ const expectedV1EvidenceCommands = [
   "pnpm test:arch-boundaries",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites. Runs AFTER build:v1 because a context
+  // test resolves its peers through their built dist/ entrypoints.
+  "pnpm test:v1-packages",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
@@ -2054,9 +2076,13 @@ test("committed CI and image-build policy is executable, correlated, and complet
     7,
     "relocated command selector must cover all seven commands"
   );
+  // 16 -> 21: WIN-256 adds the two gates ADR M0.3 specifies that M1 did not
+  // build — §5.3 kernel-content (audit + test) and §5.2 sole-writer (audit +
+  // test) — plus test:v1-packages, which runs the V1 packages' own suites now
+  // that packages/kernel holds real code and 44 real assertions.
   assert.equal(
     v1ReleaseGateCommands.length,
-    16,
+    21,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification"
   );
   assert.equal(
@@ -4135,9 +4161,12 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
+  // 340 -> 345: one fail-fast mutation control per new V1 release gate
+  // (audit/test:kernel-content, audit/test:sole-writer, test:v1-packages).
+  // Each asserts that appending `|| true` to that gate's command is detected.
   assert.equal(
     controls.length,
-    340,
+    345,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
