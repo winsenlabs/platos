@@ -1,0 +1,47 @@
+@platos/core
+============
+
+Copyright (c) 2026 Winsen Labs.
+
+This package is distributed under the Apache License, Version 2.0. See the
+LICENSE file in this package for the full terms.
+
+
+UPSTREAM ATTRIBUTION — retained third-party notice
+--------------------------------------------------
+
+@platos/core is a derivative work of @trigger.dev/core, which upstream
+distributes under the MIT License. MIT permits that sublicensing, and Platos
+distributes this package and its modifications under Apache-2.0 as above.
+
+The upstream MIT notice is reproduced verbatim below and retained in accordance
+with its terms. It applies to the upstream-derived portions of this package and
+does not alter the Apache-2.0 grant.
+
+Provenance is recorded in docs/audits/sbom/licence-resolution.json in the Platos
+repository and is verifiable offline against the published upstream artifact
+@trigger.dev/core@4.4.4 (sha1 9544b5ded8dd8deb2371081389961792bccfde4e).
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+MIT License
+
+Copyright (c) 2023 Trigger.dev
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

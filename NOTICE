@@ -14,12 +14,22 @@ live ref assertion.
 
   (The current public @platos/core manifest and package LICENSE are Apache-2.0.
   The private @platos/otlp-importer manifest and package LICENSE preserve the
-  inherited upstream MIT metadata and bytes. Whether the imported core MIT
-  permission notice must be retained alongside the current Apache-2.0 materials
-  is an open human/legal decision. This NOTICE does not decide it. See
-  docs/audits/sbom/licence-resolution.json for the canonical offline
+  inherited upstream MIT metadata and bytes.
+
+  Owner decision, 2026-09-01: Platos distributes @platos/core under Apache-2.0,
+  and the upstream MIT permission notice is retained verbatim in
+  packages/core/NOTICE under an explicit UPSTREAM ATTRIBUTION heading, published
+  in the package tarball. MIT grants the right to sublicense, so the Apache-2.0
+  distribution stands; the retained notice satisfies MIT's requirement that the
+  copyright and permission notice accompany copies and substantial portions.
+  It lives in NOTICE rather than LICENSE because every publishable package's
+  LICENSE must stay byte-identical to the repository Apache-2.0 text, and
+  NOTICE is the Apache-2.0 section 4(d) mechanism for exactly this. Retaining
+  the notice makes the question moot rather than answering it in the abstract.
+
+  See docs/audits/sbom/licence-resolution.json for the canonical offline
   provenance receipt and docs/audits/sbom/licence-resolution.md for its human
-  summary and explicit decision gate. The checked production closure is recorded in
+  summary and the recorded decision. The checked production closure is recorded in
   docs/audits/sbom/closure-contract.md and
   docs/audits/sbom/closure-receipts.json.)
 
@@ -36,8 +46,11 @@ manifest and LICENSE, are recorded in the provenance receipt above.
 
 Those statements explicitly exclude inherited package metadata. In particular,
 they do not classify the private @platos/otlp-importer's inherited MIT manifest
-and LICENSE as Apache-2.0. Treatment of inherited package metadata remains
-subject to the open human/legal decision recorded above.
+and LICENSE as Apache-2.0. Treatment of inherited package metadata follows the
+resolved human/legal decision recorded above: @platos/otlp-importer is private
+and non-shipping, so its inherited MIT files are preserved unchanged, while the
+public @platos/core retains the upstream MIT notice alongside its Apache-2.0
+grant.
 
 Third-party dependency licences
 -------------------------------

@@ -12,7 +12,8 @@
     "directory": "packages/core"
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "tshy": {
     "selfLink": false,

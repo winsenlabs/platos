@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "3baf59c9cf2f63cc1a83718fa7e0be2e22100401c13c058a09992d51e880ac58",
+  "evidenceSha256": "948bd46b15f7da6d61da5c7b61a4ff53237fd5e033cee6e977f997afd0480c18",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "82ed5c68fda3ad25acea5ab0a4c00c0f9b50dbedf72a8cbac193352b515b21af",
+    "aggregateSha256": "8d5e60b8cdf43475af38a163d3a74bef42f20300b7f75e9b9e7f0b5301934499",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -349,7 +349,7 @@
       },
       {
         "path": "NOTICE",
-        "sha256": "4cff8218ed00e4553dcb1c6f4b8ad826dcaed72793de286687cc85f9f2fcf2d8"
+        "sha256": "da3aa69f1e897d4a2c776bffb6139dd227b5fcf408c1b0133f1436bb3f04d325"
       },
       {
         "path": "README.md",
@@ -3949,7 +3949,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
-        "sha256": "5b7cfef5909ff30ab18aa5e483e07cf6257c803f764f918440d3318b877531e9"
+        "sha256": "35a0df95105a16991a789b52aa9237f19d2ffe49b24550c686bd616c8e5a91a5"
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
@@ -3957,11 +3957,11 @@
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
-        "sha256": "c621501c553d1f0b651e9723bcf20fc0158fc0b967015ffddf0ba1b7dd4cd1d4"
+        "sha256": "4dcd03792862d3fe16691cb38c9f0e5c560ca6780db61c9a29bed5f0548caa1a"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.md",
-        "sha256": "0dcf72a3801d618c6880fbe0dd30c9ccb122a6ec0aaf1fbd3990903c85e2903b"
+        "sha256": "d004d4380091f5bee2dfd4e3ab9e21aac896e456fde993153e58563cbc5c8553"
       },
       {
         "path": "docs/audits/sbom/license-index.json",
@@ -4017,7 +4017,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "f1f2a66c75a4ef1872342742310e2d0f63bd29989b1c779fe63c1456158acbc9"
+        "sha256": "eecbdffd74c9993d82aeb47d4138a1c305442a3c101be790121662c7c198af7c"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -5941,7 +5941,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "1adce64257234eb3a072f819ec391e1c7c4f0ca940b2c0f53f47995248d64053"
+        "sha256": "78fee4329bfe68b9f9a9dcfc50421ea5b4fb72c9209787d0516abdf9dbbb6696"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5961,7 +5961,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "63f8fd1112073235a71ce4d347b9230a7d5923faca356e0524c95dcf4fb72835"
+        "sha256": "1c1a829c8b4aa34f067218100771a11b6d9c018c36964090a9f65421ab9277d3"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11468,8 +11468,12 @@
         "sha256": "9e9e22db5ae77f7ce1119294d0386cbbab2791cc77fb68d97c90627d7d96c5e1"
       },
       {
+        "path": "packages/core/NOTICE",
+        "sha256": "edef5c15d25e0fcecc30564f6231559120edc92c8036b0a4ff5fb52f144ce498"
+      },
+      {
         "path": "packages/core/package.json",
-        "sha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89"
+        "sha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7"
       },
       {
         "path": "packages/core/scripts/bundle-superjson.mjs",
@@ -13513,7 +13517,7 @@
       },
       {
         "path": "scripts/audit-licenses.test.mjs",
-        "sha256": "5edb0135ba29af55590b7c899bff0be743234cc49a1fb9998fc8a990865fecbc"
+        "sha256": "bf632e8a94f4c94c3107bf79db2719c90cf397c250b91517feeb12a398680cbd"
       },
       {
         "path": "scripts/audit-platos-build.mjs",
@@ -13585,7 +13589,7 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "1767ac0251f64c0f93dce5579c3b8c031722d2d2a0457dc67c7e436ce411570e"
+        "sha256": "694722b6e62b63ea83185b623978ced3286999c4e9fb38bf7fde6551fc040c4a"
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
@@ -13641,7 +13645,7 @@
       },
       {
         "path": "scripts/protected-paths.test.mjs",
-        "sha256": "396ef2a888e3fbe2d5a9dc6e4cd5e37484a728af5fe177ccabccf997a7686727"
+        "sha256": "fb6ed78a4f726068d7be8bea7199cd530f4fbbb776276c32c881d093d2824254"
       },
       {
         "path": "scripts/recover-stuck-runs.ts",
@@ -13665,7 +13669,7 @@
       },
       {
         "path": "scripts/root-entry-manifest.test.mjs",
-        "sha256": "3e7f48ef19cf470caec7649ae7bed3a79ef87cd2706716dd582f4a836d29dde5"
+        "sha256": "ea435f02bf9b0fa307916b86e5bb422d55ef692303df17d0fba97aef0f502c63"
       },
       {
         "path": "scripts/route-capability-completion-audit.mjs",
@@ -13709,7 +13713,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "3992a5112483ef33eb1d4a775bc0ec1add41f0e008f21e22b2cea2e3a74e621f"
+        "sha256": "2d85482cfcf55a85c033a4a0044f55169ea99ea5f78aacb05426711fb574a14d"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -13753,7 +13757,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "37ad1e9565fe205e58e096b91ca79690a50eb755824176432c425a53be130f41"
+        "sha256": "97bef553b66abc8ccee7fd337d54272410f9869ef96ae76f6f0559f9f6eea6cd"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -15133,7 +15137,7 @@
             {
               "from": "docs/audits/sbom/licence-resolution.json",
               "kind": "reference",
-              "line": 1863
+              "line": 1892
             },
             {
               "from": "docs/audits/sbom/README.md",
@@ -15689,7 +15693,7 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 49
+              "line": 62
             },
             {
               "from": "scripts/audit-licenses.test.mjs",
@@ -18376,7 +18380,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "868ce9d416f552007822b6c33c933281893f55e60bf6e9c98cc53aa743a98500",
+      "evidenceSha256": "e8cc2f2389684a2184d3687ad5fe561ae33107970d7a98398d1d93d10dc36f55",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -19960,7 +19964,7 @@
             {
               "from": "docs/audits/sbom/licence-resolution.json",
               "kind": "reference",
-              "line": 1870
+              "line": 1899
             },
             {
               "from": "docs/audits/sbom/license-overlay.json",
@@ -20632,7 +20636,7 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 50
+              "line": 63
             },
             {
               "from": "scripts/audit-licenses.mjs",
@@ -21213,7 +21217,7 @@
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 145
+              "line": 157
             },
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
@@ -21774,7 +21778,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "afcbbfe1513fc27c58c30077e68509aa9e296358b01772ac43d6d54c7a4d8752",
+      "evidenceSha256": "4759fff3b72d602788a1f5fd692506c1f098f8335c5c308e875072ebe333b90e",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -22423,7 +22427,7 @@
             {
               "from": "docs/audits/sbom/licence-resolution.json",
               "kind": "workspace-owned-file",
-              "line": 27
+              "line": 18
             },
             {
               "from": "docs/audits/sbom/licence-resolution.md",
@@ -26968,7 +26972,12 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 20
+              "line": 30
+            },
+            {
+              "from": "packages/core/NOTICE",
+              "kind": "reference",
+              "line": 21
             },
             {
               "from": "scripts/audit-licenses.mjs",
@@ -26999,6 +27008,10 @@
               "NOTICE"
             ],
             [
+              "packages/core/NOTICE",
+              "packages/core/NOTICE"
+            ],
+            [
               "scripts/audit-licenses.mjs",
               "scripts/audit-licenses.mjs"
             ],
@@ -27012,6 +27025,7 @@
             "docs/audits/sbom/license-index.json",
             "docs/audits/sbom/license-overlay.json",
             "docs/audits/sbom/license-policy.json",
+            "packages/core/NOTICE",
             "scripts/audit-licenses.mjs",
             "scripts/audit-licenses.test.mjs"
           ]
@@ -27252,7 +27266,7 @@
             {
               "from": "scripts/docs-link-integrity.test.mjs",
               "kind": "reference",
-              "line": 14
+              "line": 16
             },
             {
               "from": "scripts/evidence-lifecycle.test.mjs",
@@ -27262,12 +27276,12 @@
             {
               "from": "scripts/protected-paths.test.mjs",
               "kind": "reference",
-              "line": 27
+              "line": 31
             },
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 134
+              "line": 146
             },
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
@@ -27517,7 +27531,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f739f7c7b76d2ec5b6852a1dfda2baafbaeb85fa9fc158df95aa1f2eaedf3b08",
+      "evidenceSha256": "de10573f42f7c6b135e9ea30926be3d0526bd5d9b7aa22ae12e7b43625fa1734",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -30556,7 +30570,7 @@
             {
               "from": "docs/audits/sbom/licence-resolution.json",
               "kind": "reference",
-              "line": 1696
+              "line": 1371
             },
             {
               "from": "docs/audits/sbom/licence-resolution.md",
@@ -30641,7 +30655,7 @@
             {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
-              "line": 683
+              "line": 696
             }
           ],
           "reversePaths": [
@@ -30747,12 +30761,12 @@
             {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
-              "line": 683
+              "line": 696
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 554
+              "line": 570
             }
           ],
           "reversePaths": [
@@ -30777,7 +30791,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e2c4aad87f5456ebc58a20422e7f56416c29cbef5255587261dd179a2ec20cce",
+      "evidenceSha256": "877290daba1bf08893b55434d2f62d2898b2be24e1c5da0d7d2703cff94014fc",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -31908,7 +31922,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 553
+              "line": 569
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32133,7 +32147,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "554623f99a8fe9eed3b7abe1a492c50a5d76c985dbc537ab2c6fe4ad273483d7",
+      "evidenceSha256": "85a1f9ddb10d3c9bb5b93e93281b4e5c34288333154c76930cc09434d73a0ddb",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -33760,7 +33774,7 @@
             {
               "from": "scripts/root-entry-manifest.test.mjs",
               "kind": "reference",
-              "line": 146
+              "line": 158
             },
             {
               "from": "scripts/route-capability-parity.test.mjs",
@@ -34192,7 +34206,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "49f15c5460ed1ecaca0ebaf624babaf51164c20d2b9b39756a69a32a76e2b622",
+      "evidenceSha256": "f6a9c24945778a2137c2fd358cbbd7394947c018ed3ed4ea0889976a8afac1ed",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -52841,14 +52855,19 @@
               "line": 186
             },
             {
+              "from": "docs/audits/sbom/closure-contract.md",
+              "kind": "reference",
+              "line": 220
+            },
+            {
               "from": "docs/audits/sbom/licence-resolution.json",
               "kind": "reference",
-              "line": 1662
+              "line": 11
             },
             {
               "from": "docs/audits/sbom/licence-resolution.md",
               "kind": "reference",
-              "line": 24
+              "line": 33
             },
             {
               "from": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
@@ -52902,6 +52921,10 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/sbom/closure-contract.md",
+              "docs/audits/sbom/closure-contract.md"
+            ],
+            [
               "docs/audits/sbom/licence-resolution.json",
               "docs/audits/sbom/licence-resolution.json"
             ],
@@ -52937,6 +52960,7 @@
             "docs/ai-sdk-v7-upgrade-plan.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/sbom/closure-contract.md",
             "docs/audits/sbom/licence-resolution.json",
             "docs/audits/sbom/licence-resolution.md",
             "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
@@ -52981,10 +53005,15 @@
             {
               "from": "NOTICE",
               "kind": "reference",
-              "line": 15
+              "line": 21
             },
             {
               "from": "packages/core/LICENSE",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/core/NOTICE",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -52996,7 +53025,7 @@
             {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
-              "line": 820
+              "line": 833
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -53014,6 +53043,10 @@
               "packages/core/LICENSE"
             ],
             [
+              "packages/core/NOTICE",
+              "packages/core/NOTICE"
+            ],
+            [
               "packages/core/package.json",
               "packages/core/package.json"
             ],
@@ -53029,6 +53062,7 @@
           "roots": [
             "NOTICE",
             "packages/core/LICENSE",
+            "packages/core/NOTICE",
             "packages/core/package.json",
             "scripts/audit-licenses.test.mjs",
             "scripts/license-distribution.test.mjs"
@@ -53997,7 +54031,7 @@
             {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
-              "line": 820
+              "line": 833
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -54013,6 +54047,11 @@
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
               "line": 150
+            },
+            {
+              "from": "scripts/vocabulary-boundary.test.mjs",
+              "kind": "reference",
+              "line": 605
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -54222,6 +54261,10 @@
               "scripts/vendored-build-audit.test.mjs"
             ],
             [
+              "scripts/vocabulary-boundary.test.mjs",
+              "scripts/vocabulary-boundary.test.mjs"
+            ],
+            [
               "scripts/workspace-reachability.test.mjs",
               "scripts/workspace-reachability.test.mjs"
             ]
@@ -54277,6 +54320,7 @@
             "scripts/license-distribution.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vendored-build-audit.test.mjs",
+            "scripts/vocabulary-boundary.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
         }
@@ -54287,8 +54331,8 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "119191e24ee6ec759beeaacec5e8eedaa95ea39ecfcbb0346b93f8c2ba389e86",
-      "manifestSha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
+      "evidenceSha256": "9f947e163cbdcf06cb83fd6d67c8778950b77d3fdd47112df051cc3cba90c780",
+      "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
         "reachable": false,

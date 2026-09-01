@@ -1,6 +1,6 @@
 # WIN-252 licence provenance resolution gate
 
-**Status: OPEN — HUMAN/LEGAL DECISION REQUIRED**
+**Status: DECIDED BY OWNER — 2026-09-01**
 
 The canonical, machine-readable, offline provenance record is
 [`licence-resolution.json`](./licence-resolution.json). Its strict versioned receipt contains the
@@ -25,8 +25,38 @@ The current public `@platos/core` manifest and package `LICENSE` are Apache-2.0.
 non-shipping `@platos/otlp-importer` retains inherited MIT metadata and exact MIT bytes. These are
 provenance and shipping-closure facts, not a legal conclusion.
 
-An authorized human/legal reviewer must decide whether the imported core MIT copyright and permission
-notice must be retained alongside current Apache-2.0 materials, what notice/licence/metadata treatment
-that requires, and whether the private non-shipping OTLP importer needs treatment beyond preserving its
-current inherited MIT files. Until then, automation must not declare the package MIT metadata erroneous,
-classify it as rename residue, close the legal item, or infer an answer from the root Apache-2.0 licence.
+## Owner decision — 2026-09-01
+
+The repository owner has decided, and the decision is applied:
+
+**Platos continues to distribute `@platos/core` under Apache-2.0, and the upstream MIT copyright and
+permission notice is additionally retained verbatim in `packages/core/NOTICE`** under an explicit
+`UPSTREAM ATTRIBUTION` heading. `NOTICE` is listed in the package's `files`, so it ships in the
+published tarball.
+
+The two halves are not in tension. MIT grants the right to sublicense, so the Apache-2.0 election for
+the derivative stands on its own merits and is unchanged. Retaining the upstream notice independently
+satisfies MIT's requirement that the copyright *and permission* notice accompany copies and substantial
+portions. Doing both means the question does not have to be adjudicated in the abstract — it is moot
+under either reading — and it costs nothing.
+
+**Why `NOTICE` and not `LICENSE`.** Every publishable first-party package must ship a `LICENSE` that is
+byte-identical to the repository Apache-2.0 text; `license-distribution` enforces this, and it is the
+reason the package licence was normalised to Apache-2.0 in the first place. Appending to `LICENSE` would
+have broken that invariant. `NOTICE` is the Apache-2.0 §4(d) mechanism for exactly this purpose, is
+already part of the repository's legal-distribution contract (`LEGAL_FILES = ["LICENSE", "NOTICE"]`), and
+is verified into every shipped image. So the attribution is satisfied with **no** relaxation of any
+existing guard.
+
+The retained notice text was **extracted verbatim** from the offline-verifiable published artifact
+[`trigger-dev-core-4.4.4.tgz`](./provenance/trigger-dev-core-4.4.4.tgz) (member `package/LICENSE`,
+tarball sha1 `9544b5ded8dd8deb2371081389961792bccfde4e`), not transcribed. The notice states explicitly
+that it applies to the upstream-derived portions and does not alter the Apache-2.0 grant.
+
+**`@platos/otlp-importer`: no change.** It is private, retains inherited upstream MIT metadata and exact
+MIT bytes, and is absent from every recorded shipping SBOM. No attribution gap arises from a package
+that is not distributed.
+
+This is the owner's applied decision and the record of the facts supporting it. It is not legal advice.
+The machine-readable form is `legalDecision` in
+[`licence-resolution.json`](./licence-resolution.json) (`status: DECIDED_BY_OWNER`, `decided: true`).

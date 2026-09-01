@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -8,6 +9,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -92,6 +94,28 @@ function hasError(errors, fragment) {
   assert.ok(errors.some((error) => error.includes(fragment)), `expected an error containing ${JSON.stringify(fragment)}\n${errors.join("\n")}`);
 }
 
+// Probe the real filesystem rather than branching on process.platform: a
+// case-insensitive volume (APFS/HFS+ by default) resolves "Guide" to an existing
+// "guide", so a wrong-case reference cannot be made to fail and the negative
+// control is not constructible. Linux ext4/xfs are case-sensitive, so on CI these
+// assertions run at full strength. Detection is by observation, so a
+// case-sensitive macOS volume also runs them.
+const CASE_SENSITIVE_FS = (() => {
+  const probe = mkdtempSync(join(tmpdir(), "platos-case-probe-"));
+  try {
+    writeFileSync(join(probe, "casecheck"), "");
+    return !existsSync(join(probe, "CASECHECK"));
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+})();
+
+// Only for assertions whose fixture differs from a real file by case alone.
+function hasCaseError(errors, fragment) {
+  if (!CASE_SENSITIVE_FS) return;
+  hasError(errors, fragment);
+}
+
 test("the live corpora are enumerated with exact non-vacuous counts", () => {
   const result = validateDocsLinkIntegrity(repositoryRoot, { minimums: false });
   assert.deepEqual(result.stats, {
@@ -102,7 +126,10 @@ test("the live corpora are enumerated with exact non-vacuous counts", () => {
     moduleImports: 186,
     snippetImports: 186,
     rootAssets: 95,
-    relativeLinks: 69,
+    // 69 -> 71: the WIN-252 owner-decision section in
+    // docs/audits/sbom/licence-resolution.md adds two relative links -- the
+    // verified upstream provenance tarball and the machine-readable receipt.
+    relativeLinks: 71,
     anchorReferences: 207,
     contentInternalLinks: 207,
     designSourceFiles: 51,
@@ -195,7 +222,7 @@ test("navigation leaves are canonical, exact-case, non-traversing page routes", 
     config.navigation.dropdowns[0].groups[0].pages = ["Guide", "guide?draft=1", "%2e%2e/secret"];
     writeFileSync(configPath, `${JSON.stringify(config)}\n`);
     const errors = errorsFor(root);
-    hasError(errors, 'missing case-sensitive target "Guide"');
+    hasCaseError(errors, 'missing case-sensitive target "Guide"');
     hasError(errors, "navigation leaf must be a canonical extensionless route");
     hasError(errors, "unsafe encoded or traversing navigation leaf");
   });
@@ -223,8 +250,8 @@ test("relative Markdown links and anchors reject case errors, traversal, and mal
       `# Home\n\n[Wrong case](./Guide.mdx)\n[Wrong anchor](./guide.mdx?tab=one#Target)\n[Traversal](%2e%2e/%2e%2e/secret.md)\n[Malformed](./guide%ZZ.mdx)\n`,
     );
     const errors = errorsFor(root);
-    hasError(errors, 'missing case-sensitive target "./Guide.mdx"');
-    hasError(errors, "missing case-sensitive anchor #Target");
+    hasCaseError(errors, 'missing case-sensitive target "./Guide.mdx"');
+    hasCaseError(errors, "missing case-sensitive anchor #Target");
     hasError(errors, "path traversal escapes");
     hasError(errors, "malformed URL encoding");
   });

@@ -48,7 +48,7 @@ and the removed legacy UI/AI dependency graph no longer enter the runtime closur
 
 ## 2. Licence resolution (M0.5 deliverable #3)
 
-### 2.1 Root Apache-2.0 and package-level MIT provenance — HUMAN/LEGAL DECISION OPEN
+### 2.1 Root Apache-2.0 and package-level MIT provenance — HUMAN/LEGAL DECISION RESOLVED
 
 The root Apache-2.0 and package-level MIT facts remain distinct. The canonical offline evidence is
 [`licence-resolution.json`](./licence-resolution.json), with a concise human summary in
@@ -217,7 +217,7 @@ recorded but an authorized human/legal decision is still required before that it
 | 1 | No advisory scan had been run | **CLOSED** | `audit:advisory` scans both closures against OSV; receipt retained; all 8 named items adjudicated (§4). |
 | 2 | `cookie` override missing | **STAGED** | Add `overrides['cookie']='>=0.7.2'` + session round-trip test; relock required. Routed to `auth-crypto` group. Owner: webapp/auth. |
 | 3 | `breakword` GPL-2.0 | **CLOSED** | Root release tooling is excluded from the filtered production install; no waiver remains. |
-| 4 | Root Apache vs package MIT provenance | **LEGAL GATE** | Decide whether the imported package MIT permission notice must be retained alongside current Apache-2.0 materials; see §2.1 and `licence-resolution.json`. |
+| 4 | Root Apache vs package MIT provenance | **LEGAL GATE — CLOSED 2026-09-01** | Owner decided: Apache-2.0 distribution retained, and the upstream MIT notice retained verbatim in `packages/core/LICENSE` under an UPSTREAM ATTRIBUTION heading. Satisfies MIT §1 under either reading. See §2.1 and `licence-resolution.json`. |
 | 5 | `@platos` npm scope ownership | **DECISION** | Founder must confirm/claim the scope or treat squatting as live risk. Cannot be resolved from the repo. |
 | 6 | inherited ClickHouse parser/replication cluster | **CLOSED** | WIN-253 removed the unreachable npm packages and parser patch after executable multi-channel proof. `internal-packages/clickhouse/schema/` remains shipping content and is hash-protected by the cluster audit. |
 | 7 | `@fingerprintjs/fingerprintjs-pro` commercial | **CLOSED** | Removed unused `@kapaai/react-sdk`; the proprietary transitive SDK is absent from the shipping closure. |

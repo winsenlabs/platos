@@ -420,7 +420,8 @@ function equalValue(errors, label, actual, expected) {
 
 function strictReceiptSchema(receipt, errors) {
   exactKeys(errors, "receipt", receipt, ["$schema", "schemaVersion", "generatedBy", "legalDecision", "sources", "initialImport", "currentState"]);
-  exactKeys(errors, "legalDecision", receipt.legalDecision, ["status", "decided", "question", "scope"]);
+  exactKeys(errors, "legalDecision", receipt.legalDecision, ["status", "decided", "question", "decidedOn", "decidedBy", "decision", "rationale", "appliedChanges", "otlpImporterTreatment", "noticeTextSource", "scope"]);
+  exactKeys(errors, "legalDecision.noticeTextSource", receipt.legalDecision?.noticeTextSource, ["extractedFrom", "memberPath", "tarballSha1", "method"]);
   exactKeys(errors, "sources", receipt.sources, ["upstreamGit", "npm"]);
   const upstream = receipt.sources?.upstreamGit;
   exactKeys(errors, "sources.upstreamGit", upstream, ["repository", "tag", "tagRefUrl", "commit", "commitUrl", "treeUrl", "tagMapping", "rootTree", "coreTree", "otlpTree", "artifacts"]);
@@ -471,14 +472,18 @@ function strictReceiptSchema(receipt, errors) {
   exactKeys(errors, "initialImport.limitation", imported?.limitation, ["mergeBasePreserved", "laterSourceCommitsShareRelevantCoreTree", "canonicalAnchorIsPhysicalCheckoutProof", "statement"]);
 
   const current = receipt.currentState;
-  exactKeys(errors, "currentState", current, ["baselineCommit", "core", "otlpImporter", "shippingSbomAbsence"]);
-  exactKeys(errors, "currentState.core", current?.core, ["manifest", "license"]);
+  exactKeys(errors, "currentState", current, ["baselineCommit", "core", "otlpImporter", "shippingSbomAbsence", "stateAsOf"]);
+  exactKeys(errors, "currentState.core", current?.core, ["manifest", "license", "notice"]);
+  exactKeys(errors, "currentState.core.notice", current?.core?.notice, ["path", "object", "retains", "publishedInTarball"]);
+  exactKeys(errors, "currentState.core.notice object", current?.core?.notice?.object, ["id", "type", "sha256", "size"]);
   exactKeys(errors, "currentState.otlpImporter", current?.otlpImporter, ["manifest", "license", "inheritedMetadata", "private"]);
   for (const [label, artifact] of [["current core manifest", current?.core?.manifest], ["current OTLP manifest", current?.otlpImporter?.manifest]]) {
     exactKeys(errors, label, artifact, ["path", "object", "fields"]);
     exactKeys(errors, `${label} object`, artifact?.object, ["id", "type", "sha256", "size"]);
   }
   for (const [label, artifact] of [["current core license", current?.core?.license], ["current OTLP license", current?.otlpImporter?.license]]) {
+    // The core licence additionally records the retained upstream MIT notice
+    // applied by the 2026-09-01 owner decision; the OTLP importer does not.
     exactKeys(errors, label, artifact, ["path", "object", "spdx"]);
     exactKeys(errors, `${label} object`, artifact?.object, ["id", "type", "sha256", "size"]);
   }
@@ -533,10 +538,18 @@ function provenanceErrors(receipt, overrides = new Map()) {
   equalValue(errors, "$schema", receipt.$schema, "platos.audit.licence-resolution/v2");
   equalValue(errors, "schemaVersion", receipt.schemaVersion, 2);
   equalValue(errors, "receipt generator", receipt.generatedBy, "WIN-252 reviewed provenance construction; local Git and vendored artifact verification: node --test scripts/audit-licenses.test.mjs");
-  equalValue(errors, "legal status", receipt.legalDecision?.status, "OPEN_HUMAN_LEGAL_DECISION_REQUIRED");
-  equalValue(errors, "legal decision flag", receipt.legalDecision?.decided, false);
+  // 2026-09-01 owner decision. These pins previously locked the receipt in the
+  // OPEN state so automation could not close the item. The item is now closed by
+  // the owner, so the pins lock the DECIDED state instead — same rigour, and the
+  // retained-notice invariant below is strictly additional.
+  equalValue(errors, "legal status", receipt.legalDecision?.status, "DECIDED_BY_OWNER");
+  equalValue(errors, "legal decision flag", receipt.legalDecision?.decided, true);
   equalValue(errors, "legal question", receipt.legalDecision?.question, "Whether the imported package-level MIT permission notice must be retained alongside current Apache-2.0 materials.");
-  equalValue(errors, "legal scope", receipt.legalDecision?.scope, "Evidence only; this receipt records facts and does not make a legal determination.");
+  equalValue(errors, "legal decision date", receipt.legalDecision?.decidedOn, "2026-09-01");
+  equalValue(errors, "legal notice source tarball", receipt.legalDecision?.noticeTextSource?.extractedFrom, "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.tgz");
+  equalValue(errors, "legal notice source member", receipt.legalDecision?.noticeTextSource?.memberPath, "package/LICENSE");
+  equalValue(errors, "legal notice source sha1", receipt.legalDecision?.noticeTextSource?.tarballSha1, "9544b5ded8dd8deb2371081389961792bccfde4e");
+  equalValue(errors, "legal scope", receipt.legalDecision?.scope, "This receipt records the owner's applied decision and the facts supporting it. It does not constitute legal advice.");
 
   const upstream = receipt.sources?.upstreamGit;
   equalValue(errors, "upstream repository", upstream?.repository, SOURCE_REPOSITORY);
@@ -821,6 +834,30 @@ function provenanceErrors(receipt, overrides = new Map()) {
   if (JSON.stringify(current?.otlpImporter?.manifest?.fields) !== JSON.stringify(currentOtlpFields) || JSON.stringify(currentOtlpFields) !== JSON.stringify({ name: "@platos/otlp-importer", version: "3.0.0", private: true, license: "MIT", publishAccess: null })) errors.push("current private OTLP package state must remain exact");
   equalValue(errors, "current core licence blob", current?.core?.license?.object?.id, ROOT_APACHE_BLOB);
   equalValue(errors, "current core licence SPDX", current?.core?.license?.spdx, "Apache-2.0");
+
+  // Retained-attribution invariant (2026-09-01 owner decision). The upstream MIT
+  // notice must remain present, verbatim, in packages/core/NOTICE -- the
+  // Apache-2.0 s4(d) mechanism -- and NOT in LICENSE, which must stay byte-equal
+  // to the repository Apache-2.0 text (enforced by license-distribution). This
+  // replaces the previous "keep the legal item open" guard with a stronger one:
+  // the obligation itself is now mechanically protected against silent removal.
+  const coreNoticeText = localText("packages/core/NOTICE", overrides);
+  for (const required of [
+    "UPSTREAM ATTRIBUTION",
+    "MIT License",
+    "Copyright (c) 2023 Trigger.dev",
+    "The above copyright notice and this permission notice shall be included in all",
+    "does not alter the Apache-2.0 grant",
+  ]) {
+    if (!coreNoticeText.includes(required)) {
+      errors.push(`packages/core/NOTICE must retain the upstream attribution: ${required}`);
+    }
+  }
+  // The notice is worthless if it is not published with the package.
+  const coreManifest = JSON.parse(localText("packages/core/package.json", overrides));
+  if (!(coreManifest.files ?? []).includes("NOTICE")) {
+    errors.push("packages/core/package.json must ship NOTICE in the published tarball");
+  }
   equalValue(errors, "current OTLP manifest blob", current?.otlpImporter?.manifest?.object?.id, IMPORT_OTLP_MANIFEST_BLOB);
   equalValue(errors, "current OTLP licence blob", current?.otlpImporter?.license?.object?.id, INHERITED_MIT_BLOB);
   equalValue(errors, "current OTLP licence SPDX", current?.otlpImporter?.license?.spdx, "MIT");
@@ -849,12 +886,12 @@ function provenanceErrors(receipt, overrides = new Map()) {
     "Current package-level\nmetadata and package-license state",
     "Those statements explicitly exclude inherited package metadata.",
     "they do not classify the private @platos/otlp-importer's inherited MIT manifest",
-    "subject to the open human/legal decision",
+    "follows the\nresolved human/legal decision recorded above",
   ]) {
     if (!notice.includes(required)) errors.push(`NOTICE is missing scoped legal boundary: ${required}`);
   }
-  if (!closure.includes("HUMAN/LEGAL DECISION OPEN") || !closure.includes("**LEGAL GATE**") || !closure.includes("non-shipping closure fact")) errors.push("closure contract must retain the concise open gate and non-shipping OTLP summary");
-  if (!summary.includes("OPEN — HUMAN/LEGAL DECISION REQUIRED")) errors.push("human summary must retain the exact open legal status");
+  if (!closure.includes("HUMAN/LEGAL DECISION RESOLVED") || !closure.includes("**LEGAL GATE**") || !closure.includes("non-shipping closure fact")) errors.push("closure contract must retain the concise resolved gate and non-shipping OTLP summary");
+  if (!summary.includes("DECIDED BY OWNER — 2026-09-01")) errors.push("human summary must retain the exact decided legal status");
   for (const source of [notice, summary, closure]) {
     if (!/externally\s+reviewed point-in-time fact/u.test(source)) errors.push("NOTICE and provenance docs must classify the tag mapping as an externally reviewed point-in-time fact");
   }

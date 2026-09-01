@@ -3,10 +3,28 @@
   "schemaVersion": 2,
   "generatedBy": "WIN-252 reviewed provenance construction; local Git and vendored artifact verification: node --test scripts/audit-licenses.test.mjs",
   "legalDecision": {
-    "status": "OPEN_HUMAN_LEGAL_DECISION_REQUIRED",
-    "decided": false,
+    "status": "DECIDED_BY_OWNER",
+    "decided": true,
     "question": "Whether the imported package-level MIT permission notice must be retained alongside current Apache-2.0 materials.",
-    "scope": "Evidence only; this receipt records facts and does not make a legal determination."
+    "decidedOn": "2026-09-01",
+    "decidedBy": "Repository owner (Winsen Labs). Recorded by an agent at the owner's explicit direction; not an automated determination.",
+    "decision": "Platos continues to distribute @platos/core under Apache-2.0. packages/core/LICENSE stays byte-identical to the repository Apache-2.0 text, and the upstream MIT copyright and permission notice is retained verbatim in packages/core/NOTICE (the Apache-2.0 s4(d) notice mechanism), which is published in the package tarball.",
+    "rationale": "MIT grants the right to sublicense, so Apache-2.0 redistribution of the derivative stands on its own. Retaining the upstream notice satisfies MIT's requirement that the copyright and permission notice accompany copies and substantial portions. Placing it in NOTICE rather than LICENSE keeps every publishable package's LICENSE byte-identical to the repository Apache-2.0 text, which is an existing enforced invariant, and uses the Apache-2.0 s4(d) mechanism as intended. Doing both makes the question moot under either reading at no cost to the Apache-2.0 election.",
+    "appliedChanges": [
+      "packages/core/NOTICE - new file carrying the upstream MIT notice verbatim, extracted from the verified provenance tarball.",
+      "packages/core/package.json - NOTICE added to files so the notice ships in the published tarball.",
+      "packages/core/LICENSE - unchanged; byte-identical to the repository Apache-2.0 LICENSE as license-distribution requires.",
+      "NOTICE - records the owner decision and points at this receipt.",
+      "docs/audits/sbom/licence-resolution.md - status updated from OPEN to DECIDED with the same rationale."
+    ],
+    "otlpImporterTreatment": "No change. @platos/otlp-importer is private, carries inherited upstream MIT metadata and bytes, and is absent from every recorded shipping SBOM. Its inherited MIT files are preserved as-is; no attribution gap arises because it is not distributed.",
+    "noticeTextSource": {
+      "extractedFrom": "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.tgz",
+      "memberPath": "package/LICENSE",
+      "tarballSha1": "9544b5ded8dd8deb2371081389961792bccfde4e",
+      "method": "Verbatim extraction from the offline-verifiable published artifact; not transcribed."
+    },
+    "scope": "This receipt records the owner's applied decision and the facts supporting it. It does not constitute legal advice."
   },
   "sources": {
     "upstreamGit": {
@@ -1804,10 +1822,10 @@
       "manifest": {
         "path": "packages/core/package.json",
         "object": {
-          "id": "83756089298811b41df97554b7b8a1666526e4f8",
+          "id": "0408ac0ee4344725e6d761d45f927940f6f1cedb",
           "type": "blob",
-          "sha256": "f33edf34821f9a0f08229221094708c79ab0d84646e53838e88f248281f6cd89",
-          "size": 18853
+          "sha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
+          "size": 18867
         },
         "fields": {
           "name": "@platos/core",
@@ -1826,6 +1844,17 @@
           "size": 10935
         },
         "spdx": "Apache-2.0"
+      },
+      "notice": {
+        "path": "packages/core/NOTICE",
+        "object": {
+          "id": "e7a1a763aab1b0452ddd131d7f77d210442ad05b",
+          "type": "blob",
+          "sha256": "edef5c15d25e0fcecc30564f6231559120edc92c8036b0a4ff5fb52f144ce498",
+          "size": 2093
+        },
+        "retains": "Upstream @trigger.dev/core MIT copyright and permission notice, verbatim, under an UPSTREAM ATTRIBUTION heading.",
+        "publishedInTarball": true
       }
     },
     "otlpImporter": {
@@ -1880,6 +1909,7 @@
         "packageName": "@platos/otlp-importer",
         "absent": true
       }
-    ]
+    ],
+    "stateAsOf": "Post-owner-decision 2026-09-01, applied on top of merged v1 477b4e8852c09dff916461bd2cd10aac2cc5f25d."
   }
 }
