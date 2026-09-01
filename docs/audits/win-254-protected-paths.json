@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "4efddd6c5e2aa139b82ab4337ccbe13a10f78631af087705f5ea1108daf7654a"
+      "sha256": "42eb0bef7141addf24ba6991daed441141a1de2e4f55500b99073231930c6a90"
     },
     {
       "path": "LICENSE",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "2ed4df6d173b771c7d37bfbcc4151a591c88409655db320ad2d12b93e2760216"
+      "sha256": "34e63a745a0ff4bf09987f77db55a190b1176140f28f622a3aebb0820ef45d94"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1023,12 +1023,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "503896bb462fe1e9ddee016428a18b670d8af191b6e7e0f5ac3c184396fdd4a7"
+      "sha256": "dcd22b57d76b227cec6830a6fb17002bf832ec5ef16aed7934f70d9d903019ce"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "ab28e0787c27401746ecbd4919bd51f7f566d53811417e4855f6eae1fe02a771"
+      "sha256": "0b46e6acf52cf1970dfb651de1d772c45735c61dd1fee5a9da72ef1019c28fcb"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1043,7 +1043,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "ee322e694653ce87b3067f6d899fed236141edaaadef67e1536fdc63dd88b1a1"
+      "sha256": "34ed363b8a20a894bb76b4e5c0836e71ab5c9b7eb3911fc04ba44eb2b2532e9e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3448,7 +3448,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "78fee4329bfe68b9f9a9dcfc50421ea5b4fb72c9209787d0516abdf9dbbb6696"
+      "sha256": "8badf8ab37e61a7e81711eb63eab8a75c9d935be67eb54c599930b05d8d1cf71"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3618,7 +3618,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
+      "sha256": "a8161e11b0caf93903422989c0004b6068c43714819f47aa17fffc717f5be0cb"
     },
     {
       "path": "pnpm-lock.yaml",

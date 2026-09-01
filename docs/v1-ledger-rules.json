@@ -2012,7 +2012,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 3489,
+    "totalFiles": 3700,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 11,
@@ -2020,8 +2020,8 @@
       "apps-webapp": 183,
       "docs-content": 729,
       "internal-packages": 1164,
-      "packages": 638,
-      "root-infra": 246
+      "packages": 844,
+      "root-infra": 251
     },
     "kindCounts": {
       "asset": 155,
@@ -2032,14 +2032,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1071,
-      "test": 439
+      "source": 1215,
+      "test": 506
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1575,
+      "move-refactor": 1580,
       "regenerate": 36,
-      "retain": 1869,
+      "retain": 2075,
       "unresolved": 2
     },
     "protectedCount": 1623,
@@ -2129,12 +2129,14 @@
       "packages.config.build": 28,
       "packages.contexts.config": 34,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 68,
+      "packages.contexts.source": 193,
+      "packages.contexts.test": 64,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,
       "packages.kernel.doc": 1,
-      "packages.kernel.source": 3,
+      "packages.kernel.source": 17,
+      "packages.kernel.test": 3,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
       "packages.python.sources": 36,
@@ -2166,9 +2168,9 @@
       "root-infra.test.harness": 54,
       "root-infra.test.script-suites": 28,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 62,
+      "root-infra.tooling.scripts": 67,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "5f07121a4a93d61b6717059852a68e8292663d436ae26d0f6fef97745ccc0349"
+    "classificationSha256": "9ca31d5a87dc7ad47e311d57805ade6045f69804a09290501f616a278e56b98f"
   }
 }
