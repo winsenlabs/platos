@@ -2,10 +2,27 @@
 // Generates the ADR M0.3 §4 V1 package skeleton and its complete TypeScript
 // project graph.
 //
-// This generator owns every manifest, project tsconfig and declaration-only
-// placeholder under the V1 roots, plus the root solution tsconfig. `--check`
-// byte-compares all owned source/config files and rejects missing, stale or
-// unexpected files. Build outputs are deliberately excluded from ownership.
+// OWNERSHIP IS TWO-TIER (WIN-256).
+//
+//   Scaffolding — every project's package.json, tsconfig.json and README.md,
+//   plus the root solution tsconfig. This tier is the ADR §1 context DAG made
+//   executable: 32 projects, 94 project edges. It is generated and byte-compared
+//   for the life of the V1 layout and is NEVER released.
+//
+//   Source — the declaration-only placeholder .ts files. This tier is generated
+//   only until a project's source tree is ADOPTED by real implementation code.
+//
+// Until M2 there was one tier and the generator owned every file under the V1
+// roots, so `--check` reported any newly added source file as EXTRA. That is
+// correct for a skeleton and unworkable for real code: it made adding a single
+// domain file a CI failure. Adoption is the seam. It is explicit, reviewed and
+// monotonic — un-adopting a project that still holds real files fails closed,
+// because its placeholders reappear MISSING and its real files become EXTRA.
+//
+// Adopting a project releases ONLY its source tree. Its three scaffolding files
+// stay byte-compared, it keeps its place in the 32/94 graph, and every rule in
+// scripts/arch/boundary-rules.mjs continues to police the real code that lands
+// there.
 //
 //   node scripts/arch/gen-v1-skeleton.mjs            # write generated files
 //   node scripts/arch/gen-v1-skeleton.mjs --check    # fail on generated drift
@@ -47,7 +64,70 @@ export const OWNED_ROOTS = ["packages/kernel", "packages/contexts", "packages/ad
 export const ROOT_SOLUTION_PATH = "tsconfig.json";
 export const EXPECTED_PROJECT_COUNT = 32;
 export const EXPECTED_EDGE_COUNT = 94;
-export const EXPECTED_GENERATED_FILE_COUNT = 201;
+
+// The three per-project files that make up the SCAFFOLDING tier. Adoption never
+// releases these: a project's manifest, its tsconfig (which carries the project
+// references that ARE the 94-edge DAG) and its README stay generated forever.
+export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.md"];
+
+// Scaffolding is invariant for the life of the V1 layout:
+// 32 projects x 3 files + the root solution tsconfig.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 97;
+
+// Declaration-only source placeholders in a fully unadopted skeleton:
+// kernel 3 + contexts 17x4 + adapters 12x2 + core-api 8 + mcp-stdio 1.
+// This is the same 104-file set the architecture gate scans.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
+
+// ---------------------------------------------------------------------------
+// ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
+// the issue that adopted it.
+//
+// Adopting a project means: real implementation code now owns its source tree.
+// The generator stops emitting that project's source placeholders and `--check`
+// stops reporting files under its source tree as EXTRA. Its scaffolding is still
+// byte-compared, and boundary-rules.mjs still polices every file that lands there.
+//
+// DO NOT REMOVE AN ENTRY to make a failure go away. Un-adopting a project whose
+// real files are still on disk fails closed by construction (MISSING placeholders
+// + EXTRA real files), and `gen-v1-skeleton.test.mjs` asserts exactly that.
+// ---------------------------------------------------------------------------
+export const ADOPTED_PROJECTS = [];
+
+// Every entry point below takes an optional `adopted` override so the adoption
+// path itself is exercisable. Production callers pass nothing and get
+// ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
+function adoptedSet(adopted = ADOPTED_PROJECTS) {
+  return adopted instanceof Set ? adopted : new Set(adopted);
+}
+
+/** The project path that owns `path`, or null when no V1 project does. */
+export function owningProject(path) {
+  for (const project of projectPaths()) {
+    if (path === project || path.startsWith(`${project}/`)) return project;
+  }
+  return null;
+}
+
+/** True when `path` is one of a project's three scaffolding files. */
+export function isScaffoldingPath(path) {
+  const project = owningProject(path);
+  if (!project) return path === ROOT_SOLUTION_PATH;
+  return SCAFFOLDING_BASENAMES.includes(path.slice(project.length + 1));
+}
+
+/** True when `path` sits in the released source tree of an adopted project. */
+export function isAdoptedSourcePath(path, adopted) {
+  const project = owningProject(path);
+  if (!project || !adoptedSet(adopted).has(project)) return false;
+  return !isScaffoldingPath(path);
+}
+
+/** Split a rendered file map into its two ownership tiers. */
+export function tierCounts(files) {
+  const scaffolding = [...files.keys()].filter((path) => isScaffoldingPath(path)).length;
+  return { scaffolding, placeholders: files.size - scaffolding, total: files.size };
+}
 
 const HEADER = "// PLACEHOLDER — generated by scripts/arch/gen-v1-skeleton.mjs. Do not edit by hand.\n";
 const BUILD_SCRIPTS = { build: "tsc -b", clean: "tsc -b --clean" };
@@ -215,11 +295,14 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton() {
+export function renderSkeleton(adopted) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
     if (files.has(path)) throw new Error(`duplicate emitted path ${path}`);
+    // An adopted project's source tree belongs to real implementation code.
+    // Its scaffolding still flows through unchanged.
+    if (isAdoptedSourcePath(path, adopted)) return;
     files.set(path, text);
   };
 
@@ -377,7 +460,7 @@ export function renderSkeleton() {
   return files;
 }
 
-export function selfCheck() {
+export function selfCheck(adopted = ADOPTED_PROJECTS) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -403,14 +486,39 @@ export function selfCheck() {
       errors.push(`${adapter.dir} assigns ${adapter.port} to unknown owner ${adapter.owner}`);
     }
   }
+
+  // The adoption registry may name only real V1 projects, and may name each once.
+  const knownProjects = new Set(projectPaths());
+  const seenAdoptions = new Set();
+  for (const project of adopted) {
+    if (!knownProjects.has(project)) errors.push(`ADOPTED_PROJECTS names ${project}, which is not a V1 project`);
+    if (seenAdoptions.has(project)) errors.push(`ADOPTED_PROJECTS names ${project} more than once`);
+    seenAdoptions.add(project);
+  }
+
+  // The two tiers must still account for the whole skeleton. Scaffolding is
+  // invariant; placeholders shrink by exactly what adoption released.
+  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted));
+  if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
+    errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
+  }
+  if (placeholders > EXPECTED_PLACEHOLDER_FILE_COUNT) {
+    errors.push(`placeholder file count is ${placeholders}, which exceeds the unadopted maximum ${EXPECTED_PLACEHOLDER_FILE_COUNT}`);
+  }
   return errors;
 }
+
+// Build output, never source. `.turbo` joins `dist` and `node_modules` here:
+// all three are gitignored artifacts, and without `.turbo` a plain
+// `turbo run build` leaves a turbo-build.log in every project and `--check`
+// reports 30 phantom EXTRA files (WIN-256 finding; pre-existing since M1).
+const ARTIFACT_DIRECTORIES = ["dist", "node_modules", ".turbo"];
 
 export function listExistingOwnedFiles(root) {
   const found = [];
   const walk = (absolute) => {
     for (const entry of readdirSync(absolute, { withFileTypes: true })) {
-      if (entry.isDirectory() && ["dist", "node_modules"].includes(entry.name)) continue;
+      if (entry.isDirectory() && ARTIFACT_DIRECTORIES.includes(entry.name)) continue;
       const child = join(absolute, entry.name);
       if (entry.isDirectory()) walk(child);
       else if (!entry.name.endsWith(".tsbuildinfo")) found.push(relative(root, child).split("\\").join("/"));
@@ -424,20 +532,23 @@ export function listExistingOwnedFiles(root) {
   return found.sort();
 }
 
-export function checkSkeleton(root = repositoryRoot) {
+export function checkSkeleton(root = repositoryRoot, adopted) {
   const problems = [];
-  const files = renderSkeleton();
+  const files = renderSkeleton(adopted);
   for (const [path, text] of files) {
     const absolute = join(root, path);
     if (!existsSync(absolute)) problems.push(`MISSING ${path}`);
     else if (readFileSync(absolute, "utf8") !== text) problems.push(`STALE   ${path}`);
   }
-  for (const path of listExistingOwnedFiles(root)) if (!files.has(path)) problems.push(`EXTRA   ${path}`);
+  for (const path of listExistingOwnedFiles(root)) {
+    if (files.has(path) || isAdoptedSourcePath(path, adopted)) continue;
+    problems.push(`EXTRA   ${path}`);
+  }
   return problems;
 }
 
-export function writeSkeleton(root = repositoryRoot) {
-  const files = renderSkeleton();
+export function writeSkeleton(root = repositoryRoot, adopted) {
+  const files = renderSkeleton(adopted);
   for (const [path, text] of files) {
     const absolute = join(root, path);
     mkdirSync(dirname(absolute), { recursive: true });
@@ -459,11 +570,11 @@ function main() {
   }
 
   const files = renderSkeleton();
-  if (files.size !== EXPECTED_GENERATED_FILE_COUNT) {
-    process.stderr.write(`FAIL generated file count is ${files.size}, expected ${EXPECTED_GENERATED_FILE_COUNT}\n`);
-    process.exitCode = 1;
-    return;
-  }
+  const { scaffolding, placeholders } = tierCounts(files);
+  const tiers =
+    `${scaffolding} scaffolding + ${placeholders} placeholder = ${files.size} generated file(s)` +
+    ` for ${EXPECTED_PROJECT_COUNT} V1 projects and ${EXPECTED_EDGE_COUNT} project edges` +
+    ` (${ADOPTED_PROJECTS.length} project(s) adopted, ${EXPECTED_PLACEHOLDER_FILE_COUNT - placeholders} placeholder(s) released)`;
 
   if (list) {
     for (const path of [...files.keys()].sort()) process.stdout.write(`${path}\n`);
@@ -478,16 +589,12 @@ function main() {
       process.exitCode = 1;
       return;
     }
-    process.stdout.write(
-      `ok: exactly ${files.size} generated file(s) define ${EXPECTED_PROJECT_COUNT} V1 projects and ${EXPECTED_EDGE_COUNT} project edges\n`
-    );
+    process.stdout.write(`ok: ${tiers}\n`);
     return;
   }
 
   writeSkeleton(root);
-  process.stdout.write(
-    `wrote exactly ${files.size} generated file(s) for ${EXPECTED_PROJECT_COUNT} V1 projects and ${EXPECTED_EDGE_COUNT} project edges\n`
-  );
+  process.stdout.write(`wrote ${tiers}\n`);
 }
 
 if (process.argv[1] && process.argv[1].endsWith("gen-v1-skeleton.mjs")) main();
