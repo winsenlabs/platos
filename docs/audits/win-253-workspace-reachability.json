@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ec84c38b28bf08df4c4a22dc57aa9d7d522d712b807a9bc28288f3f63b61a656",
+  "evidenceSha256": "74b6c2e378ec82ac0f279b2432abf8953c0f2c9107ad66754eaf9b66cbc629ca",
   "generatedOwnership": {
     "explicitHeaderFileCount": 95,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "102682459b2513ed194321883c510ab58243b37f66f626bdbccdb74f54e4ea64",
+    "aggregateSha256": "3597ceefb7c8ab4bd3e6b8f4e5d74e8b924e2d628ab294068e503fe3e1ebaa9f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -14661,7 +14661,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "d27f7cd5704c969b4f03895f6635bb7772f9e2d894ed40e03f50fa8e23ad622d"
+        "sha256": "292eaeb66362450743c06c8a5896e01ac82cf68e9757a0263821a0edd43ff01d"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -43542,6 +43542,11 @@
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 69
+            },
+            {
+              "from": "scripts/workspace-reachability.test.mjs",
+              "kind": "reference",
+              "line": 501
             }
           ],
           "reversePaths": [
@@ -43552,11 +43557,16 @@
             [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
+            ],
+            [
+              "scripts/workspace-reachability.test.mjs",
+              "scripts/workspace-reachability.test.mjs"
             ]
           ],
           "roots": [
             "scripts/arch/arch-boundaries.test.mjs",
-            "scripts/arch/v1-project-graph.test.mjs"
+            "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/workspace-reachability.test.mjs"
           ]
         }
       },
@@ -43615,7 +43625,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "d3081620129f4c96821642515ee0ac1b6b8912b087c5815ada24b3d7b3006bd9",
+      "evidenceSha256": "aa69fb9f182103de1a9ec981261636b11b3b4dda5a28736cc0ce187282fcc04f",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -58648,7 +58658,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 491
+              "line": 467
             }
           ],
           "reversePaths": [
@@ -59628,7 +59638,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "cae3cba9f0dafafc60de6db3ef5c9b792486578f5ea343cd20779b5b76e8d5fa",
+      "evidenceSha256": "23f5a0c4ee869f05418558465e3a6d0553608b7b7f8a45b108f2b874195c742d",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

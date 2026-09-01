@@ -1023,12 +1023,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "dcd22b57d76b227cec6830a6fb17002bf832ec5ef16aed7934f70d9d903019ce"
+      "sha256": "e6aeb559297e963b46e37cbc7514bde24a24e6700eb144f583b7448e29c8be4f"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0b46e6acf52cf1970dfb651de1d772c45735c61dd1fee5a9da72ef1019c28fcb"
+      "sha256": "d3d14fe7a66e413ac0c1049053eef9012e2e30504b3a57ea9419794b071a38b2"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -3913,7 +3913,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "d27f7cd5704c969b4f03895f6635bb7772f9e2d894ed40e03f50fa8e23ad622d"
+      "sha256": "292eaeb66362450743c06c8a5896e01ac82cf68e9757a0263821a0edd43ff01d"
     }
   ]
 }
