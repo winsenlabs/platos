@@ -94,7 +94,10 @@ export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
 // ---------------------------------------------------------------------------
 export const ADOPTED_PROJECTS = [
   "packages/kernel", // WIN-256 — the nine decoupling ports and the value objects
+  "packages/contexts/identity-access", // WIN-256 — the DAG leaf that kills the wrong-way auth edges
+  "packages/contexts/tenancy", // WIN-256 — the org/project/environment tree and its authorization
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
+  "packages/contexts/files", // WIN-256 — attachments + artifacts, and the ObjectStore port it owns
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption
