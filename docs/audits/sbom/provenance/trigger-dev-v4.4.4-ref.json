@@ -1,0 +1,11 @@
+{
+  "$schema": "platos.external-git-ref-observation/v1",
+  "classification": "EXTERNALLY_REVIEWED_POINT_IN_TIME_FACT",
+  "reviewedAt": "2026-08-31",
+  "offlineVerified": false,
+  "observationMethod": "git ls-remote --refs https://github.com/triggerdotdev/trigger.dev.git refs/tags/v4.4.4",
+  "mappingObservationSourceUrl": "https://github.com/triggerdotdev/trigger.dev.git",
+  "immutableCommitUrl": "https://github.com/triggerdotdev/trigger.dev/commit/5ea36e08f25728ff2a75a31dfd82f4fe9c981002",
+  "rawOutput": "5ea36e08f25728ff2a75a31dfd82f4fe9c981002\trefs/tags/v4.4.4\n",
+  "rawOutputSha256": "f94525b124849ea4a6a8d0cba72d809f8f977f032e5f5ca5b938d7ec76b51b02"
+}

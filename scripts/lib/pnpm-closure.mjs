@@ -61,6 +61,16 @@ function splitKV(body) {
   return [key, rest];
 }
 
+function mappingEntryKey(body, kind, lineNumber) {
+  let text = body.replace(/\s+$/, '');
+  if (text.endsWith(': {}')) text = text.slice(0, -4);
+  else if (text.endsWith(':')) text = text.slice(0, -1);
+  else throw new Error(`Malformed ${kind} entry at line ${lineNumber}: ${body}`);
+  const key = unquote(text);
+  if (key === '') throw new Error(`Empty ${kind} entry at line ${lineNumber}`);
+  return key;
+}
+
 export function parseLockfile(text) {
   const lines = text.split('\n');
   const importers = {};
@@ -72,7 +82,8 @@ export function parseLockfile(text) {
   let curSnap = null, curSnapGroup = null;
   let curPkg = null;
 
-  for (const rawLine of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex];
     if (rawLine === '') continue;
     const line = rawLine.replace(/\r$/, '');
     const ind = indentOf(line);
@@ -87,7 +98,10 @@ export function parseLockfile(text) {
 
     if (section === 'importers') {
       if (ind === 2) {
-        curImp = unquote(body.replace(/:\s*$/, ''));
+        curImp = mappingEntryKey(body, 'importer', lineIndex + 1);
+        if (Object.hasOwn(importers, curImp)) {
+          throw new Error(`Duplicate importer entry at line ${lineIndex + 1}: ${curImp}`);
+        }
         importers[curImp] = { prod: {}, dev: {}, opt: {} };
         curImpGroup = null; curDep = null;
       } else if (ind === 4) {
@@ -152,9 +166,10 @@ export function parseKey(key) {
   return { name: noPeer.slice(0, at), version: noPeer.slice(at + 1) };
 }
 
-// Walk the production closure from a set of seed importer directories.
-// Returns the Set of resolved snapshot keys (peer-qualified).
-export function computeClosure(roots, parsed) {
+// Walk the external snapshot closure from a set of seed importer directories.
+// Importer groups default to production; callers may include `dev` for an
+// independently derived repository closure. Returns peer-qualified keys.
+export function computeClosure(roots, parsed, importerGroups = ['prod', 'opt']) {
   const visitedImp = new Set();
   const snapVisited = new Set();
   const queue = [];
@@ -168,7 +183,7 @@ export function computeClosure(roots, parsed) {
     visitedImp.add(dir);
     const imp = parsed.importers[dir];
     if (!imp) return;
-    for (const group of ['prod', 'opt']) {
+    for (const group of importerGroups) {
       for (const [name, version] of Object.entries(imp[group] || {})) {
         if (version.startsWith('link:')) {
           const rel = version.slice('link:'.length);

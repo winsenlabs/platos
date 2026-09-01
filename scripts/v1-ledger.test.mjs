@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -12,6 +11,7 @@ import {
   KINDS,
   PROTECTED_DISPOSITIONS,
   REACHED_VIA,
+  WORKSPACE_REACHABILITY_ARTIFACTS,
   assignArea,
   buildLedger,
   byteCompare,
@@ -23,7 +23,6 @@ import {
   looksLikeLedgerArtifact,
   measureFile,
   readVocabularyPinnedPaths,
-  referenceNeedles,
   summarize,
   validateRulesDocument,
 } from "./v1-ledger.mjs";
@@ -286,20 +285,12 @@ test("a delete candidate referenced anywhere in the corpus is a hard failure", (
   assert.ok(failures.some((f) => f.includes("is classified delete but is referenced by scripts/page.md")));
 });
 
-test("referenceNeedles covers the path, the site-root path, and the basename", () => {
-  assert.deepEqual(referenceNeedles("docs/images/x.png"), [
-    "docs/images/x.png",
-    "/docs/images/x.png",
-    "x.png",
-  ]);
-});
-
 // Builds a throwaway git repository on disk and stages files, so buildLedger
 // runs its REAL enumeration and file-reading corpus path with no injected
 // corpus or measure -- the code that mutation N4 disabled while all the
 // injected-corpus tests above stayed green.
 function realRepoFixture(files) {
-  const root = mkdtempSync(join(tmpdir(), "platos-ledger-"));
+  const root = mkdtempSync(join("/var/tmp", "platos-ledger-"));
   execFileSync("git", ["init", "-q"], { cwd: root });
   for (const [path, content] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -309,33 +300,68 @@ function realRepoFixture(files) {
   return root;
 }
 
-const orphanRulesDoc = docWithArea("docs-content", [
-  { ...goodRule, id: "orphan-delete", match: ["docs/img/orphan.png"], kind: "asset", disposition: "delete", reached_via: ["NONE"] },
-  { ...goodRule, id: "docs-catch-all", match: ["docs/**"], kind: "doc", disposition: "retain", reached_via: ["docs-reference"] },
+test("prospective-tree enumeration includes additions and removes absent index paths", () => {
+  const root = realRepoFixture({ "tracked.txt": "old\n" });
+  try {
+    rmSync(join(root, "tracked.txt"));
+    writeFileSync(join(root, "new\nfile.txt"), "new\n");
+    assert.deepEqual(listTrackedFiles(root), ["new\nfile.txt"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prospective-tree enumeration rejects invalid UTF-8 and retains dangling symlinks", () => {
+  const invalidRoot = realRepoFixture({ "valid.txt": "valid\n" });
+  try {
+    const invalidPath = Buffer.concat([Buffer.from(`${invalidRoot}/invalid-`), Buffer.from([0xff])]);
+    writeFileSync(invalidPath, "invalid\n");
+    execFileSync("git", ["add", "--all"], { cwd: invalidRoot });
+    assert.throws(() => listTrackedFiles(invalidRoot), /pathname with invalid UTF-8 bytes/u);
+  } finally {
+    rmSync(invalidRoot, { recursive: true, force: true });
+  }
+
+  const symlinkRoot = realRepoFixture({ "valid.txt": "valid\n" });
+  try {
+    symlinkSync("missing-target", join(symlinkRoot, "dangling-link"));
+    execFileSync("git", ["add", "--", "dangling-link"], { cwd: symlinkRoot });
+    assert.deepEqual(listTrackedFiles(symlinkRoot), ["dangling-link", "valid.txt"]);
+  } finally {
+    rmSync(symlinkRoot, { recursive: true, force: true });
+  }
+});
+
+const orphanRulesDoc = docWithArea("root-infra", [
+  { ...goodRule, id: "orphan-delete", match: ["scripts/img/orphan.png"], kind: "asset", disposition: "delete", reached_via: ["NONE"] },
+  { ...goodRule, id: "scripts-catch-all", match: ["scripts/**"], kind: "doc", disposition: "retain", reached_via: ["CI"] },
 ]);
+orphanRulesDoc.areas["docs-content"] = [
+  { ...goodRule, id: "docs-corpus", match: ["docs/**"], kind: "doc", disposition: "retain", reached_via: ["docs-reference"] },
+];
 
 test("the live build reads files and catches a real reference to a delete candidate", () => {
   // Same tree twice, differing only in whether a page cites the orphan. This
   // exercises the real readFileSync corpus population: disabling it (N4) makes
   // both cases report zero references and this assertion fails.
   const referenced = realRepoFixture({
-    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
-    "docs/page.md": "gallery: ![shot](./img/orphan.png)\n",
+    "scripts/img/orphan.png": "\x89PNG fake image bytes\n",
+    "scripts/page.md": "gallery: ![shot](./img/orphan.png)\n",
   });
   try {
     const result = buildLedger(referenced, orphanRulesDoc);
     assert.equal(result.deleteReferences.length, 1);
-    assert.equal(result.deleteReferences[0].path, "docs/img/orphan.png");
-    assert.ok(result.deleteReferences[0].referencedBy.includes("docs/page.md"));
+    assert.equal(result.deleteReferences[0].path, "scripts/img/orphan.png");
+    assert.ok(result.deleteReferences[0].referencedBy.includes("scripts/page.md"));
     const failures = checkInvariants(result, listTrackedFiles(referenced), new Set());
-    assert.ok(failures.some((f) => f.includes("docs/img/orphan.png is classified delete but is referenced by")));
+    assert.ok(failures.some((f) => f.includes("scripts/img/orphan.png is classified delete but is referenced by")));
   } finally {
     rmSync(referenced, { recursive: true, force: true });
   }
 
   const clean = realRepoFixture({
-    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
-    "docs/page.md": "gallery: no image here\n",
+    "scripts/img/orphan.png": "\x89PNG fake image bytes\n",
+    "scripts/page.md": "gallery: no image here\n",
   });
   try {
     const result = buildLedger(clean, orphanRulesDoc);
@@ -358,17 +384,35 @@ test("an emitted ledger artifact is excluded from the corpus by its shape", () =
   const artifact = JSON.stringify({
     version: 1,
     summary: { classificationSha256: "0".repeat(64) },
-    rows: [{ path: "docs/img/orphan.png", disposition: "delete" }],
+    rows: [{ path: "scripts/img/orphan.png", disposition: "delete" }],
   });
   // The artifact names the orphan, but as ledger data, so it is not a reference.
   assert.equal(looksLikeLedgerArtifact(artifact), true);
   const repo = realRepoFixture({
-    "docs/img/orphan.png": "\x89PNG fake image bytes\n",
+    "scripts/img/orphan.png": "\x89PNG fake image bytes\n",
     "docs/v1-ledger.json": artifact,
   });
   try {
     const result = buildLedger(repo, orphanRulesDoc);
     assert.deepEqual(result.deleteReferences, []);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("generated workspace reachability artifacts are data, not live path references", () => {
+  const repo = realRepoFixture({
+    "scripts/img/orphan.png": "\x89PNG fake image bytes\n",
+    [WORKSPACE_REACHABILITY_ARTIFACTS[0]]: JSON.stringify({ evidence: "scripts/img/orphan.png" }),
+    [WORKSPACE_REACHABILITY_ARTIFACTS[1]]: "Evidence for `scripts/img/orphan.png`\n",
+  });
+  try {
+    const result = buildLedger(repo, orphanRulesDoc);
+    assert.deepEqual(result.deleteReferences, []);
+
+    const control = buildLedger(repo, orphanRulesDoc, { corpusExclude: [] });
+    assert.equal(control.deleteReferences.length, 1);
+    assert.deepEqual(control.deleteReferences[0].referencedBy, WORKSPACE_REACHABILITY_ARTIFACTS);
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
@@ -454,13 +498,30 @@ test("every tracked file produces exactly one row and no file is left over", () 
   assert.deepEqual(checkInvariants(live, tracked, pinnedPaths), []);
 });
 
-test("area counts reconcile against the independently derived baseline", () => {
+test("area counts reconcile against the baseline plus exact WIN-254 and legal-provenance additions", () => {
   const summary = summarize(live.rows);
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles);
-  assert.deepEqual(summary.areaCounts, rulesDocument.baseline.areaCounts);
+  const expectedDeltas = {
+    "apps-agent": 0,
+    "apps-webapp": 0,
+    "apps-core-api": 0,
+    "apps-mcp-stdio": 0,
+    packages: 0,
+    "internal-packages": 0,
+    // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
+    // exact evidence files under docs/audits/sbom.
+    "docs-content": 9,
+    "root-infra": 10,
+  };
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 19);
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
+    ),
+    expectedDeltas
+  );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles
+    rulesDocument.baseline.totalFiles + 19
   );
 });
 
@@ -488,27 +549,20 @@ test("the committed fingerprint is current", () => {
 // decides each one deterministically, to the disposition the charter names as
 // safer for that file. These are concrete outcome assertions: a reorder of the
 // live document that flipped any of them would fail here.
-test("the six formerly contradictory files resolve as the charter requires", () => {
-  assert.equal(liveByPath.get("internal-packages/clickhouse/Dockerfile").disposition, "retain");
+test("the retained formerly contradictory files resolve as the charter requires", () => {
   assert.equal(liveByPath.get("internal-packages/run-engine/runengine-diagram.monojson").disposition, "retain");
-  for (const grammar of ["TSQLLexer", "TSQLParser"]) {
-    for (const extension of ["interp", "tokens"]) {
-      const row = liveByPath.get(`internal-packages/tsql/src/grammar/${grammar}.${extension}`);
-      assert.equal(row.disposition, "regenerate", row.path);
-      assert.equal(row.kind, "generated", row.path);
-    }
-  }
   const license = liveByPath.get("internal-packages/otlp-importer/LICENSE");
   assert.equal(license.kind, "legal");
   assert.equal(license.disposition, "retain");
   assert.equal(license.protected, true);
 });
 
-test("the live delete candidates all pass the computed reachability scan", () => {
-  // Reachability for deletes is computed, not asserted: if any of the live
-  // delete candidates were referenced, this would be non-empty and --check red.
+test("the assembled tree has no live delete candidates or delete references", () => {
+  // Delete behavior remains covered by fixture mutation tests above. WIN-254
+  // retains the inherited documentation corpus, so the assembled live ledger
+  // intentionally has no delete disposition.
   assert.deepEqual(live.deleteReferences, []);
-  assert.ok(live.rows.some((row) => row.disposition === "delete"));
+  assert.equal(live.rows.filter((row) => row.disposition === "delete").length, 0);
 });
 
 // PROTECTED_GLOBS is a hard-coded floor independent of the rules document, so
@@ -539,7 +593,7 @@ test("the ledger classifies its own three files", () => {
   assert.equal(liveByPath.get("docs/v1-ledger-rules.json").rule_id, "docs-content.pin.ledger-rules");
 });
 
-test("the three falsified files are never proposed for removal", () => {
+test("the two surviving falsified files are never proposed for removal", () => {
   const proxy = liveByPath.get("hosting/Caddyfile.example");
   assert.equal(proxy.disposition, "retain");
   assert.ok(proxy.evidence.includes("BARE BASENAME"));
@@ -549,13 +603,6 @@ test("the three falsified files are never proposed for removal", () => {
   assert.deepEqual(submodules.reached_via, ["git-subcommand"]);
   assert.ok(submodules.evidence.includes("submodule.mjs"));
 
-  // Matched by suffix here only to avoid writing the reserved directory name in
-  // this test's source; the live rule pins it by exact literal path.
-  const browserEntry = live.rows.filter((row) => row.path.endsWith("/src/v3/index-browser.mts"));
-  assert.equal(browserEntry.length, 1);
-  assert.equal(browserEntry[0].disposition, "archive");
-  assert.equal(browserEntry[0].rule_id, "packages.pin.browser-entry");
-  assert.ok(browserEntry[0].evidence.includes("19165"));
 });
 
 test("the six reference dotfiles are classified rather than skipped", () => {
@@ -576,7 +623,6 @@ test("the hard-coded protected set is protected in the ledger", () => {
     "SECURITY.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
-    "internal-packages/tsql/NOTICE.md",
     "internal-packages/database/prisma/migrations/20221206131204_init/migration.sql",
   ]) {
     const row = liveByPath.get(path);
@@ -585,6 +631,28 @@ test("the hard-coded protected set is protected in the ledger", () => {
     assert.ok(PROTECTED_DISPOSITIONS.has(row.disposition), path);
   }
   assert.ok(live.rows.filter((r) => r.path.startsWith("design/platos-ui-refactor/")).every((r) => r.protected));
+  assert.equal(liveByPath.get("design/README.md").protected, true);
+  const contentRows = live.rows.filter((row) => row.path.startsWith("content/"));
+  assert.ok(contentRows.length > 80, "content protection selector is non-vacuous");
+  assert.ok(contentRows.every((row) => row.protected && PROTECTED_DISPOSITIONS.has(row.disposition)));
+  for (const root of ["ai/", "docs/", "examples/", "references/", "rules/"]) {
+    const rows = live.rows.filter((row) => row.path.startsWith(root));
+    assert.ok(rows.length > 0, `${root} protection selector is non-vacuous`);
+    assert.ok(rows.every((row) => row.protected && PROTECTED_DISPOSITIONS.has(row.disposition)), root);
+  }
+});
+
+test("stable evidence categories win before broad documentation buckets", () => {
+  assert.equal(liveByPath.get("docs/adr/M0.3-bounded-contexts.md").rule_id, "docs-content.evidence.adr");
+  assert.equal(liveByPath.get("docs/audits/history/win-252/prompt-caching-progress.md").rule_id, "docs-content.evidence.audit-history");
+  assert.equal(liveByPath.get("docs/audits/sbom/closure-receipts.json").rule_id, "docs-content.evidence.audit-receipts");
+  assert.equal(liveByPath.get("docs/audits/M0.5-dependency-sbom.md").rule_id, "docs-content.lifecycle.point-in-time-reports");
+  assert.equal(liveByPath.get("docs/audits/sbom/advisory/osv-report.json").rule_id, "docs-content.lifecycle.point-in-time-snapshots");
+  assert.equal(liveByPath.get("docs/refactor/platos-trigger-refactor.md").rule_id, "docs-content.lifecycle.draft");
+  assert.equal(liveByPath.get("rules/4.0.0/basic-tasks.md").rule_id, "docs-content.lifecycle.rules-superseded");
+  assert.equal(liveByPath.get("rules/4.3.0/basic-tasks.md").rule_id, "docs-content.lifecycle.rules-accepted-targets");
+  assert.equal(liveByPath.get("rules/manifest.json").rule_id, "docs-content.lifecycle.rules-manifest");
+  assert.equal(liveByPath.get("design/platos-ui-refactor.provenance.json").rule_id, "docs-content.design.provenance");
 });
 
 test("no removal is proposed for a path the boundary manifest anchors", () => {

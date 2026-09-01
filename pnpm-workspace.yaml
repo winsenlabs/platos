@@ -1,5 +1,7 @@
 packages:
   - "packages/*"
+  - "packages/contexts/*"
+  - "packages/adapters/*"
   - "internal-packages/*"
   - "internal-packages/tenancy-database/migration-image"
   - "apps/**"

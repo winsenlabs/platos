@@ -78,9 +78,9 @@ export function buildMonitoringToolHandlers(deps: {
         properties: { threadId: { type: "string" } },
         additionalProperties: false,
       },
-      async execute(params, scope) {
+      async execute(params, scope, _token, abortSignal) {
         const threadId = String(params["threadId"]);
-        const trace = await traces.buildThreadTrace(tuple(scope as RequestScope), threadId);
+        const trace = await traces.buildThreadTrace(tuple(scope), threadId, abortSignal);
         if (!trace) return { error: "not_found", threadId };
         return trace;
       },

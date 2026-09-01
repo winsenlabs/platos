@@ -1,0 +1,23 @@
+{
+  "name": "@platos/adapter-model-router-providers",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Implements the providers ModelRouter port.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@platos/context-providers": "workspace:*"
+  }
+}

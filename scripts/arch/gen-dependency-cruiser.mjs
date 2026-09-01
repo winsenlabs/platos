@@ -3,12 +3,9 @@
 // (scripts/arch/boundary-rules.mjs), so the dependency-cruiser config and the
 // pure-Node checker can never silently disagree.
 //
-// dependency-cruiser is NOT a dependency of this repo today; the V1 packages it
-// would scan do not exist until M2. The emitted .dependency-cruiser.js is the
-// durable, ready-to-activate config: add dependency-cruiser as a dev dependency
-// in M2 and `depcruise packages apps` enforces the identical ADR M0.3 rule set
-// against real code. Until then, scripts/arch/arch-boundaries.mjs enforces the
-// same rules (fixture-proven).
+// The emitted config resolves the real WIN-251 project aliases through the root
+// solution tsconfig. scripts/arch/arch-boundaries.mjs remains the dependency-free
+// CI enforcer for the same rule data.
 //
 //   node scripts/arch/gen-dependency-cruiser.mjs           # (re)write .dependency-cruiser.js
 //   node scripts/arch/gen-dependency-cruiser.mjs --check    # fail if committed copy is stale
@@ -66,6 +63,27 @@ function specialRule(rule) {
     case "cross-context-dag":
       // Expanded per-context below (needs the allow-list data); nothing here.
       return null;
+    case "same-adapter-only":
+      // (j2) group reference: the adapter name captured on the from side is
+      // excluded on the to side, so an adapter may import only itself.
+      return {
+        name: rule.id,
+        comment: rule.comment,
+        severity: rule.severity,
+        from: { path: "^packages/adapters/([^/]+)/" },
+        to: { path: "^packages/adapters/", pathNot: "^packages/adapters/$1/" },
+      };
+    case "context-registry":
+      // (l) any directory under packages/contexts/ that is not one of the 17.
+      // dependency-cruiser evaluates `from` on its own when `to` is empty, which
+      // is the per-file semantics this rule needs.
+      return {
+        name: rule.id,
+        comment: rule.comment,
+        severity: rule.severity,
+        from: { path: `^packages/contexts/(?!(${CONTEXT_NAMES.join("|")})/)` },
+        to: {},
+      };
     case "acyclic":
       return {
         name: rule.id,
@@ -123,11 +141,11 @@ function render() {
 // Drift gate:      node scripts/arch/gen-dependency-cruiser.mjs --check
 //
 // The dependency-cruiser encoding of ADR M0.3 (WIN-248) boundary rules. It is
-// the M2 activation artifact: add dependency-cruiser as a dev dependency and run
+// wired to the WIN-251 root solution tsconfig. Run
 //   depcruise packages apps --config .dependency-cruiser.js
-// to enforce these rules against the V1 packages once they exist. Until M2, the
-// zero-dependency checker scripts/arch/arch-boundaries.mjs enforces the same rule
-// set and is proven non-vacuous by scripts/arch/arch-boundaries.test.mjs.
+// when dependency-cruiser is activated. The zero-dependency checker
+// scripts/arch/arch-boundaries.mjs enforces the same rule set now and is proven
+// non-vacuous by scripts/arch/arch-boundaries.test.mjs.
 //
 // The banned core-import list encoded below is exactly:
 //   ${BANNED_CORE_IMPORT_SOURCES.join(", ")}
@@ -137,11 +155,8 @@ function render() {
 }
 
 function options() {
-  // Minimal, resolution-safe defaults. In M2, add a `tsConfig.fileName` pointing
-  // at the workspace tsconfig so cross-package path aliases resolve; it is omitted
-  // here because no such tsconfig exists yet and dep-cruiser must not error on a
-  // dangling reference.
   return {
+    tsConfig: { fileName: "tsconfig.json" },
     doNotFollow: { path: "node_modules" },
     enhancedResolveOptions: {
       exportsFields: ["exports"],

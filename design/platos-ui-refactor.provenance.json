@@ -1,0 +1,1105 @@
+{
+  "$schema": "platos.design-provenance/v1",
+  "generatedBy": "node scripts/design-provenance.mjs write",
+  "root": "design/platos-ui-refactor",
+  "repositoryLicense": "Apache-2.0",
+  "ownershipBoundary": "Repository history and licensing are recorded; external ownership is not asserted.",
+  "fileCount": 57,
+  "files": [
+    {
+      "path": "design/platos-ui-refactor/00-index.dc.html",
+      "sha256": "2857af57915258c8b08cb9960a8ab035795944f89d60c85c3e65c30d86d7948a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/00-index.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/01-auth.dc.html",
+      "sha256": "61e98a663cffbe8260c956b413df7eca94fa08cef2476fa05411d6c9f1e306a6",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/01-auth.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/02-onboarding.dc.html",
+      "sha256": "39c1abc81edda90d482a025851f56df4e0d58a74333e23de8400673b8b7fe94e",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/02-onboarding.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/03-home.dc.html",
+      "sha256": "43668d52bc9fd0590ec74068789d846193a01000e60fa1f8acc190542a0f4dc9",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/03-home.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/04-command.dc.html",
+      "sha256": "0ac13608fa8c8a3298770a7e7dc0f5defd14969e59a7089b6806a4d4437ff1b1",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/04-command.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/05-orgs.dc.html",
+      "sha256": "4360971c759514c6251b85cc62ff87738d915e0a52c3f0dd8727539c16b11bdd",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/05-orgs.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/07-billing.dc.html",
+      "sha256": "e0d09b60c1723d23c0802a75e9738bda3a73a2d2f6ac1f113176c8beb587f915",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/07-billing.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/08-account.dc.html",
+      "sha256": "36a54e4e08e27f50707ba80f3eb07d0730a143104b413177793b625e4afe544e",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/08-account.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/09-agent-share.dc.html",
+      "sha256": "13771524308450181e6313882ba028fe067c3e25ddc0431c5f344a357927fbcc",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/09-agent-share.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/10-agents.dc.html",
+      "sha256": "8028064b8b538fbaf430d289f6552126e7dda5380b3596c110bd22db9e00b1d7",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/10-agents.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/11-agent-new.dc.html",
+      "sha256": "a54b11476536c1aed4e225c539dd9f1b00d38b4abd23c43ba6087f6402a2e261",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/11-agent-new.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/12-agent-config.dc.html",
+      "sha256": "e162a8e8374011b8ce88811fdc6201f5c08f6221457877979cfb2b52592b8557",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/12-agent-config.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/13-agent-context.dc.html",
+      "sha256": "f4fe24bae2da20928d1ddd4f16673ea4fea2e444c0e0a7dab0460511e594c44b",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/13-agent-context.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/14-agent-tools.dc.html",
+      "sha256": "adb4236a7cafdef66440a0d63f991104eca6a24254cf0a36e8698745e5f5a828",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/14-agent-tools.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/15-agent-versions.dc.html",
+      "sha256": "fa983571a7e16163f077d44bca6ecaa3f26ff763332e2c09d4e3e026bb73f10c",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/15-agent-versions.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/16-threads.dc.html",
+      "sha256": "e6f805a54c956e8d84ac103e9c14e7c8949638f5fba6b9c5d83ae5e62f545fed",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/16-threads.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/17-thread.dc.html",
+      "sha256": "4f35551b7b8d40255367508c5990336267f5b939debe018edecff3b7fef62825",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/17-thread.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/18-trace.dc.html",
+      "sha256": "b52286bd9ee0487ac5f8eecd70e804ee88b7cedd0a7d02644424d24bbb315ea5",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/18-trace.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/19-playground.dc.html",
+      "sha256": "0df6c77be589fd5855ea09ce636bfa1823e3cd50178c483423518522e115ee68",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/19-playground.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/20-entities.dc.html",
+      "sha256": "663a9101d346474d6f3b04be8f3c1c8acaf80113530f07ca079cf3dcafe79fd5",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/20-entities.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/21-entity.dc.html",
+      "sha256": "fe039c6e6e8ad3a1f0914d15a1d36110cf5b809e638d09a01c079a27eb7e50bf",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/21-entity.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/22-mcp.dc.html",
+      "sha256": "9938cead4e1c5a4218df63139337debdc571770ec42d0d99cd58a902cae7cc0a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/22-mcp.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/23-tools.dc.html",
+      "sha256": "eaf8fbdabdce00487b5ea536f68ce4f45c1349e26cd5d6221aa0792b3b796685",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/23-tools.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/24-providers.dc.html",
+      "sha256": "fa893ac7b9605b7f9697e1f3d9271331420265f282c56851e184ec3d16e89693",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/24-providers.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/25-memory.dc.html",
+      "sha256": "c6e81cc6fcd7c668e58d03d0dc49fb886e1883236ff7a7669553e8c48d891414",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/25-memory.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/26-graph.dc.html",
+      "sha256": "bef94a1df5e55899ede65b38ffb8dd4d6514ef8651dfd2e2236d368ed001917f",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/26-graph.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/27-clusters.dc.html",
+      "sha256": "f3169d36077732dbb325c35410167b4080adc17d496f80f82da7bb349e4038e9",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/27-clusters.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/28-skills.dc.html",
+      "sha256": "3dc47b699ae656311f38a9931005fb22d6417d41f93fac8b5c0f901aeeb0a9bf",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/28-skills.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/29-monitoring.dc.html",
+      "sha256": "d60e6deba456eb886b54e234f8580e7a9a85a848d87fb82a2c0498dde2019426",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/29-monitoring.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/30-cost.dc.html",
+      "sha256": "0e9b70401055851b4eadc9519fb74f6e2ca9b34c1b74a9e57cccd299e5e67bc7",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/30-cost.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/31-budgets.dc.html",
+      "sha256": "9ca273add2f36ad488212f9df20cd857b0ce9533417f7b580076a7e1c9e0935a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/31-budgets.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/32-traces.dc.html",
+      "sha256": "ee9bad4b89e958108d6003cd29e43507cc802ae4fc94bb34e254ca807dc3659a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/32-traces.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/34-approvals.dc.html",
+      "sha256": "23c851c2de015afc7ca8953f96f60263411ded2f20561ffd1efba98aee8c09be",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/34-approvals.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/35-governance.dc.html",
+      "sha256": "a744c12758d4280a9b3c283071819b3c5fa3f75f33aa85757c61f95e09ce95f4",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/35-governance.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/36-evals.dc.html",
+      "sha256": "946a102365faa33b970acd61bf552203dd4592f9bf655b47542714aacea1667a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/36-evals.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/37-audit.dc.html",
+      "sha256": "8cc4ee65252bf08422e55e25b0285c3aa9bf202b5c7cddb0ffe1649e179832ca",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/37-audit.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/38-jobs.dc.html",
+      "sha256": "8bcf96c908339ceac3023afd77c0aef4bcfe864f91a06873d43b97712b2bfe64",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/38-jobs.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/39-variables.dc.html",
+      "sha256": "3c59dd733ccb3578decc0dcfd72aa030195c3017705fe68a73cd321c0c314dec",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/39-variables.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/40-settings.dc.html",
+      "sha256": "03fbca4b90c99d4f922bf14cc593b9da03293797c7084d4546da6c0d45b1bc2e",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/40-settings.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/41-widget.dc.html",
+      "sha256": "9d01dab4502eca2905655a9c1c34fe61869df9583954fcfeca04410943e869bf",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/41-widget.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/42-connect.dc.html",
+      "sha256": "4cc8b7bb289d0cdc531e236c59ed1a8bba8fe758e16dab98eb50c5b6a53791da",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/42-connect.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/43-docs.dc.html",
+      "sha256": "f3634bade6e8b051cc7d8d1d730fa3abb42e5b4890e05f5b2615648cc88f7505",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/43-docs.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/44-debug.dc.html",
+      "sha256": "cef317a0b062fad123312d97d0815a45f8a4a64ec04f77829c0090799f06451a",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/44-debug.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/45-admin.dc.html",
+      "sha256": "001edb9ecc2cd0b9952f275046280380aa69458e156dbd6a83c7f3986ee14d63",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/45-admin.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/46-errors.dc.html",
+      "sha256": "54b99520db7f14a46940bacf31564c259f7902635d35400d33466756760ecad6",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/46-errors.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/47-parts.dc.html",
+      "sha256": "328199977b6a61992e3557e7f319b7bff9d35318e02b99c34ad9256b26929339",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/47-parts.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/PlatosNav.dc.html",
+      "sha256": "4ff5b1429acb7db59d328143b21cfa0ce7a61399b34720a0b3f97b431b2a24a8",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/PlatosNav.dc.html",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/logo.png",
+      "sha256": "a7cc2ea9c8b88f5c39b563a0db44ef2a4c5ee8340add4f09c38fba0cd1d2393f",
+      "source": {
+        "status": "unknown",
+        "kind": "unknown-origin-brand-asset",
+        "sourcePath": null,
+        "sourceCommit": null,
+        "importPath": "design/platos-ui-refactor/assets/logo.png",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "Git records the import, but no earlier repository path or external source is derivable for these bytes."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-icon.svg",
+      "sha256": "b0f651a965258042d862378de6cee5b514a3d0c3c5c23a2e3f4463743e5d094c",
+      "source": {
+        "status": "derived",
+        "kind": "serialized-repository-copy",
+        "sourcePath": "apps/webapp/public/images/platos-icon.svg",
+        "sourceCommit": "f5be33998fa7039884ffb7bd32274f0cb6bed6d9",
+        "importPath": "design/platos-ui-refactor/assets/platos-icon.svg",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "github.md records a copy from webapp/public; XML formatting changed, so byte identity is not claimed."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-logo.png",
+      "sha256": "b86c0669d623b5e5a79be180c3dfd3be5c46f707ebc79ce94b3d2bbcbc514146",
+      "source": {
+        "status": "derived",
+        "kind": "byte-identical-repository-copy",
+        "sourcePath": "apps/webapp/public/emails/platos-logo.png",
+        "sourceCommit": "f5be33998fa7039884ffb7bd32274f0cb6bed6d9",
+        "importPath": "design/platos-ui-refactor/assets/platos-logo.png",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The source path predates the design import and has byte-identical content."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/assets/platos-logotype.png",
+      "sha256": "b86c0669d623b5e5a79be180c3dfd3be5c46f707ebc79ce94b3d2bbcbc514146",
+      "source": {
+        "status": "derived",
+        "kind": "byte-identical-repository-copy",
+        "sourcePath": "apps/webapp/public/images/platos-logotype.png",
+        "sourceCommit": "f5be33998fa7039884ffb7bd32274f0cb6bed6d9",
+        "importPath": "design/platos-ui-refactor/assets/platos-logotype.png",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The source path predates the design import and has byte-identical content."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/github.md",
+      "sha256": "bb57a409547047e090235bf1b75eb1e12fb6214335573c32aeccf7197c318296",
+      "source": {
+        "status": "repository-history",
+        "kind": "repository-sync-record",
+        "sourcePath": "design/platos-ui-refactor/github.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/github.md",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The repository synchronization record is committed in the design import."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/one.css",
+      "sha256": "48b005e16b7b7a0017ccb24f7c683ba5d83a80ad1069779ac4eb553734a3367c",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/one.css",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/platos.css",
+      "sha256": "89dfb12a532a0c8f3230fa30969165723d7bf6ead566ecd516eef8d00b2fe98b",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/platos.css",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/styles.css",
+      "sha256": "d6eb56a1f9e659acbf4aefa90878ef88647c3cb90957865f53a152fc8b61f530",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/styles.css",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/support.js",
+      "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe",
+      "source": {
+        "status": "repository-history",
+        "kind": "generated-from-repository-brief",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/support.js",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The import commit and design/README.md identify the committed brief as the source for the generated reference."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    },
+    {
+      "path": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+      "sha256": "da5192a07f83b3475e5d60409c4f3dff129df9b3843f3edb0562dadb81df08a8",
+      "source": {
+        "status": "repository-history",
+        "kind": "repository-source-document",
+        "sourcePath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "sourceCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "importPath": "design/platos-ui-refactor/uploads/platos-design-prompt.md",
+        "importCommit": "866c9a8980378a476cfa89f5b0863036fce126bd",
+        "evidence": "The design brief is committed alongside the generated reference in the import commit."
+      },
+      "license": {
+        "spdx": "Apache-2.0",
+        "basis": "repository-license",
+        "sourcePath": "LICENSE",
+        "externalOwnership": "not-asserted"
+      }
+    }
+  ],
+  "duplicateSets": [
+    {
+      "sha256": "b86c0669d623b5e5a79be180c3dfd3be5c46f707ebc79ce94b3d2bbcbc514146",
+      "classification": "known-byte-identical-brand-assets",
+      "paths": [
+        "apps/webapp/public/emails/platos-logo.png",
+        "apps/webapp/public/images/platos-logotype.png",
+        "design/platos-ui-refactor/assets/platos-logo.png",
+        "design/platos-ui-refactor/assets/platos-logotype.png"
+      ]
+    }
+  ]
+}

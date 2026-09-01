@@ -66,6 +66,7 @@ Compose requires these variables through `${NAME:?required}`:
 - `PLATOS_CREDENTIAL_ROOT_KEY_VERSION`
 - `PLATOS_CREDENTIAL_ROOT_KEYS`
 - `PLATOS_COMPONENT_AUTH_SECRET`
+- `PLATOS_INTERNAL_AUTH_TOKEN`
 - `PLATOS_ERASURE_HASH_SALT`
 - `MANAGED_WORKER_SECRET`
 
@@ -78,7 +79,7 @@ openssl rand -hex 32
 openssl rand -base64 24
 ```
 
-Use 64 hex characters for `ENCRYPTION_KEY`, `PLATOS_ENCRYPTION_KEY`, `PLATOS_MESSAGE_ENCRYPTION_KEY`, each value inside `PLATOS_CREDENTIAL_ROOT_KEYS`, `PLATOS_COMPONENT_AUTH_SECRET`, `PLATOS_ERASURE_HASH_SALT`, and `MANAGED_WORKER_SECRET`. `SESSION_SECRET` and `MAGIC_LINK_SECRET` accept independent high-entropy strings. The credential root map is JSON, for example `{"1":"<64-hex-root>"}`, with `PLATOS_CREDENTIAL_ROOT_KEY_VERSION=1`.
+Use 64 hex characters for `ENCRYPTION_KEY`, `PLATOS_ENCRYPTION_KEY`, `PLATOS_MESSAGE_ENCRYPTION_KEY`, each value inside `PLATOS_CREDENTIAL_ROOT_KEYS`, `PLATOS_COMPONENT_AUTH_SECRET`, `PLATOS_INTERNAL_AUTH_TOKEN`, `PLATOS_ERASURE_HASH_SALT`, and `MANAGED_WORKER_SECRET`. `SESSION_SECRET` and `MAGIC_LINK_SECRET` accept independent high-entropy strings. The credential root map is JSON, for example `{"1":"<64-hex-root>"}`, with `PLATOS_CREDENTIAL_ROOT_KEY_VERSION=1`.
 
 ## Provider and embedding credentials
 

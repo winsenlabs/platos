@@ -32,7 +32,7 @@ We're retiring Trigger.dev v3. **New v3 deploys will stop working from 1 April 2
 | [onComplete](/tasks/overview#oncomplete-function)                    | Run code when a run completes, regardless of whether it succeeded or failed.                                                                                                                               |
 | [onCancel](/tasks/overview#oncancel-function)                        | Run code when a run is cancelled.                                                                                                                                                                          |
 | [Hidden tasks](/hidden-tasks)                                        | Create tasks that are not exported from your trigger files but can still be executed.                                                                                                                      |
-| [Middleware & locals](#middleware-and-locals)                        | The middleware system runs at the top level, executing before and after all lifecycle hooks. The locals API allows sharing data between middleware and hooks.                                              |
+| [Middleware & locals](/tasks/overview#middleware-and-locals-functions) | The middleware system runs at the top level, executing before and after all lifecycle hooks. The locals API allows sharing data between middleware and hooks.                                              |
 | [useWaitToken](/realtime/react-hooks/use-wait-token)                 | Use the useWaitToken hook to complete a wait token from a React component.                                                                                                                                 |
 | [ai.tool](/tasks/schemaTask#ai-tool)                                 | Create an AI tool from an existing `schemaTask` to use with the Vercel [AI SDK](https://vercel.com/docs/ai-sdk).                                                                                           |
 
@@ -103,8 +103,7 @@ We've deprecated the following APIs:
 We've deprecated the `@trigger.dev/sdk/v3` import path and moved to a new path:
 
 ```ts
-// This still works, but will be removed in a future version
-import { task } from "@trigger.dev/sdk/v3";
+// Deprecated historical module specifier; do not copy: @trigger.dev/sdk/v3
 
 // This is the new path
 import { task } from "@trigger.dev/sdk";

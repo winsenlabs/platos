@@ -1,6 +1,9 @@
+assert_lefthook_installed: true
+
 pre-commit:
   only:
     - ref: main
+    - ref: v1
   jobs:
-    - name: 🚫 Prevent main branch commits
+    - name: Prevent protected branch commits
       run: exit 1

@@ -92,6 +92,8 @@ import type { McpStdioSession } from "./stdio-transport";
 @Controller("mcp/platform")
 export class McpPlatformController {
   private router: McpRouter | null = null;
+  /** Request cancellation owned by each live legacy SSE session. */
+  private readonly sseSessionAborts = new Map<string, AbortController>();
   /**
    * K.17 — in-memory macro recording state. Lives on the controller
    * singleton so the MCP router's record-hook + the `macros.*` tool
@@ -418,7 +420,7 @@ export class McpPlatformController {
     if (!(await this.verifyAnyBearer(rawBearer))) return null;
     const router = this.getRouter();
     return {
-      handle: async (request) => {
+      handle: async (request, abortSignal) => {
         const token = await this.verifyAnyBearer(rawBearer);
         if (!token) {
           return {
@@ -450,6 +452,7 @@ export class McpPlatformController {
             approvalId: typeof approvalId === "string" ? approvalId : null,
             dashboardOrigin:
               process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
+            abortSignal,
           }
         );
       },
@@ -458,31 +461,47 @@ export class McpPlatformController {
 
   @Post()
   async jsonRpc(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Headers("authorization") authorization: string | undefined,
     @Headers("x-platos-approval-id") approvalIdHeader: string | undefined,
     @Body() body: JsonRpcRequest
   ): Promise<any> {
-    const bearer = this.extractBearer(authorization);
-    if (!bearer) {
-      throw new HttpException(
-        "Authorization: Bearer <PLATOS_MCP_TOKEN> required",
-        HttpStatus.UNAUTHORIZED
-      );
+    const requestAbort = new AbortController();
+    const onDisconnect = () => {
+      if (!requestAbort.signal.aborted) requestAbort.abort();
+    };
+    req.once("aborted", onDisconnect);
+    res.once("close", onDisconnect);
+    if (req.aborted || req.destroyed || res.destroyed) onDisconnect();
+    try {
+      const bearer = this.extractBearer(authorization);
+      if (!bearer) {
+        throw new HttpException(
+          "Authorization: Bearer <PLATOS_MCP_TOKEN> required",
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+      const token = await this.verifyAnyBearer(bearer);
+      if (!token) {
+        throw new HttpException("invalid or expired MCP token", HttpStatus.UNAUTHORIZED);
+      }
+      if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
+        throw new HttpException(
+          "body must be a JSON-RPC 2.0 request with `method`",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      return await this.getRouter().handle(body, token, {
+        approvalId: approvalIdHeader ?? null,
+        dashboardOrigin:
+          process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
+        abortSignal: requestAbort.signal,
+      });
+    } finally {
+      req.off("aborted", onDisconnect);
+      res.off("close", onDisconnect);
     }
-    const token = await this.verifyAnyBearer(bearer);
-    if (!token) {
-      throw new HttpException("invalid or expired MCP token", HttpStatus.UNAUTHORIZED);
-    }
-    if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
-      throw new HttpException(
-        "body must be a JSON-RPC 2.0 request with `method`",
-        HttpStatus.BAD_REQUEST
-      );
-    }
-    return this.getRouter().handle(body, token, {
-      approvalId: approvalIdHeader ?? null,
-      dashboardOrigin: process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
-    });
   }
 
   @Get("sse")
@@ -491,13 +510,36 @@ export class McpPlatformController {
     @Res() res: Response,
     @Headers("authorization") authorization: string | undefined
   ): Promise<void> {
+    let disconnected = req.aborted || req.destroyed || res.destroyed;
+    let sessionCleanup: (() => void) | null = null;
+    const removeDisconnectListeners = () => {
+      req.off("aborted", onDisconnect);
+      req.off("close", onDisconnect);
+      res.off("close", onDisconnect);
+    };
+    const onDisconnect = () => {
+      disconnected = true;
+      sessionCleanup?.();
+    };
+    req.once("aborted", onDisconnect);
+    req.once("close", onDisconnect);
+    res.once("close", onDisconnect);
+
     const bearer = this.extractBearer(authorization);
     if (!bearer) {
-      res.status(401).send("Authorization: Bearer <PLATOS_MCP_TOKEN> required");
+      removeDisconnectListeners();
+      if (!disconnected) {
+        res.status(401).send("Authorization: Bearer <PLATOS_MCP_TOKEN> required");
+      }
       return;
     }
     const token = await this.verifyAnyBearer(bearer);
+    if (disconnected) {
+      removeDisconnectListeners();
+      return;
+    }
     if (!token) {
+      removeDisconnectListeners();
       res.status(401).send("invalid or expired MCP token");
       return;
     }
@@ -507,6 +549,10 @@ export class McpPlatformController {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
+    if (disconnected) {
+      removeDisconnectListeners();
+      return;
+    }
 
     // MCP-over-SSE handshake — RFC-style session correlation.
     // First frame MUST be `event: endpoint` pointing at the POST URL
@@ -514,35 +560,21 @@ export class McpPlatformController {
     // with `sessionId` so we can route responses back on this stream.
     const sessionId = crypto.randomBytes(16).toString("hex");
     if (!token.credential) {
+      removeDisconnectListeners();
       res.write('event: error\ndata: {"message":"session credential unavailable"}\n\n');
       res.end();
       return;
     }
     const sessionKey = `platos:mcp:platform:session:${sessionId}`;
     const sseChannel = `platos:mcp:platform:sse:${sessionId}`;
-    try {
-      await this.redis.set(
-        sessionKey,
-        JSON.stringify({ credential: token.credential }),
-        "EX",
-        3600
-      );
-    } catch {
-      res.write('event: error\ndata: {"message":"session store unavailable"}\n\n');
-      res.end();
-      return;
-    }
-
+    const cancelKey = `platos:mcp:platform:sse-cancelled:${sessionId}`;
+    const cancelChannel = `platos:mcp:platform:sse-cancel:${sessionId}`;
+    const sessionAbort = new AbortController();
     const sub = this.redis.duplicate();
-    try {
-      await sub.subscribe(sseChannel);
-    } catch {
-      await this.redis.del(sessionKey).catch(() => undefined);
-      await sub.quit().catch(() => undefined);
-      res.write('event: error\ndata: {"message":"session transport unavailable"}\n\n');
-      res.end();
-      return;
-    }
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let cleanedUp = false;
+    let cleanupPromise: Promise<void> | null = null;
+    let sessionSetPromise: Promise<unknown> = Promise.resolve();
     const onMessage = (_channel: string, message: string) => {
       try {
         res.write(`event: message\ndata: ${message}\n\n`);
@@ -550,14 +582,86 @@ export class McpPlatformController {
         /* socket closed — cleanup fires */
       }
     };
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      removeDisconnectListeners();
+      if (pingInterval) clearInterval(pingInterval);
+      if (!sessionAbort.signal.aborted) sessionAbort.abort();
+      if (this.sseSessionAborts.get(sessionId) === sessionAbort) {
+        this.sseSessionAborts.delete(sessionId);
+      }
+      sub.off("message", onMessage);
+      sub.disconnect();
+      cleanupPromise = (async () => {
+        await sessionSetPromise.catch(() => undefined);
+        await this.redis.set(cancelKey, "1", "EX", 3600).catch(() => undefined);
+        await this.redis.del(sessionKey).catch(() => undefined);
+        await this.redis.publish(cancelChannel, "cancel").catch(() => undefined);
+        await sub.unsubscribe(sseChannel).catch(() => undefined);
+        await sub.quit().catch(() => undefined);
+      })();
+      try {
+        res.end();
+      } catch {
+        /* already closed */
+      }
+    };
+    sessionCleanup = cleanup;
+    this.sseSessionAborts.set(sessionId, sessionAbort);
+    if (disconnected) {
+      cleanup();
+      await cleanupPromise;
+      return;
+    }
+
+    try {
+      sessionSetPromise = this.redis.set(
+        sessionKey,
+        JSON.stringify({ credential: token.credential }),
+        "EX",
+        3600
+      );
+      await sessionSetPromise;
+    } catch {
+      if (!cleanedUp) {
+        res.write('event: error\ndata: {"message":"session store unavailable"}\n\n');
+        cleanup();
+      }
+      await cleanupPromise;
+      return;
+    }
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
+    }
+    try {
+      await sub.subscribe(sseChannel);
+    } catch {
+      if (!cleanedUp) {
+        res.write('event: error\ndata: {"message":"session transport unavailable"}\n\n');
+        cleanup();
+      }
+      await cleanupPromise;
+      return;
+    }
+    if (cleanedUp) {
+      await sub.unsubscribe(sseChannel).catch(() => undefined);
+      await sub.quit().catch(() => undefined);
+      await cleanupPromise;
+      return;
+    }
     sub.on("message", onMessage);
 
     // Advertise the POST endpoint only after the shared session record and
     // subscriber are ready; otherwise a fast client can race the Redis write.
     const endpointUrl = `/mcp/platform/messages?sessionId=${sessionId}`;
     res.write(`event: endpoint\ndata: ${endpointUrl}\n\n`);
-
-    const pingInterval = setInterval(() => {
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
+    }
+    pingInterval = setInterval(() => {
       try {
         const msg = JSON.stringify({
           jsonrpc: "2.0",
@@ -568,24 +672,6 @@ export class McpPlatformController {
         /* socket closed — the cleanup path will fire */
       }
     }, 30_000);
-
-    let cleanedUp = false;
-    const cleanup = () => {
-      if (cleanedUp) return;
-      cleanedUp = true;
-      clearInterval(pingInterval);
-      sub.off("message", onMessage);
-      sub.unsubscribe(sseChannel).catch(() => undefined);
-      sub.quit().catch(() => undefined);
-      this.redis.del(sessionKey).catch(() => undefined);
-      try {
-        res.end();
-      } catch {
-        /* already closed */
-      }
-    };
-    req.on("close", cleanup);
-    res.on("close", cleanup);
   }
 
   @Post("messages")
@@ -600,6 +686,8 @@ export class McpPlatformController {
       return;
     }
     const sessionKey = `platos:mcp:platform:session:${sessionId}`;
+    const cancelKey = `platos:mcp:platform:sse-cancelled:${sessionId}`;
+    const cancelChannel = `platos:mcp:platform:sse-cancel:${sessionId}`;
     const rawSession = await this.redis.get(sessionKey).catch(() => null);
     if (!rawSession) {
       res.status(404).send("unknown or expired sessionId");
@@ -634,10 +722,29 @@ export class McpPlatformController {
     // response is delivered on the SSE stream, not on this POST.
     res.status(202).send();
 
+    const dispatchAbort = new AbortController();
+    const cancelSub = this.redis.duplicate();
+    const localSignal = this.sseSessionAborts?.get(sessionId)?.signal;
+    const abortDispatch = () => {
+      if (!dispatchAbort.signal.aborted) dispatchAbort.abort();
+    };
+    const onCancel = (channel: string) => {
+      if (channel === cancelChannel) abortDispatch();
+    };
+    if (localSignal?.aborted) abortDispatch();
+    else localSignal?.addEventListener("abort", abortDispatch, { once: true });
+    cancelSub.on("message", onCancel);
     try {
+      await cancelSub.subscribe(cancelChannel);
+      const [cancelled, activeSession] = await Promise.all([
+        this.redis.get(cancelKey).catch(() => null),
+        this.redis.get(sessionKey).catch(() => null),
+      ]);
+      if (cancelled === "1" || !activeSession) abortDispatch();
       const response = await this.getRouter().handle(body, token, {
         approvalId: approvalIdHeader ?? null,
         dashboardOrigin: process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
+        abortSignal: dispatchAbort.signal,
       });
       await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(response));
     } catch (err) {
@@ -650,6 +757,11 @@ export class McpPlatformController {
         },
       };
       await this.redis.publish(`platos:mcp:platform:sse:${sessionId}`, JSON.stringify(rpcError));
+    } finally {
+      localSignal?.removeEventListener("abort", abortDispatch);
+      cancelSub.off("message", onCancel);
+      await cancelSub.unsubscribe(cancelChannel).catch(() => undefined);
+      await cancelSub.quit().catch(() => undefined);
     }
   }
 

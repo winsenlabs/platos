@@ -98,6 +98,16 @@ jobs:
           path: artifacts/candidates
           merge-multiple: true
 
+      - name: Resolve the exact webapp candidate manifest evidence key
+        id: webapp-candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          source artifacts/candidates/webapp.env
+          manifest_digest="${WIN235_WEBAPP_IMAGE##*@}"
+          [[ "$manifest_digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "manifest_digest=${manifest_digest#sha256:}" >> "$GITHUB_OUTPUT"
+
       - name: Download exact passing persisted-state identity evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -105,6 +115,14 @@ jobs:
           run-id: ${{ inputs.source_run_id }}
           name: win235-persisted-state-${{ inputs.source_run_id }}-${{ steps.source-run.outputs.run_attempt }}
           path: artifacts/gate
+
+      - name: Download exact verified webapp candidate inventory provenance
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.source_run_id }}
+          name: win253-webapp-image-inventory-${{ steps.webapp-candidate.outputs.manifest_digest }}-${{ inputs.source_run_id }}-${{ steps.source-run.outputs.run_attempt }}
+          path: artifacts/webapp-inventory
 
       - name: Install checksum-pinned regctl
         shell: bash
@@ -130,19 +148,10 @@ jobs:
           source artifacts/candidates/webapp.env
           source artifacts/candidates/migrations.env
           set +a
-          node - <<'NODE'
-          const fs = require("node:fs");
-          const tested = JSON.parse(fs.readFileSync("artifacts/gate/candidate-images.json", "utf8"));
-          const expected = {
-            commitSha: process.env.PLATOS_CANDIDATE_SHA,
-            agent: process.env.WIN235_AGENT_IMAGE,
-            webapp: process.env.WIN235_WEBAPP_IMAGE,
-            migrations: process.env.WIN235_MIGRATIONS_IMAGE,
-          };
-          if (JSON.stringify(tested) !== JSON.stringify(expected)) {
-            throw new Error("publication sources do not match the passing persisted-state identities");
-          }
-          NODE
+          node scripts/verify-webapp-publication-provenance.mjs \
+            --candidate-identities artifacts/gate/candidate-images.json \
+            --inventory-root artifacts/webapp-inventory \
+            --candidate-archive artifacts/candidates/webapp.oci.tar
 
       - name: Log in to GHCR only after source revalidation
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0

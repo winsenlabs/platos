@@ -1,144 +1,113 @@
 # Contributing to Platos
 
-Thanks for taking the time to contribute. Platos is built in the open and we genuinely want help — bug reports, docs fixes, new features, sharper test coverage. This guide covers the dev setup, the ways we work, and what we look for in PRs.
+Thanks for contributing. Platos is a pnpm and Turbo monorepo. The primary source services are:
 
-If anything below is unclear or wrong, open an issue. The first PR most contributors send us is a fix to this file.
+- `apps/agent` — the NestJS agent runtime on port 3100.
+- `apps/webapp` — the Remix dashboard and API on port 3030.
 
----
+The repository is licensed under Apache-2.0; see [LICENSE](./LICENSE). Contributions do not require a separate CLA.
 
-## Quick orientation
+## Before opening a pull request
 
-Platos is a pnpm + Turbo monorepo. The two services that matter most are:
+Open an issue before substantial work so maintainers can confirm scope and approach. Keep each pull request focused on one concern. Public API proposals should include a short design discussion and alternatives.
 
-- **`apps/agent`** — the NestJS streaming runtime (port 3100). Handles chat, tool dispatch, MCP gateway, sub-agents.
-- **`apps/webapp`** — the Remix dashboard + REST API + auth (port 3030).
+## Toolchain
 
-Everything else is supporting infra: Postgres, ClickHouse, Redis, MinIO. The bundled `docker-compose.platos.yml` runs them all locally.
+Use the repository pins exactly:
 
-We use Apache 2.0 — see [LICENSE](./LICENSE). Don't sign a CLA for the project; the license itself is sufficient.
-
----
-
-## Before you open a PR
-
-For anything beyond a typo or doc fix, please **open an issue first** so we can talk about the approach. This saves both of us time. Look for the `good first issue` and `help wanted` labels for shovel-ready scope.
-
-If you're proposing a new feature or a change to a public API, write a short RFC in [GitHub Discussions](https://github.com/winsenlabs/platos/discussions) — a one-page sketch of the problem, the surface, and a couple of alternatives. We respond within a week.
-
-We only accept PRs that address a single concern. Multiple unrelated fixes belong in separate PRs.
-
----
-
-## Dev setup
+- Node.js 22.14.0 from `.nvmrc`.
+- pnpm 10.23.0 from `package.json#packageManager`, activated through Corepack.
 
 ```bash
-git clone https://github.com/winsenlabs/platos.git
-cd platos
-nvm use                                      # uses .nvmrc — Node 20.x
-pnpm install
-cp .env.example .env                         # set ANTHROPIC_API_KEY at minimum
-pnpm run dev                                 # boots the dev stack
+nvm install
+nvm use
+corepack enable
+corepack prepare pnpm@10.23.0 --activate
+pnpm --version
+pnpm install --frozen-lockfile
 ```
 
-`pnpm run dev` brings up the supporting services and starts the agent + webapp in watch mode. Visit `http://localhost:3030` and complete the magic-link login (the dev mailer prints the link to stdout).
+A normal Git checkout runs the repository-owned `prepare` installer and installs the pinned local Lefthook runtime. An install that cannot install the hook fails. See [Local hook boundary](#local-hook-boundary) before using any bypass.
 
-### Running tests
+## Local startup choices
+
+Copy the environment template first and replace production sentinels before exposing any service:
 
 ```bash
-pnpm run typecheck                           # whole monorepo, ~2 min
-pnpm run test --filter <package>             # vitest, no mocks (testcontainers)
+cp .env.example .env
 ```
 
-Tests **never** mock the database. Integration tests spin up real Postgres / ClickHouse / Redis via testcontainers; unit tests stay close to pure code paths.
+### Supporting services for source development
 
-### Making a code change
-
-Working in `apps/agent` or `apps/webapp`:
+Start only the stateful dependencies, then run source services in separate terminals:
 
 ```bash
-pnpm run typecheck --filter platos-agent     # ~60s
-pnpm run typecheck --filter webapp           # ~90s
+docker compose -f docker-compose.platos.yml up -d postgres redis clickhouse minio
+pnpm --filter platos-agent dev
+pnpm --filter webapp dev
 ```
 
-Working in `packages/*` (public SDK packages):
+This keeps the Agent and webapp on source watch loops. `pnpm dev` is the broader Turbo development graph; it does not start Docker services for you.
+
+### Full compose stack
+
+To build and start the complete local stack, including migrations, Agent, and webapp:
 
 ```bash
-pnpm run build --filter @platosdev/client
-pnpm run test --filter @platosdev/client
-pnpm run changeset:add                       # required for any package change
+docker compose -f docker-compose.platos.yml up -d --build
 ```
 
-Read [CHANGESETS.md](./CHANGESETS.md) for the release workflow.
+This is a local build/start command. It does not publish images or authorize any environment change.
 
----
+## Building and testing
 
-## What we look for in a PR
+Use package names that exist in the current workspace:
 
-- **Single concern.** One bug fix or one feature per PR.
-- **Tests.** Bug fix? Add a regression test. New feature? Add a happy-path test plus the obvious failure modes. Use real services via testcontainers.
-- **No mock services.** Integration tests hit real Postgres + Redis + ClickHouse. We've been burned by mocked tests passing while migrations broke.
-- **Multi-tenant scope is sacred.** Every scoped row carries `(organizationId, projectId, environmentId)`. Don't bypass it. Don't add an endpoint that ignores it.
-- **Encryption is sacred.** Conversations are encrypted at rest (AES-256). Don't bypass the envelope.
-- **No major version bumps without discussion.** Default to a patch changeset.
-- **No new mocks for things we own.** If you find yourself writing a mock for a Platos service, write a thin testable extraction instead.
-- **Prefer editing existing files** over creating new ones.
-- **Match the surrounding style.** We don't ship a heavy lint config; just match what's already there.
-- **Comments earn their keep.** Default to no comments. Add one when the *why* is non-obvious.
+```bash
+pnpm --filter platos-agent build:strict
+pnpm --filter webapp typecheck
+pnpm --filter @platosdev/client build
+pnpm --filter @platosdev/client test
+pnpm --filter @platosdev/platools-sdk test
+pnpm build:v1
+```
 
----
+For the standing repository checks, run the package scripts documented in `package.json`. Integration tests may require the supporting compose services or Testcontainers.
 
-## Areas where help is especially welcome
+## Package version intent
 
-- **Provider integrations.** New LLM providers, embedding providers, voice models.
-- **Skills.** The official skills surface is intentionally small; build a useful skill and contribute the manifest + tests.
-- **Reference projects.** New examples under `references/` showing one well-scoped pattern (auth flow, RAG setup, multi-agent orchestration).
-- **Docs.** Anything in `content/docs/` and `content/guides/` is hand-written. Typos, clarifications, and missing examples are all welcome.
-- **Testing.** More integration tests. The runtime's tool-call path in particular has more breadth than depth.
+Only changes to a non-private package may carry a Changesets entry. A Changesets file records maintainer-authorized package version intent; it is not permission to publish anything.
 
----
+```bash
+pnpm changeset:add
+pnpm changeset:status
+```
 
-## Reporting bugs
+Select only a current non-private package from `packages/*`. Application-only, internal-package, documentation, and infrastructure changes do not get a Changesets entry. See [CHANGESETS.md](./CHANGESETS.md).
 
-Use the bug report template on the [Issues](https://github.com/winsenlabs/platos/issues) page. Include:
+## Pull request expectations
 
-- Platos version (commit SHA on `main` if you're running from source)
-- The compose service that's failing
-- Last 20 lines of `docker logs <service>`
-- Whether you're on the bundled compose stack, a custom Helm install, or a hosted instance
+- Keep one concern per pull request.
+- Add regression coverage for fixes and success/failure coverage for new behavior.
+- Preserve organization, project, and environment scope on persisted data.
+- Preserve encryption and credential boundaries.
+- Match surrounding style and keep comments focused on non-obvious reasons.
+- Do not add publication, release, or environment mutation authority to validation workflows.
 
-For security vulnerabilities, **do not open a public issue**. Email `hello@winsenlabs.com` per [SECURITY.md](./SECURITY.md).
+## Candidate builds are not releases
 
----
+A `main` push may build and test OCI candidate archives. Candidate creation does not publish an image, change an environment, promote an external workflow-platform version, or publish an npm package. Each operational action has a separate approval boundary described in [RELEASE.md](./RELEASE.md).
 
-## Coding conventions
+## Local hook boundary
 
-We are not strict about formatting (Prettier is configured but not enforced in CI) — match the surrounding code. A few load-bearing conventions:
+`lefthook.yml` rejects direct commits while the checked-out ref is exactly `main` or `v1`. The hook is a local guard, not repository authorization. Git's `--no-verify` flag can bypass local hooks by design:
 
-- **Database queries**: prefer `findFirst` over `findUnique`. Prisma's DataLoader on `findUnique` has open bugs around uppercase UUIDs and composite keys, and `findFirst` avoids the entire class of issues.
-- **Background work**: use `@platos/redis-worker`. Don't add new jobs via legacy zodworker / graphile-worker.
-- **Server env**: import from `app/env.server.ts`, never `process.env` directly. Validate at boot.
-- **Real-time**: Socket.io for agent streaming; Electric SQL for dashboard data sync.
+```bash
+git commit --no-verify
+```
 
----
+Use that bypass only for an explicitly approved recovery procedure. Server-side branch protection, required reviews, and CI remain the authorization boundary; this repository does not claim that a client-side hook can enforce remote policy.
 
-## Releases
+## Reporting problems
 
-We cut releases via [Changesets](https://github.com/changesets/changesets). When a PR touches anything under `packages/`, run `pnpm run changeset:add` and commit the resulting `.changeset/*.md` file. Maintainers cut the release.
-
-App-only changes don't need a changeset; we run continuous deployment on `main`.
-
----
-
-## Community
-
-- **Questions, RFCs, dogfooding stories**: [Discord](https://discord.gg/7zxegt73zr)
-- **Long-form discussion**: [GitHub Discussions](https://github.com/winsenlabs/platos/discussions)
-- **Open issues**: [github.com/winsenlabs/platos/issues](https://github.com/winsenlabs/platos/issues)
-
----
-
-## Code of Conduct
-
-Be kind. Disagree about ideas, not people. The full text is in [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md). Violations get reported to `hello@winsenlabs.com`.
-
-Thanks for helping make Platos better.
+Use GitHub issues for non-security defects. Report security vulnerabilities through [SECURITY.md](./SECURITY.md). Report Code of Conduct incidents to `hello@winsenlabs.com` as specified in [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).

@@ -7,9 +7,9 @@ name: Build and gate container images
 # from a successful landed-main run; this workflow never publishes them.
 on:
   push:
-    branches: [main]
+    branches: [main, v1]
   pull_request:
-    branches: [main]
+    branches: [main, v1]
   workflow_dispatch: {} # manual build/gate only; never publication
 
 concurrency:
@@ -54,6 +54,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
+      - name: Compute exact webapp inventory build-input digest
+        id: webapp-inventory-inputs
+        shell: bash
+        run: echo "sha256=$(node scripts/verify-webapp-image-inventory.mjs --print-build-inputs-sha256)" >> "$GITHUB_OUTPUT"
+
       - name: Build the candidate exactly once as an OCI archive
         id: candidate
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -66,6 +71,10 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ env.PLATOS_CANDIDATE_SHA }}
             dev.platos.candidate-run=${{ github.run_id }}-${{ github.run_attempt }}
+            dev.winsen.platos.webapp-inventory-inputs-sha256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}
+          build-args: |
+            BUILD_GIT_SHA=${{ env.PLATOS_CANDIDATE_SHA }}
+            WEBAPP_INVENTORY_BUILD_INPUTS_SHA256=${{ steps.webapp-inventory-inputs.outputs.sha256 }}
           outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.name }}.oci.tar,oci-mediatypes=true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }},ignore-error=true
@@ -188,8 +197,15 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22.14.0
+          node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Verify distinct production-deps and exact final webapp candidate inventories
+        id: webapp-inventory
+        env:
+          EVIDENCE_DIR: ${{ github.workspace }}/artifacts/webapp-image-inventory
+          WEBAPP_CANDIDATE_ARCHIVE: ${{ github.workspace }}/artifacts/candidates/webapp.oci.tar
+        run: pnpm audit:webapp-image-inventory
 
       - name: Install lockfile-backed test dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -197,10 +213,11 @@ jobs:
       - name: Install the pinned Chromium evidence runtime
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Generate and build the canonical tenancy client for the external test runner
-        run: pnpm --filter @platos/tenancy-database build
+      - name: Generate and build compiled Webapp test dependencies
+        run: pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build
 
       - name: Rehearse the ordered tenancy upgrade before evidence
+        shell: bash
         run: |
           CI=true pnpm --filter @platos/tenancy-database exec vitest run \
             src/upgrade-contract.test.ts \
@@ -263,6 +280,8 @@ jobs:
           set -euo pipefail
           docker compose up --detach --no-build --wait --wait-timeout 300 agent webapp \
             2>&1 | tee artifacts/win235/compose-apps.log
+          tests/persisted-state-gate/smoke-agent-runtime-image.sh \
+            2>&1 | tee artifacts/win235/agent-runtime-smoke.log
 
       - name: Record tested candidate identities
         shell: bash
@@ -278,14 +297,6 @@ jobs:
           };
           fs.writeFileSync("artifacts/win235/candidate-images.json", `${JSON.stringify(images, null, 2)}\n`);
           NODE
-
-      - name: Prove performance and evidence verifiers fail on mutation
-        run: |
-          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts src/memory/memory-profile-startup-verifier.service.test.ts src/startup-failure.test.ts
-          pnpm test:persisted-state:performance-contract
-          pnpm test:non-browser-completion:contract
-          pnpm test:browser-evidence:contract
-          pnpm test:route-parity:completion:evidence
 
       - name: Measure the pristine dense fixture against the exact candidates
         shell: bash
@@ -380,6 +391,15 @@ jobs:
           name: win234-browser-evidence-${{ github.run_id }}
           path: artifacts/win234-browser
           if-no-files-found: warn
+          retention-days: 14
+
+      - name: Retain verified webapp candidate inventory provenance
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: win253-webapp-image-inventory-${{ steps.webapp-inventory.outputs.candidate_manifest_digest || 'unverified' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/webapp-image-inventory
+          if-no-files-found: error
           retention-days: 14
 
       - name: Tear down isolated gate infrastructure

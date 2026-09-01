@@ -6,18 +6,21 @@ This is the internal database package for the Platos project. It exports a gener
 
 Sometimes you've applied migrations and then want to switch branches without wiping out your local database.
 
-To do this you can run the following command:
+The current compose stack uses the named `platos-postgres` volume. To preserve
+it while testing a clean database, stop the stack and create a separate compose
+project name:
 
 ```bash
-DB_VOLUME=database-data-alt pnpm run docker
+docker compose -p platos-alt -f docker-compose.platos.yml up -d postgres
 ```
 
-This will switch to the `alt` volume for your local database. This database will be blank if you haven't switched to this volume before, so you'll need to follow the normal steps (in the Contributing guide) to get setup, e.g. apply migrations and seed.
+The `platos-alt` project owns a separate named volume. Apply migrations and seed
+that clean database using the normal contributing workflow.
 
 To switch back to the original volume, run the following command:
 
 ```bash
-pnpm run docker
+docker compose -p platos -f docker-compose.platos.yml up -d postgres
 ```
 
 ### How to add a new index on a large table

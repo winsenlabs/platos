@@ -1,6 +1,0 @@
-node_modules
-dist
-.tshy
-.tshy-build
-*.log
-.DS_Store

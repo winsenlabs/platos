@@ -8,21 +8,27 @@
 // same `git ls-files -z` enumeration, the same text/non-text heuristic, the
 // same "print a report, set process.exitCode" command shape.
 
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { findSemanticPathReferences, listRepositoryFiles } from "./root-entry-manifest.mjs";
 import { RULES as VOCABULARY_RULES } from "./vocabulary-boundary.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const defaultRulesPath = "docs/v1-ledger-rules.json";
 const vocabularyManifestPath = "docs/vocabulary-boundary-exceptions.json";
+export const WORKSPACE_REACHABILITY_ARTIFACTS = [
+  "docs/audits/win-253-workspace-reachability.json",
+  "docs/audits/win-253-workspace-reachability.md",
+];
 
 export const AREAS = [
   "apps-agent",
   "apps-webapp",
+  "apps-core-api",
+  "apps-mcp-stdio",
   "packages",
   "internal-packages",
   "docs-content",
@@ -65,7 +71,14 @@ export const REACHED_VIA = [
 // A protected file may never be proposed for removal. These are hard-coded on
 // purpose: they must not be weakened by editing the rules document alone.
 export const PROTECTED_GLOBS = [
+  "ai/**",
+  "content/**",
+  "design/README.md",
   "design/platos-ui-refactor/**",
+  "docs/**",
+  "examples/**",
+  "references/**",
+  "rules/**",
   "lefthook.yml",
   "LICENSE",
   "NOTICE",
@@ -73,7 +86,6 @@ export const PROTECTED_GLOBS = [
   "CODE_OF_CONDUCT.md",
   "CONTRIBUTING.md",
   "**/prisma/migrations/**",
-  "internal-packages/tsql/NOTICE.md",
 ];
 
 export const PROTECTED_DISPOSITIONS = new Set(["retain", "move-refactor", "regenerate"]);
@@ -95,10 +107,7 @@ const ROOT_INFRA_ROOTS = new Set([
 // ---------------------------------------------------------------------------
 
 export function listTrackedFiles(root) {
-  return execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-    .split("\0")
-    .filter(Boolean)
-    .sort(byteCompare);
+  return listRepositoryFiles(root);
 }
 
 // LC_ALL=C ordering: compare the UTF-8 bytes, never the locale collation.
@@ -113,6 +122,15 @@ export function byteCompare(left, right) {
 export function assignArea(path) {
   if (path.startsWith("apps/agent/")) return "apps-agent";
   if (path.startsWith("apps/webapp/")) return "apps-webapp";
+  // The ADR M0.3 §4 deployables. Each gets its own area rather than folding into
+  // apps-agent: `area` is a data field on every row and is hashed into the
+  // classification fingerprint, so labelling a core-api file "apps-agent" would
+  // be false data. Separate areas also keep the M2 drain (agent -> core-api)
+  // legible as two conserving counts instead of one net number that hides both
+  // directions. A sibling that is not one of these two still returns null and is
+  // reported, never absorbed.
+  if (path.startsWith("apps/core-api/")) return "apps-core-api";
+  if (path.startsWith("apps/mcp-stdio/")) return "apps-mcp-stdio";
 
   const slash = path.indexOf("/");
   if (slash === -1) return "root-infra";
@@ -398,15 +416,6 @@ export function readVocabularyPinnedPaths(root) {
   return pinned;
 }
 
-// The literal forms under which a reference to a file would appear in another
-// tracked text file: its full repository path, that path with a leading slash
-// (a site-root URL), and its bare basename (how documentation and audits cite
-// media and config). Basename is the load-bearing signal for assets.
-export function referenceNeedles(path) {
-  const basename = path.slice(path.lastIndexOf("/") + 1);
-  return [...new Set([path, `/${path}`, basename])];
-}
-
 // Normalise a caller-supplied path to the repository-relative form that corpus
 // keys use, so an exclusion works regardless of how the argument was spelled
 // (`./docs/x.json`, `docs/x.json`, or an absolute path all collapse to the same
@@ -436,23 +445,6 @@ export function looksLikeLedgerArtifact(text) {
   }
 }
 
-function scanReachability(deletePaths, corpus) {
-  const references = [];
-  for (const path of deletePaths) {
-    const needles = referenceNeedles(path);
-    const referencedBy = [];
-    for (const [source, text] of corpus) {
-      if (source === path) continue;
-      if (needles.some((needle) => text.includes(needle))) {
-        referencedBy.push(source);
-        if (referencedBy.length >= 5) break;
-      }
-    }
-    if (referencedBy.length) references.push({ path, referencedBy });
-  }
-  return references.sort((left, right) => byteCompare(left.path, right.path));
-}
-
 export function buildLedger(root, document, options = {}) {
   const documentErrors = validateRulesDocument(document);
   if (documentErrors.length) {
@@ -469,7 +461,7 @@ export function buildLedger(root, document, options = {}) {
   // resolved to repo-relative real paths so the result never depends on how the
   // --rules or --out argument was spelled.
   const corpusExclude = new Set(
-    (options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out])
+    (options.corpusExclude ?? [options.rulesPath ?? defaultRulesPath, options.out, ...WORKSPACE_REACHABILITY_ARTIFACTS])
       .map((candidate) => toRepoRelative(root, candidate))
       .filter((candidate) => candidate !== null)
   );
@@ -530,7 +522,18 @@ export function buildLedger(root, document, options = {}) {
   // literal reference anywhere means the file is reachable and its delete claim
   // is false. An edit that references a delete candidate now fails --check.
   const deletePaths = rows.filter((row) => row.disposition === "delete").map((row) => row.path);
-  const deleteReferences = deletePaths.length ? scanReachability(deletePaths, corpus) : [];
+  const deleteReferences = deletePaths.length ? findSemanticPathReferences(deletePaths, corpus, {
+    includeBasename: true,
+    exclusions: [
+      "docs/v1-ledger-rules.json",
+      "docs/audits/win-252-root-entry-manifest.json",
+      "docs/audits/win-252-root-entry-manifest.md",
+      "scripts/root-entry-manifest.mjs",
+      "scripts/root-entry-manifest.test.mjs",
+      "scripts/v1-ledger.mjs",
+      "scripts/v1-ledger.test.mjs",
+    ],
+  }) : [];
 
   return { rows, unmatched, unassigned, errors: [], trackedFiles, deleteReferences };
 }

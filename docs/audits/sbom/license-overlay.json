@@ -2,6 +2,14 @@
   "$schema": "platos.audit.license-overlay/v1",
   "note": "Curated licence ELECTIONS and CORRECTIONS that take precedence over license-index.json when the SBOM is generated and when the licence gate runs. Each entry is a human disposition of a dual-licence choice, a non-SPDX string, or a package whose LOCKED version carries no licence grant. Source: docs/audits/M0.5-dependency-sbom.md §3. Keep this list tight — it is an override of registry truth and every entry must be justified.",
   "licenses": {
+    "@internal/workload-identity@0.0.1": {
+      "spdx": "Apache-2.0",
+      "note": "FIRST-PARTY WORKSPACE. Private package distributed under the repository Apache-2.0 LICENSE; inventoried from the linked workspace manifest copied into the webapp image."
+    },
+    "@platos/tenancy-database@0.0.1": {
+      "spdx": "Apache-2.0",
+      "note": "FIRST-PARTY WORKSPACE. Private package distributed under the repository Apache-2.0 LICENSE; inventoried from the linked workspace manifest copied into the webapp image."
+    },
     "dompurify@3.4.0": {
       "spdx": "Apache-2.0",
       "note": "ELECTION. Published as (MPL-2.0 OR Apache-2.0). Platos elects Apache-2.0 (weak file-level MPL copyleft declined). Ships in agent + webapp; webapp's direct dompurify dep is an unreferenced orphan and should be dropped, halving this surface."
@@ -29,6 +37,10 @@
     "class-variance-authority@0.5.2": {
       "spdx": "NOASSERTION",
       "note": "NO GRANT AT LOCKED VERSION. Version 0.5.2 publishes no licence field (package-level says Apache-2.0). Repo-wide orphan — remove with the webapp orphan cleanup."
+    },
+    "breakword@1.0.5": {
+      "spdx": "GPL-2.0",
+      "note": "IMAGE-INVENTORY CANARY. Root release tooling reaches this package through @changesets/cli -> tty-table -> smartwrap. It must remain absent from every shipping image; retaining the licence record makes an accidental image-inventory reintroduction fail the licence gate."
     }
   }
 }

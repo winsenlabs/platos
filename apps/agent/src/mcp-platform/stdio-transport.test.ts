@@ -285,6 +285,29 @@ describe("Platform MCP stdio transport", () => {
     expect(input.destroyed).toBe(true);
   });
 
+  it("aborts an in-flight session request when stdin reaches EOF", async () => {
+    const input = new PassThrough();
+    let started!: (signal: AbortSignal) => void;
+    const requestStarted = new Promise<AbortSignal>((resolve) => (started = resolve));
+    const running = runMcpStdioTransport({
+      input,
+      session: {
+        async handle(request, signal) {
+          started(signal!);
+          await new Promise<void>((resolve) => signal!.addEventListener("abort", () => resolve()));
+          return { jsonrpc: "2.0", id: request.id ?? null, result: {} };
+        },
+      },
+      writeProtocolLine: vi.fn(),
+    });
+    input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 8, method: "tools/list" })}\n`);
+    const signal = await requestStarted;
+
+    input.end();
+    await expect(running).resolves.toBeUndefined();
+    expect(signal.aborted).toBe(true);
+  });
+
   it("closes the app before disconnecting owned Prisma and Redis resources", async () => {
     const order: string[] = [];
     const resources = {

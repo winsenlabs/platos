@@ -1,0 +1,51 @@
+{
+  "name": "@platos/core-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "THE single V1 deployable: the composition root and every transport.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@platos/context-identity-access": "workspace:*",
+    "@platos/context-tenancy": "workspace:*",
+    "@platos/context-secrets": "workspace:*",
+    "@platos/context-providers": "workspace:*",
+    "@platos/context-agents": "workspace:*",
+    "@platos/context-skills": "workspace:*",
+    "@platos/context-tools": "workspace:*",
+    "@platos/context-memory": "workspace:*",
+    "@platos/context-channels": "workspace:*",
+    "@platos/context-files": "workspace:*",
+    "@platos/context-observability": "workspace:*",
+    "@platos/context-cost-monitoring": "workspace:*",
+    "@platos/context-governance": "workspace:*",
+    "@platos/context-jobs": "workspace:*",
+    "@platos/context-conversations": "workspace:*",
+    "@platos/context-eventing": "workspace:*",
+    "@platos/context-privacy": "workspace:*",
+    "@platos/adapter-postgres-tenancy": "workspace:*",
+    "@platos/adapter-outbox": "workspace:*",
+    "@platos/adapter-durable-runtime": "workspace:*",
+    "@platos/adapter-clickhouse-observability": "workspace:*",
+    "@platos/adapter-objectstore-minio": "workspace:*",
+    "@platos/adapter-redis-ratelimit": "workspace:*",
+    "@platos/adapter-redis-cache": "workspace:*",
+    "@platos/adapter-redis-streams": "workspace:*",
+    "@platos/adapter-model-router-providers": "workspace:*",
+    "@platos/adapter-channel-slack": "workspace:*",
+    "@platos/adapter-notifier-email": "workspace:*",
+    "@platos/adapter-notifier-webhook": "workspace:*"
+  }
+}

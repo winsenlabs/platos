@@ -1,6 +1,6 @@
 # Upgrading from trigger.dev
 
-Platos is a superset of trigger.dev. Everything trigger does, Platos does — identically. The delta is an added agent layer (`apps/agent`), an extended Prisma schema, a renamed SDK re-export, and a new docker-compose profile.
+Platos adds an agent layer around an external Trigger durable-runtime service. Durable task APIs stay on Trigger's published SDK, while Platos REST and WebSocket APIs use the separately published Platos client.
 
 This guide is for teams already running trigger.dev (cloud or self-hosted) who want to migrate to Platos without losing tasks, runs, or SDK usage.
 
@@ -8,7 +8,7 @@ This guide is for teams already running trigger.dev (cloud or self-hosted) who w
 
 All of these continue to work exactly as before:
 
-- **Task definitions.** Your `trigger/*.ts` files need no changes.
+- **Task definitions.** Your `trigger/*.ts` files continue to use `@trigger.dev/sdk`.
 - **`tasks.trigger()`, `tasks.batchTrigger()`, `schedules`, `wait.*`.** Same API.
 - **CLI.** `trigger.dev dev`, `trigger.dev deploy`, `trigger.dev promote` — unchanged.
 - **Run engine.** Same queues, same retries, same checkpoints, same observability.
@@ -28,9 +28,10 @@ If all you need is trigger.dev, you can run Platos and never touch the agent lay
 - **New env vars** — `PLATOS_*` namespace (see [env-vars.md](./env-vars.md)). All optional unless you boot the agent.
 - **New UI routes** — `/agents`, `/agents/:id`, `/agents/:id/chat`. Old routes untouched.
 
-### Renamed
+### SDK boundaries
 
-- **`@trigger.dev/sdk` → `@platos/sdk`** — thin re-export. Both packages resolve to the same code; `@platos/sdk` also exposes the agent-layer clients (`PlatosClient`, `client.agents`, `client.messages`, `client.threads`).
+- **Durable runtime:** import `task`, `tasks`, `runs`, `schedules`, and `wait` from `@trigger.dev/sdk`.
+- **Platos API client:** import `PlatosClient` and the REST/WebSocket client namespaces from `@platosdev/client`.
 - Workspace packages (internal):
 
 | Before | After |
@@ -39,7 +40,7 @@ If all you need is trigger.dev, you can run Platos and never touch the agent lay
 | `@trigger.dev/platform` | `@platos/platform` (re-exports `@trigger.dev/platform`) |
 | `@trigger.dev/database` | `@platos/database` (re-exports) |
 
-If you import from internal packages directly (most users don't), update these imports. If you only use `@trigger.dev/sdk` in consumer code, see the migration path below — you can migrate lazily.
+If you import from internal packages directly (most users don't), update these imports. Consumer task code remains on the published Trigger SDK.
 
 ### Extended
 
@@ -101,45 +102,44 @@ Your existing `SESSION_SECRET`, `ENCRYPTION_KEY`, `REDIS_URL`, and external
 database, then point both the webapp and agent `DATABASE_URL` at that database.
 Do not run the clean initial migration against an inherited Trigger database.
 
-### Step 3 — (Optional) Rename SDK imports
+### Step 3 — Use the current SDK boundaries
 
 In consumer projects (your task-defining repos), swap the SDK:
 
 ```ts
-// before
-import { tasks, schedules, wait } from "@trigger.dev/sdk/v3";
+// before (historical module specifier; do not copy): @trigger.dev/sdk/v3
 
-// after
-import { tasks, schedules, wait } from "@platos/sdk";
-// or, for agent-layer access:
-import { PlatosClient, tasks, schedules, wait } from "@platos/sdk";
+// after: durable runtime APIs
+import { tasks, schedules, wait } from "@trigger.dev/sdk";
+
+// Platos REST/WebSocket APIs are a separate client surface
+import { PlatosClient } from "@platosdev/client";
 ```
 
-Both still work. `@trigger.dev/sdk` is kept as a dev dependency so existing imports compile. For new code or when doing a pass, prefer `@platos/sdk`.
+Do not combine these surfaces behind one package import. Keep Trigger execution primitives on `@trigger.dev/sdk` and Platos client calls on `@platosdev/client`.
 
 ### Step 4 — (Optional) Start building agents
 
 Once the agent service is up and reachable from your UI or apps, follow [quickstart.md](./quickstart.md) from step 3 onward to create your first agent. You can mix freely: tasks you already have (`fetch_and_summarize`, `send_email`, etc.) are callable from agents via `spawn_job`.
 
-### Step 5 — (Optional) Deprecate direct `@trigger.dev/sdk` use
+### Step 5 — Remove legacy Trigger subpath imports
 
-Once everything's migrated, remove `@trigger.dev/sdk` from your package.json. Our monorepo dependency on it is transitive through `@platos/sdk`. Your lockfile still resolves the same underlying code.
+Once everything is migrated, replace legacy `@trigger.dev/sdk/v3` imports with the current `@trigger.dev/sdk` entrypoint. Keep `@trigger.dev/sdk` as a direct dependency of every task-defining project.
 
 ## Before / after snippets
 
 ### Triggering a task from backend code
 
 ```ts
-// before
-import { tasks } from "@trigger.dev/sdk/v3";
+// before (historical module specifier; do not copy): @trigger.dev/sdk/v3
 import { fetchAndSummarize } from "./trigger/research";
 
 await tasks.trigger<typeof fetchAndSummarize>("fetch_and_summarize", { query: "quantum computing" });
 ```
 
 ```ts
-// after (same, new import)
-import { tasks } from "@platos/sdk";
+// after (current public entrypoint)
+import { tasks } from "@trigger.dev/sdk";
 import { fetchAndSummarize } from "./trigger/research";
 
 await tasks.trigger<typeof fetchAndSummarize>("fetch_and_summarize", { query: "quantum computing" });
@@ -158,15 +158,14 @@ Not possible before. Now:
 ### Schedules
 
 ```ts
-// before
-import { schedules } from "@trigger.dev/sdk/v3";
+// before (historical module specifier; do not copy): @trigger.dev/sdk/v3
 
 export const dailyCleanup = schedules.task({ id: "daily_cleanup", cron: "0 3 * * *", run: async () => { /*...*/ } });
 ```
 
 ```ts
-// after — identical
-import { schedules } from "@platos/sdk";
+// after — identical API, current public entrypoint
+import { schedules } from "@trigger.dev/sdk";
 
 export const dailyCleanup = schedules.task({ id: "daily_cleanup", cron: "0 3 * * *", run: async () => { /*...*/ } });
 ```
@@ -174,14 +173,13 @@ export const dailyCleanup = schedules.task({ id: "daily_cleanup", cron: "0 3 * *
 ### Realtime subscription from UI
 
 ```ts
-// before
-import { runs } from "@trigger.dev/sdk/v3";
+// before (historical module specifier; do not copy): @trigger.dev/sdk/v3
 for await (const update of runs.subscribeToRun(runId, { accessToken })) { /*...*/ }
 ```
 
 ```ts
-// after — identical
-import { runs } from "@platos/sdk";
+// after — identical API, current public entrypoint
+import { runs } from "@trigger.dev/sdk";
 for await (const update of runs.subscribeToRun(runId, { accessToken })) { /*...*/ }
 ```
 
@@ -194,7 +192,7 @@ Unchanged. Still `wait.createToken` + `wait.forToken`. Agents can create these t
 None at runtime. Two worth noting for build / deploy pipelines:
 
 1. **Docker image name.** `triggerdotdev/trigger.dev` → `platos-dev/platos-webapp`. Update your image pulls.
-2. **Workspace package names.** If you consume internal packages directly (`@internal/*`), check the rename table above and update imports. Consumers of the public SDK are unaffected.
+2. **Workspace package names.** If you consume internal packages directly (`@internal/*`), check the rename table above and update imports. Durable-runtime consumers stay on `@trigger.dev/sdk`; Platos REST/WebSocket consumers use `@platosdev/client`.
 
 ## Rolling back
 

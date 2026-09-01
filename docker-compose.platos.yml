@@ -464,6 +464,9 @@ services:
       # at the in-cluster ClickHouse so an OSS `up -d` gets dual-write for
       # free; override to "" to disable.
       PLATOS_OTEL_CLICKHOUSE_URL: "${PLATOS_OTEL_CLICKHOUSE_URL:-http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123}"
+      # WIN-290 — client-authoritative deadline for fetch + full response body.
+      # Agent startup validates integer milliseconds in [1000, 120000].
+      PLATOS_CLICKHOUSE_TIMEOUT_MS: "${PLATOS_CLICKHOUSE_TIMEOUT_MS:-10000}"
       PLATOS_TELEMETRY_DATABASE: "${PLATOS_TELEMETRY_DATABASE:-platos_telemetry}"
       PLATOS_OBSERVABILITY_MAX_RETRIES: "${PLATOS_OBSERVABILITY_MAX_RETRIES:-10}"
       PLATOS_OTEL_SAMPLE_RATE: "${PLATOS_OTEL_SAMPLE_RATE:-1}"

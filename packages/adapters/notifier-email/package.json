@@ -1,0 +1,23 @@
+{
+  "name": "@platos/adapter-notifier-email",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Implements the cost-monitoring Notifier port.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@platos/context-cost-monitoring": "workspace:*"
+  }
+}

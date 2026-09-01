@@ -33,7 +33,7 @@ COPY . .
 # pnpm-workspace.yaml so --frozen-lockfile works against the trimmed tree.
 RUN sed -i '/docs/d' pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
-    pnpm install --no-frozen-lockfile
+    pnpm install --frozen-lockfile
 
 # Explicit Platos agent graph: clean tenancy client, runtime-only internal
 # packages, then the agent's strict declaration build.
@@ -68,6 +68,11 @@ COPY --from=builder /build/apps/agent/dist ./dist
 # this copy, search_docs returns 0 results and resources/list is empty.
 COPY --from=builder /build/content ./content
 ENV PLATOS_DOCS_CONTENT_ROOT=/app
+
+# Apache-2.0 s4(a)/s4(d) — the License and the NOTICE attributions must travel
+# with every distributed copy of the work. A shipped image IS a distribution.
+COPY --from=builder /build/LICENSE ./LICENSE
+COPY --from=builder /build/NOTICE ./NOTICE
 
 # Entrypoint + platos-specific init SQL
 COPY apps/agent/entrypoint.sh ./entrypoint.sh

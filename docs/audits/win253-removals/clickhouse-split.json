@@ -1,0 +1,1906 @@
+{
+  "schemaVersion": 5,
+  "workItem": "WIN-253",
+  "cluster": "clickhouse-split",
+  "ownerAuthorization": {
+    "sha": "fcf39fa227cb9265b7e532f14ef181a3b65ff061",
+    "treeOid": "73dc9fc4f98be95595c3020c2223627796d7410c",
+    "trackedFiles": 3651
+  },
+  "integrationBase": {
+    "sha": "0e3a86661dcaeae1ef8932fb1371a55ff3614c15",
+    "treeOid": "7a772b3d4dbedb6652390da67b39c68a4eb4c035",
+    "trackedFiles": 3656
+  },
+  "coexistingIntegrationBase": {
+    "sha": "5eb2d48d82c049e68e53b33701356e3091af532a",
+    "treeOid": "565a2ae239015db0b92eca3af5c54af52420ddaa",
+    "authorizedExternalDeletionCount": 122,
+    "authorizedExternalDeletionManifestSha256": "38b0fb1424a8b7b8f508f0f4febe18eb6fd069e0757ea896933f27f3b8fe871a"
+  },
+  "reviewedAdditionalIntegrationDeletions": [
+    {
+      "path": "patches/@upstash__ratelimit.patch",
+      "reason": "WIN-253 webapp dependency pruning removed the retired, unconfigured Upstash patch."
+    },
+    {
+      "path": "patches/@window-splitter__state@0.4.1.patch",
+      "reason": "WIN-253 webapp dependency pruning removed the retired window-splitter patch."
+    }
+  ],
+  "deletion": {
+    "actualFileCount": 91,
+    "actualBytes": 1734453,
+    "manifestSha256": "9bef39e0436e685c3efe4203020de61d07af94639099be086fccf572d97b2573",
+    "files": [
+      {
+        "path": "internal-packages/clickhouse/Dockerfile",
+        "mode": "100644",
+        "integrationBaseBlobOid": "ceb5092021b03a29256d57377d963471cb9e7d6a",
+        "integrationBaseSha256": "af6a2e08e50861e74f899c55583788c42c23c893dac97d128c777786b8753743",
+        "bytes": 241
+      },
+      {
+        "path": "internal-packages/clickhouse/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "df3aaad33ac0c7568a9808451ce42af116bf037d",
+        "integrationBaseSha256": "f0a29b6a5a7b6cdb1133163fa3c0ff66079b9c1df134129b3789d6fe22d345c5",
+        "bytes": 1718
+      },
+      {
+        "path": "internal-packages/clickhouse/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "af0396b920058760cd76ee8a315e352c585e6c06",
+        "integrationBaseSha256": "02f623c4a1a2e6b77a46a6bfb4215027c5caa12f9c14f276a5ab78d90f9b5e2a",
+        "bytes": 1274
+      },
+      {
+        "path": "internal-packages/clickhouse/src/__snapshots__/taskRuns.test.ts.snap",
+        "mode": "100644",
+        "integrationBaseBlobOid": "aaf6dec9cff9110236803d1ac79c6e1a1ebb2153",
+        "integrationBaseSha256": "7aa7e1daaa4d674162f9099823f81570269b4d0066712e9470bb048726440107",
+        "bytes": 698
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/client.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "085ffa660a6d74e13cbbdcc1daefb7383580a4ca",
+        "integrationBaseSha256": "b9963532be9ab6786a8aa5fa7b065671f29c8c3e45adb7def9c5dd5adc245146",
+        "bytes": 4798
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/client.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2b8dc79e1aae0b4121954dcf058ff22e26462e6a",
+        "integrationBaseSha256": "1c5e5b0a2081a656d5b29eb6bebf8caf9eee72e5d1865eb15191eef26f18147c",
+        "bytes": 29110
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/errors.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a620fb546493a125aaf403c235109e43587bed46",
+        "integrationBaseSha256": "36f5ab360d500f682f052723630e3bfec72b830815e717bce4ea35c4acc64cf6",
+        "bytes": 1184
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/noop.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8d43bf0ec81d56de2486783755a2c9a9ce32ba06",
+        "integrationBaseSha256": "46033dcb8d8aea5c18aac60721070c5ba187d8476f54c69e002e3e6ef17a3571",
+        "bytes": 6133
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/queryBuilder.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "fb0430fd0db7f9960e4a63e548abd9bcc49374c8",
+        "integrationBaseSha256": "c4fee085c032a343900be09c5c244242375efdd2f8b1a6800f6c3877244fd345",
+        "bytes": 7677
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/tsql.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "313b0f7f5ccd1d26fc4af85a0249da85604143a9",
+        "integrationBaseSha256": "2a32332b3468ce512cdcf7461d554dd6b959e203c30f430f74d71f2dde3a0687",
+        "bytes": 11871
+      },
+      {
+        "path": "internal-packages/clickhouse/src/client/types.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "01cf85df0c2f303e2fb0cf192187361348a99889",
+        "integrationBaseSha256": "5b5f39b22606b245faf1d6d11b14b7f42e74c5e8ffd640cd43357eb53721a939",
+        "bytes": 6922
+      },
+      {
+        "path": "internal-packages/clickhouse/src/errors.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6bf23b68819eaef47286dea023df1003135c6802",
+        "integrationBaseSha256": "975d59ac9472d1ebeac5b125b20a09727f890f3f451a46ac1180e6410607b6d1",
+        "bytes": 14712
+      },
+      {
+        "path": "internal-packages/clickhouse/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "dc7395f02c0486a5199864c75327fbc8411b6c47",
+        "integrationBaseSha256": "7048391fbd0341d4a6be69c087dd30edc3f90e29664531cc3ec4b4f2e305e995",
+        "bytes": 9071
+      },
+      {
+        "path": "internal-packages/clickhouse/src/intervals.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d21fd73815c229d4dee255a3d5c98dc1ce744c24",
+        "integrationBaseSha256": "151b49d655ea5319e57f8fa9263c0c7667cb146e8577e01b9a5987290755a351",
+        "bytes": 226
+      },
+      {
+        "path": "internal-packages/clickhouse/src/llmMetrics.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "83a50a73f169607af824e0c03958c564050a2d3b",
+        "integrationBaseSha256": "f61f4bdc47aa7ebbe93bf9e605da188fe6ac6c2cc382ff6ad0f13ebac90a40d4",
+        "bytes": 1462
+      },
+      {
+        "path": "internal-packages/clickhouse/src/llmModelAggregates.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "cef60cac58dd9d918a7e8cd0322eb353bc1c25b6",
+        "integrationBaseSha256": "c5483c16dcd62cd1d40d35e4916dac4f23f9a20d98db27e2092eb64cb0478e08",
+        "bytes": 4477
+      },
+      {
+        "path": "internal-packages/clickhouse/src/metrics.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "89f89928aab0d33800163c883dd8566465689747",
+        "integrationBaseSha256": "7a45bec9082369b267be5d2952cb106e4a9834d6c665646683dd46e9d39fc967",
+        "bytes": 928
+      },
+      {
+        "path": "internal-packages/clickhouse/src/namespace-migration.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2fd5797412b99a91d583725e096688f423e460f1",
+        "integrationBaseSha256": "a0de7605f00a3bcb90f5db7228eb3bdb58f1248ecbc6fa3938cd0105a3e62fd1",
+        "bytes": 9002
+      },
+      {
+        "path": "internal-packages/clickhouse/src/queryVocabulary.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "3766103be75632802cea0f8daa18edbd4798e3b5",
+        "integrationBaseSha256": "fbc4a60f4f2cb2008215147b9a544e500427175017da45a83ad663119689d680",
+        "bytes": 1337
+      },
+      {
+        "path": "internal-packages/clickhouse/src/taskEvents.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "813f6ea788f226924e48ce7d13280f1222773819",
+        "integrationBaseSha256": "25c11cf38406f82fb06f6bb46d25c60eceb19b18aa8c3561010c7e06b7e9293b",
+        "bytes": 9188
+      },
+      {
+        "path": "internal-packages/clickhouse/src/taskRuns.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "0c4d152094777a5fc7cc3ca8add48ccfdfa53f63",
+        "integrationBaseSha256": "baba39500540e869a0b2c0a6fd63aa049f6d6c8c7b204190227c6612dce5ae52",
+        "bytes": 14603
+      },
+      {
+        "path": "internal-packages/clickhouse/src/taskRuns.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e7c27b6ffa32a67da40ec24828de2918a00aae28",
+        "integrationBaseSha256": "e3e8186c19194620f463dc6c3cd0014a624092a9fb3fca5bfddf0958bebf79e3",
+        "bytes": 16449
+      },
+      {
+        "path": "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "587e06c6fc31fd9184a6f6c4a4dbd767eedb0cb3",
+        "integrationBaseSha256": "4c7a436a3bb6db06c4cd4128859c6a47ef1619a3105d2de0531a0d9ccfb07f27",
+        "bytes": 785
+      },
+      {
+        "path": "internal-packages/clickhouse/src/telemetryNamespace.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a22278d7d07dcec873e152d94edc1f7b6478a7da",
+        "integrationBaseSha256": "541ef74cf4d7ea88577f7d86b922af58158896dfd3bd1428715f81dc0ce7af81",
+        "bytes": 961
+      },
+      {
+        "path": "internal-packages/clickhouse/src/tsql.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "35882fad932f7082a3ce14b58930b4214f080bbd",
+        "integrationBaseSha256": "132bcb0441fc2303a7302f97324087fe085295d666d2101048ff934dca0d9bd8",
+        "bytes": 56539
+      },
+      {
+        "path": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "45ad63fc1cf598d5a12b7415ffa79e29e98fb01b",
+        "integrationBaseSha256": "f511856bbe8aa357465a7c9fb93dbe3c67c22c2f5be62c2c1791b9cebaa16c72",
+        "bytes": 46716
+      },
+      {
+        "path": "internal-packages/clickhouse/test-fixtures/applied-schema-sha256.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "673ba679ac9832cd78135d3a3593fe04718097f8",
+        "integrationBaseSha256": "3b2e45d88ed1359e17c2e253b7a886becb8ea41128c4d0b073828f6f3d784524",
+        "bytes": 3773
+      },
+      {
+        "path": "internal-packages/clickhouse/tsconfig.build.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6a71c854eefe1fe2a9f7e92e3929cefdc185987d",
+        "integrationBaseSha256": "356df84b4feeab366ee33891c1ed95a06f118581e8f5f59f8dc2efd680dbabf9",
+        "bytes": 593
+      },
+      {
+        "path": "internal-packages/clickhouse/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "af630abe1f16e14caf56d47e395821c052af5723",
+        "integrationBaseSha256": "9485f26de2ca1e392a5ef466b267437269e8afa2bac4bd87967c7cda9c21b324",
+        "bytes": 228
+      },
+      {
+        "path": "internal-packages/clickhouse/tsconfig.src.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6043e02ad26b330300e34148c995a00ff52c45de",
+        "integrationBaseSha256": "23970649c7f87877d517c3283543ae57c587a98e2b8cc5ebeec91abad1074e42",
+        "bytes": 584
+      },
+      {
+        "path": "internal-packages/clickhouse/tsconfig.test.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "99db8eb7c94912e3d22deb6f73e81397d0fc814e",
+        "integrationBaseSha256": "cede6d78e886bf7d940542e7f6b20e831274ac6cbd4e5046f078cd2e12b76005",
+        "bytes": 644
+      },
+      {
+        "path": "internal-packages/clickhouse/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "1d779c09577f2909d855e4fa7c50e0ba643a0dd0",
+        "integrationBaseSha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c",
+        "bytes": 343
+      },
+      {
+        "path": "internal-packages/replication/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "6e6401b7eeed8aad5efc94eeb21875aa2b1d8ba3",
+        "integrationBaseSha256": "61a76b99e84a0f52c12990ebc5c690a1048a6d23559ab9a192ba03e8b3b79c05",
+        "bytes": 14
+      },
+      {
+        "path": "internal-packages/replication/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a58cdd0e8190addea18517056007b4793ce7e676",
+        "integrationBaseSha256": "5e3d15029606582dbb2e2b0dccb3664493cb1468bbf8acd43311839d8de7dd7a",
+        "bytes": 866
+      },
+      {
+        "path": "internal-packages/replication/src/client.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2f5c1d3e4889c8209f19b50c7132ca57c74d9d15",
+        "integrationBaseSha256": "2b5817d9404cb11bfb47712524e35fa7b3a57ce7a25c51ed7bb6662559dd9bc1",
+        "bytes": 4830
+      },
+      {
+        "path": "internal-packages/replication/src/client.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "59cd6b417d9f6e1153182a47a2eae3ac16618267",
+        "integrationBaseSha256": "eb3790170f9699d398f96eff1f4d88a5694ece2754a7ff5943b2e817ecbde29b",
+        "bytes": 25964
+      },
+      {
+        "path": "internal-packages/replication/src/errors.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "0521305a5e7e3897dbabf97d66140cacb0f9662d",
+        "integrationBaseSha256": "9fc6d852e417a0ca4b560bfeb792c74ed54a1c19cebb84e8a32b7fa472784640",
+        "bytes": 118
+      },
+      {
+        "path": "internal-packages/replication/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "b889c12f7c288f7f8dffa41b98f9b1d33ceb023e",
+        "integrationBaseSha256": "9430f250338fc396d9dfe42801e0c5c1df6ee7515797bfbc7be7fa4eba6f5963",
+        "bytes": 94
+      },
+      {
+        "path": "internal-packages/replication/src/pgoutput.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "809ad8775817a87d9ccd2dd369f6f890a63401a7",
+        "integrationBaseSha256": "ff0effa27fd1c09fcf65a24ebeb1cb3f50b4d2935efa71d2591aaff6e60d1b0c",
+        "bytes": 16123
+      },
+      {
+        "path": "internal-packages/replication/src/redlock-shim.d.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f717dea9570cd378063c4eea83369003d48b080d",
+        "integrationBaseSha256": "fb0c272510489b3be65a6d1818adadcb937708c3f5320fdcedfaf4d7d2152ab7",
+        "bytes": 2954
+      },
+      {
+        "path": "internal-packages/replication/tsconfig.build.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "89c87a3dc67bfc82748f148fa9c53b9219beb73e",
+        "integrationBaseSha256": "67adf10d70adcde600c8066901691e607c7ba41e0f2db88cd9608f74ddfe6271",
+        "bytes": 564
+      },
+      {
+        "path": "internal-packages/replication/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "af630abe1f16e14caf56d47e395821c052af5723",
+        "integrationBaseSha256": "9485f26de2ca1e392a5ef466b267437269e8afa2bac4bd87967c7cda9c21b324",
+        "bytes": 228
+      },
+      {
+        "path": "internal-packages/replication/tsconfig.src.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "0df3d2d222f2c5023709147236860b03d06b0309",
+        "integrationBaseSha256": "0829150ebc2aaf20bd7a065c9db51f8ce6f07f964ba1af0b936c625618510c51",
+        "bytes": 584
+      },
+      {
+        "path": "internal-packages/replication/tsconfig.test.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "37b885fc8a3f689e3e01af055469f8fb6ced5d73",
+        "integrationBaseSha256": "18bdfdf3ddc14b4da3024d303fb6bc1c3ea7c8f4975cc421635229d9b3697b87",
+        "bytes": 644
+      },
+      {
+        "path": "internal-packages/replication/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "1d779c09577f2909d855e4fa7c50e0ba643a0dd0",
+        "integrationBaseSha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c",
+        "bytes": 343
+      },
+      {
+        "path": "internal-packages/tsql/.gitignore",
+        "mode": "100644",
+        "integrationBaseBlobOid": "05262c5eda77664c453ebfda8d80bf5b25200029",
+        "integrationBaseSha256": "414bcece7a414c895d96be7b969c1e69e4f73f186df97108bf01eea12bff7b2e",
+        "bytes": 54
+      },
+      {
+        "path": "internal-packages/tsql/NOTICE.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "efb4563d7b8fc605bde43117c379bcec0e08205a",
+        "integrationBaseSha256": "9045745ef618f5af1bce85ce945ab77adf98f141de5352f0a54b1a0b8c84899e",
+        "bytes": 1169
+      },
+      {
+        "path": "internal-packages/tsql/README.md",
+        "mode": "100644",
+        "integrationBaseBlobOid": "2e4992c6cb2f4ea69e8e71366b0f14c0e5c6622e",
+        "integrationBaseSha256": "35e39ec3ed08d4aac5eb2f1c4db1d4e646175607923f6bea98629e7d87d02ea6",
+        "bytes": 611
+      },
+      {
+        "path": "internal-packages/tsql/package.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c3ae3f959fb86563646e7c84b02fe04cd477105d",
+        "integrationBaseSha256": "256cf1c4e56acc151727ac50c05b43fe9deac112e7ba5b8a13ff1a7e18a3cca2",
+        "bytes": 970
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLLexer.common.g4",
+        "mode": "100644",
+        "integrationBaseBlobOid": "7988b54eba58352a1e13fe5c52a8547ca849cd9e",
+        "integrationBaseSha256": "924b0ecaf46b69666d933ab4fc9bc6efa405af0db30dc349f805e5cb3b0c8019",
+        "bytes": 7578
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLLexer.interp",
+        "mode": "100644",
+        "integrationBaseBlobOid": "21517b3322f6c2f00faf74c7c07670825cb7fe0c",
+        "integrationBaseSha256": "65d9f487795f336af374cbf533e638dd409c98b813adab7383d71b2068c60206",
+        "bytes": 61046
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLLexer.tokens",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f94f7b271689ca716d3a8abedc48ca6be58e9824",
+        "integrationBaseSha256": "a210741f483b7123b944229880761943390e6f7449c1b80d13ceb42a96830abd",
+        "bytes": 2230
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "df2a081794afcbe023c4c18bc798e659d66c2b40",
+        "integrationBaseSha256": "0134031642aee8a6771e606e84f65e0f31f745f21bc0f6edce4a5004e145aea3",
+        "bytes": 85329
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLLexer.typescript.g4",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f09eb2aaae73fe89e927061b493b548053213161",
+        "integrationBaseSha256": "efffd64ee55b2f56c58698b055b7133ac23df39ed3cd46408f9d8616bed5a5e8",
+        "bytes": 2224
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLParser.g4",
+        "mode": "100644",
+        "integrationBaseBlobOid": "62d24d8a3663bfd0d142337e9bb60a722b94b898",
+        "integrationBaseSha256": "636f87751500b57461d51b79096fef0376b85986970ae6445846dd04346bff4a",
+        "bytes": 17741
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLParser.interp",
+        "mode": "100644",
+        "integrationBaseBlobOid": "3ad726c89ddf5357cb3d7101fa169e58269b8729",
+        "integrationBaseSha256": "308ec7ca0ae196681d002b76d3ce34fdf5fac95808ebd0204ea4f317aaf32a57",
+        "bytes": 51590
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLParser.tokens",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f94f7b271689ca716d3a8abedc48ca6be58e9824",
+        "integrationBaseSha256": "a210741f483b7123b944229880761943390e6f7449c1b80d13ceb42a96830abd",
+        "bytes": 2230
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4e2b482a53ba5d3621d235b7fb6745149c5a7837",
+        "integrationBaseSha256": "2cecbc44fafa67d3822fa94aa465a798e6633144f70deebbcf7bd509299391d7",
+        "bytes": 448625
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/TSQLParserVisitor.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a562330bc58288310fe9bacc14a9a87a5ae57270",
+        "integrationBaseSha256": "4451435d22587903e6fe2f67461ee547d155f7f7657131ae3296385afa1df037",
+        "bytes": 42347
+      },
+      {
+        "path": "internal-packages/tsql/src/grammar/parser.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "fed698130f0d71a701c4de83d10ba7f842f75e79",
+        "integrationBaseSha256": "ae2ff296d018a657e2548cd614989153cfe8cc87f929a79aa0b04dca3be4d196",
+        "bytes": 5809
+      },
+      {
+        "path": "internal-packages/tsql/src/index.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "cf227d133f581636ab91df75cccf81cc270ff779",
+        "integrationBaseSha256": "a1c96ff5788b68975ebda01f96e5d3bb2859cb80c11cf52e9d54df2e8675af7e",
+        "bytes": 29907
+      },
+      {
+        "path": "internal-packages/tsql/src/index.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c117e2084e6a81d06749c822b60256d314dedc07",
+        "integrationBaseSha256": "a70b914ee657d0268114e3dc243c5303e16cf84f59ea7a7b5c915476a1a597ca",
+        "bytes": 18373
+      },
+      {
+        "path": "internal-packages/tsql/src/query/ast.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "4ef1e7e2d8c5554641ca1878d45bbd4543fd770d",
+        "integrationBaseSha256": "a61567da42fd582c6127cbee56e5a45c25c7d73f1d8b3f59a344942109f81a61",
+        "bytes": 15222
+      },
+      {
+        "path": "internal-packages/tsql/src/query/constants.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f698d3cc7aa096542361abc1286e05f1e6e2d798",
+        "integrationBaseSha256": "db1ad3083f4036b81475557d4ee6267653f29d602a64e2873dcf7553ce130a7e",
+        "bytes": 2280
+      },
+      {
+        "path": "internal-packages/tsql/src/query/context.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "249d3faa282bd3b852d18e3824f2a48cc62ffd66",
+        "integrationBaseSha256": "5c10a8a30ff6a0b7b385f4636fa86fcd80aa27d38b3b9fb0e7d5363e21a4b9e2",
+        "bytes": 1338
+      },
+      {
+        "path": "internal-packages/tsql/src/query/database.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "e91e0132c53a3a3e8b6a4559cf18fa137c226ecb",
+        "integrationBaseSha256": "c212b16a09a692ee8af49885961702302871d532c44e4df2074afe74bc21134d",
+        "bytes": 18049
+      },
+      {
+        "path": "internal-packages/tsql/src/query/errors.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c0da0d3cefb663dda3524c972babe45b8a379e79",
+        "integrationBaseSha256": "bb9e408cded94ab430774db58a042e416def1495059a0e6aaab12234f0cf86e5",
+        "bytes": 1506
+      },
+      {
+        "path": "internal-packages/tsql/src/query/escape.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "5a74926dbb46ba12fccabf46922b8d2efd3628f0",
+        "integrationBaseSha256": "ef6fda8adeaf58dbb2d623c70a886f9e37a39dd9cdc54e08bdd1a5c416b79904",
+        "bytes": 8124
+      },
+      {
+        "path": "internal-packages/tsql/src/query/escape.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "c0762d365bf046a1457732d995d285a2de445273",
+        "integrationBaseSha256": "fda8f161daa54abcc40fd70e9e579f2dae0c21354da601ae6843ae959a66aaf6",
+        "bytes": 7292
+      },
+      {
+        "path": "internal-packages/tsql/src/query/functions.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f184ed8f382417e5d718f74840dc95669228000b",
+        "integrationBaseSha256": "d61e352367c4283f913858d56ca063365475f77e75d8c7fc764b7bfe536f518b",
+        "bytes": 39351
+      },
+      {
+        "path": "internal-packages/tsql/src/query/models.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "49c8bd4f3c5d3f3e1140c40d10ab251727d97452",
+        "integrationBaseSha256": "999999ff27abf38db29bf9e0dac8a2321331ec3986651263407a924be8f66768",
+        "bytes": 7317
+      },
+      {
+        "path": "internal-packages/tsql/src/query/parse_string.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "be38f752dd2ef40c53357c8e99501c7eac7e3194",
+        "integrationBaseSha256": "fc83ab18507ed66f67c9002390b94c811f509de72d88b7ff5bb8e793c023370c",
+        "bytes": 2680
+      },
+      {
+        "path": "internal-packages/tsql/src/query/parser.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a3ba292a6f3984531faf4ae1b0505d026b9e227d",
+        "integrationBaseSha256": "68c36087509dfa435a4852be2748da12361938e98138b8eb61466b21c34865c6",
+        "bytes": 20549
+      },
+      {
+        "path": "internal-packages/tsql/src/query/parser.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "05b1df052ba2183698013348c739d7c79d6a8b01",
+        "integrationBaseSha256": "2e278d666a913204d00228cfc21e99c436bbbc46cdce15110434cf1819367572",
+        "bytes": 62511
+      },
+      {
+        "path": "internal-packages/tsql/src/query/printer.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "dabeb5b09600efbb16a8acf13ed51486e15608e6",
+        "integrationBaseSha256": "a0141b80003322d4881b4a5e8aecf5c8206a11682dda782020659a99937249f3",
+        "bytes": 143233
+      },
+      {
+        "path": "internal-packages/tsql/src/query/printer.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d45002f6715f08688159d7628bb39adc93e1493f",
+        "integrationBaseSha256": "427c0375c641b77fd7899f2f6a767c73879e1b430e619efbfffd08110baeabf0",
+        "bytes": 111124
+      },
+      {
+        "path": "internal-packages/tsql/src/query/printer_context.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "54203cfa2928db6374048e4f92f6ab1a39ca9ae1",
+        "integrationBaseSha256": "4f462a8b296df156832893276aa5736f53c3e47fd80850b4ab89592c4dc386af",
+        "bytes": 8275
+      },
+      {
+        "path": "internal-packages/tsql/src/query/property_types.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "ff2d74c8ef6d136ef16e826fefb4de1054f612b9",
+        "integrationBaseSha256": "40670bcc3f34c7e1c4f77d17cea7d0e0f6d66a4c9c9ed942d64c123679af3e42",
+        "bytes": 22738
+      },
+      {
+        "path": "internal-packages/tsql/src/query/results.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "a7ed0db02b6059d09b7b6b1608592312a17d5b5e",
+        "integrationBaseSha256": "9600925c80bc8d1f38475ea929a785789d8135114efac9bea284a78ee44f6215",
+        "bytes": 7838
+      },
+      {
+        "path": "internal-packages/tsql/src/query/results.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "24225b7943f6a0b131cef46ea90018de1b7d163a",
+        "integrationBaseSha256": "7373a8ad1da1bba1097f0283f0f804d4bd9f9bc683e9d07237668cc4e53db14d",
+        "bytes": 6880
+      },
+      {
+        "path": "internal-packages/tsql/src/query/schema.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "197d6ae5fbd327239bef0616169ee53c64fd7580",
+        "integrationBaseSha256": "74fefe9b526ea7fc6eb8fb57528bc0a7c67da4bc129f6f29e8966322c197ec65",
+        "bytes": 31205
+      },
+      {
+        "path": "internal-packages/tsql/src/query/schema.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "44bf3b7c99329e14a48b5f29784f6d77f3ccfcc8",
+        "integrationBaseSha256": "949ebdc95b07e2347e89028f3d95b821a83293991c632abafa73a89c3e832b9c",
+        "bytes": 32672
+      },
+      {
+        "path": "internal-packages/tsql/src/query/security.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "8fb307a3e9596a75ba57e57fdf7bdfd92af47e99",
+        "integrationBaseSha256": "b767b520edcbd6499ccbdc0f0e2be80d451ca4794d345a5a0fae29f04cdd26f7",
+        "bytes": 26433
+      },
+      {
+        "path": "internal-packages/tsql/src/query/time_buckets.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "451e74bccc1e9fd31191179920337376367e39ee",
+        "integrationBaseSha256": "41020765a435ad2a0c1e433a894a433873af5156ee715c1223973a0a16bb5c6e",
+        "bytes": 6517
+      },
+      {
+        "path": "internal-packages/tsql/src/query/time_buckets.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "04edde007d3a185a735cc5f677b5738e0b7d6c6b",
+        "integrationBaseSha256": "fefc77240a224611c99588890731f974cf9fb50d70c35991a20cfc2a41532fa2",
+        "bytes": 3811
+      },
+      {
+        "path": "internal-packages/tsql/src/query/timings.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "d868fe06671f50acd4c3cbc37b7f2b6e86e7b102",
+        "integrationBaseSha256": "29f292b0466db7267b0154d2a7fb7efa26a63ad9a2070311a914d04aa99a20f4",
+        "bytes": 3614
+      },
+      {
+        "path": "internal-packages/tsql/src/query/validator.test.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "f96b9f4d7c7759175c3b47fc9fa23f055add300d",
+        "integrationBaseSha256": "0238f4c82fae7851f9c1d73c43afee5401f10b8ff5f2087666ec15194331a3a1",
+        "bytes": 4795
+      },
+      {
+        "path": "internal-packages/tsql/src/query/validator.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "eb8591c8546b56824827cc719c1ae2e77c547ebd",
+        "integrationBaseSha256": "d1b6e1d64c91f7f9233887101cb606dbb90723d700e33815e0c0fe0075050b45",
+        "bytes": 17257
+      },
+      {
+        "path": "internal-packages/tsql/tsconfig.json",
+        "mode": "100644",
+        "integrationBaseBlobOid": "18501f81377a379c4cbad5b82999a9d3849f95af",
+        "integrationBaseSha256": "7f4fd9dd483805c5cd8b67ebfe1e917c6d5f3aff59d095325a2afeac1ae5c28d",
+        "bytes": 760
+      },
+      {
+        "path": "internal-packages/tsql/vitest.config.ts",
+        "mode": "100644",
+        "integrationBaseBlobOid": "1d779c09577f2909d855e4fa7c50e0ba643a0dd0",
+        "integrationBaseSha256": "177853a22e33c123398871d9a4a2822b33f26be8cb2d37e30fd5729603cb5b6c",
+        "bytes": 343
+      },
+      {
+        "path": "patches/antlr4ts@0.5.0-alpha.4.patch",
+        "mode": "100644",
+        "integrationBaseBlobOid": "388a1e035789bb1ca68bf57745e26d517d4d95c0",
+        "integrationBaseSha256": "dc99ff1933ecddc358e76c95098666e0cf15a37a9eb26dd6ac92f26e1bcd418f",
+        "bytes": 25333
+      }
+    ]
+  },
+  "tombstones": {
+    "roots": [
+      "internal-packages/clickhouse",
+      "internal-packages/replication",
+      "internal-packages/tsql"
+    ],
+    "schemaException": "internal-packages/clickhouse/schema/",
+    "inventory": "listRepositoryFiles plus retired-root filesystem walk for ignored files and symlinks",
+    "ignoredRetiredRootPaths": [],
+    "currentTreeViolations": []
+  },
+  "restore": {
+    "argv": [
+      "git",
+      "restore",
+      "--source=0e3a86661dcaeae1ef8932fb1371a55ff3614c15",
+      "--",
+      "internal-packages/clickhouse/Dockerfile",
+      "internal-packages/clickhouse/README.md",
+      "internal-packages/clickhouse/package.json",
+      "internal-packages/clickhouse/src/__snapshots__/taskRuns.test.ts.snap",
+      "internal-packages/clickhouse/src/client/client.test.ts",
+      "internal-packages/clickhouse/src/client/client.ts",
+      "internal-packages/clickhouse/src/client/errors.ts",
+      "internal-packages/clickhouse/src/client/noop.ts",
+      "internal-packages/clickhouse/src/client/queryBuilder.ts",
+      "internal-packages/clickhouse/src/client/tsql.ts",
+      "internal-packages/clickhouse/src/client/types.ts",
+      "internal-packages/clickhouse/src/errors.ts",
+      "internal-packages/clickhouse/src/index.ts",
+      "internal-packages/clickhouse/src/intervals.ts",
+      "internal-packages/clickhouse/src/llmMetrics.ts",
+      "internal-packages/clickhouse/src/llmModelAggregates.ts",
+      "internal-packages/clickhouse/src/metrics.ts",
+      "internal-packages/clickhouse/src/namespace-migration.test.ts",
+      "internal-packages/clickhouse/src/queryVocabulary.test.ts",
+      "internal-packages/clickhouse/src/taskEvents.ts",
+      "internal-packages/clickhouse/src/taskRuns.test.ts",
+      "internal-packages/clickhouse/src/taskRuns.ts",
+      "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
+      "internal-packages/clickhouse/src/telemetryNamespace.ts",
+      "internal-packages/clickhouse/src/tsql.test.ts",
+      "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
+      "internal-packages/clickhouse/test-fixtures/applied-schema-sha256.json",
+      "internal-packages/clickhouse/tsconfig.build.json",
+      "internal-packages/clickhouse/tsconfig.json",
+      "internal-packages/clickhouse/tsconfig.src.json",
+      "internal-packages/clickhouse/tsconfig.test.json",
+      "internal-packages/clickhouse/vitest.config.ts",
+      "internal-packages/replication/README.md",
+      "internal-packages/replication/package.json",
+      "internal-packages/replication/src/client.test.ts",
+      "internal-packages/replication/src/client.ts",
+      "internal-packages/replication/src/errors.ts",
+      "internal-packages/replication/src/index.ts",
+      "internal-packages/replication/src/pgoutput.ts",
+      "internal-packages/replication/src/redlock-shim.d.ts",
+      "internal-packages/replication/tsconfig.build.json",
+      "internal-packages/replication/tsconfig.json",
+      "internal-packages/replication/tsconfig.src.json",
+      "internal-packages/replication/tsconfig.test.json",
+      "internal-packages/replication/vitest.config.ts",
+      "internal-packages/tsql/.gitignore",
+      "internal-packages/tsql/NOTICE.md",
+      "internal-packages/tsql/README.md",
+      "internal-packages/tsql/package.json",
+      "internal-packages/tsql/src/grammar/TSQLLexer.common.g4",
+      "internal-packages/tsql/src/grammar/TSQLLexer.interp",
+      "internal-packages/tsql/src/grammar/TSQLLexer.tokens",
+      "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+      "internal-packages/tsql/src/grammar/TSQLLexer.typescript.g4",
+      "internal-packages/tsql/src/grammar/TSQLParser.g4",
+      "internal-packages/tsql/src/grammar/TSQLParser.interp",
+      "internal-packages/tsql/src/grammar/TSQLParser.tokens",
+      "internal-packages/tsql/src/grammar/TSQLParser.ts",
+      "internal-packages/tsql/src/grammar/TSQLParserVisitor.ts",
+      "internal-packages/tsql/src/grammar/parser.test.ts",
+      "internal-packages/tsql/src/index.test.ts",
+      "internal-packages/tsql/src/index.ts",
+      "internal-packages/tsql/src/query/ast.ts",
+      "internal-packages/tsql/src/query/constants.ts",
+      "internal-packages/tsql/src/query/context.ts",
+      "internal-packages/tsql/src/query/database.ts",
+      "internal-packages/tsql/src/query/errors.ts",
+      "internal-packages/tsql/src/query/escape.test.ts",
+      "internal-packages/tsql/src/query/escape.ts",
+      "internal-packages/tsql/src/query/functions.ts",
+      "internal-packages/tsql/src/query/models.ts",
+      "internal-packages/tsql/src/query/parse_string.ts",
+      "internal-packages/tsql/src/query/parser.test.ts",
+      "internal-packages/tsql/src/query/parser.ts",
+      "internal-packages/tsql/src/query/printer.test.ts",
+      "internal-packages/tsql/src/query/printer.ts",
+      "internal-packages/tsql/src/query/printer_context.ts",
+      "internal-packages/tsql/src/query/property_types.ts",
+      "internal-packages/tsql/src/query/results.test.ts",
+      "internal-packages/tsql/src/query/results.ts",
+      "internal-packages/tsql/src/query/schema.test.ts",
+      "internal-packages/tsql/src/query/schema.ts",
+      "internal-packages/tsql/src/query/security.test.ts",
+      "internal-packages/tsql/src/query/time_buckets.test.ts",
+      "internal-packages/tsql/src/query/time_buckets.ts",
+      "internal-packages/tsql/src/query/timings.ts",
+      "internal-packages/tsql/src/query/validator.test.ts",
+      "internal-packages/tsql/src/query/validator.ts",
+      "internal-packages/tsql/tsconfig.json",
+      "internal-packages/tsql/vitest.config.ts",
+      "patches/antlr4ts@0.5.0-alpha.4.patch"
+    ],
+    "pathspec": [
+      "internal-packages/clickhouse/Dockerfile",
+      "internal-packages/clickhouse/README.md",
+      "internal-packages/clickhouse/package.json",
+      "internal-packages/clickhouse/src/__snapshots__/taskRuns.test.ts.snap",
+      "internal-packages/clickhouse/src/client/client.test.ts",
+      "internal-packages/clickhouse/src/client/client.ts",
+      "internal-packages/clickhouse/src/client/errors.ts",
+      "internal-packages/clickhouse/src/client/noop.ts",
+      "internal-packages/clickhouse/src/client/queryBuilder.ts",
+      "internal-packages/clickhouse/src/client/tsql.ts",
+      "internal-packages/clickhouse/src/client/types.ts",
+      "internal-packages/clickhouse/src/errors.ts",
+      "internal-packages/clickhouse/src/index.ts",
+      "internal-packages/clickhouse/src/intervals.ts",
+      "internal-packages/clickhouse/src/llmMetrics.ts",
+      "internal-packages/clickhouse/src/llmModelAggregates.ts",
+      "internal-packages/clickhouse/src/metrics.ts",
+      "internal-packages/clickhouse/src/namespace-migration.test.ts",
+      "internal-packages/clickhouse/src/queryVocabulary.test.ts",
+      "internal-packages/clickhouse/src/taskEvents.ts",
+      "internal-packages/clickhouse/src/taskRuns.test.ts",
+      "internal-packages/clickhouse/src/taskRuns.ts",
+      "internal-packages/clickhouse/src/telemetryNamespace.test.ts",
+      "internal-packages/clickhouse/src/telemetryNamespace.ts",
+      "internal-packages/clickhouse/src/tsql.test.ts",
+      "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
+      "internal-packages/clickhouse/test-fixtures/applied-schema-sha256.json",
+      "internal-packages/clickhouse/tsconfig.build.json",
+      "internal-packages/clickhouse/tsconfig.json",
+      "internal-packages/clickhouse/tsconfig.src.json",
+      "internal-packages/clickhouse/tsconfig.test.json",
+      "internal-packages/clickhouse/vitest.config.ts",
+      "internal-packages/replication/README.md",
+      "internal-packages/replication/package.json",
+      "internal-packages/replication/src/client.test.ts",
+      "internal-packages/replication/src/client.ts",
+      "internal-packages/replication/src/errors.ts",
+      "internal-packages/replication/src/index.ts",
+      "internal-packages/replication/src/pgoutput.ts",
+      "internal-packages/replication/src/redlock-shim.d.ts",
+      "internal-packages/replication/tsconfig.build.json",
+      "internal-packages/replication/tsconfig.json",
+      "internal-packages/replication/tsconfig.src.json",
+      "internal-packages/replication/tsconfig.test.json",
+      "internal-packages/replication/vitest.config.ts",
+      "internal-packages/tsql/.gitignore",
+      "internal-packages/tsql/NOTICE.md",
+      "internal-packages/tsql/README.md",
+      "internal-packages/tsql/package.json",
+      "internal-packages/tsql/src/grammar/TSQLLexer.common.g4",
+      "internal-packages/tsql/src/grammar/TSQLLexer.interp",
+      "internal-packages/tsql/src/grammar/TSQLLexer.tokens",
+      "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+      "internal-packages/tsql/src/grammar/TSQLLexer.typescript.g4",
+      "internal-packages/tsql/src/grammar/TSQLParser.g4",
+      "internal-packages/tsql/src/grammar/TSQLParser.interp",
+      "internal-packages/tsql/src/grammar/TSQLParser.tokens",
+      "internal-packages/tsql/src/grammar/TSQLParser.ts",
+      "internal-packages/tsql/src/grammar/TSQLParserVisitor.ts",
+      "internal-packages/tsql/src/grammar/parser.test.ts",
+      "internal-packages/tsql/src/index.test.ts",
+      "internal-packages/tsql/src/index.ts",
+      "internal-packages/tsql/src/query/ast.ts",
+      "internal-packages/tsql/src/query/constants.ts",
+      "internal-packages/tsql/src/query/context.ts",
+      "internal-packages/tsql/src/query/database.ts",
+      "internal-packages/tsql/src/query/errors.ts",
+      "internal-packages/tsql/src/query/escape.test.ts",
+      "internal-packages/tsql/src/query/escape.ts",
+      "internal-packages/tsql/src/query/functions.ts",
+      "internal-packages/tsql/src/query/models.ts",
+      "internal-packages/tsql/src/query/parse_string.ts",
+      "internal-packages/tsql/src/query/parser.test.ts",
+      "internal-packages/tsql/src/query/parser.ts",
+      "internal-packages/tsql/src/query/printer.test.ts",
+      "internal-packages/tsql/src/query/printer.ts",
+      "internal-packages/tsql/src/query/printer_context.ts",
+      "internal-packages/tsql/src/query/property_types.ts",
+      "internal-packages/tsql/src/query/results.test.ts",
+      "internal-packages/tsql/src/query/results.ts",
+      "internal-packages/tsql/src/query/schema.test.ts",
+      "internal-packages/tsql/src/query/schema.ts",
+      "internal-packages/tsql/src/query/security.test.ts",
+      "internal-packages/tsql/src/query/time_buckets.test.ts",
+      "internal-packages/tsql/src/query/time_buckets.ts",
+      "internal-packages/tsql/src/query/timings.ts",
+      "internal-packages/tsql/src/query/validator.test.ts",
+      "internal-packages/tsql/src/query/validator.ts",
+      "internal-packages/tsql/tsconfig.json",
+      "internal-packages/tsql/vitest.config.ts",
+      "patches/antlr4ts@0.5.0-alpha.4.patch"
+    ]
+  },
+  "packages": {
+    "candidates": [
+      {
+        "path": "internal-packages/clickhouse/package.json",
+        "name": "@internal/clickhouse",
+        "dependencies": {
+          "dependencies": {
+            "@clickhouse/client": "^1.12.1",
+            "@internal/tracing": "workspace:*",
+            "@internal/tsql": "workspace:*",
+            "@platos/core": "workspace:*",
+            "zod": "3.25.76",
+            "zod-error": "1.5.0"
+          },
+          "devDependencies": {
+            "@internal/testcontainers": "workspace:*",
+            "rimraf": "6.0.1"
+          }
+        }
+      },
+      {
+        "path": "internal-packages/replication/package.json",
+        "name": "@internal/replication",
+        "dependencies": {
+          "dependencies": {
+            "@internal/redis": "workspace:*",
+            "@internal/tracing": "workspace:*",
+            "@platos/core": "workspace:*",
+            "pg": "8.15.6",
+            "redlock": "5.0.0-beta.2"
+          },
+          "devDependencies": {
+            "@internal/testcontainers": "workspace:*",
+            "rimraf": "6.0.1",
+            "@types/pg": "8.11.14"
+          }
+        }
+      },
+      {
+        "path": "internal-packages/tsql/package.json",
+        "name": "@internal/tsql",
+        "dependencies": {
+          "dependencies": {
+            "@platos/core": "workspace:*",
+            "antlr4ts": "0.5.0-alpha.4",
+            "zod": "3.25.76"
+          },
+          "devDependencies": {
+            "antlr4ts-cli": "0.5.0-alpha.4"
+          }
+        }
+      }
+    ]
+  },
+  "reachability": {
+    "ownerAuthorization": {
+      "package-dependencies": [
+        {
+          "path": "internal-packages/clickhouse/package.json",
+          "section": "dependencies",
+          "dependency": "@internal/tsql",
+          "scope": "removed-cluster"
+        }
+      ],
+      "static-imports": [
+        {
+          "path": "internal-packages/clickhouse/src/client/tsql.ts",
+          "line": 22,
+          "kind": "static-import",
+          "specifier": "@internal/tsql",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/clickhouse/src/index.ts",
+          "line": 84,
+          "kind": "static-import",
+          "specifier": "@internal/tsql",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/clickhouse/src/tsql.test.ts",
+          "line": 6,
+          "kind": "static-import",
+          "specifier": "@internal/tsql",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/clickhouse/src/tsqlFunctions.test.ts",
+          "line": 6,
+          "kind": "static-import",
+          "specifier": "@internal/tsql",
+          "scope": "removed-cluster"
+        }
+      ],
+      "side-effect-imports": [],
+      "dynamic-imports": [],
+      "filesystem-loaders": [],
+      "ts-references": [
+        {
+          "path": "internal-packages/tsql/tsconfig.json",
+          "kind": "ts-reference",
+          "value": "@internal/clickhouse",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/tsconfig.json",
+          "kind": "ts-reference",
+          "value": "@internal/clickhouse/*",
+          "scope": "removed-cluster"
+        }
+      ],
+      "ci": [],
+      "scripts": [
+        {
+          "path": "internal-packages/tsql/package.json",
+          "line": 1,
+          "kind": "package-script",
+          "token": "antlr4ts",
+          "script": "grammar:build:typescript",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "scripts/v1-ledger.mjs",
+          "line": 78,
+          "kind": "scripts",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "scripts/v1-ledger.test.mjs",
+          "line": 492,
+          "kind": "scripts",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "scripts/v1-ledger.test.mjs",
+          "line": 496,
+          "kind": "scripts",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "scripts/v1-ledger.test.mjs",
+          "line": 579,
+          "kind": "scripts",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        }
+      ],
+      "docker": [],
+      "test-config": [],
+      "docs": [
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 39,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 82,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 188,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 188,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 192,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 195,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 195,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 196,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 196,
+          "kind": "docs",
+          "token": "@internal/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 196,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/package.json",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 196,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/src",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 197,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 198,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 198,
+          "kind": "docs",
+          "token": "@internal/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 198,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 200,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 202,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 206,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 207,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 208,
+          "kind": "docs",
+          "token": "@internal/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 208,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/package.json",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 209,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 210,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 211,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 214,
+          "kind": "docs",
+          "token": "internal-packages/replication",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 265,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 286,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 286,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 291,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/sbom/closure-contract.md",
+          "line": 207,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/sbom/closure-contract.md",
+          "line": 212,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/observability-model.md",
+          "line": 397,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        }
+      ],
+      "licenses": [],
+      "generated": [
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 5,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 6,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 7,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 8,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 9,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 10,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 11,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 12,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 13,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 14,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLLexer.ts",
+          "line": 16,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 4,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 5,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 6,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 7,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 8,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 9,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 10,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 11,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 12,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 13,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 14,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 15,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 16,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 17,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 18,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 19,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 20,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 21,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 22,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParser.ts",
+          "line": 24,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        },
+        {
+          "path": "internal-packages/tsql/src/grammar/TSQLParserVisitor.ts",
+          "line": 4,
+          "kind": "generated",
+          "token": "antlr4ts",
+          "scope": "removed-cluster"
+        }
+      ]
+    },
+    "current": {
+      "package-dependencies": [],
+      "static-imports": [],
+      "side-effect-imports": [],
+      "dynamic-imports": [],
+      "filesystem-loaders": [],
+      "ts-references": [],
+      "ci": [],
+      "scripts": [],
+      "docker": [],
+      "test-config": [],
+      "docs": [
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 52,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 95,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 190,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 191,
+          "kind": "docs",
+          "token": "@internal/replication",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 191,
+          "kind": "docs",
+          "token": "@internal/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 216,
+          "kind": "docs",
+          "token": "internal-packages/replication",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 216,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 217,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 219,
+          "kind": "docs",
+          "token": "antlr4ts",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 278,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 365,
+          "kind": "docs",
+          "token": "internal-packages/replication",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 365,
+          "kind": "docs",
+          "token": "internal-packages/tsql",
+          "scope": "external"
+        },
+        {
+          "path": "docs/audits/M0.5-dependency-sbom.md",
+          "line": 366,
+          "kind": "docs",
+          "token": "internal-packages/clickhouse/Dockerfile",
+          "scope": "external"
+        },
+        {
+          "path": "docs/observability-model.md",
+          "line": 397,
+          "kind": "docs",
+          "token": "@internal/clickhouse",
+          "scope": "external"
+        }
+      ],
+      "licenses": [],
+      "generated": []
+    }
+  },
+  "protected": {
+    "ownerAuthorizationSchemaTreeOid": "d8e3741a4db2806d965aef2ddc37e689fc513af5",
+    "files": [
+      {
+        "path": "internal-packages/clickhouse/schema/001_create_databases.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "71b1b9f0fe0dd73b136edd64428b5f219f7ac05e",
+        "ownerAuthorizationSha256": "80594ec620de1b190788302b16b551f66a8fa867de14a6c4b462eaa89ba8656f",
+        "bytes": 86
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/002_create_smoke_test.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "8026951a3c8412e36ab1ad643c80e0610a71d92c",
+        "ownerAuthorizationSha256": "d74709a08e37101392c1bd39b8884bc4fa5bfe6ca9b69bc0dee562fbad43bbe5",
+        "bytes": 297
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/003_create_task_runs_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "bccef80b72ad406b6a41be262672e20e63b2095f",
+        "ownerAuthorizationSha256": "c672766d5928829e5f15b2ddf35d64b4cbcc9bde2f946450b6029e727759e874",
+        "bytes": 4039
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/004_create_task_runs_v2.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "2efd3bcfb07c54218354c723fe7d48410a4c8927",
+        "ownerAuthorizationSha256": "83f2d0c5ce718cc8d75044cb29c1e2a4d94a4e80de8bf5fa42666c0698465758",
+        "bytes": 4008
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/005_add_task_runs_v2_concurrency_bulkactions.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "3dd624746dc3f03e8347ff27bd4cdf5bc4154143",
+        "ownerAuthorizationSha256": "a363dc80b1a503b0c2345d4a9d23d57fe3a01641b9873fb540af0f006a43681c",
+        "bytes": 347
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/006_add_task_runs_v2_workerqueue.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "840ab78575f6b121982b008acf7d8d78992d44b3",
+        "ownerAuthorizationSha256": "cf56e223c836e7d0b1e26fe8e41971c799c9a9ceb57042427bceaa9ebf2f96c7",
+        "bytes": 203
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/007_add_task_events_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "7d8e7b68d33deb45620bc40b3cf4b60decbd028a",
+        "ownerAuthorizationSha256": "716183228163cd1ddcc57fc9fbe3c70e0b4e5136fe4c751e67c12749fedb0d69",
+        "bytes": 2374
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/008_add_task_events_v1_mvs.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "63de335b3b2ebfbb00793c742fdc888aaa9df570",
+        "ownerAuthorizationSha256": "67c72d5839071cc4b656407bcbded7890c5e58c826e43a946bc67cfd7fadc8a9",
+        "bytes": 1752
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/009_add_task_events_v2_mvs.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "7ebb640ebd0d5583120f7eb44f13374681340ffb",
+        "ownerAuthorizationSha256": "9ce1b86804763cdcd881337814557d645f5bb650e19f142c085d3975560dbd0f",
+        "bytes": 974
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/010_add_task_events_v2.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "04279b80cb9bf3181add089a0ebadd2aacfcace3",
+        "ownerAuthorizationSha256": "5952f5d6bf9781c20aefc98236c3899c89eb5f04672c1a412ec22270b1163424",
+        "bytes": 2526
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/011_add_task_events_v2_table_mvs.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "33f19926a376e0fb59b04fae3ba535c96483a266",
+        "ownerAuthorizationSha256": "e02966e6e028df67e26d6cecf261a3200ea2a2c9b0537072e8ae90a6b3c62f63",
+        "bytes": 723
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/012_add_task_runs_v2_max_duration.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "b4263e76541211998fe3492e2b9d7b12e2065a14",
+        "ownerAuthorizationSha256": "36cb5a77020ff1ddfcdd2ea4cf048bfcf0d8a70c58b5c7132a8da434f0032104",
+        "bytes": 249
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/013_add_task_runs_v2_idempotency_key_options.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "345e393afa42dc6a72b6304002dbac7ca2e0e696",
+        "ownerAuthorizationSha256": "5919b6bf946b3dbb9a69690917ad44a9bc53a0370769133106c680c2bc2dd93e",
+        "bytes": 434
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/014_update_output_error_text_to_extract_data.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "c66a1492a55f3e57c598dd277555d2c1daaa00ff",
+        "ownerAuthorizationSha256": "2fc882ed2c5dd2d1b84f6c621fe8feffe0fdaf7d9f2c2f6d79bbbf42096c1563",
+        "bytes": 1476
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/015_add_task_runs_v2_search_indexes.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "1d6af329451e87b64095711133a6a36599b0a493",
+        "ownerAuthorizationSha256": "2325172a9dcb5af398b4b798340f3e8e9c86e9557440fa5309e12df43fd60b87",
+        "bytes": 614
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/016_add_task_events_search_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "60ed1eb1fc535e707ef86c7001c830a4d4ea585b",
+        "ownerAuthorizationSha256": "b0fc301f0d25ce827bcc430dac3ff2f7ceb7063261165bae2f9f04031be383fe",
+        "bytes": 2157
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/017_update_materialized_conditions_to_task_events_search_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "3f84cf555f2f810965d434fd883268ea493f71b3",
+        "ownerAuthorizationSha256": "81f823ed656e71f66d2c4a80f5866944ec677e9f85cdf76ff5b151e0bf388460",
+        "bytes": 1729
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/018_drop_unused_task_events_v2_indexes.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "81e3dbab61c6fe0bfde21899173a65736120db03",
+        "ownerAuthorizationSha256": "5b50cbe76b2baad2b52effb1e3d3026d3abd3fa60eb9b73b5cb9b5b0ecf1756b",
+        "bytes": 689
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/019_create_metrics_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "b4a808f18968dc48085b556c00c2d2a497cbd13b",
+        "ownerAuthorizationSha256": "a9eb10b87dede7c796c6a71f81883e9f652bfc39f739320f1a2ef0ad2cda4bfa",
+        "bytes": 1789
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/020_add_machine_id_to_task_events_v2.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "69af257afdd95d1539930711cd057ba208ee2468",
+        "ownerAuthorizationSha256": "a96f47b4d4ddd6037b17b65e65e2dbe3cdd6f32cf180a2f2ada70953b82861e5",
+        "bytes": 187
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/021_add_error_fingerprint_to_task_runs_v2.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "f702b91d3b9fa70005e3e1a9ef224db7e75c7276",
+        "ownerAuthorizationSha256": "8bae97d0613c6d5a591c20ee2ee289ec35e7f348acd10ec7e529c24498579649",
+        "bytes": 435
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/022_create_errors_v1_table.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "e9c6e5ea3c8968533707cc9dc816240e385efbe1",
+        "ownerAuthorizationSha256": "3dd18748ce83f88071b506976405ab84bfae4c53318141058ec6a54a7387585c",
+        "bytes": 2695
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/023_create_error_occurrences_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "6b0aec271be1f92ad9abb90e35daf20ad05450bc",
+        "ownerAuthorizationSha256": "3b8dea5a8fdbbd90cb09cdaf2c4a7d6ffd831fcb8107912891d5eb4f964bb0b3",
+        "bytes": 2145
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/024_create_llm_usage_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "7cfbc0cea98f7a714c878a0f992144108c901c5d",
+        "ownerAuthorizationSha256": "08818a14d64cacbc5820c21720d86b114d00b9fcb5e948a28efb4aa711306252",
+        "bytes": 2210
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/025_add_prompt_columns_to_llm_metrics_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "edfea2887ee0e00fe1db334103ed2777168cc2ab",
+        "ownerAuthorizationSha256": "1bc7560f9240fc4609dc1737d02a8bd840ed0119ab4a5b836bf601e533556ee4",
+        "bytes": 350
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/026_add_base_response_model_to_llm_metrics_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "3d23295b02646a88885171150f4a7f95451c3e7c",
+        "ownerAuthorizationSha256": "4a431abd7cc8d2f5728c41258cdd1ac3024eedc8744112f267dc9fe68071a736",
+        "bytes": 209
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/027_create_llm_model_aggregates_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "3797f744bc25d82d13948df69cfaf94c25b02239",
+        "ownerAuthorizationSha256": "379e3dad721353b120f48b2b3955656ad54f57cc2f0c63b9fde39cf2a5fc30d3",
+        "bytes": 2651
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/028_add_trigger_source_and_warm_start_to_task_runs_v2.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "9381df8ddd5a2217ce8860eef30807fbce72b47a",
+        "ownerAuthorizationSha256": "2f9ac1c0b9ca53b3fea4459fd64478209f1447b2209c7b60024121ce848bef31",
+        "bytes": 537
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/029_create_platos_spans_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "799d02f35b886f7a2df205c88ac6d0821b53c440",
+        "ownerAuthorizationSha256": "34641fc0b1b2700e598effd65a95e495721125474c67018801c2f2b32fa56bb4",
+        "bytes": 2897
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/030_add_cache_tokens_to_llm_metrics_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "bfe9e1c97377b2053ec0914f4969d516051a0eb7",
+        "ownerAuthorizationSha256": "d68417b9036dda9d8468361426c733436827ace593988bea63f2dd1db27401d6",
+        "bytes": 1773
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/031_add_token_attrs_to_platos_spans_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "ad4c4e19683eae711735bd6bf4dbdc71f5f3d2b0",
+        "ownerAuthorizationSha256": "468cdfca618a7db24d43e9febd63172254b464bf8a3f336488704f2fc670d29f",
+        "bytes": 1891
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/032_platos_spans_user_identity.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "c37b80c9ba5772161df70dcebb8f1c29627fc908",
+        "ownerAuthorizationSha256": "4adef230e4160179a366f07ce93440f1f5f5db8175f7922f77a112dc160d0278",
+        "bytes": 859
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/033_create_platos_observability_v1.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "c9fc9de4388215805a8e568cabef44a954ce8bf4",
+        "ownerAuthorizationSha256": "4ae7bd5dfb43fe139929b314af1ca4d0215e180aa6cbe9830289a173d44cdba6",
+        "bytes": 13726
+      },
+      {
+        "path": "internal-packages/clickhouse/schema/034_rename_legacy_telemetry_database.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "9125ab1c101d20624b29d164b94723361a2efd9a",
+        "ownerAuthorizationSha256": "91d877e0344c66c06222bc501f3816d3bb1a15b119a59473e3c7328c924d3704",
+        "bytes": 11420
+      },
+      {
+        "path": "internal-packages/tenancy-database/prisma/migrations/20260824010000_win144_observability_retry_vocabulary/migration.sql",
+        "mode": "100644",
+        "ownerAuthorizationBlobOid": "7ea97e632f0e0ae226e8f2f47090c5dfe0d01351",
+        "ownerAuthorizationSha256": "912c15b478d3e75cf425045ad0d045335064128b2b6ee3818fcfeecf5d445d9c",
+        "bytes": 233
+      }
+    ],
+    "consumers": [
+      {
+        "path": "apps/agent/src/observability/observability-erasure-contract.test.ts",
+        "ownerAuthorizationSha256": "6ccb0b15186d2295005c9ded64c62af27be98b6f0b18e4b865254275715c2aaa",
+        "currentSha256": "6ccb0b15186d2295005c9ded64c62af27be98b6f0b18e4b865254275715c2aaa"
+      },
+      {
+        "path": "apps/webapp/scripts/entrypoint.sh",
+        "ownerAuthorizationSha256": "d1b35e460843c38c8995cd7d762d9e0d8d37c7d3493b4db7a563a4b77d936714",
+        "currentSha256": "d1b35e460843c38c8995cd7d762d9e0d8d37c7d3493b4db7a563a4b77d936714"
+      },
+      {
+        "path": "docker-compose.deploy.yml",
+        "ownerAuthorizationSha256": "12e925b5f500bda056e4018daa42f9e5bd789d11222b9e25db14db26e81e4c8c",
+        "currentSha256": "12e925b5f500bda056e4018daa42f9e5bd789d11222b9e25db14db26e81e4c8c"
+      },
+      {
+        "path": "internal-packages/tenancy-database/Dockerfile.migrations",
+        "ownerAuthorizationSha256": "a5cb024a29930e3d7025a558d3ef62eb91371eba93e29688ab9318068074353d",
+        "currentSha256": "a5cb024a29930e3d7025a558d3ef62eb91371eba93e29688ab9318068074353d"
+      },
+      {
+        "path": "internal-packages/testcontainers/src/utils.ts",
+        "ownerAuthorizationSha256": "00dc369ade5827112c239323c62ad2bd55ed6e9835c1d377d9d8317bf002e340",
+        "currentSha256": "00dc369ade5827112c239323c62ad2bd55ed6e9835c1d377d9d8317bf002e340"
+      },
+      {
+        "path": "apps/webapp/Dockerfile.platos",
+        "ownerAuthorizationSha256": "f7303cf644d5ea04b07e19d408e32146ba04aaec98fbc7b7669bdaa1d801c085",
+        "currentSha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057",
+        "requiredReferences": [
+          "COPY --chown=node:node internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema",
+          "COPY --from=builder --chown=node:node /platos/internal-packages/clickhouse/schema /platos/internal-packages/clickhouse/schema"
+        ]
+      },
+      {
+        "path": "docker-compose.platos.yml",
+        "ownerAuthorizationSha256": "186f4a921d9d51adc8ce23e7de729e65ac9bf5879987246be74962dfd0aef882",
+        "currentSha256": "43c288e8c07cc8466b819016e9ebfc2367e859515438fea310b9b58cad125e39",
+        "requiredReferences": [
+          "dockerfile: internal-packages/tenancy-database/Dockerfile.migrations",
+          "PLATOS_CLICKHOUSE_TIMEOUT_MS"
+        ]
+      },
+      {
+        "path": "apps/agent/src/observability/clickhouse-observability-sink.ts",
+        "ownerAuthorizationSha256": "601aeb01f472968793237c438e759c4515d053c45629ba054cae1ba256222539",
+        "currentSha256": "c10f3a3b5cbc3a41fd2c43ad2bfe016b993f7432e35358af8e761513b55320df",
+        "requiredReference": "internal-packages/clickhouse/schema/033_create_platos_observability_v1.sql"
+      }
+    ]
+  },
+  "integration": {
+    "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+    "vocabularySha256": "63f8fd1112073235a71ce4d347b9230a7d5923faca356e0524c95dcf4fb72835",
+    "retainedSchemaVocabularyRows": 251,
+    "deletedPathVocabularyRows": 0
+  }
+}

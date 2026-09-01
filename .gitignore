@@ -61,8 +61,6 @@ apps/**/public/build
 .husky
 /packages/react-hooks/src/package.json
 /packages/core/src/package.json
-/packages/trigger-sdk/src/package.json
-/packages/python/src/package.json
 **/.claude/settings.local.json
 .mcp.log
 .mcp.json

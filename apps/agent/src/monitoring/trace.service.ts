@@ -4,6 +4,10 @@ import { SpansService, type PlatosSpan } from "./spans.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { CostService } from "./cost.service";
 import { addUsage, EMPTY_USAGE, roundCents, usageFromStep } from "./usage-ledger";
+import {
+  ClickhouseCallerAbortError,
+  clickhouseErrorCorrelation,
+} from "../shared/clickhouse-deadline";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -84,6 +88,7 @@ export class TraceService {
   async buildThreadTrace(
     scope: ScopeTuple,
     threadId: string,
+    callerSignal?: AbortSignal,
   ): Promise<ThreadTraceResponse | null> {
     // 1. Load the thread — scope-filtered. This is the cross-env leakage gate.
     const thread = await this.prisma.thread.findFirst({
@@ -233,18 +238,50 @@ export class TraceService {
     //    server-side so cross-env leakage is structurally impossible even if
     //    the Redis layer ever regresses.
     let spans: PlatosSpan[] = [];
+    let clickhouseFallbackCorrelation: string | undefined;
     if (this.spansService.isClickhouseEnabled()) {
       try {
-        const chSpans = await this.spansService.getThreadSpansFromClickhouse(scope, threadId);
+        const chSpans = await this.spansService.getThreadSpansFromClickhouse(
+          scope,
+          threadId,
+          callerSignal
+        );
         if (chSpans) spans = chSpans;
       } catch (err: any) {
+        if (err instanceof ClickhouseCallerAbortError) throw err;
+        clickhouseFallbackCorrelation = clickhouseErrorCorrelation(err);
         this.logger.warn(
           `[trace] ClickHouse read failed; falling back to Redis: ${err?.message ?? err}`,
         );
       }
     }
     if (spans.length === 0) {
-      spans = await this.spansService.getThreadSpans(threadId);
+      const fallbackStartedAt = Date.now();
+      try {
+        spans = await this.spansService.getThreadSpans(threadId);
+      } catch (error) {
+        if (clickhouseFallbackCorrelation) {
+          this.spansService.reportClickhouseHandling({
+            operation: "span-read",
+            correlationId: clickhouseFallbackCorrelation,
+            decision: "fallback-redis",
+            decisionState: "failed",
+            elapsedMs: Date.now() - fallbackStartedAt,
+            callerMapping: "redis-fallback",
+          });
+        }
+        throw error;
+      }
+      if (clickhouseFallbackCorrelation) {
+        this.spansService.reportClickhouseHandling({
+          operation: "span-read",
+          correlationId: clickhouseFallbackCorrelation,
+          decision: "fallback-redis",
+          decisionState: "applied",
+          elapsedMs: Date.now() - fallbackStartedAt,
+          callerMapping: "redis-fallback",
+        });
+      }
     }
 
     // 4. Build span tree. Spans with no parent (or with a parent not in the

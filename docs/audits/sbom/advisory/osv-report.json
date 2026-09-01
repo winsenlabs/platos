@@ -1,20 +1,44 @@
 {
-  "$schema": "platos.audit.osv-receipt/v1",
-  "tool": "osv.dev querybatch+vulns (scripts/audit-advisory.mjs)",
-  "scannedAt": "2026-08-29T05:09:04.924Z",
-  "lockfileSha256": "603cd67f4564fe644852b01fa409c75d65a9cdf015f251bb79ce723846360f69",
+  "$schema": "platos.audit.osv-receipt/v2",
+  "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
+  "scannedAt": "2026-08-30T20:25:16.864Z",
+  "network": {
+    "requestedMode": "public-osv-with-cache",
+    "effectiveMode": "public-osv-live",
+    "timeoutMs": 20000,
+    "queryBatchSize": 1000,
+    "detailConcurrency": 8,
+    "publicRequestsAttempted": 126,
+    "publicRequestsSucceeded": 126,
+    "cacheFallbacks": 0,
+    "limitations": []
+  },
+  "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
   "ecosystem": "npm",
-  "scope": "per-image production closures (agent, webapp) from pnpm-lock.yaml",
-  "componentsScanned": 1897,
+  "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
+  "webappInventory": {
+    "file": "docs/audits/sbom/platos-webapp.image-inventory.json",
+    "schema": "platos.audit.image-package-inventory/v2",
+    "sha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419",
+    "targetPlatform": "linux/amd64",
+    "componentCount": 330,
+    "distinctNames": 303
+  },
+  "scanSetSha256": "b185796f6eb2f0dfe7d73ba5b565e7f57730ecf81359577ad1744aac69d6092b",
+  "imageScanSetSha256": {
+    "agent": "dfbd8df6efd70780e5554f77656c93cf30dc3871bd992701798501a5a73a3a2b",
+    "webapp": "b8b4fb78428532a9545374f8eaa5ce78223a2b29ce3c588875bde605550d287b"
+  },
+  "componentsScanned": 876,
   "agentComponents": 718,
-  "webappComponents": 1637,
-  "findingsCount": 291,
+  "webappComponents": 330,
+  "findingsCount": 152,
   "withdrawnCount": 0,
   "bySeverity": {
-    "CRITICAL": 5,
-    "HIGH": 111,
-    "MODERATE": 149,
-    "LOW": 26
+    "CRITICAL": 3,
+    "HIGH": 56,
+    "MODERATE": 75,
+    "LOW": 18
   },
   "m05Adjudication": [
     {
@@ -61,282 +85,10 @@
     {
       "package": "postcss",
       "m05Note": "M0.5: 6.0.23 / 7.0.32 named for scan",
-      "versionsInClosure": [
-        "6.0.23",
-        "7.0.32",
-        "7.0.39",
-        "8.5.6"
-      ],
-      "shipsIn": [
-        "webapp"
-      ],
-      "advisories": [
-        {
-          "id": "GHSA-6g55-p6wh-862q",
-          "cves": [
-            "CVE-2026-45623"
-          ],
-          "version": "6.0.23",
-          "severity": "HIGH",
-          "fixedIn": "8.5.12",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-r28c-9q8g-f849",
-          "cves": [
-            "CVE-2026-73646"
-          ],
-          "version": "6.0.23",
-          "severity": "HIGH",
-          "fixedIn": "8.5.18",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-6g55-p6wh-862q",
-          "cves": [
-            "CVE-2026-45623"
-          ],
-          "version": "7.0.32",
-          "severity": "HIGH",
-          "fixedIn": "8.5.12",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-r28c-9q8g-f849",
-          "cves": [
-            "CVE-2026-73646"
-          ],
-          "version": "7.0.32",
-          "severity": "HIGH",
-          "fixedIn": "8.5.18",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-6g55-p6wh-862q",
-          "cves": [
-            "CVE-2026-45623"
-          ],
-          "version": "7.0.39",
-          "severity": "HIGH",
-          "fixedIn": "8.5.12",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-r28c-9q8g-f849",
-          "cves": [
-            "CVE-2026-73646"
-          ],
-          "version": "7.0.39",
-          "severity": "HIGH",
-          "fixedIn": "8.5.18",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-6g55-p6wh-862q",
-          "cves": [
-            "CVE-2026-45623"
-          ],
-          "version": "8.5.6",
-          "severity": "HIGH",
-          "fixedIn": "8.5.12",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-r28c-9q8g-f849",
-          "cves": [
-            "CVE-2026-73646"
-          ],
-          "version": "8.5.6",
-          "severity": "HIGH",
-          "fixedIn": "8.5.18",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-566m-qj78-rww5",
-          "cves": [
-            "CVE-2021-23382"
-          ],
-          "version": "6.0.23",
-          "severity": "MODERATE",
-          "fixedIn": "8.2.13",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-7fh5-64p2-3v2j",
-          "cves": [
-            "CVE-2023-44270"
-          ],
-          "version": "6.0.23",
-          "severity": "MODERATE",
-          "fixedIn": "8.4.31",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fxqj-rqcc-2cmp",
-          "cves": [
-            "CVE-2026-69153"
-          ],
-          "version": "6.0.23",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.23",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-qx2v-qp2m-jg93",
-          "cves": [
-            "CVE-2026-41305"
-          ],
-          "version": "6.0.23",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.10",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-566m-qj78-rww5",
-          "cves": [
-            "CVE-2021-23382"
-          ],
-          "version": "7.0.32",
-          "severity": "MODERATE",
-          "fixedIn": "8.2.13",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-7fh5-64p2-3v2j",
-          "cves": [
-            "CVE-2023-44270"
-          ],
-          "version": "7.0.32",
-          "severity": "MODERATE",
-          "fixedIn": "8.4.31",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fxqj-rqcc-2cmp",
-          "cves": [
-            "CVE-2026-69153"
-          ],
-          "version": "7.0.32",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.23",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-hwj9-h5mp-3pm3",
-          "cves": [
-            "CVE-2021-23368"
-          ],
-          "version": "7.0.32",
-          "severity": "MODERATE",
-          "fixedIn": "7.0.36",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-qx2v-qp2m-jg93",
-          "cves": [
-            "CVE-2026-41305"
-          ],
-          "version": "7.0.32",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.10",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-7fh5-64p2-3v2j",
-          "cves": [
-            "CVE-2023-44270"
-          ],
-          "version": "7.0.39",
-          "severity": "MODERATE",
-          "fixedIn": "8.4.31",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fxqj-rqcc-2cmp",
-          "cves": [
-            "CVE-2026-69153"
-          ],
-          "version": "7.0.39",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.23",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-qx2v-qp2m-jg93",
-          "cves": [
-            "CVE-2026-41305"
-          ],
-          "version": "7.0.39",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.10",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fxqj-rqcc-2cmp",
-          "cves": [
-            "CVE-2026-69153"
-          ],
-          "version": "8.5.6",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.23",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-qx2v-qp2m-jg93",
-          "cves": [
-            "CVE-2026-41305"
-          ],
-          "version": "8.5.6",
-          "severity": "MODERATE",
-          "fixedIn": "8.5.10",
-          "images": [
-            "webapp"
-          ]
-        }
-      ],
-      "verdict": "VULNERABLE_VERSION_PRESENT"
+      "versionsInClosure": [],
+      "shipsIn": [],
+      "advisories": [],
+      "verdict": "NOT_IN_CLOSURE"
     },
     {
       "package": "tmp",
@@ -363,53 +115,15 @@
       "package": "undici",
       "m05Note": "M0.5: 5.29.0 named for scan",
       "versionsInClosure": [
-        "5.29.0",
         "6.27.0",
         "7.25.0",
         "7.28.0",
         "8.7.0"
       ],
       "shipsIn": [
-        "webapp",
         "agent"
       ],
       "advisories": [
-        {
-          "id": "GHSA-v9p9-hfj2-hcw8",
-          "cves": [
-            "CVE-2026-2229"
-          ],
-          "version": "5.29.0",
-          "severity": "HIGH",
-          "fixedIn": "6.24.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-vrm6-8vpv-qv8q",
-          "cves": [
-            "CVE-2026-1526"
-          ],
-          "version": "5.29.0",
-          "severity": "HIGH",
-          "fixedIn": "6.24.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-vxpw-j846-p89q",
-          "cves": [
-            "CVE-2026-12151"
-          ],
-          "version": "5.29.0",
-          "severity": "HIGH",
-          "fixedIn": "6.27.0",
-          "images": [
-            "webapp"
-          ]
-        },
         {
           "id": "GHSA-4cwx-7wf7-3272",
           "cves": [
@@ -419,8 +133,7 @@
           "severity": "HIGH",
           "fixedIn": "7.29.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -432,8 +145,7 @@
           "severity": "HIGH",
           "fixedIn": "7.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -445,8 +157,7 @@
           "severity": "HIGH",
           "fixedIn": "7.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -458,8 +169,7 @@
           "severity": "HIGH",
           "fixedIn": "6.27.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -487,90 +197,6 @@
           ]
         },
         {
-          "id": "GHSA-2mjp-6q6p-2qxm",
-          "cves": [
-            "CVE-2026-1525"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.24.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-4992-7rv2-5pvq",
-          "cves": [
-            "CVE-2026-1527"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.24.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-8xcm-r25x-g524",
-          "cves": [
-            "CVE-2026-16728"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.28.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-g9mf-h72j-4rw9",
-          "cves": [
-            "CVE-2026-22036"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "7.18.2",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-m8rv-5g2x-5cg5",
-          "cves": [
-            "CVE-2026-15157"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.28.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-p88m-4jfj-68fv",
-          "cves": [
-            "CVE-2026-9679"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.27.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-v3r7-h72x-cjcm",
-          "cves": [
-            "CVE-2026-16729"
-          ],
-          "version": "5.29.0",
-          "severity": "MODERATE",
-          "fixedIn": "6.28.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
           "id": "GHSA-8xcm-r25x-g524",
           "cves": [
             "CVE-2026-16728"
@@ -615,8 +241,7 @@
           "severity": "MODERATE",
           "fixedIn": "6.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -628,8 +253,7 @@
           "severity": "MODERATE",
           "fixedIn": "7.29.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -641,8 +265,7 @@
           "severity": "MODERATE",
           "fixedIn": "6.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -654,8 +277,7 @@
           "severity": "MODERATE",
           "fixedIn": "6.27.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -667,8 +289,7 @@
           "severity": "MODERATE",
           "fixedIn": "7.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -680,8 +301,7 @@
           "severity": "MODERATE",
           "fixedIn": "6.28.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -785,36 +405,11 @@
           "cves": [
             "CVE-2026-6733"
           ],
-          "version": "5.29.0",
-          "severity": "LOW",
-          "fixedIn": "6.27.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-g8m3-5g58-fq7m",
-          "cves": [
-            "CVE-2026-11525"
-          ],
-          "version": "5.29.0",
-          "severity": "LOW",
-          "fixedIn": "6.27.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-35p6-xmwp-9g52",
-          "cves": [
-            "CVE-2026-6733"
-          ],
           "version": "7.25.0",
           "severity": "LOW",
           "fixedIn": "6.27.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -826,8 +421,7 @@
           "severity": "LOW",
           "fixedIn": "6.27.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         }
       ],
@@ -837,39 +431,12 @@
       "package": "fast-xml-parser",
       "m05Note": "M0.5: 4.2.5 named for scan",
       "versionsInClosure": [
-        "4.2.5",
-        "4.4.1",
         "5.2.5"
       ],
       "shipsIn": [
-        "webapp",
         "agent"
       ],
       "advisories": [
-        {
-          "id": "GHSA-m7jm-9gc2-mpf2",
-          "cves": [
-            "CVE-2026-25896"
-          ],
-          "version": "4.2.5",
-          "severity": "CRITICAL",
-          "fixedIn": "5.3.5",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-m7jm-9gc2-mpf2",
-          "cves": [
-            "CVE-2026-25896"
-          ],
-          "version": "4.4.1",
-          "severity": "CRITICAL",
-          "fixedIn": "5.3.5",
-          "images": [
-            "webapp"
-          ]
-        },
         {
           "id": "GHSA-m7jm-9gc2-mpf2",
           "cves": [
@@ -879,56 +446,7 @@
           "severity": "CRITICAL",
           "fixedIn": "5.3.5",
           "images": [
-            "agent",
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-8gc5-j5rx-235r",
-          "cves": [
-            "CVE-2026-33036"
-          ],
-          "version": "4.2.5",
-          "severity": "HIGH",
-          "fixedIn": "5.5.6",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-jmr7-xgp7-cmfj",
-          "cves": [
-            "CVE-2026-26278"
-          ],
-          "version": "4.2.5",
-          "severity": "HIGH",
-          "fixedIn": "4.5.4",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-8gc5-j5rx-235r",
-          "cves": [
-            "CVE-2026-33036"
-          ],
-          "version": "4.4.1",
-          "severity": "HIGH",
-          "fixedIn": "5.5.6",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-jmr7-xgp7-cmfj",
-          "cves": [
-            "CVE-2026-26278"
-          ],
-          "version": "4.4.1",
-          "severity": "HIGH",
-          "fixedIn": "4.5.4",
-          "images": [
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -940,8 +458,7 @@
           "severity": "HIGH",
           "fixedIn": "5.3.4",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -953,8 +470,7 @@
           "severity": "HIGH",
           "fixedIn": "5.5.6",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -966,56 +482,7 @@
           "severity": "HIGH",
           "fixedIn": "4.5.4",
           "images": [
-            "agent",
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-gh4j-gqv2-49f6",
-          "cves": [
-            "CVE-2026-41650"
-          ],
-          "version": "4.2.5",
-          "severity": "MODERATE",
-          "fixedIn": "5.7.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-jp2q-39xq-3w4g",
-          "cves": [
-            "CVE-2026-33349"
-          ],
-          "version": "4.2.5",
-          "severity": "MODERATE",
-          "fixedIn": "4.5.5",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-gh4j-gqv2-49f6",
-          "cves": [
-            "CVE-2026-41650"
-          ],
-          "version": "4.4.1",
-          "severity": "MODERATE",
-          "fixedIn": "5.7.0",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-jp2q-39xq-3w4g",
-          "cves": [
-            "CVE-2026-33349"
-          ],
-          "version": "4.4.1",
-          "severity": "MODERATE",
-          "fixedIn": "4.5.5",
-          "images": [
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -1027,8 +494,7 @@
           "severity": "MODERATE",
           "fixedIn": "5.7.0",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -1040,32 +506,7 @@
           "severity": "MODERATE",
           "fixedIn": "4.5.5",
           "images": [
-            "agent",
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fj3w-jwp8-x2g3",
-          "cves": [
-            "CVE-2026-27942"
-          ],
-          "version": "4.2.5",
-          "severity": "LOW",
-          "fixedIn": "5.3.8",
-          "images": [
-            "webapp"
-          ]
-        },
-        {
-          "id": "GHSA-fj3w-jwp8-x2g3",
-          "cves": [
-            "CVE-2026-27942"
-          ],
-          "version": "4.4.1",
-          "severity": "LOW",
-          "fixedIn": "5.3.8",
-          "images": [
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -1077,8 +518,7 @@
           "severity": "LOW",
           "fixedIn": "5.3.8",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         }
       ],
@@ -1132,8 +572,7 @@
           "severity": "HIGH",
           "fixedIn": "5.2.5",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -1170,8 +609,7 @@
           "severity": "MODERATE",
           "fixedIn": "8.20.1",
           "images": [
-            "agent",
-            "webapp"
+            "agent"
           ]
         },
         {
@@ -1252,44 +690,6 @@
     },
     {
       "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-m7jm-9gc2-mpf2",
-      "aliases": [
-        "CVE-2026-25896"
-      ],
-      "cves": [
-        "CVE-2026-25896"
-      ],
-      "severity": "CRITICAL",
-      "cvss": null,
-      "summary": "fast-xml-parser has an entity encoding bypass via regex injection in DOCTYPE entity names",
-      "fixedIn": "5.3.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-m7jm-9gc2-mpf2",
-      "aliases": [
-        "CVE-2026-25896"
-      ],
-      "cves": [
-        "CVE-2026-25896"
-      ],
-      "severity": "CRITICAL",
-      "cvss": null,
-      "summary": "fast-xml-parser has an entity encoding bypass via regex injection in DOCTYPE entity names",
-      "fixedIn": "5.3.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
       "version": "5.2.5",
       "id": "GHSA-m7jm-9gc2-mpf2",
       "aliases": [
@@ -1303,8 +703,7 @@
       "summary": "fast-xml-parser has an entity encoding bypass via regex injection in DOCTYPE entity names",
       "fixedIn": "5.3.5",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -1328,44 +727,6 @@
       "withdrawn": null
     },
     {
-      "package": "@grpc/grpc-js",
-      "version": "1.12.6",
-      "id": "GHSA-5375-pq7m-f5r2",
-      "aliases": [
-        "CVE-2026-48068"
-      ],
-      "cves": [
-        "CVE-2026-48068"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "@grpc/grpc-js: A malformed request can cause a server crash",
-      "fixedIn": "1.9.16",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@grpc/grpc-js",
-      "version": "1.12.6",
-      "id": "GHSA-99f4-grh7-6pcq",
-      "aliases": [
-        "CVE-2026-48069"
-      ],
-      "cves": [
-        "CVE-2026-48069"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "@grpc/grpc-js: An incoming malformed compressed message can cause a client or server crash",
-      "fixedIn": "1.9.16",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "@hono/node-server",
       "version": "1.19.9",
       "id": "GHSA-wc8c-qw6v-h7f6",
@@ -1380,65 +741,7 @@
       "summary": "@hono/node-server has authorization bypass for protected static paths via encoded slashes in Serve Static Middleware",
       "fixedIn": "1.19.10",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/exporter-prometheus",
-      "version": "0.203.0",
-      "id": "GHSA-q7rr-3cgh-j5r3",
-      "aliases": [
-        "CVE-2026-44902"
-      ],
-      "cves": [
-        "CVE-2026-44902"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Prometheus exporter process crash via malformed HTTP request",
-      "fixedIn": "0.217.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/propagator-jaeger",
-      "version": "2.0.1",
-      "id": "GHSA-45rx-2jwx-cxfr",
-      "aliases": [
-        "CVE-2026-59892"
-      ],
-      "cves": [
-        "CVE-2026-59892"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "OpenTelemetry JavaScript: Denial of service in `JaegerPropagator` via unhandled exception on a malformed header",
-      "fixedIn": "2.9.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/sdk-node",
-      "version": "0.203.0",
-      "id": "GHSA-q7rr-3cgh-j5r3",
-      "aliases": [
-        "CVE-2026-44902"
-      ],
-      "cves": [
-        "CVE-2026-44902"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Prometheus exporter process crash via malformed HTTP request",
-      "fixedIn": "0.217.0",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -1534,272 +837,6 @@
       "fixedIn": "4.5.6",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-35jp-ww65-95wh",
-      "aliases": [
-        "CVE-2026-44494"
-      ],
-      "cves": [
-        "CVE-2026-44494"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-3g43-6gmg-66jw",
-      "aliases": [
-        "CVE-2026-44495"
-      ],
-      "cves": [
-        "CVE-2026-44495"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "axios Vulnerable to Credential Theft and Response Hijacking via Prototype Pollution Gadget in Config Merge",
-      "fixedIn": "1.15.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-43fc-jf86-j433",
-      "aliases": [
-        "CVE-2026-25639"
-      ],
-      "cves": [
-        "CVE-2026-25639"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios is Vulnerable to Denial of Service via __proto__ Key in mergeConfig",
-      "fixedIn": "1.13.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-6chq-wfr3-2hj9",
-      "aliases": [
-        "CVE-2026-42035"
-      ],
-      "cves": [
-        "CVE-2026-42035"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Header Injection via Prototype Pollution",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-777c-7fjr-54vf",
-      "aliases": [
-        "CVE-2026-44488"
-      ],
-      "cves": [
-        "CVE-2026-44488"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Allocation of Resources Without Limits or Throttling in Axios",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-hfxv-24rg-xrqf",
-      "aliases": [
-        "CVE-2026-44496"
-      ],
-      "cves": [
-        "CVE-2026-44496"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Regular Expression Denial of Service (ReDoS) via Cookie Name Injection",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-j5f8-grm9-p9fc",
-      "aliases": [
-        "CVE-2026-44486"
-      ],
-      "cves": [
-        "CVE-2026-44486"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Proxy-Authorization header leaks to redirect target when proxy is re-evaluated to direct connection",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-p92q-9vqr-4j8v",
-      "aliases": [
-        "CVE-2026-44487"
-      ],
-      "cves": [
-        "CVE-2026-44487"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Proxy-Authorization Credential Leak to Origin Server Across HTTP-to-HTTPS Redirect in Axios Node.js HTTP Adapter",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-pf86-5x62-jrwf",
-      "aliases": [
-        "CVE-2026-42033"
-      ],
-      "cves": [
-        "CVE-2026-42033"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Prototype Pollution Gadgets - Response Tampering, Data Exfiltration, and Request Hijacking",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-pmwg-cvhr-8vh7",
-      "aliases": [
-        "CVE-2026-42043"
-      ],
-      "cves": [
-        "CVE-2026-42043"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios: Incomplete Fix for CVE-2025-62718 — NO_PROXY Protection Bypassed via RFC 1122 Loopback Subnet (127.0.0.0/8) in Axios 1.15.0",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-q8qp-cvcw-x6jj",
-      "aliases": [
-        "CVE-2026-42264"
-      ],
-      "cves": [
-        "CVE-2026-42264"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Axios has prototype pollution read-side gadgets in HTTP adapter that allow credential injection and request hijacking",
-      "fixedIn": "1.15.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "brace-expansion",
-      "version": "1.1.11",
-      "id": "GHSA-3jxr-9vmj-r5cp",
-      "aliases": [
-        "CVE-2026-13149"
-      ],
-      "cves": [
-        "CVE-2026-13149"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
-      "fixedIn": "5.0.7",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "brace-expansion",
-      "version": "1.1.11",
-      "id": "GHSA-mh99-v99m-4gvg",
-      "aliases": [
-        "CVE-2026-14257"
-      ],
-      "cves": [
-        "CVE-2026-14257"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
-      "fixedIn": "5.0.8",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "brace-expansion",
-      "version": "1.1.11",
-      "id": "GHSA-rgw5-rvv9-x895",
-      "aliases": [
-        "CVE-2026-69152"
-      ],
-      "cves": [
-        "CVE-2026-69152"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
-      "fixedIn": "1.1.18",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -1978,25 +1015,6 @@
       "withdrawn": null
     },
     {
-      "package": "effect",
-      "version": "3.18.4",
-      "id": "GHSA-38f7-945m-qr2g",
-      "aliases": [
-        "CVE-2026-32887"
-      ],
-      "cves": [
-        "CVE-2026-32887"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Effect `AsyncLocalStorage` context lost/contaminated inside Effect fibers under concurrent load with RPC",
-      "fixedIn": "3.20.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "engine.io",
       "version": "6.5.4",
       "id": "GHSA-r635-g3xr-vw7x",
@@ -2011,8 +1029,7 @@
       "summary": "Socket.IO: Engine.IO Polling Transport Connection Exhaustion",
       "fixedIn": "6.6.7",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2050,8 +1067,7 @@
       "summary": "express-rate-limit: IPv4-mapped IPv6 addresses bypass per-client rate limiting on servers with dual-stack network",
       "fixedIn": "8.2.2",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2070,8 +1086,7 @@
       "summary": "fast-uri vulnerable to host confusion via failed IDN canonicalization",
       "fixedIn": "4.0.1",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2090,8 +1105,7 @@
       "summary": "fast-uri vulnerable to host confusion via backslash authority introducer",
       "fixedIn": "2.4.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2110,8 +1124,7 @@
       "summary": "fast-uri vulnerable to path traversal via percent-encoded dot segments",
       "fixedIn": "3.1.1",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2130,8 +1143,7 @@
       "summary": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
       "fixedIn": "2.4.3",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2150,84 +1162,7 @@
       "summary": "fast-uri vulnerable to host confusion via percent-encoded authority delimiters",
       "fixedIn": "3.1.2",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-8gc5-j5rx-235r",
-      "aliases": [
-        "CVE-2026-33036"
-      ],
-      "cves": [
-        "CVE-2026-33036"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-xml-parser affected by numeric entity expansion bypassing all entity expansion limits (incomplete fix for CVE-2026-26278)",
-      "fixedIn": "5.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-jmr7-xgp7-cmfj",
-      "aliases": [
-        "CVE-2026-26278"
-      ],
-      "cves": [
-        "CVE-2026-26278"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-xml-parser affected by DoS through entity expansion in DOCTYPE (no expansion limit)",
-      "fixedIn": "4.5.4",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-8gc5-j5rx-235r",
-      "aliases": [
-        "CVE-2026-33036"
-      ],
-      "cves": [
-        "CVE-2026-33036"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-xml-parser affected by numeric entity expansion bypassing all entity expansion limits (incomplete fix for CVE-2026-26278)",
-      "fixedIn": "5.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-jmr7-xgp7-cmfj",
-      "aliases": [
-        "CVE-2026-26278"
-      ],
-      "cves": [
-        "CVE-2026-26278"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-xml-parser affected by DoS through entity expansion in DOCTYPE (no expansion limit)",
-      "fixedIn": "4.5.4",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2246,8 +1181,7 @@
       "summary": "fast-xml-parser has RangeError DoS Numeric Entities Bug",
       "fixedIn": "5.3.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2266,8 +1200,7 @@
       "summary": "fast-xml-parser affected by numeric entity expansion bypassing all entity expansion limits (incomplete fix for CVE-2026-26278)",
       "fixedIn": "5.5.6",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2286,8 +1219,7 @@
       "summary": "fast-xml-parser affected by DoS through entity expansion in DOCTYPE (no expansion limit)",
       "fixedIn": "4.5.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2306,8 +1238,7 @@
       "summary": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
       "fixedIn": "2.5.6",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2345,8 +1276,7 @@
       "summary": "hono: CORS Middleware reflects any Origin with credentials when `origin` defaults to the wildcard",
       "fixedIn": "4.12.25",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2365,8 +1295,7 @@
       "summary": "Hono vulnerable to arbitrary file access via serveStatic vulnerability ",
       "fixedIn": "4.12.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2385,80 +1314,7 @@
       "summary": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
       "fixedIn": "10.3.1",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "ip-address",
-      "version": "8.1.0",
-      "id": "GHSA-mwp4-54f8-5fhr",
-      "aliases": [
-        "CVE-2026-69192"
-      ],
-      "cves": [
-        "CVE-2026-69192"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
-      "fixedIn": "10.3.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-cookie",
-      "version": "2.2.1",
-      "id": "GHSA-qjx8-664m-686j",
-      "aliases": [
-        "CVE-2026-46625"
-      ],
-      "cves": [
-        "CVE-2026-46625"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "JavaScript Cookie: Per-instance prototype hijack in assign() enables cookie-attribute injection",
-      "fixedIn": "3.0.7",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "4.1.1",
-      "id": "GHSA-52cp-r559-cp3m",
-      "aliases": [
-        "CVE-2026-59869"
-      ],
-      "cves": [
-        "CVE-2026-59869"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
-      "fixedIn": "3.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "4.1.1",
-      "id": "GHSA-5p4m-2wfm-xmqj",
-      "aliases": [],
-      "cves": [],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
-      "fixedIn": "4.3.1",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2480,87 +1336,7 @@
       "summary": "lodash vulnerable to Code Injection via `_.template` imports key names",
       "fixedIn": "4.18.0",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "lodash-es",
-      "version": "4.17.21",
-      "id": "GHSA-r5fr-rjxr-66jc",
-      "aliases": [
-        "CVE-2021-23337",
-        "CVE-2026-4800",
-        "GHSA-35jh-r3h4-6jhm"
-      ],
-      "cves": [
-        "CVE-2021-23337",
-        "CVE-2026-4800"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "lodash vulnerable to Code Injection via `_.template` imports key names",
-      "fixedIn": "4.18.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "minimatch",
-      "version": "3.1.2",
-      "id": "GHSA-23c5-xmqv-rm74",
-      "aliases": [
-        "CVE-2026-27904"
-      ],
-      "cves": [
-        "CVE-2026-27904"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
-      "fixedIn": "10.2.3",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "minimatch",
-      "version": "3.1.2",
-      "id": "GHSA-3ppc-4f35-3m26",
-      "aliases": [
-        "CVE-2026-26996"
-      ],
-      "cves": [
-        "CVE-2026-26996"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
-      "fixedIn": "10.2.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "minimatch",
-      "version": "3.1.2",
-      "id": "GHSA-7r86-cg39-jmmj",
-      "aliases": [
-        "CVE-2026-27903"
-      ],
-      "cves": [
-        "CVE-2026-27903"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
-      "fixedIn": "10.2.3",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2642,44 +1418,6 @@
     },
     {
       "package": "nanoid",
-      "version": "3.3.11",
-      "id": "GHSA-28wg-ghj8-5hjv",
-      "aliases": [
-        "CVE-2026-67214"
-      ],
-      "cves": [
-        "CVE-2026-67214"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
-      "fixedIn": "3.3.16",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "nanoid",
-      "version": "3.3.11",
-      "id": "GHSA-2v37-7h3g-55p8",
-      "aliases": [
-        "CVE-2026-67213"
-      ],
-      "cves": [
-        "CVE-2026-67213"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "nanoid: custom generators can loop indefinitely when size is zero",
-      "fixedIn": "3.3.18",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "nanoid",
       "version": "3.3.8",
       "id": "GHSA-28wg-ghj8-5hjv",
       "aliases": [
@@ -2693,8 +1431,7 @@
       "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
       "fixedIn": "3.3.16",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2713,8 +1450,7 @@
       "summary": "nanoid: custom generators can loop indefinitely when size is zero",
       "fixedIn": "3.3.18",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -2760,272 +1496,6 @@
       "withdrawn": null
     },
     {
-      "package": "picomatch",
-      "version": "2.3.1",
-      "id": "GHSA-c2c7-rcm5-vvqj",
-      "aliases": [
-        "CVE-2026-33671"
-      ],
-      "cves": [
-        "CVE-2026-33671"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
-      "fixedIn": "4.0.4",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-6g55-p6wh-862q",
-      "aliases": [
-        "CVE-2026-45623"
-      ],
-      "cves": [
-        "CVE-2026-45623"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
-      "fixedIn": "8.5.12",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-r28c-9q8g-f849",
-      "aliases": [
-        "CVE-2026-73646"
-      ],
-      "cves": [
-        "CVE-2026-73646"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
-      "fixedIn": "8.5.18",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-6g55-p6wh-862q",
-      "aliases": [
-        "CVE-2026-45623"
-      ],
-      "cves": [
-        "CVE-2026-45623"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
-      "fixedIn": "8.5.12",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-r28c-9q8g-f849",
-      "aliases": [
-        "CVE-2026-73646"
-      ],
-      "cves": [
-        "CVE-2026-73646"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
-      "fixedIn": "8.5.18",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.39",
-      "id": "GHSA-6g55-p6wh-862q",
-      "aliases": [
-        "CVE-2026-45623"
-      ],
-      "cves": [
-        "CVE-2026-45623"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
-      "fixedIn": "8.5.12",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.39",
-      "id": "GHSA-r28c-9q8g-f849",
-      "aliases": [
-        "CVE-2026-73646"
-      ],
-      "cves": [
-        "CVE-2026-73646"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
-      "fixedIn": "8.5.18",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "8.5.6",
-      "id": "GHSA-6g55-p6wh-862q",
-      "aliases": [
-        "CVE-2026-45623"
-      ],
-      "cves": [
-        "CVE-2026-45623"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
-      "fixedIn": "8.5.12",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "8.5.6",
-      "id": "GHSA-r28c-9q8g-f849",
-      "aliases": [
-        "CVE-2026-73646"
-      ],
-      "cves": [
-        "CVE-2026-73646"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
-      "fixedIn": "8.5.18",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-66ff-xgx4-vchm",
-      "aliases": [
-        "CVE-2026-44293"
-      ],
-      "cves": [
-        "CVE-2026-44293"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "protobuf.js: Code injection through bytes field defaults in generated toObject code",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-685m-2w69-288q",
-      "aliases": [
-        "CVE-2026-44289"
-      ],
-      "cves": [
-        "CVE-2026-44289"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "protobuf.js: Denial of service through unbounded protobuf recursion",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-75px-5xx7-5xc7",
-      "aliases": [
-        "CVE-2026-44291"
-      ],
-      "cves": [
-        "CVE-2026-44291"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "protobuf.js: Code generation gadget after prototype pollution",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-jvwf-75h9-cwgg",
-      "aliases": [
-        "CVE-2026-44290"
-      ],
-      "cves": [
-        "CVE-2026-44290"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "protobuf.js: Process-wide denial of service through unsafe option paths",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-wcpc-wj8m-hjx6",
-      "aliases": [
-        "CVE-2026-48712"
-      ],
-      "cves": [
-        "CVE-2026-48712"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "protobufjs: Denial of service through unbounded Any expansion during JSON conversion",
-      "fixedIn": "7.6.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "socket.io-parser",
       "version": "4.2.4",
       "id": "GHSA-2m8v-j782-fhvr",
@@ -3061,82 +1531,6 @@
       "fixedIn": "3.3.5",
       "images": [
         "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "systeminformation",
-      "version": "5.27.14",
-      "id": "GHSA-5vv4-hvf7-2h46",
-      "aliases": [
-        "CVE-2026-26318"
-      ],
-      "cves": [
-        "CVE-2026-26318"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Command Injection via Unsanitized `locate` Output in `versions()` — systeminformation",
-      "fixedIn": "5.31.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "systeminformation",
-      "version": "5.27.14",
-      "id": "GHSA-5xpp-75jx-m839",
-      "aliases": [
-        "CVE-2026-50289"
-      ],
-      "cves": [
-        "CVE-2026-50289"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "systeminformation: OS command injection in networkInterfaces() via interfaces(5) source-directive path on Linux",
-      "fixedIn": "5.31.7",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "systeminformation",
-      "version": "5.27.14",
-      "id": "GHSA-9c88-49p5-5ggf",
-      "aliases": [
-        "CVE-2026-26280"
-      ],
-      "cves": [
-        "CVE-2026-26280"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Systeminformation has a Command Injection via unsanitized interface parameter in wifi.js retry path",
-      "fixedIn": "5.30.8",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "systeminformation",
-      "version": "5.27.14",
-      "id": "GHSA-hvx9-hwr7-wjj9",
-      "aliases": [
-        "CVE-2026-44724"
-      ],
-      "cves": [
-        "CVE-2026-44724"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Systeminformation vulnerable to Linux command injection in networkInterfaces() via unsanitized NetworkManager connection profile name",
-      "fixedIn": "5.31.6",
-      "images": [
         "webapp"
       ],
       "withdrawn": null
@@ -3219,63 +1613,6 @@
     },
     {
       "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-v9p9-hfj2-hcw8",
-      "aliases": [
-        "CVE-2026-2229"
-      ],
-      "cves": [
-        "CVE-2026-2229"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Undici has Unhandled Exception in WebSocket Client Due to Invalid server_max_window_bits Validation",
-      "fixedIn": "6.24.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-vrm6-8vpv-qv8q",
-      "aliases": [
-        "CVE-2026-1526"
-      ],
-      "cves": [
-        "CVE-2026-1526"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "Undici has Unbounded Memory Consumption in WebSocket permessage-deflate Decompression",
-      "fixedIn": "6.24.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-vxpw-j846-p89q",
-      "aliases": [
-        "CVE-2026-12151"
-      ],
-      "cves": [
-        "CVE-2026-12151"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "undici WebSocket client vulnerable to denial of service via fragment count bypass",
-      "fixedIn": "6.27.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
       "version": "7.25.0",
       "id": "GHSA-4cwx-7wf7-3272",
       "aliases": [
@@ -3289,8 +1626,7 @@
       "summary": "undici vulnerable to cross-user information disclosure and parse-time crash via degenerate private cache directives",
       "fixedIn": "7.29.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3309,8 +1645,7 @@
       "summary": "undici vulnerable to cross-origin request routing via SOCKS5 proxy pool reuse",
       "fixedIn": "7.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3329,8 +1664,7 @@
       "summary": "undici vulnerable to TLS certificate validation bypass via dropped requestTls in SOCKS5 ProxyAgent",
       "fixedIn": "7.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3349,8 +1683,7 @@
       "summary": "undici WebSocket client vulnerable to denial of service via fragment count bypass",
       "fixedIn": "6.27.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3447,8 +1780,7 @@
       "summary": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
       "fixedIn": "5.2.5",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3472,44 +1804,6 @@
       "withdrawn": null
     },
     {
-      "package": "@hapi/wreck",
-      "version": "18.0.1",
-      "id": "GHSA-vhjm-w67q-g75c",
-      "aliases": [
-        "CVE-2026-44979"
-      ],
-      "cves": [
-        "CVE-2026-44979"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "@hapi/wreck leaks sensitive `Proxy-Authorization` header across cross-hostname redirects",
-      "fixedIn": "18.1.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@hapi/wreck",
-      "version": "18.0.1",
-      "id": "GHSA-x426-x7cc-3fpc",
-      "aliases": [
-        "CVE-2026-48022"
-      ],
-      "cves": [
-        "CVE-2026-48022"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "@hapi/wreck: Sensitive credential headers leak across cross-port and cross-scheme redirects",
-      "fixedIn": "18.1.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "@hono/node-server",
       "version": "1.19.9",
       "id": "GHSA-92pp-h63x-v22m",
@@ -3524,8 +1818,7 @@
       "summary": "@hono/node-server: Middleware bypass via repeated slashes in serveStatic",
       "fixedIn": "1.19.13",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3540,8 +1833,7 @@
       "summary": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
       "fixedIn": "2.0.5",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -3567,25 +1859,6 @@
     },
     {
       "package": "@opentelemetry/core",
-      "version": "2.0.1",
-      "id": "GHSA-8988-4f7v-96qf",
-      "aliases": [
-        "CVE-2026-54285"
-      ],
-      "cves": [
-        "CVE-2026-54285"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "OpenTelemetry Core: Unbounded memory allocation in W3C Baggage propagation",
-      "fixedIn": "2.8.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@opentelemetry/core",
       "version": "2.7.1",
       "id": "GHSA-8988-4f7v-96qf",
       "aliases": [
@@ -3600,25 +1873,6 @@
       "fixedIn": "2.8.0",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@protobufjs/utf8",
-      "version": "1.1.0",
-      "id": "GHSA-q6x5-8v7m-xcrf",
-      "aliases": [
-        "CVE-2026-44288"
-      ],
-      "cves": [
-        "CVE-2026-44288"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobufjs has overlong UTF-8 decoding",
-      "fixedIn": "1.1.1",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -3680,329 +1934,6 @@
       "withdrawn": null
     },
     {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-3p68-rc4w-qgx5",
-      "aliases": [
-        "CVE-2025-62718"
-      ],
-      "cves": [
-        "CVE-2025-62718"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios has a NO_PROXY Hostname Normalization Bypass that Leads to SSRF",
-      "fixedIn": "1.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-3w6x-2g7m-8v23",
-      "aliases": [
-        "CVE-2026-42044"
-      ],
-      "cves": [
-        "CVE-2026-42044"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Invisible JSON Response Tampering via Prototype Pollution Gadget in `parseReviver`",
-      "fixedIn": "1.15.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-42h9-826w-cgv3",
-      "aliases": [
-        "CVE-2026-67313"
-      ],
-      "cves": [
-        "CVE-2026-67313"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Excessive recursion in formDataToJSON can cause denial of service",
-      "fixedIn": "0.33.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-445q-vr5w-6q77",
-      "aliases": [
-        "CVE-2026-42037"
-      ],
-      "cves": [
-        "CVE-2026-42037"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: CRLF Injection in multipart/form-data body via unsanitized blob.type in formDataToStream",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-5c9x-8gcm-mpgx",
-      "aliases": [
-        "CVE-2026-42034"
-      ],
-      "cves": [
-        "CVE-2026-42034"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios' HTTP adapter-streamed uploads bypass maxBodyLength when maxRedirects: 0",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-62hf-57xw-28j9",
-      "aliases": [
-        "CVE-2026-42039"
-      ],
-      "cves": [
-        "CVE-2026-42039"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: unbounded recursion in toFormData causes DoS via deeply nested request data",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-7q8q-rj6j-mhjq",
-      "aliases": [
-        "CVE-2026-67319"
-      ],
-      "cves": [
-        "CVE-2026-67319"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Nested axios option objects can consume polluted prototype values",
-      "fixedIn": "0.33.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-898c-q2cr-xwhg",
-      "aliases": [
-        "CVE-2026-44490"
-      ],
-      "cves": [
-        "CVE-2026-44490"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "axios has DoS & Header Injection via Prototype Pollution Read-Side Gadgets in axios merge functions",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-fvcv-3m26-pcqx",
-      "aliases": [
-        "CVE-2026-40175"
-      ],
-      "cves": [
-        "CVE-2026-40175"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios has Unrestricted Cloud Metadata Exfiltration via Header Injection Chain",
-      "fixedIn": "1.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-jqh4-m9w3-8hp9",
-      "aliases": [
-        "CVE-2026-67317"
-      ],
-      "cves": [
-        "CVE-2026-67317"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Fetch adapter `ReadableStream` uploads bypass `maxBodyLength`",
-      "fixedIn": "1.18.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-m7pr-hjqh-92cm",
-      "aliases": [
-        "CVE-2026-42038"
-      ],
-      "cves": [
-        "CVE-2026-42038"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: no_proxy bypass via IP alias allows SSRF",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-mmx7-hfxf-jppx",
-      "aliases": [
-        "CVE-2026-67316"
-      ],
-      "cves": [
-        "CVE-2026-67316"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Prototype pollution gadgets can alter axios request construction",
-      "fixedIn": "1.18.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-pmv8-rq9r-6j72",
-      "aliases": [
-        "CVE-2026-67312"
-      ],
-      "cves": [
-        "CVE-2026-67312"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Deep formToJSON Key Recursion Can Cause Denial of Service",
-      "fixedIn": "0.33.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-vf2m-468p-8v99",
-      "aliases": [
-        "CVE-2026-42036"
-      ],
-      "cves": [
-        "CVE-2026-42036"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: HTTP adapter streamed responses bypass maxContentLength",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-w9j2-pvgh-6h63",
-      "aliases": [
-        "CVE-2026-42041"
-      ],
-      "cves": [
-        "CVE-2026-42041"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: Authentication Bypass via Prototype Pollution Gadget in `validateStatus` Merge Strategy",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-xx6v-rp6x-q39c",
-      "aliases": [
-        "CVE-2026-42042"
-      ],
-      "cves": [
-        "CVE-2026-42042"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Axios: XSRF Token Cross-Origin Leakage via Prototype Pollution Gadget in `withXSRFToken` Boolean Coercion",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "brace-expansion",
-      "version": "1.1.11",
-      "id": "GHSA-f886-m6hf-6m8v",
-      "aliases": [
-        "CVE-2026-33750"
-      ],
-      "cves": [
-        "CVE-2026-33750"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
-      "fixedIn": "5.0.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
       "package": "brace-expansion",
       "version": "2.0.1",
       "id": "GHSA-f886-m6hf-6m8v",
@@ -4055,8 +1986,7 @@
       "summary": "DOMPurify: IN_PLACE hook removal leaves a detached subtree executable, causing XSS",
       "fixedIn": "3.4.13",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4075,8 +2005,7 @@
       "summary": "DOMPurify: Hook mutation of `data.allowedTags` / `data.allowedAttributes` permanently pollutes `DEFAULT_ALLOWED_TAGS` / `DEFAULT_ALLOWED_ATTR`",
       "fixedIn": "3.4.7",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4095,8 +2024,7 @@
       "summary": "DOMPurify: Permanent `ALLOWED_ATTR` pollution via `setConfig()` bypassing the hook clone-guard (incomplete fix of the 3.4.7 hook-pollution patch)",
       "fixedIn": "3.4.11",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4115,8 +2043,7 @@
       "summary": "DOMPurify: Cross-realm IN_PLACE sanitization leaves executable markup intact via realm-bound `instanceof` checks",
       "fixedIn": "3.4.6",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4135,8 +2062,7 @@
       "summary": "DOMPurify: IN_PLACE mode preserves attributes of a clobbered root element, allowing XSS via attacker-controlled root DOM",
       "fixedIn": "3.4.6",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4155,84 +2081,7 @@
       "summary": "DOMPurify IN_PLACE Sanitization Bypass via Attached Shadow Root Inside <template>.content",
       "fixedIn": "3.4.7",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-gh4j-gqv2-49f6",
-      "aliases": [
-        "CVE-2026-41650"
-      ],
-      "cves": [
-        "CVE-2026-41650"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "fast-xml-parser XMLBuilder: XML Comment and CDATA Injection via Unescaped Delimiters",
-      "fixedIn": "5.7.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-jp2q-39xq-3w4g",
-      "aliases": [
-        "CVE-2026-33349"
-      ],
-      "cves": [
-        "CVE-2026-33349"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Entity Expansion Limits Bypassed When Set to Zero Due to JavaScript Falsy Evaluation in fast-xml-parser",
-      "fixedIn": "4.5.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-gh4j-gqv2-49f6",
-      "aliases": [
-        "CVE-2026-41650"
-      ],
-      "cves": [
-        "CVE-2026-41650"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "fast-xml-parser XMLBuilder: XML Comment and CDATA Injection via Unescaped Delimiters",
-      "fixedIn": "5.7.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-jp2q-39xq-3w4g",
-      "aliases": [
-        "CVE-2026-33349"
-      ],
-      "cves": [
-        "CVE-2026-33349"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Entity Expansion Limits Bypassed When Set to Zero Due to JavaScript Falsy Evaluation in fast-xml-parser",
-      "fixedIn": "4.5.5",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4251,8 +2100,7 @@
       "summary": "fast-xml-parser XMLBuilder: XML Comment and CDATA Injection via Unescaped Delimiters",
       "fixedIn": "5.7.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4271,46 +2119,7 @@
       "summary": "Entity Expansion Limits Bypassed When Set to Zero Due to JavaScript Falsy Evaluation in fast-xml-parser",
       "fixedIn": "4.5.5",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "follow-redirects",
-      "version": "1.15.9",
-      "id": "GHSA-r4q5-vmmm-2653",
-      "aliases": [
-        "CVE-2026-40895"
-      ],
-      "cves": [
-        "CVE-2026-40895"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets",
-      "fixedIn": "1.16.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "graphql",
-      "version": "16.6.0",
-      "id": "GHSA-9pv7-vfvm-6vr7",
-      "aliases": [
-        "CVE-2023-26144"
-      ],
-      "cves": [
-        "CVE-2023-26144"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "graphql Uncontrolled Resource Consumption vulnerability",
-      "fixedIn": "16.8.1",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4329,8 +2138,7 @@
       "summary": "Hono missing validation of cookie name on write path in setCookie()",
       "fixedIn": "4.12.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4349,8 +2157,7 @@
       "summary": "Hono: app.mount() strips mount prefix using undecoded path, causing incorrect routing for percent-encoded paths",
       "fixedIn": "4.12.21",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4369,8 +2176,7 @@
       "summary": "Hono: Cookie helper does not sanitize sameSite and priority, allowing Set-Cookie injection",
       "fixedIn": "4.12.21",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4389,8 +2195,7 @@
       "summary": "hono Improperly Handles JSX Attribute Names Allows HTML Injection in hono/jsx SSR",
       "fixedIn": "4.12.14",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4409,8 +2214,7 @@
       "summary": "Hono Vulnerable to Cookie Attribute Injection via Unsanitized domain and path in setCookie()",
       "fixedIn": "4.12.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4429,8 +2233,7 @@
       "summary": "hono/jsx has Unvalidated JSX Tag Names that May Allow HTML Injection",
       "fixedIn": "4.12.16",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4449,8 +2252,7 @@
       "summary": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
       "fixedIn": "4.12.34",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4469,8 +2271,7 @@
       "summary": "Hono: bodyLimit() can be bypassed for chunked / unknown-length requests",
       "fixedIn": "4.12.16",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4489,8 +2290,7 @@
       "summary": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
       "fixedIn": "4.12.34",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4509,8 +2309,7 @@
       "summary": "Hono: JWT middleware accepts any Authorization scheme, not only Bearer",
       "fixedIn": "4.12.21",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4529,8 +2328,7 @@
       "summary": "hono/jsx does not isolate context per request, leading to cross-request data disclosure",
       "fixedIn": "4.12.27",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4549,8 +2347,7 @@
       "summary": "hono: AWS Lambda adapter merges multiple `Set-Cookie` headers into one value, dropping cookies on ALB single-header and Lattice",
       "fixedIn": "4.12.25",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4569,8 +2366,7 @@
       "summary": "Hono Vulnerable to SSE Control Field Injection via CR/LF in writeSSE()",
       "fixedIn": "4.12.4",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4589,8 +2385,7 @@
       "summary": "Hono's Cache Middleware ignores Vary: Authorization / Vary: Cookie leading to cross-user cache leakage",
       "fixedIn": "4.12.18",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4609,8 +2404,7 @@
       "summary": "Hono has CSS Declaration Injection via Style Object Values in JSX SSR",
       "fixedIn": "4.12.18",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4629,8 +2423,7 @@
       "summary": "Hono: Non-breaking space prefix bypass in cookie name handling in getCookie()",
       "fixedIn": "4.12.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4649,8 +2442,7 @@
       "summary": "hono: Body Limit Middleware can be bypassed on AWS Lambda by understating `Content-Length`",
       "fixedIn": "4.12.25",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4669,8 +2461,7 @@
       "summary": "Hono vulnerable to Prototype Pollution possible through __proto__ key allowed in parseBody({ dot: true })",
       "fixedIn": "4.12.7",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4689,8 +2480,7 @@
       "summary": "Hono: Server-Side XSS via JSX Escaping Bypass in cx() Utility",
       "fixedIn": "4.12.27",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4709,8 +2499,7 @@
       "summary": "hono: Lambda@Edge adapter keeps only the last value of a repeated request header, dropping the rest",
       "fixedIn": "4.12.25",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4729,8 +2518,7 @@
       "summary": "Hono: Middleware bypass via repeated slashes in serveStatic",
       "fixedIn": "4.12.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4749,8 +2537,7 @@
       "summary": "hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
       "fixedIn": "4.12.25",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4769,8 +2556,7 @@
       "summary": "Hono: Path traversal in toSSG() allows writing files outside the output directory",
       "fixedIn": "4.12.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4789,8 +2575,7 @@
       "summary": "Hono: API Gateway v1 adapter can drop a distinct repeated request header value during de-duplication",
       "fixedIn": "4.12.27",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4809,8 +2594,7 @@
       "summary": "Hono has incorrect IP matching in ipRestriction() for IPv4-mapped IPv6 addresses",
       "fixedIn": "4.12.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4829,8 +2613,7 @@
       "summary": "Hono: IP Restriction bypasses static deny rules for non-canonical IPv6 ",
       "fixedIn": "4.12.21",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4849,65 +2632,7 @@
       "summary": "ip-address has XSS in Address6 HTML-emitting methods",
       "fixedIn": "10.1.1",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "ip-address",
-      "version": "8.1.0",
-      "id": "GHSA-v2v4-37r5-5v8g",
-      "aliases": [
-        "CVE-2026-42338"
-      ],
-      "cves": [
-        "CVE-2026-42338"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "ip-address has XSS in Address6 HTML-emitting methods",
-      "fixedIn": "10.1.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "joi",
-      "version": "17.7.0",
-      "id": "GHSA-q7cg-457f-vx79",
-      "aliases": [
-        "CVE-2026-48038"
-      ],
-      "cves": [
-        "CVE-2026-48038"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "joi has an uncaught RangeError on deeply nested input through recursive `link()` schemas",
-      "fixedIn": "18.2.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "js-yaml",
-      "version": "4.1.1",
-      "id": "GHSA-h67p-54hq-rp68",
-      "aliases": [
-        "CVE-2026-53550"
-      ],
-      "cves": [
-        "CVE-2026-53550"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
-      "fixedIn": "4.2.0",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -4929,242 +2654,7 @@
       "summary": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
       "fixedIn": "4.18.0",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "lodash-es",
-      "version": "4.17.21",
-      "id": "GHSA-f23m-r3pf-42rh",
-      "aliases": [
-        "CVE-2025-13465",
-        "CVE-2026-2950",
-        "GHSA-xxjr-mmjv-4gpg"
-      ],
-      "cves": [
-        "CVE-2025-13465",
-        "CVE-2026-2950"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
-      "fixedIn": "4.18.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "lodash-es",
-      "version": "4.17.21",
-      "id": "GHSA-xxjr-mmjv-4gpg",
-      "aliases": [
-        "CVE-2025-13465",
-        "CVE-2026-2950",
-        "GHSA-f23m-r3pf-42rh"
-      ],
-      "cves": [
-        "CVE-2025-13465",
-        "CVE-2026-2950"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
-      "fixedIn": "4.17.23",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mdast-util-to-hast",
-      "version": "13.2.0",
-      "id": "GHSA-4fh9-h7wg-q85m",
-      "aliases": [
-        "CVE-2025-66400"
-      ],
-      "cves": [
-        "CVE-2025-66400"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "mdast-util-to-hast has unsanitized class attribute",
-      "fixedIn": "13.2.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-2v8p-3f2j-5mp7",
-      "aliases": [
-        "CVE-2026-71436"
-      ],
-      "cves": [
-        "CVE-2026-71436"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid XY Charts are vulnerable to an infinite loop DoS",
-      "fixedIn": "10.9.8",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-3rrr-jr9j-h3q3",
-      "aliases": [
-        "CVE-2026-71437"
-      ],
-      "cves": [
-        "CVE-2026-71437"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid Architecture diagrams are vulnerable to prototype pollution",
-      "fixedIn": "11.16.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-6m6c-36f7-fhxh",
-      "aliases": [
-        "CVE-2026-41150"
-      ],
-      "cves": [
-        "CVE-2026-41150"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid Gantt Charts are vulnerable to an Infinite Loop DoS",
-      "fixedIn": "11.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-6x64-9x62-f2gx",
-      "aliases": [
-        "CVE-2026-50159"
-      ],
-      "cves": [
-        "CVE-2026-50159"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid allows CSS injection applying to sibling elements of the diagram",
-      "fixedIn": "11.16.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-87f9-hvmw-gh4p",
-      "aliases": [
-        "CVE-2026-41159"
-      ],
-      "cves": [
-        "CVE-2026-41159"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid: Improper sanitization of configuration leads to CSS injection",
-      "fixedIn": "11.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-ghcm-xqfw-q4vr",
-      "aliases": [
-        "CVE-2026-41149"
-      ],
-      "cves": [
-        "CVE-2026-41149"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid: Improper sanitization of `classDef` in state diagrams leads to HTML injection",
-      "fixedIn": "11.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-rhh3-jpg6-66xh",
-      "aliases": [
-        "CVE-2026-71439"
-      ],
-      "cves": [
-        "CVE-2026-71439"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid radar diagrams are vulnerable to DoS",
-      "fixedIn": "11.16.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-xcj9-5m2h-648r",
-      "aliases": [
-        "CVE-2026-41148"
-      ],
-      "cves": [
-        "CVE-2026-41148"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Mermaid: Improper sanitization of `classDefs` in diagrams leads to CSS injection",
-      "fixedIn": "11.15.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "morgan",
-      "version": "1.10.0",
-      "id": "GHSA-4vj7-5mj6-jm8m",
-      "aliases": [
-        "CVE-2026-5078"
-      ],
-      "cves": [
-        "CVE-2026-5078"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "morgan vulnerable to Log Forging via unneutralized control characters in :remote-user",
-      "fixedIn": "1.11.0",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -5184,405 +2674,6 @@
       "fixedIn": "2.2.0",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "picomatch",
-      "version": "2.3.1",
-      "id": "GHSA-3v7f-55p6-f55p",
-      "aliases": [
-        "CVE-2026-33672"
-      ],
-      "cves": [
-        "CVE-2026-33672"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
-      "fixedIn": "4.0.4",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-566m-qj78-rww5",
-      "aliases": [
-        "CVE-2021-23382"
-      ],
-      "cves": [
-        "CVE-2021-23382"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Regular Expression Denial of Service in postcss",
-      "fixedIn": "8.2.13",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-7fh5-64p2-3v2j",
-      "aliases": [
-        "CVE-2023-44270"
-      ],
-      "cves": [
-        "CVE-2023-44270"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS line return parsing error",
-      "fixedIn": "8.4.31",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-fxqj-rqcc-2cmp",
-      "aliases": [
-        "CVE-2026-69153"
-      ],
-      "cves": [
-        "CVE-2026-69153"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
-      "fixedIn": "8.5.23",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "6.0.23",
-      "id": "GHSA-qx2v-qp2m-jg93",
-      "aliases": [
-        "CVE-2026-41305"
-      ],
-      "cves": [
-        "CVE-2026-41305"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
-      "fixedIn": "8.5.10",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-566m-qj78-rww5",
-      "aliases": [
-        "CVE-2021-23382"
-      ],
-      "cves": [
-        "CVE-2021-23382"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Regular Expression Denial of Service in postcss",
-      "fixedIn": "8.2.13",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-7fh5-64p2-3v2j",
-      "aliases": [
-        "CVE-2023-44270"
-      ],
-      "cves": [
-        "CVE-2023-44270"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS line return parsing error",
-      "fixedIn": "8.4.31",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-fxqj-rqcc-2cmp",
-      "aliases": [
-        "CVE-2026-69153"
-      ],
-      "cves": [
-        "CVE-2026-69153"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
-      "fixedIn": "8.5.23",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-hwj9-h5mp-3pm3",
-      "aliases": [
-        "CVE-2021-23368"
-      ],
-      "cves": [
-        "CVE-2021-23368"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Regular Expression Denial of Service in postcss",
-      "fixedIn": "7.0.36",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.32",
-      "id": "GHSA-qx2v-qp2m-jg93",
-      "aliases": [
-        "CVE-2026-41305"
-      ],
-      "cves": [
-        "CVE-2026-41305"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
-      "fixedIn": "8.5.10",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.39",
-      "id": "GHSA-7fh5-64p2-3v2j",
-      "aliases": [
-        "CVE-2023-44270"
-      ],
-      "cves": [
-        "CVE-2023-44270"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS line return parsing error",
-      "fixedIn": "8.4.31",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.39",
-      "id": "GHSA-fxqj-rqcc-2cmp",
-      "aliases": [
-        "CVE-2026-69153"
-      ],
-      "cves": [
-        "CVE-2026-69153"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
-      "fixedIn": "8.5.23",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "7.0.39",
-      "id": "GHSA-qx2v-qp2m-jg93",
-      "aliases": [
-        "CVE-2026-41305"
-      ],
-      "cves": [
-        "CVE-2026-41305"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
-      "fixedIn": "8.5.10",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "8.5.6",
-      "id": "GHSA-fxqj-rqcc-2cmp",
-      "aliases": [
-        "CVE-2026-69153"
-      ],
-      "cves": [
-        "CVE-2026-69153"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
-      "fixedIn": "8.5.23",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "postcss",
-      "version": "8.5.6",
-      "id": "GHSA-qx2v-qp2m-jg93",
-      "aliases": [
-        "CVE-2026-41305"
-      ],
-      "cves": [
-        "CVE-2026-41305"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
-      "fixedIn": "8.5.10",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-2pr8-phx7-x9h3",
-      "aliases": [
-        "CVE-2026-44294"
-      ],
-      "cves": [
-        "CVE-2026-44294"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobuf.js: Denial of service from crafted field names in generated code",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-f38q-mgvj-vph7",
-      "aliases": [
-        "CVE-2026-54269"
-      ],
-      "cves": [
-        "CVE-2026-54269"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobufjs : Schema-derived names can shadow runtime-significant properties",
-      "fixedIn": "7.6.3",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-fx83-v9x8-x52w",
-      "aliases": [
-        "CVE-2026-44292"
-      ],
-      "cves": [
-        "CVE-2026-44292"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobuf.js: Prototype injection in generated message constructors",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-j3f2-48v5-ccww",
-      "aliases": [
-        "CVE-2026-59877"
-      ],
-      "cves": [
-        "CVE-2026-59877"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobufjs: Denial of Service via infinite loop in .proto option parsing",
-      "fixedIn": "7.6.5",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-jggg-4jg4-v7c6",
-      "aliases": [
-        "CVE-2026-45740"
-      ],
-      "cves": [
-        "CVE-2026-45740"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobufjs: Denial of Service via unbounded recursive JSON descriptor expansion",
-      "fixedIn": "7.5.8",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "protobufjs",
-      "version": "7.5.5",
-      "id": "GHSA-q6x5-8v7m-xcrf",
-      "aliases": [
-        "CVE-2026-44288"
-      ],
-      "cves": [
-        "CVE-2026-44288"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "protobufjs has overlong UTF-8 decoding",
-      "fixedIn": "7.5.6",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -5760,139 +2851,6 @@
     },
     {
       "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-2mjp-6q6p-2qxm",
-      "aliases": [
-        "CVE-2026-1525"
-      ],
-      "cves": [
-        "CVE-2026-1525"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Undici has an HTTP Request/Response Smuggling issue",
-      "fixedIn": "6.24.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-4992-7rv2-5pvq",
-      "aliases": [
-        "CVE-2026-1527"
-      ],
-      "cves": [
-        "CVE-2026-1527"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Undici has CRLF Injection in undici via `upgrade` option",
-      "fixedIn": "6.24.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-8xcm-r25x-g524",
-      "aliases": [
-        "CVE-2026-16728"
-      ],
-      "cves": [
-        "CVE-2026-16728"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "undici vulnerable to downstream response desynchronization via retry interceptor",
-      "fixedIn": "6.28.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-g9mf-h72j-4rw9",
-      "aliases": [
-        "CVE-2026-22036"
-      ],
-      "cves": [
-        "CVE-2026-22036"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion",
-      "fixedIn": "7.18.2",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-m8rv-5g2x-5cg5",
-      "aliases": [
-        "CVE-2026-15157"
-      ],
-      "cves": [
-        "CVE-2026-15157"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "undici vulnerable to CRLF Injection via blob-like body 'type' property",
-      "fixedIn": "6.28.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-p88m-4jfj-68fv",
-      "aliases": [
-        "CVE-2026-9679"
-      ],
-      "cves": [
-        "CVE-2026-9679"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "undici vulnerable to HTTP header injection via Set-Cookie percent-decoding",
-      "fixedIn": "6.27.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-v3r7-h72x-cjcm",
-      "aliases": [
-        "CVE-2026-16729"
-      ],
-      "cves": [
-        "CVE-2026-16729"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "undici vulnerable to cookie attribute injection via unsanitized domain and unparsed setCookie fields",
-      "fixedIn": "6.28.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
       "version": "6.27.0",
       "id": "GHSA-8xcm-r25x-g524",
       "aliases": [
@@ -5963,8 +2921,7 @@
       "summary": "undici vulnerable to downstream response desynchronization via retry interceptor",
       "fixedIn": "6.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -5983,8 +2940,7 @@
       "summary": "undici vulnerable to cross-user information disclosure via whitespace around equals in Cache-Control directives",
       "fixedIn": "7.29.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6003,8 +2959,7 @@
       "summary": "undici vulnerable to CRLF Injection via blob-like body 'type' property",
       "fixedIn": "6.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6023,8 +2978,7 @@
       "summary": "undici vulnerable to HTTP header injection via Set-Cookie percent-decoding",
       "fixedIn": "6.27.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6043,8 +2997,7 @@
       "summary": "undici vulnerable to cross-user information disclosure via shared cache whitespace bypass",
       "fixedIn": "7.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6063,8 +3016,7 @@
       "summary": "undici vulnerable to cookie attribute injection via unsanitized domain and unparsed setCookie fields",
       "fixedIn": "6.28.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6217,69 +3169,6 @@
       "fixedIn": "6.28.0",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "uuid",
-      "version": "11.1.0",
-      "id": "GHSA-w5hq-g745-h8pq",
-      "aliases": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "cves": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
-      "fixedIn": "11.1.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "uuid",
-      "version": "8.3.2",
-      "id": "GHSA-w5hq-g745-h8pq",
-      "aliases": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "cves": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
-      "fixedIn": "11.1.1",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "uuid",
-      "version": "9.0.1",
-      "id": "GHSA-w5hq-g745-h8pq",
-      "aliases": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "cves": [
-        "CVE-2026-41907",
-        "CVE-2026-41988"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
-      "fixedIn": "11.1.1",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -6318,8 +3207,7 @@
       "summary": "ws: Uninitialized memory disclosure",
       "fixedIn": "8.20.1",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6339,59 +3227,6 @@
       "fixedIn": "8.20.1",
       "images": [
         "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "yaml",
-      "version": "2.6.1",
-      "id": "GHSA-48c2-rrv3-qjmp",
-      "aliases": [
-        "CVE-2026-33532"
-      ],
-      "cves": [
-        "CVE-2026-33532"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "yaml is vulnerable to Stack Overflow via deeply nested YAML collections",
-      "fixedIn": "2.8.3",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "@smithy/config-resolver",
-      "version": "2.0.19",
-      "id": "GHSA-6475-r3vj-m8vf",
-      "aliases": [],
-      "cves": [],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "AWS SDK for JavaScript v3 adopted defense in depth enhancement for region parameter value",
-      "fixedIn": "4.4.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "axios",
-      "version": "1.12.2",
-      "id": "GHSA-xhjh-pmcv-23jw",
-      "aliases": [
-        "CVE-2026-42040"
-      ],
-      "cves": [
-        "CVE-2026-42040"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "Axios: Null Byte Injection via Reverse-Encoding in AxiosURLSearchParams",
-      "fixedIn": "1.15.1",
-      "images": [
-        "webapp"
       ],
       "withdrawn": null
     },
@@ -6429,27 +3264,7 @@
       "summary": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
       "fixedIn": "1.20.6",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "brace-expansion",
-      "version": "1.1.11",
-      "id": "GHSA-v6h2-p8h4-qcjw",
-      "aliases": [
-        "CVE-2025-5889"
-      ],
-      "cves": [
-        "CVE-2025-5889"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "brace-expansion Regular Expression Denial of Service vulnerability",
-      "fixedIn": "2.0.2",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6526,8 +3341,7 @@
       "summary": "DOMPurify: `CUSTOM_ELEMENT_HANDLING` bypasses `afterSanitizeElements` for allowed custom elements.",
       "fixedIn": "3.4.12",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6546,8 +3360,7 @@
       "summary": "DOMPurify: SAFE_FOR_TEMPLATES bypass - template expressions survive sanitization inside <template> content when using DOM output modes",
       "fixedIn": "3.4.8",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6566,8 +3379,7 @@
       "summary": "DOMPurify: Trusted Types policy survives `clearConfig()` and can poison later `RETURN_TRUSTED_TYPE` output",
       "fixedIn": "3.4.9",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6586,46 +3398,7 @@
       "summary": "DOMPurify: `IN_PLACE` mode trusts attacker-controlled `nodeName` on live non-form nodes, allowing script retention and XSS via attacker-supplied DOM objects",
       "fixedIn": null,
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.2.5",
-      "id": "GHSA-fj3w-jwp8-x2g3",
-      "aliases": [
-        "CVE-2026-27942"
-      ],
-      "cves": [
-        "CVE-2026-27942"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
-      "fixedIn": "5.3.8",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-xml-parser",
-      "version": "4.4.1",
-      "id": "GHSA-fj3w-jwp8-x2g3",
-      "aliases": [
-        "CVE-2026-27942"
-      ],
-      "cves": [
-        "CVE-2026-27942"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
-      "fixedIn": "5.3.8",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6644,8 +3417,7 @@
       "summary": "fast-xml-parser has stack overflow in XMLBuilder with preserveOrder",
       "fixedIn": "5.3.8",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6664,8 +3436,7 @@
       "summary": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
       "fixedIn": "4.12.34",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6684,8 +3455,7 @@
       "summary": "Hono added timing comparison hardening in basicAuth and bearerAuth",
       "fixedIn": "4.11.10",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6704,27 +3474,7 @@
       "summary": "Hono has improper validation of NumericDate claims (exp, nbf, iat) in JWT verify()",
       "fixedIn": "4.12.18",
       "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "mermaid",
-      "version": "11.12.0",
-      "id": "GHSA-c4c3-pg64-4m4v",
-      "aliases": [
-        "CVE-2026-71438"
-      ],
-      "cves": [
-        "CVE-2026-71438"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "Mermaid configuration APIs allow prototype pollution",
-      "fixedIn": "11.16.1",
-      "images": [
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6788,44 +3538,6 @@
     },
     {
       "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-35p6-xmwp-9g52",
-      "aliases": [
-        "CVE-2026-6733"
-      ],
-      "cves": [
-        "CVE-2026-6733"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "undici vulnerable to HTTP response queue poisoning via keep-alive socket reuse",
-      "fixedIn": "6.27.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
-      "version": "5.29.0",
-      "id": "GHSA-g8m3-5g58-fq7m",
-      "aliases": [
-        "CVE-2026-11525"
-      ],
-      "cves": [
-        "CVE-2026-11525"
-      ],
-      "severity": "LOW",
-      "cvss": null,
-      "summary": "undici vulnerable to Set-Cookie SameSite attribute downgrade via permissive substring matching",
-      "fixedIn": "6.27.0",
-      "images": [
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "undici",
       "version": "7.25.0",
       "id": "GHSA-35p6-xmwp-9g52",
       "aliases": [
@@ -6839,8 +3551,7 @@
       "summary": "undici vulnerable to HTTP response queue poisoning via keep-alive socket reuse",
       "fixedIn": "6.27.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     },
@@ -6859,8 +3570,7 @@
       "summary": "undici vulnerable to Set-Cookie SameSite attribute downgrade via permissive substring matching",
       "fixedIn": "6.27.0",
       "images": [
-        "agent",
-        "webapp"
+        "agent"
       ],
       "withdrawn": null
     }

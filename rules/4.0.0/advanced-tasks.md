@@ -1,3 +1,10 @@
+---
+title: "[SUPERSEDED-BY] Historical advanced-task rules"
+lifecycle: "SUPERSEDED-BY"
+---
+
+> **Lifecycle: SUPERSEDED-BY.** These rules are historical and not current product truth. Use [the current rules](../4.3.0/advanced-tasks.md).
+
 # Trigger.dev Advanced Tasks (v4)
 
 **Advanced patterns and features for writing tasks**

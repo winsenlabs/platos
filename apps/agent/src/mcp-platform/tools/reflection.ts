@@ -452,7 +452,7 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
         },
         additionalProperties: false,
       },
-      async execute(params, scope) {
+      async execute(params, scope, _token, abortSignal) {
         const agentId = String(params["agentId"]);
         const userMessage = String(params["message"]);
         const mockToolResults =
@@ -509,19 +509,11 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
           providerMetadata?: Record<string, any>;
         };
         try {
-          // PRELAUNCH-A2-11 — propagate the AbortController signal that
-          // wraps the simulate_turn dispatch when the MCP client cancels
-          // mid-call. Cast through `unknown` because RequestScope doesn't
-          // declare `abortSignal` in its public shape; the MCP transport
-          // layer attaches it dynamically when a cancellation token is
-          // present on the inbound request.
-          const dynamicSignal = (scope as unknown as { abortSignal?: AbortSignal })
-            ?.abortSignal;
           const generated = await generateText({
             model,
             system: systemPrompt + mockHint,
             prompt: userMessage,
-            abortSignal: dynamicSignal,
+            abortSignal,
           });
           result = {
             text: generated.text,

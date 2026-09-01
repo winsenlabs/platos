@@ -1,30 +1,95 @@
 {
-  "$schema": "platos.audit.closure-receipts/v1",
+  "$schema": "platos.audit.closure-receipts/v3",
   "generatedBy": "scripts/audit-sbom.mjs generate",
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
-  "lockfileSha256": "603cd67f4564fe644852b01fa409c75d65a9cdf015f251bb79ce723846360f69",
-  "licenseIndexSha256": "e1cfaf45f18403abb8cc8e0b075417124d3715fe1bd604742456f1c232f8f214",
-  "licenseOverlaySha256": "cabf35d68abfbf7a2c76ca7de356d3c7bac2cf776d91bedea1558fad06d4127a",
+  "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+  "licenseIndexSha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b",
+  "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "c7e201258465a659569d7b57cace4836890c75d2544802ec9e1b2a5ef20d50d2",
+      "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
         "apps/agent"
-      ]
+      ],
+      "derivation": "pnpm-lock-production-closure"
     },
     "webapp": {
       "file": "docs/audits/sbom/platos-webapp.cdx.json",
-      "sha256": "1f844390d9262e7b7137125a8d78615ec9839ae72f478d7aac4b20c367ebb314",
-      "componentCount": 1637,
-      "distinctNames": 1357,
+      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+      "componentCount": 330,
+      "distinctNames": 303,
       "roots": [
         "apps/webapp"
-      ]
+      ],
+      "derivation": "docker-production-deps-image-inventory",
+      "inventoryFile": "docs/audits/sbom/platos-webapp.image-inventory.json",
+      "inventorySha256": "9b745000948ff8837790fd51c51b8be1f2efc10b43f00a86228fc4139983c419",
+      "lockClosureComponentCount": 335,
+      "lockClosureDistinctNames": 308,
+      "targetPlatform": "linux/amd64",
+      "reviewedLockOnlyComponents": [
+        "@sentry/cli-darwin@2.50.2",
+        "@sentry/cli-linux-arm@2.50.2",
+        "@sentry/cli-linux-arm64@2.50.2",
+        "@sentry/cli-linux-i686@2.50.2",
+        "@sentry/cli-win32-arm64@2.50.2",
+        "@sentry/cli-win32-i686@2.50.2",
+        "@sentry/cli-win32-x64@2.50.2"
+      ],
+      "linkedWorkspaceComponents": [
+        {
+          "name": "@internal/workload-identity",
+          "version": "0.0.1"
+        },
+        {
+          "name": "@platos/tenancy-database",
+          "version": "0.0.1"
+        }
+      ],
+      "buildInputs": [
+        {
+          "file": "apps/webapp/Dockerfile.platos",
+          "sha256": "e8c83f399085dcf44cc8c2a57d8e342e094556ea3ab46ea490d6c11ddcb14057"
+        },
+        {
+          "file": "apps/webapp/package.json",
+          "sha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed"
+        },
+        {
+          "file": "apps/webapp/scripts/restore-patches.cjs",
+          "sha256": "88ac75eb63e207144c0464eff92c48aaba8d2cb8a1f6eb5daab8a53d5c599cde"
+        },
+        {
+          "file": "internal-packages/tenancy-database/package.json",
+          "sha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1"
+        },
+        {
+          "file": "internal-packages/workload-identity/package.json",
+          "sha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7"
+        },
+        {
+          "file": "package.json",
+          "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
+        },
+        {
+          "file": "pnpm-lock.yaml",
+          "sha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9"
+        },
+        {
+          "file": "scripts/image-package-inventory.mjs",
+          "sha256": "35a6af30ce664b89dac197f8cb0735f68acec2b891fd84ae34855b0024c32d9e"
+        },
+        {
+          "file": "scripts/lib/webapp-inventory-contract.mjs",
+          "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
+        }
+      ],
+      "buildInputsSha256": "1d3c40e826d22f7e48bd47faf36cc24962a1351bc4c9c5386f70c59d6e111c05"
     }
   }
 }

@@ -1,0 +1,24 @@
+{
+  "$schema": "platos.external-registry-version-snapshot/v1",
+  "classification": "EXTERNALLY_REVIEWED_POINT_IN_TIME_FACT",
+  "reviewedAt": "2026-08-31",
+  "sourceUrl": "https://registry.npmjs.org/@trigger.dev%2fcore/4.4.4",
+  "snapshotAuthenticityOfflineVerified": false,
+  "metadata": {
+    "name": "@trigger.dev/core",
+    "version": "4.4.4",
+    "license": "MIT",
+    "repository": {
+      "url": "git+https://github.com/triggerdotdev/trigger.dev.git",
+      "type": "git",
+      "directory": "packages/core"
+    },
+    "dist": {
+      "shasum": "9544b5ded8dd8deb2371081389961792bccfde4e",
+      "integrity": "sha512-m748W6tF/eIGzEaFjuvlicCqxop5GFxnt/eSb7kg0g9ZC2VW0iBa/rOx4aCQlkHd4MKn3B+t2LQLhn/eI9kHDw==",
+      "tarball": "https://registry.npmjs.org/@trigger.dev/core/-/core-4.4.4.tgz",
+      "fileCount": 1440,
+      "unpackedSize": 10406874
+    }
+  }
+}

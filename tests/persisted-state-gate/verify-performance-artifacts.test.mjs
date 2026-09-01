@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, test } from "node:test";
 import {
   PERFORMANCE_RECEIPT_FILE,
   verifyPerformanceVerificationReceipt,
 } from "./performance-verification-receipt.mjs";
-import { summarize, verifyPerformanceArtifactDirectory } from "./verify-performance-artifacts.mjs";
+import {
+  canonicalRuntimeReference,
+  summarize,
+  verifyPerformanceArtifactDirectory,
+} from "./verify-performance-artifacts.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const budgetFile = path.join(repositoryRoot, "tests/persisted-state-gate/budgets.v1.json");
@@ -21,14 +26,17 @@ const ids = {
   agentId: "11111111-1111-4111-8111-111111111106",
   threadId: "11111111-1111-4111-8111-111111111107",
 };
+const webappConfigDigest = `sha256:${"e".repeat(64)}`;
+const webappManifestBytes = JSON.stringify({ config: { digest: webappConfigDigest } });
+const webappManifestDigest = `sha256:${sha256(webappManifestBytes)}`;
 const images = {
   agent: `ghcr.io/winsenlabs/platos-agent@sha256:${"a".repeat(64)}`,
-  webapp: `ghcr.io/winsenlabs/platos-webapp@sha256:${"b".repeat(64)}`,
+  webapp: `ghcr.io/winsenlabs/platos-webapp@${webappManifestDigest}`,
   migrations: `ghcr.io/winsenlabs/platos-migrations@sha256:${"c".repeat(64)}`,
 };
 const runtimeImageIds = {
   agent: `sha256:${"d".repeat(64)}`,
-  webapp: `sha256:${"e".repeat(64)}`,
+  webapp: webappConfigDigest,
 };
 const temporaryDirectories = [];
 
@@ -69,6 +77,53 @@ const mutationCases = [
       artifact.images.webapp = `ghcr.io/winsenlabs/platos-webapp@sha256:${"f".repeat(64)}`;
     },
     /candidate identity drifted/,
+  ],
+  [
+    "old webapp runtime tag",
+    (artifact) => {
+      artifact.runtime.candidates.webapp.runtimeReference =
+        `win235.local/platos-webapp:sha256-${"b".repeat(64)}`;
+    },
+    /performance artifact JSON Schema violation|webapp runtime reference drifted/,
+  ],
+  [
+    "latest non-digest webapp runtime tag",
+    (artifact) => {
+      artifact.runtime.candidates.webapp.runtimeReference =
+        "win253.local/platos-webapp:latest";
+    },
+    /performance artifact JSON Schema violation|webapp runtime reference drifted/,
+  ],
+  [
+    "different webapp runtime digest",
+    (artifact) => {
+      artifact.runtime.candidates.webapp.runtimeReference =
+        `win253.local/platos-webapp:verified-${"f".repeat(64)}`;
+    },
+    /webapp runtime reference drifted/,
+  ],
+  [
+    "wrong webapp runtime namespace and repository",
+    (artifact) => {
+      artifact.runtime.candidates.webapp.runtimeReference =
+        `win235.local/not-platos-webapp:verified-${"b".repeat(64)}`;
+    },
+    /performance artifact JSON Schema violation|webapp runtime reference drifted/,
+  ],
+  [
+    "Agent runtime using the webapp reference form",
+    (artifact) => {
+      artifact.runtime.candidates.agent.runtimeReference =
+        `win253.local/platos-webapp:verified-${"a".repeat(64)}`;
+    },
+    /performance artifact JSON Schema violation|agent runtime reference drifted/,
+  ],
+  [
+    "canonical final webapp image retagged after inventory verification",
+    (artifact) => {
+      artifact.runtime.candidates.webapp.imageId = `sha256:${"f".repeat(64)}`;
+    },
+    /webapp runtime image ID differs from final archive inventory/,
   ],
   [
     "tested commit drift",
@@ -340,6 +395,108 @@ test("accepts complete synthetic candidate-request evidence under every measured
   assert.equal(verified.plans, 6);
 });
 
+test("derives exact service-specific runtime references and rejects open identities", async () => {
+  assert.equal(
+    canonicalRuntimeReference("agent", `sha256:${"a".repeat(64)}`),
+    `win235.local/platos-agent:sha256-${"a".repeat(64)}`
+  );
+  assert.equal(
+    canonicalRuntimeReference("webapp", `sha256:${"b".repeat(64)}`),
+    `win253.local/platos-webapp:verified-${"b".repeat(64)}`
+  );
+  assert.throws(
+    () => canonicalRuntimeReference("migrations", `sha256:${"c".repeat(64)}`),
+    /unknown runtime candidate service/
+  );
+  for (const malformed of ["latest", "sha256:abc", `sha256:${"A".repeat(64)}`]) {
+    assert.throws(
+      () => canonicalRuntimeReference("agent", malformed),
+      /exact lowercase SHA-256 identity/
+    );
+  }
+  const directory = await writeSyntheticEvidence(
+    (artifact) => setSyntheticWebappImageId(artifact, webappManifestDigest),
+    (evidence) => {
+      evidence.imageId = webappManifestDigest;
+      evidence.imageDescriptorDigest = webappManifestDigest;
+    }
+  );
+  const verified = await verify(directory);
+  assert.equal(verified.commitSha, commitSha);
+});
+
+test("rejects circular final image and config evidence plus archive identity mismatches", async (t) => {
+  const evidenceMutations = [
+    [
+      "imageId and candidateConfigDigest changed together",
+      (evidence) => {
+        evidence.imageId = `sha256:${"f".repeat(64)}`;
+        evidence.candidateConfigDigest = evidence.imageId;
+      },
+      /webapp final inventory config digest drifted/,
+    ],
+    [
+      "candidate manifest evidence mismatch",
+      (evidence) => {
+        evidence.candidateManifestDigest = `sha256:${"f".repeat(64)}`;
+      },
+      /webapp final inventory manifest digest drifted/,
+    ],
+    [
+      "descriptor-bound manifest without descriptor",
+      (evidence) => {
+        evidence.imageId = webappManifestDigest;
+        evidence.imageDescriptorDigest = null;
+      },
+      /descriptor-bound manifest/,
+    ],
+    [
+      "descriptor-bound manifest with mismatched descriptor",
+      (evidence) => {
+        evidence.imageId = webappManifestDigest;
+        evidence.imageDescriptorDigest = `sha256:${"f".repeat(64)}`;
+      },
+      /descriptor-bound manifest/,
+    ],
+  ];
+  for (const [name, mutateEvidence, pattern] of evidenceMutations) {
+    await t.test(name, async () => {
+      const directory = await writeSyntheticEvidence(() => undefined, mutateEvidence);
+      await assert.rejects(() => verify(directory), pattern);
+    });
+  }
+
+  const archiveMutations = [
+    ["manifest descriptor size mismatch", { descriptorSize: Buffer.byteLength(webappManifestBytes) + 1 }, /manifest size is/],
+    ["manifest blob digest mismatch", { manifestBytes: JSON.stringify({ config: { digest: webappConfigDigest }, drift: true }) }, /manifest blob digest is/],
+    ["missing manifest descriptor size", { omitDescriptorSize: true }, /descriptor size is invalid/],
+  ];
+  for (const [name, archiveOverrides, pattern] of archiveMutations) {
+    await t.test(name, async () => {
+      const directory = await writeSyntheticEvidence(
+        () => undefined,
+        () => undefined,
+        archiveOverrides
+      );
+      await assert.rejects(() => verify(directory), pattern);
+    });
+  }
+});
+
+test("the performance runner cannot disagree with the verifier runtime-reference function", async () => {
+  const source = await readFile(path.join(repositoryRoot, "tests/persisted-state-gate/run-performance.mjs"), "utf8");
+  assertRunnerUsesCanonicalRuntimeReference(source);
+  const disagreement = source.replace(
+    "const runtimeReference = canonicalRuntimeReference(service, manifestDigest);",
+    "const runtimeReference = `win235.local/platos-${service}:sha256-${manifestDigest.slice(7)}`;"
+  );
+  assert.notEqual(disagreement, source);
+  assert.throws(
+    () => assertRunnerUsesCanonicalRuntimeReference(disagreement),
+    /single canonical runtime-reference call/
+  );
+});
+
 test("accepts the shortest valid normalized SELECT captured from the candidate", async () => {
   const directory = await writeSyntheticEvidence((artifact) => {
     const request = artifact.measurements.queries[0].denseRequest;
@@ -446,9 +603,16 @@ async function verify(directory, options = {}) {
   });
 }
 
-async function writeSyntheticEvidence(mutate = () => undefined) {
-  const directory = await mkdtemp("/var/tmp/win235-performance-contract-");
-  temporaryDirectories.push(directory);
+async function writeSyntheticEvidence(
+  mutate = () => undefined,
+  mutateInventoryEvidence = () => undefined,
+  archiveOverrides = {}
+) {
+  const root = await mkdtemp("/var/tmp/win235-performance-contract-");
+  temporaryDirectories.push(root);
+  const directory = path.join(root, "win235");
+  await mkdir(directory);
+  const candidateArchiveSha256 = await writeSyntheticWebappArchive(root, archiveOverrides);
   const budgetRaw = await readFile(budgetFile, "utf8");
   const budgets = JSON.parse(budgetRaw);
   const fixtureBody = {
@@ -476,7 +640,18 @@ async function writeSyntheticEvidence(mutate = () => undefined) {
     sha256: sha256(`${JSON.stringify(fixtureBody, null, 2)}\n`),
   };
   const artifact = syntheticArtifact(budgets, budgetRaw, fixture);
+  const finalInventoryEvidence = syntheticFinalInventoryEvidence(
+    artifact.runtime.candidates.webapp,
+    candidateArchiveSha256
+  );
   mutate(artifact);
+  mutateInventoryEvidence(finalInventoryEvidence);
+  const inventoryDirectory = path.join(
+    root,
+    "webapp-image-inventory",
+    images.webapp.slice(images.webapp.lastIndexOf("sha256:") + "sha256:".length)
+  );
+  await mkdir(inventoryDirectory, { recursive: true });
   await Promise.all([
     writeFile(
       path.join(directory, "fixture-manifest.json"),
@@ -490,8 +665,62 @@ async function writeSyntheticEvidence(mutate = () => undefined) {
       path.join(directory, "performance-results.json"),
       `${JSON.stringify(artifact, null, 2)}\n`
     ),
+    writeFile(
+      path.join(inventoryDirectory, "final.json"),
+      `${JSON.stringify(finalInventoryEvidence, null, 2)}\n`
+    ),
   ]);
   return directory;
+}
+
+function syntheticFinalInventoryEvidence(runtimeCandidate, candidateArchiveSha256) {
+  return {
+    $schema: "platos.audit.webapp-image-inventory-evidence/v3",
+    gitHead: commitSha,
+    stage: "final",
+    candidateManifestDigest: runtimeCandidate.manifestDigest,
+    candidateConfigDigest: webappConfigDigest,
+    candidateArchiveSha256,
+    imageRef: runtimeCandidate.runtimeReference,
+    imageId: runtimeCandidate.imageId,
+    imageDescriptorDigest: null,
+    imageRevisionLabel: commitSha,
+    inventoryByteMatch: true,
+    generatedInventorySha256: "8".repeat(64),
+    committedInventorySha256: "8".repeat(64),
+  };
+}
+
+async function writeSyntheticWebappArchive(root, overrides = {}) {
+  const archiveRoot = path.join(root, "webapp-oci-layout");
+  const blobRoot = path.join(archiveRoot, "blobs", "sha256");
+  const archivePath = path.join(root, "candidates", "webapp.oci.tar");
+  await mkdir(blobRoot, { recursive: true });
+  await mkdir(path.dirname(archivePath), { recursive: true });
+  const candidateManifestBytes = overrides.manifestBytes ?? webappManifestBytes;
+  const descriptor = {
+    digest: overrides.descriptorDigest ?? webappManifestDigest,
+    ...(!overrides.omitDescriptorSize
+      ? { size: overrides.descriptorSize ?? Buffer.byteLength(candidateManifestBytes) }
+      : {}),
+    platform: { os: "linux", architecture: "amd64" },
+  };
+  await Promise.all([
+    writeFile(path.join(archiveRoot, "index.json"), JSON.stringify({ manifests: [descriptor] })),
+    writeFile(
+      path.join(blobRoot, webappManifestDigest.slice("sha256:".length)),
+      candidateManifestBytes
+    ),
+  ]);
+  execFileSync("tar", ["-cf", archivePath, "-C", archiveRoot, "index.json", "blobs"]);
+  return sha256(await readFile(archivePath));
+}
+
+function setSyntheticWebappImageId(artifact, imageId) {
+  artifact.runtime.candidates.webapp.imageId = imageId;
+  const memory = artifact.measurements.memory.find(({ id }) => id === "webapp.candidate-memory");
+  memory.runtimeImageId = imageId;
+  for (const sample of memory.samples) sample.runtimeImageId = imageId;
 }
 
 function syntheticArtifact(budgets, budgetRaw, fixture) {
@@ -672,13 +901,26 @@ function runtimeCandidate(service, logicalImage, imageId, containerCharacter) {
   };
   return {
     containerId: containerCharacter.repeat(64),
-    runtimeReference: `win235.local/platos-${service}:sha256-${manifestDigest.slice(7)}`,
+    runtimeReference: canonicalRuntimeReference(service, manifestDigest),
     imageId,
     manifestDigest,
     revision: commitSha,
     config,
     configSha256: sha256(JSON.stringify(config)),
   };
+}
+
+function assertRunnerUsesCanonicalRuntimeReference(source) {
+  assert.match(
+    source,
+    /import \{[\s\S]*?canonicalRuntimeReference,[\s\S]*?\} from "\.\/verify-performance-artifacts\.mjs";/u,
+    "performance runner must import the verifier's canonical runtime-reference function"
+  );
+  assert.equal(
+    source.match(/canonicalRuntimeReference\(service, manifestDigest\)/gu)?.length,
+    1,
+    "performance runner must contain a single canonical runtime-reference call"
+  );
 }
 
 function candidateRequest(budget, pageSize, requestNumber) {

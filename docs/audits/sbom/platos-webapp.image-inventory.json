@@ -1,0 +1,1346 @@
+{
+  "$schema": "platos.audit.image-package-inventory/v2",
+  "generatedBy": "scripts/image-package-inventory.mjs",
+  "targetPlatform": "linux/amd64",
+  "source": {
+    "dockerfile": "apps/webapp/Dockerfile.platos",
+    "stage": "production-deps",
+    "virtualStore": "/platos/node_modules/.pnpm",
+    "importerNodeModules": "/platos/apps/webapp/node_modules",
+    "linkedWorkspaceCount": 2,
+    "linkedWorkspaces": [
+      {
+        "name": "@internal/workload-identity",
+        "version": "0.0.1"
+      },
+      {
+        "name": "@platos/tenancy-database",
+        "version": "0.0.1"
+      }
+    ]
+  },
+  "componentCount": 330,
+  "distinctNames": 303,
+  "components": [
+    {
+      "name": "@babel/helper-string-parser",
+      "version": "7.27.1"
+    },
+    {
+      "name": "@babel/helper-validator-identifier",
+      "version": "7.27.1"
+    },
+    {
+      "name": "@babel/parser",
+      "version": "7.27.5"
+    },
+    {
+      "name": "@babel/types",
+      "version": "7.27.3"
+    },
+    {
+      "name": "@internal/workload-identity",
+      "version": "0.0.1"
+    },
+    {
+      "name": "@isaacs/cliui",
+      "version": "8.0.2"
+    },
+    {
+      "name": "@opentelemetry/api",
+      "version": "1.9.0"
+    },
+    {
+      "name": "@opentelemetry/api-logs",
+      "version": "0.57.2"
+    },
+    {
+      "name": "@opentelemetry/context-async-hooks",
+      "version": "1.30.1"
+    },
+    {
+      "name": "@opentelemetry/core",
+      "version": "1.30.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation",
+      "version": "0.57.2"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-amqplib",
+      "version": "0.46.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-connect",
+      "version": "0.43.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-dataloader",
+      "version": "0.16.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-express",
+      "version": "0.47.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-fs",
+      "version": "0.19.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-generic-pool",
+      "version": "0.43.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-graphql",
+      "version": "0.47.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-hapi",
+      "version": "0.45.2"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-http",
+      "version": "0.57.2"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-ioredis",
+      "version": "0.47.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-kafkajs",
+      "version": "0.7.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-knex",
+      "version": "0.44.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-koa",
+      "version": "0.47.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-lru-memoizer",
+      "version": "0.44.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-mongodb",
+      "version": "0.52.0"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-mongoose",
+      "version": "0.46.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-mysql",
+      "version": "0.45.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-mysql2",
+      "version": "0.45.2"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-pg",
+      "version": "0.51.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-redis-4",
+      "version": "0.46.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-tedious",
+      "version": "0.18.1"
+    },
+    {
+      "name": "@opentelemetry/instrumentation-undici",
+      "version": "0.10.1"
+    },
+    {
+      "name": "@opentelemetry/redis-common",
+      "version": "0.36.2"
+    },
+    {
+      "name": "@opentelemetry/resources",
+      "version": "1.30.1"
+    },
+    {
+      "name": "@opentelemetry/sdk-trace-base",
+      "version": "1.30.1"
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.28.0"
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.36.0"
+    },
+    {
+      "name": "@opentelemetry/sql-common",
+      "version": "0.40.1"
+    },
+    {
+      "name": "@pkgjs/parseargs",
+      "version": "0.11.0"
+    },
+    {
+      "name": "@platos/tenancy-database",
+      "version": "0.0.1"
+    },
+    {
+      "name": "@prisma/client",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/config",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/debug",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/engines",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/engines-version",
+      "version": "6.14.0-25.717184b7b35ea05dfa71a3236b7af656013e1e49"
+    },
+    {
+      "name": "@prisma/fetch-engine",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/get-platform",
+      "version": "6.14.0"
+    },
+    {
+      "name": "@prisma/instrumentation",
+      "version": "6.11.1"
+    },
+    {
+      "name": "@remix-run/express",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@remix-run/node",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@remix-run/react",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@remix-run/router",
+      "version": "1.10.0"
+    },
+    {
+      "name": "@remix-run/router",
+      "version": "1.15.3"
+    },
+    {
+      "name": "@remix-run/server-runtime",
+      "version": "2.1.0"
+    },
+    {
+      "name": "@remix-run/web-blob",
+      "version": "3.1.0"
+    },
+    {
+      "name": "@remix-run/web-fetch",
+      "version": "4.4.1"
+    },
+    {
+      "name": "@remix-run/web-file",
+      "version": "3.1.0"
+    },
+    {
+      "name": "@remix-run/web-form-data",
+      "version": "3.1.0"
+    },
+    {
+      "name": "@remix-run/web-stream",
+      "version": "1.1.0"
+    },
+    {
+      "name": "@sentry-internal/browser-utils",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry-internal/feedback",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry-internal/replay",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry-internal/replay-canvas",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/browser",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/cli",
+      "version": "2.50.2"
+    },
+    {
+      "name": "@sentry/cli-linux-x64",
+      "version": "2.50.2"
+    },
+    {
+      "name": "@sentry/core",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/node",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/node-core",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/opentelemetry",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/react",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@sentry/remix",
+      "version": "9.46.0"
+    },
+    {
+      "name": "@socket.io/component-emitter",
+      "version": "3.1.0"
+    },
+    {
+      "name": "@standard-schema/spec",
+      "version": "1.1.0"
+    },
+    {
+      "name": "@types/connect",
+      "version": "3.4.38"
+    },
+    {
+      "name": "@types/cookie",
+      "version": "0.4.1"
+    },
+    {
+      "name": "@types/mysql",
+      "version": "2.15.26"
+    },
+    {
+      "name": "@types/node",
+      "version": "20.14.14"
+    },
+    {
+      "name": "@types/pg",
+      "version": "8.11.14"
+    },
+    {
+      "name": "@types/pg",
+      "version": "8.6.1"
+    },
+    {
+      "name": "@types/pg-pool",
+      "version": "2.0.6"
+    },
+    {
+      "name": "@types/shimmer",
+      "version": "1.2.0"
+    },
+    {
+      "name": "@types/tedious",
+      "version": "4.0.14"
+    },
+    {
+      "name": "@web3-storage/multipart-parser",
+      "version": "1.0.0"
+    },
+    {
+      "name": "@zxing/text-encoding",
+      "version": "0.9.0"
+    },
+    {
+      "name": "abort-controller",
+      "version": "3.0.0"
+    },
+    {
+      "name": "accepts",
+      "version": "1.3.8"
+    },
+    {
+      "name": "acorn",
+      "version": "8.16.0"
+    },
+    {
+      "name": "acorn-import-attributes",
+      "version": "1.9.5"
+    },
+    {
+      "name": "agent-base",
+      "version": "6.0.2"
+    },
+    {
+      "name": "ansi-regex",
+      "version": "5.0.1"
+    },
+    {
+      "name": "ansi-regex",
+      "version": "6.0.1"
+    },
+    {
+      "name": "ansi-styles",
+      "version": "4.3.0"
+    },
+    {
+      "name": "ansi-styles",
+      "version": "6.2.1"
+    },
+    {
+      "name": "array-flatten",
+      "version": "1.1.1"
+    },
+    {
+      "name": "available-typed-arrays",
+      "version": "1.0.7"
+    },
+    {
+      "name": "balanced-match",
+      "version": "1.0.2"
+    },
+    {
+      "name": "body-parser",
+      "version": "1.20.3"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "2.0.1"
+    },
+    {
+      "name": "buffer-from",
+      "version": "1.1.2"
+    },
+    {
+      "name": "bufferutil",
+      "version": "4.0.9"
+    },
+    {
+      "name": "bytes",
+      "version": "3.0.0"
+    },
+    {
+      "name": "bytes",
+      "version": "3.1.2"
+    },
+    {
+      "name": "c12",
+      "version": "3.1.0"
+    },
+    {
+      "name": "call-bind",
+      "version": "1.0.8"
+    },
+    {
+      "name": "call-bind-apply-helpers",
+      "version": "1.0.2"
+    },
+    {
+      "name": "call-bound",
+      "version": "1.0.4"
+    },
+    {
+      "name": "chokidar",
+      "version": "4.0.3"
+    },
+    {
+      "name": "citty",
+      "version": "0.1.6"
+    },
+    {
+      "name": "cjs-module-lexer",
+      "version": "1.2.3"
+    },
+    {
+      "name": "cliui",
+      "version": "8.0.1"
+    },
+    {
+      "name": "clsx",
+      "version": "2.1.1"
+    },
+    {
+      "name": "color-convert",
+      "version": "2.0.1"
+    },
+    {
+      "name": "color-name",
+      "version": "1.1.4"
+    },
+    {
+      "name": "compressible",
+      "version": "2.0.18"
+    },
+    {
+      "name": "compression",
+      "version": "1.7.4"
+    },
+    {
+      "name": "confbox",
+      "version": "0.2.2"
+    },
+    {
+      "name": "consola",
+      "version": "3.4.2"
+    },
+    {
+      "name": "content-disposition",
+      "version": "0.5.4"
+    },
+    {
+      "name": "content-type",
+      "version": "1.0.5"
+    },
+    {
+      "name": "cookie",
+      "version": "0.4.2"
+    },
+    {
+      "name": "cookie",
+      "version": "0.6.0"
+    },
+    {
+      "name": "cookie-signature",
+      "version": "1.0.6"
+    },
+    {
+      "name": "cookie-signature",
+      "version": "1.2.2"
+    },
+    {
+      "name": "cross-env",
+      "version": "7.0.3"
+    },
+    {
+      "name": "cross-spawn",
+      "version": "7.0.6"
+    },
+    {
+      "name": "data-uri-to-buffer",
+      "version": "3.0.1"
+    },
+    {
+      "name": "debug",
+      "version": "2.6.9"
+    },
+    {
+      "name": "debug",
+      "version": "4.3.7"
+    },
+    {
+      "name": "debug",
+      "version": "4.4.3"
+    },
+    {
+      "name": "deepmerge-ts",
+      "version": "7.1.5"
+    },
+    {
+      "name": "define-data-property",
+      "version": "1.1.4"
+    },
+    {
+      "name": "defu",
+      "version": "6.1.4"
+    },
+    {
+      "name": "depd",
+      "version": "2.0.0"
+    },
+    {
+      "name": "destr",
+      "version": "2.0.3"
+    },
+    {
+      "name": "destroy",
+      "version": "1.2.0"
+    },
+    {
+      "name": "dotenv",
+      "version": "16.6.1"
+    },
+    {
+      "name": "dunder-proto",
+      "version": "1.0.1"
+    },
+    {
+      "name": "eastasianwidth",
+      "version": "0.2.0"
+    },
+    {
+      "name": "ee-first",
+      "version": "1.1.1"
+    },
+    {
+      "name": "effect",
+      "version": "3.16.12"
+    },
+    {
+      "name": "emoji-regex",
+      "version": "8.0.0"
+    },
+    {
+      "name": "emoji-regex",
+      "version": "9.2.2"
+    },
+    {
+      "name": "empathic",
+      "version": "2.0.0"
+    },
+    {
+      "name": "encodeurl",
+      "version": "1.0.2"
+    },
+    {
+      "name": "encodeurl",
+      "version": "2.0.0"
+    },
+    {
+      "name": "encoding",
+      "version": "0.1.13"
+    },
+    {
+      "name": "engine.io-client",
+      "version": "6.5.3"
+    },
+    {
+      "name": "engine.io-parser",
+      "version": "5.2.2"
+    },
+    {
+      "name": "es-define-property",
+      "version": "1.0.1"
+    },
+    {
+      "name": "es-errors",
+      "version": "1.3.0"
+    },
+    {
+      "name": "es-object-atoms",
+      "version": "1.1.1"
+    },
+    {
+      "name": "escalade",
+      "version": "3.2.0"
+    },
+    {
+      "name": "escape-html",
+      "version": "1.0.3"
+    },
+    {
+      "name": "etag",
+      "version": "1.8.1"
+    },
+    {
+      "name": "event-target-shim",
+      "version": "5.0.1"
+    },
+    {
+      "name": "express",
+      "version": "4.20.0"
+    },
+    {
+      "name": "exsolve",
+      "version": "1.0.7"
+    },
+    {
+      "name": "fast-check",
+      "version": "3.23.2"
+    },
+    {
+      "name": "fast-equals",
+      "version": "4.0.3"
+    },
+    {
+      "name": "finalhandler",
+      "version": "1.2.0"
+    },
+    {
+      "name": "for-each",
+      "version": "0.3.3"
+    },
+    {
+      "name": "foreground-child",
+      "version": "3.3.1"
+    },
+    {
+      "name": "forwarded",
+      "version": "0.2.0"
+    },
+    {
+      "name": "forwarded-parse",
+      "version": "2.1.2"
+    },
+    {
+      "name": "fresh",
+      "version": "0.5.2"
+    },
+    {
+      "name": "function-bind",
+      "version": "1.1.2"
+    },
+    {
+      "name": "get-caller-file",
+      "version": "2.0.5"
+    },
+    {
+      "name": "get-intrinsic",
+      "version": "1.3.0"
+    },
+    {
+      "name": "get-proto",
+      "version": "1.0.1"
+    },
+    {
+      "name": "giget",
+      "version": "2.0.0"
+    },
+    {
+      "name": "glob",
+      "version": "10.4.5"
+    },
+    {
+      "name": "gopd",
+      "version": "1.2.0"
+    },
+    {
+      "name": "has-property-descriptors",
+      "version": "1.0.2"
+    },
+    {
+      "name": "has-symbols",
+      "version": "1.1.0"
+    },
+    {
+      "name": "has-tostringtag",
+      "version": "1.0.2"
+    },
+    {
+      "name": "hasown",
+      "version": "2.0.2"
+    },
+    {
+      "name": "hoist-non-react-statics",
+      "version": "3.3.2"
+    },
+    {
+      "name": "http-errors",
+      "version": "2.0.0"
+    },
+    {
+      "name": "https-proxy-agent",
+      "version": "5.0.1"
+    },
+    {
+      "name": "iconv-lite",
+      "version": "0.4.24"
+    },
+    {
+      "name": "iconv-lite",
+      "version": "0.6.3"
+    },
+    {
+      "name": "import-in-the-middle",
+      "version": "1.11.0"
+    },
+    {
+      "name": "import-in-the-middle",
+      "version": "1.14.2"
+    },
+    {
+      "name": "inherits",
+      "version": "2.0.4"
+    },
+    {
+      "name": "ipaddr.js",
+      "version": "1.9.1"
+    },
+    {
+      "name": "is-arguments",
+      "version": "1.1.1"
+    },
+    {
+      "name": "is-callable",
+      "version": "1.2.7"
+    },
+    {
+      "name": "is-core-module",
+      "version": "2.14.0"
+    },
+    {
+      "name": "is-fullwidth-code-point",
+      "version": "3.0.0"
+    },
+    {
+      "name": "is-generator-function",
+      "version": "1.0.10"
+    },
+    {
+      "name": "is-typed-array",
+      "version": "1.1.13"
+    },
+    {
+      "name": "isexe",
+      "version": "2.0.0"
+    },
+    {
+      "name": "jackspeak",
+      "version": "3.4.3"
+    },
+    {
+      "name": "jiti",
+      "version": "2.4.2"
+    },
+    {
+      "name": "js-tokens",
+      "version": "4.0.0"
+    },
+    {
+      "name": "loose-envify",
+      "version": "1.4.0"
+    },
+    {
+      "name": "lru-cache",
+      "version": "10.4.3"
+    },
+    {
+      "name": "lucide-react",
+      "version": "0.229.0"
+    },
+    {
+      "name": "magicast",
+      "version": "0.3.5"
+    },
+    {
+      "name": "math-intrinsics",
+      "version": "1.1.0"
+    },
+    {
+      "name": "media-typer",
+      "version": "0.3.0"
+    },
+    {
+      "name": "merge-descriptors",
+      "version": "1.0.3"
+    },
+    {
+      "name": "methods",
+      "version": "1.1.2"
+    },
+    {
+      "name": "mime",
+      "version": "1.6.0"
+    },
+    {
+      "name": "mime-db",
+      "version": "1.52.0"
+    },
+    {
+      "name": "mime-db",
+      "version": "1.54.0"
+    },
+    {
+      "name": "mime-types",
+      "version": "2.1.35"
+    },
+    {
+      "name": "minimatch",
+      "version": "9.0.5"
+    },
+    {
+      "name": "minipass",
+      "version": "7.1.3"
+    },
+    {
+      "name": "module-details-from-path",
+      "version": "1.0.3"
+    },
+    {
+      "name": "mrmime",
+      "version": "1.0.1"
+    },
+    {
+      "name": "ms",
+      "version": "2.0.0"
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3"
+    },
+    {
+      "name": "negotiator",
+      "version": "0.6.3"
+    },
+    {
+      "name": "node-fetch",
+      "version": "2.6.12"
+    },
+    {
+      "name": "node-fetch-native",
+      "version": "1.6.6"
+    },
+    {
+      "name": "node-gyp-build",
+      "version": "4.8.4"
+    },
+    {
+      "name": "nypm",
+      "version": "0.6.1"
+    },
+    {
+      "name": "object-assign",
+      "version": "4.1.1"
+    },
+    {
+      "name": "object-inspect",
+      "version": "1.13.4"
+    },
+    {
+      "name": "obuf",
+      "version": "1.1.2"
+    },
+    {
+      "name": "ohash",
+      "version": "2.0.11"
+    },
+    {
+      "name": "on-finished",
+      "version": "2.4.1"
+    },
+    {
+      "name": "on-headers",
+      "version": "1.0.2"
+    },
+    {
+      "name": "package-json-from-dist",
+      "version": "1.0.0"
+    },
+    {
+      "name": "parseurl",
+      "version": "1.3.3"
+    },
+    {
+      "name": "path-key",
+      "version": "3.1.1"
+    },
+    {
+      "name": "path-parse",
+      "version": "1.0.7"
+    },
+    {
+      "name": "path-scurry",
+      "version": "1.11.1"
+    },
+    {
+      "name": "path-to-regexp",
+      "version": "0.1.10"
+    },
+    {
+      "name": "pathe",
+      "version": "2.0.3"
+    },
+    {
+      "name": "perfect-debounce",
+      "version": "1.0.0"
+    },
+    {
+      "name": "pg-int8",
+      "version": "1.0.1"
+    },
+    {
+      "name": "pg-numeric",
+      "version": "1.0.2"
+    },
+    {
+      "name": "pg-protocol",
+      "version": "1.10.3"
+    },
+    {
+      "name": "pg-types",
+      "version": "2.2.0"
+    },
+    {
+      "name": "pg-types",
+      "version": "4.0.2"
+    },
+    {
+      "name": "pkg-types",
+      "version": "2.3.0"
+    },
+    {
+      "name": "possible-typed-array-names",
+      "version": "1.0.0"
+    },
+    {
+      "name": "postgres-array",
+      "version": "2.0.0"
+    },
+    {
+      "name": "postgres-array",
+      "version": "3.0.4"
+    },
+    {
+      "name": "postgres-bytea",
+      "version": "1.0.0"
+    },
+    {
+      "name": "postgres-bytea",
+      "version": "3.0.0"
+    },
+    {
+      "name": "postgres-date",
+      "version": "1.0.7"
+    },
+    {
+      "name": "postgres-date",
+      "version": "2.1.0"
+    },
+    {
+      "name": "postgres-interval",
+      "version": "1.2.0"
+    },
+    {
+      "name": "postgres-interval",
+      "version": "3.0.0"
+    },
+    {
+      "name": "postgres-range",
+      "version": "1.1.4"
+    },
+    {
+      "name": "prisma",
+      "version": "6.14.0"
+    },
+    {
+      "name": "progress",
+      "version": "2.0.3"
+    },
+    {
+      "name": "prop-types",
+      "version": "15.8.1"
+    },
+    {
+      "name": "proxy-addr",
+      "version": "2.0.7"
+    },
+    {
+      "name": "proxy-from-env",
+      "version": "1.1.0"
+    },
+    {
+      "name": "pure-rand",
+      "version": "6.1.0"
+    },
+    {
+      "name": "qs",
+      "version": "6.14.1"
+    },
+    {
+      "name": "range-parser",
+      "version": "1.2.1"
+    },
+    {
+      "name": "raw-body",
+      "version": "2.5.2"
+    },
+    {
+      "name": "rc9",
+      "version": "2.1.2"
+    },
+    {
+      "name": "react",
+      "version": "18.3.1"
+    },
+    {
+      "name": "react-dom",
+      "version": "18.2.0"
+    },
+    {
+      "name": "react-draggable",
+      "version": "4.5.0"
+    },
+    {
+      "name": "react-grid-layout",
+      "version": "2.2.2"
+    },
+    {
+      "name": "react-is",
+      "version": "16.13.1"
+    },
+    {
+      "name": "react-resizable",
+      "version": "3.1.3"
+    },
+    {
+      "name": "react-router",
+      "version": "6.17.0"
+    },
+    {
+      "name": "react-router-dom",
+      "version": "6.17.0"
+    },
+    {
+      "name": "readdirp",
+      "version": "4.1.2"
+    },
+    {
+      "name": "require-directory",
+      "version": "2.1.1"
+    },
+    {
+      "name": "require-in-the-middle",
+      "version": "7.1.1"
+    },
+    {
+      "name": "resize-observer-polyfill",
+      "version": "1.5.1"
+    },
+    {
+      "name": "resolve",
+      "version": "1.22.8"
+    },
+    {
+      "name": "safe-buffer",
+      "version": "5.1.2"
+    },
+    {
+      "name": "safe-buffer",
+      "version": "5.2.1"
+    },
+    {
+      "name": "safer-buffer",
+      "version": "2.1.2"
+    },
+    {
+      "name": "scheduler",
+      "version": "0.23.0"
+    },
+    {
+      "name": "semver",
+      "version": "7.7.3"
+    },
+    {
+      "name": "send",
+      "version": "0.18.0"
+    },
+    {
+      "name": "send",
+      "version": "0.19.0"
+    },
+    {
+      "name": "serve-static",
+      "version": "1.16.0"
+    },
+    {
+      "name": "set-cookie-parser",
+      "version": "2.6.0"
+    },
+    {
+      "name": "set-function-length",
+      "version": "1.2.2"
+    },
+    {
+      "name": "setprototypeof",
+      "version": "1.2.0"
+    },
+    {
+      "name": "shebang-command",
+      "version": "2.0.0"
+    },
+    {
+      "name": "shebang-regex",
+      "version": "3.0.0"
+    },
+    {
+      "name": "shimmer",
+      "version": "1.2.1"
+    },
+    {
+      "name": "side-channel",
+      "version": "1.1.0"
+    },
+    {
+      "name": "side-channel-list",
+      "version": "1.0.0"
+    },
+    {
+      "name": "side-channel-map",
+      "version": "1.0.1"
+    },
+    {
+      "name": "side-channel-weakmap",
+      "version": "1.0.2"
+    },
+    {
+      "name": "signal-exit",
+      "version": "4.1.0"
+    },
+    {
+      "name": "socket.io-client",
+      "version": "4.7.5"
+    },
+    {
+      "name": "socket.io-parser",
+      "version": "4.2.4"
+    },
+    {
+      "name": "source-map",
+      "version": "0.6.1"
+    },
+    {
+      "name": "source-map",
+      "version": "0.7.4"
+    },
+    {
+      "name": "source-map-js",
+      "version": "1.2.1"
+    },
+    {
+      "name": "source-map-support",
+      "version": "0.5.21"
+    },
+    {
+      "name": "statuses",
+      "version": "2.0.1"
+    },
+    {
+      "name": "stream-slice",
+      "version": "0.1.2"
+    },
+    {
+      "name": "string-width",
+      "version": "4.2.3"
+    },
+    {
+      "name": "string-width",
+      "version": "5.1.2"
+    },
+    {
+      "name": "strip-ansi",
+      "version": "6.0.1"
+    },
+    {
+      "name": "strip-ansi",
+      "version": "7.1.0"
+    },
+    {
+      "name": "supports-preserve-symlinks-flag",
+      "version": "1.0.0"
+    },
+    {
+      "name": "tinyexec",
+      "version": "1.0.1"
+    },
+    {
+      "name": "toidentifier",
+      "version": "1.0.1"
+    },
+    {
+      "name": "tr46",
+      "version": "0.0.3"
+    },
+    {
+      "name": "type-is",
+      "version": "1.6.18"
+    },
+    {
+      "name": "typescript",
+      "version": "5.5.4"
+    },
+    {
+      "name": "undici-types",
+      "version": "5.26.5"
+    },
+    {
+      "name": "unpipe",
+      "version": "1.0.0"
+    },
+    {
+      "name": "util",
+      "version": "0.12.5"
+    },
+    {
+      "name": "utils-merge",
+      "version": "1.0.1"
+    },
+    {
+      "name": "vary",
+      "version": "1.1.2"
+    },
+    {
+      "name": "web-encoding",
+      "version": "1.1.5"
+    },
+    {
+      "name": "web-streams-polyfill",
+      "version": "3.2.1"
+    },
+    {
+      "name": "webidl-conversions",
+      "version": "3.0.1"
+    },
+    {
+      "name": "whatwg-url",
+      "version": "5.0.0"
+    },
+    {
+      "name": "which",
+      "version": "2.0.2"
+    },
+    {
+      "name": "which-typed-array",
+      "version": "1.1.15"
+    },
+    {
+      "name": "wrap-ansi",
+      "version": "7.0.0"
+    },
+    {
+      "name": "wrap-ansi",
+      "version": "8.1.0"
+    },
+    {
+      "name": "ws",
+      "version": "8.11.0"
+    },
+    {
+      "name": "xmlhttprequest-ssl",
+      "version": "2.0.0"
+    },
+    {
+      "name": "xtend",
+      "version": "4.0.2"
+    },
+    {
+      "name": "y18n",
+      "version": "5.0.8"
+    },
+    {
+      "name": "yargs",
+      "version": "17.7.2"
+    },
+    {
+      "name": "yargs-parser",
+      "version": "21.1.1"
+    },
+    {
+      "name": "zod",
+      "version": "3.25.76"
+    }
+  ]
+}

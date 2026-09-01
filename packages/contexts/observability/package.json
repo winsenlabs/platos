@@ -1,0 +1,28 @@
+{
+  "name": "@platos/context-observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ADR M0.3 bounded context: observability.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/contracts/index.js",
+  "types": "./dist/contracts/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js"
+    },
+    "./application/ports/index.js": {
+      "types": "./dist/application/ports/index.d.ts",
+      "import": "./dist/application/ports/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "dependencies": {
+    "@platos/kernel": "workspace:*",
+    "@platos/context-tenancy": "workspace:*"
+  }
+}

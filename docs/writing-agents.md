@@ -29,7 +29,7 @@ When something breaks, call create_ticket with severity.
 ### Config (create via UI or SDK)
 
 ```ts
-import { PlatosClient } from "@platos/sdk";
+import { PlatosClient } from "@platosdev/client";
 
 const client = new PlatosClient({
   apiKey: process.env.PLATOS_API_KEY!,
@@ -128,6 +128,8 @@ Notice the cache hit on turn 2 — the system prompt + tool schemas are identica
 
 ---
 
+<a id="example-2"></a>
+
 ## Example 2 — Research agent (spawn_job for multi-step)
 
 Long-horizon research that can't fit in a single LLM turn: fetch 20 URLs, summarize each, synthesize. You don't want this running in the request-response path; you want it durable so retries, logs, and timeouts are free.
@@ -173,7 +175,7 @@ Register a trigger.dev task in your project:
 
 ```ts
 // trigger/research.ts
-import { task } from "@trigger.dev/sdk/v3";
+import { task } from "@trigger.dev/sdk";
 import { Anthropic } from "@anthropic-ai/sdk";
 
 export const fetchAndSummarize = task({

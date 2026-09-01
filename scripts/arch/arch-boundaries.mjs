@@ -6,13 +6,9 @@
 // set (scripts/arch/boundary-rules.mjs) against a source tree and exits non-zero
 // on any violation.
 //
-// WHAT ENFORCES NOW vs WHAT IS READY FOR M2. The V1 bounded-context packages
-// (packages/contexts/*, packages/adapters/*, packages/kernel, apps/core-api) do
-// not exist yet — they are built in M2. So the default scan finds no V1 source
-// and the checker is green by vacuity today. The rule logic is proven non-vacuous
-// by scripts/arch/arch-boundaries.test.mjs, which builds real temp-directory
-// fixtures and asserts each rule CATCHES a violation and PASSES a compliant tree.
-// As M2 creates the packages, the same rules bind against real code with no edit.
+// The V1 skeleton is real and built by WIN-251. The default scan therefore must
+// be non-zero; scripts/arch/arch-boundaries.test.mjs additionally mutation-tests
+// every rule against temporary violating and compliant trees.
 //
 // Usage:
 //   node scripts/arch/arch-boundaries.mjs                 # scan the V1 layout in this repo
@@ -27,8 +23,13 @@ import { fileURLToPath } from "node:url";
 import {
   ALL_RULES,
   CONTEXT_DEPENDS_ON,
+  CONTEXT_NAMES,
   WORKSPACE_ALIASES,
 } from "./boundary-rules.mjs";
+
+// Rule (l): the context registry. CONTEXT_DEPENDS_ON's key set IS the list of
+// the 17 contexts ADR M0.3 §4 names, so there is one place to add a context.
+const KNOWN_CONTEXTS = new Set(CONTEXT_NAMES);
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -41,6 +42,7 @@ const DEFAULT_SCAN_ROOTS = [
   "packages/contexts",
   "packages/adapters",
   "apps/core-api",
+  "apps/mcp-stdio",
 ];
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
@@ -126,6 +128,11 @@ function normalizeSlashes(p) {
   return p.split("\\").join("/");
 }
 
+function adapterOf(virtualPath) {
+  const m = /^packages\/adapters\/([^/]+)\//.exec(virtualPath);
+  return m ? m[1] : null;
+}
+
 function contextOf(virtualPath) {
   const m = /^packages\/contexts\/([^/]+)\//.exec(virtualPath);
   return m ? m[1] : null;
@@ -174,6 +181,16 @@ function firesCrossContextContractsOnly(fromVirtual, targetVirtual) {
   return /^packages\/contexts\/[^/]+\/(domain|application|adapters|transport)\//.test(targetVirtual);
 }
 
+// (j2) An adapter may import its own modules and nothing else under
+// packages/adapters/. Needs the from-side adapter name, so it cannot be a plain
+// path-vs-path rule.
+function firesSameAdapterOnly(fromVirtual, targetVirtual) {
+  const fromAdapter = adapterOf(fromVirtual);
+  const toAdapter = adapterOf(targetVirtual);
+  if (!fromAdapter || !toAdapter) return false;
+  return fromAdapter !== toAdapter;
+}
+
 function firesCrossContextDag(fromVirtual, targetVirtual) {
   const fromCtx = contextOf(fromVirtual);
   const toCtx = contextOf(targetVirtual);
@@ -198,6 +215,25 @@ export function check(absoluteRoot, { scanRoots } = {}) {
 
   for (const absFile of files) {
     const fromVirtual = normalizeSlashes(relative(absoluteRoot, absFile));
+
+    // Rule (l) is a property of the FILE'S OWN PATH, so it is judged here rather
+    // than inside the per-edge loop: a rogue context package with no imports at
+    // all must still fail.
+    const ownContext = contextOf(fromVirtual);
+    if (ownContext && !KNOWN_CONTEXTS.has(ownContext)) {
+      const registryRule = ALL_RULES.find((rule) => rule.kind === "context-registry");
+      if (registryRule) {
+        violations.push({
+          rule: registryRule.id,
+          severity: registryRule.severity,
+          from: fromVirtual,
+          to: `packages/contexts/${ownContext}/`,
+          specifier: ownContext,
+          comment: registryRule.comment,
+        });
+      }
+    }
+
     let source;
     try {
       source = readFileSync(absFile, "utf8");
@@ -220,7 +256,13 @@ export function check(absoluteRoot, { scanRoots } = {}) {
           fired = firesCrossContextContractsOnly(fromVirtual, targetVirtual);
         else if (rule.kind === "cross-context-dag")
           fired = firesCrossContextDag(fromVirtual, targetVirtual);
+        else if (rule.kind === "same-adapter-only")
+          fired = firesSameAdapterOnly(fromVirtual, targetVirtual);
         else if (rule.kind === "acyclic") fired = false; // handled after the walk
+        // Judged per file below, not per edge. Without this branch the rule
+        // would fall through to firesPlainRule, where from/to are undefined,
+        // every matcher is null, and it would fire on EVERY edge.
+        else if (rule.kind === "context-registry") fired = false;
         else fired = firesPlainRule(rule, fromVirtual, targetVirtual);
 
         if (fired) {
@@ -317,9 +359,7 @@ function main() {
     );
     if (result.violations.length === 0) {
       if (result.fileCount === 0) {
-        process.stdout.write(
-          "ok: no V1-layout source present yet; rules are fixture-proven and bind as M2 creates packages.\n"
-        );
+        process.stdout.write("FAIL: V1 layout scan is vacuous; generated source is missing or selectors drifted.\n");
       } else {
         process.stdout.write(`ok: ${result.fileCount} file(s) satisfy every ADR M0.3 boundary rule.\n`);
       }
@@ -331,7 +371,7 @@ function main() {
     }
   }
 
-  process.exitCode = result.violations.length > 0 ? 1 : 0;
+  process.exitCode = result.violations.length > 0 || result.fileCount === 0 ? 1 : 0;
 }
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

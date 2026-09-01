@@ -1,13 +1,11 @@
 /**
  * The ClickHouse implementation of ObservabilitySink.
  *
- * WHY THIS IS NOT `@internal/clickhouse`. That package is the private external
- * runtime adapter: its consumers handle runtime runs, events or replication, and its
- * client is constructed once from `CLICKHOUSE_URL` in the webapp process. This
- * sink lives in the agent, resolves its endpoint per call so credentials can
- * rotate, and writes a database that package has never heard of. Importing it
- * would tie the Platos projection's availability to the health of a pipeline
- * that is currently broken (WIN-150).
+ * This sink deliberately owns the direct ClickHouse protocol boundary. The
+ * inherited `@internal/clickhouse` runtime adapter had no Platos consumer and
+ * was removed under WIN-253; its live migration directory remains separate.
+ * This agent-side sink resolves its endpoint per call so credentials can rotate
+ * and writes only the Platos observability schema.
  *
  * ERROR BODIES ARE PERSONAL DATA. ClickHouse echoes the failing statement back
  * inside its exception text, and a failing INSERT quotes the rows — which, when

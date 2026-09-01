@@ -638,7 +638,7 @@ Use the same controlled backup → maintenance re-encryption → verification �
 
 ### `PLATOS_MESSAGE_ENCRYPTION_KEY`
 
-Message envelopes are versioned. Keep the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, place the replacement in the unsuffixed input, increment `PLATOS_MESSAGE_ENCRYPTION_KEY_V`, then re-encrypt historical envelopes before removing the old read key. See [Credential inventory](../content/docs/credential-inventory.md).
+Message envelopes are versioned. Keep the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, place the replacement in the unsuffixed input, increment `PLATOS_MESSAGE_ENCRYPTION_KEY_V`, then re-encrypt historical envelopes before removing the old read key. The retained credential inventory is `content/docs/credential-inventory.md`.
 
 ### `PLATOS_INTERNAL_AUTH_TOKEN` and `PLATOS_COMPONENT_AUTH_SECRET`
 
@@ -731,11 +731,11 @@ Scenarios and RPO/RTO:
 
 | Scenario | RPO | RTO |
 |---|---|---|
-| Webapp pod crash | 0 | <30s (auto-restart + LB retry) |
-| Agent pod crash | <5s (in-flight streams drop) | <30s (reconnect from UI) |
+| Webapp pod crash | 0 | &lt;30s (auto-restart + LB retry) |
+| Agent pod crash | &lt;5s (in-flight streams drop) | &lt;30s (reconnect from UI) |
 | Postgres outage | 0 (managed failover) or last backup | 5m managed / hours self-host |
-| Redis outage | 0 for durable data; in-flight approvals may re-prompt | <5m |
-| AZ outage | 0 (multi-AZ DB) | <5m if running multi-AZ compute |
+| Redis outage | 0 for durable data; in-flight approvals may re-prompt | &lt;5m |
+| AZ outage | 0 (multi-AZ DB) | &lt;5m if running multi-AZ compute |
 | Region outage | Last cross-region backup | Manual failover |
 
 Losing Redis is not catastrophic. Losing Postgres is. Back it up like your life depends on it.

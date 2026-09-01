@@ -1,0 +1,20 @@
+{
+  "name": "@platos/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Port interfaces and pure value objects. Zero runtime dependencies.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean"
+  }
+}

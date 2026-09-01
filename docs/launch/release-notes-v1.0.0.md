@@ -51,11 +51,11 @@ Open http://localhost:3030 → log in → Agents → New Agent → configure →
 
 Every trigger.dev project works on Platos. See `docs/upgrading-from-trigger.md`.
 
-Package renames (optional — old imports continue to work):
-- `@trigger.dev/sdk` → `@platos/sdk`
+Package boundaries:
+- Trigger durable-runtime APIs remain in `@trigger.dev/sdk`
+- Platos REST/WebSocket APIs are provided by `@platosdev/client`
 - `@trigger.dev/core` → `@platos/core`
-- `@trigger.dev/build` → `@platos/build`
-- … (10 packages total)
+- Trigger build extensions remain external Trigger packages
 
 Environment variables for the SDK (`TRIGGER_SECRET_KEY`, `TRIGGER_API_URL`, `TRIGGER_PROJECT_REF`) stay the same for compatibility.
 

@@ -743,7 +743,7 @@ export type TriggerOptions = {
    * @example
    *
    * ```typescript
-   * import { idempotencyKeys, task } from "@platos/sdk/v3";
+   * import { idempotencyKeys, task } from "@trigger.dev/sdk";
    *
    * export const myTask = task({
    *  id: "my-task",
@@ -772,7 +772,7 @@ export type TriggerOptions = {
    * @example
    *
    * ```typescript
-   * import { idempotencyKeys, tasks } from "@platos/sdk/v3";
+   * import { idempotencyKeys, tasks } from "@trigger.dev/sdk";
    *
    * // Somewhere in your backend
    * const idempotencyKey = await idempotenceKeys.create(["my-task-trigger", "user-123"]);

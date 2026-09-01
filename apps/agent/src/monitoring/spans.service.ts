@@ -6,12 +6,82 @@ import type { RequestScope } from "../auth/scope.guard";
 import { env } from "../shared/env";
 import { TELEMETRY_DATABASE } from "../shared/telemetry-namespace";
 import {
+  CLICKHOUSE_WRITE_DISCONNECT_POLICY,
+  attachClickhouseCorrelation,
+  ClickhouseCallerAbortError,
+  ClickhouseNetworkError,
+  ClickhouseStatusError,
+  ClickhouseTimeoutError,
+  buildClickhouseOperationEvent,
+  classifyClickhouseFailure,
+  clickhouseErrorCorrelation,
+  clickhouseFailureCode,
+  clickhouseMaxExecutionTimeSeconds,
+  createClickhouseAbortContext,
+  extractClickhouseNumericCode,
+  type ClickhouseCallerMapping,
+  type ClickhouseDecision,
+  type ClickhouseDecisionState,
+  type ClickhouseOperation,
+} from "../shared/clickhouse-deadline";
+import {
+  boundedSpanDlqMigrationBatch,
   MAX_SPAN_DLQ_RETRIES,
+  sanitizeSpanDlqEntry,
+  SPAN_DLQ_ACTIVE_KEY,
+  SPAN_DLQ_DEAD_KEY,
+  SPAN_DLQ_PROCESSING_LEASE_MS,
+  SPAN_DLQ_PROCESSING_RUNS_KEY,
+  spanDlqProcessingKey,
   spanDlqRetryCount,
-  withSpanDlqRetryCount,
 } from "./span-dlq";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+
+interface ClickhouseExecution {
+  operation: ClickhouseOperation;
+  url: string;
+  init: RequestInit;
+  callerSignal?: AbortSignal;
+  traceId?: string;
+  plannedFailureDecision: ClickhouseDecision;
+  successCallerMapping: ClickhouseCallerMapping;
+  disconnectPolicy?: typeof CLICKHOUSE_WRITE_DISCONNECT_POLICY;
+}
+
+interface ClickhouseExecutionResult {
+  body: string;
+  correlationId: string;
+}
+
+const SANITIZE_SPAN_DLQ_TAIL_SCRIPT = `
+local current = redis.call("LINDEX", KEYS[1], -1)
+if not current or current ~= ARGV[1] then
+  return 0
+end
+if ARGV[2] == "replace" then
+  redis.call("LSET", KEYS[1], -1, ARGV[3])
+  redis.call("RPOPLPUSH", KEYS[1], KEYS[1])
+  redis.call("LTRIM", KEYS[1], 0, tonumber(ARGV[4]) - 1)
+else
+  redis.call("RPOP", KEYS[1])
+end
+return 1
+`;
+
+// Push the replacement before removing the claimed row. Redis scripts are
+// atomic with respect to other clients but do not roll back commands after a
+// runtime error, so this ordering intentionally prefers an at-least-once
+// duplicate over losing the only durable copy.
+const TRANSITION_SPAN_DLQ_PROCESSING_SCRIPT = `
+local position = redis.call("LPOS", KEYS[1], ARGV[1])
+if not position then
+  return 0
+end
+redis.call("LPUSH", KEYS[2], ARGV[2])
+redis.call("LTRIM", KEYS[2], 0, tonumber(ARGV[3]) - 1)
+return redis.call("LREM", KEYS[1], 1, ARGV[1])
+`;
 
 /**
  * OTel-shaped span record. We do not ship the full OpenTelemetry runtime —
@@ -52,6 +122,163 @@ function hex(bytes: number): string {
 @Injectable()
 export class SpansService {
   private sampler = 1.0;
+  /**
+   * WIN-290 — every ClickHouse HTTP call is bounded by this deadline. Injectable
+   * `fetchImpl` exists so the slow/hung-server tests can drive a deterministic
+   * abort without a real socket.
+   */
+  private readonly clickhouseDeadlineMs = env.PLATOS_CLICKHOUSE_TIMEOUT_MS;
+  fetchImpl: typeof fetch = (...args) => fetch(...args);
+  /**
+   * WIN-290 observability gate — correlated start/end events for every
+   * ClickHouse operation. Overridable so tests can assert the shape directly.
+   */
+  emitClickhouseEvent: (event: ReturnType<typeof buildClickhouseOperationEvent>) => void = (
+    event
+  ) => {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(event));
+  };
+
+  private emitSafeClickhouseEvent(event: ReturnType<typeof buildClickhouseOperationEvent>): void {
+    try {
+      this.emitClickhouseEvent(event);
+    } catch {
+      // Telemetry must never break the operation it observes.
+    }
+  }
+
+  /**
+   * One lifecycle owns fetch, status inspection and complete body consumption.
+   * The terminal event therefore includes time spent waiting for body bytes,
+   * and the timer/caller listener are always removed before returning.
+   */
+  private async executeClickhouse(execution: ClickhouseExecution): Promise<ClickhouseExecutionResult> {
+    const deadlineMs = this.clickhouseDeadlineMs;
+    const startedAt = Date.now();
+    const correlationId = crypto.randomUUID();
+    const abort = createClickhouseAbortContext(deadlineMs, execution.callerSignal);
+    this.emitSafeClickhouseEvent(
+      buildClickhouseOperationEvent({
+        phase: "start",
+        operation: execution.operation,
+        correlationId,
+        deadlineMs,
+        traceId: execution.traceId,
+        disconnectPolicy: execution.disconnectPolicy,
+      })
+    );
+
+    try {
+      const response = await this.fetchImpl(execution.url, {
+        ...execution.init,
+        signal: abort.signal,
+      });
+      // Consume even error responses under the SAME deadline. The contents are
+      // deliberately discarded for non-2xx responses and never enter an Error.
+      const body = await response.text();
+      if (!response.ok) {
+        throw new ClickhouseStatusError(
+          execution.operation,
+          response.status,
+          extractClickhouseNumericCode(body)
+        );
+      }
+
+      this.emitSafeClickhouseEvent(
+        buildClickhouseOperationEvent({
+          phase: "end",
+          operation: execution.operation,
+          correlationId,
+          deadlineMs,
+          traceId: execution.traceId,
+          disconnectPolicy: execution.disconnectPolicy,
+          outcome: "ok",
+          elapsedMs: Date.now() - startedAt,
+          plannedDecision: "none",
+          callerMapping: execution.successCallerMapping,
+        })
+      );
+      return { body, correlationId };
+    } catch (error) {
+      let failure: Error;
+      if (abort.source() === "caller") {
+        failure = new ClickhouseCallerAbortError(execution.operation, error);
+      } else if (abort.source() === "deadline") {
+        failure = new ClickhouseTimeoutError(execution.operation, deadlineMs, error);
+      } else if (error instanceof ClickhouseStatusError) {
+        failure = error;
+      } else {
+        // Raw fetch/body errors can contain URLs or response fragments. Keep
+        // them only as an unobserved cause and expose a fixed safe message.
+        failure = new ClickhouseNetworkError(execution.operation, error);
+      }
+      const callerMapping: ClickhouseCallerMapping =
+        execution.operation === "span-write"
+          ? "detached-write"
+          : failure instanceof ClickhouseTimeoutError
+            ? "clickhouse-timeout"
+            : failure instanceof ClickhouseCallerAbortError
+              ? "clickhouse-caller-abort"
+              : failure instanceof ClickhouseStatusError
+                ? "clickhouse-status"
+                : "clickhouse-network";
+      const correlatedFailure = attachClickhouseCorrelation(failure, correlationId);
+      this.emitSafeClickhouseEvent(
+        buildClickhouseOperationEvent({
+          phase: "end",
+          operation: execution.operation,
+          correlationId,
+          deadlineMs,
+          traceId: execution.traceId,
+          disconnectPolicy: execution.disconnectPolicy,
+          outcome: "error",
+          elapsedMs: Date.now() - startedAt,
+          failureKind: classifyClickhouseFailure(failure),
+          statusCode: failure instanceof ClickhouseStatusError ? failure.statusCode : undefined,
+          clickhouseCode:
+            failure instanceof ClickhouseStatusError ? failure.clickhouseCode : undefined,
+          plannedDecision:
+            failure instanceof ClickhouseCallerAbortError
+              ? "none"
+              : execution.plannedFailureDecision,
+          callerMapping,
+        })
+      );
+      throw correlatedFailure;
+    } finally {
+      abort.cleanup();
+    }
+  }
+
+  /** Emit the result of an actual handling-layer fallback or queue mutation. */
+  reportClickhouseHandling(input: {
+    operation: ClickhouseOperation;
+    correlationId: string;
+    traceId?: string;
+    decision: ClickhouseDecision;
+    decisionState: ClickhouseDecisionState;
+    elapsedMs: number;
+    callerMapping: ClickhouseCallerMapping;
+    retrySource?: "span-dlq";
+    retryCount?: number;
+  }): void {
+    this.emitSafeClickhouseEvent(
+      buildClickhouseOperationEvent({
+        phase: "handled",
+        operation: input.operation,
+        correlationId: input.correlationId,
+        deadlineMs: this.clickhouseDeadlineMs,
+        traceId: input.traceId,
+        elapsedMs: input.elapsedMs,
+        decision: input.decision,
+        decisionState: input.decisionState,
+        callerMapping: input.callerMapping,
+        retrySource: input.retrySource,
+        retryCount: input.retryCount,
+      })
+    );
+  }
   /**
    * PPR-15 — ClickHouse HTTP endpoint for persistent span storage.
    * When unset, we remain Redis-only (pre-PPR-15 behaviour). When set,
@@ -187,10 +414,25 @@ export class SpansService {
     // transient CH outages don't permanently lose telemetry. Redis is the
     // durable hold-queue until the row lands in CH.
     if (this.clickhouseBaseUrl) {
-      this.writeSpanToClickhouse(scope, record).catch((err) => {
+      this.writeSpanToClickhouse(scope, record).catch(async (err) => {
+        // Fixed text + numeric-only code: fetch errors and ClickHouse bodies
+        // may contain URLs, SQL, credentials or echoed row/identity fields.
         // eslint-disable-next-line no-console
-        console.warn("[Platos Spans] clickhouse write failed:", err?.message || err);
-        this.pushSpanToDlq(scope, record, err?.message).catch(() => undefined);
+        console.warn("[Platos Spans] ClickHouse span-write failed", clickhouseFailureCode(err));
+        const handlingStartedAt = Date.now();
+        const applied = await this.pushSpanToDlq(scope, record, err);
+        const correlationId = clickhouseErrorCorrelation(err);
+        if (correlationId) {
+          this.reportClickhouseHandling({
+            operation: "span-write",
+            correlationId,
+            traceId: record.traceId,
+            decision: "enqueue-dlq",
+            decisionState: applied ? "applied" : "failed",
+            elapsedMs: Date.now() - handlingStartedAt,
+            callerMapping: "detached-write",
+          });
+        }
       });
     }
   }
@@ -209,81 +451,271 @@ export class SpansService {
       sessionContext?: { user?: { name?: string; email?: string } } | null;
     },
     record: PlatosSpan,
-    error?: string,
-  ): Promise<void> {
-    if (!this.redis) return;
-    try {
-      const payload = JSON.stringify({
+    error?: unknown,
+  ): Promise<boolean> {
+    if (!this.redis) return false;
+    const entry = sanitizeSpanDlqEntry(
+      {
         scope,
         record,
-        error: error?.slice(0, 400),
         enqueuedAt: Date.now(),
-        retryCount: 0,
-      });
-      await this.redis.lpush("platos:dlq:spans", payload);
-      await this.redis.ltrim("platos:dlq:spans", 0, 50_000 - 1);
+      },
+      { retryCount: 0, errorCode: clickhouseFailureCode(error) }
+    );
+    return entry
+      ? this.writeSpanDlqEntry(SPAN_DLQ_ACTIVE_KEY, entry, 50_000)
+      : false;
+  }
+
+  private async writeSpanDlqEntry(
+    key: "platos:dlq:spans" | "platos:dlq:spans:dead",
+    entry: ReturnType<typeof sanitizeSpanDlqEntry> & object,
+    maxLength: number
+  ): Promise<boolean> {
+    try {
+      await this.redis.lpush(key, JSON.stringify(entry));
+      await this.redis.ltrim(key, 0, maxLength - 1);
+      return true;
     } catch {
-      // DLQ is best-effort — if Redis itself is down, we've already
-      // logged the CH failure; nothing more to do.
+      return false;
     }
   }
 
-  /**
-   * EOBD.100 — DLQ drain. Called by the scheduled
-   * `platos.observability.dlq_drain` task. Pops up to `maxBatch` entries,
-   * retries the CH insert. Entries that fail after MAX_SPAN_DLQ_RETRIES (5)
-   * move to `platos:dlq:spans:dead` for manual review — typically
-   * indicates a schema migration drift or a permanently-malformed row.
-   */
-  async drainDlq(maxBatch: number): Promise<{ retried: number; dead: number }> {
-    if (!this.redis || !this.clickhouseBaseUrl) {
-      return { retried: 0, dead: 0 };
+  private async sanitizeDlqList(
+    key: "platos:dlq:spans" | "platos:dlq:spans:dead",
+    maxBatch: number,
+    maxLength: number,
+    deadLetter: boolean
+  ): Promise<number> {
+    if (!this.redis) return 0;
+    const requested = boundedSpanDlqMigrationBatch(maxBatch);
+    if (requested === 0) return 0;
+    if (
+      typeof this.redis.llen !== "function" ||
+      typeof this.redis.lindex !== "function" ||
+      typeof this.redis.eval !== "function"
+    ) {
+      return 0;
     }
-    let retried = 0;
-    let dead = 0;
-    for (let i = 0; i < maxBatch; i++) {
-      const raw = await this.redis.rpop("platos:dlq:spans").catch(() => null);
+    const existing = await this.redis.llen(key).catch(() => 0);
+    const count = Math.min(requested, Math.max(0, Number(existing) || 0));
+    let migrated = 0;
+    for (let i = 0; i < count; i++) {
+      const raw = await this.redis.lindex(key, -1).catch(() => null);
       if (!raw) break;
-      let entry: {
-        scope: any;
-        record: PlatosSpan;
-        retryCount?: number;
-        [key: string]: unknown;
-      } | null = null;
+      let parsed: unknown;
       try {
-        entry = JSON.parse(raw);
+        parsed = JSON.parse(raw);
       } catch {
+        parsed = null;
+      }
+      const sanitized = sanitizeSpanDlqEntry(parsed, { deadLetter });
+      const applied = await this.redis
+        .eval(
+          SANITIZE_SPAN_DLQ_TAIL_SCRIPT,
+          1,
+          key,
+          raw,
+          sanitized ? "replace" : "drop",
+          sanitized ? JSON.stringify(sanitized) : "",
+          String(maxLength)
+        )
+        .catch(() => 0);
+      if (Number(applied) !== 1) break;
+      migrated++;
+    }
+    return migrated;
+  }
+
+  /** Bounded atomic in-place migration for legacy active rows. */
+  async sanitizeActiveDlq(maxBatch: number): Promise<number> {
+    return this.sanitizeDlqList(SPAN_DLQ_ACTIVE_KEY, maxBatch, 50_000, false);
+  }
+
+  /** Bounded atomic in-place migration for legacy dead-letter rows. */
+  async sanitizeDeadLetterDlq(maxBatch: number): Promise<number> {
+    return this.sanitizeDlqList(SPAN_DLQ_DEAD_KEY, maxBatch, 10_000, true);
+  }
+
+  private async cleanupSpanDlqProcessingRun(runId: string, processingKey: string): Promise<void> {
+    const remaining = await this.redis.llen(processingKey).catch(() => 1);
+    if (Number(remaining) !== 0) return;
+    await this.redis.zrem(SPAN_DLQ_PROCESSING_RUNS_KEY, runId).catch(() => 0);
+    await this.redis.del(processingKey).catch(() => 0);
+  }
+
+  private async claimSpanDlqEntry(
+    runId: string,
+    processingKey: string,
+  ): Promise<string | null> {
+    await this.redis.zadd(SPAN_DLQ_PROCESSING_RUNS_KEY, Date.now(), runId);
+    const raw = await this.redis.rpoplpush(SPAN_DLQ_ACTIVE_KEY, processingKey);
+    if (!raw) await this.cleanupSpanDlqProcessingRun(runId, processingKey);
+    return raw;
+  }
+
+  private async acknowledgeSpanDlqEntry(processingKey: string, raw: string): Promise<boolean> {
+    const removed = await this.redis.lrem(processingKey, 1, raw).catch(() => 0);
+    return Number(removed) === 1;
+  }
+
+  private async transitionSpanDlqEntry(
+    processingKey: string,
+    raw: string,
+    destinationKey: typeof SPAN_DLQ_ACTIVE_KEY | typeof SPAN_DLQ_DEAD_KEY,
+    replacement: ReturnType<typeof sanitizeSpanDlqEntry> & object,
+    maxLength: number,
+  ): Promise<boolean> {
+    const applied = await this.redis
+      .eval(
+        TRANSITION_SPAN_DLQ_PROCESSING_SCRIPT,
+        2,
+        processingKey,
+        destinationKey,
+        raw,
+        JSON.stringify(replacement),
+        String(maxLength),
+      )
+      .catch(() => 0);
+    return Number(applied) === 1;
+  }
+
+  /**
+   * Recover rows left in per-run processing lists by a terminated worker.
+   * A row may already have reached ClickHouse before the worker died, so replay
+   * is deliberately at-least-once. RPOPLPUSH makes recovery lossless; a crash
+   * after the move can only leave the row in the active list for another retry.
+   */
+  async recoverAbandonedDlq(maxBatch: number, now = Date.now()): Promise<number> {
+    if (!this.redis) return 0;
+    const requested = boundedSpanDlqMigrationBatch(maxBatch);
+    if (requested === 0) return 0;
+    const cutoff = now - SPAN_DLQ_PROCESSING_LEASE_MS;
+    const runIds = await this.redis
+      .zrangebyscore(
+        SPAN_DLQ_PROCESSING_RUNS_KEY,
+        "-inf",
+        String(cutoff),
+        "LIMIT",
+        0,
+        requested,
+      )
+      .catch(() => [] as string[]);
+    let recovered = 0;
+    for (const runId of runIds) {
+      if (!/^[a-f0-9-]{36}$/iu.test(runId)) {
+        await this.redis.zrem(SPAN_DLQ_PROCESSING_RUNS_KEY, runId).catch(() => 0);
         continue;
       }
-      if (!entry) continue;
-      const retryCount = spanDlqRetryCount(entry) + 1;
-      try {
-        await this.writeSpanToClickhouse(entry.scope, entry.record);
-        retried++;
-      } catch (err: any) {
-        if (retryCount >= MAX_SPAN_DLQ_RETRIES) {
-          await this.redis
-            .lpush(
-              "platos:dlq:spans:dead",
-              JSON.stringify({
-                ...withSpanDlqRetryCount(entry, retryCount),
-                lastError: err?.message?.slice(0, 400),
-              }),
-            )
-            .catch(() => undefined);
-          await this.redis
-            .ltrim("platos:dlq:spans:dead", 0, 10_000 - 1)
-            .catch(() => undefined);
-          dead++;
-        } else {
-          await this.redis
-            .lpush(
-              "platos:dlq:spans",
-              JSON.stringify(withSpanDlqRetryCount(entry, retryCount)),
-            )
-            .catch(() => undefined);
+      const processingKey = spanDlqProcessingKey(runId);
+      while (recovered < requested) {
+        const raw = await this.redis
+          .rpoplpush(processingKey, SPAN_DLQ_ACTIVE_KEY)
+          .catch(() => null);
+        if (!raw) break;
+        recovered++;
+        await this.redis.ltrim(SPAN_DLQ_ACTIVE_KEY, 0, 49_999).catch(() => undefined);
+      }
+      await this.cleanupSpanDlqProcessingRun(runId, processingKey);
+      if (recovered >= requested) break;
+    }
+    return recovered;
+  }
+
+  /**
+   * EOBD.100 — DLQ drain. Each row first moves atomically from the active
+   * queue into a per-run processing list. Success acknowledges that exact
+   * claim; failures atomically requeue or dead-letter it. A terminated worker
+   * therefore leaves a recoverable processing row instead of losing an RPOP.
+   */
+  async drainDlq(maxBatch: number): Promise<{ retried: number; dead: number }> {
+    if (!this.redis) {
+      return { retried: 0, dead: 0 };
+    }
+    const batch = boundedSpanDlqMigrationBatch(maxBatch);
+    await this.sanitizeActiveDlq(batch);
+    await this.sanitizeDeadLetterDlq(batch);
+    await this.recoverAbandonedDlq(batch);
+    if (!this.clickhouseBaseUrl) return { retried: 0, dead: 0 };
+    let retried = 0;
+    let dead = 0;
+    const runId = crypto.randomUUID();
+    const processingKey = spanDlqProcessingKey(runId);
+    try {
+      for (let i = 0; i < batch; i++) {
+        const raw = await this.claimSpanDlqEntry(runId, processingKey).catch(() => null);
+        if (!raw) break;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          if (!(await this.acknowledgeSpanDlqEntry(processingKey, raw))) break;
+          continue;
+        }
+        const entry = sanitizeSpanDlqEntry(parsed);
+        if (!entry) {
+          if (!(await this.acknowledgeSpanDlqEntry(processingKey, raw))) break;
+          continue;
+        }
+        const retryCount = spanDlqRetryCount(entry) + 1;
+        const handlingStartedAt = Date.now();
+        try {
+          const result = await this.writeSpanToClickhouse(
+            entry.scope,
+            entry.record as PlatosSpan,
+            retryCount >= MAX_SPAN_DLQ_RETRIES ? "dead-letter" : "retry-dlq",
+          );
+          const applied = await this.acknowledgeSpanDlqEntry(processingKey, raw);
+          if (applied) retried++;
+          this.reportClickhouseHandling({
+            operation: "span-write",
+            correlationId: result.correlationId,
+            traceId: entry.record.traceId,
+            decision: "retry-dlq",
+            decisionState: applied ? "applied" : "failed",
+            elapsedMs: Date.now() - handlingStartedAt,
+            callerMapping: "detached-write",
+            retrySource: "span-dlq",
+            retryCount,
+          });
+          if (!applied) break;
+        } catch (err: any) {
+          const correlationId = clickhouseErrorCorrelation(err);
+          const deadLetter = retryCount >= MAX_SPAN_DLQ_RETRIES;
+          const sanitized = sanitizeSpanDlqEntry(entry, {
+            retryCount,
+            ...(deadLetter
+              ? { lastErrorCode: clickhouseFailureCode(err), deadLetter: true }
+              : {}),
+          });
+          const applied = sanitized
+            ? await this.transitionSpanDlqEntry(
+                processingKey,
+                raw,
+                deadLetter ? SPAN_DLQ_DEAD_KEY : SPAN_DLQ_ACTIVE_KEY,
+                sanitized,
+                deadLetter ? 10_000 : 50_000,
+              )
+            : false;
+          if (applied && deadLetter) dead++;
+          if (correlationId) {
+            this.reportClickhouseHandling({
+              operation: "span-write",
+              correlationId,
+              traceId: entry.record.traceId,
+              decision: deadLetter ? "dead-letter" : "retry-dlq",
+              decisionState: applied ? "applied" : "failed",
+              elapsedMs: Date.now() - handlingStartedAt,
+              callerMapping: "detached-write",
+              retrySource: "span-dlq",
+              retryCount,
+            });
+          }
+          if (!applied) break;
         }
       }
+    } finally {
+      await this.cleanupSpanDlqProcessingRun(runId, processingKey);
     }
     return { retried, dead };
   }
@@ -308,8 +740,9 @@ export class SpansService {
       sessionContext?: { user?: { name?: string; email?: string } } | null;
     },
     record: PlatosSpan,
-  ): Promise<void> {
-    if (!this.clickhouseBaseUrl) return;
+    failureDecision: ClickhouseDecision = "enqueue-dlq",
+  ): Promise<ClickhouseExecutionResult> {
+    if (!this.clickhouseBaseUrl) return { body: "", correlationId: "disabled" };
     const durationMs = Math.max(
       0,
       Math.round((record.endTimeUnixNano - record.startTimeUnixNano) / 1_000_000),
@@ -379,15 +812,24 @@ export class SpansService {
         "Basic " +
         Buffer.from(`${this.clickhouseAuth.user}:${this.clickhouseAuth.pass}`).toString("base64");
     }
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(row) + "\n",
+    // WIN-290 write disconnect policy: writes are intentionally detached from
+    // the originating request. A caller disconnect does NOT cancel persistence;
+    // the write survives, bounded by its own deadline, then enters the canonical
+    // Redis DLQ on failure.
+    const deadlineMs = this.clickhouseDeadlineMs;
+    return this.executeClickhouse({
+      operation: "span-write",
+      url: `${url}&max_execution_time=${clickhouseMaxExecutionTimeSeconds(deadlineMs)}`,
+      init: {
+        method: "POST",
+        headers,
+        body: JSON.stringify(row) + "\n",
+      },
+      traceId: record.traceId,
+      plannedFailureDecision: failureDecision,
+      successCallerMapping: "detached-write",
+      disconnectPolicy: CLICKHOUSE_WRITE_DISCONNECT_POLICY,
     });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`clickhouse ${res.status}: ${text.slice(0, 200)}`);
-    }
   }
 
   /**
@@ -398,6 +840,7 @@ export class SpansService {
   async getThreadSpansFromClickhouse(
     scope: ScopeTuple,
     threadId: string,
+    callerSignal?: AbortSignal,
   ): Promise<PlatosSpan[] | null> {
     if (!this.clickhouseBaseUrl) return null;
     const sql = `
@@ -426,12 +869,17 @@ export class SpansService {
         "Basic " +
         Buffer.from(`${this.clickhouseAuth.user}:${this.clickhouseAuth.pass}`).toString("base64");
     }
-    const res = await fetch(url, { method: "GET", headers });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`clickhouse read ${res.status}: ${text.slice(0, 200)}`);
-    }
-    const body = await res.text();
+    // WIN-290 — the real caller signal participates in the same lifecycle as
+    // the deadline, while source tracking keeps caller-abort distinguishable.
+    const readDeadlineMs = this.clickhouseDeadlineMs;
+    const { body } = await this.executeClickhouse({
+      operation: "span-read",
+      url: `${url}&max_execution_time=${clickhouseMaxExecutionTimeSeconds(readDeadlineMs)}`,
+      init: { method: "GET", headers },
+      callerSignal,
+      plannedFailureDecision: "fallback-redis",
+      successCallerMapping: "spans",
+    });
     const spans: PlatosSpan[] = [];
     for (const line of body.split("\n")) {
       const trimmed = line.trim();

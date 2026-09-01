@@ -1,3 +1,10 @@
+---
+title: "[SUPERSEDED-BY] Historical basic-task rules"
+lifecycle: "SUPERSEDED-BY"
+---
+
+> **Lifecycle: SUPERSEDED-BY.** These rules are historical and not current product truth. Use [the current rules](../4.3.0/basic-tasks.md).
+
 # Trigger.dev Basic Tasks (v4)
 
 **MUST use `@trigger.dev/sdk` (v4), NEVER `client.defineJob`**

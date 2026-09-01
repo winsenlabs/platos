@@ -15,7 +15,7 @@ The gateway solves this: **Platos knows the tool definition (shared) and per-(en
 
 ## Data model
 
-Four Prisma models, sourced from [`internal-packages/database/prisma/schema.prisma`](../internal-packages/database/prisma/schema.prisma):
+Four Prisma models, sourced from `internal-packages/database/prisma/schema.prisma`:
 
 ```prisma
 /// An external backend that registers tools with Platos via the platools WS
@@ -270,7 +270,7 @@ Configure per-agent via `toolMode`:
 
 ### `direct`
 
-Tool schemas are serialized into the main LLM request. Best for <50 tools, tight control, low latency.
+Tool schemas are serialized into the main LLM request. Best for &lt;50 tools, tight control, low latency.
 
 ```
 LLM call  →  [system, tool_schemas, messages]

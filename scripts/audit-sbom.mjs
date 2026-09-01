@@ -8,16 +8,15 @@
 //   node scripts/audit-sbom.mjs check --lockfile <path>   # gate a scratch/other tree
 //
 // DETERMINISM CONTRACT
-//   The component set, versions, purls and integrity hashes are a pure function
-//   of pnpm-lock.yaml. Licences come from the COMMITTED frozen snapshot
-//   docs/audits/sbom/license-index.json (+ a small curated overlay for the
-//   handful of registry-ambiguous packages). No network, no clock in `generate`
-//   except a fixed epoch timestamp so bytes are reproducible. `check`
-//   regenerates in memory and byte-compares component data against the committed
-//   SBOMs, then runs the licence policy. Same inputs -> same bytes -> green.
+//   The agent component set is a pure function of pnpm-lock.yaml. The webapp
+//   component set is the committed, sorted exact Docker production-deps package
+//   inventory, validated as a subset of its production lock closure. Licences
+//   come from the COMMITTED frozen snapshot docs/audits/sbom/license-index.json
+//   (+ a small curated overlay). No network or live clock is used; `check`
+//   regenerates in memory and byte-compares against the committed SBOMs.
 //
 // NON-VACUITY
-//   `check` fails (exit 1) if any package in a shipping RUNTIME closure carries a
+//   `check` fails (exit 1) if any package in a shipping RUNTIME inventory carries a
 //   copyleft or commercial licence that is not in the dispositioned baseline
 //   (docs/audits/sbom/license-policy.json). Proven by injecting an
 //   un-dispositioned GPL package into a scratch lockfile — see
@@ -25,11 +24,19 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   loadLockfile, computeClosure, componentsFromSnapshots, IMAGES,
 } from './lib/pnpm-closure.mjs';
+import {
+  WEBAPP_TARGET_PLATFORM,
+  buildInputReceipts,
+  buildInputsSha256,
+  componentId,
+  linkedWorkspaceComponents,
+  sha256,
+  validateInventoryDocument,
+} from './lib/webapp-inventory-contract.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SBOM_DIR = path.join(ROOT, 'docs/audits/sbom');
@@ -37,6 +44,16 @@ const LICENSE_INDEX = path.join(SBOM_DIR, 'license-index.json');
 const LICENSE_OVERLAY = path.join(SBOM_DIR, 'license-overlay.json');
 const LICENSE_POLICY = path.join(SBOM_DIR, 'license-policy.json');
 const RECEIPTS = path.join(SBOM_DIR, 'closure-receipts.json');
+const WEBAPP_INVENTORY = path.join(SBOM_DIR, 'platos-webapp.image-inventory.json');
+const REVIEWED_WEBAPP_LOCK_ONLY_COMPONENTS = [
+  '@sentry/cli-darwin@2.50.2',
+  '@sentry/cli-linux-arm@2.50.2',
+  '@sentry/cli-linux-arm64@2.50.2',
+  '@sentry/cli-linux-i686@2.50.2',
+  '@sentry/cli-win32-arm64@2.50.2',
+  '@sentry/cli-win32-i686@2.50.2',
+  '@sentry/cli-win32-x64@2.50.2',
+];
 
 const SBOM_FILE = { agent: 'platos-agent.cdx.json', webapp: 'platos-webapp.cdx.json' };
 
@@ -44,8 +61,66 @@ const SBOM_FILE = { agent: 'platos-agent.cdx.json', webapp: 'platos-webapp.cdx.j
 const FIXED_EPOCH = '2026-08-28T00:00:00.000Z';
 const TOOL_VERSION = '1.0.0';
 
-function sha256(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }
 function readJson(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
+
+function loadImageInventory(inventoryPath = WEBAPP_INVENTORY) {
+  if (!fs.existsSync(inventoryPath)) throw new Error(`webapp image inventory is missing: ${inventoryPath}`);
+  const inventory = readJson(inventoryPath);
+  const validated = validateInventoryDocument(inventory);
+  return { path: inventoryPath, ...validated };
+}
+
+function componentsForImage(parsed, image, webappInventory) {
+  if (image === 'webapp') return webappInventory.components;
+  return componentsFromSnapshots(computeClosure(IMAGES[image].roots, parsed));
+}
+
+function validateImageInventory(parsed, webappInventory) {
+  const closure = componentsFromSnapshots(computeClosure(IMAGES.webapp.roots, parsed));
+  const linked = linkedWorkspaceComponents(ROOT, parsed, IMAGES.webapp.roots);
+  const expectedIds = new Set([...closure, ...linked].map(componentId));
+  const unexpected = webappInventory.components
+    .map(componentId)
+    .filter((id) => !expectedIds.has(id));
+  const inventoryIds = new Set(webappInventory.components.map(componentId));
+  const lockOnly = closure
+    .map(componentId)
+    .filter((id) => !inventoryIds.has(id));
+  const reviewed = new Set(REVIEWED_WEBAPP_LOCK_ONLY_COMPONENTS);
+  const unreviewedLockOnly = lockOnly.filter((id) => !reviewed.has(id));
+  const reviewedNotLockOnly = REVIEWED_WEBAPP_LOCK_ONLY_COMPONENTS.filter(
+    (id) => !lockOnly.includes(id),
+  );
+  const linkedWorkspacesMatch = JSON.stringify(webappInventory.linkedWorkspaces) === JSON.stringify(linked);
+  return {
+    closure,
+    linked,
+    unexpected,
+    lockOnly,
+    unreviewedLockOnly,
+    reviewedNotLockOnly,
+    linkedWorkspacesMatch,
+  };
+}
+
+function inventoryValidationErrors(validation, webappInventory) {
+  const errors = [];
+  if (!validation.linkedWorkspacesMatch) {
+    errors.push(
+      `linked workspace components differ from the lock/importer manifests: image=${JSON.stringify(webappInventory.linkedWorkspaces)} expected=${JSON.stringify(validation.linked)}`,
+    );
+  }
+  if (validation.unexpected.length) {
+    errors.push(`image packages outside production lock closure and linked workspaces: ${validation.unexpected.join(', ')}`);
+  }
+  if (validation.unreviewedLockOnly.length) {
+    errors.push(`unreviewed lock-only packages: ${validation.unreviewedLockOnly.join(', ')}`);
+  }
+  if (validation.reviewedNotLockOnly.length) {
+    errors.push(`reviewed lock-only exceptions no longer match: ${validation.reviewedNotLockOnly.join(', ')}`);
+  }
+  return errors;
+}
 
 function purl(name, version) {
   // pkg:npm/@scope%2Fname@version — the single scope slash is percent-encoded
@@ -119,9 +194,8 @@ function spdxToCycloneDx(expr) {
   return [{ license: { name: expr } }];
 }
 
-function generateSbomForImage(parsed, resolveLicense, image, imageMembership) {
-  const snaps = computeClosure(IMAGES[image].roots, parsed);
-  const components = componentsFromSnapshots(snaps).map((c) =>
+function generateSbomForImage(parsed, resolveLicense, image, imageMembership, webappInventory) {
+  const components = componentsForImage(parsed, image, webappInventory).map((c) =>
     buildComponent(parsed, resolveLicense, c.name, c.version, imageMembership(c.name, c.version)));
   const serialNumber = 'urn:uuid:' + deterministicUuid(`platos:${image}`);
   return {
@@ -136,13 +210,20 @@ function generateSbomForImage(parsed, resolveLicense, image, imageMembership) {
         type: 'application',
         'bom-ref': `platos:${IMAGES[image].displayName}`,
         name: IMAGES[image].displayName,
-        description: `Platos ${image} shipping image — production dependency closure resolved from pnpm-lock.yaml`,
+        description: image === 'webapp'
+          ? 'Platos webapp shipping image — exact installed package inventory from the Docker production-deps stage'
+          : `Platos ${image} shipping image — production dependency closure resolved from pnpm-lock.yaml`,
       },
       properties: [
         { name: 'platos:image', value: image },
         { name: 'platos:closureRoots', value: IMAGES[image].roots.join(',') },
         { name: 'platos:componentCount', value: String(components.length) },
-        { name: 'platos:derivation', value: 'pnpm-lock.yaml production closure (dependencies+optionalDependencies, devDependencies excluded)' },
+        ...(image === 'webapp'
+          ? [{ name: 'platos:targetPlatform', value: webappInventory.inventory.targetPlatform }]
+          : []),
+        { name: 'platos:derivation', value: image === 'webapp'
+          ? 'exact linux/amd64 Docker production-deps node_modules/.pnpm plus linked first-party workspace manifests, reverse-reconciled against the production lock closure and importer links'
+          : 'pnpm-lock.yaml production closure (dependencies+optionalDependencies, devDependencies excluded)' },
       ],
     },
     components,
@@ -159,11 +240,12 @@ function stableStringify(obj) {
   return JSON.stringify(obj, null, 2) + '\n';
 }
 
-function imageMembershipFactory(parsed) {
+function imageMembershipFactory(parsed, webappInventory) {
   const sets = {};
   for (const image of Object.keys(IMAGES)) {
-    const snaps = computeClosure(IMAGES[image].roots, parsed);
-    sets[image] = new Set(componentsFromSnapshots(snaps).map((c) => `${c.name}@${c.version}`));
+    sets[image] = new Set(
+      componentsForImage(parsed, image, webappInventory).map((c) => `${c.name}@${c.version}`),
+    );
   }
   return (name, version) => Object.keys(IMAGES).filter((img) => sets[img].has(`${name}@${version}`));
 }
@@ -179,15 +261,14 @@ function classifyLicense(expr, policy) {
   return { class: 'permissive-or-allowed' };
 }
 
-function runLicensePolicy(parsed, resolveLicense, policyPath = LICENSE_POLICY) {
+function runLicensePolicy(parsed, resolveLicense, policyPath = LICENSE_POLICY, webappInventory) {
   const policy = readJson(policyPath);
   const baseline = new Set(policy.dispositionedBaseline.map((b) => `${b.package}@${b.version}`));
   const violations = [];
   const dispositioned = [];
 
   for (const image of Object.keys(IMAGES)) {
-    const snaps = computeClosure(IMAGES[image].roots, parsed);
-    for (const c of componentsFromSnapshots(snaps)) {
+    for (const c of componentsForImage(parsed, image, webappInventory)) {
       const { license } = resolveLicense(c.name, c.version);
       const verdict = classifyLicense(license, policy);
       if (verdict.class === 'copyleft' || verdict.class === 'commercial') {
@@ -205,13 +286,18 @@ function runLicensePolicy(parsed, resolveLicense, policyPath = LICENSE_POLICY) {
 
 function cmdGenerate() {
   const { parsed } = loadLockfile(path.join(ROOT, 'pnpm-lock.yaml'));
+  const webappInventory = loadImageInventory();
+  const inventoryValidation = validateImageInventory(parsed, webappInventory);
+  const validationErrors = inventoryValidationErrors(inventoryValidation, webappInventory);
+  if (validationErrors.length) throw new Error(`webapp image inventory reconciliation failed: ${validationErrors.join('; ')}`);
+  const webappLockClosure = inventoryValidation.closure;
   const resolveLicense = loadLicenseResolver();
-  const membership = imageMembershipFactory(parsed);
+  const membership = imageMembershipFactory(parsed, webappInventory);
   fs.mkdirSync(SBOM_DIR, { recursive: true });
 
   const receiptImages = {};
   for (const image of Object.keys(IMAGES)) {
-    const sbom = generateSbomForImage(parsed, resolveLicense, image, membership);
+    const sbom = generateSbomForImage(parsed, resolveLicense, image, membership, webappInventory);
     const bytes = stableStringify(sbom);
     fs.writeFileSync(path.join(SBOM_DIR, SBOM_FILE[image]), bytes);
     receiptImages[image] = {
@@ -220,12 +306,24 @@ function cmdGenerate() {
       componentCount: sbom.components.length,
       distinctNames: new Set(sbom.components.map((c) => c.name)).size,
       roots: IMAGES[image].roots,
+      derivation: image === 'webapp' ? 'docker-production-deps-image-inventory' : 'pnpm-lock-production-closure',
     };
+    if (image === 'webapp') {
+      receiptImages[image].inventoryFile = path.relative(ROOT, webappInventory.path).split(path.sep).join('/');
+      receiptImages[image].inventorySha256 = sha256(fs.readFileSync(webappInventory.path));
+      receiptImages[image].lockClosureComponentCount = webappLockClosure.length;
+      receiptImages[image].lockClosureDistinctNames = new Set(webappLockClosure.map((c) => c.name)).size;
+      receiptImages[image].targetPlatform = webappInventory.inventory.targetPlatform;
+      receiptImages[image].reviewedLockOnlyComponents = inventoryValidation.lockOnly;
+      receiptImages[image].linkedWorkspaceComponents = inventoryValidation.linked;
+      receiptImages[image].buildInputs = buildInputReceipts(ROOT);
+      receiptImages[image].buildInputsSha256 = buildInputsSha256(receiptImages[image].buildInputs);
+    }
   }
 
   const lockText = fs.readFileSync(path.join(ROOT, 'pnpm-lock.yaml'), 'utf8');
   const receipt = {
-    $schema: 'platos.audit.closure-receipts/v1',
+    $schema: 'platos.audit.closure-receipts/v3',
     generatedBy: 'scripts/audit-sbom.mjs generate',
     toolVersion: TOOL_VERSION,
     fixedTimestamp: FIXED_EPOCH,
@@ -248,24 +346,38 @@ function flag(argv, name) { const i = argv.indexOf(name); return i !== -1 ? argv
 
 function cmdCheck(argv) {
   const lockArg = flag(argv, '--lockfile');
+  const receiptsArg = flag(argv, '--receipts');
+  const inventoryArg = flag(argv, '--inventory');
   const indexArg = flag(argv, '--index');
   const overlayArg = flag(argv, '--overlay');
   const policyArg = flag(argv, '--policy');
   const lockPath = lockArg ? path.resolve(lockArg) : path.join(ROOT, 'pnpm-lock.yaml');
-  const { parsed } = loadLockfile(lockPath);
-  const resolveLicense = loadLicenseResolver({
-    index: indexArg ? path.resolve(indexArg) : null,
-    overlay: overlayArg ? path.resolve(overlayArg) : null,
-  });
+  const receiptsPath = receiptsArg ? path.resolve(receiptsArg) : RECEIPTS;
+  const indexPath = indexArg ? path.resolve(indexArg) : LICENSE_INDEX;
+  const overlayPath = overlayArg ? path.resolve(overlayArg) : LICENSE_OVERLAY;
   const policyPath = policyArg ? path.resolve(policyArg) : LICENSE_POLICY;
-  const membership = imageMembershipFactory(parsed);
+  const { parsed } = loadLockfile(lockPath);
+  const webappInventory = loadImageInventory(inventoryArg ? path.resolve(inventoryArg) : WEBAPP_INVENTORY);
+  const inventoryValidation = validateImageInventory(parsed, webappInventory);
+  const webappLockClosure = inventoryValidation.closure;
+  const resolveLicense = loadLicenseResolver({
+    index: indexPath,
+    overlay: overlayPath,
+  });
+  const membership = imageMembershipFactory(parsed, webappInventory);
   let failed = false;
+  const validationErrors = inventoryValidationErrors(inventoryValidation, webappInventory);
+  if (validationErrors.length) {
+    failed = true;
+    console.error(`IMAGE INVENTORY FAILURE — ${WEBAPP_TARGET_PLATFORM} reverse reconciliation failed:`);
+    for (const error of validationErrors) console.error(`  ${error}`);
+  }
 
   // 1) SBOM drift (skip when checking an external lockfile — the committed SBOMs
   //    describe the repo's own lockfile only).
-  if (!lockArg) {
+  if (!lockArg && !inventoryArg) {
     for (const image of Object.keys(IMAGES)) {
-      const regen = stableStringify(generateSbomForImage(parsed, resolveLicense, image, membership));
+      const regen = stableStringify(generateSbomForImage(parsed, resolveLicense, image, membership, webappInventory));
       const committedPath = path.join(SBOM_DIR, SBOM_FILE[image]);
       if (!fs.existsSync(committedPath)) {
         console.error(`DRIFT: committed SBOM missing: ${SBOM_FILE[image]} — run \`generate\`.`);
@@ -273,29 +385,124 @@ function cmdCheck(argv) {
       }
       const committed = fs.readFileSync(committedPath, 'utf8');
       if (regen !== committed) {
-        console.error(`DRIFT: ${SBOM_FILE[image]} does not match the current lockfile closure — run \`generate\` and review the diff.`);
+        console.error(`DRIFT: ${SBOM_FILE[image]} does not match the current ${image === 'webapp' ? 'production image inventory' : 'lockfile closure'} — run \`generate\` and review the diff.`);
         failed = true;
       } else {
-        console.log(`OK: ${SBOM_FILE[image]} matches the lockfile closure (${countComponents(regen)} components).`);
+        console.log(`OK: ${SBOM_FILE[image]} matches the ${image === 'webapp' ? 'production image inventory' : 'lockfile closure'} (${countComponents(regen)} components).`);
       }
     }
-    // receipts hash cross-check
-    if (fs.existsSync(RECEIPTS)) {
-      const receipt = readJson(RECEIPTS);
+    // Receipt drift cross-check: bytes, closure counts, roots, and lock input.
+    if (fs.existsSync(receiptsPath)) {
+      const receipt = readJson(receiptsPath);
+      const lockHash = sha256(fs.readFileSync(lockPath));
+      if (receipt.lockfileSha256 !== lockHash) {
+        console.error(`DRIFT: receipt lockfileSha256 does not match ${path.basename(lockPath)}.`);
+        failed = true;
+      }
+      for (const [field, evidencePath] of [
+        ['licenseIndexSha256', indexPath],
+        ['licenseOverlaySha256', overlayPath],
+        ['licensePolicySha256', policyPath],
+      ]) {
+        if (!fs.existsSync(evidencePath)) {
+          console.error(`DRIFT: licence evidence is missing: ${evidencePath}.`);
+          failed = true;
+          continue;
+        }
+        if (receipt[field] !== sha256(fs.readFileSync(evidencePath))) {
+          console.error(`DRIFT: receipt ${field} does not match ${path.basename(evidencePath)}.`);
+          failed = true;
+        }
+      }
       for (const image of Object.keys(IMAGES)) {
+        const components = componentsForImage(parsed, image, webappInventory);
+        const imageReceipt = receipt.images?.[image];
+        if (!imageReceipt) {
+          console.error(`DRIFT: receipt is missing image closure: ${image}.`);
+          failed = true;
+          continue;
+        }
+        if (imageReceipt.componentCount !== components.length) {
+          console.error(`DRIFT: receipt componentCount for ${image} is ${imageReceipt.componentCount}; shipping inventory is ${components.length}.`);
+          failed = true;
+        }
+        const distinctNames = new Set(components.map((component) => component.name)).size;
+        if (imageReceipt.distinctNames !== distinctNames) {
+          console.error(`DRIFT: receipt distinctNames for ${image} is ${imageReceipt.distinctNames}; shipping inventory is ${distinctNames}.`);
+          failed = true;
+        }
+        if (JSON.stringify(imageReceipt.roots) !== JSON.stringify(IMAGES[image].roots)) {
+          console.error(`DRIFT: receipt roots for ${image} do not match the configured image roots.`);
+          failed = true;
+        }
+        const expectedDerivation = image === 'webapp'
+          ? 'docker-production-deps-image-inventory'
+          : 'pnpm-lock-production-closure';
+        if (imageReceipt.derivation !== expectedDerivation) {
+          console.error(`DRIFT: receipt derivation for ${image} does not match its shipping inventory source.`);
+          failed = true;
+        }
+        if (image === 'webapp') {
+          const inventoryHash = sha256(fs.readFileSync(webappInventory.path));
+          if (imageReceipt.inventoryFile !== path.relative(ROOT, webappInventory.path).split(path.sep).join('/')) {
+            console.error('DRIFT: webapp receipt inventoryFile does not identify the committed image inventory.');
+            failed = true;
+          }
+          if (imageReceipt.inventorySha256 !== inventoryHash) {
+            console.error('DRIFT: webapp receipt inventorySha256 does not match the committed image inventory.');
+            failed = true;
+          }
+          if (imageReceipt.lockClosureComponentCount !== webappLockClosure.length) {
+            console.error(`DRIFT: webapp receipt lockClosureComponentCount is ${imageReceipt.lockClosureComponentCount}; lock closure is ${webappLockClosure.length}.`);
+            failed = true;
+          }
+          const lockNames = new Set(webappLockClosure.map((component) => component.name)).size;
+          if (imageReceipt.lockClosureDistinctNames !== lockNames) {
+            console.error(`DRIFT: webapp receipt lockClosureDistinctNames is ${imageReceipt.lockClosureDistinctNames}; lock closure is ${lockNames}.`);
+            failed = true;
+          }
+          if (imageReceipt.targetPlatform !== WEBAPP_TARGET_PLATFORM) {
+            console.error(`DRIFT: webapp receipt targetPlatform is ${imageReceipt.targetPlatform}; expected ${WEBAPP_TARGET_PLATFORM}.`);
+            failed = true;
+          }
+          if (JSON.stringify(imageReceipt.reviewedLockOnlyComponents) !== JSON.stringify(REVIEWED_WEBAPP_LOCK_ONLY_COMPONENTS)) {
+            console.error('DRIFT: webapp receipt reviewedLockOnlyComponents does not match the reviewed platform exclusions.');
+            failed = true;
+          }
+          if (JSON.stringify(imageReceipt.linkedWorkspaceComponents) !== JSON.stringify(inventoryValidation.linked)) {
+            console.error('DRIFT: webapp receipt linkedWorkspaceComponents does not match importer manifests.');
+            failed = true;
+          }
+          if (JSON.stringify(imageReceipt.buildInputs) !== JSON.stringify(buildInputReceipts(ROOT))) {
+            console.error('DRIFT: webapp receipt buildInputs do not match the current Docker/inventory inputs.');
+            failed = true;
+          }
+          if (imageReceipt.buildInputsSha256 !== buildInputsSha256(buildInputReceipts(ROOT))) {
+            console.error('DRIFT: webapp receipt buildInputsSha256 does not match the current build inputs.');
+            failed = true;
+          }
+        }
         const bytes = fs.readFileSync(path.join(SBOM_DIR, SBOM_FILE[image]));
         const got = sha256(bytes);
-        const want = receipt.images?.[image]?.sha256;
+        const want = imageReceipt.sha256;
         if (want && got !== want) {
           console.error(`DRIFT: receipt sha256 mismatch for ${image} (receipt=${want.slice(0, 12)}…, file=${got.slice(0, 12)}…).`);
           failed = true;
         }
       }
+    } else {
+      console.error(`DRIFT: closure receipt is missing: ${receiptsPath}.`);
+      failed = true;
     }
   }
 
   // 2) Licence policy — non-vacuous gate.
-  const { violations, dispositioned, policy } = runLicensePolicy(parsed, resolveLicense, policyPath);
+  const { violations, dispositioned, policy } = runLicensePolicy(
+    parsed,
+    resolveLicense,
+    policyPath,
+    webappInventory,
+  );
   for (const d of dispositioned) {
     console.log(`DISPOSITIONED: ${d.package}@${d.version} (${d.license}, ${d.class}) in ${d.image} — baseline-waived.`);
   }
@@ -323,6 +530,6 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'generate') cmdGenerate();
 else if (cmd === 'check') cmdCheck(rest);
 else {
-  console.log('usage: node scripts/audit-sbom.mjs <generate|check> [--lockfile <path>]');
+  console.log('usage: node scripts/audit-sbom.mjs <generate|check> [--lockfile <path>] [--receipts <path>] [--inventory <path>]');
   process.exit(cmd ? 1 : 0);
 }

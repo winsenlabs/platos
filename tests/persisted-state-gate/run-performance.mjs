@@ -9,7 +9,14 @@ import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import { measuredJsonResponse, measuredRemixJsonResponse } from "./measured-response.mjs";
 import { productionOperatorSessionCookieHeader } from "./operator-session-cookie.mjs";
-import { summarize, verifyPerformanceArtifactDirectory } from "./verify-performance-artifacts.mjs";
+import {
+  canonicalRuntimeReference,
+  summarize,
+  verifyPerformanceArtifactDirectory,
+  verifyWebappFinalInventoryIdentity,
+  webappCandidateArchivePath,
+  webappFinalInventoryEvidencePath,
+} from "./verify-performance-artifacts.mjs";
 import { PERFORMANCE_RECEIPT_FILE } from "./performance-verification-receipt.mjs";
 import { waitForScheduledQueryQuietWindow } from "./scheduled-query-window.mjs";
 
@@ -54,6 +61,15 @@ assert.equal(
   commitSha,
   "candidate images do not match exact candidate SHA"
 );
+const webappFinalInventoryEvidence = await readJson(
+  webappFinalInventoryEvidencePath(artifactDirectory, candidateImages.webapp)
+);
+const expectedWebappImageId = verifyWebappFinalInventoryIdentity(
+  webappFinalInventoryEvidence,
+  candidateImages.webapp,
+  commitSha,
+  webappCandidateArchivePath(artifactDirectory)
+);
 
 const tenancyModule = await import(
   pathToFileURL(path.resolve(repositoryRoot, "internal-packages/tenancy-database/dist/index.js"))
@@ -97,7 +113,12 @@ try {
 
   const runtimeCandidates = {
     agent: inspectRuntimeCandidate("agent", candidateImages.agent, commitSha),
-    webapp: inspectRuntimeCandidate("webapp", candidateImages.webapp, commitSha),
+    webapp: inspectRuntimeCandidate(
+      "webapp",
+      candidateImages.webapp,
+      commitSha,
+      expectedWebappImageId
+    ),
   };
 
   browser = await chromium.launch({ headless: true });
@@ -812,13 +833,10 @@ function bundleMeasurement(id, warmupSamples, samples) {
   };
 }
 
-function inspectRuntimeCandidate(service, logicalImage, expectedCommit) {
+function inspectRuntimeCandidate(service, logicalImage, expectedCommit, expectedImageId) {
   assert.match(logicalImage, /^ghcr\.io\/.+@sha256:[a-f0-9]{64}$/);
   const manifestDigest = logicalImage.slice(logicalImage.indexOf("@") + 1);
-  const repositoryName = service === "agent" ? "platos-agent" : "platos-webapp";
-  const runtimeReference = `win235.local/${repositoryName}:sha256-${manifestDigest.slice(
-    "sha256:".length
-  )}`;
+  const runtimeReference = canonicalRuntimeReference(service, manifestDigest);
   const containerId = execFileSync("docker", ["compose", "ps", "--quiet", service], {
     cwd: repositoryRoot,
     encoding: "utf8",
@@ -830,6 +848,13 @@ function inspectRuntimeCandidate(service, logicalImage, expectedCommit) {
   const image = JSON.parse(
     execFileSync("docker", ["image", "inspect", runtimeReference], { encoding: "utf8" })
   )[0];
+  if (expectedImageId !== undefined) {
+    assert.equal(
+      image.Id,
+      expectedImageId,
+      `${service} mutable runtime tag differs from archive-verified image ID`
+    );
+  }
   assert.equal(container.Config.Image, runtimeReference, `${service} container reference drifted`);
   assert.equal(container.Image, image.Id, `${service} container image ID drifted`);
   const revision = image.Config?.Labels?.["org.opencontainers.image.revision"];

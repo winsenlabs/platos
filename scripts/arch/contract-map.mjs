@@ -314,6 +314,14 @@ function buildModel() {
   };
 }
 
+function renderTableText(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/{/g, "&lbrace;")
+    .replace(/}/g, "&rbrace;")
+    .replace(/\|/g, "\\|");
+}
+
 function renderMarkdown(model) {
   const L = [];
   L.push(`# ${model.title} (${model.issue} / ${model.milestone})`);
@@ -350,7 +358,9 @@ function renderMarkdown(model) {
     L.push("| Screen | Transports | New | Contracts |");
     L.push("|---|---|---|---|");
     for (const s of rows) {
-      const contracts = s.contracts.map((c) => `${c.name} **[${c.status}]**`).join("; ").replace(/\|/g, "\\|");
+      const contracts = renderTableText(
+        s.contracts.map((c) => `${c.name} **[${c.status}]**`).join("; ")
+      );
       L.push(`| \`${s.id}\` | ${s.transports.join(", ")} | ${s.newCount} | ${contracts} |`);
     }
     L.push("");

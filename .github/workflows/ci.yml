@@ -6,16 +6,14 @@ name: CI
 # the box. A workhorse-on-autopilot must reject code that doesn't compile BEFORE
 # it can be merged.
 #
-# SCOPE: this gate type-checks `platos-agent` — the runtime that handles every
-# turn, and exactly the package #15's TS2352 broke. It is verified green today
-# (6/6 tasks). The gate is deliberately NOT whole-monorepo yet: two packages
-# fail typecheck on `main` independent of any change here — `@internal/zod-worker`
-# (TS7016: legacy `moduleResolution: "Node"` can't read eventsource-parser's
-# `exports`-mapped types) and `webapp` (server.ts Socket.IO type mismatches). A
-# gate that is red from birth trains everyone to ignore it — worse than no gate.
-# Widening to the whole monorepo is tracked as a follow-up once that pre-existing
-# debt is cleared. Branch protection should require the "typecheck" check so a
-# red PR cannot be squashed in.
+# SCOPE: this gate type-checks both shipping application surfaces. The explicit
+# `platos-agent` graph gets a strict declaration build, and `webapp` runs its
+# dedicated no-emit typecheck. It is deliberately NOT whole-monorepo yet:
+# `@internal/zod-worker` still fails independently because legacy
+# `moduleResolution: "Node"` cannot read eventsource-parser's exports-mapped
+# types. Widening to the whole monorepo remains a follow-up after that debt is
+# cleared. Branch protection should require the "typecheck" check so a red PR
+# cannot be squashed in.
 
 on:
   pull_request:
@@ -31,6 +29,16 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      win290-redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -38,6 +46,18 @@ jobs:
           # The WIN-234/WIN-238 parity gate independently inspects the pinned v0
           # archaeology commit instead of trusting counts stored in the matrix.
           fetch-depth: 0
+
+      - name: Fetch exact WIN-253 vendored-build reviewed source
+        env:
+          REVIEWED_SOURCE_TAG: refs/tags/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+          REVIEWED_SOURCE_COMMIT: e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+          REVIEWED_SOURCE_REF: refs/platos-ci/provenance/win253-vendored-build/e720b7618e58b27d3ff4f9aff5a5ca9ac6670130
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --force origin \
+            "${REVIEWED_SOURCE_TAG}:${REVIEWED_SOURCE_REF}"
+          resolved_commit="$(git rev-parse --verify "${REVIEWED_SOURCE_REF}^{commit}")"
+          test "$resolved_commit" = "$REVIEWED_SOURCE_COMMIT"
 
       - name: Install pnpm
         uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
@@ -47,8 +67,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
+
+      - name: WIN-253 workspace reachability evidence
+        run: |
+          pnpm test:workspace-reachability
+          pnpm audit:workspace-reachability
 
       - name: Install dependencies
         # --ignore-scripts: skip native addon builds (re2). CI needs only types
@@ -57,10 +82,25 @@ jobs:
         # The agent Docker build (which DOES need re2) builds it separately.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Generate and build database clients
-        # The clean tenancy package is the agent's compiled persistence dependency,
-        # so focused Vitest runs need its package entry emitted from a fresh checkout.
-        run: pnpm --filter @platos/tenancy-database build
+      - name: WIN-254 docs, design, protection, and lifecycle evidence
+        run: |
+          pnpm test:docs-link-integrity
+          pnpm test:design-provenance
+          pnpm test:protected-paths
+          pnpm test:evidence-lifecycle
+          node --test scripts/verify-win254.test.mjs
+          pnpm verify:win254
+
+      - name: Generate and build compiled Agent dependencies
+        # These packages expose only compiled dist entries, so focused Agent Vitest
+        # runs need both package boundaries emitted from a fresh checkout.
+        run: pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build
+
+      - name: Prove the workload identity shipping package boundary
+        run: |
+          pnpm test:workload-identity-package
+          pnpm test:agent-runtime-smoke
+          pnpm test:licenses
 
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
@@ -75,26 +115,58 @@ jobs:
 
       - name: V1 M0 executable evidence gates
         run: |
+          pnpm test:ci-policy
+          pnpm audit:root-manifest
+          pnpm test:root-manifest
+          pnpm exec lefthook validate
+          pnpm audit:hook-policy
+          pnpm test:hook-policy
           node --test scripts/vocabulary-boundary.nul.test.mjs
           node --test scripts/v1-ledger.test.mjs
           node scripts/v1-ledger.mjs --check
+          pnpm test:win253-clickhouse-split
+          pnpm audit:win253-clickhouse-split
+          pnpm test:win253-vendored-build
+          pnpm audit:win253-vendored-build
           pnpm audit:capability-matrix
           node scripts/rest-census-independent.mjs --check
           node --test scripts/rest-census-independent.test.mjs
           node scripts/webapp-bff-matrix.mjs --check
           node --test scripts/webapp-bff-matrix.test.mjs
           node scripts/operator-operations.mjs --check
+          node --test scripts/license-distribution.test.mjs
+          node scripts/arch/gen-v1-skeleton.mjs --check
+          pnpm test:v1-foundation
+          pnpm test:install-git-hooks
+          pnpm audit:v1-project-graph
+          pnpm test:v1-project-graph
           pnpm audit:arch-boundaries
           pnpm test:arch-boundaries
+          pnpm audit:max-file-lines
+          pnpm test:max-file-lines
+          pnpm test:webapp-image-inventory
+          pnpm test:webapp-inventory-contract
+          pnpm test:advisory
+          pnpm audit:advisory:check
+          pnpm build:v1
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity
           pnpm test:sbom
 
       - name: External Trigger configuration and direct-dispatch tests
-        run: |
-          pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
-          pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
+        run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
+
+      - name: Reproduce clean hosted-CI focused Agent Vitest consumers
+        run: pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
+
+      - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
+        run: pnpm test:win-290
+
+      - name: WIN-290 real Redis DLQ lifecycle suite
+        env:
+          PLATOS_TEST_REDIS_URL: redis://127.0.0.1:6379
+        run: pnpm test:win-290:redis
 
       - name: Platos tenancy and operator-auth tests
         # Runs the complete clean-slate schema/service suite, including its real
@@ -104,6 +176,19 @@ jobs:
 
       - name: Webapp memory-policy tests
         run: pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts
+
+      - name: Webapp typecheck
+        run: pnpm --filter webapp typecheck
+
+      - name: Prove source-only evidence verifiers fail on mutation
+        run: |
+          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts
+          pnpm --filter platos-agent exec vitest run src/memory/memory-profile-startup-verifier.service.test.ts
+          pnpm --filter platos-agent exec vitest run src/startup-failure.test.ts
+          pnpm test:persisted-state:performance-contract
+          pnpm test:non-browser-completion:contract
+          pnpm test:browser-evidence:contract
+          pnpm test:route-parity:completion:evidence
 
       - name: Strict declaration build for the explicit Platos agent graph
         # Builds only the agent's real runtime graph and emits declarations.
@@ -132,7 +217,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -201,7 +286,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.20.0
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install lockfile-backed dependencies

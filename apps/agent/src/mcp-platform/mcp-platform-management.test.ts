@@ -21,6 +21,13 @@ function harness() {
     get: vi.fn(),
     del: vi.fn().mockResolvedValue(1),
     publish: vi.fn().mockResolvedValue(1),
+    duplicate: vi.fn(() => ({
+      on: vi.fn(),
+      off: vi.fn(),
+      subscribe: vi.fn().mockResolvedValue(1),
+      unsubscribe: vi.fn().mockResolvedValue(1),
+      quit: vi.fn().mockResolvedValue("OK"),
+    })),
   };
   controller.router = { handle: vi.fn() };
   return controller;

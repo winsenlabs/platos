@@ -146,17 +146,22 @@ test("archive is corroborated only by a real relocation, never by the row alone"
 });
 
 test("delete verifies only when unreachable, and a delete that is secretly a move is flagged", () => {
-  const del = firstRow("delete");
-  assert.ok(del, "the real ledger must contain a delete row");
-  assert.deepEqual(del.reached_via, ["NONE"], "a real delete row records reachability NONE");
+  assert.equal(rowsByDisposition("delete").length, 0, "WIN-254 retains the inherited live corpus");
+  const del = {
+    ...ledger.rows[0],
+    path: "synthetic/delete-candidate.txt",
+    disposition: "delete",
+    reached_via: ["NONE"],
+  };
+  const ledgerWithDelete = { ...ledger, rows: [del] };
 
-  const asOrphan = verifyLedger({ ledger, moves: [], trackedPaths });
+  const asOrphan = verifyLedger({ ledger: ledgerWithDelete, moves: [], trackedPaths });
   const verifiedRow = asOrphan.verified.find((record) => record.path === normalizeRepositoryPath(del.path));
   assert.ok(verifiedRow, "an unreachable delete candidate is corroborated");
   assert.match(verifiedRow.evidence, /unreachable/u);
 
   const asMove = verifyLedger({
-    ledger,
+    ledger: ledgerWithDelete,
     moves: [{ from: del.path, to: `moved/${del.path}`, similarity: 100, source: "git-rename", identical: true }],
     trackedPaths,
   });

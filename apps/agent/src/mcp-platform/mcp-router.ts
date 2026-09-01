@@ -59,6 +59,7 @@ export interface McpToolHandler {
     params: Record<string, unknown>,
     scope: RequestScope,
     token: VerifiedToken,
+    abortSignal?: AbortSignal,
   ): Promise<unknown>;
 }
 
@@ -117,6 +118,8 @@ export interface McpMacroRecorder {
  */
 export interface McpRequestContext {
   approvalId?: string | null;
+  /** Transport disconnect/cancellation for request-owned downstream work. */
+  abortSignal?: AbortSignal;
   /**
    * Public dashboard origin used when minting the dashboard URL on a
    * pending-approval response. When absent the router falls back to a
@@ -585,7 +588,7 @@ export class McpRouter {
           const result =
             cachedResult !== undefined
               ? cachedResult
-              : await handler.execute(executionArgs, scope, token);
+              : await handler.execute(executionArgs, scope, token, requestCtx?.abortSignal);
 
           // If we executed under an approval, stamp consumedAt + cache
           // the result so subsequent retries are idempotent.

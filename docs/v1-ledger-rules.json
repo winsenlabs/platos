@@ -3,15 +3,17 @@
   "purpose": "One row per tracked file for the V1 refactor. Within an area the FIRST rule whose glob matches the path wins; array order IS the precedence. Rules are ordered pins-first: individually-verified rules (a legal obligation, a named-consumer pin, a reachability-proven orphan) are declared ahead of the broad fallback buckets, so a specific verified decision is never overridden by a generic rule.",
   "precedence": "First-match-wins is deliberately NOT a monotonic safety gradient: a delete pin is declared ahead of the archive bucket that also matches its files, which is the mechanism by which the verified orphan wins. The generator does not claim safer-always-first; instead it ENFORCES the property that matters for the destructive case in scripts/v1-ledger.mjs checkInvariants -- every delete row must be an exact literal path (validation rejects a wildcard in a delete rule) AND be confirmed unreferenced by a live scan of every tracked text file at check time. A tracked file that matches no rule, or a delete candidate found referenced, is a hard error. Globs match dotfiles: the matcher has no leading-dot special case.",
   "baseline": {
-    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force. M0 INTEGRATION RE-BASELINE (tejas/m0-integration, base origin/v1 06d47ca): the single M0 close-out integration adds 35 tracked files, lifting the total from 3385 to 3420 and leaving apps-webapp (180) and packages (550) untouched. apps-agent 507->509 (+2): WIN-293/296 auth tests env-internal-auth-sentinel.test.ts and auth.service.access-key-bootstrap.test.ts. internal-packages 1268->1269 (+1): the WIN-296 AccessKeyBootstrapGrant migration (20260828120000). docs-content 675->692 (+17): the M0 ADRs (M0.3-bounded-contexts, M0.4-contract-versioning) and durable audit artifacts (M0.2 capability matrix json+md, M0.4 design-contract-map json+md, M0.5-dependency-sbom.md, and the ten docs/audits/sbom/* SBOM/advisory/licence/closure-receipt evidence files). root-infra 205->220 (+15): the WIN-248/249 arch-boundary tooling (.dependency-cruiser.js + scripts/arch/*, five files) with its fixture test, the WIN-250 supply-chain tooling (scripts/audit-{sbom,advisory,licenses}.mjs, scripts/lib/pnpm-closure.mjs, scripts/verify-sbom-nonvacuity.mjs, scripts/audit-sbom.test.mjs), scripts/capability-matrix.mjs (WIN-247), the WIN-295 scripts/vocabulary-boundary.nul.test.mjs adversarial NUL test, and renovate.json (WIN-250 update automation, newly classified by rule root-infra.automation.renovate). Every added file is enumerated above and conserves exactly to these deltas; this re-baseline is submitted for ledger-owner review in the M0 integration PR, not to silence a check. Any further drift from 3420 is again a finding to report, not a number to force. M0 COMPLETION RE-BASELINE (tejas/m0-completion, base v1 fb28444): WIN-294 census adds 8 tracked files, 3420->3428. root-infra 220->225 (+5): the independent REST census (scripts/rest-census-independent.mjs + .test.mjs), the webapp/BFF census (scripts/webapp-bff-matrix.mjs + .test.mjs), and scripts/operator-operations.mjs (WIN-293 clause 2). docs-content 692->695 (+3): docs/audits/M0.9-rest-census-independent.json, docs/audits/M0.9-webapp-bff-matrix.json, and docs/audits/M0.8-operator-operations.md. apps-agent/apps-webapp/packages/internal-packages untouched. Every added file conserves to these deltas; submitted for ledger-owner review in the M0 completion PR, not a force-to-green. M0.6/M0.8 evidence docs add 2 tracked files, 3428->3430 (docs-content 695->697): docs/audits/M0.6-admin-access-containment.md (WIN-291 repo-side evidence + operator runbook) and docs/audits/M0.8-operator-auth-boundary.md (WIN-293 boundary + residual). Attributed; owner-review. WIN-293 CLAUSE 4 (workload identity) adds 4 tracked files, 3430->3434. internal-packages 1269->1272 (+3): the new @internal/workload-identity package (package.json, src/index.ts Ed25519 signer/verifier, src/index.test.ts adversarial suite). root-infra 225->226 (+1): scripts/workload-identity-keygen.mjs (operator keygen/rotation helper). Attributed; owner-review.",
-    "totalFiles": 3434,
+    "note": "Independently derived from git ls-files at HEAD, which includes the ledger's own three files (scripts/v1-ledger.mjs, scripts/v1-ledger.test.mjs, docs/v1-ledger-rules.json). The pre-ledger tree at 89c12b8 was 3373: apps-agent 507, apps-webapp 180, packages 550, internal-packages 1268, docs-content 674, root-infra 194. The ledger (WIN-246) adds two root-infra scripts and one docs-content rules file, giving 3376. WIN-292 then adds nine root-infra files -- eight tooling scripts under scripts/vocabulary/ (classify, generate, identity, ledger, ledger.test, manifest-io, moves, receipt), each classified root-infra.tooling.scripts, and one test harness tests/vocabulary-fixtures/scenarios.mjs classified root-infra.test.harness -- lifting root-infra to 205 and the total to 3385. Any drift from these numbers is a finding to report, not a number to force. M0 INTEGRATION RE-BASELINE (tejas/m0-integration, base origin/v1 06d47ca): the single M0 close-out integration adds 35 tracked files, lifting the total from 3385 to 3420 and leaving apps-webapp (180) and packages (550) untouched. apps-agent 507->509 (+2): WIN-293/296 auth tests env-internal-auth-sentinel.test.ts and auth.service.access-key-bootstrap.test.ts. internal-packages 1268->1269 (+1): the WIN-296 AccessKeyBootstrapGrant migration (20260828120000). docs-content 675->692 (+17): the M0 ADRs (M0.3-bounded-contexts, M0.4-contract-versioning) and durable audit artifacts (M0.2 capability matrix json+md, M0.4 design-contract-map json+md, M0.5-dependency-sbom.md, and the ten docs/audits/sbom/* SBOM/advisory/licence/closure-receipt evidence files). root-infra 205->220 (+15): the WIN-248/249 arch-boundary tooling (.dependency-cruiser.js + scripts/arch/*, five files) with its fixture test, the WIN-250 supply-chain tooling (scripts/audit-{sbom,advisory,licenses}.mjs, scripts/lib/pnpm-closure.mjs, scripts/verify-sbom-nonvacuity.mjs, scripts/audit-sbom.test.mjs), scripts/capability-matrix.mjs (WIN-247), the WIN-295 scripts/vocabulary-boundary.nul.test.mjs adversarial NUL test, and renovate.json (WIN-250 update automation, newly classified by rule root-infra.automation.renovate). Every added file is enumerated above and conserves exactly to these deltas; this re-baseline is submitted for ledger-owner review in the M0 integration PR, not to silence a check. Any further drift from 3420 is again a finding to report, not a number to force. M0 COMPLETION RE-BASELINE (tejas/m0-completion, base v1 fb28444): WIN-294 census adds 8 tracked files, 3420->3428. root-infra 220->225 (+5): the independent REST census (scripts/rest-census-independent.mjs + .test.mjs), the webapp/BFF census (scripts/webapp-bff-matrix.mjs + .test.mjs), and scripts/operator-operations.mjs (WIN-293 clause 2). docs-content 692->695 (+3): docs/audits/M0.9-rest-census-independent.json, docs/audits/M0.9-webapp-bff-matrix.json, and docs/audits/M0.8-operator-operations.md. apps-agent/apps-webapp/packages/internal-packages untouched. Every added file conserves to these deltas; submitted for ledger-owner review in the M0 completion PR, not a force-to-green. M0.6/M0.8 evidence docs add 2 tracked files, 3428->3430 (docs-content 695->697): docs/audits/M0.6-admin-access-containment.md (WIN-291 repo-side evidence + operator runbook) and docs/audits/M0.8-operator-auth-boundary.md (WIN-293 boundary + residual). Attributed; owner-review. WIN-293 CLAUSE 4 (workload identity) adds 4 tracked files, 3430->3434. internal-packages 1269->1272 (+3): the new @internal/workload-identity package (package.json, src/index.ts Ed25519 signer/verifier, src/index.test.ts adversarial suite). root-infra 225->226 (+1): scripts/workload-identity-keygen.mjs (operator keygen/rotation helper). Attributed; owner-review. WIN-290 (M1.6) adds 3 tracked files, 3434->3437 (apps-agent 509->512): src/shared/clickhouse-deadline.ts (central deadline policy), its unit test, and src/monitoring/spans.clickhouse-deadline.test.ts (hung-server abort proof). Attributed; owner-review. WIN-252 (M1.2) legal-distribution gate adds 1 tracked file, 3437->3438 (root-infra 226->227): scripts/license-distribution.test.mjs, the Apache-2.0 s4(a)/s4(d) tripwire proving LICENSE+NOTICE reach every shipped image. Attributed; owner-review. WIN-251 (M1.1) blocker 1: the ledger could not classify the ADR M0.3 §4 layout at all. assignArea() returned null for apps/core-api/** and apps/mcp-stdio/** (hard fail), and the glob compiler compiles '*' to '[^/]*' so packages/*/src/**/*.ts could not reach packages/contexts/<ctx>/**. Fixed by adding two AREAS (apps-core-api, apps-mcp-stdio — 'area' is a data field hashed into the classification fingerprint, so labelling a core-api file apps-agent would be false data) and PREPENDING 12 nested packages.* rules at index 1. Prepended, not appended, because '**' mid-glob already crosses separators, so the legacy packages/*/**/*.md|json rules would otherwise wrongly claim nested context/adapter files under owner 'Public SDKs'. '*' was deliberately NOT widened — that would silently broaden every existing rule. No file counts change here (the skeleton lands next); only the classification digest moves, because the RULES changed. Attributed; owner-review. WIN-251 (M1.1) SKELETON: the approved ADR M0.3 §4 layout is materialised, adding 169 tracked files, 3438->3607. apps-core-api 0->10 and apps-mcp-stdio 0->3 (the two new deployables), packages 550->705 (+155: packages/kernel, 17 packages/contexts/*, 12 packages/adapters/*), root-infra 227->228 (+1: scripts/arch/gen-v1-skeleton.mjs, the generator that owns every one of those files). Conserves exactly (10+3+155+1=169). Generated, not hand-written: the generator reads CONTEXT_NAMES from scripts/arch/boundary-rules.mjs so the skeleton and the boundary rules cannot name different contexts, and --check byte-compares all 168 files so a hand-edited placeholder is caught. Vocabulary stayed at 20482 with ZERO new exceptions while scanning 169 more files — the point of the vendor-free adapter directory. Attributed; owner-review. WIN-255 TRANCHE A adds 1 tracked file, 3607->3608 (root-infra 228->229): scripts/ci-policy.test.mjs, the table-driven CI/image-build mutation policy suite classified by root-infra.test.script-suites. Attributed; owner-review. WIN-251 FOUNDATION COMPLETION adds 40 tracked files, 3608->3648. packages 705->735 (+30): one composite tsconfig for packages/kernel, each of 17 contexts, and each of 12 adapters. apps-core-api 10->11 and apps-mcp-stdio 3->4 (+2): one composite tsconfig per app. docs-content 697->698 (+1): docs/agent-worktrees.md, the fail-closed linked-worktree procedure. root-infra 229->236 (+7): root solution tsconfig.json; scripts/arch/{v1-project-graph,max-file-lines}.mjs and their two mutation suites; scripts/install-git-hooks.mjs and its focused suite. The 33 tsconfigs plus six scripts/tests plus one document conserve exactly to 40. Existing generated manifests/placeholders, the immutable ADR amendment, package/workspace/CI wiring, and regenerated lockfile change tracked bytes but add no files. Attributed; owner-review. WIN-251 RELEASE-BLOCKER TESTING adds 3 tracked root-infra files, 3648->3651 (root-infra 236->239): scripts/arch/clean-v1.mjs provides reference-derived safe dist cleanup; scripts/arch/clean-v1.test.mjs proves all 32 projects build and leave no dist trees; scripts/arch/gen-v1-skeleton.test.mjs directly mutation-tests generator ownership. Existing package/CI/policy wiring changes bytes but adds no files. Conserves exactly; attributed for ledger-owner review. WIN-252 ROOT GOVERNANCE: exact attributable conservation is 3651-11+6=3646. Eleven tracked files are deleted: .eslintignore, DOCKER_INSTALLATION.md, root playwright.config.ts, four inactive scripts (build-dockerfile, enhance-release-pr, generate-github-release, publish-prerelease), and four broken legacy root browser-suite files (tests/e2e/e2e.spec.ts, tests/global.setup.ts, tests/global.teardown.ts, tests/utils.ts). Thirteen files move without count change from root-infra to docs-content: ten stale .changeset notes, two .server-changes notes, and PROGRESS.md. Six files are added: scripts/root-entry-manifest.mjs + .test.mjs, scripts/hook-policy.mjs + .test.mjs (root-infra +4), and generated docs/audits/win-252-root-entry-manifest.{json,md} (docs-content +2). Area conservation: root-infra 239-13-11+4=219; docs-content 698+13+2=713; every other area unchanged. A dedicated Repository Governance rule precedes the generic audit-doc rule. Attributed for ledger-owner review. WIN-252 PACKAGE LICENSE COMPLETENESS adds four package-local Apache-2.0 LICENSE copies under packages/react-hooks, packages/redis-worker, packages/rsc, and packages/schema-to-json, lifting 3646->3650 and packages 735->739. No other area changes. Attributed for ledger-owner review. WIN-253 WORKSPACE REACHABILITY GATE adds 4 tracked files, 3650->3654. docs-content 713->715 (+2): the generated JSON and Markdown reachability evidence. root-infra 219->221 (+2): scripts/workspace-reachability.mjs and its 25-control mutation suite. Exact rules precede generic generated-audit and script buckets. Conserves exactly; attributed for ledger-owner review. WIN-290 CANCELLATION COVERAGE adds 1 prospective-tree file, 3654->3655 (apps-agent 512->513): apps/agent/src/monitoring/trace-request-abort.test.ts, the shipping HTTP/MCP/SSE/stdio cancellation and fallback-telemetry regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review. WIN-290 REDIS DLQ PROCESSING COVERAGE adds 1 prospective-tree file, 3655->3656 (apps-agent 513->514): apps/agent/src/monitoring/spans.dlq.redis.test.ts, the real Redis claim/interruption/write-failure regression suite. It classifies as apps-agent.test.suites, kind test, disposition move-refactor. Conserves exactly; attributed for ledger-owner review. WIN-253 CLICKHOUSE SPLIT INTEGRATION: from the 3656-file primary tree, the executable Git-derived audit removes 91 tracked files (90 retired package/Docker files plus the antlr4ts patch) and adds four durable audit artifacts (two docs-content reports and two root-infra scripts), yielding 3569 files. internal-packages 1272->1182, docs-content 715->717, root-infra 221->222; every other area remains unchanged. The 34 ClickHouse schema files and WIN-144 observability migration remain byte-identical and hash-protected. Counts are derived by the assembled-tree audit and ledger, not copied from the isolated source branch. WIN-253 VENDORED BUILD/SDK INTEGRATION: from the 3569-file primary base, exactly six reviewed inherited \u0054rigger workspaces remove 122 tracked files; executable integration evidence adds two docs-content receipts and two root-infra scripts, yielding 3451 files. packages 739->637, internal-packages 1182->1162, docs-content 717->719, root-infra 222->224; every other area is unchanged. The obsolete browser-entry pin leaves with its deleted file, and the assembled-tree generator records the exact replacement fingerprint. Protected Platos JavaScript and Python SDK trees remain byte-identical to 34c41bc. WIN-253 WEBAPP DEPENDENCY-PRUNE INTEGRATION adds eight durable files, 3451→3459: apps-webapp 180→183 (+3: production-dependency audit, its mutation suite, and patch-restoration suite); docs-content 719→720 (+1: exact linux/amd64 webapp image inventory); root-infra 224→228 (+4: image inventory audit, package scanner, image verifier, and publication-provenance verifier). Every other area is unchanged. Modified manifests, workflows, Docker policy, receipts, and tests change bytes but add no files. Conserves exactly; attributed for ledger-owner review. WIN-253 REVIEW FIX adds five root-infra contract/test files (advisory fixtures, image scanner/verifier fixtures, and the shared inventory contract plus its tests) and deletes two obsolete root-infra patch files, yielding a net +3: root-infra 228→231 and total 3459→3462. Every other area is unchanged; attributed for ledger-owner review. WIN-253 REPLACEMENT CANDIDATE FIXES add five attributable files, 3462→3467. internal-packages 1162→1164 (+2): tracked workload-identity typecheck and declaration-build tsconfigs. root-infra 231→234 (+3): the disposable workload package consumer test, deterministic licence generator test, and exact runtime-image package/health smoke. Existing package metadata, generators, workflows, and receipts change bytes but add no files. Conserves exactly; attributed for ledger-owner review. WIN-253 FOCUSED REPLACEMENT-CANDIDATE REVIEW adds two root-infra contract files, 3467→3469 and root-infra 234→236: tests/persisted-state-gate/agent-runtime-health.mjs implements the exact-200 health poller and its adjacent mutation suite proves 201/204 fail with bounded last-status diagnostics. Existing licence generator/tests, smoke wrapper, package/CI wiring, and regenerated evidence change bytes but add no files. Conserves exactly; attributed for ledger-owner review. WIN-254 INTEGRATION preserves live docs in place, adds exact design/link/protection/lifecycle governance, and classifies ADR, audit history, audit receipts, and audit notes with specific first-match rules before broad docs buckets. Counts and fingerprints are regenerated from the assembled prospective tree.",
+    "totalFiles": 3469,
     "areaCounts": {
-      "apps-agent": 509,
-      "apps-webapp": 180,
-      "packages": 550,
-      "internal-packages": 1272,
-      "docs-content": 697,
-      "root-infra": 226
+      "apps-agent": 514,
+      "apps-webapp": 183,
+      "packages": 637,
+      "internal-packages": 1164,
+      "docs-content": 720,
+      "root-infra": 236,
+      "apps-core-api": 11,
+      "apps-mcp-stdio": 4
     }
   },
   "areas": {
@@ -330,13 +332,182 @@
         "evidence": "Reached from the framework route manifest and the import graph beneath it."
       }
     ],
+    "apps-core-api": [
+      {
+        "id": "apps-core-api.test.suites",
+        "match": [
+          "apps/core-api/src/**/*.test.ts",
+          "apps/core-api/test/**"
+        ],
+        "kind": "test",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Composition-root and transport suites, mirroring the apps-agent suite rule. Declared ahead of the source rule so a suite is never counted as product source."
+      },
+      {
+        "id": "apps-core-api.infra.container",
+        "match": [
+          "apps/core-api/Dockerfile",
+          "apps/core-api/Dockerfile.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Infrastructure",
+        "disposition": "retain",
+        "reached_via": [
+          "Dockerfile"
+        ],
+        "evidence": "Builds the core-api image referenced by the root compose stacks."
+      },
+      {
+        "id": "apps-core-api.doc.package",
+        "match": [
+          "apps/core-api/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "apps-core-api.config.package",
+        "match": [
+          "apps/core-api/*.json",
+          "apps/core-api/*.config.ts",
+          "apps/core-api/src/**/*.json",
+          "apps/core-api/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package, compiler, and framework configuration read by the workspace scripts, plus static manifest data loaded by the module beside it. Declared ahead of the source rules because a *.config.ts is also a *.ts."
+      },
+      {
+        "id": "apps-core-api.entry.composition-root",
+        "match": [
+          "apps/core-api/src/main.ts",
+          "apps/core-api/src/app.module.ts",
+          "apps/core-api/*.sh"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "ADR M0.3 s4 names main.ts and app.module.ts as the composition root of the single V1 deployable; a shell file at the package root is the container entry path named by its Dockerfile."
+      },
+      {
+        "id": "apps-core-api.source.transports",
+        "match": [
+          "apps/core-api/src/**/*.ts",
+          "apps/core-api/src/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "ADR M0.3 s4 apps/core-api/src/transports/{rest,mcp,ws,webhook,channels-ingress,bff}: thin transport code that calls context use-cases only. Reached from the composition root through the import graph."
+      }
+    ],
+    "apps-mcp-stdio": [
+      {
+        "id": "apps-mcp-stdio.test.suites",
+        "match": [
+          "apps/mcp-stdio/src/**/*.test.ts",
+          "apps/mcp-stdio/test/**"
+        ],
+        "kind": "test",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Suites for the stdio binary. Declared ahead of the source rule so a suite is never counted as product source."
+      },
+      {
+        "id": "apps-mcp-stdio.doc.package",
+        "match": [
+          "apps/mcp-stdio/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Package-local prose that moves with the code it describes."
+      },
+      {
+        "id": "apps-mcp-stdio.config.package",
+        "match": [
+          "apps/mcp-stdio/*.json",
+          "apps/mcp-stdio/*.config.ts",
+          "apps/mcp-stdio/src/**/*.json",
+          "apps/mcp-stdio/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package and compiler configuration read by the workspace scripts. Declared ahead of the source rules because a *.config.ts is also a *.ts."
+      },
+      {
+        "id": "apps-mcp-stdio.entry.bin",
+        "match": [
+          "apps/mcp-stdio/src/main.ts",
+          "apps/mcp-stdio/bin/**"
+        ],
+        "kind": "source",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "ADR M0.3 s4 describes this app as a thin stdio binary that reuses the tools-context transport; the bin path is the one named by its package manifest."
+      },
+      {
+        "id": "apps-mcp-stdio.source.transport",
+        "match": [
+          "apps/mcp-stdio/src/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "Stdio transport code reached from the entry module through the import graph."
+      }
+    ],
     "packages": [
       {
         "id": "packages.legal.attribution",
         "match": [
           "packages/*/LICENSE",
           "packages/*/NOTICE",
-          "packages/*/NOTICE.md"
+          "packages/*/NOTICE.md",
+          "packages/kernel/**/LICENSE",
+          "packages/kernel/**/NOTICE",
+          "packages/kernel/**/NOTICE.md",
+          "packages/contexts/*/LICENSE",
+          "packages/contexts/*/NOTICE",
+          "packages/contexts/*/NOTICE.md",
+          "packages/adapters/*/LICENSE",
+          "packages/adapters/*/NOTICE",
+          "packages/adapters/*/NOTICE.md"
         ],
         "kind": "legal",
         "owner_capability": "Repository Governance",
@@ -348,17 +519,176 @@
         "protected": true
       },
       {
-        "id": "packages.pin.browser-entry",
+        "id": "packages.kernel.test",
         "match": [
-          "packages/\u0074rigger-sdk/src/v3/index-browser.mts"
+          "packages/kernel/**/*.test.ts"
+        ],
+        "kind": "test",
+        "owner_capability": "Platform Kernel",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Kernel purity suites. Declared ahead of the kernel source rule so a suite is never counted as product source."
+      },
+      {
+        "id": "packages.kernel.config",
+        "match": [
+          "packages/kernel/*.json",
+          "packages/kernel/**/*.json",
+          "packages/kernel/**/*.config.ts",
+          "packages/kernel/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Platform Kernel",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Package and compiler configuration for packages/kernel, read by the workspace scripts. Declared ahead of the kernel source rule because a *.config.ts is also a *.ts."
+      },
+      {
+        "id": "packages.kernel.doc",
+        "match": [
+          "packages/kernel/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Platform Kernel",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Kernel-local prose describing the port interfaces and pure value objects it hosts."
+      },
+      {
+        "id": "packages.kernel.source",
+        "match": [
+          "packages/kernel/**/*.ts"
         ],
         "kind": "source",
-        "owner_capability": "Public SDKs",
-        "disposition": "archive",
+        "owner_capability": "Platform Kernel",
+        "disposition": "retain",
         "reached_via": [
-          "CI"
+          "imports"
         ],
-        "evidence": "Consumer: docs/vocabulary-boundary-exceptions.json line 19165 pins this file by exact path. Removing it on its own makes scripts/vocabulary-boundary.mjs report exception drift and reddens CI, so it may only leave the tree together with the whole package that holds it. The path is an exact literal, not a wildcard, so no future package can inherit this pin; the reserved term in the directory name is carried as a JSON unicode escape written by --write, which the boundary scan does not match and JSON parses identically."
+        "evidence": "ADR M0.3 s4 packages/kernel: port interfaces and pure value objects only. Imported by every context and by the apps/core-api composition root through the @platos/kernel alias declared in scripts/arch/boundary-rules.mjs. Declared ahead of the legacy packages/*/src/** buckets so the kernel is owner-attributed to Platform Kernel rather than to Public SDKs."
+      },
+      {
+        "id": "packages.contexts.test",
+        "match": [
+          "packages/contexts/**/*.test.ts"
+        ],
+        "kind": "test",
+        "owner_capability": "Bounded Contexts",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Per-context domain and application suites. Declared ahead of the context source rule so a suite is never counted as product source."
+      },
+      {
+        "id": "packages.contexts.config",
+        "match": [
+          "packages/contexts/*/*.json",
+          "packages/contexts/**/*.json",
+          "packages/contexts/**/*.config.ts",
+          "packages/contexts/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Bounded Contexts",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Context package and compiler configuration read by the workspace scripts. Declared ahead of the legacy packages/*/**/*.json bucket, which also matches a nested context path and would otherwise attribute it to Public SDKs."
+      },
+      {
+        "id": "packages.contexts.doc",
+        "match": [
+          "packages/contexts/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Bounded Contexts",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Context-local prose that moves with the domain it describes. Declared ahead of the legacy packages/*/**/*.md bucket for the same nesting reason."
+      },
+      {
+        "id": "packages.contexts.source",
+        "match": [
+          "packages/contexts/**/*.ts",
+          "packages/contexts/**/*.cts",
+          "packages/contexts/**/*.mts",
+          "packages/contexts/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Bounded Contexts",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "ADR M0.3 s4 packages/contexts/<context>/{domain,application,contracts}. The legacy packages/*/src/**/*.ts rule cannot reach this depth because a single star never crosses a separator, so this nested rule is what makes a context file classify at all. Reached from the context contracts barrel and, transitively, from the apps/core-api composition root; scripts/arch/boundary-rules.mjs maps @platos/context-* onto this directory."
+      },
+      {
+        "id": "packages.adapters.test",
+        "match": [
+          "packages/adapters/**/*.test.ts",
+          "packages/adapters/*/test/**"
+        ],
+        "kind": "test",
+        "owner_capability": "Port Adapters",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Per-adapter suites. Declared ahead of the adapter source rule so a suite is never counted as product source."
+      },
+      {
+        "id": "packages.adapters.config",
+        "match": [
+          "packages/adapters/*/*.json",
+          "packages/adapters/**/*.json",
+          "packages/adapters/**/*.config.ts",
+          "packages/adapters/**/.*"
+        ],
+        "kind": "config",
+        "owner_capability": "Port Adapters",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Adapter package and compiler configuration read by the workspace scripts. Declared ahead of the legacy packages/*/**/*.json bucket, which also matches a nested adapter path."
+      },
+      {
+        "id": "packages.adapters.doc",
+        "match": [
+          "packages/adapters/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Port Adapters",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Adapter-local prose recording which kernel port the adapter implements and which vendor client it is the sole holder of."
+      },
+      {
+        "id": "packages.adapters.source",
+        "match": [
+          "packages/adapters/**/*.ts",
+          "packages/adapters/**/*.cts",
+          "packages/adapters/**/*.mts",
+          "packages/adapters/**/*.tsx"
+        ],
+        "kind": "source",
+        "owner_capability": "Port Adapters",
+        "disposition": "retain",
+        "reached_via": [
+          "imports"
+        ],
+        "evidence": "ADR M0.3 s4 packages/adapters/<adapter>: one kernel port implementation each, sole holder of its vendor client. Unreachable by the legacy packages/*/src/** rules for the same nesting reason as contexts. Imported only by the apps/core-api composition root, which scripts/arch/boundary-rules.mjs rule (j) enforces."
       },
       {
         "id": "packages.vendor.sdk.doc",
@@ -564,7 +894,7 @@
         "reached_via": [
           "license-obligation"
         ],
-        "evidence": "PRECEDENCE: declared first in this area so legal retention always beats the later archive and config rules. internal-packages/tsql/NOTICE.md is the ONLY PostHog MIT attribution in the repository, verified by `grep -i posthog NOTICE LICENSE README.md` returning nothing: the root NOTICE credits only the upstream project. internal-packages/otlp-importer/LICENSE is the OpenTelemetry attribution and would otherwise have been swept up by a package-config rule and archived.",
+        "evidence": "PRECEDENCE: declared first in this area so legal retention always beats the later archive and config rules. Package-local licences and notices remain with the code they govern; internal-packages/otlp-importer/LICENSE is the OpenTelemetry attribution and would otherwise have been swept up by a package-config rule and archived.",
         "protected": true
       },
       {
@@ -595,20 +925,6 @@
         "evidence": "Byte-pinned forward-upgrade baseline, anchored as an exact exclusion in docs/vocabulary-boundary-exceptions.json; removal makes the gate report a stale exclusion."
       },
       {
-        "id": "internal-packages.generated.grammar",
-        "match": [
-          "internal-packages/*/src/grammar/*.interp",
-          "internal-packages/*/src/grammar/*.tokens"
-        ],
-        "kind": "generated",
-        "owner_capability": "Query Platform",
-        "disposition": "regenerate",
-        "reached_via": [
-          "generated-asset"
-        ],
-        "evidence": "PRECEDENCE: declared ahead of every archive rule so regenerate wins the first-match race for these four files. ANTLR emits them beside the .g4 grammar in the same directory; the grammar is the source of truth, so preserving a stale copy in an archive would be strictly worse than rebuilding."
-      },
-      {
         "id": "internal-packages.infra.container",
         "match": [
           "internal-packages/*/Dockerfile",
@@ -620,7 +936,7 @@
         "reached_via": [
           "compose"
         ],
-        "evidence": "PRECEDENCE: declared ahead of any removal rule so retain wins the first-match race. internal-packages/clickhouse/Dockerfile builds the analytics store image the root compose stacks start, and the migration image builds the schema-upgrade container."
+        "evidence": "PRECEDENCE: declared ahead of any removal rule so retain wins the first-match race. The retained internal-package Dockerfiles build schema-upgrade images referenced by shipping Compose and CI definitions."
       },
       {
         "id": "internal-packages.doc.diagram",
@@ -877,6 +1193,20 @@
         "protected": true
       },
       {
+        "id": "docs-content.design.provenance",
+        "match": [
+          "design/platos-ui-refactor.provenance.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Webapp Experience",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "Deterministic design-source provenance receipt generated and checked by scripts/design-provenance.mjs.",
+        "protected": true
+      },
+      {
         "id": "docs-content.design.index",
         "match": [
           "design/*.md"
@@ -887,7 +1217,202 @@
         "reached_via": [
           "docs-reference"
         ],
-        "evidence": "Index page for the design directory."
+        "evidence": "Index page for the design directory.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.evidence.lifecycle-controls",
+        "match": [
+          "docs/audits/win-254-protected-paths.json",
+          "docs/audits/win-254-evidence-lifecycle.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Repository Governance",
+        "disposition": "regenerate",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Non-recursive WIN-254 protected-path and lifecycle controls generated from the prospective Git inventory.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.governance.root-manifest",
+        "match": [
+          "docs/audits/win-252-root-entry-manifest.json",
+          "docs/audits/win-252-root-entry-manifest.md"
+        ],
+        "kind": "generated",
+        "owner_capability": "Repository Governance",
+        "disposition": "regenerate",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Generated and byte-checked by scripts/root-entry-manifest.mjs; this exact rule precedes the generic audit bucket so repository-governance ownership cannot be absorbed by Control Plane."
+      },
+      {
+        "id": "docs-content.governance.workspace-reachability",
+        "match": [
+          "docs/audits/win-253-workspace-reachability.json",
+          "docs/audits/win-253-workspace-reachability.md"
+        ],
+        "kind": "generated",
+        "owner_capability": "Build Platform",
+        "disposition": "regenerate",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "Generated and byte-checked by scripts/workspace-reachability.mjs; these exact report paths are non-destructive evidence data rather than semantic references to every path they enumerate."
+      },
+      {
+        "id": "docs-content.lifecycle.rules-superseded",
+        "match": [
+          "rules/4.0.0/advanced-tasks.md",
+          "rules/4.0.0/basic-tasks.md",
+          "rules/4.0.0/config.md",
+          "rules/4.0.0/realtime.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Exact SUPERSEDED-BY sources from rules/manifest.json; lifecycle relationships precede the broad rules bucket.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.lifecycle.rules-accepted-targets",
+        "match": [
+          "rules/4.3.0/advanced-tasks.md",
+          "rules/4.3.0/basic-tasks.md",
+          "rules/4.1.0/config.md",
+          "rules/4.1.0/realtime.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Exact ACCEPTED targets for rules/manifest.json supersession chains; target rules precede the broad rules bucket.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.lifecycle.rules-manifest",
+        "match": [
+          "rules/manifest.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Authoritative exact version/path relationship source for the four lifecycle supersessions.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.lifecycle.point-in-time-snapshots",
+        "match": [
+          "docs/audits/sbom/advisory/osv-report.json",
+          "docs/audits/sbom/license-index.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Repository Governance",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "Exact external snapshots are POINT-IN-TIME and precede broad machine-audit receipt rules.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.lifecycle.point-in-time-reports",
+        "match": [
+          "docs/audits/M0.5-dependency-sbom.md",
+          "docs/audits/M0.6-admin-access-containment.md",
+          "docs/audits/M0.8-operator-auth-boundary.md",
+          "docs/refactor/IMPLEMENTATION-STATUS.md",
+          "docs/research/llm-serving-and-caching.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Exact milestone/research mixed reports are POINT-IN-TIME and precede broad audit and notes buckets.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.lifecycle.draft",
+        "match": [
+          "docs/refactor/platos-\u0074rigger-refactor.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "The sole DRAFT is retained with an explicit non-current lifecycle label before broad notes rules.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.evidence.adr",
+        "match": [
+          "docs/adr/**"
+        ],
+        "kind": "doc",
+        "owner_capability": "Architecture",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Accepted architecture decision records are stable evidence, classified before broad documentation buckets.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.evidence.audit-history",
+        "match": [
+          "docs/audits/history/**"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Point-in-time historical evidence remains retained and lifecycle-labelled; it is not current product acceptance.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.evidence.audit-receipts",
+        "match": [
+          "docs/audits/**/*.json"
+        ],
+        "kind": "generated",
+        "owner_capability": "Repository Governance",
+        "disposition": "regenerate",
+        "reached_via": [
+          "generated-asset"
+        ],
+        "evidence": "Machine-readable audit receipts are checked against their authoritative repository inputs.",
+        "protected": true
+      },
+      {
+        "id": "docs-content.evidence.audit-notes",
+        "match": [
+          "docs/audits/**/*.md"
+        ],
+        "kind": "doc",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "docs-reference"
+        ],
+        "evidence": "Human-readable audit evidence and runbooks are stable notes classified before broad documentation buckets.",
+        "protected": true
       },
       {
         "id": "docs-content.pin.boundary-manifest",
@@ -942,7 +1467,7 @@
         ],
         "kind": "asset",
         "owner_capability": "Documentation",
-        "disposition": "delete",
+        "disposition": "retain",
         "reached_via": [
           "NONE"
         ],
@@ -959,7 +1484,7 @@
         ],
         "kind": "asset",
         "owner_capability": "Documentation",
-        "disposition": "archive",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -972,7 +1497,7 @@
         ],
         "kind": "doc",
         "owner_capability": "Documentation",
-        "disposition": "archive",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -992,7 +1517,7 @@
         ],
         "kind": "config",
         "owner_capability": "Documentation",
-        "disposition": "archive",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -1005,7 +1530,7 @@
         ],
         "kind": "doc",
         "owner_capability": "Documentation",
-        "disposition": "move-refactor",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -1085,7 +1610,7 @@
         ],
         "kind": "doc",
         "owner_capability": "Documentation",
-        "disposition": "archive",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -1098,7 +1623,7 @@
         ],
         "kind": "config",
         "owner_capability": "Documentation",
-        "disposition": "archive",
+        "disposition": "retain",
         "reached_via": [
           "docs-reference"
         ],
@@ -1128,7 +1653,8 @@
         "reached_via": [
           "docs-reference"
         ],
-        "evidence": "Platos-native product documentation; the V1 documentation surface."
+        "evidence": "Platos-native product documentation; the V1 documentation surface.",
+        "protected": true
       }
     ],
     "root-infra": [
@@ -1183,7 +1709,7 @@
         "reached_via": [
           "license-obligation"
         ],
-        "evidence": "Repository license and attribution. The root NOTICE credits the upstream project only; the PostHog attribution lives separately in internal-packages/tsql/NOTICE.md.",
+        "evidence": "Repository license and attribution distributed with every shipping image.",
         "protected": true
       },
       {
@@ -1213,7 +1739,7 @@
         "reached_via": [
           "package-scripts"
         ],
-        "evidence": "Installed by the workspace prepare step and run on every commit.",
+        "evidence": "package.json prepare invokes scripts/install-git-hooks.mjs, which installs this policy with the local Lefthook executable. The existing fail-closed pre-commit job applies only when the checked-out ref is main.",
         "protected": true
       },
       {
@@ -1241,19 +1767,6 @@
           "generated-asset"
         ],
         "evidence": "Captured browser evidence output. Two of the four are exact exclusions in docs/vocabulary-boundary-exceptions.json, so removing them makes the gate report a stale exclusion; the whole directory is reproducible from the evidence run."
-      },
-      {
-        "id": "root-infra.archive.working-notes",
-        "match": [
-          ".server-changes/**"
-        ],
-        "kind": "doc",
-        "owner_capability": "Repository Governance",
-        "disposition": "archive",
-        "reached_via": [
-          "NONE"
-        ],
-        "evidence": "An exhaustive basename scan over every tracked text file finds no reference to either note, and neither is anchored in docs/vocabulary-boundary-exceptions.json. Unreferenced working notes still carry decision history, so archive rather than remove."
       },
       {
         "id": "root-infra.ci.workflows",
@@ -1292,7 +1805,7 @@
         "reached_via": [
           "package-scripts"
         ],
-        "evidence": "Pending release notes consumed by the version and publish steps."
+        "evidence": "Current manual package-version intent consumed only by the Changesets add/status commands; no publish consumer exists."
       },
       {
         "id": "root-infra.editor.workspace",
@@ -1388,6 +1901,19 @@
         "evidence": "Reverse-proxy configuration mounted by the release compose stack."
       },
       {
+        "id": "root-infra.test.workspace-reachability",
+        "match": [
+          "scripts/workspace-reachability.test.mjs"
+        ],
+        "kind": "test",
+        "owner_capability": "Build Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "Exact WIN-253 mutation suite wired through the root package manifest and the fail-fast CI reachability evidence step."
+      },
+      {
         "id": "root-infra.test.script-suites",
         "match": [
           "scripts/*.test.mjs"
@@ -1399,6 +1925,19 @@
           "test-config"
         ],
         "evidence": "Covers the workspace tooling in the same directory; collected by the root test runner."
+      },
+      {
+        "id": "root-infra.tooling.workspace-reachability",
+        "match": [
+          "scripts/workspace-reachability.mjs"
+        ],
+        "kind": "source",
+        "owner_capability": "Build Platform",
+        "disposition": "move-refactor",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Exact WIN-253 non-destructive workspace reachability gate wired through root generation/check scripts and the fail-fast CI evidence step."
       },
       {
         "id": "root-infra.tooling.scripts",
@@ -1424,7 +1963,7 @@
         "reached_via": [
           "test-config"
         ],
-        "evidence": "Release-gate and end-to-end evidence suites named by the root runner configuration."
+        "evidence": "Current release-gate and evidence suites named by root package scripts and focused runner configuration."
       },
       {
         "id": "root-infra.examples.starters",
@@ -1443,10 +1982,10 @@
         "id": "root-infra.build.workspace",
         "match": [
           "turbo.json",
+          "tsconfig.json",
           "package.json",
           "pnpm-workspace.yaml",
           "prettier.config.js",
-          "playwright.config.ts",
           ".configs/**"
         ],
         "kind": "config",
@@ -1455,7 +1994,7 @@
         "reached_via": [
           "package-scripts"
         ],
-        "evidence": "Workspace, pipeline, formatter, and browser-runner configuration read on every install and every CI run."
+        "evidence": "Workspace, pipeline, compiler, and formatter configuration read by installs, builds, and CI."
       },
       {
         "id": "root-infra.doc.root-notes",
@@ -1468,41 +2007,42 @@
         "reached_via": [
           "docs-reference"
         ],
-        "evidence": "Root prose: the readme, the release and changeset guides, the container install guide, and the running progress log."
+        "evidence": "Retained root governance and repository entry documents; stale installation and progress notes were deleted or archived under WIN-252."
       }
     ]
   },
   "expected": {
-    "totalFiles": 3434,
+    "totalFiles": 3488,
     "areaCounts": {
-      "apps-agent": 509,
-      "apps-webapp": 180,
-      "docs-content": 697,
-      "internal-packages": 1272,
-      "packages": 550,
-      "root-infra": 226
+      "apps-agent": 514,
+      "apps-core-api": 11,
+      "apps-mcp-stdio": 4,
+      "apps-webapp": 183,
+      "docs-content": 729,
+      "internal-packages": 1164,
+      "packages": 637,
+      "root-infra": 246
     },
     "kindCounts": {
-      "asset": 154,
-      "config": 252,
-      "doc": 558,
-      "fixture": 18,
-      "generated": 45,
-      "legal": 15,
+      "asset": 155,
+      "config": 267,
+      "doc": 604,
+      "fixture": 1,
+      "generated": 41,
+      "legal": 13,
       "lockfile": 3,
       "migration": 894,
-      "source": 1055,
-      "test": 440
+      "source": 1071,
+      "test": 439
     },
     "dispositionCounts": {
-      "archive": 511,
-      "delete": 7,
-      "move-refactor": 1732,
+      "archive": 7,
+      "move-refactor": 1575,
       "regenerate": 36,
-      "retain": 1146,
+      "retain": 1868,
       "unresolved": 2
     },
-    "protectedCount": 933,
+    "protectedCount": 1622,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -1511,9 +2051,16 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 275,
-      "apps-agent.test.suites": 201,
+      "apps-agent.source.runtime": 276,
+      "apps-agent.test.suites": 205,
       "apps-agent.tooling.scripts": 11,
+      "apps-core-api.config.package": 2,
+      "apps-core-api.doc.package": 1,
+      "apps-core-api.entry.composition-root": 2,
+      "apps-core-api.source.transports": 6,
+      "apps-mcp-stdio.config.package": 2,
+      "apps-mcp-stdio.doc.package": 1,
+      "apps-mcp-stdio.entry.bin": 1,
       "apps-webapp.asset.public": 10,
       "apps-webapp.config.build": 13,
       "apps-webapp.config.dotfiles": 3,
@@ -1524,16 +2071,30 @@
       "apps-webapp.source.remix": 111,
       "apps-webapp.style.sheet": 1,
       "apps-webapp.test.suites": 29,
-      "apps-webapp.tooling.scripts": 7,
+      "apps-webapp.tooling.scripts": 10,
       "apps-webapp.tooling.shell": 1,
-      "docs-content.asset.media": 125,
+      "docs-content.asset.media": 126,
       "docs-content.design.canvas": 48,
       "docs-content.design.canvas-assets": 5,
       "docs-content.design.canvas-style": 4,
       "docs-content.design.index": 1,
-      "docs-content.generated.audit": 23,
+      "docs-content.design.provenance": 1,
+      "docs-content.evidence.adr": 2,
+      "docs-content.evidence.audit-history": 13,
+      "docs-content.evidence.audit-notes": 10,
+      "docs-content.evidence.audit-receipts": 16,
+      "docs-content.evidence.lifecycle-controls": 2,
+      "docs-content.generated.audit": 2,
+      "docs-content.governance.root-manifest": 2,
+      "docs-content.governance.workspace-reachability": 2,
+      "docs-content.lifecycle.draft": 1,
+      "docs-content.lifecycle.point-in-time-reports": 5,
+      "docs-content.lifecycle.point-in-time-snapshots": 2,
+      "docs-content.lifecycle.rules-accepted-targets": 4,
+      "docs-content.lifecycle.rules-manifest": 1,
+      "docs-content.lifecycle.rules-superseded": 4,
       "docs-content.notes.ai-references": 3,
-      "docs-content.notes.platos": 50,
+      "docs-content.notes.platos": 46,
       "docs-content.pin.boundary-manifest": 1,
       "docs-content.pin.ledger-rules": 1,
       "docs-content.pin.unreferenced-media": 7,
@@ -1543,54 +2104,52 @@
       "docs-content.reference.entity-dotfiles": 6,
       "docs-content.reference.lockfile": 1,
       "docs-content.reference.source": 2,
-      "docs-content.upstream.agent-rules": 10,
-      "docs-content.upstream.agent-rules-manifest": 1,
+      "docs-content.upstream.agent-rules": 2,
       "docs-content.upstream.pages": 312,
       "docs-content.upstream.site-config": 6,
-      "internal-packages.config.package": 73,
+      "internal-packages.config.package": 56,
       "internal-packages.doc.diagram": 1,
-      "internal-packages.doc.package": 13,
+      "internal-packages.doc.package": 10,
       "internal-packages.email.templates": 15,
-      "internal-packages.fixture.compat-modules": 15,
-      "internal-packages.fixture.snapshot": 2,
       "internal-packages.fixture.upgrade-baseline": 1,
-      "internal-packages.generated.grammar": 4,
       "internal-packages.generated.release-history": 2,
-      "internal-packages.grammar.source": 3,
-      "internal-packages.infra.container": 2,
-      "internal-packages.legal.attribution": 2,
+      "internal-packages.infra.container": 1,
+      "internal-packages.legal.attribution": 1,
       "internal-packages.lockfile.migration-image": 1,
       "internal-packages.migration.canonical": 857,
       "internal-packages.migration.image": 4,
       "internal-packages.schema.analytics": 34,
       "internal-packages.schema.prisma": 3,
-      "internal-packages.source.typescript": 150,
-      "internal-packages.test.suites": 81,
+      "internal-packages.source.typescript": 108,
+      "internal-packages.test.suites": 61,
       "internal-packages.tooling.scripts": 9,
-      "packages.config.build": 42,
-      "packages.doc.package": 13,
-      "packages.generated.release-history": 9,
-      "packages.legal.attribution": 11,
-      "packages.pin.browser-entry": 1,
+      "packages.adapters.config": 24,
+      "packages.adapters.doc": 12,
+      "packages.adapters.source": 24,
+      "packages.config.build": 28,
+      "packages.contexts.config": 34,
+      "packages.contexts.doc": 17,
+      "packages.contexts.source": 68,
+      "packages.doc.package": 9,
+      "packages.generated.release-history": 5,
+      "packages.kernel.config": 2,
+      "packages.kernel.doc": 1,
+      "packages.kernel.source": 3,
+      "packages.legal.attribution": 10,
       "packages.python.metadata": 4,
       "packages.python.sources": 36,
-      "packages.source.typescript": 327,
+      "packages.source.typescript": 297,
       "packages.style.sheet": 1,
-      "packages.test.suites": 62,
+      "packages.test.suites": 61,
       "packages.tooling.scripts": 1,
-      "packages.vendor.sdk.config": 3,
-      "packages.vendor.sdk.doc": 2,
-      "packages.vendor.sdk.source": 36,
-      "packages.vendor.sdk.test": 2,
-      "root-infra.archive.working-notes": 2,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
       "root-infra.ci.repository-meta": 7,
       "root-infra.ci.workflows": 4,
       "root-infra.compose.stacks": 2,
-      "root-infra.config.dotfiles": 8,
-      "root-infra.deps.patches": 8,
-      "root-infra.doc.root-notes": 5,
+      "root-infra.config.dotfiles": 7,
+      "root-infra.deps.patches": 5,
+      "root-infra.doc.root-notes": 3,
       "root-infra.doc.self-host": 1,
       "root-infra.editor.workspace": 13,
       "root-infra.examples.starters": 19,
@@ -1603,11 +2162,13 @@
       "root-infra.lockfile.workspace": 1,
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
-      "root-infra.release.changesets": 25,
-      "root-infra.test.harness": 55,
-      "root-infra.test.script-suites": 10,
-      "root-infra.tooling.scripts": 43
+      "root-infra.release.changesets": 15,
+      "root-infra.test.harness": 54,
+      "root-infra.test.script-suites": 28,
+      "root-infra.test.workspace-reachability": 1,
+      "root-infra.tooling.scripts": 62,
+      "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "5ae0048eb5aa5f66475b0460d61bb60e1efa5fbb569a116b31637ad7077a70df"
+    "classificationSha256": "d305b782743a0634745856380c8c282991cf22f77ab59c0ea2315b69f2c00e38"
   }
 }

@@ -1,0 +1,539 @@
+#!/usr/bin/env node
+
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, extname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { isMap, isScalar, parseDocument } from "yaml";
+
+import {
+  CONTROL_PATHS,
+  MANIFEST_PATH as PROTECTED_MANIFEST_PATH,
+  byteCompare,
+  checkManifest as checkProtectedManifest,
+  listProspectiveEntries,
+} from "./protected-paths.mjs";
+
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+export const MANIFEST_PATH = "docs/audits/win-254-evidence-lifecycle.json";
+export const APPROVED_ROOTS = Object.freeze([
+  "ai/",
+  "content/",
+  "design/",
+  "docs/adr/",
+  "docs/audits/",
+  "docs/refactor/",
+  "docs/research/",
+  "examples/",
+  "references/",
+  "rules/",
+]);
+export const STATUSES = Object.freeze(["ACCEPTED", "SUPERSEDED-BY", "POINT-IN-TIME", "DRAFT"]);
+export const CURRENT_STATUSES = Object.freeze(["ACCEPTED"]);
+export const HISTORICAL_STATUSES = Object.freeze(["SUPERSEDED-BY", "POINT-IN-TIME", "DRAFT"]);
+export const POINT_IN_TIME_PATHS = Object.freeze([
+  "docs/audits/M0.5-dependency-sbom.md",
+  "docs/audits/M0.6-admin-access-containment.md",
+  "docs/audits/M0.8-operator-auth-boundary.md",
+  "docs/audits/history/win-252/prompt-caching-progress.md",
+  "docs/audits/history/win-252/server-changes/login-passcode-backdoor.md",
+  "docs/audits/history/win-252/server-changes/prompt-caching-and-billing.md",
+  "docs/audits/history/win-252/stale-changesets/ctx-sdk-context.md",
+  "docs/audits/history/win-252/stale-changesets/eobd-80-platos-client-publish-prep.md",
+  "docs/audits/history/win-252/stale-changesets/eobd-82-platools-sdk-publish-prep.md",
+  "docs/audits/history/win-252/stale-changesets/eobd-85-86-94-platos-client-namespaces.md",
+  "docs/audits/history/win-252/stale-changesets/eobd-89-90-95-97-public-embed.md",
+  "docs/audits/history/win-252/stale-changesets/platos-client-model-routing.md",
+  "docs/audits/history/win-252/stale-changesets/ppr-29-platools-js-strict-context.md",
+  "docs/audits/history/win-252/stale-changesets/ppr-34-platos-client-mvp.md",
+  "docs/audits/history/win-252/stale-changesets/ppr-71-nonce-replay-guard.md",
+  "docs/audits/history/win-252/stale-changesets/sdk-context-pop-bump.md",
+  "docs/audits/sbom/advisory/osv-report.json",
+  "docs/audits/sbom/license-index.json",
+  "docs/refactor/IMPLEMENTATION-STATUS.md",
+  "docs/research/llm-serving-and-caching.md",
+]);
+export const DRAFT_PATH = "docs/refactor/platos-trigger-refactor.md";
+export const DRAFT_PAYLOAD_SHA256 = "5f50180a759f06069df264dd77f806c425170104338a5a8b2582d7ace4f63281";
+const DRAFT_TITLE = "[DRAFT] Historical control-plane refactor proposal";
+export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
+  "docs/audits/M0.2-capability-matrix.json",
+  "docs/audits/M0.2-capability-matrix.md",
+  "docs/audits/M0.4-design-contract-map.json",
+  "docs/audits/M0.4-design-contract-map.md",
+  "docs/audits/M0.8-operator-operations.md",
+  "docs/audits/M0.9-rest-census-independent.json",
+  "docs/audits/M0.9-webapp-bff-matrix.json",
+  "docs/audits/sbom/NON-VACUITY-PROOF.md",
+  "docs/audits/sbom/README.md",
+  "docs/audits/sbom/closure-contract.md",
+  "docs/audits/sbom/closure-receipts.json",
+  "docs/audits/sbom/licence-resolution.json",
+  "docs/audits/sbom/licence-resolution.md",
+  "docs/audits/sbom/license-overlay.json",
+  "docs/audits/sbom/license-policy.json",
+  "docs/audits/sbom/platos-agent.cdx.json",
+  "docs/audits/sbom/platos-webapp.cdx.json",
+  "docs/audits/sbom/platos-webapp.image-inventory.json",
+  "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
+  "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.tgz",
+  "docs/audits/sbom/provenance/trigger-dev-v4.4.4-ref.json",
+  "docs/audits/win-234-route-capability-parity.generated.md",
+  "docs/audits/win-234-route-capability-parity.json",
+  "docs/audits/win-252-root-entry-manifest.json",
+  "docs/audits/win-252-root-entry-manifest.md",
+  "docs/audits/win-253-workspace-reachability.json",
+  "docs/audits/win-253-workspace-reachability.md",
+  "docs/audits/win253-removals/clickhouse-split.json",
+  "docs/audits/win253-removals/clickhouse-split.md",
+  "docs/audits/win253-removals/vendored-build.json",
+  "docs/audits/win253-removals/vendored-build.md",
+]);
+const SAFE_ACCEPTED_ROOTS = Object.freeze(["ai/", "content/", "design/", "docs/adr/", "examples/", "references/"]);
+const AMBIGUOUS_ROOTS = Object.freeze(["docs/audits/", "docs/refactor/", "docs/research/", "rules/"]);
+const HISTORY_ROOT = "docs/audits/history/";
+const EXPLICIT_POINT_IN_TIME_PATHS = Object.freeze(
+  POINT_IN_TIME_PATHS.filter((path) => !path.startsWith(HISTORY_ROOT)),
+);
+
+const GENERATED_EXCLUSIONS = new Set(CONTROL_PATHS);
+const ACCEPTED_BINDING = "current-repository-truth";
+const DRAFT_NOTICE = "not-current-acceptance";
+const AS_OF = "2026-08-30";
+const BASE_FIELDS = ["path", "status", "mode", "sha256"];
+const REGULAR_MODES = new Set(["100644", "100755"]);
+
+function rulesDocument(root) {
+  return JSON.parse(readFileSync(join(root, "rules/manifest.json"), "utf8"));
+}
+
+export function deriveRulesLifecycle(document) {
+  const errors = [];
+  const versions = document?.versions;
+  if (!versions || typeof versions !== "object" || Array.isArray(versions)) {
+    return { accepted: new Set(), supersessions: new Map(), errors: ["versions must be an object"] };
+  }
+  if (typeof document.currentVersion !== "string" || !Object.hasOwn(versions, document.currentVersion)) {
+    return {
+      accepted: new Set(["rules/manifest.json"]),
+      supersessions: new Map(),
+      errors: ["currentVersion must name an exact version in versions"],
+    };
+  }
+
+  const optionsByVersion = new Map();
+  const pathOwners = new Map();
+  for (const [version, value] of Object.entries(versions)) {
+    if (!Array.isArray(value?.options)) {
+      errors.push(`${version}: options must be an array`);
+      continue;
+    }
+    const byName = new Map();
+    for (const [index, option] of value.options.entries()) {
+      if (!option || typeof option.name !== "string" || !option.name || typeof option.path !== "string" || !option.path) {
+        errors.push(`${version}.options[${index}]: name and path must be non-empty strings`);
+        continue;
+      }
+      if (byName.has(option.name)) errors.push(`${version}: duplicate option name ${option.name}`);
+      byName.set(option.name, option.path);
+      const rulePath = `rules/${option.path}`;
+      const owner = pathOwners.get(rulePath);
+      if (owner && owner !== option.name) errors.push(`${rulePath}: option name diverges from ${owner} to ${option.name}`);
+      else pathOwners.set(rulePath, option.name);
+    }
+    optionsByVersion.set(version, byName);
+  }
+
+  const current = optionsByVersion.get(document.currentVersion) ?? new Map();
+  if (current.size === 0) errors.push(`${document.currentVersion}: current version must contain options`);
+  const accepted = new Set(["rules/manifest.json", ...[...current.values()].map((path) => `rules/${path}`)]);
+  const supersessions = new Map();
+  for (const [version, options] of optionsByVersion) {
+    if (version === document.currentVersion) continue;
+    for (const [name, sourcePath] of options) {
+      const currentPath = current.get(name);
+      if (!currentPath) {
+        errors.push(`${version}:${name}: no same-name option exists in currentVersion ${document.currentVersion}`);
+        continue;
+      }
+      const source = `rules/${sourcePath}`;
+      const target = `rules/${currentPath}`;
+      if (source === target) continue;
+      const existing = supersessions.get(source);
+      if (existing && existing !== target) errors.push(`${source}: supersession target diverges between ${existing} and ${target}`);
+      else supersessions.set(source, target);
+    }
+  }
+  return { accepted, supersessions, errors };
+}
+
+const repositoryRulesLifecycle = deriveRulesLifecycle(rulesDocument(repositoryRoot));
+if (repositoryRulesLifecycle.errors.length) {
+  throw new Error(`rules/manifest.json lifecycle is invalid: ${repositoryRulesLifecycle.errors.join("; ")}`);
+}
+export const SUPERSESSIONS = Object.freeze(Object.fromEntries(repositoryRulesLifecycle.supersessions));
+
+function classificationRules(root) {
+  const rules = deriveRulesLifecycle(rulesDocument(root));
+  if (rules.errors.length) throw new Error(`rules/manifest.json lifecycle is invalid: ${rules.errors.join("; ")}`);
+  return [
+    { id: "audit-history-root", status: "POINT-IN-TIME", roots: [HISTORY_ROOT] },
+    { id: "rules-manifest-supersession", status: "SUPERSEDED-BY", paths: [...rules.supersessions.keys()].sort(byteCompare) },
+    { id: "point-in-time-exact-pins", status: "POINT-IN-TIME", paths: EXPLICIT_POINT_IN_TIME_PATHS },
+    { id: "draft-exact-pin", status: "DRAFT", paths: [DRAFT_PATH] },
+    { id: "accepted-ambiguous-exact-pins", status: "ACCEPTED", paths: EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS },
+    { id: "rules-manifest-current-options", status: "ACCEPTED", paths: [...rules.accepted].sort(byteCompare) },
+    { id: "accepted-mechanically-current-roots", status: "ACCEPTED", roots: SAFE_ACCEPTED_ROOTS },
+  ];
+}
+
+export const CLASSIFICATION_RULES = Object.freeze(classificationRules(repositoryRoot));
+
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function evidencePath(path) {
+  return APPROVED_ROOTS.some((root) => path.startsWith(root)) && !GENERATED_EXCLUSIONS.has(path);
+}
+
+function pointInTimeFields(path, root) {
+  if (path.startsWith("docs/audits/history/")) {
+    return {
+      sourceSnapshot: "repository history retained at its original path",
+      baseline: "historical snapshot; not current product acceptance",
+      date: AS_OF,
+    };
+  }
+  if (path === "docs/audits/sbom/advisory/osv-report.json") {
+    const report = JSON.parse(readFileSync(join(root, path), "utf8"));
+    return {
+      sourceSnapshot: "OSV advisory response recorded by scripts/audit-advisory.mjs",
+      baseline: "network advisory snapshot; current dependency truth is the checked lock/image inventory",
+      date: report.scannedAt.slice(0, 10),
+    };
+  }
+  if (path === "docs/audits/sbom/license-index.json") {
+    return {
+      sourceSnapshot: "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
+      baseline: "point-in-time registry metadata baseline; current shipping membership is checked separately",
+      date: AS_OF,
+    };
+  }
+  return {
+    sourceSnapshot: "repository report captured for its named milestone or research baseline",
+    baseline: "mixed or historical report; current acceptance is provided by executable checked evidence",
+    date: AS_OF,
+  };
+}
+
+export function classifyLifecyclePath(path, root = repositoryRoot) {
+  const rules = deriveRulesLifecycle(rulesDocument(root));
+  if (rules.errors.length) throw new Error(`rules/manifest.json lifecycle is invalid: ${rules.errors.join("; ")}`);
+  if (path.startsWith(HISTORY_ROOT)) return { status: "POINT-IN-TIME", ...pointInTimeFields(path, root) };
+  if (rules.supersessions.has(path)) {
+    return { status: "SUPERSEDED-BY", target: rules.supersessions.get(path), relationshipSource: "rules/manifest.json" };
+  }
+  if (EXPLICIT_POINT_IN_TIME_PATHS.includes(path)) return { status: "POINT-IN-TIME", ...pointInTimeFields(path, root) };
+  if (path === DRAFT_PATH) return { status: "DRAFT", notice: DRAFT_NOTICE };
+  if (
+    EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS.includes(path) ||
+    rules.accepted.has(path) ||
+    SAFE_ACCEPTED_ROOTS.some((rootPath) => path.startsWith(rootPath))
+  ) return { status: "ACCEPTED", binds: ACCEPTED_BINDING };
+  if (AMBIGUOUS_ROOTS.some((rootPath) => path.startsWith(rootPath))) {
+    throw new Error(`${path}: ambiguous evidence requires an explicit lifecycle classification`);
+  }
+  throw new Error(`${path}: no lifecycle rule matched`);
+}
+
+function historicalBanner(path, status, target) {
+  if (status === "DRAFT") {
+    return "> **Lifecycle: DRAFT.** This proposal is not current acceptance and is not mandatory. Any canonical, locked, or required language below is retained only as historical proposal text.";
+  }
+  if (status === "POINT-IN-TIME") {
+    return "> **Lifecycle: POINT-IN-TIME.** This is a historical snapshot, not current product acceptance. Verify current truth with executable repository evidence.";
+  }
+  const relativeTarget = relative(dirname(path), target).split("\\").join("/");
+  return `> **Lifecycle: SUPERSEDED-BY.** These rules are historical and not current product truth. Use [the current rules](${relativeTarget}).`;
+}
+
+function frontmatterScalar(document, name, path, errors) {
+  if (!isMap(document.contents)) return "";
+  const fields = document.contents.items.filter((item) => isScalar(item.key) && item.key.value === name);
+  if (fields.length !== 1 || !isScalar(fields[0]?.value) || typeof fields[0].value.value !== "string") {
+    errors.push(`${path}: frontmatter ${name} must appear exactly once as a scalar string`);
+    return "";
+  }
+  return fields[0].value.value;
+}
+
+export function draftPayloadBytes(source) {
+  const banner = historicalBanner(DRAFT_PATH, "DRAFT");
+  const envelope = `---\ntitle: "${DRAFT_TITLE}"\nlifecycle: "DRAFT"\n---\n\n${banner}\n\n`;
+  if (!source.startsWith(envelope)) {
+    throw new Error("draft requires the exact reviewed DRAFT lifecycle envelope");
+  }
+  return Buffer.from(source.slice(envelope.length));
+}
+
+export function validateHistoricalDocument(path, lifecycle, source) {
+  if (!HISTORICAL_STATUSES.includes(lifecycle.status) || !new Set([".md", ".mdx"]).has(extname(path).toLowerCase())) return [];
+  const frontmatter = source.match(/^---\s*\n([\s\S]*?)\n---\s*\n/u);
+  if (!frontmatter) return [`${path}: ${lifecycle.status} Markdown/MDX requires lifecycle frontmatter and a visible banner`];
+  const errors = [];
+  const document = parseDocument(frontmatter[1], { uniqueKeys: true, prettyErrors: false });
+  for (const diagnostic of [...document.errors, ...document.warnings]) {
+    errors.push(`${path}: frontmatter YAML is invalid: ${diagnostic.message}`);
+  }
+  if (!isMap(document.contents)) errors.push(`${path}: frontmatter must be a YAML mapping`);
+  const lifecycleValue = frontmatterScalar(document, "lifecycle", path, errors);
+  const title = frontmatterScalar(document, "title", path, errors);
+  if (lifecycleValue !== lifecycle.status) errors.push(`${path}: frontmatter lifecycle must be ${lifecycle.status}`);
+  if (!title.startsWith(`[${lifecycle.status}] `)) {
+    errors.push(`${path}: searchable frontmatter title must start with [${lifecycle.status}]`);
+  }
+  const body = source.slice(frontmatter[0].length).trimStart();
+  const banner = historicalBanner(path, lifecycle.status, lifecycle.target);
+  if (!body.startsWith(`${banner}\n`)) {
+    errors.push(`${path}: first rendered content must be the exact ${lifecycle.status} lifecycle banner`);
+  }
+  if (path === DRAFT_PATH && lifecycle.status === "DRAFT") {
+    try {
+      const payloadHash = createHash("sha256").update(draftPayloadBytes(source)).digest("hex");
+      if (payloadHash !== DRAFT_PAYLOAD_SHA256) errors.push(`${path}: historical draft payload bytes changed`);
+    } catch (error) {
+      errors.push(`${path}: ${error.message}`);
+    }
+  }
+  return errors;
+}
+
+function historicalPresentationErrors(path, lifecycle, root) {
+  return validateHistoricalDocument(path, lifecycle, readFileSync(join(root, path), "utf8"));
+}
+
+function protectedManifest(root) {
+  return JSON.parse(readFileSync(join(root, PROTECTED_MANIFEST_PATH), "utf8"));
+}
+
+function makeEntry(item, root) {
+  if (!REGULAR_MODES.has(item.mode) || !item.stat.isFile() || item.stat.isSymbolicLink()) {
+    throw new Error(`${item.path}: lifecycle evidence must be a regular file`);
+  }
+  const lifecycle = classifyLifecyclePath(item.path, root);
+  const presentationErrors = historicalPresentationErrors(item.path, lifecycle, root);
+  if (presentationErrors.length) throw new Error(presentationErrors.join("; "));
+  const entry = {
+    path: item.path,
+    status: lifecycle.status,
+    mode: item.mode,
+    sha256: sha256(readFileSync(item.absolute)),
+  };
+  if (lifecycle.status === "ACCEPTED") entry.binds = lifecycle.binds;
+  else if (lifecycle.status === "SUPERSEDED-BY") {
+    entry.target = lifecycle.target;
+    entry.relationshipSource = lifecycle.relationshipSource;
+  } else if (lifecycle.status === "POINT-IN-TIME") {
+    entry.sourceSnapshot = lifecycle.sourceSnapshot;
+    entry.baseline = lifecycle.baseline;
+    entry.date = lifecycle.date;
+  } else entry.notice = lifecycle.notice;
+  return entry;
+}
+
+export function buildManifest(root = repositoryRoot) {
+  const protectedPaths = protectedManifest(root);
+  const protectedSet = new Set(protectedPaths.entries.map((entry) => entry.path));
+  const entries = listProspectiveEntries(root)
+    .filter((item) => evidencePath(item.path))
+    .map((item) => {
+      if (!protectedSet.has(item.path)) throw new Error(`${item.path}: lifecycle protection must be derived from the anchored protected-path inventory`);
+      return makeEntry(item, root);
+    })
+    .sort((left, right) => byteCompare(left.path, right.path));
+  const counts = Object.fromEntries(STATUSES.map((status) => [status, entries.filter((entry) => entry.status === status).length]));
+  return {
+    $schema: "platos.evidence-lifecycle/v1",
+    generatedBy: "node scripts/evidence-lifecycle.mjs write",
+    asOf: AS_OF,
+    approvedRoots: APPROVED_ROOTS,
+    generatedExclusions: CONTROL_PATHS,
+    classificationRules: classificationRules(root),
+    protectedPathSetSha256: protectedPaths.pathSetSha256,
+    currentStatuses: CURRENT_STATUSES,
+    historicalStatuses: HISTORICAL_STATUSES,
+    openQuestions: [],
+    entryCount: entries.length,
+    counts,
+    entries,
+  };
+}
+
+function exactKeys(value, expected) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) &&
+    JSON.stringify(Object.keys(value)) === JSON.stringify(expected);
+}
+
+function validDate(value, now = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value ?? "")) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value && parsed.valueOf() <= now.valueOf();
+}
+
+function entryFields(status) {
+  if (status === "ACCEPTED") return [...BASE_FIELDS, "binds"];
+  if (status === "SUPERSEDED-BY") return [...BASE_FIELDS, "target", "relationshipSource"];
+  if (status === "POINT-IN-TIME") return [...BASE_FIELDS, "sourceSnapshot", "baseline", "date"];
+  if (status === "DRAFT") return [...BASE_FIELDS, "notice"];
+  return BASE_FIELDS;
+}
+
+export function validateRulesDocument(document, expectedSupersessions = SUPERSESSIONS) {
+  const lifecycle = deriveRulesLifecycle(document);
+  const errors = [...lifecycle.errors];
+  const actual = Object.fromEntries([...lifecycle.supersessions].sort(([left], [right]) => byteCompare(left, right)));
+  const expected = Object.fromEntries(Object.entries(expectedSupersessions).sort(([left], [right]) => byteCompare(left, right)));
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    errors.push("currentVersion and same-name option continuity diverge from the accepted supersession graph");
+  }
+  for (const [source, target] of lifecycle.supersessions) {
+    if (!lifecycle.accepted.has(target)) errors.push(`${source}: supersession target is not a currentVersion option: ${target}`);
+  }
+  return errors;
+}
+
+function validateRulesManifest(root, errors) {
+  errors.push(...validateRulesDocument(rulesDocument(root)).map((error) => `rules/manifest.json: ${error}`));
+}
+
+export function validateManifest(manifest, root = repositoryRoot, options = {}) {
+  const errors = [];
+  const topFields = ["$schema", "generatedBy", "asOf", "approvedRoots", "generatedExclusions", "classificationRules", "protectedPathSetSha256", "currentStatuses", "historicalStatuses", "openQuestions", "entryCount", "counts", "entries"];
+  if (!exactKeys(manifest, topFields)) errors.push(`manifest fields must be exactly ${topFields.join(", ")}`);
+  if (manifest?.asOf !== AS_OF || !validDate(manifest?.asOf, options.now ?? new Date())) errors.push("asOf must be the exact valid non-future acceptance date");
+  if (JSON.stringify(manifest?.approvedRoots) !== JSON.stringify(APPROVED_ROOTS)) errors.push("approvedRoots must be exact");
+  if (JSON.stringify(manifest?.generatedExclusions) !== JSON.stringify(CONTROL_PATHS)) errors.push("generatedExclusions must contain only the exact non-recursive lifecycle controls");
+  let expectedClassificationRules = CLASSIFICATION_RULES;
+  try {
+    expectedClassificationRules = classificationRules(root);
+  } catch (error) {
+    errors.push(error.message);
+  }
+  if (JSON.stringify(manifest?.classificationRules) !== JSON.stringify(expectedClassificationRules)) errors.push("classificationRules or first-match precedence changed");
+  if (JSON.stringify(manifest?.currentStatuses) !== JSON.stringify(CURRENT_STATUSES)) errors.push("only ACCEPTED may be current");
+  if (JSON.stringify(manifest?.historicalStatuses) !== JSON.stringify(HISTORICAL_STATUSES)) errors.push("historicalStatuses must be exact");
+  if (JSON.stringify(manifest?.openQuestions) !== "[]") errors.push("openQuestions must remain an explicit empty accepted list");
+  if (!Array.isArray(manifest?.entries)) return [...errors, "entries must be an array"];
+
+  let protectedPaths;
+  try {
+    protectedPaths = protectedManifest(root);
+    const protectionErrors = checkProtectedManifest(protectedPaths, root);
+    if (protectionErrors.length) errors.push(...protectionErrors.map((error) => `protected-path prerequisite: ${error}`));
+    if (manifest.protectedPathSetSha256 !== protectedPaths.pathSetSha256) errors.push("protectedPathSetSha256 is stale");
+  } catch (error) {
+    errors.push(`protected-path prerequisite cannot be read: ${error.message}`);
+    protectedPaths = { entries: [] };
+  }
+  const protectedSet = new Set(protectedPaths.entries.map((entry) => entry.path));
+  const paths = [];
+  const byPath = new Map();
+  for (const [index, entry] of manifest.entries.entries()) {
+    const status = entry?.status;
+    if (!STATUSES.includes(status)) errors.push(`entries[${index}].status is unknown: ${status}`);
+    if (!exactKeys(entry, entryFields(status))) errors.push(`entries[${index}] fields are invalid for ${status}`);
+    if (typeof entry?.path !== "string" || !evidencePath(entry.path)) errors.push(`entries[${index}].path is outside approved evidence roots`);
+    else if (!protectedSet.has(entry.path)) errors.push(`${entry.path}: lifecycle protection is not present in the anchored protected inventory`);
+    if (!REGULAR_MODES.has(entry?.mode)) errors.push(`entries[${index}].mode is invalid`);
+    if (!/^[0-9a-f]{64}$/u.test(entry?.sha256 ?? "")) errors.push(`entries[${index}].sha256 is invalid`);
+    if (status === "ACCEPTED" && entry.binds !== ACCEPTED_BINDING) errors.push(`${entry.path}: ACCEPTED must bind current repository truth`);
+    if (status === "SUPERSEDED-BY") {
+      if (typeof entry.target !== "string" || entry.target === entry.path || !evidencePath(entry.target) || entry.target.includes("..")) errors.push(`${entry.path}: SUPERSEDED-BY requires a distinct canonical target`);
+      if (entry.relationshipSource !== "rules/manifest.json") errors.push(`${entry.path}: SUPERSEDED-BY relationship source must be rules/manifest.json`);
+    }
+    if (status === "POINT-IN-TIME") {
+      if (typeof entry.sourceSnapshot !== "string" || !entry.sourceSnapshot.trim()) errors.push(`${entry.path}: POINT-IN-TIME requires sourceSnapshot`);
+      if (typeof entry.baseline !== "string" || !entry.baseline.trim() || !/snapshot|baseline|historical|current dependency truth|current acceptance/iu.test(entry.baseline)) errors.push(`${entry.path}: POINT-IN-TIME requires explicit baseline semantics`);
+      if (!validDate(entry.date, options.now ?? new Date())) errors.push(`${entry.path}: POINT-IN-TIME date is invalid or future`);
+    }
+    if (status === "DRAFT" && entry.notice !== DRAFT_NOTICE) errors.push(`${entry.path}: DRAFT must say it is not current acceptance`);
+    if (HISTORICAL_STATUSES.includes(status) && typeof entry?.path === "string" && existsSync(join(root, entry.path))) {
+      errors.push(...historicalPresentationErrors(entry.path, entry, root));
+    }
+    paths.push(entry?.path);
+    if (typeof entry?.path === "string" && !byPath.has(entry.path)) byPath.set(entry.path, entry);
+  }
+  if (new Set(paths).size !== paths.length) errors.push("lifecycle paths must be classified exactly once");
+  if (JSON.stringify(paths) !== JSON.stringify([...paths].sort(byteCompare))) errors.push("lifecycle paths are not UTF-8 byte sorted");
+  if (manifest.entryCount !== manifest.entries.length) errors.push("entryCount does not match entries length");
+  if (!exactKeys(manifest?.counts, STATUSES)) errors.push("counts fields must exactly match the closed status vocabulary");
+  for (const status of STATUSES) if (manifest?.counts?.[status] !== manifest.entries.filter((entry) => entry.status === status).length) errors.push(`count for ${status} is stale`);
+
+  for (const entry of manifest.entries) {
+    if (entry.status !== "SUPERSEDED-BY") continue;
+    const target = byPath.get(entry.target);
+    if (!target) errors.push(`${entry.path}: supersession target is missing or case-mismatched: ${entry.target}`);
+    else if (target.status !== "ACCEPTED") errors.push(`${entry.path}: supersession chain must terminate in ACCEPTED, not ${target.status}`);
+  }
+  for (const entry of manifest.entries) {
+    const seen = new Set();
+    let cursor = entry;
+    while (cursor?.status === "SUPERSEDED-BY") {
+      if (seen.has(cursor.path)) {
+        errors.push(`${entry.path}: supersession cycle detected`);
+        break;
+      }
+      seen.add(cursor.path);
+      cursor = byPath.get(cursor.target);
+    }
+  }
+  try {
+    validateRulesManifest(root, errors);
+  } catch (error) {
+    errors.push(`rules/manifest.json cannot establish supersessions: ${error.message}`);
+  }
+
+  let expected;
+  try {
+    expected = buildManifest(root);
+  } catch (error) {
+    errors.push(error.message);
+    return errors;
+  }
+  if (JSON.stringify(manifest) !== JSON.stringify(expected)) errors.push("manifest has missing, extra, stale-hash, stale-mode, order, count, or lifecycle classification drift");
+  return errors;
+}
+
+function main(argv) {
+  const [command = "check"] = argv;
+  if (command === "write") {
+    const manifest = buildManifest(repositoryRoot);
+    writeFileSync(join(repositoryRoot, MANIFEST_PATH), `${JSON.stringify(manifest, null, 2)}\n`);
+    console.log(`evidence-lifecycle: wrote ${manifest.entryCount} entries ${JSON.stringify(manifest.counts)}`);
+    return;
+  }
+  if (command !== "check") {
+    console.error("usage: node scripts/evidence-lifecycle.mjs <write|check>");
+    process.exitCode = 1;
+    return;
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(join(repositoryRoot, MANIFEST_PATH), "utf8"));
+  } catch (error) {
+    console.error(`evidence-lifecycle: cannot read manifest (${error.message})`);
+    process.exitCode = 1;
+    return;
+  }
+  const errors = validateManifest(manifest, repositoryRoot);
+  if (errors.length) {
+    console.error(`evidence-lifecycle: ${errors.length} error(s)`);
+    for (const error of errors) console.error(`- ${error}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`evidence-lifecycle: validated ${manifest.entryCount} entries ${JSON.stringify(manifest.counts)}`);
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main(process.argv.slice(2));

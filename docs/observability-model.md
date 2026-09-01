@@ -394,7 +394,7 @@ interface ObservabilitySink {
 }
 ```
 
-Nothing else in the agent holds a ClickHouse client for observability. In particular this does **not** go through `@internal/clickhouse`: every one of that package's consumers is Trigger's task-run and run-replication machinery, and importing it would tie this projection's availability to a pipeline that is currently broken.
+Nothing else in the agent holds a ClickHouse client for observability. The inherited `@internal/clickhouse` npm implementation had no Platos consumer and was removed under WIN-253 together with its private parser/replication cluster. The production migration directory was explicitly retained: shipping images still copy `internal-packages/clickhouse/schema`, and this sink continues to own the direct Platos observability protocol boundary.
 
 ### Where the outbox row is written
 

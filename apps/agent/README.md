@@ -5,16 +5,19 @@ The AI agent runtime for the Platos platform. Handles agent orchestration, tool 
 ## Quick Start
 
 ```bash
-# Prerequisites: PostgreSQL + Redis running (via docker compose)
+# Start the supporting stores from the repository root
 cd /path/to/platos
-docker compose -f docker/docker-compose.yml up -d database redis
+cp .env.example .env
+# Before Compose model evaluation, replace every required development sentinel
+# documented in content/docs/self-hosting.md.
+docker compose -f docker-compose.platos.yml up -d postgres redis clickhouse minio
 
 # Run migrations
 pnpm run db:migrate
 
 # Start the agent service
 cd apps/agent
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres" \
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/platos_control" \
 REDIS_URL="redis://localhost:6379" \
 PLATOS_TEST_MODE="true" \
 node dist/main.js
