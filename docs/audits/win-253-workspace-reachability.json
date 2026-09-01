@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "74b6c2e378ec82ac0f279b2432abf8953c0f2c9107ad66754eaf9b66cbc629ca",
+  "evidenceSha256": "ae020ac862c9519aa4ce87ac9901488b313b78acd0d3f924c4e83c8d0e87f532",
   "generatedOwnership": {
     "explicitHeaderFileCount": 95,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3597ceefb7c8ab4bd3e6b8f4e5d74e8b924e2d628ab294068e503fe3e1ebaa9f",
+    "aggregateSha256": "c421c1e66bd5e15fdf032349808128f4afa977e7d89992011cd2a1e7572be2cd",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -14557,7 +14557,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "2d85482cfcf55a85c033a4a0044f55169ea99ea5f78aacb05426711fb574a14d"
+        "sha256": "5cacbdae613470b923eac368d03a2ba9c6cff422b1ed7f7874c84f28bc8fd406"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -31578,7 +31578,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 577
             }
           ],
           "reversePaths": [
@@ -31603,7 +31603,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "877290daba1bf08893b55434d2f62d2898b2be24e1c5da0d7d2703cff94014fc",
+      "evidenceSha256": "9938a2ad07adbf5e88dced4559b76b241fe7a4722e558489559dec86044015ca",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -32734,7 +32734,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 569
+              "line": 576
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32959,7 +32959,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "85a1f9ddb10d3c9bb5b93e93281b4e5c34288333154c76930cc09434d73a0ddb",
+      "evidenceSha256": "d4d9e8094d60a0579cbdf1144c56147d4e94554bec25971536386b7a7b3381c5",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -58656,6 +58656,11 @@
               "line": 96
             },
             {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 524
+            },
+            {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
               "line": 467
@@ -58843,6 +58848,10 @@
               "scripts/ci-policy.test.mjs"
             ],
             [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ],
+            [
               "scripts/workspace-reachability.test.mjs",
               "scripts/workspace-reachability.test.mjs"
             ]
@@ -58893,6 +58902,7 @@
             "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/ci-policy.test.mjs",
+            "scripts/v1-ledger.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
         }
@@ -59638,7 +59648,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "23f5a0c4ee869f05418558465e3a6d0553608b7b7f8a45b108f2b874195c742d",
+      "evidenceSha256": "519db47a92bea1c6a029783f3b1cb106be8847910a361764672cfd8bf893a8a9",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
