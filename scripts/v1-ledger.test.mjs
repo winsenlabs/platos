@@ -518,17 +518,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "apps-webapp": 0,
     "apps-core-api": 0,
     "apps-mcp-stdio": 0,
-    // WIN-252 owner decision adds packages/core/NOTICE: the upstream MIT
+    // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
     // attribution, kept out of LICENSE so every publishable package's LICENSE
-    // stays byte-identical to the repository Apache-2.0 text.
-    packages: 1,
+    // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
+    // added 206 files making packages/kernel and four contexts real
+    // (identity-access, secrets, tenancy, files) — domain, application, ports,
+    // contracts, in-memory use cases and test builders.
+    packages: 207,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     "docs-content": 9,
-    "root-infra": 10,
+    // 10 -> 15. WIN-256 adds five root-infra files: the ADR §5.3 kernel-content
+    // assertion and its tests, the §5.2 ownership map and sole-writer lint and
+    // its tests.
+    "root-infra": 15,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 20);
+  // 20 -> 231: 207 packages + 9 docs-content + 15 root-infra.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 231);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -537,7 +544,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 20
+    rulesDocument.baseline.totalFiles + 231
   );
 });
 

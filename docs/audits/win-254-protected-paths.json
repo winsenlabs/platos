@@ -3873,7 +3873,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "2d85482cfcf55a85c033a4a0044f55169ea99ea5f78aacb05426711fb574a14d"
+      "sha256": "5cacbdae613470b923eac368d03a2ba9c6cff422b1ed7f7874c84f28bc8fd406"
     },
     {
       "path": "scripts/verify-sbom-nonvacuity.mjs",
