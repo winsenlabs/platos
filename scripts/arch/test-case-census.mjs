@@ -99,8 +99,26 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * `files` stays at the 134 that closed MAJOR 2.
+ *
+ * EVENTING DELTA — 0 -> 14 files / 0 -> 142 cases, 1000 -> 1142 total. WIN-256
+ * made the seventeenth context real: `NotificationRule`, the outbox drain that
+ * evaluates it, and the `NotificationRequested` it emits. The suite is weighted
+ * towards the rules lifted out of
+ * `apps/agent/src/mcp-platform/events.service.ts`, because those are the ones a
+ * reader would "tidy up" without realising they are load-bearing — the event
+ * matcher's bare-prefix arm, its segment anchor, "an empty eventTypes array
+ * matches nothing", the three-attempt retry ceiling, and the weak legacy email
+ * rule.
+ *
+ * The eventing and providers axes are disjoint, and so are the two apps
+ * WIN-297 adopted, so the integrated total is the SUM: 717 + 283 + 142 = 1142.
+ * A later commit on this branch moves the eventing row again, to the 147 that
+ * the 2026-09-03 verification's five new cases produce; its delta is documented
+ * where it happens.
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -119,7 +137,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
-  "packages/contexts/eventing": { files: 0, cases: 0 },
+  "packages/contexts/eventing": { files: 14, cases: 142 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
@@ -142,7 +160,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1142;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
