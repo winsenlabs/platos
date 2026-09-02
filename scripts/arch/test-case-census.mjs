@@ -101,6 +101,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * WIN-256 DELTA — the `memory` context (ADR M0.3 §1 context 8). One row moves:
+ *
+ *   memory 0 -> 28 files, 0 -> 590 cases; 1000 -> 1590 total. 15 domain suites,
+ *   12 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 590 is a statically exact count, and
+ *   `pnpm --filter @platos/context-memory exec vitest run` prints the same pair
+ *   — "Test Files 28 passed (28) / Tests 590 passed (590)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Verified as a live control: deleting one `it()` from
+ * `packages/contexts/memory/domain/fusion.test.ts` leaves the file count at 116
+ * and turns the case count red, which is the drift a file-count pin cannot see.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -124,7 +137,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
-  "packages/contexts/memory": { files: 0, cases: 0 },
+  "packages/contexts/memory": { files: 28, cases: 590 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
@@ -142,7 +155,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1590;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

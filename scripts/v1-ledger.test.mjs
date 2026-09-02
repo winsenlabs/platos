@@ -541,7 +541,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +77: the same issue makes `memory` real (ADR M0.3 §1 context 8) — 17
+    // domain modules and 15 domain suites, 17 application modules and 12
+    // application suites, 5 ports, 8 in-memory doubles and their barrel, and
+    // the contracts barrel with its suite. The 77 are likewise NET of the 4
+    // generated placeholders adoption released and this code replaced in place.
+    packages: 349,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -620,7 +626,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  // MEMORY REBASE DELTA — 346 -> 423, as ONE reconciliation. Adopting `memory`
+  // (ADR M0.3 section 1 context 8) adds +77 to `packages` alone: 272 -> 349,
+  // exactly the files enumerated above. It adds NO root-infra file — adoption
+  // is one line appended to the generator's ADOPTED_PROJECTS list, in a file
+  // that already existed, the same way adopting `providers` was — and no
+  // docs-content file. So 346 + 77 = 423, and every other area is unmoved.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 423);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +641,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration plus the memory rebase: the same +20 -> +423 combined
+    // delta as the totalFiles assertion above (WIN-299 +5, WIN-284 +19,
+    // WIN-256 +278, WIN-297 +24, memory +77); this one re-derives it by
+    // summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 423
   );
 });
 

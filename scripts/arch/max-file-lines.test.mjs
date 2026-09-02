@@ -85,7 +85,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +77: the same issue makes `memory` real. The budget bit once again, at 446
+  // effective lines, and the answer was the same one — the module was the
+  // knowledge-graph suite covering both the write use cases and the read ones,
+  // and it split into `knowledge-graph.test.ts` and `graph-queries.test.ts`
+  // along exactly the seam the two modules under test already had. Every one of
+  // the 405 is inside the budget and none is inside the warning band.
+  assert.equal(result.fileCount, 405);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

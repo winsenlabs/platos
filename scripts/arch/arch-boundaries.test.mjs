@@ -251,7 +251,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    //   397 -> 474  +77: this branch makes `memory` real (ADR M0.3 section 1
+    //               context 8). Its own row states the boundary this gate now
+    //               polices for the first time — extraction is initiated on a
+    //               `TurnFinalized` event and the context "never imports
+    //               conversations" — so rule (d) is judging an ABSENCE rather
+    //               than an edge. Its two permitted peers, `tenancy` and
+    //               `providers`, are both imported and both on its allow-list;
+    //               `conversations` appears nowhere in the tree. No rule
+    //               needed changing.
+    assert.equal(result.fileCount, 474, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
