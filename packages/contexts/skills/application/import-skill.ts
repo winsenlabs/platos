@@ -4,16 +4,27 @@
 //
 //   1. ADMIT the submitted URL — parseable, and http or https only.
 //   2. REWRITE it to the raw source address.
-//   3. FETCH through the port, which re-checks the ADDRESS of every hop.
+//   3. FETCH through the port, whose contract OBLIGES the adapter to check the
+//      ADDRESS of every hop.
 //   4. PARSE the body, which is untrusted text.
 //   5. REGISTER, as `community` and never as official.
 //
-// STEP 3 IS WHERE THE ADDRESS CHECK LIVES, AND IT HAS TO BE THERE. The rewrite
-// in step 2 can change the host, so a check performed here on the submitted URL
-// would not be a check on what gets fetched, and a redirect would move it again
-// after that. Resolving names to addresses is I/O; a pure layer cannot do it and
-// must not pretend to. What this layer guarantees instead is that NO OTHER PATH
-// reaches the fetcher — every import goes through this function.
+// STEP 3 IS WHERE THE ADDRESS CHECK BELONGS, AND IT CANNOT BELONG HERE. The
+// rewrite in step 2 can change the host, so a check performed here on the
+// submitted URL would not be a check on what gets fetched, and a redirect would
+// move it again after that. Resolving names to addresses is I/O; a pure layer
+// cannot do it and must not pretend to. What this layer guarantees instead is
+// that NO OTHER PATH reaches the fetcher — every import goes through this
+// function — and that the URL handed over is the rewritten one.
+//
+// SAY IT PLAINLY: NO ADAPTER MEETS THAT OBLIGATION YET. The only
+// `SkillSourceFetcher` in this repository is the in-memory double under
+// `testing/`, which resolves nothing, so a pasted `http://169.254.169.254/…`
+// reaches step 3 unrefused. Steps 1, 2, 4 and 5 are enforced code; step 3 is a
+// written contract awaiting an adapter, and that adapter must land with a
+// control proving it rejects a name that resolves to a forbidden address.
+// `domain/import-source.ts` carries the same disclosure and the reason the
+// submitted URL does not need its own check.
 //
 // AN IMPORTED SKILL IS `community`. It is somebody else's code arriving from
 // somewhere else. It is not `custom` (which means the tenant wrote it) and it

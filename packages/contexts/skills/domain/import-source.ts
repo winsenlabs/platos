@@ -8,14 +8,46 @@
 //   github.com/<o>/<r>/blob/<ref>/<path>  -> raw.githubusercontent.com/<o>/<r>/<ref>/<path>
 //   gist.github.com/<user>/<id>           -> gist.githubusercontent.com/<user>/<id>/raw
 //
-// THE REWRITE IS A SECURITY BOUNDARY, NOT A CONVENIENCE. It changes the HOST,
-// which means a URL an operator approved is not the URL that gets fetched. The
-// address check therefore has to run on BOTH — the submitted URL and the
-// rewritten one — and the use case that owns the fetch does exactly that. This
-// module is the pure half: protocol admission and the rewrite itself. The half
-// that resolves a hostname to an address, and refuses loopback, private,
-// link-local and metadata ranges, is I/O and lives behind the
-// `SkillSourceFetcher` port.
+// THE REWRITE CHANGES THE HOST, so a URL an operator approved is not always the
+// URL that gets fetched. What follows is what this module enforces and what it
+// does NOT — stated separately, because an earlier version of this header
+// claimed an address check on the submitted URL that no code here, and no code
+// downstream, performs.
+//
+// WHAT THIS MODULE ENFORCES. Two things, both pure:
+//
+//   PROTOCOL ADMISSION. `admitImportUrl` refuses anything that is not http or
+//   https, and anything unparseable, before the rest of the pipeline sees it.
+//
+//   HOST CLOSURE. The rewrite cannot send a fetch to a host the operator did
+//   not already name. Every rule is guarded by exact `hostname` equality, and
+//   each produces either the SAME host (`claude.ai`, carried over as
+//   `url.origin`) or one of two hardcoded literals (`raw.githubusercontent.com`,
+//   `gist.githubusercontent.com`). The attacker-influenced parts of a URL —
+//   path, query, userinfo — are only ever interpolated AFTER the authority has
+//   been terminated, so they cannot reach the host position. A URL matching no
+//   rule is returned unchanged. Therefore the fetched host is always either the
+//   submitted host or one of those two constants.
+//
+// WHAT THIS MODULE DOES NOT ENFORCE. There is no address check here, and
+// admission is not safety: `http://169.254.169.254/…`, `http://127.0.0.1/…` and
+// `http://10.0.0.5/…` are all admitted by this module and pass through the
+// rewrite untouched. Resolving a hostname to an address and refusing loopback,
+// private, link-local, unique-local and metadata ranges is I/O. It is stated as
+// clause 1 of the `SkillSourceFetcher` port contract
+// (`application/ports/skill-source-fetcher.ts`), to be applied to the URL that
+// is ACTUALLY FETCHED — the rewritten one — and to every redirect hop under
+// clause 2. It is NOT applied to the submitted URL, and does not need to be: by
+// HOST CLOSURE, a submitted host that differs from the fetched host is one of
+// the two constants above, and any attacker-chosen host IS the fetched host.
+//
+// AND NO ADAPTER SATISFIES THAT PORT YET. The only `SkillSourceFetcher` in this
+// repository is the in-memory double under `application/testing/`, which
+// resolves nothing. The refusal of private and metadata addresses is an
+// obligation this context has WRITTEN DOWN, not one it has MET. Read the port
+// contract as a specification for the adapter still to be built — one that must
+// arrive with a control proving it rejects a name that resolves to a forbidden
+// address — and not as evidence that the boundary is enforced today.
 //
 // Redirects are the same problem one hop later: a public host answering with a
 // 302 to an internal address defeats a check that only ran on the first URL. The

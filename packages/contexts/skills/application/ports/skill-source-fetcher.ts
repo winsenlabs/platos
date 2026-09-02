@@ -5,6 +5,14 @@
 // the ranges that must never be reached, following a redirect, and stopping a
 // body that will not stop arriving.
 //
+// NOTHING IN THIS REPOSITORY IMPLEMENTS THIS PORT YET. The only implementation
+// is the in-memory double under `application/testing/`, which serves a fixed map
+// and resolves no names. The clauses below are a SPECIFICATION for the adapter
+// still to be written, not a description of a boundary that is being enforced —
+// read them that way, and do not cite them as evidence of protection. The
+// adapter that lands must arrive with a control proving clause 1 rejects a name
+// that resolves to a forbidden address.
+//
 // THE CONTRACT AN IMPLEMENTATION MUST HONOUR, in full, because every clause is
 // load-bearing and none of it is verifiable from this side:
 //
