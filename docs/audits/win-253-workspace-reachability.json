@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "948bd46b15f7da6d61da5c7b61a4ff53237fd5e033cee6e977f997afd0480c18",
+  "evidenceSha256": "5a73b7e81679db53c205bc30778058a4d4c7266b75fbe4c9095dcc0f93c074ca",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8d5e60b8cdf43475af38a163d3a74bef42f20300b7f75e9b9e7f0b5301934499",
+    "aggregateSha256": "3beae0a51b963a707de00b6a6b298d9409f31c230410048232ea41671097fd31",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "4efddd6c5e2aa139b82ab4337ccbe13a10f78631af087705f5ea1108daf7654a"
+        "sha256": "52ab06f1413f5a314130e155b22180f19ddaf0c94f89ebd6c4829c09203b6c54"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -3944,8 +3944,16 @@
         "sha256": "649a7e7cb30ad34b4eadc95d7e64d6d4446f8a5fccef03519a96632605d0dcf0"
       },
       {
+        "path": "docs/audits/sbom/advisory/README.md",
+        "sha256": "b8385585cec6f5cea6c09a00be1881142e63c77061aa23b5c73b1d154f7df344"
+      },
+      {
+        "path": "docs/audits/sbom/advisory/advisory-policy.json",
+        "sha256": "2e2d3c7fa59b7f5e34d96dcd124f27fe3bf3147cfb4d906f239c69ddaa5f7bad"
+      },
+      {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "d5403af8a239e5f9f748fd3c39375fe54ec2fdf44b461e8aca5874a48ea17930"
+        "sha256": "300e209a9d2941a7553124afecc8140845fd307751d5f4555781bb86a11691f2"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -3953,11 +3961,11 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "2ed4df6d173b771c7d37bfbcc4151a591c88409655db320ad2d12b93e2760216"
+        "sha256": "591268f58a75a46a3d566494225e9c154af6de14c8f6bd4c1ca4d1e8b4af52b3"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
-        "sha256": "4dcd03792862d3fe16691cb38c9f0e5c560ca6780db61c9a29bed5f0548caa1a"
+        "sha256": "11201695bda81a732b9c34eec730835af383792e7be0427eeb3021b596494b6d"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.md",
@@ -3977,7 +3985,7 @@
       },
       {
         "path": "docs/audits/sbom/platos-agent.cdx.json",
-        "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108"
+        "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe"
       },
       {
         "path": "docs/audits/sbom/platos-webapp.cdx.json",
@@ -4017,7 +4025,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "eecbdffd74c9993d82aeb47d4138a1c305442a3c101be790121662c7c198af7c"
+        "sha256": "719e02224feed999e606c2564626585401f2e19d4278acc0253a8dc6bebecb42"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -5941,7 +5949,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "78fee4329bfe68b9f9a9dcfc50421ea5b4fb72c9209787d0516abdf9dbbb6696"
+        "sha256": "6c56e6c2cd019ad8722eb0eb66bbc20e671a39b6a4041ef63125d72d2b394291"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -5961,7 +5969,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "1c1a829c8b4aa34f067218100771a11b6d9c018c36964090a9f65421ab9277d3"
+        "sha256": "ffe2931a696dbbff9c68bad41e65b1f2e6b3e170012ade35af251b020e6c6bed"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -10741,7 +10749,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
+        "sha256": "7c892036117ba0329c89ed9a8e8bc6ff99f6d4aed467219c03ff9737932f61e3"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -13317,7 +13325,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9"
+        "sha256": "21487f276df172fcf605ab63ad3607ad72229c684e2d13c9544f79fbfd0656d7"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -13452,6 +13460,10 @@
         "sha256": "ca921bdfce6a3b6479fa1a2ee8cf534e553001115b06f5bd7fe8b3f6398572be"
       },
       {
+        "path": "scripts/advisory-dispositions.test.mjs",
+        "sha256": "929e6c45eddd5e803e5fd9f62d87ac8379742fa74fc42fc42464b3ffa569e60f"
+      },
+      {
         "path": "scripts/arch/arch-boundaries.mjs",
         "sha256": "9d510fce2686b6a6b37e24ff889a39b817b7fc11d0a7a7d31730201a860ca495"
       },
@@ -13505,7 +13517,7 @@
       },
       {
         "path": "scripts/audit-advisory.mjs",
-        "sha256": "d2c5272dd4df69989db750fdf3e80cacb221610042ff95fe8c47b37985f0035b"
+        "sha256": "c8d3965ada89626d3ea3ebfd806c7286bb735e949545178ac8da222a6c2dacb3"
       },
       {
         "path": "scripts/audit-advisory.test.mjs",
@@ -13549,7 +13561,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "d5d874197e7cc703277ad884312d0db85d23e0f17390b0077017ab20b74d2dcf"
+        "sha256": "3cbb297e7540984623c132a679264aca1b878be74fa17950a5f12bb83606ae40"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -13589,15 +13601,15 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "694722b6e62b63ea83185b623978ced3286999c4e9fb38bf7fde6551fc040c4a"
+        "sha256": "3a5ee2069c53bc648850ce290cd4c2a76d6f2f161ddc4b9f461fd2905448f6b9"
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "c8862bcf4bd68a104ee5e928c304798c4fd5656efa830f95d287b5904f473b58"
+        "sha256": "ae02d7411aa49f9ceb543c956eb1fa3a18fe276f94f7a977fa520e9d2b1fb4c5"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "a071b397e2bd4b6d8126af5f7d203206afa495ea140e36233a513427fea8faac"
+        "sha256": "7c80bd8945e6db9a8058667b7d9377a129c701d128f10dade85d2d12911122f7"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -13624,6 +13636,10 @@
         "sha256": "a9cbdffd32df0dcc5ab1b20bb8c1180b55626a79ef6b7c4f6c7327c657f0729e"
       },
       {
+        "path": "scripts/lib/advisory-dispositions.mjs",
+        "sha256": "b7c8854b95e0ff2955c0c784c05a4928f1791627c8e3258581060c447f43bf39"
+      },
+      {
         "path": "scripts/lib/pnpm-closure.mjs",
         "sha256": "a5a4ba88d6aeb00d2a62c7fa1ff0a80c1433190bd22cf92dee32fd184c89ecf1"
       },
@@ -13641,7 +13657,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "860c3943d5ddb6a684b70e28a7e8f75bd83b15b06671f3268f14c3523f8b95ab"
+        "sha256": "bf43026e1f9b958b09dc9716d21cd6f196fec3bd03d5d7fbc97889a330ed707d"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -13713,7 +13729,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "2d85482cfcf55a85c033a4a0044f55169ea99ea5f78aacb05426711fb574a14d"
+        "sha256": "7accccfc69d7cba214f402ae95d69d9f316601f6c5ea7732f1e41d1395cd3cc0"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -13722,6 +13738,10 @@
       {
         "path": "scripts/vendored-build-audit.test.mjs",
         "sha256": "4587e6fd32b7f855dd526dfd2d594630b579cb9f97ca35a99715f86ad488f078"
+      },
+      {
+        "path": "scripts/verify-advisory-nonvacuity.mjs",
+        "sha256": "6274797e9dfd86bb3ca78ef124a89cb47244fbba0591a919dbee74a90a910721"
       },
       {
         "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -13757,7 +13777,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "97bef553b66abc8ccee7fd337d54272410f9869ef96ae76f6f0559f9f6eea6cd"
+        "sha256": "b650770cd840983fdbe1f9548ac58e95a61330e45f50cca31a28a4c766080c1a"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -14098,7 +14118,7 @@
               [
                 "apps/agent",
                 "snapshot:socket.io@4.8.3(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                 "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
               ]
             ],
@@ -14112,7 +14132,7 @@
             "reversePaths": [
               [
                 "apps/webapp",
-                "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                 "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
               ]
             ],
@@ -14130,7 +14150,7 @@
                 "snapshot:@mintlify/cli@4.0.1439(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/node@20.14.14)(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
                 "snapshot:@mintlify/previewing@4.0.1337(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
                 "snapshot:socket.io@4.8.0(bufferutil@4.0.9)",
-                "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                 "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
               ]
             ],
@@ -15913,7 +15933,7 @@
                 [
                   "apps/agent",
                   "snapshot:socket.io@4.8.3(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                  "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                   "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
                 ]
               ],
@@ -15926,7 +15946,7 @@
             [
               "apps/agent",
               "snapshot:socket.io@4.8.3(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+              "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
               "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
             ]
           ],
@@ -18380,7 +18400,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "e8cc2f2389684a2184d3687ad5fe561ae33107970d7a98398d1d93d10dc36f55",
+      "evidenceSha256": "f826882e52ebacd9ca49bf55aea7a8c0d76ab64bc3f3f382c6ecb33b98246992",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -20920,7 +20940,7 @@
               "reversePaths": [
                 [
                   "apps/webapp",
-                  "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                  "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                   "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
                 ]
               ],
@@ -20936,7 +20956,7 @@
             ],
             [
               "apps/webapp",
-              "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+              "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
               "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
             ]
           ],
@@ -21163,6 +21183,11 @@
               "from": "internal-packages/workload-identity/src/index.test.ts",
               "kind": "reference",
               "line": 22
+            },
+            {
+              "from": "scripts/advisory-dispositions.test.mjs",
+              "kind": "reference",
+              "line": 148
             },
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
@@ -21512,6 +21537,10 @@
               "internal-packages/workload-identity/src/index.test.ts"
             ],
             [
+              "scripts/advisory-dispositions.test.mjs",
+              "scripts/advisory-dispositions.test.mjs"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -21701,6 +21730,7 @@
             "apps/webapp/test/secondaryRouteContracts.test.ts",
             "apps/webapp/test/threadChatLifecycle.test.ts",
             "internal-packages/workload-identity/src/index.test.ts",
+            "scripts/advisory-dispositions.test.mjs",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/audit-advisory.test.mjs",
             "scripts/audit-licenses.test.mjs",
@@ -21778,7 +21808,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "4759fff3b72d602788a1f5fd692506c1f098f8335c5c308e875072ebe333b90e",
+      "evidenceSha256": "1af5926211dd163af76165c0cf1fad4b1aa74b8aebdad3169d11315e0368e082",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -27129,7 +27159,7 @@
                   "snapshot:@mintlify/cli@4.0.1439(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/node@20.14.14)(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
                   "snapshot:@mintlify/previewing@4.0.1337(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
                   "snapshot:socket.io@4.8.0(bufferutil@4.0.9)",
-                  "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+                  "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
                   "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
                 ]
               ],
@@ -27145,7 +27175,7 @@
               "snapshot:@mintlify/cli@4.0.1439(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/node@20.14.14)(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
               "snapshot:@mintlify/previewing@4.0.1337(@base-ui/react@1.7.0(@types/react@18.3.28)(react-dom@18.3.1(react@19.2.3))(react@19.2.3))(@types/react@18.3.28)(bufferutil@4.0.9)(encoding@0.1.13)(react-dom@18.3.1(react@19.2.3))(typescript@5.5.4)",
               "snapshot:socket.io@4.8.0(bufferutil@4.0.9)",
-              "snapshot:engine.io@6.6.6(bufferutil@4.0.9)",
+              "snapshot:engine.io@6.6.9(bufferutil@4.0.9)",
               "snapshot:engine.io-parser@5.2.2(patch_hash=9011e7e16547017450c9baec0fceff0e070310c20d9e62f8d1383bb1da77104f)"
             ]
           ],
@@ -27239,6 +27269,11 @@
               "line": 23
             },
             {
+              "from": "scripts/advisory-dispositions.test.mjs",
+              "kind": "reference",
+              "line": 248
+            },
+            {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
               "line": 241
@@ -27251,7 +27286,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 125
+              "line": 129
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -27271,7 +27306,7 @@
             {
               "from": "scripts/evidence-lifecycle.test.mjs",
               "kind": "reference",
-              "line": 91
+              "line": 35
             },
             {
               "from": "scripts/protected-paths.test.mjs",
@@ -27402,6 +27437,10 @@
               "internal-packages/tenancy-database/src/model-pricing.test.ts"
             ],
             [
+              "scripts/advisory-dispositions.test.mjs",
+              "scripts/advisory-dispositions.test.mjs"
+            ],
+            [
               "scripts/audit-licenses.test.mjs",
               "scripts/audit-licenses.test.mjs"
             ],
@@ -27501,6 +27540,7 @@
             "apps/webapp/test/referenceRouteManifest.test.ts",
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/tenancy-database/src/model-pricing.test.ts",
+            "scripts/advisory-dispositions.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
@@ -27531,7 +27571,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "de10573f42f7c6b135e9ea30926be3d0526bd5d9b7aa22ae12e7b43625fa1734",
+      "evidenceSha256": "e0a7b2bc5584914443c551fd61045563dde1a1f59e66e67970b8bf8b7dfe9f9b",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -28248,7 +28288,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 231
+              "line": 232
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -29101,7 +29141,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "ef365ef29305163d3b0aa4b5125142ee6d955b202090829b493787b8de1a0a07",
+      "evidenceSha256": "1ce4bfcb58ba96d49d71eb769ed040bc6a8d7cb38009697a6ac4a82dbcb16e24",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -29547,7 +29587,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 186
+              "line": 190
             }
           ],
           "reversePaths": [
@@ -29659,7 +29699,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "5660eed2a492dd87661139189fbbef35718cbdb48db9c1bf726c35604cc60504",
+      "evidenceSha256": "ea573cf473dec04c3943c48b3aa9657ac554a1dc7cee7d51448bda5395f2e29d",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -30766,7 +30806,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 583
             }
           ],
           "reversePaths": [
@@ -30791,7 +30831,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "877290daba1bf08893b55434d2f62d2898b2be24e1c5da0d7d2703cff94014fc",
+      "evidenceSha256": "b683c62d9d6f68827f58ee7ea6ee21b0634820ab643ae76e6448531b1b4a3359",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -31922,7 +31962,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 569
+              "line": 582
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32147,7 +32187,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "85a1f9ddb10d3c9bb5b93e93281b4e5c34288333154c76930cc09434d73a0ddb",
+      "evidenceSha256": "63973a1bbfdfb7bd367d0bbc25d24de0921a6a2cf92812bb2481fe7159cb5b68",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -33754,7 +33794,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 157
+              "line": 161
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -34206,7 +34246,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "f6a9c24945778a2137c2fd358cbbd7394947c018ed3ed4ea0889976a8afac1ed",
+      "evidenceSha256": "a9f29f033f9bf9cc0663e4b84063449b1e66b9d23809f6a11eee28b77fc8684e",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -34623,7 +34663,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 231
+              "line": 232
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35320,7 +35360,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aa12334b560d829a6243ac74f0c70ed6497746af27e6ccf2fe9955df5d4a5829",
+      "evidenceSha256": "95cbad8b9c22d70c4b6f77c54a01a07e1e9e0c2c610087329e6f50554d7f1e84",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -36552,7 +36592,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2342
+              "line": 2352
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -36714,7 +36754,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "77f5312f5e02a7650f441b2aebf2c3dcdb6157496c57ebb09b9ca3a90d180a7d",
+      "evidenceSha256": "bd6770ccbe0982931a9fa3cb41d1e60db0338f86a9fb69575bfabb4eb30c7abc",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -52775,7 +52815,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 240
+              "line": 241
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54331,7 +54371,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9f947e163cbdcf06cb83fd6d67c8778950b77d3fdd47112df051cc3cba90c780",
+      "evidenceSha256": "b73e868fd0c45c05c9948fbbcbcc7145609fbf9043a98bf957cb34c7d884a4e1",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {

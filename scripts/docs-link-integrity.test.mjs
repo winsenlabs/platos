@@ -119,7 +119,11 @@ function hasCaseError(errors, fragment) {
 test("the live corpora are enumerated with exact non-vacuous counts", () => {
   const result = validateDocsLinkIntegrity(repositoryRoot, { minimums: false });
   assert.deepEqual(result.stats, {
-    docsMarkdownFiles: 392,
+    // 392 -> 393: WIN-299 (M2.6) adds docs/audits/sbom/advisory/README.md,
+    // which documents the advisory disposition contract that
+    // audit:advisory:check enforces. It carries no relative links, so
+    // relativeLinks below is deliberately unchanged.
+    docsMarkdownFiles: 393,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,

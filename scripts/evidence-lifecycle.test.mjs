@@ -31,8 +31,15 @@ function has(errors, text) {
 
 test("committed lifecycle manifest classifies every approved evidence path exactly once", () => {
   const manifest = committed();
-  assert.equal(manifest.entryCount, 246, "exact protected evidence corpus includes the design and licence provenance receipts plus vendored source artifacts");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 221, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
+  // WIN-299 (M2.6) delta: 246 -> 248 entries, ACCEPTED 221 -> 223. Exactly two
+  // additions, both under docs/audits/sbom/advisory/ and both classified
+  // ACCEPTED because they bind CURRENT repository truth rather than a snapshot:
+  // advisory-policy.json must dispose every CRITICAL/HIGH finding in the live
+  // receipt or audit:advisory:check fails, and README.md documents that
+  // contract. Their sibling osv-report.json stays POINT-IN-TIME (one dated
+  // scan), so the POINT-IN-TIME count is deliberately unchanged at 20.
+  assert.equal(manifest.entryCount, 248, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, and the WIN-299 advisory disposition register");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 223, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 20);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

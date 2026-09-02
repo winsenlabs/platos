@@ -148,6 +148,7 @@ jobs:
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
           pnpm audit:advisory:check
+          pnpm audit:advisory:nonvacuity
           pnpm build:v1
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check

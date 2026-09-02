@@ -66,6 +66,13 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   "docs/audits/M0.9-webapp-bff-matrix.json",
   "docs/audits/sbom/NON-VACUITY-PROOF.md",
   "docs/audits/sbom/README.md",
+  // WIN-299 (M2.6). Both bind CURRENT repository truth rather than a snapshot:
+  // audit:advisory:check fails unless advisory-policy.json disposes every
+  // CRITICAL/HIGH finding in the live receipt, and the README documents the
+  // contract that gate enforces. Their sibling osv-report.json is POINT-IN-TIME
+  // because it records one dated scan; these two must never fall behind it.
+  "docs/audits/sbom/advisory/README.md",
+  "docs/audits/sbom/advisory/advisory-policy.json",
   "docs/audits/sbom/closure-contract.md",
   "docs/audits/sbom/closure-receipts.json",
   "docs/audits/sbom/licence-resolution.json",
