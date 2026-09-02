@@ -6,7 +6,9 @@
     "declarationMap": true,
     "rootDir": "src",
     "outDir": "dist",
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": [
     "src/**/*.ts"
@@ -16,6 +18,9 @@
     "node_modules"
   ],
   "references": [
+    {
+      "path": "../../packages/kernel"
+    },
     {
       "path": "../../packages/contexts/identity-access"
     },

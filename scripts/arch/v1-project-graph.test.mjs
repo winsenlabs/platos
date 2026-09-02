@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
@@ -9,6 +9,7 @@ import {
   EXPECTED_ALIASES,
   EXPECTED_CONTEXT_DEPENDS_ON,
   EXPECTED_EDGE_COUNT,
+  EXPECTED_EXTERNAL_DEPENDENCIES,
   EXPECTED_PROJECT_COUNT,
   checkV1ProjectGraph,
 } from "./v1-project-graph.mjs";
@@ -41,7 +42,7 @@ function errorIncludes(result, text) {
   return result.errors.some((error) => error.includes(text));
 }
 
-test("the live graph has exact aliases, 32 projects and 94 edges in all three representations", () => {
+test("the live graph has exact aliases, 32 projects and 95 edges in all three representations", () => {
   const result = checkV1ProjectGraph(repositoryRoot);
   assert.deepEqual(result.errors, []);
   assert.equal(result.projectCount, EXPECTED_PROJECT_COUNT);
@@ -55,6 +56,95 @@ test("the live graph has exact aliases, 32 projects and 94 edges in all three re
     "@platos/adapter-*": ["packages/adapters/*"],
   });
   assert.equal(Object.keys(EXPECTED_CONTEXT_DEPENDS_ON).length, 17);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-297 — the external-dependency axis.
+//
+// Before the split, every entry in every V1 manifest's `dependencies` had to be
+// `workspace:*` and had to appear in the workspace edge count. That made
+// `apps/core-api` — the project ADR M0.3 §4 defines as the NEST composition root
+// — unable to depend on Nest. The workspace property is unchanged and still
+// tested above; these prove the new property is not merely permissive.
+// ---------------------------------------------------------------------------
+
+test("the composition root's declared external dependencies are exactly the reviewed set", () => {
+  assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES), ["apps/core-api"]);
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["apps/core-api"], {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    rxjs: "^7.8.1",
+  });
+});
+
+test("an UNDECLARED external dependency fails, wherever it is added", () => {
+  const root = fixture();
+  mutateJson(root, "packages/contexts/identity-access/package.json", (manifest) => {
+    manifest.dependencies["ioredis"] = "^5.0.0";
+  });
+  const result = checkV1ProjectGraph(root);
+  assert.ok(errorIncludes(result, "packages/contexts/identity-access external dependencies"));
+  assert.ok(errorIncludes(result, "declare it in EXPECTED_EXTERNAL_DEPENDENCIES or remove it"));
+});
+
+test("an external dependency added to the composition root beyond the reviewed set fails", () => {
+  const root = fixture();
+  mutateJson(root, "apps/core-api/package.json", (manifest) => {
+    manifest.dependencies["express"] = "^4.0.0";
+  });
+  assert.ok(errorIncludes(checkV1ProjectGraph(root), "apps/core-api external dependencies"));
+});
+
+test("a declared external dependency whose RANGE drifts fails", () => {
+  // The range is the supply-chain decision. Without this, `^11.0.0` could become
+  // `*` and the audit would still be green.
+  const root = fixture();
+  mutateJson(root, "apps/core-api/package.json", (manifest) => {
+    manifest.dependencies["@nestjs/core"] = "*";
+  });
+  const result = checkV1ProjectGraph(root);
+  assert.ok(errorIncludes(result, "@nestjs/core is *; expected the reviewed range ^11.0.0"));
+});
+
+test("REMOVING a declared external dependency also fails", () => {
+  // Declaration is exact in both directions: the audit describes reality, and a
+  // stale entry left behind after a real removal is itself a defect.
+  const root = fixture();
+  mutateJson(root, "apps/core-api/package.json", (manifest) => {
+    delete manifest.dependencies["reflect-metadata"];
+  });
+  assert.ok(errorIncludes(checkV1ProjectGraph(root), "apps/core-api external dependencies"));
+});
+
+test("an external dependency does NOT inflate the workspace edge count", () => {
+  const root = fixture();
+  mutateJson(root, "apps/core-api/package.json", (manifest) => {
+    manifest.dependencies["express"] = "^4.0.0";
+  });
+  const result = checkV1ProjectGraph(root);
+  assert.equal(result.dependencyEdgeCount, EXPECTED_EDGE_COUNT);
+});
+
+test("a workspace dependency pinned to a version rather than workspace:* still fails", () => {
+  // The half of the original rule that must survive the split.
+  const root = fixture();
+  mutateJson(root, "apps/core-api/package.json", (manifest) => {
+    manifest.dependencies["@platos/kernel"] = "0.0.0";
+  });
+  assert.ok(errorIncludes(checkV1ProjectGraph(root), "@platos/kernel must be workspace:*"));
+});
+
+test("the composition root's kernel edge is present in all three representations", () => {
+  // The 94 -> 95 delta, asserted directly rather than only through the total.
+  const root = fixture();
+  mutateJson(root, "apps/core-api/tsconfig.json", (config) => {
+    config.references = config.references.filter((reference) => reference.path !== "../../packages/kernel");
+  });
+  const result = checkV1ProjectGraph(root);
+  assert.ok(errorIncludes(result, "apps/core-api references"));
+  assert.equal(result.referenceEdgeCount, EXPECTED_EDGE_COUNT - 1);
 });
 
 test("removing a root solution reference fails independently", () => {
@@ -139,8 +229,23 @@ test("an extra discovered project fails the exact project-count contract", () =>
 
 test("removing a source import cannot hide behind matching manifest and reference edges", () => {
   const root = fixture();
-  const sourcePath = join(root, "apps/mcp-stdio/src/main.ts");
-  writeFileSync(sourcePath, "export type StdioBootstrap = () => Promise<unknown>;\n");
+  // WIN-297: apps/mcp-stdio is no longer one file. Emptying main.ts alone left
+  // `runtime.ts` and the testing runtime still importing @platos/context-tools,
+  // so the edge survived and this mutation silently stopped testing anything —
+  // the same vacuity class WIN-256 found in workspace-reachability. The mutation
+  // now removes the specifier from EVERY file in the project, which is what
+  // "removing the source import" has to mean once a project has more than one.
+  const source = join(root, "apps/mcp-stdio/src");
+  const strip = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const child = join(directory, entry.name);
+      if (entry.isDirectory()) strip(child);
+      else if (entry.name.endsWith(".ts")) {
+        writeFileSync(child, readFileSync(child, "utf8").replaceAll("@platos/context-tools", "./local-stub.js"));
+      }
+    }
+  };
+  strip(source);
   const result = checkV1ProjectGraph(root);
   assert.ok(errorIncludes(result, "apps/mcp-stdio source edges"));
   assert.equal(result.sourceEdgeCount, EXPECTED_EDGE_COUNT - 1);

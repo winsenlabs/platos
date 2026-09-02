@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "42eb0bef7141addf24ba6991daed441141a1de2e4f55500b99073231930c6a90"
+      "sha256": "34dbaa5f61c07c898abccc3f76ee756423ee4d6cf00a7d75ed5248dbed30adf3"
     },
     {
       "path": "LICENSE",
@@ -933,7 +933,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "d5403af8a239e5f9f748fd3c39375fe54ec2fdf44b461e8aca5874a48ea17930"
+      "sha256": "9524d7f92cc93606266c09c8e548971f882b781baf16b95ed6e01f688ed5ae76"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "34e63a745a0ff4bf09987f77db55a190b1176140f28f622a3aebb0820ef45d94"
+      "sha256": "d22928acfee4d4a4a303791338e842b71c0e8aaa5d86b8f42fd82c6d2bb9c274"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1023,17 +1023,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "edd78b6456dadb024cb08be34f698cc553ae19343a637a146388c84a2ed0c74b"
+      "sha256": "c17b73edf9e9994d1fbe9760b5124e1534919d34ceb897d2ef68f30e8a624e50"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "f357243d2db28c2c00cb92ccae096e61db98f22ceb7d85f111865955f26d035f"
+      "sha256": "0b5a3d7aaeed9155bf715cdd0d221c07994b336b1de3eb1c6604543e6326a924"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "eecbdffd74c9993d82aeb47d4138a1c305442a3c101be790121662c7c198af7c"
+      "sha256": "c3d6a2dc590694e9a5064b5a93657e4ed559957c9bf19e8e2dcf64940b1538bb"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1043,7 +1043,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "894c4263db34a79a73a300d822593192f339398fd63b3c8739734c5f1fbf65ae"
+      "sha256": "53b90af6b5d061a1df429e3ee8e7f96d2c24c4d3cede51dc151cac040b02c428"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3448,7 +3448,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "8badf8ab37e61a7e81711eb63eab8a75c9d935be67eb54c599930b05d8d1cf71"
+      "sha256": "890972ef8c47cdda2b63fa1b7fac5ab7db330064c4b507c4c7e4ab5298c721d3"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3473,7 +3473,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "1c1a829c8b4aa34f067218100771a11b6d9c018c36964090a9f65421ab9277d3"
+      "sha256": "935a9c8e0a7888e269ee84e8db17b148236a3fcd369ac652141b1b7454723a96"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3618,12 +3618,12 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "a8161e11b0caf93903422989c0004b6068c43714819f47aa17fffc717f5be0cb"
+      "sha256": "870c9a67adbe0b4944af90d8af0940c944aa23f3d5f8b5a9f32750faddb3f275"
     },
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9"
+      "sha256": "8a40856ee5f8b529bd3e163423f52187bd541b6daaa4b543bd63455da458eb6c"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3873,7 +3873,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "5cacbdae613470b923eac368d03a2ba9c6cff422b1ed7f7874c84f28bc8fd406"
+      "sha256": "772827202a7634c69708503ca88faa29d45afc23bdc79daa3c48f56de0c3f568"
     },
     {
       "path": "scripts/verify-sbom-nonvacuity.mjs",
@@ -3913,7 +3913,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "292eaeb66362450743c06c8a5896e01ac82cf68e9757a0263821a0edd43ff01d"
+      "sha256": "493d563589a6aac955c2dc735514c9ae1e015bd75b5205a2cb3a44bb663a12fe"
     }
   ]
 }

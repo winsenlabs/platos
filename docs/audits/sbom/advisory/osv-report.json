@@ -1,19 +1,19 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-08-30T20:25:16.864Z",
+  "scannedAt": "2026-09-02T07:50:35.129Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
     "timeoutMs": 20000,
     "queryBatchSize": 1000,
     "detailConcurrency": 8,
-    "publicRequestsAttempted": 126,
-    "publicRequestsSucceeded": 126,
+    "publicRequestsAttempted": 128,
+    "publicRequestsSucceeded": 128,
     "cacheFallbacks": 0,
     "limitations": []
   },
-  "lockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
+  "lockfileSha256": "8a40856ee5f8b529bd3e163423f52187bd541b6daaa4b543bd63455da458eb6c",
   "ecosystem": "npm",
   "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {
@@ -32,11 +32,11 @@
   "componentsScanned": 876,
   "agentComponents": 718,
   "webappComponents": 330,
-  "findingsCount": 152,
+  "findingsCount": 155,
   "withdrawnCount": 0,
   "bySeverity": {
     "CRITICAL": 3,
-    "HIGH": 56,
+    "HIGH": 59,
     "MODERATE": 75,
     "LOW": 18
   },
@@ -1017,6 +1017,25 @@
     {
       "package": "engine.io",
       "version": "6.5.4",
+      "id": "GHSA-gr94-w7qr-f4j3",
+      "aliases": [
+        "CVE-2026-59724"
+      ],
+      "cves": [
+        "CVE-2026-59724"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "Socket.IO: Engine.IO WebTransport SID DoS",
+      "fixedIn": "6.6.7",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "engine.io",
+      "version": "6.5.4",
       "id": "GHSA-r635-g3xr-vw7x",
       "aliases": [
         "CVE-2026-59725"
@@ -1027,6 +1046,25 @@
       "severity": "HIGH",
       "cvss": null,
       "summary": "Socket.IO: Engine.IO Polling Transport Connection Exhaustion",
+      "fixedIn": "6.6.7",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "engine.io",
+      "version": "6.6.6",
+      "id": "GHSA-gr94-w7qr-f4j3",
+      "aliases": [
+        "CVE-2026-59724"
+      ],
+      "cves": [
+        "CVE-2026-59724"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "Socket.IO: Engine.IO WebTransport SID DoS",
       "fixedIn": "6.6.7",
       "images": [
         "agent"
@@ -1449,6 +1487,25 @@
       "cvss": null,
       "summary": "nanoid: custom generators can loop indefinitely when size is zero",
       "fixedIn": "3.3.18",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "nanoid",
+      "version": "3.3.8",
+      "id": "GHSA-xwg4-73v4-xw9w",
+      "aliases": [
+        "CVE-2026-73086"
+      ],
+      "cves": [
+        "CVE-2026-73086"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "nanoid: Integer Overflow or Wraparound",
+      "fixedIn": "3.3.12",
       "images": [
         "agent"
       ],

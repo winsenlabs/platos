@@ -1363,10 +1363,10 @@
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "d5403af8a239e5f9f748fd3c39375fe54ec2fdf44b461e8aca5874a48ea17930",
+      "sha256": "9524d7f92cc93606266c09c8e548971f882b781baf16b95ed6e01f688ed5ae76",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
-      "date": "2026-08-30"
+      "date": "2026-09-02"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1379,7 +1379,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "34e63a745a0ff4bf09987f77db55a190b1176140f28f622a3aebb0820ef45d94",
+      "sha256": "d22928acfee4d4a4a303791338e842b71c0e8aaa5d86b8f42fd82c6d2bb9c274",
       "binds": "current-repository-truth"
     },
     {
@@ -1493,21 +1493,21 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "edd78b6456dadb024cb08be34f698cc553ae19343a637a146388c84a2ed0c74b",
+      "sha256": "c17b73edf9e9994d1fbe9760b5124e1534919d34ceb897d2ef68f30e8a624e50",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "f357243d2db28c2c00cb92ccae096e61db98f22ceb7d85f111865955f26d035f",
+      "sha256": "0b5a3d7aaeed9155bf715cdd0d221c07994b336b1de3eb1c6604543e6326a924",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "eecbdffd74c9993d82aeb47d4138a1c305442a3c101be790121662c7c198af7c",
+      "sha256": "c3d6a2dc590694e9a5064b5a93657e4ed559957c9bf19e8e2dcf64940b1538bb",
       "binds": "current-repository-truth"
     },
     {
@@ -1521,7 +1521,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "894c4263db34a79a73a300d822593192f339398fd63b3c8739734c5f1fbf65ae",
+      "sha256": "53b90af6b5d061a1df429e3ee8e7f96d2c24c4d3cede51dc151cac040b02c428",
       "binds": "current-repository-truth"
     },
     {

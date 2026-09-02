@@ -58,7 +58,12 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   assert.match(output, /^ok: /u);
   assert.match(output, new RegExp(`${EXPECTED_SCAFFOLDING_FILE_COUNT} scaffolding`, "u"));
   assert.match(output, new RegExp(`= ${liveTotal} generated file\\(s\\)`, "u"));
-  assert.match(output, /32 V1 projects and 94 project edges/u);
+  // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
+  // binds three kernel-hosted ports (OutboxWriter, DurableRuntime, EventBus) and
+  // implements the three kernel ports that have no adapter (Clock, IdGenerator,
+  // Logger), so it must be able to name them. Reasoned in full on
+  // EXPECTED_EDGE_COUNT in the generator.
+  assert.match(output, /32 V1 projects and 95 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -74,7 +79,10 @@ test("stale, missing, and extra owned files each fail closed", () => {
     // Sample an UNADOPTED placeholder: an adopted project's source tree is
     // released by design, and its own controls live in the adoption tests below.
     ["stale", (root) => writeFileSync(join(root, "packages/contexts/tools/domain/index.ts"), "stale\n"), "STALE   packages/contexts/tools/domain/index.ts"],
-    ["missing", (root) => rmSync(join(root, "apps/mcp-stdio/src/main.ts")), "MISSING apps/mcp-stdio/src/main.ts"],
+    // WIN-297 adopted apps/mcp-stdio, so its src/main.ts is no longer generated
+    // and cannot serve as the MISSING sample. Moved to a still-unadopted
+    // placeholder rather than dropped: the case being tested is unchanged.
+    ["missing", (root) => rmSync(join(root, "packages/contexts/tools/application/index.ts")), "MISSING packages/contexts/tools/application/index.ts"],
     ["extra", (root) => write(root, "packages/contexts/tools/extra.ts", "export {};\n"), "EXTRA   packages/contexts/tools/extra.ts"],
   ]) {
     const root = fixture();

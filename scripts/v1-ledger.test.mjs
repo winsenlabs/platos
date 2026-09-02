@@ -516,8 +516,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   const expectedDeltas = {
     "apps-agent": 0,
     "apps-webapp": 0,
-    "apps-core-api": 0,
-    "apps-mcp-stdio": 0,
+    // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
+    // (composition/{adapter-bindings,registry}, config/{schema,load},
+    // health/readiness, http/{health.controller,http.module,token},
+    // runtime/{correlation,in-flight,lifecycle,process-ports}) classified by the
+    // new apps-core-api.source.process rule, plus 7 suites. main.ts,
+    // app.module.ts and the six transport seams were rewritten in place and add
+    // no files. The transports rule stays at exactly 6 — the new rule is
+    // declared ahead of it so process code does not inherit transport evidence.
+    "apps-core-api": 19,
+    // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
+    // loader), the in-repository host runtime the executable evidence points at,
+    // and its suite.
+    "apps-mcp-stdio": 3,
     // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
     // attribution, kept out of LICENSE so every publishable package's LICENSE
     // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
@@ -532,10 +543,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 10 -> 15. WIN-256 adds five root-infra files: the ADR §5.3 kernel-content
     // assertion and its tests, the §5.2 ownership map and sole-writer lint and
     // its tests.
-    "root-infra": 15,
+    // 15 -> 17. WIN-297 adds scripts/arch/composition-root.mjs — which narrows
+    // rule (j) from a package to the single file entitled to import an adapter —
+    // and its 22-control suite, which carries the real-tree negative controls
+    // for rules (j) and (a).
+    "root-infra": 17,
   };
-  // 20 -> 231: 207 packages + 9 docs-content + 15 root-infra.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 231);
+  // 20 -> 231 -> 255: 207 packages + 9 docs-content + 17 root-infra
+  // + 19 apps-core-api + 3 apps-mcp-stdio.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 255);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -544,7 +560,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 231
+    rulesDocument.baseline.totalFiles + 255
   );
 });
 

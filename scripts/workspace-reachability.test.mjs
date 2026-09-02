@@ -462,20 +462,27 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 182 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 173 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // 201 -> 182. WIN-256 adopted 5 projects (packages/kernel and four contexts)
-  // out of generator ownership, releasing 19 placeholders to real source. The
-  // generator still owns all 97 scaffolding files plus the 85 placeholders of
-  // the 27 unadopted projects.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 182);
+  // 201 -> 182 -> 173. WIN-256 adopted 5 projects (packages/kernel and four
+  // contexts), releasing 19 placeholders. WIN-297 adopts the two apps —
+  // apps/core-api (8 placeholders: main.ts, app.module.ts and the six transport
+  // seams) and apps/mcp-stdio (1: main.ts) — releasing 9 more.
+  //
+  // The SCAFFOLDING tier is untouched at 97 and stays byte-compared: adoption
+  // releases only a project's source tree, so both apps still owe their
+  // generated package.json, tsconfig.json and README.md, and both still
+  // participate in the 32-project graph. That is what lets the generator carry
+  // apps/core-api's new @nestjs runtime dependencies and its two decorator
+  // compiler options — scaffolding a hand edit could not have added.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 173);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 182);
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 173);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

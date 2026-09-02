@@ -218,12 +218,20 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // 104 -> 310. The 104 was the all-placeholder skeleton. WIN-256 made
-    // packages/kernel and four contexts real (identity-access, secrets, tenancy,
-    // files), so the gate now polices 310 files of which ~206 are hand-written
-    // production source. This is the first time these rules have judged real
-    // code, and no rule needed changing to accommodate it.
-    assert.equal(result.fileCount, 310, "the generated V1 source census must stay exact");
+    // 310 -> 332. WIN-256 took this from 104 placeholders to 310 by making
+    // packages/kernel and four contexts real. WIN-297 adds 22: 20 files making
+    // apps/core-api a bootable composition root (entry point, config, runtime
+    // ports, lifecycle, health, the binding table and their tests) and 2 making
+    // apps/mcp-stdio a real stdio binary, minus nothing — the 9 released
+    // placeholders were replaced in place.
+    //
+    // The two rules this issue exists to exercise both held. Rule (j) now judges
+    // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
+    // rule (a) judges them with @nestjs/* genuinely present in the workspace one
+    // directory from context code. Neither was changed, weakened or
+    // reinterpreted; their real-tree negative controls are in
+    // scripts/arch/composition-root.test.mjs.
+    assert.equal(result.fileCount, 332, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
