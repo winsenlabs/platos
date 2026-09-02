@@ -541,14 +541,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +55: the same issue makes `tools` real (ADR M0.3 §1 context 7) — 17
+    // domain modules and 13 domain suites, 12 application modules and 4
+    // application suites, 3 ports, 4 in-memory doubles, and the contracts
+    // barrel with its suite. The 55 are NET of the 4 generated placeholders
+    // that adoption released and this code replaced in place, exactly as the
+    // providers delta was.
+    packages: 327,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +346. Four branches add files on independent axes, so each
+    // packages 1 -> 327, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +401. Five slices add files on independent axes, so each
     // area is the SUM of every contribution, not any one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
@@ -597,6 +604,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     //   docs-content +0 — WIN-256 adds no document to that area.
     //
+    // WIN-256 (tools context) contributes a further +55, all of it packages
+    // (272 -> 327), and nothing to any other area:
+    //   packages +55 — packages/contexts/tools made real: 17 domain modules
+    //   and 13 domain suites, 12 application modules and 4 application suites,
+    //   3 ports, 4 in-memory doubles, and the contracts barrel with its suite.
+    //   NET of the 4 generated placeholders that adoption released and this
+    //   code replaced in place, exactly as the providers delta was.
+    //
+    //   root-infra +0, docs-content +0 — adopting `tools` appends one line to
+    //   the generator's ADOPTED_PROJECTS list in a file that already exists,
+    //   and the canary reconciliations below edit existing suites. The axis is
+    //   disjoint from WIN-297's apps/* and WIN-284's tests/*, so the merged
+    //   delta is the sum, not a reconciliation.
+    //
     // No new ledger rule was needed by any branch: docs/audits/**, packages/**,
     // tests/** and scripts/** already have owning rules, so only the
     // fingerprint moves. Every added file is enumerated above and conserves
@@ -616,11 +637,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // 20 + 5 + 19 + 278 + 55 + 24 = 401.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 401);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +650,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +401 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278 contracts +55
+    // tools, WIN-297 +24); this one re-derives it by summing the per-area
+    // counts independently.
+    rulesDocument.baseline.totalFiles + 401
   );
 });
 

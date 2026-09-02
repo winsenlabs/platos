@@ -25,7 +25,7 @@
 // A REFUSED CALL IS STILL AUDITED. A permission block, an ambiguous route and a
 // missing end user all produce an audit row with a `FAILED` status, because
 // "what did this token try to do" is the question the audit trail exists to
-// answer and the attempts that were stopped are the interesting ones.
+// answer and the calls that were stopped are the interesting ones.
 
 import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import type { EnvironmentAuthorization } from "@platos/context-secrets";

@@ -240,10 +240,32 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               lifecycle, health, the binding table and their tests) and 2
     //               making apps/mcp-stdio a real stdio binary, minus nothing —
     //               its 9 released placeholders were replaced in place.
+    //   397 -> 452  +55: WIN-256 makes `tools` real (ADR M0.3 §1 context 7).
+    //               Two rules are exercised here for the first time against
+    //               production code:
+    //
+    //                 (g) identity-isolation. `tools` is the first adopted
+    //                     context on the FAR side of that rule — it imports
+    //                     `@platos/context-identity-access` one way, which is
+    //                     exactly the §3 `auth -> tool-gateway` inversion, and
+    //                     the rule proves the reverse edge is absent.
+    //
+    //                 (h) SDK containment for `@modelcontextprotocol`. The
+    //                     context declares the `ToolDispatch` port the SDK will
+    //                     sit behind; no file under `domain/` or `application/`
+    //                     names the package, which is what makes the rule
+    //                     enforceable rather than aspirational once the adapter
+    //                     lands.
+    //
+    //               Its four peer dependencies are the widest allow-list any
+    //               adopted context has, and no rule needed changing.
     //
     // WIN-297 branched from WIN-256 before the providers commit and so pinned
-    // 310 + 22 = 332; WIN-256's tip pinned 375 and never saw the apps.
-    // 375 + 22 = 332 + 65 = 397.
+    // 310 + 22 = 332; WIN-256's providers tip pinned 375 and never saw the
+    // apps; WIN-256's tools tip pinned 375 + 55 = 430 and never saw them
+    // either. The three axes are disjoint — packages/contexts/providers,
+    // apps/*, packages/contexts/tools — so the merged census is the sum:
+    // 375 + 22 + 55 = 332 + 65 + 55 = 430 + 22 = 452.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -251,7 +273,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 452, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -85,7 +85,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +55: the same issue makes `tools` real. This is the budget's largest single
+  // test: the three source files it replaces are 1,644, 845 and 587 lines, and
+  // §6 names the first of those as the failure the budget exists to prevent.
+  // The 1,644-line executor became a routing rule, a permission rule, a
+  // transport resolution and one use case with a single exit — 256 effective
+  // lines, the largest non-test module in the package.
+  //
+  // The budget bit once, exactly as it did for `providers`: one test module
+  // reached 400 effective lines, the top of the warning band. The answer was to
+  // split it along the seam the budget was pointing at — the entity/inbound
+  // policy suite out of the hosted-surface suite — rather than to raise the
+  // number. That split is why the delta is 55 and not 54.
+  assert.equal(result.fileCount, 383);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

@@ -42,7 +42,7 @@ import type {
  * `wire` is the inbound WebSocket a backend opens to Platos; `mcp` is the
  * outbound client Platos opens to the backend. They are not variants of one
  * transport: the direction of the connection is what decides whether liveness
- * is something Platos observes or something it attempts.
+ * is something Platos observes or something it has to go and try.
  */
 export const CONNECTION_KINDS = ["wire", "mcp"] as const;
 

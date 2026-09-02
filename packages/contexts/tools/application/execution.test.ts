@@ -99,7 +99,7 @@ describe("a call the four tiers refuse", () => {
     expect(context.dispatch.requests).toEqual([]);
   });
 
-  it("is still AUDITED, because a stopped attempt is the interesting one", async () => {
+  it("is still AUDITED, because a stopped call is the interesting one", async () => {
     await context.repository.upsertOrganizationPolicy(context.scope, "files.*", "DENY");
     await execute();
     expect(context.repository.audit).toHaveLength(1);
@@ -153,7 +153,7 @@ describe("a call that needs an operator decision", () => {
 });
 
 describe("a call that cannot be routed", () => {
-  it("refuses a name nothing in scope exposes, and audits the attempt", async () => {
+  it("refuses a name nothing in scope exposes, and audits the refusal", async () => {
     const executed = await execute({ toolName: asToolsIdentifier<ToolName>("nope") });
     expect(!executed.ok && executed.error.code).toBe("TOOLS_ROUTE_NOT_IN_SCOPE");
     expect(context.dispatch.requests).toEqual([]);

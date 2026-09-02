@@ -78,12 +78,20 @@ test("stale, missing, and extra owned files each fail closed", () => {
   for (const [kind, mutate, expected] of [
     // Sample an UNADOPTED placeholder: an adopted project's source tree is
     // released by design, and its own controls live in the adoption tests below.
-    ["stale", (root) => writeFileSync(join(root, "packages/contexts/tools/domain/index.ts"), "stale\n"), "STALE   packages/contexts/tools/domain/index.ts"],
-    // WIN-297 adopted apps/mcp-stdio, so its src/main.ts is no longer generated
-    // and cannot serve as the MISSING sample. Moved to a still-unadopted
-    // placeholder rather than dropped: the case being tested is unchanged.
-    ["missing", (root) => rmSync(join(root, "packages/contexts/tools/application/index.ts")), "MISSING packages/contexts/tools/application/index.ts"],
-    ["extra", (root) => write(root, "packages/contexts/tools/extra.ts", "export {};\n"), "EXTRA   packages/contexts/tools/extra.ts"],
+    //
+    // The sample was `packages/contexts/tools` on the M2 trunk. WIN-256 adopts
+    // that context here, so its `domain/index.ts` and `application/index.ts`
+    // stop being generator outputs and both cases would fail on a missing
+    // fixture file. Moved to `memory`, which is still unadopted. WIN-297 had
+    // already moved the MISSING case to `apps/mcp-stdio/src/main.ts`; that app
+    // is adopted on this trunk too, so it moves to `memory` alongside the other
+    // two rather than back. THE SAMPLE IS NOT ARBITRARY and it is not a number
+    // to force: it must name a project absent from ADOPTED_PROJECTS, and the
+    // adoption tests below are what prove the other half — that an adopted
+    // project's source tree is released rather than merely unchecked.
+    ["stale", (root) => writeFileSync(join(root, "packages/contexts/memory/domain/index.ts"), "stale\n"), "STALE   packages/contexts/memory/domain/index.ts"],
+    ["missing", (root) => rmSync(join(root, "packages/contexts/memory/application/index.ts")), "MISSING packages/contexts/memory/application/index.ts"],
+    ["extra", (root) => write(root, "packages/contexts/memory/extra.ts", "export {};\n"), "EXTRA   packages/contexts/memory/extra.ts"],
   ]) {
     const root = fixture();
     mutate(root);

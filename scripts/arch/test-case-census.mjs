@@ -101,6 +101,20 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * WIN-256, `tools` (ADR M0.3 §1 context 7). One row moves:
+ *
+ *   tools 0 -> 18 files, 0 -> 299 cases; 1000 -> 1299 total. 13 domain suites,
+ *   4 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 299 is a statically exact count, and
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints the same pair
+ *   — "Test Files 18 passed (18) / Tests 299 passed (299)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Verified as a LIVE control, the same way the providers row was: deleting one
+ * `it()` from `tools/domain/permission.test.ts` leaves the file count at 106
+ * and turns the case count red, which is precisely the drift a file-count pin
+ * cannot see. No other package moved.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -131,7 +145,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
-  "packages/contexts/tools": { files: 0, cases: 0 },
+  "packages/contexts/tools": { files: 18, cases: 299 },
   "packages/kernel": { files: 3, cases: 44 },
 });
 
@@ -142,7 +156,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1299;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

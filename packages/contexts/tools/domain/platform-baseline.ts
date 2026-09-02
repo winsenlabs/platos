@@ -26,10 +26,20 @@
 // single leaking token must be cheaper than the paperwork, and RFC 7009 §2.2
 // requires unknown-token revocation to succeed silently in any case.
 //
-// This list is transcribed from `PLATFORM_TIER_MINIMUMS` and holds its order.
-// Order does not affect the answer — `platformMinimumFor` returns the first
-// match and no two patterns here overlap — but keeping it makes the diff
-// against the source readable.
+// This list is transcribed from `PLATFORM_TIER_MINIMUMS` and holds its order,
+// which keeps the diff against the source readable. Order does not affect the
+// answer: the table DOES overlap in one place, and every overlapping pair
+// agrees on its minimum — see `platformMinimumFor` below and the case that pins
+// it in `permission.test.ts`.
+//
+// THREE PATTERNS NAME AN EXTERNAL VENDOR AND CANNOT BE RENAMED. The
+// durable-runtime integration publishes its own MCP tool namespace, so those
+// three entries are the LITERAL names a caller sends. They carry reviewed
+// vocabulary-boundary exceptions, for exactly the reason that manifest's rule
+// carves out: the term names the external integration rather than a Platos
+// concept. Renaming them here would make the gate consult a pattern nothing
+// matches, which is the one change to this file that would silently ungate a
+// tool rather than merely mis-describe one.
 
 import { matchesPattern, type PermissionState } from "./permission.js";
 
@@ -46,8 +56,8 @@ export const PLATFORM_TIER_MINIMUMS: readonly PlatformMinimum[] = Object.freeze(
   { pattern: "gdpr.*", minimum: APPROVAL },
 
   // Durable-runtime environment variables ARE secrets to the workloads that
-  // read them, and promotion replaces the current-deployment pointer on a live
-  // environment for every user at once.
+  // read them, and promotion repoints a live environment at different code
+  // for every user at once.
   { pattern: "trigger.envvars.delete", minimum: APPROVAL },
   { pattern: "trigger.envvars.upsert", minimum: APPROVAL },
   { pattern: "trigger.deployments.promote", minimum: APPROVAL },

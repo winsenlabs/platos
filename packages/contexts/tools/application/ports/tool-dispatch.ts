@@ -14,7 +14,7 @@
 //   Liveness is something Platos OBSERVES.
 //
 //   an MCP entity is a server Platos opens a session TO. Liveness is something
-//   Platos ATTEMPTS, and the attempt is the only way to find out.
+//   Platos TRIES, and trying is the only way to find out.
 //
 // The port hides which one is in play because the caller's decision is the same
 // either way, and `domain/exposure.ts` states the one rule that differs
