@@ -109,10 +109,37 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * reader would "tidy up" without realising they are load-bearing — the event
  * matcher's bare-prefix arm, its segment anchor, "an empty eventTypes array
  * matches nothing", the three-send retry ceiling, and the weak legacy email
- * rule. Eighteen semantic mutations were applied to this context's own logic and
- * all eighteen were killed; the two this census exists to catch are the pattern
- * matcher's segment anchor and the retry off-by-one, each of which leaves every
- * other case in the package green.
+ * rule.
+ *
+ * THIRD DELTA — `eventing` 142 -> 147 cases, 1142 -> 1147 total. File count
+ * stays at 14: all five cases went into existing files, which is exactly the
+ * drift a file-count pin cannot see. They close what the 2026-09-03 independent
+ * verification found, and each was confirmed by watching a named mutation turn
+ * it red:
+ *
+ *   +3 `application/route-observed-event.test.ts` — the drain-boundary
+ *      `reparse` guard was ENTIRELY DEAD to the suite. Deleting its filter arm,
+ *      deleting its destination arm, and swapping its two skip reasons all left
+ *      142/142 green.
+ *   +1 `application/register-notification-rule.test.ts` — the duplicate-name
+ *      pre-flight. The in-memory store enforces the unique index too, so the
+ *      error code alone could not tell "pre-flighted" from "refused by the
+ *      store"; the new case pins that no transaction is opened.
+ *   +1 `application/eventing-erasure-target.test.ts` — a plan carrying this
+ *      target's own name but no subject rider. The existing foreign-plan case
+ *      only exercised the targetName half of `isEventingErasurePlan`.
+ *
+ * THE MUTATION CLAIM IS NOW ENUMERATED. The commit that introduced this context
+ * said "12 semantic mutations applied, all 12 killed" and this comment said
+ * "eighteen"; neither listed one, the two numbers disagreed, and neither was
+ * reproducible. That claim is withdrawn. The replacement is a 43-mutation set
+ * enumerated line by line in the commit message, each with its file, its exact
+ * edit and its verdict: 41 KILLED, and ONE argued equivalent-mutant PAIR in
+ * `assertNameFree` whose two halves mask each other (deleting either leaves the
+ * suite green; deleting both turns it red, which is the 43rd mutation). The two
+ * mutations this census exists to catch remain the pattern matcher's segment
+ * anchor and the retry off-by-one, each of which leaves every other case in the
+ * package green.
  *
  * The eventing and providers axes are disjoint, and so are the two apps
  * WIN-297 adopted, so the integrated total is the SUM: 717 + 283 + 142 = 1142.
@@ -137,7 +164,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
-  "packages/contexts/eventing": { files: 14, cases: 142 },
+  "packages/contexts/eventing": { files: 14, cases: 147 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
@@ -160,7 +187,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1142;
+export const EXPECTED_RUNTIME_TOTAL = 1147;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

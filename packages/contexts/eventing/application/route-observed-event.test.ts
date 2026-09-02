@@ -64,6 +64,61 @@ function observed(options: Parameters<typeof testDomainEvent>[0]): ObservedEvent
   return narrowed;
 }
 
+// ---------------------------------------------------------------------------
+// Fixtures for the drain-boundary REPARSE guard.
+//
+// A `NotificationRule` in memory already holds parsed halves, so `reparse`
+// looks like a redundant round trip — and the 2026-09-03 independent
+// verification found it entirely DEAD to this suite: dropping the filter check,
+// dropping the destination check, or swapping the two skip reasons all left
+// 142/142 green.
+//
+// It is not redundant, and it is reachable WITHOUT A SINGLE CAST, which is the
+// whole point. The two column shapes are `Json` with no database-level shape
+// (see domain/notification-rule.ts), an adapter reconstructs the aggregate from
+// them, and the aggregate's TYPES do not exclude the values the parsers refuse:
+//
+//   `RuleFilter.eventPatterns` is `readonly EventPattern[]`, and the empty array
+//   is a member of that type — but `parseRuleFilter` refuses an empty
+//   `eventTypes`, and `anyPatternMatches` treats it as "match nothing".
+//
+//   `Destination` includes `{ kind: "webhook"; url: string }`, and the empty
+//   string is a member of that type — but `parseDestination` refuses an empty
+//   url, because `nonEmptyString("")` is false.
+//
+// Both are exactly what a row written by an older binary, or by hand, hands back
+// through the repository port. The cases below are the last total check before
+// such a row's destination is acted on, and each one names the mutation it kills.
+
+function ruleWithHalves(options: {
+  id: string;
+  name: string;
+  filter: RuleFilter;
+  destination: Destination;
+}): NotificationRule {
+  const name = parseRuleName(options.name);
+  if (!name.ok) throw new Error(name.error.code);
+  return createNotificationRule(
+    {
+      ruleId: asIdentifier<NotificationRuleId>(options.id),
+      scope: testEnvironmentScope("env-1"),
+      name: name.value,
+      filter: options.filter,
+      destination: options.destination,
+      createdBy: asIdentifier<PrincipalId>("user-1"),
+    },
+    new Date("2026-01-01T00:00:00.000Z"),
+  );
+}
+
+/** Type-legal. `parseRuleFilter` refuses it: `eventTypes` must be NON-EMPTY. */
+const UNPARSABLE_FILTER: RuleFilter = { eventPatterns: [], subjectIds: [] };
+
+/** Type-legal. `parseDestination` refuses it: a webhook url must be non-empty. */
+const UNPARSABLE_DESTINATION: Destination = { kind: "webhook", url: "" };
+
+const HEALTHY_DESTINATION: Destination = { kind: "webhook", url: "https://example.test/h" };
+
 describe("routeObservedEvent", () => {
   let context: EventingTestContext;
 
@@ -193,5 +248,77 @@ describe("routeObservedEvent", () => {
     await routeObservedEvent(context.dependencies, observed({ name: "run.completed" }));
     const [queued] = context.queue.all();
     expect(queued?.availableAt.getTime()).toBe(queued?.request.requestedAt.getTime());
+  });
+
+  // Kills: deleting the `parseRuleFilter` arm of `reparse`. Without it this rule
+  // is still not delivered — an empty pattern list matches nothing — but it is
+  // reported as "did-not-match", which says the rule DECLINED the event when in
+  // fact the row is unusable. The reason is the assertion, not the absence.
+  // Also kills moving `reparse` after `ruleAdmits`, for the same reason.
+  it("reports an unparsable stored FILTER as such, not as a non-match", async () => {
+    context.repository.seed(
+      ruleWithHalves({
+        id: "rule-corrupt",
+        name: "corrupt-filter",
+        filter: UNPARSABLE_FILTER,
+        destination: HEALTHY_DESTINATION,
+      }),
+    );
+    context.repository.seed(rule({ id: "rule-healthy", name: "healthy", eventTypes: ["*"] }));
+
+    const report = await routeObservedEvent(context.dependencies, observed({ name: "run.completed" }));
+
+    if (!report.ok) throw new Error("unreachable");
+    expect(report.value.skipped).toEqual([
+      { ruleId: "rule-corrupt", reason: "filters-unparsable" },
+    ]);
+    // The legacy per-rule fail-open: one unusable row must not silence its siblings.
+    expect(report.value.requested.map((request) => request.ruleId)).toEqual(["rule-healthy"]);
+  });
+
+  // Kills: deleting the `parseDestination` arm of `reparse`. Without it this rule
+  // MATCHES, and the drain enqueues a NotificationRequested carrying an empty
+  // webhook url — a send aimed at a destination that nothing ever validated.
+  it("refuses to act on an unparsable stored DESTINATION, and queues nothing for it", async () => {
+    context.repository.seed(
+      ruleWithHalves({
+        id: "rule-corrupt",
+        name: "corrupt-destination",
+        filter: filter(["*"]),
+        destination: UNPARSABLE_DESTINATION,
+      }),
+    );
+
+    const report = await routeObservedEvent(context.dependencies, observed({ name: "run.completed" }));
+
+    if (!report.ok) throw new Error("unreachable");
+    expect(report.value.considered).toBe(1);
+    expect(report.value.requested).toHaveLength(0);
+    expect(context.queue.all()).toHaveLength(0);
+    expect(report.value.skipped).toEqual([
+      { ruleId: "rule-corrupt", reason: "destination-unparsable" },
+    ]);
+  });
+
+  // Kills: swapping the two reasons, and reordering the two checks. A row that is
+  // unusable in BOTH halves is reported by the FIRST check that refuses it, and
+  // that order is the assertion — an operator reading "destination-unparsable"
+  // would go and inspect a delivery column that is in fact fine.
+  it("reports the FILTER as the reason when both halves are unusable", async () => {
+    context.repository.seed(
+      ruleWithHalves({
+        id: "rule-corrupt",
+        name: "corrupt-both",
+        filter: UNPARSABLE_FILTER,
+        destination: UNPARSABLE_DESTINATION,
+      }),
+    );
+
+    const report = await routeObservedEvent(context.dependencies, observed({ name: "run.completed" }));
+
+    if (!report.ok) throw new Error("unreachable");
+    expect(report.value.skipped).toEqual([
+      { ruleId: "rule-corrupt", reason: "filters-unparsable" },
+    ]);
   });
 });

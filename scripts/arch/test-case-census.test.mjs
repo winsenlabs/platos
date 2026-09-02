@@ -249,8 +249,15 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
   // The WIN-256 `eventing` context. Pinned beside the five above so a suite
   // deleted from it is the same kind of failure as one deleted from them.
-  assert.equal(EXPECTED["packages/contexts/eventing"].cases, 142);
-  assert.equal(EXPECTED["packages/contexts/eventing"].files, 14);
+  //
+  // 142 -> 147 (2026-09-03). Five cases closing the coverage the independent
+  // verification found: three for the drain-boundary `reparse` guard, which was
+  // entirely dead to the suite, one for the duplicate-name pre-flight, and one
+  // for an erasure plan carrying this target's name but no subject rider. The
+  // FILE count deliberately does not move — all five went into existing files,
+  // which is the drift `docs/v1-ledger-rules.json` cannot see and this can.
+  assert.equal(EXPECTED["packages/contexts/eventing"].cases, 147);
+  assert.equal(EXPECTED["packages/contexts/eventing"].files, 14, "the file count did NOT move; the case count did");
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {

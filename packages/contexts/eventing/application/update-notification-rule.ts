@@ -87,8 +87,22 @@ async function buildEdit(
 /**
  * A rename must not collide with a sibling. The unique index is on
  * `(environmentId, name)`, so renaming to the rule's OWN current name is a
- * no-op, not a conflict — checking id inequality is what keeps an idempotent
- * re-PUT of an unchanged rule from failing.
+ * no-op, not a conflict.
+ *
+ * TWO GUARDS, AND THEY MASK EACH OTHER. The same-name shortcut returns before
+ * the lookup; the id-inequality test admits the rule's own row when the lookup
+ * happens anyway. The 2026-09-03 enumerated mutation control found each of them
+ * to be an EQUIVALENT MUTANT on its own — delete either line and all 147 cases
+ * stay green, because the survivor still admits the re-PUT — while deleting
+ * BOTH turns "ALLOWS a rename to the rule's own current name" red. The property
+ * is pinned by the PAIR, and the comment that used to sit here was wrong to
+ * credit the id test alone for it.
+ *
+ * Both lines stay, because they defend different things. The shortcut is what
+ * makes the common idempotent re-PUT cost no read at all. The id test is what
+ * keeps a STALE read — this rule renamed by a concurrent writer between the
+ * `findRule` above and this lookup — from being reported as a conflict with
+ * itself.
  */
 async function assertNameFree(
   dependencies: EventingDependencies,

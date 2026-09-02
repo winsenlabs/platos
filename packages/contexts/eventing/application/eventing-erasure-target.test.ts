@@ -144,6 +144,21 @@ describe("eventing ErasureTarget", () => {
     ).rejects.toBeInstanceOf(EventingErasureRejected);
   });
 
+  // Kills: dropping the `"subject" in plan` half of `isEventingErasurePlan`.
+  // The case above only exercises the targetName half, so the name check alone
+  // passes it. This plan carries THIS target's name and no subject rider — what
+  // a plan round-tripped through JSON, or minted by an older binary, looks like
+  // — and without the rider check the target reads `plan.subject` as undefined
+  // and scrubs against a selector it never derived.
+  it("REFUSES a plan carrying this target's own name but NO subject rider", async () => {
+    const target = createEventingErasureTarget(context.dependencies);
+    await expect(
+      context.unitOfWork.run((transaction) =>
+        target.erase({ targetName: EVENTING_ERASURE_TARGET_NAME, items: [] }, transaction),
+      ),
+    ).rejects.toBeInstanceOf(EventingErasureRejected);
+  });
+
   it("rejects rather than issuing a receipt when the scrub fails", async () => {
     await seed(context, "failures");
     const target = createEventingErasureTarget(context.dependencies);

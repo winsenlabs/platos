@@ -88,6 +88,24 @@ describe("registerNotificationRule", () => {
     expect(context.repository.allRules()).toHaveLength(1);
   });
 
+  // Kills: deleting the EVENTING_RULE_NAME_TAKEN pre-flight from the use case.
+  // The index would still refuse the duplicate — the in-memory store enforces
+  // `@@unique([environmentId, name])` exactly as Postgres does — so the ERROR
+  // CODE alone cannot tell "pre-flighted" from "rejected by the store", and the
+  // case above passes either way. What the pre-flight buys is that the common
+  // case opens NO transaction at all, and that is the assertion.
+  it("refuses a duplicate name BEFORE opening a transaction", async () => {
+    await registerNotificationRule(context.dependencies, command());
+    expect(context.unitOfWork.transactions).toHaveLength(1);
+
+    const duplicate = await registerNotificationRule(context.dependencies, command());
+
+    if (duplicate.ok) throw new Error("unreachable");
+    expect(duplicate.error.code).toBe("EVENTING_RULE_NAME_TAKEN");
+    expect(context.unitOfWork.transactions).toHaveLength(1);
+    expect(context.repository.transactions).toHaveLength(1);
+  });
+
   it("ALLOWS the same name in a different environment — the index is composite", async () => {
     await registerNotificationRule(context.dependencies, command());
     const elsewhere = await registerNotificationRule(
