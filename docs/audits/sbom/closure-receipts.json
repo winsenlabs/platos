@@ -74,7 +74,7 @@
         },
         {
           "file": "package.json",
-          "sha256": "a8161e11b0caf93903422989c0004b6068c43714819f47aa17fffc717f5be0cb"
+          "sha256": "02e3ffd4efc4bf64006daf67164634fa630ec59c38bf5d05f1849b9423aeb981"
         },
         {
           "file": "pnpm-lock.yaml",
@@ -89,7 +89,7 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "2680f6c9bc2d60179c73cd79e27e1168879480a3223862d8a581f4d3b95f730e"
+      "buildInputsSha256": "c090c6a25cc6b62579c5b5e3f76e91a2794ce9c7ab07426dbfa999eb43a70c9c"
     }
   }
 }

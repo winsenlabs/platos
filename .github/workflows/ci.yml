@@ -154,6 +154,8 @@ jobs:
           pnpm audit:advisory:check
           pnpm build:v1
           pnpm test:v1-packages
+          pnpm audit:test-case-census
+          pnpm test:test-case-census
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity

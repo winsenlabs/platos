@@ -1,7 +1,7 @@
 import { asIdentifier, environmentScope } from "@platos/kernel";
 import { describe, expect, it } from "vitest";
 
-import type { AttachmentId, EndUserId, AgentId, ThreadId } from "./identifiers.js";
+import type { AttachmentId, EndUserId, AgentId, StorageKey, ThreadId } from "./identifiers.js";
 import { attachmentScope, threadScope, toThreadScope, type AttachmentScope } from "./scope.js";
 import {
   assertStorageKeyInScope,
@@ -107,6 +107,35 @@ describe("scope containment — the cross-tenant negative control", () => {
     );
     expect(storageKeyBelongsToScope(siblingKey, toThreadScope(owner))).toBe(false);
     expect(storageKeyBelongsToScope(key, sibling)).toBe(false);
+  });
+
+  // The case above varies the THREAD id, which sits BEFORE the literal
+  // `attachment` segment, so both keys diverge earlier in the string and the
+  // separator is never exercised. Deleting the trailing "/" from
+  // `storageKeyBelongsToScope` therefore left all 133 files-context tests green
+  // (2026-09-02 independent verification, surviving mutation). The uncovered
+  // input is a key whose FIRST POST-PREFIX segment merely begins with
+  // `attachment`. This is the files-context twin of the kernel's `org-1` vs
+  // `org-10` case in packages/kernel/src/vo/scope.test.ts.
+  it("is not fooled by a first segment that merely BEGINS with the attachment segment", () => {
+    const scope = toThreadScope(owner);
+    const prefix = storageKeyPrefix(scope);
+    // Not derivable through `deriveAttachmentStorageKey` by construction — the
+    // segment is a literal — so it is spelled out, which is exactly the shape a
+    // hostile or corrupted key would take.
+    const impostor = `${prefix}X/att-1/photo.png` as StorageKey;
+    expect(impostor.startsWith(prefix)).toBe(true);
+    expect(storageKeyBelongsToScope(impostor, scope)).toBe(false);
+
+    const verified = assertStorageKeyInScope(impostor, scope);
+    expect(verified.ok).toBe(false);
+    if (verified.ok) throw new Error("unreachable");
+    expect(verified.error.code).toBe("FILES_STORAGE_KEY_SCOPE_MISMATCH");
+    expect(verified.error.category).toBe("forbidden");
+
+    // The same separator carries the id recovery: without it the slice starts
+    // mid-segment and would hand back a foreign attachment id.
+    expect(attachmentIdFromStorageKey(impostor, scope)).toBeNull();
   });
 
   it("recovers the attachment id only from a key in scope", () => {

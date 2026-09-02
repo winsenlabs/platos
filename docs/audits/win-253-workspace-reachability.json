@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ae020ac862c9519aa4ce87ac9901488b313b78acd0d3f924c4e83c8d0e87f532",
+  "evidenceSha256": "6278a66c225bc6aa1f8e93534b7b1560a0fd66ba3a9cdf662df4ecdefd17e03a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 95,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c421c1e66bd5e15fdf032349808128f4afa977e7d89992011cd2a1e7572be2cd",
+    "aggregateSha256": "9ea96cf8a4efce3a2a8addc1f835d51bace7ae8faa6ce7017a02db14d3ecf3e6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "42eb0bef7141addf24ba6991daed441141a1de2e4f55500b99073231930c6a90"
+        "sha256": "9e544ea7b9f069df7ac8c09ef9e03d5ad4a99c2e5d79c364d1175c9cd77ed917"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -3953,7 +3953,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "34e63a745a0ff4bf09987f77db55a190b1176140f28f622a3aebb0820ef45d94"
+        "sha256": "e035ed4bb4a19d42963faf6660bb35322cb8ba1d24739ca37af66551c1ec16e6"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -5941,7 +5941,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "8badf8ab37e61a7e81711eb63eab8a75c9d935be67eb54c599930b05d8d1cf71"
+        "sha256": "dd84e0c1287d0cbaebe824fccc1442bb31fecb93dff817fc02d6a8f9264c8e6c"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -10741,7 +10741,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "a8161e11b0caf93903422989c0004b6068c43714819f47aa17fffc717f5be0cb"
+        "sha256": "02e3ffd4efc4bf64006daf67164634fa630ec59c38bf5d05f1849b9423aeb981"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -11305,7 +11305,7 @@
       },
       {
         "path": "packages/contexts/files/domain/storage-key.test.ts",
-        "sha256": "ad90ee67b7272e11cb12a17bff7b83fde577592d908ec92dce37d09c86e6228b"
+        "sha256": "c90f65f072860ad6d099157caaddb634ae11fb43e4b7904cc3fd76e099e81e2f"
       },
       {
         "path": "packages/contexts/files/domain/storage-key.ts",
@@ -14329,15 +14329,23 @@
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
-        "sha256": "13763f9c4435327f12fefae6cfd02b7dc1067a396808e6bbde4c889f8a2e74ab"
+        "sha256": "ccba4fe4f595e1c86d5b2b1e36bf50c696d240e39455d71d0762dc0e3266e311"
       },
       {
         "path": "scripts/arch/sole-writer.test.mjs",
-        "sha256": "68809ac38189ed9e528e39a1f1214dc5441bfd2a572dfcdf9c756b45e3ae1d0e"
+        "sha256": "b13ee31359c367bd497cd4a3ad749cbdae5a2d57fd9c4729682e014773b28fde"
       },
       {
         "path": "scripts/arch/table-ownership.mjs",
-        "sha256": "54d5628257263b34e15c4496fca9954b03afbd62692d919ca870fd79b8e457a5"
+        "sha256": "366e939f7d0a7ef28a50a0d370f252ede595583395f9ac7267848cfb1eb3edb5"
+      },
+      {
+        "path": "scripts/arch/test-case-census.mjs",
+        "sha256": "0929439dae087376be54030e767af82ee6463234072233dbf3d45cebfa5a3c14"
+      },
+      {
+        "path": "scripts/arch/test-case-census.test.mjs",
+        "sha256": "7d87a3cf45e01b1cd5820759c173b67cd27b44914b8a5578444b928f293fc80d"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14393,7 +14401,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "94e25c0830e22cab090c3f2c3dbf6cb9c77fa9a6e7c573c56df9f2624bb23ba3"
+        "sha256": "3170df61b69caeb757346e3f75956f297ba4c3c12f736c7f9d9ffb3f5af2b536"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -14557,7 +14565,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "5cacbdae613470b923eac368d03a2ba9c6cff422b1ed7f7874c84f28bc8fd406"
+        "sha256": "33aa85295712a74a7defaf148a3b856adac728c0344e7d8948533323c004a1df"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15658,7 +15666,7 @@
       "patches": 16,
       "sourceDynamic": 0,
       "sourceStatic": 17,
-      "testsFixtures": 43
+      "testsFixtures": 44
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -20010,7 +20018,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 180
+              "line": 187
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -20082,7 +20090,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "17c62c870880f699e020fe79e1f0863cda55bbaab2d83c8ffa3b7d9e53500c92",
+      "evidenceSha256": "7e24db2efc63ad39dd9d5d5af49bee3ee4678d2f9e885deff1033983245a93bc",
       "manifestSha256": "e2c8b2594874959f5381342018b9cdbb28b59720aea7b5fb3e13423bc305e03b",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -28046,6 +28054,11 @@
               "line": 29
             },
             {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 132
+            },
+            {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
               "line": 241
@@ -28213,6 +28226,10 @@
               "packages/contexts/secrets/contracts/index.test.ts"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/audit-licenses.test.mjs",
               "scripts/audit-licenses.test.mjs"
             ],
@@ -28313,6 +28330,7 @@
             "internal-packages/docs/src/repository.test.ts",
             "internal-packages/tenancy-database/src/model-pricing.test.ts",
             "packages/contexts/secrets/contracts/index.test.ts",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
@@ -28343,7 +28361,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "c16118e5e77c10fa4a28f8f824b6789b214c0390fc87594045998f778b24b61b",
+      "evidenceSha256": "8388684aa38e8c067ba68cd2ef8d96d4c5aca4674485743ed2a95cae32090f6b",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -29060,7 +29078,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 236
+              "line": 238
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -29913,7 +29931,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "00d521a99ccf343aa42a687aae4f2fa2be13811cb813722f270411da6aaebb71",
+      "evidenceSha256": "e7881141ce27117be180f49e0ac6836e6770ee4dfa301726d7672acba499ab72",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -31578,7 +31596,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 577
+              "line": 585
             }
           ],
           "reversePaths": [
@@ -31603,7 +31621,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9938a2ad07adbf5e88dced4559b76b241fe7a4722e558489559dec86044015ca",
+      "evidenceSha256": "0bce3aa7d00ac501f603f9336f6f7b42520cc59ad46548b61b1be4ab274b1752",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -32734,7 +32752,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 576
+              "line": 584
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32959,7 +32977,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d4d9e8094d60a0579cbdf1144c56147d4e94554bec25971536386b7a7b3381c5",
+      "evidenceSha256": "19b2a72b17b1facc7fd70a055f1f132987bb6fca33e53c8d401f1e0b8b854014",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -34571,7 +34589,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 197
+              "line": 403
             },
             {
               "from": "scripts/audit-sbom.test.mjs",
@@ -35048,7 +35066,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "beb367d717fda1cf021f69bbd7c3a28edf85b768ff109686c9425a85b53ddb14",
+      "evidenceSha256": "fd8524183269014efe2285b7454dfe042da486aa24ee6a4b98e6903b2c1604e3",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -35465,7 +35483,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 236
+              "line": 238
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -36162,7 +36180,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "705f3ca2c03ab213e9f05070db3cc6e0981e8db9eb0695901c527f2b173e6a2f",
+      "evidenceSha256": "b1990521576c8ff59fe91501aff78e2b328fdbfd5defa12d79a58f4d8cc867f5",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -37394,7 +37412,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2368
+              "line": 2376
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -37556,7 +37574,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "aef3c3fb0c50326cdf27ada9494d4867253886b59bc092b2f7fc71eb499dec41",
+      "evidenceSha256": "0ccbad4c139373ecbe5e0028f65d5909d9dac05b7e66a8975ff1d5025c0636d8",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -38951,7 +38969,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 96
+              "line": 103
             }
           ],
           "reversePaths": [
@@ -39020,7 +39038,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "ed03ebd11d56b6b282158e50a0b2055f1fe69d97f5733130257b2e872108faa8",
+      "evidenceSha256": "ba4ab8bc59989bc4662ec68d4b960cb588addce06be47d6db13ec81b13ec4178",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -40769,7 +40787,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 59
+              "line": 66
             }
           ],
           "reversePaths": [
@@ -40838,7 +40856,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "7b8aad7e2767b5c52a7ed5d69c6fbfdf6dee0411be43ce3546587a6aa5e822a2",
+      "evidenceSha256": "3f1f06bd8d35cf30825e6bcd8218646c6dac313a5e6fd90e95022031991157fb",
       "manifestSha256": "f3a2889e81f80bb926c7a5f7728f794c737c17241a540e443a870fb03783c943",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -45053,7 +45071,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 128
+              "line": 135
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 30
             }
           ],
           "reversePaths": [
@@ -45124,6 +45147,10 @@
             [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
             ]
           ],
           "roots": [
@@ -45143,7 +45170,8 @@
             "packages/contexts/files/domain/scope.test.ts",
             "packages/contexts/files/domain/storage-key.test.ts",
             "packages/contexts/files/package.json",
-            "scripts/arch/sole-writer.test.mjs"
+            "scripts/arch/sole-writer.test.mjs",
+            "scripts/arch/test-case-census.test.mjs"
           ]
         }
       },
@@ -45318,7 +45346,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "0e174c3ba63ade079746d3eb1d72e401442acd8d97e6e60340ac09dd708b4c3e",
+      "evidenceSha256": "0d756eeca3f9b9e6b98993e5ec1efa5b0e3f4e9680acb78fcd6523bd0e3fc01b",
       "manifestSha256": "3ae6fd2ca3fccb75bada2d46933a092278e87ad0089deb376a7b97424c223a51",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -46746,7 +46774,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 113
+              "line": 120
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 240
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -46840,6 +46873,10 @@
               "scripts/arch/sole-writer.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ]
@@ -46866,6 +46903,7 @@
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
           ]
         }
@@ -47533,7 +47571,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "78e7a9be0bcb92724665ef445a14168c6e141fde3877cc479c5101f12effa432",
+      "evidenceSha256": "bfc2ec9c9ab5b0476f2350607d8e9533c452f3df91b5a266da842f4ff0faad1a",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -47880,10 +47918,23 @@
           "roots": []
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 186
+            }
+          ],
+          "reversePaths": [
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "scripts/arch/test-case-census.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -47963,7 +48014,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "d1dd5c8d519c817b0d0ae0a737d6de929d2b1f8ca0fb5caa04f58f9378948f35",
+      "evidenceSha256": "c573e6faf5228a9e0a4737c197f8f35df1c8303fa89df3d49b1b38e1b6d0f19c",
       "manifestSha256": "c6b1a7528aefd87c2fc85b0a93aa5b796e7ba59dcdddced0db79072b5a96e405",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -48816,7 +48867,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 138
+              "line": 145
             }
           ],
           "reversePaths": [
@@ -48912,7 +48963,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "601fd0fac492b6f8263bcab536f8d9d8b238e2bc40bda9730a99129857e332f1",
+      "evidenceSha256": "ed06e112aa497bc633d14b879a23c2a68958711a37b6072fbd979c8397cc0166",
       "manifestSha256": "c7d05f1de4a35e7b545d27507170756351fb9e4fbd9744193f2788bb7a01ebfe",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -50946,6 +50997,11 @@
               "line": 137
             },
             {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 241
+            },
+            {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 158
@@ -51025,6 +51081,10 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ]
@@ -51048,6 +51108,7 @@
             "packages/contexts/secrets/domain/secret-version.test.ts",
             "packages/contexts/secrets/package.json",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
           ]
         }
@@ -51401,7 +51462,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e7cb5a2eeb979ab58dd6dc2c2cfa109135bb29fc98ec7004a27f91479a320eab",
+      "evidenceSha256": "b627a05960cd66aa4080356189aff836ea81a49a6ecc20dcbe7ecb1e63dc8934",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -52995,7 +53056,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 58
+              "line": 65
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 242
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -53085,6 +53151,10 @@
               "scripts/arch/sole-writer.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ]
@@ -53110,6 +53180,7 @@
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/kernel-content.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
           ]
         }
@@ -53695,7 +53766,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "049b2f3c42b70c9f43e5f8a741d4664d447395a0b2496be1713e2f0f3a3d92ad",
+      "evidenceSha256": "285122fad164ef2640955ea978ece816699d6180ea9f6a2b7075b3f5282d3357",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -54310,7 +54381,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 245
+              "line": 247
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -55866,7 +55937,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "895bbd94c7b61c8952346ebc72d6f854d44814285f986cfbc6f24fbeb0a76268",
+      "evidenceSha256": "94235308672ea17418bdc694d9feb1d4d342361fc8d45c61ba48392bbe6b643f",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -58478,7 +58549,7 @@
             {
               "from": "packages/contexts/files/domain/storage-key.test.ts",
               "kind": "reference",
-              "line": 1
+              "line": 119
             },
             {
               "from": "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
@@ -58644,6 +58715,11 @@
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
               "line": 78
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 226
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -58840,6 +58916,10 @@
               "scripts/arch/max-file-lines.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ],
@@ -58900,6 +58980,7 @@
             "scripts/arch/clean-v1.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/v1-ledger.test.mjs",
@@ -59648,7 +59729,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "519db47a92bea1c6a029783f3b1cb106be8847910a361764672cfd8bf893a8a9",
+      "evidenceSha256": "ae46b231c0ae8b3a729d44746c0dbfca2424917ea2302a2529376dd123155ae4",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

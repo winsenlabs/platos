@@ -239,6 +239,14 @@ const expectedV1EvidenceCommands = [
   // WIN-256: the V1 packages' own suites. Runs AFTER build:v1 because a context
   // test resolves its peers through their built dist/ entrypoints.
   "pnpm test:v1-packages",
+  // WIN-256 owner decision 9 (2026-09-02): the per-package test CASE census.
+  // `test:v1-packages` above prints a case count and passes at any value, and
+  // docs/v1-ledger-rules.json pins only test FILE counts, so deleting it()
+  // blocks inside a retained file was invisible to every gate in this list.
+  // Runs immediately after the suites it pins, so the two numbers are read from
+  // the same tree in the same step.
+  "pnpm audit:test-case-census",
+  "pnpm test:test-case-census",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",

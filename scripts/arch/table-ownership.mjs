@@ -225,6 +225,64 @@ export const MUTATING_DELEGATE_METHODS = Object.freeze([
   "deleteMany",
 ]);
 
+/**
+ * Prisma delegate methods that only READ. §1 restricts WRITES, so these are
+ * exempt by design.
+ *
+ * This list is EXHAUSTIVE on purpose, and is the counterpart to
+ * `MUTATING_DELEGATE_METHODS` rather than its complement. Before WIN-256's
+ * defect close-out the lint treated "not in the mutating list" as a read, which
+ * made every method it had never heard of — including a computed one — silently
+ * safe. A delegate method in neither list is now INDETERMINATE and fails, so a
+ * new Prisma API cannot arrive as a hole.
+ */
+export const READ_DELEGATE_METHODS = Object.freeze([
+  "aggregate",
+  "aggregateRaw",
+  "count",
+  "findFirst",
+  "findFirstOrThrow",
+  "findMany",
+  "findRaw",
+  "findUnique",
+  "findUniqueOrThrow",
+  "groupBy",
+]);
+
+/**
+ * Client-level raw-SQL entry points. These are NOT delegate methods — they hang
+ * off the client, not off `db.<model>` — which is why they are a separate list
+ * rather than entries in `MUTATING_DELEGATE_METHODS`. They are the second door
+ * into every table: `$executeRawUnsafe("INSERT INTO ...")` writes a row that no
+ * delegate call ever names, and `$queryRaw` is read-SHAPED but not read-ONLY.
+ *
+ * All four are judged identically, and deliberately: by the SQL, not by the
+ * method's reputation. A statically visible statement is attributed to the
+ * owner of the table it names; a statement assembled at runtime cannot be
+ * attributed at all and fails. Splitting them into "execute writes / query
+ * reads" would have been a distinction the evidence does not support —
+ * `$queryRaw\`INSERT INTO …\`` writes, and it was one of the six probes that
+ * got through.
+ */
+export const RAW_SQL_METHODS = Object.freeze([
+  "$executeRaw",
+  "$executeRawUnsafe",
+  "$queryRaw",
+  "$queryRawUnsafe",
+]);
+
+/**
+ * SQL statements that write. Matched against whitespace-normalised, lowercased
+ * text, with the table identifier captured so the statement can be attributed
+ * to an owner exactly as a delegate call is.
+ *
+ * `do update` (the `ON CONFLICT` tail) and `for update` (row locking on a
+ * SELECT) are excluded by lookbehind: both are followed by something that is
+ * not a table, and both would otherwise report a false mutation.
+ */
+export const MUTATING_SQL_STATEMENT =
+  /(?<!\bdo )(?<!\bfor )\b(insert into|update|delete from|truncate table|truncate|merge into|alter table|drop table|create table)\s+([^\s(;,]+)/gu;
+
 /** Every context named as an owner, plus the outbox adapter pseudo-owner. */
 export function owners() {
   return [...new Set(Object.values(OWNER))].sort();

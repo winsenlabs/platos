@@ -532,10 +532,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 10 -> 15. WIN-256 adds five root-infra files: the ADR §5.3 kernel-content
     // assertion and its tests, the §5.2 ownership map and sole-writer lint and
     // its tests.
-    "root-infra": 15,
+    // 15 -> 17. WIN-256 owner decision 9 (2026-09-02) adds two more: the
+    // per-package test CASE census `scripts/arch/test-case-census.mjs` and its
+    // control suite `scripts/arch/test-case-census.test.mjs`. Both classify as
+    // root-infra.tooling.scripts, which moves 67 -> 69; `scripts/*.test.mjs`
+    // is a single-level glob and does not reach `scripts/arch/`. Nothing else
+    // moved: the storage-key separator case, the sole-writer evasion close-out
+    // and the ci-policy allowlist are all edits to files already tracked, which
+    // is the exact drift a FILE-count pin cannot see and the new census can.
+    "root-infra": 17,
   };
-  // 20 -> 231: 207 packages + 9 docs-content + 15 root-infra.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 231);
+  // 20 -> 233: 207 packages + 9 docs-content + 17 root-infra.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 233);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -544,7 +552,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 231
+    rulesDocument.baseline.totalFiles + 233
   );
 });
 

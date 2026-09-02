@@ -7,18 +7,25 @@ import {
   BLANKET_OWNER,
   MUTATING_DELEGATE_METHODS,
   OWNER,
+  RAW_SQL_METHODS,
+  READ_DELEGATE_METHODS,
   UNOWNED_ADR_ROWS,
   delegateName,
   modelForDelegate,
   owners,
 } from "./table-ownership.mjs";
 import {
+  canonicalTables,
+  check,
   checkMapIntegrity,
   checkWriteEnforcement,
+  failures,
+  findSqlMutations,
   findWrites,
   owningPackage,
   ownerDirectory,
   readSchemaModels,
+  readSchemaTables,
 } from "./sole-writer.mjs";
 
 const fixtures = [];
@@ -181,11 +188,210 @@ test("owningPackage resolves a file to its package, and nothing else", () => {
 });
 
 test("findWrites reports position and method, so a failure is actionable", () => {
-  const found = findWrites("packages/contexts/x/a.ts", `\n\nawait db.budget.upsert({});\n`);
+  const found = findWrites("packages/contexts/x/a.ts", `\n\nawait db.budget.upsert({});\n`).writes;
   assert.equal(found.length, 1);
   assert.equal(found[0].model, "Budget");
   assert.equal(found[0].method, "upsert");
   assert.equal(found[0].line, 3);
+});
+
+// ---------------------------------------------------------------------------
+// The seven evasion probes from the 2026-09-02 independent verification.
+//
+// SIX of these were invisible to the check as shipped at 3ed8f3ce, because the
+// matcher required a literal two-level `X.<delegate>.<mutator>()`. Each probe
+// is a negative control in its own right: it writes `User`, which
+// identity-access owns, from `tenancy`, which does not. If the detector stops
+// seeing one of them, the assertion goes red rather than the suite going quiet.
+// ---------------------------------------------------------------------------
+
+const PROBES = Object.freeze({
+  "direct delegate call": `export async function run(db: any) {\n  await db.user.create({});\n}\n`,
+  "element-access delegate": `export async function run(db: any) {\n  await db["user"].create({});\n}\n`,
+  "destructured delegate": `export async function run(db: any) {\n  const { user } = db;\n  await user.create({});\n}\n`,
+  "renamed destructured delegate": `export async function run(db: any) {\n  const { user: u } = db;\n  await u.create({});\n}\n`,
+  "aliased delegate": `export async function run(db: any) {\n  const u = db.user;\n  await u.create({});\n}\n`,
+  "aliased element-access delegate": `export async function run(db: any) {\n  const u = db["user"];\n  await u.deleteMany({});\n}\n`,
+  "computed method on a delegate": `export async function run(db: any, m: string) {\n  await db.user[m]({});\n}\n`,
+  "raw INSERT through $executeRawUnsafe": `export async function run(db: any) {\n  await db.$executeRawUnsafe('INSERT INTO "User" (id) VALUES (1)');\n}\n`,
+  "raw INSERT through a $queryRaw tagged template": `export async function run(db: any, id: string) {\n  await db.$queryRaw\`INSERT INTO "User" (id) VALUES (\${id})\`;\n}\n`,
+  "raw UPDATE through $executeRaw": `export async function run(db: any) {\n  await db.$executeRaw\`UPDATE "User" SET name = 'x'\`;\n}\n`,
+  "raw DELETE through $queryRawUnsafe": `export async function run(db: any) {\n  await db.$queryRawUnsafe('DELETE FROM "User" WHERE id = 1');\n}\n`,
+});
+
+for (const [label, source] of Object.entries(PROBES)) {
+  test(`EVASION PROBE — ${label} is caught writing a row tenancy does not own`, () => {
+    const root = fixture({ "packages/contexts/tenancy/application/rogue.ts": source });
+    const result = checkWriteEnforcement(root);
+    assert.equal(
+      result.violations.length + result.unattributable.length,
+      1,
+      `${label} produced ${JSON.stringify(result)}`,
+    );
+    if (result.violations.length === 1) {
+      assert.equal(result.violations[0].model, "User");
+      assert.equal(result.violations[0].expected, "packages/contexts/identity-access");
+    }
+  });
+
+  test(`EVASION PROBE — ${label} is PERMITTED from the owning package`, () => {
+    const root = fixture({ "packages/contexts/identity-access/application/mint.ts": source });
+    const result = checkWriteEnforcement(root);
+    assert.deepEqual(result.violations, [], label);
+    assert.deepEqual(result.unattributable, [], label);
+    assert.equal(result.writeCount, 1, `${label} must be SEEN in the owning package, not merely un-flagged`);
+  });
+}
+
+test("a computed DELEGATE cannot be attributed, so it fails in every package", () => {
+  const source =
+    `export async function run(db: any, name: string) {\n` +
+    `  await db.user.findMany({});\n` +
+    `  await db[name].create({});\n}\n`;
+  for (const owner of ["identity-access", "tenancy"]) {
+    const root = fixture({ [`packages/contexts/${owner}/application/x.ts`]: source });
+    const result = checkWriteEnforcement(root);
+    assert.equal(result.unattributable.length, 1, owner);
+    assert.equal(result.unattributable[0].reason, "computed-delegate");
+  }
+});
+
+test("a raw statement assembled at runtime cannot be attributed, so it fails in every package", () => {
+  const source = `export async function run(db: any, sql: string) {\n  await db.$executeRawUnsafe(sql);\n}\n`;
+  for (const owner of ["identity-access", "tenancy"]) {
+    const root = fixture({ [`packages/contexts/${owner}/application/x.ts`]: source });
+    const result = checkWriteEnforcement(root);
+    assert.equal(result.unattributable.length, 1, owner);
+    assert.equal(result.unattributable[0].reason, "raw-sql-not-static");
+  }
+});
+
+test("a raw statement whose table is interpolated cannot be attributed", () => {
+  const root = fixture({
+    "packages/contexts/identity-access/application/x.ts":
+      `export async function run(db: any, t: string) {\n  await db.$executeRaw\`INSERT INTO \${t} (id) VALUES (1)\`;\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.equal(result.unattributable.length, 1);
+  assert.equal(result.unattributable[0].reason, "raw-sql-unknown-table");
+});
+
+test("a raw statement naming a table no canonical model claims cannot be attributed", () => {
+  const root = fixture({
+    "packages/contexts/identity-access/application/x.ts":
+      `export async function run(db: any) {\n  await db.$executeRawUnsafe('INSERT INTO "SomeLegacyTable" (id) VALUES (1)');\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.equal(result.unattributable.length, 1);
+  assert.equal(result.unattributable[0].reason, "raw-sql-unknown-table");
+});
+
+test("a raw statement that only READS is exempt, exactly as a findMany is", () => {
+  const root = fixture({
+    "packages/contexts/tenancy/application/x.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.$queryRaw\`SELECT id FROM "User" WHERE id = 1 FOR UPDATE\`;\n` +
+      `  await db.$executeRaw\`SET LOCAL statement_timeout = 5000\`;\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 0);
+});
+
+test("ON CONFLICT DO UPDATE is one INSERT, not an INSERT and a stray UPDATE", () => {
+  const found = findSqlMutations(
+    `INSERT INTO "User" (id) VALUES (1) ON CONFLICT (id) DO UPDATE SET id = 1`,
+    canonicalTables(),
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].statement, "insert into");
+  assert.equal(found[0].model, "User");
+});
+
+test("a mutating verb inside a SQL comment is prose, not a write", () => {
+  const found = findSqlMutations(`-- update the audit row\nSELECT 1`, canonicalTables());
+  assert.deepEqual(found, []);
+});
+
+test("raw attribution follows @@map, so the PHYSICAL table name resolves", () => {
+  // Derived from the schema rather than transcribed: the one `@@map`ped model
+  // carries an inherited physical name that the vocabulary boundary does not
+  // permit in authored V1 source, and hard-coding it here would spread it.
+  const tables = readSchemaTables();
+  const remapped = [...tables].filter(([table, model]) => table !== model.toLowerCase());
+  assert.equal(remapped.length, 1, "the canonical schema has exactly one @@map'd model");
+  const [physical, model] = remapped[0];
+  assert.equal(tables.has(model.toLowerCase()), false, "the model name is NOT the table name here");
+
+  const root = fixture({
+    "packages/contexts/tenancy/application/x.ts":
+      `export async function run(db: any) {\n  await db.$executeRawUnsafe('DELETE FROM "${physical}" WHERE id = 1');\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.equal(result.violations.length, 1);
+  assert.equal(result.violations[0].model, model);
+  assert.equal(result.violations[0].expected, ownerDirectory(OWNER[model]));
+  assert.notEqual(result.violations[0].expected, "packages/contexts/tenancy");
+});
+
+// This is the live-tree finding that decided the fail-closed AXIS. Failing
+// closed on an unrecognised METHOD NAME reported four calls in identity-access
+// that are not Prisma at all — `ports.repository.impersonationAudit.append()` is
+// a domain port named after the row it owns. A name in neither Prisma list is
+// evidence the receiver was never a delegate.
+test("a method in neither Prisma list is a domain port, not a hidden write", () => {
+  const root = fixture({
+    "packages/contexts/tenancy/application/x.ts":
+      `export async function run(ports: any, entry: any) {\n` +
+      `  await ports.repository.impersonationAudit.append(entry);\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 0);
+});
+
+test("reads on a resolved delegate are counted, so the gate can show it is not blind", () => {
+  const root = fixture({
+    "packages/contexts/tenancy/application/x.ts":
+      `export async function run(db: any) {\n  await db.user.findMany({});\n  await db["user"].count({});\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.equal(result.writeCount, 0);
+  assert.equal(result.readCount, 2, "a read must be SEEN and exempted, not merely unmatched");
+});
+
+test("the read list and the write list do not overlap, and both are non-empty", () => {
+  const overlap = READ_DELEGATE_METHODS.filter((method) => MUTATING_DELEGATE_METHODS.includes(method));
+  assert.deepEqual(overlap, []);
+  assert.ok(READ_DELEGATE_METHODS.length >= 6);
+  assert.deepEqual([...RAW_SQL_METHODS].sort(), [
+    "$executeRaw",
+    "$executeRawUnsafe",
+    "$queryRaw",
+    "$queryRawUnsafe",
+  ]);
+});
+
+test("an element-access member that is not a delegate is still not a write", () => {
+  const root = fixture({
+    "packages/contexts/tenancy/application/x.ts":
+      `export async function run(rows: any[], i: number) {\n  rows[i].create({});\n  rows["thing"].delete({});\n}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+});
+
+test("the live tree still judges zero mutations, and the banner may claim no more", () => {
+  const result = check();
+  assert.equal(result.enforcement.writeCount, 0, "a V1 package now writes; the note in main() must be revisited");
+  assert.deepEqual(result.enforcement.violations, []);
+  assert.deepEqual(result.enforcement.unattributable, []);
+  assert.equal(failures(result), 0);
+  assert.ok(result.enforcement.fileCount > 0, "the scan must have read something");
 });
 
 // ---------------------------------------------------------------------------

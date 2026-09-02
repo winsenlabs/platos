@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "42eb0bef7141addf24ba6991daed441141a1de2e4f55500b99073231930c6a90"
+      "sha256": "9e544ea7b9f069df7ac8c09ef9e03d5ad4a99c2e5d79c364d1175c9cd77ed917"
     },
     {
       "path": "LICENSE",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "34e63a745a0ff4bf09987f77db55a190b1176140f28f622a3aebb0820ef45d94"
+      "sha256": "e035ed4bb4a19d42963faf6660bb35322cb8ba1d24739ca37af66551c1ec16e6"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1023,12 +1023,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "edd78b6456dadb024cb08be34f698cc553ae19343a637a146388c84a2ed0c74b"
+      "sha256": "09ffce2c5bbfbb08f87e7f5264320efc3fbac7a23fd335ac175e5d3e224284c9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "f357243d2db28c2c00cb92ccae096e61db98f22ceb7d85f111865955f26d035f"
+      "sha256": "e896a39910761603263c22ff60c630b5ab23ef85a448c997ec94585c4e15f9f8"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1043,7 +1043,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "894c4263db34a79a73a300d822593192f339398fd63b3c8739734c5f1fbf65ae"
+      "sha256": "7bd83b5a9f30b3088a92908718c1bafc2c30df0e3636124711a698d833fde86b"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3448,7 +3448,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "8badf8ab37e61a7e81711eb63eab8a75c9d935be67eb54c599930b05d8d1cf71"
+      "sha256": "dd84e0c1287d0cbaebe824fccc1442bb31fecb93dff817fc02d6a8f9264c8e6c"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3618,7 +3618,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "a8161e11b0caf93903422989c0004b6068c43714819f47aa17fffc717f5be0cb"
+      "sha256": "02e3ffd4efc4bf64006daf67164634fa630ec59c38bf5d05f1849b9423aeb981"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3873,7 +3873,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "5cacbdae613470b923eac368d03a2ba9c6cff422b1ed7f7874c84f28bc8fd406"
+      "sha256": "33aa85295712a74a7defaf148a3b856adac728c0344e7d8948533323c004a1df"
     },
     {
       "path": "scripts/verify-sbom-nonvacuity.mjs",
