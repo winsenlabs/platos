@@ -518,20 +518,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "apps-webapp": 0,
     "apps-core-api": 0,
     "apps-mcp-stdio": 0,
-    // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
+    // 1 -> 207 -> 272. WIN-252 added packages/core/NOTICE (the upstream MIT
     // attribution, kept out of LICENSE so every publishable package's LICENSE
     // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
     // added 206 files making packages/kernel and four contexts real
     // (identity-access, secrets, tenancy, files) — domain, application, ports,
     // contracts, in-memory use cases and test builders.
-    packages: 207,
+    //
+    // +65: the same issue makes `providers` real (ADR M0.3 §1 context 4) —
+    // 17 domain modules and 13 domain suites, 20 application modules and 7
+    // application suites, 3 ports, 5 in-memory doubles, and the contracts
+    // barrel with its suite. The 65 are NET of the 4 generated placeholders
+    // that adoption released and this code replaced in place.
+    packages: 272,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     "docs-content": 9,
     // 10 -> 15. WIN-256 adds five root-infra files: the ADR §5.3 kernel-content
     // assertion and its tests, the §5.2 ownership map and sole-writer lint and
-    // its tests.
+    // its tests. Adopting `providers` adds none: it is one line appended to the
+    // generator's ADOPTED_PROJECTS list, in a file that already existed.
     // 15 -> 17. WIN-256 owner decision 9 (2026-09-02) adds two more: the
     // per-package test CASE census `scripts/arch/test-case-census.mjs` and its
     // control suite `scripts/arch/test-case-census.test.mjs`. Both classify as
@@ -542,8 +549,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // is the exact drift a FILE-count pin cannot see and the new census can.
     "root-infra": 17,
   };
-  // 20 -> 233: 207 packages + 9 docs-content + 17 root-infra.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 233);
+  // 20 -> 231 -> 296 -> 298: 272 packages + 9 docs-content + 17 root-infra.
+  // The two axes are independent and both survive the 2026-09-02 rebase onto
+  // `75ee484de252`: the +65 packages files are the providers context, the +2
+  // root-infra files are decision 9's case census. Neither touches the other's
+  // area, so the merged delta is the sum, not a reconciliation.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 298);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -552,7 +563,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 233
+    rulesDocument.baseline.totalFiles + 298
   );
 });
 

@@ -86,8 +86,21 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   turns exactly this case red. File count is unchanged at 15 for `files`,
  *   which is precisely the drift a file-count pin cannot see and this one can.
  *
- * No other package moved. Any further drift is a finding to report, not a
- * number to force.
+ * REBASE DELTA (2026-09-02), `tejas/win-256-providers-context` onto
+ * `75ee484de252`. The providers context was built on `3ed8f3ce`, so it predates
+ * this census and its row was still the 0/0 placeholder that the map deliberately
+ * carries for every unbuilt package. Making it real moves ONE row:
+ *
+ *   providers 0 -> 21 files, 0 -> 283 cases; 717 -> 1000 total. 13 domain
+ *   suites, 7 application suites and the contracts-barrel suite. The census
+ *   REFUSED nothing in that tree, so its 283 is a statically exact count, and
+ *   `pnpm --filter @platos/context-providers exec vitest run` prints the same
+ *   pair — "Test Files 21 passed (21) / Tests 283 passed (283)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * No other package moved: the rebase touched no suite outside providers, and
+ * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
+ * to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -114,7 +127,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
-  "packages/contexts/providers": { files: 0, cases: 0 },
+  "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -129,7 +142,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 717;
+export const EXPECTED_RUNTIME_TOTAL = 1000;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

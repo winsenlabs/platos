@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6278a66c225bc6aa1f8e93534b7b1560a0fd66ba3a9cdf662df4ecdefd17e03a",
+  "evidenceSha256": "078822de1472dc9af8da89a835a73213580345ad2b26679e7c03d9f8cb7a5dd0",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 95,
+    "explicitHeaderFileCount": 91,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 182,
-        "sha256": "af298ef36d3b17f4b456763696bf18701b07b0636b849b22029c88f82a37534d"
+        "outputCount": 178,
+        "sha256": "d533387ee6368f43344c063f0dcb7135454853022fff7ca4733d002f9739f362"
       }
     ],
-    "ownedOutputCount": 182,
+    "ownedOutputCount": 178,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9ea96cf8a4efce3a2a8addc1f835d51bace7ae8faa6ce7017a02db14d3ecf3e6",
+    "aggregateSha256": "c01c3260ddc14b35636d64e1aeb7b60d8c44eedd6a39d534f2f17f65fe99fdf6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -5941,7 +5941,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "dd84e0c1287d0cbaebe824fccc1442bb31fecb93dff817fc02d6a8f9264c8e6c"
+        "sha256": "05feb49e63cc90a50b1b53ce45b66e987ce808a8eba6e172fb55cbaa08a24849"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11688,24 +11688,284 @@
         "sha256": "38f315f7d6b347222479f3975fa6eceef60c595611c1faec1b550337507721d1"
       },
       {
+        "path": "packages/contexts/providers/application/authorization.test.ts",
+        "sha256": "1c5c6068cff5361c211ead415d38e09d9b1bcba3492975c1aed908f666b5c437"
+      },
+      {
+        "path": "packages/contexts/providers/application/authorization.ts",
+        "sha256": "ae39be725bbeea0225a3edd343d1fb35aac795ae5ffef2c4baece5ef5113cd6f"
+      },
+      {
+        "path": "packages/contexts/providers/application/check-provider-health.test.ts",
+        "sha256": "e0ec8ee9ddf31f13b41673838481831d583095c5f3ecae1dcabbe48f4d67e5be"
+      },
+      {
+        "path": "packages/contexts/providers/application/check-provider-health.ts",
+        "sha256": "335d92eb007597134247a89ed186b58a39481e4f5f9ad46cf9e2c87aa8e982ea"
+      },
+      {
+        "path": "packages/contexts/providers/application/delete-provider-key.ts",
+        "sha256": "d39dbb020004245380d0bbe057fba76f410e4ad5433a1a6aa71f9b99f386bcc7"
+      },
+      {
+        "path": "packages/contexts/providers/application/dependencies.ts",
+        "sha256": "55e63c0598f8c9bbfe27182d65a32fe7d76c29b135f34be96c6144b6c3d1c857"
+      },
+      {
+        "path": "packages/contexts/providers/application/describe-providers.test.ts",
+        "sha256": "4edea7c9c8341e315d0b38a26e2185ac44f2622c870d90cb913bb0af6be17325"
+      },
+      {
+        "path": "packages/contexts/providers/application/describe-providers.ts",
+        "sha256": "b7419b3ff6c11e011f0957968d5f987f42822d87e846344397484a1cb3354945"
+      },
+      {
+        "path": "packages/contexts/providers/application/discover-models.ts",
+        "sha256": "98972337967930d8793f087160748d626ce532c225c4a0c7961fb0edda329974"
+      },
+      {
         "path": "packages/contexts/providers/application/index.ts",
-        "sha256": "2d2c8b760dc876d7bdb332db05ed90440baf1de432836c477e993770d72cb4eb"
+        "sha256": "ee136c1aa155ef4edfc9f709af3eb933da2274a080168da3ecef80eee0041c1a"
+      },
+      {
+        "path": "packages/contexts/providers/application/ingest-rate-card.ts",
+        "sha256": "0b4ad6e0a00e55faed27f32644562efe10ba24d67b68c20ff471d9587e291b80"
+      },
+      {
+        "path": "packages/contexts/providers/application/link-provider-key.ts",
+        "sha256": "f25f119b4bfb707353abb5f9d94dc6d41accfb08e0792ae087a2c3938333b942"
+      },
+      {
+        "path": "packages/contexts/providers/application/open-model-route.ts",
+        "sha256": "431b047e8c0622f309e2eeac4449168a8b1ec16aa9ae1be0aea7cfd2a021f497"
       },
       {
         "path": "packages/contexts/providers/application/ports/index.ts",
-        "sha256": "768b9bf9b8369c3c05a0c836bc43316397ee4f42c7a8e1e7ec6994be13905f31"
+        "sha256": "c4322fb105bc0c32d44f59e71beb85221479419fcdc5e19167dc1daf0b84a789"
+      },
+      {
+        "path": "packages/contexts/providers/application/ports/model-router.ts",
+        "sha256": "acbe0a419cc4e5d898cc12ac9adcc8324c57256444d65e95fea43af835c389b6"
+      },
+      {
+        "path": "packages/contexts/providers/application/ports/provider-probe-cache.ts",
+        "sha256": "a6f9f881dd151a039c33b37a780585087b3f23deeabe0f5ce46f2e725805ed35"
+      },
+      {
+        "path": "packages/contexts/providers/application/ports/providers-repository.ts",
+        "sha256": "05e0854bd744ee6159ebcc0c87c3383937b4b6360e731951b301527d25b3dc19"
+      },
+      {
+        "path": "packages/contexts/providers/application/price-model-usage.ts",
+        "sha256": "5250f98cd58974a91c6123569fa7f569b4e1e011bc76fad5232fe012e47bbf2c"
+      },
+      {
+        "path": "packages/contexts/providers/application/provider-key-lifecycle.test.ts",
+        "sha256": "e9531e091806cf677a043e47b32dd16395e0a7d914f6c79678290cb4ed427707"
+      },
+      {
+        "path": "packages/contexts/providers/application/provider-key-store.ts",
+        "sha256": "15b12c392610f2fd8a3bb01783e56dac1dfd1e27ec214f01ff2cd488a1549556"
+      },
+      {
+        "path": "packages/contexts/providers/application/rate-card.test.ts",
+        "sha256": "a69b376df9f56dd5ea88cdbfcfe2a8853408b405482b6276c412d4874f727680"
+      },
+      {
+        "path": "packages/contexts/providers/application/read-provider-keys.test.ts",
+        "sha256": "c8361ba45a9111e7fbf36331d75e56307771085b9220755c9264cb8d0d6690f0"
+      },
+      {
+        "path": "packages/contexts/providers/application/read-provider-keys.ts",
+        "sha256": "36a14fa33021b9ca4b2b87fe1deadb0b74261cca11b6a9705807a20d62588761"
+      },
+      {
+        "path": "packages/contexts/providers/application/register-provider-key.ts",
+        "sha256": "7b551254c8094058995eed730494fc3f9c83e931549acef00c0eb90d7633b81b"
+      },
+      {
+        "path": "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+        "sha256": "5b0f0434b97fd53bac595a5a6e406f7d63cca29dd1d14dbbdda93d888fefd5ee"
+      },
+      {
+        "path": "packages/contexts/providers/application/resolve-provider-credential.ts",
+        "sha256": "0ab24e492ef7b93a528032edb129a300ad4928b43702990a241a30ccf694e830"
+      },
+      {
+        "path": "packages/contexts/providers/application/rotate-provider-key.ts",
+        "sha256": "89011404dbf3333b138392b3c466388a023470dc6c7a9ed2e374d354c4107759"
+      },
+      {
+        "path": "packages/contexts/providers/application/runtime-settings.ts",
+        "sha256": "e42b8fc3287d9eeafd19131d2ef5271bc5508b94677bbbd4f5fadf958bc63d47"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/fixtures.ts",
+        "sha256": "f28296981bedf114909d23394c3234bb96182ed793e747874bab0f02979fabea"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/in-memory-model-router.ts",
+        "sha256": "a3366c09a4bd1b95a2588cf00d0830bcd2aabb19d7d4da0983f2c586ba881c62"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/in-memory-peers.ts",
+        "sha256": "4e7f627830b3c2187ea4430e7386501d0e4f71a442aa937c109a7e30bd4d5c8e"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/in-memory-probe-cache.ts",
+        "sha256": "d4183ac5315e62a0b99acd9244dd8fa6e9a60d1ff0bf3188b31dc88cd0e15d2a"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/in-memory-providers-repository.ts",
+        "sha256": "e863aa1d0d658f06aadaf22ad9d84071e5d99262f10002dbd44a78a12b57f536"
+      },
+      {
+        "path": "packages/contexts/providers/application/testing/index.ts",
+        "sha256": "63dec598f0ae8891ace8d88c8ff81374d4e35c903698af2fd23f81725a2feb26"
+      },
+      {
+        "path": "packages/contexts/providers/application/update-provider-key.ts",
+        "sha256": "01baa3f1dd505cf23b500dae3dc41bf50a1b4e43d22171636a64cb4593875b26"
+      },
+      {
+        "path": "packages/contexts/providers/application/vault.ts",
+        "sha256": "77ecaa506c1391e9d45bd44c9c8bd27550bde67d304e0b5663129bc2c2826060"
+      },
+      {
+        "path": "packages/contexts/providers/application/views.ts",
+        "sha256": "c82b6a0ad29ca6028af8a514cf991cc2af3dea7371c59852b6cb975d1b13661a"
+      },
+      {
+        "path": "packages/contexts/providers/contracts/index.test.ts",
+        "sha256": "fb85d010d60c7fdc3d329d82640ff3f7ab409ff41352d12ead1122ce06110032"
       },
       {
         "path": "packages/contexts/providers/contracts/index.ts",
-        "sha256": "6e6b886eb05a50bbe6662d058ebeda8e0f403a2565a73ee259264df98c63607a"
+        "sha256": "3bc18e04a39c1d79f84fb2d228eb1e7aae19585512ed0ff6e5b46ba8c38c36cf"
+      },
+      {
+        "path": "packages/contexts/providers/domain/catalogue.ts",
+        "sha256": "70ce06fd51d6e55513d84dee75a0f7a987c70dfb3927a8a14c38c57db6efef10"
+      },
+      {
+        "path": "packages/contexts/providers/domain/cost.test.ts",
+        "sha256": "e5df7c73a61cf450b72a794c0c7ae26a35886e134e45548089b6412c0cdb11bd"
+      },
+      {
+        "path": "packages/contexts/providers/domain/cost.ts",
+        "sha256": "a8ec8ad06b5e67c8b14ac5ee260cb99863b035742e6bc5e846102fe17c27f804"
+      },
+      {
+        "path": "packages/contexts/providers/domain/errors.test.ts",
+        "sha256": "6829ea3ffbfb999e1c9df32690cf961e26859f01533936ac4cd04bcc3988bf08"
+      },
+      {
+        "path": "packages/contexts/providers/domain/errors.ts",
+        "sha256": "c0629c57ea5fbec120171187c5390882fd3550111b157c2af9fbe46c03317a36"
+      },
+      {
+        "path": "packages/contexts/providers/domain/health.test.ts",
+        "sha256": "c05d7a8cb82ae642d3978ebbbd730220958665d2f3ee90bc319789e8acaa3794"
+      },
+      {
+        "path": "packages/contexts/providers/domain/health.ts",
+        "sha256": "ad84092f80133faea2fce081919d4c18406488cfdbe5f7cd7495065a83aac7fc"
+      },
+      {
+        "path": "packages/contexts/providers/domain/identifiers.ts",
+        "sha256": "533135d0ec44eb8bf67f4496cb09710018cab878f40e62a8ff9875abb0065f19"
       },
       {
         "path": "packages/contexts/providers/domain/index.ts",
-        "sha256": "4b41366a7966c51a9136a3cee648ff61cd50479af3981fa1b2353ebfbdd5f2b3"
+        "sha256": "ebc5dee0ad03c91033f1aa61d30a6a20a521d9858486e0a7b12b42f263af429c"
+      },
+      {
+        "path": "packages/contexts/providers/domain/manifest.test.ts",
+        "sha256": "163ae04bf248054aa305979ec5e02c68ad8a1e7c79559d0a32abcfc65ec40af6"
+      },
+      {
+        "path": "packages/contexts/providers/domain/manifest.ts",
+        "sha256": "465790deccd627465b65290623532954f86b11e668b2455cb9f10762337e2646"
+      },
+      {
+        "path": "packages/contexts/providers/domain/model-key.test.ts",
+        "sha256": "8a4d2d5e8806cd49481f1789cb0173b63c97fca6a7dfc5bbc9c7051bfd777119"
+      },
+      {
+        "path": "packages/contexts/providers/domain/model-key.ts",
+        "sha256": "df40354eb9fb260f50cbcff14fcebf005dca07f389db8c1b75989a72d9c54473"
+      },
+      {
+        "path": "packages/contexts/providers/domain/model.test.ts",
+        "sha256": "f1b2766e2f86a407620f939c7680fadfa3aaf1a0d8ab596654b92c4da2f926dc"
+      },
+      {
+        "path": "packages/contexts/providers/domain/model.ts",
+        "sha256": "f5bfae382b3c3b4e78f21ff107c70312fb47192fc131b4fb01e436376ce96897"
+      },
+      {
+        "path": "packages/contexts/providers/domain/policy.ts",
+        "sha256": "2cc7193ffdd179799f019f26132123e83bdc7267f478212f43b2ce4a66573df4"
+      },
+      {
+        "path": "packages/contexts/providers/domain/price-card.test.ts",
+        "sha256": "7ca75045a71c51eb6008bc3cc482c7e0d3e013ed1e2a7613be5bf230dcb5f478"
+      },
+      {
+        "path": "packages/contexts/providers/domain/price-card.ts",
+        "sha256": "5ef492025be08b2a1d803335b67a53b3008751575715a6e7dfed6fb4ac194bbc"
+      },
+      {
+        "path": "packages/contexts/providers/domain/provider-key.test.ts",
+        "sha256": "ced38be0fe5db92e5ac834cae19c90d23ba4644c0e93c215035621c596490806"
+      },
+      {
+        "path": "packages/contexts/providers/domain/provider-key.ts",
+        "sha256": "0af921730e18ed2dd2f6ed23def9f22f0e4ee2de2c0e5efe730100297171516e"
+      },
+      {
+        "path": "packages/contexts/providers/domain/provider-link.test.ts",
+        "sha256": "a62ea929ceef22cda7dc05c33035a0cb40abd287335bde71fe4c46c86b7af59f"
+      },
+      {
+        "path": "packages/contexts/providers/domain/provider-link.ts",
+        "sha256": "63fe893821802bb5505f3ce79041d3b300667edc5df4ceb54d1f962757264bab"
+      },
+      {
+        "path": "packages/contexts/providers/domain/rate-card-import.test.ts",
+        "sha256": "165c5b859bd1267dbd3db845b5df92d658b24300a4bbefe9e5e1c25448c59788"
+      },
+      {
+        "path": "packages/contexts/providers/domain/rate-card-import.ts",
+        "sha256": "511f9153c6267c1972c5bc192a564adbd1b52ae9971e8c59d30c356052fdcc51"
+      },
+      {
+        "path": "packages/contexts/providers/domain/rate.test.ts",
+        "sha256": "597d4645044317c74fe99f1131fe70c6aa7369331bc486be527b0cc0d8452f0f"
+      },
+      {
+        "path": "packages/contexts/providers/domain/rate.ts",
+        "sha256": "109f29efe3c6ce7fabdda2a281a52746cd0352e5ba82f68ace6f56fb0310764a"
+      },
+      {
+        "path": "packages/contexts/providers/domain/route.test.ts",
+        "sha256": "dd8453ba75ad5370a954f9c60cb3719610237de9178a6f76496d7103a7461d78"
+      },
+      {
+        "path": "packages/contexts/providers/domain/route.ts",
+        "sha256": "347516094fb9ed0d40ca70d79d35cdc1356cfc011affa40c920ace81d37467b1"
+      },
+      {
+        "path": "packages/contexts/providers/domain/token-usage.test.ts",
+        "sha256": "d4f07894c0047c8236a0e19c163a823f86ff381ab8b25a3bacd211b20893e3cb"
+      },
+      {
+        "path": "packages/contexts/providers/domain/token-usage.ts",
+        "sha256": "c375896c52e980037439805cbbf92edc13322d93f7e662f4bb63a37c0c3a61e4"
       },
       {
         "path": "packages/contexts/providers/package.json",
-        "sha256": "291c8d263e2da9db03f9c993dc0c27cbface5476e099d74514c609bf5c5a7c6d"
+        "sha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c"
       },
       {
         "path": "packages/contexts/providers/tsconfig.json",
@@ -14281,7 +14541,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "50d82f4ca19efe86a3442d1e8ed3b4e5a35ea36b012c2960edc81c412c7d6151"
+        "sha256": "83f3ac02d51bfaf6724044a258b9d90240447bb79151e6c6a3893c938ff66480"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14305,7 +14565,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "92505a2ad9849cd45f5bef44960b79610f9b1d81202555dcbb9b690ec4a693fd"
+        "sha256": "04bef5fcf6400572c46fafe1afb50de3ba96f0e080b6b12e92b9f5f32b30c5cf"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14325,7 +14585,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "766f90be1dc0422c889ccf10941e8b47cbb07d3ef143c531f8ec0d173713a273"
+        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14341,11 +14601,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "0929439dae087376be54030e767af82ee6463234072233dbf3d45cebfa5a3c14"
+        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "7d87a3cf45e01b1cd5820759c173b67cd27b44914b8a5578444b928f293fc80d"
+        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14565,7 +14825,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "33aa85295712a74a7defaf148a3b856adac728c0344e7d8948533323c004a1df"
+        "sha256": "b2cc778a077b447f41bd48056e0ba3a444dd867943e9caa84c75852d02313063"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -14669,7 +14929,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "292eaeb66362450743c06c8a5896e01ac82cf68e9757a0263821a0edd43ff01d"
+        "sha256": "1ed2a648d813185c8495214a33b422dd7fef97666f51bb5b65ff8d70c7c5bb65"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -15665,8 +15925,8 @@
       "packageScripts": 60,
       "patches": 16,
       "sourceDynamic": 0,
-      "sourceStatic": 17,
-      "testsFixtures": 44
+      "sourceStatic": 18,
+      "testsFixtures": 45
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -19705,14 +19965,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/providers/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/providers/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/skills/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -19855,14 +20107,6 @@
               "packages/contexts/privacy/contracts/index.ts"
             ],
             [
-              "packages/contexts/providers/application/ports/index.ts",
-              "packages/contexts/providers/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/providers/contracts/index.ts",
-              "packages/contexts/providers/contracts/index.ts"
-            ],
-            [
               "packages/contexts/skills/application/ports/index.ts",
               "packages/contexts/skills/application/ports/index.ts"
             ],
@@ -19911,8 +20155,6 @@
             "packages/contexts/observability/contracts/index.ts",
             "packages/contexts/privacy/application/ports/index.ts",
             "packages/contexts/privacy/contracts/index.ts",
-            "packages/contexts/providers/application/ports/index.ts",
-            "packages/contexts/providers/contracts/index.ts",
             "packages/contexts/skills/application/ports/index.ts",
             "packages/contexts/skills/contracts/index.ts",
             "packages/contexts/tools/application/ports/index.ts",
@@ -20090,7 +20332,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "7e24db2efc63ad39dd9d5d5af49bee3ee4678d2f9e885deff1033983245a93bc",
+      "evidenceSha256": "ae5f0878706f15c6a6e6c8cde8886b53369c890be1d6ba93cc06a2fa065ee658",
       "manifestSha256": "e2c8b2594874959f5381342018b9cdbb28b59720aea7b5fb3e13423bc305e03b",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -31596,7 +31838,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 585
+              "line": 596
             }
           ],
           "reversePaths": [
@@ -31621,7 +31863,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0bce3aa7d00ac501f603f9336f6f7b42520cc59ad46548b61b1be4ab274b1752",
+      "evidenceSha256": "f21e85fdb3640724dc213b75930cd87715fd92e80e0089cae829ecb007f28b40",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -32752,7 +32994,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 584
+              "line": 595
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32977,7 +33219,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "19b2a72b17b1facc7fd70a055f1f132987bb6fca33e53c8d401f1e0b8b854014",
+      "evidenceSha256": "d8530679a5853088a0c2286ce614b7d252511202ba2a1e65e3eced13329434a7",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -43564,7 +43806,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 501
+              "line": 514
             }
           ],
           "reversePaths": [
@@ -43643,7 +43885,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "aa69fb9f182103de1a9ec981261636b11b3b4dda5a28736cc0ce187282fcc04f",
+      "evidenceSha256": "e1e0283bfd0ffb7f8596adfcc2c3a330705890cb213e5da068930392d5a72309",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -46779,7 +47021,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 240
+              "line": 242
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -47571,7 +47813,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "bfc2ec9c9ab5b0476f2350607d8e9533c452f3df91b5a266da842f4ff0faad1a",
+      "evidenceSha256": "7058e78ea4c30b53ba97d6af6a458782c82b6276e360e3408eed2193287cbaef",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -49786,26 +50028,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/providers/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/providers/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/providers/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/providers/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/providers/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -49851,22 +50073,6 @@
               "packages/contexts/memory/application/index.ts"
             ],
             [
-              "packages/contexts/providers/application/index.ts",
-              "packages/contexts/providers/application/index.ts"
-            ],
-            [
-              "packages/contexts/providers/application/ports/index.ts",
-              "packages/contexts/providers/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/providers/contracts/index.ts",
-              "packages/contexts/providers/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/providers/domain/index.ts",
-              "packages/contexts/providers/domain/index.ts"
-            ],
-            [
               "packages/contexts/providers/package.json",
               "packages/contexts/providers/package.json"
             ],
@@ -49891,10 +50097,6 @@
             "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/providers/README.md",
-            "packages/contexts/providers/application/index.ts",
-            "packages/contexts/providers/application/ports/index.ts",
-            "packages/contexts/providers/contracts/index.ts",
-            "packages/contexts/providers/domain/index.ts",
             "packages/contexts/providers/package.json",
             "packages/contexts/providers/tsconfig.json",
             "packages/contexts/tools/application/index.ts"
@@ -49933,6 +50135,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/providers/package.json",
               "kind": "workspace-script",
@@ -49943,6 +50150,12 @@
               "from": "packages/contexts/providers/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/providers/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -49979,10 +50192,243 @@
           "roots": []
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/providers/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/check-provider-health.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/describe-providers.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/provider-key-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/rate-card.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/read-provider-keys.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/cost.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/health.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/manifest.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/model-key.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/model.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/price-card.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/provider-key.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/provider-link.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/rate-card-import.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/rate.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/route.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/token-usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 255
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/providers/application/authorization.test.ts",
+              "packages/contexts/providers/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/check-provider-health.test.ts",
+              "packages/contexts/providers/application/check-provider-health.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/describe-providers.test.ts",
+              "packages/contexts/providers/application/describe-providers.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/provider-key-lifecycle.test.ts",
+              "packages/contexts/providers/application/provider-key-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/rate-card.test.ts",
+              "packages/contexts/providers/application/rate-card.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/read-provider-keys.test.ts",
+              "packages/contexts/providers/application/read-provider-keys.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+              "packages/contexts/providers/application/resolve-provider-credential.test.ts"
+            ],
+            [
+              "packages/contexts/providers/contracts/index.test.ts",
+              "packages/contexts/providers/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/cost.test.ts",
+              "packages/contexts/providers/domain/cost.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/errors.test.ts",
+              "packages/contexts/providers/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/health.test.ts",
+              "packages/contexts/providers/domain/health.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/manifest.test.ts",
+              "packages/contexts/providers/domain/manifest.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/model-key.test.ts",
+              "packages/contexts/providers/domain/model-key.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/model.test.ts",
+              "packages/contexts/providers/domain/model.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/price-card.test.ts",
+              "packages/contexts/providers/domain/price-card.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/provider-key.test.ts",
+              "packages/contexts/providers/domain/provider-key.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/provider-link.test.ts",
+              "packages/contexts/providers/domain/provider-link.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/rate-card-import.test.ts",
+              "packages/contexts/providers/domain/rate-card-import.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/rate.test.ts",
+              "packages/contexts/providers/domain/rate.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/route.test.ts",
+              "packages/contexts/providers/domain/route.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/token-usage.test.ts",
+              "packages/contexts/providers/domain/token-usage.test.ts"
+            ],
+            [
+              "packages/contexts/providers/package.json",
+              "packages/contexts/providers/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/providers/application/authorization.test.ts",
+            "packages/contexts/providers/application/check-provider-health.test.ts",
+            "packages/contexts/providers/application/describe-providers.test.ts",
+            "packages/contexts/providers/application/provider-key-lifecycle.test.ts",
+            "packages/contexts/providers/application/rate-card.test.ts",
+            "packages/contexts/providers/application/read-provider-keys.test.ts",
+            "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+            "packages/contexts/providers/contracts/index.test.ts",
+            "packages/contexts/providers/domain/cost.test.ts",
+            "packages/contexts/providers/domain/errors.test.ts",
+            "packages/contexts/providers/domain/health.test.ts",
+            "packages/contexts/providers/domain/manifest.test.ts",
+            "packages/contexts/providers/domain/model-key.test.ts",
+            "packages/contexts/providers/domain/model.test.ts",
+            "packages/contexts/providers/domain/price-card.test.ts",
+            "packages/contexts/providers/domain/provider-key.test.ts",
+            "packages/contexts/providers/domain/provider-link.test.ts",
+            "packages/contexts/providers/domain/rate-card-import.test.ts",
+            "packages/contexts/providers/domain/rate.test.ts",
+            "packages/contexts/providers/domain/route.test.ts",
+            "packages/contexts/providers/domain/token-usage.test.ts",
+            "packages/contexts/providers/package.json",
+            "scripts/arch/test-case-census.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -50296,8 +50742,8 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "27138c7a3812bbaef073f02f3c4add571c35116d2d17595624b88f22600f7afe",
-      "manifestSha256": "291c8d263e2da9db03f9c993dc0c27cbface5476e099d74514c609bf5c5a7c6d",
+      "evidenceSha256": "7398306c9d113696a2ac27d495fd11052de3aa07179854a584a44a89364c2848",
+      "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
         "reachable": false,
@@ -50751,10 +51197,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/providers/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/secrets/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -50784,10 +51226,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/providers/application/index.ts",
-              "packages/contexts/providers/application/index.ts"
-            ],
-            [
               "packages/contexts/secrets/package.json",
               "packages/contexts/secrets/package.json"
             ],
@@ -50807,7 +51245,6 @@
           "roots": [
             "apps/core-api/src/app.module.ts",
             "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/providers/application/index.ts",
             "packages/contexts/secrets/README.md",
             "packages/contexts/secrets/package.json",
             "packages/contexts/secrets/tsconfig.json",
@@ -50898,14 +51335,103 @@
           "roots": []
         },
         "sourceStatic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "file": "packages/contexts/providers/application/authorization.ts",
+              "from": "packages/contexts/providers",
+              "line": 42,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/dependencies.ts",
+              "from": "packages/contexts/providers",
+              "line": 32,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/describe-providers.ts",
+              "from": "packages/contexts/providers",
+              "line": 29,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/register-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 32,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/resolve-provider-credential.ts",
+              "from": "packages/contexts/providers",
+              "line": 28,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/fixtures.ts",
+              "from": "packages/contexts/providers",
+              "line": 20,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/providers",
+              "line": 25,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/providers/application/vault.ts",
+              "from": "packages/contexts/providers",
+              "line": 18,
+              "specifier": "@platos/context-secrets"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/describe-providers.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/register-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/resolve-provider-credential.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/vault.ts"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/providers"
+          ]
         },
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/providers/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
             {
               "from": "packages/contexts/secrets/application/create-credential.test.ts",
               "kind": "workspace-owned-file",
@@ -50992,6 +51518,11 @@
               "script": "test"
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 231
+            },
+            {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
               "line": 137
@@ -50999,7 +51530,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 241
+              "line": 243
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -51008,6 +51539,10 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/providers/application/authorization.test.ts",
+              "packages/contexts/providers/application/authorization.test.ts"
+            ],
             [
               "packages/contexts/secrets/application/create-credential.test.ts",
               "packages/contexts/secrets/application/create-credential.test.ts"
@@ -51077,6 +51612,10 @@
               "packages/contexts/secrets/package.json"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
               "scripts/arch/gen-v1-skeleton.test.mjs",
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
@@ -51090,6 +51629,7 @@
             ]
           ],
           "roots": [
+            "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/secrets/application/create-credential.test.ts",
             "packages/contexts/secrets/application/environment-variables.test.ts",
             "packages/contexts/secrets/application/in-memory-ports.test.ts",
@@ -51107,6 +51647,7 @@
             "packages/contexts/secrets/domain/secret-material.test.ts",
             "packages/contexts/secrets/domain/secret-version.test.ts",
             "packages/contexts/secrets/package.json",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
@@ -51462,7 +52003,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "b627a05960cd66aa4080356189aff836ea81a49a6ecc20dcbe7ecb1e63dc8934",
+      "evidenceSha256": "4ff3c5be9e4e02f7d2eb55e6cb3f2012a62880f249a109a0287075309e5ad473",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -52720,10 +53261,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/providers/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/skills/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -52797,10 +53334,6 @@
               "packages/contexts/privacy/application/index.ts"
             ],
             [
-              "packages/contexts/providers/application/index.ts",
-              "packages/contexts/providers/application/index.ts"
-            ],
-            [
               "packages/contexts/skills/application/index.ts",
               "packages/contexts/skills/application/index.ts"
             ],
@@ -52834,7 +53367,6 @@
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/observability/application/index.ts",
             "packages/contexts/privacy/application/index.ts",
-            "packages/contexts/providers/application/index.ts",
             "packages/contexts/skills/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
@@ -52939,6 +53471,30 @@
               "from": "packages/contexts/files",
               "line": 19,
               "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/providers/application/authorization.ts",
+              "from": "packages/contexts/providers",
+              "line": 49,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/providers/application/dependencies.ts",
+              "from": "packages/contexts/providers",
+              "line": 33,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/fixtures.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/providers",
+              "line": 37,
+              "specifier": "@platos/context-tenancy"
             }
           ],
           "reversePaths": [
@@ -52949,15 +53505,37 @@
             [
               "packages/contexts/files",
               "packages/contexts/files/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
-            "packages/contexts/files"
+            "packages/contexts/files",
+            "packages/contexts/providers"
           ]
         },
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/providers/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 3
+            },
             {
               "from": "packages/contexts/tenancy/application/add-project-member.test.ts",
               "kind": "workspace-owned-file",
@@ -53061,7 +53639,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 244
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -53070,6 +53648,10 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/providers/application/authorization.test.ts",
+              "packages/contexts/providers/application/authorization.test.ts"
+            ],
             [
               "packages/contexts/tenancy/application/add-project-member.test.ts",
               "packages/contexts/tenancy/application/add-project-member.test.ts"
@@ -53160,6 +53742,7 @@
             ]
           ],
           "roots": [
+            "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/tenancy/application/add-project-member.test.ts",
             "packages/contexts/tenancy/application/archive-tenant.test.ts",
             "packages/contexts/tenancy/application/authorize-environment-operator.test.ts",
@@ -53766,7 +54349,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "285122fad164ef2640955ea978ece816699d6180ea9f6a2b7075b3f5282d3357",
+      "evidenceSha256": "6f602f972a11667a39fcdd03e5a78d37b3cbe50ded4f20c7b2fa15a5de507764",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -54157,7 +54740,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 480,
+              "line": 481,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -54324,7 +54907,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1a30db9f2ed58d95fb198495d5f69cca5b4d684fce919a3f089ef236722a98",
+      "evidenceSha256": "24192f34e3be59a5e7f839776047dbce6c2e5c66a9e86f54096e4986163db327",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -56886,10 +57469,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/providers/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/skills/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -56967,10 +57546,6 @@
               "packages/contexts/privacy/domain/index.ts"
             ],
             [
-              "packages/contexts/providers/domain/index.ts",
-              "packages/contexts/providers/domain/index.ts"
-            ],
-            [
               "packages/contexts/skills/domain/index.ts",
               "packages/contexts/skills/domain/index.ts"
             ],
@@ -57005,7 +57580,6 @@
             "packages/contexts/memory/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
             "packages/contexts/privacy/domain/index.ts",
-            "packages/contexts/providers/domain/index.ts",
             "packages/contexts/skills/domain/index.ts",
             "packages/contexts/tools/domain/index.ts",
             "packages/kernel/README.md",
@@ -57427,6 +58001,246 @@
               "file": "packages/contexts/identity-access/domain/token.ts",
               "from": "packages/contexts/identity-access",
               "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/authorization.ts",
+              "from": "packages/contexts/providers",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/authorization.ts",
+              "from": "packages/contexts/providers",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/check-provider-health.ts",
+              "from": "packages/contexts/providers",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/delete-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/dependencies.ts",
+              "from": "packages/contexts/providers",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/describe-providers.ts",
+              "from": "packages/contexts/providers",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/discover-models.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ingest-rate-card.ts",
+              "from": "packages/contexts/providers",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/link-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/open-model-route.ts",
+              "from": "packages/contexts/providers",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ports/model-router.ts",
+              "from": "packages/contexts/providers",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ports/provider-probe-cache.ts",
+              "from": "packages/contexts/providers",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ports/providers-repository.ts",
+              "from": "packages/contexts/providers",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/price-model-usage.ts",
+              "from": "packages/contexts/providers",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/provider-key-store.ts",
+              "from": "packages/contexts/providers",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/read-provider-keys.ts",
+              "from": "packages/contexts/providers",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/register-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/resolve-provider-credential.ts",
+              "from": "packages/contexts/providers",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/rotate-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/runtime-settings.ts",
+              "from": "packages/contexts/providers",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/fixtures.ts",
+              "from": "packages/contexts/providers",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-model-router.ts",
+              "from": "packages/contexts/providers",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/providers",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-probe-cache.ts",
+              "from": "packages/contexts/providers",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/testing/in-memory-providers-repository.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/update-provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/vault.ts",
+              "from": "packages/contexts/providers",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/views.ts",
+              "from": "packages/contexts/providers",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/contracts/index.ts",
+              "from": "packages/contexts/providers",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/cost.ts",
+              "from": "packages/contexts/providers",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/errors.ts",
+              "from": "packages/contexts/providers",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/identifiers.ts",
+              "from": "packages/contexts/providers",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/manifest.ts",
+              "from": "packages/contexts/providers",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/model.ts",
+              "from": "packages/contexts/providers",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/price-card.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/provider-key.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/provider-link.ts",
+              "from": "packages/contexts/providers",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/rate.ts",
+              "from": "packages/contexts/providers",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/route.ts",
+              "from": "packages/contexts/providers",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/domain/token-usage.ts",
+              "from": "packages/contexts/providers",
+              "line": 14,
               "specifier": "@platos/kernel"
             },
             {
@@ -58020,7 +58834,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 368,
+              "line": 369,
               "specifier": "@platos/kernel"
             }
           ],
@@ -58240,6 +59054,162 @@
             [
               "packages/contexts/identity-access",
               "packages/contexts/identity-access/domain/token.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/check-provider-health.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/delete-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/describe-providers.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/discover-models.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ingest-rate-card.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/link-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/open-model-route.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ports/model-router.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ports/provider-probe-cache.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ports/providers-repository.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/price-model-usage.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/provider-key-store.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/read-provider-keys.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/register-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/resolve-provider-credential.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/rotate-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/runtime-settings.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-model-router.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-probe-cache.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/testing/in-memory-providers-repository.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/update-provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/vault.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/views.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/cost.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/manifest.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/model.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/price-card.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/provider-key.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/provider-link.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/rate.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/route.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/domain/token-usage.ts"
             ],
             [
               "packages/contexts/secrets",
@@ -58493,6 +59463,7 @@
           "roots": [
             "packages/contexts/files",
             "packages/contexts/identity-access",
+            "packages/contexts/providers",
             "packages/contexts/secrets",
             "packages/contexts/tenancy",
             "scripts/arch/gen-v1-skeleton.mjs"
@@ -58575,6 +59546,51 @@
               "from": "packages/contexts/identity-access/domain/oauth.test.ts",
               "kind": "reference",
               "line": 29
+            },
+            {
+              "from": "packages/contexts/providers/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/rate-card.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/cost.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/health.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/model.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/price-card.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/provider-key.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/provider-link.test.ts",
+              "kind": "reference",
+              "line": 1
             },
             {
               "from": "packages/contexts/secrets/application/create-credential.test.ts",
@@ -58719,7 +59735,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 226
+              "line": 227
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -58802,6 +59818,42 @@
             [
               "packages/contexts/identity-access/domain/oauth.test.ts",
               "packages/contexts/identity-access/domain/oauth.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/authorization.test.ts",
+              "packages/contexts/providers/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/rate-card.test.ts",
+              "packages/contexts/providers/application/rate-card.test.ts"
+            ],
+            [
+              "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+              "packages/contexts/providers/application/resolve-provider-credential.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/cost.test.ts",
+              "packages/contexts/providers/domain/cost.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/health.test.ts",
+              "packages/contexts/providers/domain/health.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/model.test.ts",
+              "packages/contexts/providers/domain/model.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/price-card.test.ts",
+              "packages/contexts/providers/domain/price-card.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/provider-key.test.ts",
+              "packages/contexts/providers/domain/provider-key.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/provider-link.test.ts",
+              "packages/contexts/providers/domain/provider-link.test.ts"
             ],
             [
               "packages/contexts/secrets/application/create-credential.test.ts",
@@ -58952,6 +60004,15 @@
             "packages/contexts/identity-access/domain/access-key.test.ts",
             "packages/contexts/identity-access/domain/authorization-scope.test.ts",
             "packages/contexts/identity-access/domain/oauth.test.ts",
+            "packages/contexts/providers/application/authorization.test.ts",
+            "packages/contexts/providers/application/rate-card.test.ts",
+            "packages/contexts/providers/application/resolve-provider-credential.test.ts",
+            "packages/contexts/providers/domain/cost.test.ts",
+            "packages/contexts/providers/domain/health.test.ts",
+            "packages/contexts/providers/domain/model.test.ts",
+            "packages/contexts/providers/domain/price-card.test.ts",
+            "packages/contexts/providers/domain/provider-key.test.ts",
+            "packages/contexts/providers/domain/provider-link.test.ts",
             "packages/contexts/secrets/application/create-credential.test.ts",
             "packages/contexts/secrets/application/environment-variables.test.ts",
             "packages/contexts/secrets/application/in-memory-ports.test.ts",
@@ -59729,7 +60790,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "ae46b231c0ae8b3a729d44746c0dbfca2424917ea2302a2529376dd123155ae4",
+      "evidenceSha256": "f7519610876ef782b5d3a0e013321ce973744110d8991deaf2194b92cb8f826e",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
