@@ -221,7 +221,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +16 for the jobs context rebased onto v1 @ 95cbacc1.
+  // +16 for the jobs context rebased onto v1 @ 95cbacc1. The jobs CASE total
+  // moved again (1350 -> 1354) when the 2026-09-03 verification's two surviving
+  // mutants were killed; the FILE total did not, because all four cases were
+  // added to suites that already existed. That is exactly the drift a
+  // file-count pin cannot see.
   assert.equal(live.totalFiles, 104);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
@@ -248,7 +252,12 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // The five packages above are UNCHANGED by WIN-256's jobs work. Asserting
   // that here is the point: a context arriving must not perturb its siblings,
   // and this is where a silent perturbation would be caught.
-  assert.equal(EXPECTED["packages/contexts/jobs"].cases, 350);
+  // 350 -> 354: the four cases that kill the two mutants the 2026-09-03
+  // verification found surviving (the erasure METHOD, three cases; the payload
+  // depth cap at limit+1, one case). The file count stays 16 because all four
+  // landed in suites that already existed — the sibling packages above are
+  // still untouched, which is what this test exists to assert.
+  assert.equal(EXPECTED["packages/contexts/jobs"].cases, 354);
   assert.equal(EXPECTED["packages/contexts/jobs"].files, 16);
 });
 

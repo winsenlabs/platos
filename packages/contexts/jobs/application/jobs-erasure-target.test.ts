@@ -113,6 +113,32 @@ describe("plan", () => {
     expect(plan.items.find((item) => item.model === APPROVAL_MODEL)?.rowCount).toBe(0);
   });
 
+  it("names DELETE for both models — anonymising an approval would be erasure theatre", async () => {
+    // The METHOD is the erasure decision, not a label on it. An `AgentApproval`
+    // carries its subject through `respondedBy`, the requester in metadata,
+    // `comment` (free text a person wrote) and `arguments`; no column rewrite
+    // takes a person out of free text, so `anonymize` here would hand `privacy`
+    // a plan — and then a receipt — claiming an erasure that did not happen.
+    // Nothing else in this suite reads `method`, so without this the whole
+    // right-to-erasure decision is unpinned and silently flippable.
+    await requestApproval(context.dependencies, {
+      scope: SCOPE,
+      request: anApprovalRequest({ requestedBy: "user-1" }),
+    });
+    const target = createJobsErasureTarget(context.dependencies);
+    const plan = await target.plan(subject("user"));
+    expect(plan.items.map((item) => ({ model: item.model, method: item.method }))).toEqual([
+      { model: APPROVAL_MODEL, method: "delete" },
+      { model: JOB_MODEL, method: "delete" },
+    ]);
+  });
+
+  it("names DELETE on the vacuous entity plan too, so the zero-row path cannot drift", async () => {
+    const target = createJobsErasureTarget(context.dependencies);
+    const plan = await target.plan(subject("entity"));
+    expect(plan.items.map((item) => item.method)).toEqual(["delete", "delete"]);
+  });
+
   it("leaves blockedBy null — privacy adjudicates holds, not this context", async () => {
     const target = createJobsErasureTarget(context.dependencies);
     const plan = await target.plan(subject("user"));
@@ -161,6 +187,20 @@ describe("erase", () => {
 
     expect(receipt.items.find((item) => item.model === APPROVAL_MODEL)?.rowCount).toBe(1);
     expect(context.approvals.size()).toBe(1);
+  });
+
+  it("issues a receipt saying DELETE, because deletion is what the store was asked to do", async () => {
+    // The receipt re-mints its items rather than echoing the plan's, so it can
+    // disagree with the plan. `privacy` files the RECEIPT as the record of what
+    // was destroyed; a receipt reading `anonymize` over rows that were deleted
+    // (or vice versa) is a false compliance record, so it is pinned separately.
+    const target = createJobsErasureTarget(context.dependencies);
+    const plan = await target.plan(subject("user"));
+    const receipt = await target.erase(plan, { transactionId: asIdentifier("txn-1") });
+    expect(receipt.items.map((item) => ({ model: item.model, method: item.method }))).toEqual([
+      { model: APPROVAL_MODEL, method: "delete" },
+      { model: JOB_MODEL, method: "delete" },
+    ]);
   });
 
   it("REFUSES a plan it did not mint rather than guessing a subject", async () => {

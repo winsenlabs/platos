@@ -118,6 +118,18 @@ describe("isAdmissibleJson", () => {
     expect(isAdmissibleJson(deep, NO_SECRETS)).toBe(true);
   });
 
+  it("REFUSES a payload exactly ONE level past the depth limit", () => {
+    // The two cases above leave the boundary itself unpinned: `at the limit`
+    // passes and `much deeper` fails under BOTH `depth > maxDepth` and the
+    // off-by-one `depth > maxDepth + 1`, so neither test can tell the correct
+    // cap from a cap that admits one extra level. maxDepth + 1 wrappers put the
+    // leaf at depth 9, which the correct predicate refuses and the off-by-one
+    // accepts — this is the only nesting that separates them.
+    let deep: unknown = "leaf";
+    for (let level = 0; level < PAYLOAD_LIMITS.maxDepth + 1; level += 1) deep = { next: deep };
+    expect(isAdmissibleJson(deep, NO_SECRETS)).toBe(false);
+  });
+
   it("REFUSES a collection over the item limit", () => {
     const tooMany = Array.from({ length: PAYLOAD_LIMITS.maxCollectionItems + 1 }, () => 1);
     expect(isAdmissibleJson(tooMany, NO_SECRETS)).toBe(false);

@@ -109,6 +109,29 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   `jobs` was pinned at 0/0 as an undeclared context, so this is the first
  *   non-zero pin for it rather than a movement of an existing one.
  *
+ *   jobs 350 -> 354 (+4), 1067 -> 1071 total, file count UNCHANGED at 16. The
+ *   2026-09-03 independent verification of the jobs branch found two surviving
+ *   mutants, and these four cases are exactly the ones that kill them. Both were
+ *   reproduced as controls before the cases were written, and each was watched
+ *   go red and then green again:
+ *
+ *     +3 in `application/jobs-erasure-target.test.ts` (17 -> 20). Nothing in the
+ *     suite read `ErasurePlanItem.method`, so changing `planItem`'s
+ *     `method: "delete"` to `"anonymize"` — a right-to-erasure correctness path,
+ *     where anonymising an approval whose subject lives in `comment` and
+ *     `arguments` free text is erasure theatre — left all 350 green. The three
+ *     new cases pin the method on the counted plan, on the vacuous entity plan,
+ *     and on the RECEIPT, which re-mints its items and can therefore disagree
+ *     with the plan it carried out.
+ *
+ *     +1 in `domain/payload.test.ts` (44 -> 45). The depth cap had `much deeper
+ *     refused` and `at the limit accepted` but nothing at limit+1, so
+ *     `depth > maxDepth` -> `depth > maxDepth + 1` left all 44 green. maxDepth+1
+ *     wrappers is the only nesting that separates the two predicates.
+ *
+ *   These are added cases in existing files, which is why `files` does not move
+ *   — precisely the drift a file-count pin cannot see and the case pin can.
+ *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
  */
@@ -133,7 +156,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
-  "packages/contexts/jobs": { files: 16, cases: 350 },
+  "packages/contexts/jobs": { files: 16, cases: 354 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
@@ -152,7 +175,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1350;
+export const EXPECTED_RUNTIME_TOTAL = 1354;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
