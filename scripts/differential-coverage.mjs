@@ -22,7 +22,10 @@
 //   * a claim naming a cell no census contains is a hard error, so a typo
 //     inflates nothing;
 //   * every uncovered cell carries the issue that will cover it, so the gap is
-//     a work item rather than a silence.
+//     a work item rather than a silence;
+//   * the REST denominator is reconciled against a SECOND, independently
+//     derived census, so the largest surface's count is one two mechanisms
+//     agree on rather than one generator's opinion.
 //
 // Usage: node scripts/differential-coverage.mjs [--write|--check]
 
@@ -38,9 +41,22 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const JSON_PATH = "docs/audits/win-284-differential-coverage.json";
 export const MARKDOWN_PATH = "docs/audits/win-284-differential-coverage.md";
 
+// WIN-294's second REST enumerator. It is listed as a source and it is READ as
+// one: `reconcileRestCensus` below reconciles the REST denominator and the
+// operator-protected count against it on every run.
+//
+// It earns its place by being independent in ENUMERATION — it globs the
+// controller files and parses the route decorators from source rather than
+// reading the generator's allowlist — so a REST denominator that agrees with it
+// has been counted twice by two mechanisms. Declaring it as provenance while
+// only ever reading the other three would be exactly the kind of claim this
+// harness exists to catch, so the reconciliation is executable and its failures
+// fail `--check`.
+export const REST_CENSUS_PATH = "docs/audits/M0.9-rest-census-independent.json";
+
 export const CENSUS_SOURCES = Object.freeze([
   "docs/audits/M0.2-capability-matrix.json",
-  "docs/audits/M0.9-rest-census-independent.json",
+  REST_CENSUS_PATH,
   "docs/audits/M0.9-webapp-bff-matrix.json",
   "docs/audits/M0.4-design-contract-map.json",
 ]);
@@ -121,6 +137,121 @@ export function enumerateCells(root = repositoryRoot) {
     seen.add(entry.id);
   }
   return cells.sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+}
+
+// ---------------------------------------------------------------------------
+// The fourth census: reconciliation, not enumeration
+// ---------------------------------------------------------------------------
+
+export function readRestCensus(root = repositoryRoot) {
+  return readCensus(root, REST_CENSUS_PATH);
+}
+
+function sumField(rows, field) {
+  return rows.reduce((total, row) => total + (Number.isFinite(row?.[field]) ? row[field] : Number.NaN), 0);
+}
+
+// Reconciles the REST denominator this generator enumerated from WIN-247's
+// capability matrix against WIN-294's independently enumerated census.
+//
+// WHAT THIS OWNS AND WHAT IT DOES NOT. It owns the AGREEMENT between the two
+// mechanisms: that both counted the same number of REST operations, that both
+// counted the same number of operator-protected ones, and that the census's own
+// published identities still hold. It does not own the census file's freshness
+// — `node scripts/rest-census-independent.mjs --check` does that, and it runs in
+// the same CI step. Saying so precisely matters: a gate that claims to
+// re-derive a census it only reads would be the same overstatement this
+// reconciliation was added to remove.
+export function reconcileRestCensus(cells, census) {
+  const failures = [];
+  const restCells = cells.filter((entry) => entry.surface === "rest");
+  const operatorCells = restCells.filter((entry) => entry.requiresOperator === true);
+
+  const totals = census?.totals;
+  const table = census?.table;
+  if (totals === undefined || typeof totals !== "object" || !Array.isArray(table)) {
+    failures.push(
+      `${REST_CENSUS_PATH} does not carry the totals and per-controller table this reconciliation reads; ` +
+        "it cannot be declared a source of the REST denominator",
+    );
+    return { failures, reconciliation: null };
+  }
+
+  // The census's own verdict. A census that failed its own reconciliation
+  // cannot vouch for anybody else's denominator.
+  if (census.ok !== true) {
+    failures.push(`${REST_CENSUS_PATH} reports ok=${JSON.stringify(census.ok)}; a failed census cannot corroborate a denominator`);
+  }
+  if (!Array.isArray(census.failures) || census.failures.length > 0) {
+    failures.push(`${REST_CENSUS_PATH} carries ${census.failures?.length ?? "unreadable"} unresolved failures`);
+  }
+
+  const tableOps = sumField(table, "manifestOps");
+  const tableOperator = sumField(table, "manifestOperator");
+  const misreconciled = table.filter((row) => row?.routeOk !== true || row?.operatorOk !== true);
+  if (misreconciled.length > 0) {
+    failures.push(
+      `${REST_CENSUS_PATH} has ${misreconciled.length} controller(s) whose own route/operator reconciliation did not hold: ` +
+        misreconciled.map((row) => row?.controller ?? "<unnamed>").sort().join(", "),
+    );
+  }
+
+  // The census's published identity: independently discovered routes plus the
+  // dual-mount aliases equal the manifest operation count.
+  if (totals.independentUniqueRoutes + totals.dualMountAliasOps !== totals.manifestOps) {
+    failures.push(
+      `${REST_CENSUS_PATH} no longer satisfies its own identity: ` +
+        `${totals.independentUniqueRoutes} unique + ${totals.dualMountAliasOps} dual-mount != ${totals.manifestOps} manifest ops`,
+    );
+  }
+  if (tableOps !== totals.manifestOps) {
+    failures.push(
+      `${REST_CENSUS_PATH} totals say ${totals.manifestOps} manifest ops but its per-controller table sums to ${tableOps}`,
+    );
+  }
+  if (tableOperator !== totals.manifestOperator) {
+    failures.push(
+      `${REST_CENSUS_PATH} totals say ${totals.manifestOperator} operator-protected ops but its table sums to ${tableOperator}`,
+    );
+  }
+  if (!(totals.independentOperatorFloor <= totals.manifestOperator)) {
+    failures.push(
+      `${REST_CENSUS_PATH} operator floor ${totals.independentOperatorFloor} exceeds the manifest operator count ` +
+        `${totals.manifestOperator}; operator enforcement counted from source outruns what the manifest declares`,
+    );
+  }
+
+  // THE CROSS-CHECK. Two independent enumerations of the same surface must
+  // produce the same denominator, or one of them is wrong and the coverage
+  // percentage is measured against a number nobody agrees on.
+  if (totals.manifestOps !== restCells.length) {
+    failures.push(
+      `the REST denominator is ${restCells.length} cells from the capability matrix but the independent census counted ` +
+        `${totals.manifestOps}; two enumerations of one surface disagree, so the denominator is not established`,
+    );
+  }
+  if (totals.manifestOperator !== operatorCells.length) {
+    failures.push(
+      `${operatorCells.length} enumerated REST cells require an operator but the independent census counted ` +
+        `${totals.manifestOperator}; the operator-protected sub-denominator is not established`,
+    );
+  }
+
+  return {
+    failures,
+    reconciliation: {
+      source: REST_CENSUS_PATH,
+      enumeratedRestCells: restCells.length,
+      enumeratedOperatorCells: operatorCells.length,
+      independentUniqueRoutes: totals.independentUniqueRoutes,
+      dualMountAliasOps: totals.dualMountAliasOps,
+      independentManifestOps: totals.manifestOps,
+      independentOperatorFloor: totals.independentOperatorFloor,
+      independentManifestOperator: totals.manifestOperator,
+      controllers: table.length,
+      agrees: failures.length === 0,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -213,8 +344,24 @@ export function renderMarkdown(document) {
   const lines = [
     "# WIN-284 — differential capability coverage",
     "",
-    `Generated by \`scripts/differential-coverage.mjs\` from ${CENSUS_SOURCES.length} M0 censuses.`,
+    `Generated by \`scripts/differential-coverage.mjs\` from ${CENSUS_SOURCES.length} M0 censuses:`,
+    `${document.enumeratedFrom.length} enumerate the cells and the independent REST census reconciles the REST denominator.`,
     "Coverage is computed from `tests/differential-harness/scenarios.mjs`; it cannot be asserted here.",
+    "",
+    "## REST denominator, counted twice",
+    "",
+    "The capability matrix and the independent census enumerate the REST surface by different",
+    "mechanisms — a generated manifest against controller sources globbed and parsed directly.",
+    "Both counts must agree or the denominator is not established and this gate fails.",
+    "",
+    `- operations enumerated here: **${document.reconciledAgainst.enumeratedRestCells}**`,
+    `- operations counted independently: **${document.reconciledAgainst.independentManifestOps}**` +
+      ` (${document.reconciledAgainst.independentUniqueRoutes} unique routes` +
+      ` + ${document.reconciledAgainst.dualMountAliasOps} dual-mount aliases` +
+      ` across ${document.reconciledAgainst.controllers} controllers)`,
+    `- operator-protected, enumerated here: **${document.reconciledAgainst.enumeratedOperatorCells}**;` +
+      ` counted independently: **${document.reconciledAgainst.independentManifestOperator}**,` +
+      ` at or above the source-derived floor of ${document.reconciledAgainst.independentOperatorFloor}`,
     "",
     "## Why the covered count is small, and why that is the honest answer",
     "",
@@ -274,6 +421,7 @@ export async function buildDocument(root = repositoryRoot) {
   const registryFailures = assertRegistryIsWellFormed(SCENARIO_REGISTRY);
   const cells = enumerateCells(root);
   const { rows, errors } = buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities(SCENARIO_REGISTRY));
+  const { failures: censusFailures, reconciliation } = reconcileRestCensus(cells, readRestCensus(root));
   const summary = summarise(rows);
   const digest = matrixDigest(rows);
   return {
@@ -283,27 +431,41 @@ export async function buildDocument(root = repositoryRoot) {
       title: "Differential capability coverage — every census cell carries a declared status",
       oracle: "89c12b8aa8da75c561dc879f370aaefb6e3359bc",
       sources: [...CENSUS_SOURCES],
+      // Three censuses enumerate the cells; the fourth reconciles the REST
+      // denominator against a second, independently derived count. Recorded
+      // here so the artifact states which source did which job rather than
+      // leaving a reader to assume all four were enumerated.
+      enumeratedFrom: [
+        "docs/audits/M0.2-capability-matrix.json",
+        "docs/audits/M0.9-webapp-bff-matrix.json",
+        "docs/audits/M0.4-design-contract-map.json",
+      ],
+      reconciledAgainst: reconciliation,
       generatedBy: "scripts/differential-coverage.mjs",
       coverageComputedFrom: "tests/differential-harness/scenarios.mjs",
       summary,
       digest,
       rows,
     },
-    failures: [...registryFailures, ...errors],
+    failures: [...registryFailures, ...errors, ...censusFailures],
   };
 }
 
 function main(argv) {
   const mode = argv.includes("--write") ? "write" : "check";
   return buildDocument().then(({ document, failures }) => {
-    const markdown = assertMarkdownIsGateSafe(renderMarkdown(document));
-    const json = `${gateSafeJson(document)}\n`;
-
+    // Failures are reported BEFORE anything is rendered. A document whose
+    // reconciliation could not be computed has no numbers to render, and a
+    // reader deserves the stated reason rather than a stack trace from the
+    // renderer reaching into a field the failure already explained is absent.
     if (failures.length) {
       console.log(["differential-coverage: the matrix is not usable", ...failures.map((entry) => `FAIL: ${entry}`)].join("\n"));
       process.exitCode = 1;
       return;
     }
+
+    const markdown = assertMarkdownIsGateSafe(renderMarkdown(document));
+    const json = `${gateSafeJson(document)}\n`;
 
     if (mode === "write") {
       writeFileSync(join(repositoryRoot, JSON_PATH), json);

@@ -15,11 +15,26 @@
 //      harness that answers "something changed" to every input has not shown it
 //      can localise drift, and a report like that is unusable at M3.1 scale.
 //
-// `assertSeedCoverage` requires every divergence code the comparators can emit
-// to have at least one seed. A comparator branch with no seed behind it is a
-// branch nobody has ever seen go red.
+// `assertSeedCoverage` requires the catalogue to be COMPLETE and IRREDUCIBLE
+// against what the comparators can emit:
+//
+//   COMPLETE     every divergence code has an ISOLATING seed — one that produces
+//                that code and nothing else — and every joint signature declared
+//                in `JOINT_DIVERGENCES` has a seed producing exactly that pair.
+//                A comparator branch with no seed behind it is a branch nobody
+//                has ever seen go red.
+//   IRREDUCIBLE  removing ANY seed from the catalogue must break completeness.
+//                This is what makes "rejects a truncated catalogue" a fact
+//                rather than a hope: it is not argued, it is computed, by
+//                deleting each seed in turn and requiring the remainder to fail.
+//
+// The earlier version required only that every code be covered by SOME seed.
+// That is weaker than it reads: four seeds could each be deleted with both
+// gates staying green, because a second seed still mentioned their code. A
+// catalogue that can lose a control silently is exactly the failure this file
+// exists to prevent, so the property is now enforced rather than described.
 
-import { DIVERGENCE_CODES } from "./comparators.mjs";
+import { DIVERGENCE_CODES, assertJointDivergencesAreWellFormed, requiredSeedSignatures } from "./comparators.mjs";
 import { DIMENSIONS } from "./observation.mjs";
 
 // The baseline both sides return when nothing is seeded. Deliberately rich
@@ -117,8 +132,11 @@ export const SEEDS = Object.freeze([
   Object.freeze({
     id: "response-field-retyped",
     dimension: "schema",
-    describes: "A field keeps its name and position but changes type — number becomes string.",
-    expectedCodes: Object.freeze(["schema-type-changed"]),
+    describes:
+      "A field keeps its name and position but changes type — number becomes string. It is declared as the " +
+      "retype-is-also-a-value-change pair because a leaf cannot change type without its serialised value " +
+      "changing too, so this is the only signature a retype can produce.",
+    expectedCodes: Object.freeze(["schema-type-changed", "schema-value-changed"]),
     seed: (observation) => withBody(observation, (body) => { body.revision = "3"; }),
   }),
   Object.freeze({
@@ -248,9 +266,26 @@ export const SEEDS = Object.freeze([
     },
   }),
   Object.freeze({
+    id: "auth-decision-flipped-silently",
+    dimension: "auth",
+    describes:
+      "The candidate denies what the oracle allowed and states no reason at all. This isolates the decision " +
+      "comparator: nothing else in the auth block moves, so the run must report auth-decision-changed alone. " +
+      "A denial with no stated reason is also the worst case for a client, which branches on the reason code.",
+    expectedCodes: Object.freeze(["auth-decision-changed"]),
+    seed: (observation) => {
+      const next = clone(observation);
+      next.auth.decision = "deny";
+      return next;
+    },
+  }),
+  Object.freeze({
     id: "auth-decision-flipped",
     dimension: "auth",
-    describes: "The oracle allowed the call and the candidate denies it, or the reverse.",
+    describes:
+      "The oracle allowed the call and the candidate denies it, with a reason. Decision and reason move " +
+      "together, which is the JOINT_DIVERGENCES signature of a real authorisation regression rather than the " +
+      "isolated decision change above.",
     expectedCodes: Object.freeze(["auth-decision-changed", "auth-reason-changed"]),
     seed: (observation) => {
       const next = clone(observation);
@@ -389,11 +424,17 @@ export function seedById(id) {
   return found;
 }
 
-// Coverage of the catalogue over what the comparators can emit. A code with no
-// seed is a comparator branch nobody has ever watched go red.
-export function assertSeedCoverage(seeds = SEEDS) {
+// The expected-code signature of a seed: its declared codes, deduplicated and
+// ordered, so two seeds proving the same thing are recognisable as such.
+export function seedSignature(seed) {
+  return [...new Set(seed.expectedCodes ?? [])].sort().join("+");
+}
+
+// Shape rules on individual seeds. Kept separate from the catalogue-level rules
+// below so the irreducibility check can re-run the catalogue rules over subsets
+// without re-reporting per-seed shape complaints for seeds it did not remove.
+function seedShapeFailures(seeds) {
   const failures = [];
-  const covered = new Set();
   const seenIds = new Set();
   for (const seed of seeds) {
     if (seenIds.has(seed.id)) failures.push(`seed ${seed.id} is declared twice`);
@@ -408,11 +449,32 @@ export function assertSeedCoverage(seeds = SEEDS) {
     }
     for (const code of seed.expectedCodes) {
       if (!DIVERGENCE_CODES.includes(code)) failures.push(`seed ${seed.id} expects unknown code ${code}`);
-      covered.add(code);
     }
   }
-  for (const code of DIVERGENCE_CODES) {
-    if (!covered.has(code)) failures.push(`divergence code ${code} has no seed; nothing proves that branch can fire`);
+  return failures;
+}
+
+// Catalogue-level completeness: every required signature must be present, and
+// every dimension must carry at least one seed. This is the function the
+// irreducibility check re-runs over each catalogue-minus-one.
+export function catalogueCompletenessFailures(seeds) {
+  const failures = [];
+  const present = new Map();
+  for (const seed of seeds) {
+    const signature = seedSignature(seed);
+    if (!present.has(signature)) present.set(signature, []);
+    present.get(signature).push(seed.id);
+  }
+
+  for (const [key, required] of requiredSeedSignatures()) {
+    const holders = present.get(required.codes.join("+")) ?? [];
+    if (holders.length === 0) {
+      failures.push(
+        required.kind === "isolating"
+          ? `divergence code ${key} has no isolating seed; nothing proves that branch can fire on its own`
+          : `joint signature ${key} has no seed; the pair has never been watched go red together`,
+      );
+    }
   }
   for (const dimension of DIMENSIONS) {
     if (!seeds.some((seed) => seed.dimension === dimension)) {
@@ -420,4 +482,34 @@ export function assertSeedCoverage(seeds = SEEDS) {
     }
   }
   return failures;
+}
+
+// IRREDUCIBILITY. Delete each seed in turn and require what is left to be
+// incomplete. A seed whose removal leaves the catalogue complete is a control
+// that could be deleted with every gate staying green — which is precisely how
+// a catalogue gets truncated without anybody noticing.
+export function catalogueIrreducibilityFailures(seeds) {
+  const failures = [];
+  for (const [index, seed] of seeds.entries()) {
+    const remainder = seeds.filter((_, position) => position !== index);
+    if (catalogueCompletenessFailures(remainder).length === 0) {
+      failures.push(
+        `seed ${seed.id} can be deleted with the catalogue still complete; it proves nothing no other seed proves. ` +
+          "Give it a distinct expected-code signature, or declare the property it holds in JOINT_DIVERGENCES, " +
+          "or remove it — a redundant control makes its twin deletable too",
+      );
+    }
+  }
+  return failures;
+}
+
+// The catalogue gate. Complete against everything the comparators can emit, and
+// irreducible, so truncating it by even one seed turns this red.
+export function assertSeedCoverage(seeds = SEEDS) {
+  return [
+    ...assertJointDivergencesAreWellFormed(),
+    ...seedShapeFailures(seeds),
+    ...catalogueCompletenessFailures(seeds),
+    ...catalogueIrreducibilityFailures(seeds),
+  ];
 }

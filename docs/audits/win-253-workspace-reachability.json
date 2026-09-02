@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "eb670fdd097ef97039f15e6b225be127e9ef71b5e1050a6546520a298906d79f",
+  "evidenceSha256": "aac2f48870abc42bbbc18cd7d7e77ffc8562d12371fb7ef20d763552cec9e0db",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c46dfdc7d023b148899fbc0d013d98f66068ae9b68e467d37caac6825349b574",
+    "aggregateSha256": "0202cce9be0ed0cd20045d83afa2da7222bddfd88a4603dd942938f59f488427",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "d2a1572c2b104b38919e66329ac8c65528ba26b1282209f85a1bfb75a007d35d"
+        "sha256": "833e8eeffee5ed304f738ddf6f2b2cc9e8bdf7ef0a58da6a8abffec00cb64acc"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -4017,11 +4017,11 @@
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
-        "sha256": "09efd198e59dd5ed9e151ac08585ea9dd18b8b3a5433594b779a2f3b0b988f03"
+        "sha256": "7ebb90ed44a8f657bf0db31366f8b2e46a0c387075ee95797f9a32378eb57afa"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.md",
-        "sha256": "f772b6e4057369ae505d0ae1ae6643e3bcd42870a7ee2c2362226c42b283e480"
+        "sha256": "e4683f597b424ac4becd91e31fbf571c21e9227bb0b022045ba150bf5ed0fe95"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -13585,11 +13585,11 @@
       },
       {
         "path": "scripts/differential-coverage.mjs",
-        "sha256": "920b83598e525cb0d6f477e36856b79a8bb38a5ed94134006852c1626e9e7294"
+        "sha256": "96c816c359067ab5222cca2645ab638d9bf4e9c3e4cc92db0572fd443ee6e0e8"
       },
       {
         "path": "scripts/differential-coverage.test.mjs",
-        "sha256": "e6b0379669cdc3ed5adc0eb0e661b469346976a32f54877c20022155ece70815"
+        "sha256": "465ffd7bb5d4bbfd4eb5dd3e226e6cb5057c55624e07a5996145183a5a9be942"
       },
       {
         "path": "scripts/docs-examples.mjs",
@@ -13889,11 +13889,11 @@
       },
       {
         "path": "tests/differential-harness/README.md",
-        "sha256": "fa4e9544315988223a09f1f9b6d1967e9289a1749e0eabde8948ee3c3fd027ff"
+        "sha256": "e1784671dce406c34d24c8d1de37bba03de70261cff8e24fb7a6d961094ec043"
       },
       {
         "path": "tests/differential-harness/comparators.mjs",
-        "sha256": "38af44cf28c7227ddbeabf01f89c41d4f0e7c94b11635d14ff22fa2aa49fbbb0"
+        "sha256": "5431cd900de38e9dd815831d7f50712db46b7c4369b315e4d4cb8358ea99721a"
       },
       {
         "path": "tests/differential-harness/comparators.test.mjs",
@@ -13901,11 +13901,11 @@
       },
       {
         "path": "tests/differential-harness/negative-controls.mjs",
-        "sha256": "249da15611e5f5d688d30e2eeec5cd6779804584b937061e20fea6edecaec066"
+        "sha256": "ae07c24b194a39b4070d413878e27b80f770679662456e005e0df6ce7f74f729"
       },
       {
         "path": "tests/differential-harness/negative-controls.test.mjs",
-        "sha256": "41ebdc3d6b006348791e7d6eeac87fc53e7cdbe1eb5000f7651a00a152493e2c"
+        "sha256": "ac2c3241c03f2870a33918f5225e0e8434df1aea71e215d7648c0c8bafe61db4"
       },
       {
         "path": "tests/differential-harness/normalisers.mjs",
@@ -13921,15 +13921,15 @@
       },
       {
         "path": "tests/differential-harness/postgres-conservation.mjs",
-        "sha256": "8d3e64a93661989aa62c7bec3611427e2d274338fa0819f288a17cffc50f520b"
+        "sha256": "aa3fc97e92962b5c9f2422a40743685fa6d2efbaab17670d26800685b1c1bb86"
       },
       {
         "path": "tests/differential-harness/scenarios.mjs",
-        "sha256": "48d4dc1ba3009d00756b631c90521ae562ddf87be87b9bcf7226fb86b521c414"
+        "sha256": "e4039ac4be5550f1d58e40ee0719ac61083cc16e08256df311fda70fa02d4fac"
       },
       {
         "path": "tests/differential-harness/seeds.mjs",
-        "sha256": "6dc9685d67a36badf44fbb7abb3ccc1c19e6d4b7c4be3c910df855d7ecc94acf"
+        "sha256": "f1a7958ed155d39d12e13e900356cb468438415f5ddbed409451071fcb0fbad2"
       },
       {
         "path": "tests/differential-harness/subjects/postgres-twin.mjs",
@@ -20075,12 +20075,12 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 3359
+              "line": 3376
             },
             {
               "from": "docs/audits/win-284-differential-coverage.md",
               "kind": "reference",
-              "line": 48
+              "line": 59
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
@@ -20290,7 +20290,7 @@
             {
               "from": "tests/differential-harness/README.md",
               "kind": "reference",
-              "line": 225
+              "line": 258
             }
           ],
           "reversePaths": [
@@ -21403,7 +21403,7 @@
             {
               "from": "tests/differential-harness/README.md",
               "kind": "reference",
-              "line": 225
+              "line": 258
             },
             {
               "from": "tests/persisted-state-gate/artifact-schema.json",
@@ -21894,7 +21894,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "68ef2384c5f602ac606cb32aeb7e23918e32e7d2f186c36f99077d8a69954ca2",
+      "evidenceSha256": "16fc42de2c2153627b808650f830382b328837d4fa29879ca3606b534ae2338e",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -28404,7 +28404,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 251
+              "line": 265
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -29257,7 +29257,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "eadc27104107d6caae492945a13391e9d7b35b6da22b81fafb9eb2300c1f3d12",
+      "evidenceSha256": "cd5d32ee3a74f7b5c27d0015918defc8353e0b3f6fc9945fdffa1e3dbbb11e05",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -33940,7 +33940,7 @@
             {
               "from": "tests/differential-harness/postgres-conservation.mjs",
               "kind": "reference",
-              "line": 217
+              "line": 411
             },
             {
               "from": "tests/differential-harness/scenarios.mjs",
@@ -34392,7 +34392,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "bd0068d565959bf8eee6bb9c80604acd7eb2b90b3ed342253de7cd64b6244d38",
+      "evidenceSha256": "e573adf785586d23c9c30668f40610322ce02bc1d850b0d8721c2997cc51f4f1",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -34809,7 +34809,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 251
+              "line": 265
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35506,7 +35506,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f5f4fff005c420495046b9972b5b83a71494a39ad355c23fbb87251fa55e0443",
+      "evidenceSha256": "a1c908cab30e0164567e1f8bcf9af8a09daa50b90d71481d880c58c8b06f0fcb",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -52961,7 +52961,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 260
+              "line": 274
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54517,7 +54517,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d9cf2fc5495d6d119784b6da77280eb0fa7c7fcfedc9595d3c60a7d4159899df",
+      "evidenceSha256": "8e5f965015eb8a862bb9365008b13a3ce491fc9d7da7782955ea84d27670f8d2",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -56716,7 +56716,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7191
+              "line": 7208
             },
             {
               "from": "docs/entity-connect.md",
@@ -57199,7 +57199,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "361014d053c4ca440c5250b956bd0f9224faea3b720a7250bda08aad71c2a8d5",
+      "evidenceSha256": "3fcc526cfd24e649b29279f974b79d9219ffd6b1f4ce8053712521c39310860a",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -57375,7 +57375,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7181
+              "line": 7198
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -58007,7 +58007,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d1a1c7ad0e7bf84b6ad02594737ef54b5318ef216f8cf2fc5d3872eedba57d57",
+      "evidenceSha256": "cfac497b796e964adc67353a176b4f6bda701d984a3d438c017cfc1e1fb15e3a",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -58774,7 +58774,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7201
+              "line": 7218
             },
             {
               "from": "examples/platos-nextjs-starter/app/platos/token/route.ts",
@@ -59098,7 +59098,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6527adf3c12f2a15ee8e3b9b35ff7a5c0b13a2fe6c1aa05ede058487d56beb08",
+      "evidenceSha256": "61f8fa93d062759f14559d1377d2ae4e508d227ad6aa3bca6e33998ab2f2c732",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

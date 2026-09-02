@@ -28,6 +28,14 @@ const ORGANIZATION_SLUG = "win284-conservation";
 // same number of distinct instants on both sides. If they ever did tie, the
 // ranks would differ and the run would report a FALSE POSITIVE — never a false
 // negative. That is the safe direction for a harness to fail in.
+//
+// DIMENSIONS NOTE: this scenario declares all seven, and the store runner's
+// `dimension-sensitivity` phase requires every one of them to have been seen to
+// diverge ON THIS SCENARIO. Declaring a dimension here is therefore an
+// obligation to seed it, not a free line in `factCounts`. `auth` and `status`
+// were declared and structurally constant until the tier-downgrade and
+// undefined-table seeds were added; the phase exists so that cannot recur
+// silently.
 export const CONSERVATION_SCENARIO = Object.freeze({
   id: "tenancy-organization-project-conservation",
   title: "Organization and Project lifecycle conserved across two isolated stores",

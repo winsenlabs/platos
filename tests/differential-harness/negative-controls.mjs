@@ -107,8 +107,17 @@ export async function runSeededControl(seed) {
     }),
   });
   const observedCodes = (result.divergences ?? []).map((entry) => entry.code);
-  const missing = seed.expectedCodes.filter((code) => !observedCodes.includes(code));
-  const passed = result.verdict === "divergent" && missing.length === 0;
+  // EXACT, not "contains". A seed declares the complete signature of the
+  // difference it introduces, so an extra code is as much a finding as a
+  // missing one: it means the seed moved something it did not say it moved, and
+  // the catalogue's isolating seeds would no longer be isolating anything.
+  // Superset matching also lets a comparator that fires on everything pass
+  // every control, which is the failure mode this whole file exists to detect.
+  const expected = [...new Set(seed.expectedCodes)].sort();
+  const observed = [...new Set(observedCodes)].sort();
+  const missing = expected.filter((code) => !observed.includes(code));
+  const unexpected = observed.filter((code) => !expected.includes(code));
+  const passed = result.verdict === "divergent" && missing.length === 0 && unexpected.length === 0;
   return {
     phase: "seeded",
     id: seed.id,
@@ -119,8 +128,11 @@ export async function runSeededControl(seed) {
     verdict: result.verdict,
     passed,
     detail: passed
-      ? `caught as ${observedCodes.join(", ")}`
-      : `expected ${seed.expectedCodes.join(", ")} but the run was ${result.verdict} with ${observedCodes.join(", ") || "no divergences"}`,
+      ? `caught as exactly ${observed.join(", ")}`
+      : `expected exactly ${expected.join(", ")} but the run was ${result.verdict} with ` +
+        `${observed.join(", ") || "no divergences"}` +
+        (unexpected.length ? ` (unexpected: ${unexpected.join(", ")})` : "") +
+        (missing.length ? ` (missing: ${missing.join(", ")})` : ""),
   };
 }
 

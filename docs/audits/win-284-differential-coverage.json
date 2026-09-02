@@ -9,6 +9,23 @@
     "docs/audits/M0.9-webapp-bff-matrix.json",
     "docs/audits/M0.4-design-contract-map.json"
   ],
+  "enumeratedFrom": [
+    "docs/audits/M0.2-capability-matrix.json",
+    "docs/audits/M0.9-webapp-bff-matrix.json",
+    "docs/audits/M0.4-design-contract-map.json"
+  ],
+  "reconciledAgainst": {
+    "source": "docs/audits/M0.9-rest-census-independent.json",
+    "enumeratedRestCells": 300,
+    "enumeratedOperatorCells": 120,
+    "independentUniqueRoutes": 281,
+    "dualMountAliasOps": 19,
+    "independentManifestOps": 300,
+    "independentOperatorFloor": 103,
+    "independentManifestOperator": 120,
+    "controllers": 27,
+    "agrees": true
+  },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {

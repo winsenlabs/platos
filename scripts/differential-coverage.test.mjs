@@ -5,15 +5,25 @@
 // shrunken denominator the day someone shrinks it.
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 
 import {
+  CENSUS_SOURCES,
+  REST_CENSUS_PATH,
   SURFACE_OWNERS,
   assertMarkdownIsGateSafe,
   buildDocument,
   buildMatrix,
   enumerateCells,
   matrixDigest,
+  readRestCensus,
+  reconcileRestCensus,
   renderMarkdown,
   summarise,
 } from "./differential-coverage.mjs";
@@ -137,4 +147,151 @@ test("every enumerated surface has an owning issue", () => {
 test("capability cell ids are unique", () => {
   const ids = enumerateCells().map((entry) => entry.id);
   assert.equal(new Set(ids).size, ids.length);
+});
+
+// ---------------------------------------------------------------------------
+// The fourth census is READ, and these controls prove it
+// ---------------------------------------------------------------------------
+//
+// The gate previously declared four censuses as provenance and enumerated from
+// three. The independent REST census could be edited arbitrarily and `--check`
+// stayed green at exit 0, which made "generated from 4 M0 censuses" a claim the
+// code did not support. It is now reconciled against, and every control below
+// is a tamper that must turn the gate red.
+
+function tamperedCensus(edit) {
+  const census = JSON.parse(JSON.stringify(readRestCensus()));
+  edit(census);
+  return census;
+}
+
+test("the independent REST census is declared as a source and is actually read", () => {
+  assert.ok(CENSUS_SOURCES.includes(REST_CENSUS_PATH));
+  const { failures, reconciliation } = reconcileRestCensus(enumerateCells(), readRestCensus());
+  assert.deepEqual(failures, []);
+  assert.equal(reconciliation.agrees, true);
+  // The committed census really does corroborate the enumerated denominator,
+  // rather than the check passing because both sides read the same file.
+  assert.equal(reconciliation.enumeratedRestCells, reconciliation.independentManifestOps);
+  assert.equal(reconciliation.enumeratedOperatorCells, reconciliation.independentManifestOperator);
+  assert.ok(reconciliation.independentUniqueRoutes > 0 && reconciliation.controllers > 0);
+});
+
+test("MUTATION: a REST denominator the independent census disagrees with is refused", () => {
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => {
+      census.totals.manifestOps -= 1;
+      census.table[0].manifestOps -= 1;
+      census.totals.independentUniqueRoutes -= 1;
+    }),
+  );
+  assert.ok(
+    failures.some((failure) => failure.includes("two enumerations of one surface disagree")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: an operator-protected count the independent census disagrees with is refused", () => {
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => {
+      census.totals.manifestOperator += 1;
+      census.table[0].manifestOperator += 1;
+    }),
+  );
+  assert.ok(
+    failures.some((failure) => failure.includes("operator-protected sub-denominator is not established")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: a census that failed its own reconciliation cannot corroborate anything", () => {
+  const failed = reconcileRestCensus(enumerateCells(), tamperedCensus((census) => { census.ok = false; })).failures;
+  assert.ok(failed.some((failure) => failure.includes("a failed census cannot corroborate")), JSON.stringify(failed));
+
+  const withFailures = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => { census.failures = ["a controller is missing from the manifest"]; }),
+  ).failures;
+  assert.ok(withFailures.some((failure) => failure.includes("unresolved failures")), JSON.stringify(withFailures));
+
+  const misreconciled = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => { census.table[0].routeOk = false; }),
+  ).failures;
+  assert.ok(
+    misreconciled.some((failure) => failure.includes("own route/operator reconciliation did not hold")),
+    JSON.stringify(misreconciled),
+  );
+});
+
+test("MUTATION: a census whose totals stop matching its own table is refused", () => {
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => { census.table[0].manifestOps += 1; }),
+  );
+  assert.ok(
+    failures.some((failure) => failure.includes("per-controller table sums to")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: a census that no longer satisfies its own route identity is refused", () => {
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => { census.totals.dualMountAliasOps += 1; }),
+  );
+  assert.ok(
+    failures.some((failure) => failure.includes("no longer satisfies its own identity")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: an operator floor above the manifest operator count is refused", () => {
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => { census.totals.independentOperatorFloor = census.totals.manifestOperator + 1; }),
+  );
+  assert.ok(failures.some((failure) => failure.includes("operator floor")), JSON.stringify(failures));
+});
+
+test("MUTATION: a census stripped of the fields this gate reads is refused, not skipped", () => {
+  // The quiet failure mode: a source that stops carrying what the reader needs
+  // and is silently treated as having nothing to say.
+  const { failures, reconciliation } = reconcileRestCensus(enumerateCells(), { ok: true, failures: [] });
+  assert.equal(reconciliation, null);
+  assert.ok(
+    failures.some((failure) => failure.includes("cannot be declared a source of the REST denominator")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: a census this gate cannot read fails with the stated reason, not a stack trace", () => {
+  // `main` reports failures before rendering, so a document whose
+  // reconciliation could not be computed produces the sentence that explains
+  // why rather than a TypeError from the renderer. Exercised through the CLI
+  // because the ordering inside `main` is the thing under test.
+  const censusPath = join(repositoryRoot, REST_CENSUS_PATH);
+  const original = readFileSync(censusPath, "utf8");
+  try {
+    writeFileSync(censusPath, `${JSON.stringify({ ok: true, failures: [] }, null, 2)}\n`);
+    const result = spawnSync(process.execPath, [join(repositoryRoot, "scripts/differential-coverage.mjs"), "--check"], {
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /cannot be declared a source of the REST denominator/u);
+    assert.doesNotMatch(`${result.stdout}${result.stderr}`, /TypeError/u);
+  } finally {
+    writeFileSync(censusPath, original);
+  }
+});
+
+test("the committed artifact states which sources enumerate and which reconciles", async () => {
+  const { document } = await buildDocument();
+  assert.deepEqual([...document.sources].sort(), [...CENSUS_SOURCES].sort());
+  assert.ok(!document.enumeratedFrom.includes(REST_CENSUS_PATH));
+  assert.equal(document.enumeratedFrom.length, CENSUS_SOURCES.length - 1);
+  assert.equal(document.reconciledAgainst.source, REST_CENSUS_PATH);
+  assert.equal(document.reconciledAgainst.agrees, true);
 });

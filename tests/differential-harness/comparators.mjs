@@ -42,6 +42,116 @@ export const DIVERGENCE_CODES = Object.freeze([
   "store-row-extra",
 ]);
 
+// Code combinations that ONE real difference produces together, declared here
+// beside the comparators that emit them.
+//
+// Why this list exists. `assertSeedCoverage` requires an ISOLATING seed for
+// every code above — a seed that produces that code and nothing else — which
+// makes each comparator branch individually provable. But some real differences
+// are irreducibly joint: the pair IS the signature, and a catalogue that only
+// isolated the parts would never have watched the pair go red. Declaring them
+// makes those seeds required rather than optional, which is what stops the
+// catalogue being silently truncated by one.
+//
+// A pair belongs here only when a single difference cannot produce one code
+// without the other. Adding an entry adds a required seed; it never removes one,
+// EXCEPT for the codes an entry lists in `absorbs` — codes this comparator can
+// never emit alone, so demanding an isolating seed for them would demand a seed
+// that cannot exist. `absorbs` is deliberately narrow and each use states the
+// mechanism, because "it cannot be isolated" is the sentence an unfalsifiable
+// gate hides behind.
+export const JOINT_DIVERGENCES = Object.freeze([
+  Object.freeze({
+    id: "retype-is-also-a-value-change",
+    codes: Object.freeze(["schema-type-changed", "schema-value-changed"]),
+    absorbs: Object.freeze(["schema-type-changed"]),
+    describes:
+      "A leaf that changes type necessarily changes its serialised value too — `3` and `\"3\"` cannot be equal " +
+      "under JSON comparison — so compareSchema physically cannot emit schema-type-changed on its own. The pair " +
+      "is the only signature a retype can have, and it is the seed that proves the type branch fires.",
+  }),
+  Object.freeze({
+    id: "authorisation-flip-with-reason",
+    codes: Object.freeze(["auth-decision-changed", "auth-reason-changed"]),
+    absorbs: Object.freeze([]),
+    describes:
+      "A real denial changes the decision AND states why. The decision alone is the artificial isolation " +
+      "case; this pair is what an actual authorisation regression looks like.",
+  }),
+  Object.freeze({
+    id: "in-place-row-change",
+    codes: Object.freeze(["store-row-missing", "store-row-extra"]),
+    absorbs: Object.freeze([]),
+    describes:
+      "Row identity is a multiset, so an in-place column change surfaces as the oracle row missing and the " +
+      "candidate row extra. Either code alone means something else happened; the pair is the signature.",
+  }),
+]);
+
+export function absorbedCodes(joints = JOINT_DIVERGENCES) {
+  return new Set(joints.flatMap((joint) => [...(joint.absorbs ?? [])]));
+}
+
+// The exact expected-code signatures the seed catalogue must contain: one
+// isolating signature per emittable code that CAN be emitted alone, plus every
+// declared joint signature. Derived from the comparators, never hand-listed, so
+// a new comparator branch creates a new obligation the moment its code is
+// declared — and a seed cannot be deleted without one of these going unheld.
+export function requiredSeedSignatures(joints = JOINT_DIVERGENCES, codes = DIVERGENCE_CODES) {
+  const absorbed = absorbedCodes(joints);
+  const signatures = new Map();
+  for (const code of codes) {
+    if (absorbed.has(code)) continue;
+    signatures.set(code, { codes: [code], kind: "isolating", describes: `${code} emitted alone` });
+  }
+  for (const joint of joints) {
+    signatures.set([...joint.codes].sort().join("+"), {
+      codes: [...joint.codes].sort(),
+      kind: "joint",
+      describes: joint.describes,
+    });
+  }
+  return signatures;
+}
+
+export function assertJointDivergencesAreWellFormed(joints = JOINT_DIVERGENCES) {
+  const failures = [];
+  const seen = new Set();
+  const signatures = new Set();
+  for (const joint of joints) {
+    if (seen.has(joint.id)) failures.push(`joint divergence ${joint.id} is declared twice`);
+    seen.add(joint.id);
+    if (!Array.isArray(joint.codes) || joint.codes.length < 2) {
+      failures.push(`joint divergence ${joint.id} must name at least two codes; one code is an isolating seed`);
+      continue;
+    }
+    const signature = [...joint.codes].sort().join("+");
+    if (signatures.has(signature)) failures.push(`joint divergence ${joint.id} repeats the signature ${signature}`);
+    signatures.add(signature);
+    for (const code of joint.codes) {
+      if (!DIVERGENCE_CODES.includes(code)) failures.push(`joint divergence ${joint.id} names unknown code ${code}`);
+    }
+    for (const code of joint.absorbs ?? []) {
+      if (!joint.codes.includes(code)) {
+        failures.push(`joint divergence ${joint.id} absorbs ${code}, which it does not name`);
+      }
+    }
+    if (typeof joint.describes !== "string" || joint.describes.trim().length < 30) {
+      failures.push(`joint divergence ${joint.id} must say in prose why the codes are inseparable`);
+    }
+  }
+  // An absorbed code has no isolating seed by construction, so the joint that
+  // absorbs it is the ONLY proof that its branch can fire. Two joints absorbing
+  // the same code would each look sufficient and neither would be required.
+  const absorbedTwice = joints
+    .flatMap((joint) => [...(joint.absorbs ?? [])])
+    .filter((code, index, all) => all.indexOf(code) !== index);
+  for (const code of new Set(absorbedTwice)) {
+    failures.push(`code ${code} is absorbed by more than one joint divergence; its proof would be deletable`);
+  }
+  return failures;
+}
+
 // A tolerance is a normaliser wearing a different hat, and carries the same
 // risk: widen it enough and the dimension stops measuring. So the ceiling is
 // declared here rather than left to each scenario, and `assertTolerance`
@@ -458,13 +568,19 @@ export const COMPARATORS = Object.freeze({
 // name an acceptance dimension. Checked rather than assumed so a dimension can
 // never be added to the contract and left unimplemented while the matrix still
 // counts it as compared.
-export function assertComparatorCoverage() {
+//
+// The two arguments exist so this function can be controlled on its own.
+// Neutering it in place leaves both gates green, because `validateScenario`
+// independently refuses a dimension with no comparator — a redundancy, not a
+// hole, but a redundancy that hid whether THIS function still worked. Passing
+// it a deliberately broken registry isolates it from that second guard.
+export function assertComparatorCoverage(comparators = COMPARATORS, dimensions = DIMENSIONS) {
   const failures = [];
-  for (const dimension of DIMENSIONS) {
-    if (typeof COMPARATORS[dimension] !== "function") failures.push(`dimension ${dimension} has no comparator`);
+  for (const dimension of dimensions) {
+    if (typeof comparators[dimension] !== "function") failures.push(`dimension ${dimension} has no comparator`);
   }
-  for (const dimension of Object.keys(COMPARATORS)) {
-    if (!DIMENSIONS.includes(dimension)) failures.push(`comparator ${dimension} is not an acceptance dimension`);
+  for (const dimension of Object.keys(comparators)) {
+    if (!dimensions.includes(dimension)) failures.push(`comparator ${dimension} is not an acceptance dimension`);
   }
   return failures;
 }

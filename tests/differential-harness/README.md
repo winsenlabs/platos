@@ -182,8 +182,8 @@ it is consumed one-for-one so a second occurrence still fails.
 A parity harness never shown to catch a deliberate difference is decoration.
 
 ```
-node tests/differential-harness/negative-controls.mjs         # 33 controls, no Docker
-node tests/differential-harness/postgres-conservation.mjs     # 10 phases, needs Docker
+node tests/differential-harness/negative-controls.mjs         # 34 controls, no Docker
+node tests/differential-harness/postgres-conservation.mjs     # 14 phases, needs Docker
 ```
 
 Three phases, and all three matter:
@@ -199,9 +199,25 @@ Three phases, and all three matter:
    with itself, a malformed observation, a standing approval that never matches —
    each required to be refused.
 
-Every divergence code the comparators can emit has at least one seed;
-`assertSeedCoverage` makes that mechanical. A comparator branch with no seed
-behind it is a branch nobody has watched go red.
+### The catalogue is complete and irreducible
+
+`assertSeedCoverage` derives what the catalogue must contain from the
+comparators, so it is an obligation the emitter side sets rather than a list
+somebody maintains:
+
+- every divergence code that **can** be emitted alone has an **isolating** seed —
+  one that produces that code and nothing else;
+- a code that cannot be emitted alone (a retype necessarily changes the
+  serialised value too) must be named in `JOINT_DIVERGENCES`, which then requires
+  a seed producing exactly that pair;
+- each seed's observed codes must match its declaration **exactly**, so an
+  isolating seed is proven isolating rather than described as such;
+- removing **any** single seed must break completeness. That is checked by
+  deleting each seed in turn, not argued.
+
+The last rule is why the catalogue rejects truncation. An earlier version
+required only that each code be covered by *some* seed, which let four seeds be
+deleted with every gate staying green.
 
 ### Controls on the controls
 
@@ -212,8 +228,24 @@ behind it is a branch nobody has watched go red.
 - **Every seed goes uncaught when its dimension is removed** from the scenario,
   proving each control's pass depends on its comparator actually running.
 - A seeded control with the seed replaced by a no-op **fails**, as it must.
-- `assertSeedCoverage` rejects a truncated catalogue; `assertRegisterIsSensitive`
-  rejects an over-broad, inert, undocumented or self-identical normaliser.
+- A seed that moves **more** than it declares fails, so exactness is enforced in
+  both directions.
+- **Every deletion of a single seed fails**, enumerated one seed at a time.
+- `assertRegisterIsSensitive` rejects an over-broad, inert, undocumented or
+  self-identical normaliser.
+- **Every dimension a scenario declares must have a designated seed that was
+  seen to move it on that scenario.** The store runner's
+  `dimension-sensitivity` phase refuses a dimension that carries facts but is
+  structurally constant — it passes the anti-vacuity guard while comparing a
+  constant, and "the comparator is sensitive on some other scenario" is not the
+  same claim. Each seed names the dimensions it is the evidence for, exactly one
+  seed may claim each, and that seed's run must really have moved it — so no
+  store seed can be deleted with the phase staying green. The rule is a pure
+  function (`dimensionSensitivityFailures`) so its branches are controlled by the
+  no-Docker suite rather than only by hand on a machine that has a daemon.
+- `assertObservation` and `assertComparatorCoverage` each have an **isolating**
+  control, because a second guard catching the same input made neither provable
+  on its own.
 
 The store runner **fails when Docker is absent rather than skipping**. A suite
 that silently skips is indistinguishable in a summary from one that passes, and
@@ -221,9 +253,21 @@ that is the exact failure this issue exists to prevent.
 
 ## Coverage
 
-`scripts/differential-coverage.mjs` enumerates every cell the M0 censuses found —
-WIN-247's capability matrix, the independent REST census, the webapp BFF matrix,
-and the design contract map — and gives each a declared status.
+`scripts/differential-coverage.mjs` reads four M0 censuses and gives every cell a
+declared status. **Three of them enumerate** — WIN-247's capability matrix, the
+webapp BFF matrix, and the design contract map. The fourth, WIN-294's
+independent REST census, **reconciles**: it counted the REST surface by a
+different mechanism (globbing controller sources rather than reading the
+generated manifest), and its count of operations and of operator-protected
+operations must equal what the matrix enumerated, or the denominator is not
+established and the gate fails.
+
+That split is stated rather than implied because it was previously wrong: all
+four were declared as provenance and only three were read, so the REST
+denominator came from one enumerator while the artifact claimed two. The census
+file's own freshness is owned by `node scripts/rest-census-independent.mjs
+--check`, which runs in the same CI step; this gate owns the agreement between
+the two counts.
 
 The numerator is **computed** from `scenarios.mjs`; it cannot be asserted in the
 matrix. A claim naming a cell no census contains is a hard error, so a typo
@@ -244,8 +288,12 @@ pnpm generate:differential-coverage   # regenerate it
    moved it — there is no other way to move it.
 4. If the surface introduces a new nondeterminism, add a normaliser **with both
    sensitivity fixtures**. It will not pass without them.
-5. If it introduces a new divergence code, add a seed. It will not pass without
-   one.
+5. If it introduces a new divergence code, add an **isolating** seed — one whose
+   observed codes are exactly that one code. If the comparator cannot emit it
+   alone, declare the pair in `JOINT_DIVERGENCES` with the mechanism that makes
+   the codes inseparable, and seed the pair. It will not pass without one.
+6. Every dimension the new scenarios declare needs a seed that moves it **on
+   those scenarios**. Declaring a dimension is an obligation to seed it.
 
 ## Files
 

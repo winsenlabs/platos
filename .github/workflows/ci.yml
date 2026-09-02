@@ -166,10 +166,24 @@ jobs:
         # should be legible as its own step in the log rather than buried
         # inside a test summary.
         #
-        # The catalogue's size is deliberately NOT quoted here. It grows as
-        # surfaces land, and a count pinned in prose is a fact that goes stale
-        # silently — `assertSeedCoverage` is what enforces completeness, and it
-        # is executable.
+        # The catalogue's size is deliberately NOT quoted here, and it is not
+        # left unpinned either. `assertSeedCoverage` derives the required
+        # catalogue from the comparators: every divergence code that CAN be
+        # emitted alone must have a seed that emits it alone, every code that
+        # cannot must be named by a declared joint signature that has its own
+        # seed, and each seed's observed codes must match its declaration
+        # EXACTLY rather than merely include it. It then deletes each seed in
+        # turn and requires the remainder to fail, so removing any single seed
+        # turns this step red.
+        #
+        # CORRECTION, 2026-09-02. This comment previously said the size was not
+        # pinned because "assertSeedCoverage is what enforces completeness".
+        # That was false as written: the check enforced CODE coverage, so four
+        # of the then twenty-seven seeds could each be deleted with both gates
+        # staying green. Independent verification found it and the mechanism was
+        # made to match the claim rather than the claim trimmed to the
+        # mechanism — a gate whose banner in CI says more than the gate checks
+        # is the precise failure this harness exists to detect.
         run: |
           pnpm test:differential-harness
           pnpm test:differential-harness:controls
@@ -273,9 +287,12 @@ jobs:
     name: differential-state-conservation
     # WIN-284. Twin-runs the harness against TWO isolated PostgreSQL databases
     # built from the real tenancy schema by the repository's own
-    # `prisma migrate deploy`, then seeds five real store-level divergences and
-    # requires each to be caught. It is a separate job because it needs a Docker
-    # daemon, which the typecheck job's service containers do not provide.
+    # `prisma migrate deploy`, then seeds real store-level divergences and
+    # requires each to be caught. It also requires every dimension a scenario
+    # declares to have been seen to diverge ON THAT SCENARIO, so a dimension
+    # cannot sit in the comparison contributing facts it can never fail on. It
+    # is a separate job because it needs a Docker daemon, which the typecheck
+    # job's service containers do not provide.
     #
     # The runner FAILS when Docker is absent rather than skipping. A skipped
     # conservation run is indistinguishable from a passing one in a summary, and
