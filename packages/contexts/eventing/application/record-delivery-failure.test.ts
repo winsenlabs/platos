@@ -12,7 +12,7 @@ import {
 import { recordDeliveryFailure } from "./record-delivery-failure.js";
 import { buildEventingTestContext, type EventingTestContext } from "./testing/index.js";
 
-function request(attempt: number): NotificationRequested {
+function request(retryCount: number): NotificationRequested {
   const destination = parseDestination({ type: "webhook", url: "https://example.test/hook" });
   if (!destination.ok) throw new Error(destination.error.code);
   const eventName = asEventName("run.failed");
@@ -26,7 +26,7 @@ function request(attempt: number): NotificationRequested {
     payload: { ok: true },
     destination: destination.value,
     severity: severityOf(eventName),
-    attempt,
+    retryCount,
     requestedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }
@@ -43,28 +43,28 @@ describe("recordDeliveryFailure", () => {
 
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) throw new Error("unreachable");
-    expect(outcome.value.decision).toEqual({ kind: "retry", attempt: 1, delayMs: 2_000 });
+    expect(outcome.value.decision).toEqual({ kind: "retry", retryCount: 1, delayMs: 2_000 });
 
     const [queued] = context.queue.all();
-    expect(queued?.request.attempt).toBe(1);
+    expect(queued?.request.retryCount).toBe(1);
     expect(queued?.availableAt.toISOString()).toBe("2026-01-01T00:00:02.000Z");
   });
 
   it("re-enqueues the second failure four seconds out", async () => {
     await recordDeliveryFailure(context.dependencies, request(1));
     const [queued] = context.queue.all();
-    expect(queued?.request.attempt).toBe(2);
+    expect(queued?.request.retryCount).toBe(2);
     expect(queued?.availableAt.toISOString()).toBe("2026-01-01T00:00:04.000Z");
   });
 
   // Giving up is a terminal SUCCESS. A caller must be able to tell "this
   // notification is finished, unsuccessfully" from "the queue is broken".
-  it("gives up after the third attempt and enqueues NOTHING", async () => {
+  it("gives up after the third send and enqueues NOTHING", async () => {
     const outcome = await recordDeliveryFailure(context.dependencies, request(2));
 
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) throw new Error("unreachable");
-    expect(outcome.value.decision).toEqual({ kind: "give-up", attempts: 3 });
+    expect(outcome.value.decision).toEqual({ kind: "give-up", retryCount: 3 });
     expect(outcome.value.rescheduled).toBeNull();
     expect(context.queue.all()).toHaveLength(0);
   });
@@ -94,7 +94,7 @@ describe("recordDeliveryFailure", () => {
     expect(outcome.error.code).toBe("EVENTING_QUEUE_UNAVAILABLE");
   });
 
-  it("walks the whole schedule to exhaustion in three attempts", async () => {
+  it("walks the whole schedule to exhaustion in three sends", async () => {
     let current = request(0);
     const delays: number[] = [];
     for (let round = 0; round < 5; round += 1) {

@@ -16,7 +16,7 @@
 // the delay a PARAMETER of the enqueue moves that decision to the adapter, where
 // a delayed queue can hold it durably. The schedule itself
 // (`domain/retry-schedule.ts`) is unchanged: same ceiling, same formula, same
-// three-attempt limit. Only the mechanism that waits is the adapter's business.
+// three-send limit. Only the mechanism that waits is the adapter's business.
 //
 // Failure is a value, and it is NOT swallowed here. See
 // `route-observed-event.ts` for what the routing pass does with a failed
@@ -29,7 +29,7 @@ import type { NotificationRequested } from "../../domain/index.js";
 
 export interface EnqueuedNotification {
   readonly request: NotificationRequested;
-  /** When a consumer may take it. Equal to `requestedAt` for a first attempt. */
+  /** When a consumer may take it. Equal to `requestedAt` for a first send. */
   readonly availableAt: Date;
 }
 

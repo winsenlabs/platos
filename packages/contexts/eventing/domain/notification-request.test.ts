@@ -24,7 +24,7 @@ function request(overrides: Partial<NotificationRequested> = {}): NotificationRe
     payload: {},
     destination: destination(),
     severity: severityOf(eventName),
-    attempt: 0,
+    retryCount: 0,
     requestedAt: new Date("2026-01-01T00:00:00.000Z"),
     ...overrides,
   };

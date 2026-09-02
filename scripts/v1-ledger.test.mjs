@@ -541,14 +541,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +44: the same issue makes `eventing` real (ADR M0.3 §1 row 17) — 44
+    // files under packages/contexts/eventing, 30 source and 14 test. The four
+    // generated placeholders it replaces (domain, application,
+    // application/ports and contracts barrels) were already tracked, so they
+    // change bytes without changing the count, which is why 34 source files
+    // on disk conserve to a delta of 30.
+    packages: 316,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +346. Four branches add files on independent axes, so each
+    // packages 1 -> 316, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +390. Five branches add files on independent axes, so each
     // area is the SUM of every contribution, not any one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
@@ -616,11 +623,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // WIN-256 (eventing context) contributes +44, ENTIRELY on the packages
+    // axis — 272 -> 316, enumerated in the packages comment above. Adoption
+    // adds no root-infra file: it edits scripts/arch/gen-v1-skeleton.mjs and
+    // the census pin in place, both files that already existed.
+    // docs-content and both apps areas are untouched, which is why this
+    // slice composes with the other four by addition rather than by
+    // reconciliation.
+    //
+    // 20 + 5 + 19 + 278 + 24 + 44 = 390.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 390);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +644,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +390 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts
+    // +278, WIN-297 +24, WIN-256 eventing +44); this one re-derives it by
+    // summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 390
   );
 });
 

@@ -99,7 +99,7 @@ describe("routeObservedEvent", () => {
     expect(emitted?.ruleName).toBe("runs");
     expect(emitted?.destination).toEqual({ kind: "slack", url: "https://hooks.example/x" });
     expect(emitted?.severity).toBe("alert");
-    expect(emitted?.attempt).toBe(0);
+    expect(emitted?.retryCount).toBe(0);
   });
 
   it("emits nothing for an event no rule wants", async () => {
@@ -188,7 +188,7 @@ describe("routeObservedEvent", () => {
     expect(report.value.requested[0]?.requestedAt.toISOString()).toBe("2030-06-01T12:00:00.000Z");
   });
 
-  it("makes a first-attempt request available immediately", async () => {
+  it("makes a first-send request available immediately", async () => {
     context.repository.seed(rule({ id: "rule-1", name: "a", eventTypes: ["*"] }));
     await routeObservedEvent(context.dependencies, observed({ name: "run.completed" }));
     const [queued] = context.queue.all();

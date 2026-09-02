@@ -147,7 +147,7 @@ function rehydrate(view: NotificationRequestView): Result<NotificationRequested>
       payload: view.payload,
       destination: destination.value,
       severity: severityOf(eventName),
-      attempt: view.attempt,
+      retryCount: view.retryCount,
       requestedAt: view.requestedAt,
     }),
   );
@@ -164,7 +164,7 @@ async function reportDeliveryFailure(
   const { decision, rescheduled } = outcome.value;
   return ok({
     retrying: decision.kind === "retry",
-    attempt: decision.kind === "retry" ? decision.attempt : decision.attempts,
+    retryCount: decision.retryCount,
     delayMs: decision.kind === "retry" ? decision.delayMs : null,
     rescheduled: rescheduled === null ? null : toNotificationRequestView(rescheduled),
   });

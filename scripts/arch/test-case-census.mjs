@@ -108,14 +108,14 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `apps/agent/src/mcp-platform/events.service.ts`, because those are the ones a
  * reader would "tidy up" without realising they are load-bearing — the event
  * matcher's bare-prefix arm, its segment anchor, "an empty eventTypes array
- * matches nothing", the three-attempt retry ceiling, and the weak legacy email
- * rule.
+ * matches nothing", the three-send retry ceiling, and the weak legacy email
+ * rule. Eighteen semantic mutations were applied to this context's own logic and
+ * all eighteen were killed; the two this census exists to catch are the pattern
+ * matcher's segment anchor and the retry off-by-one, each of which leaves every
+ * other case in the package green.
  *
  * The eventing and providers axes are disjoint, and so are the two apps
  * WIN-297 adopted, so the integrated total is the SUM: 717 + 283 + 142 = 1142.
- * A later commit on this branch moves the eventing row again, to the 147 that
- * the 2026-09-03 verification's five new cases produce; its delta is documented
- * where it happens.
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.

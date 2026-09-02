@@ -85,7 +85,7 @@ export interface NotificationRequestView {
   readonly delivery: DestinationInput;
   readonly severity: NotificationSeverity;
   /** 0 on the first request; incremented by the retry schedule. */
-  readonly attempt: number;
+  readonly retryCount: number;
   readonly requestedAt: Date;
   /** `[platos] <eventName>[ subject=<id>] (rule: <name>)`. */
   readonly summary: string;
@@ -103,8 +103,8 @@ export interface EventRoutingView {
 
 export interface DeliveryFailureView {
   readonly retrying: boolean;
-  /** The attempt number just scheduled, or the total made before giving up. */
-  readonly attempt: number;
+  /** The retry just scheduled, or the total sends made before giving up. */
+  readonly retryCount: number;
   readonly delayMs: number | null;
   readonly rescheduled: NotificationRequestView | null;
 }
@@ -187,8 +187,8 @@ export interface EventingContract {
   testRule(request: AddressRule): Promise<Result<NotificationRequestView>>;
 
   /**
-   * Report a failed delivery attempt and get the retry decision. Giving up after
-   * the third attempt is a SUCCESS carrying `retrying: false`, not an error.
+   * Report a failed delivery and get the retry decision. Giving up after the
+   * third send is a SUCCESS carrying `retrying: false`, not an error.
    */
   recordDeliveryFailure(request: NotificationRequestView): Promise<Result<DeliveryFailureView>>;
 

@@ -50,7 +50,7 @@ export interface NotificationRequested {
   readonly destination: Destination;
   readonly severity: NotificationSeverity;
   /** 0 on the first request; incremented by the retry schedule. */
-  readonly attempt: number;
+  readonly retryCount: number;
   readonly requestedAt: Date;
 }
 

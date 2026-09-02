@@ -176,8 +176,8 @@ describe("EventingContract", () => {
 
     const outcome = await contract.recordDeliveryFailure(emitted);
     if (!outcome.ok) throw new Error("unreachable");
-    expect(outcome.value).toMatchObject({ retrying: true, attempt: 1, delayMs: 2_000 });
-    expect(outcome.value.rescheduled?.attempt).toBe(1);
+    expect(outcome.value).toMatchObject({ retrying: true, retryCount: 1, delayMs: 2_000 });
+    expect(outcome.value.rescheduled?.retryCount).toBe(1);
   });
 
   it("reports a terminal give-up as a SUCCESS, not an error", async () => {
@@ -187,9 +187,9 @@ describe("EventingContract", () => {
     const [emitted] = routed.value.requested;
     if (emitted === undefined) throw new Error("unreachable");
 
-    const outcome = await contract.recordDeliveryFailure({ ...emitted, attempt: 2 });
+    const outcome = await contract.recordDeliveryFailure({ ...emitted, retryCount: 2 });
     if (!outcome.ok) throw new Error("unreachable");
-    expect(outcome.value).toMatchObject({ retrying: false, attempt: 3, delayMs: null, rescheduled: null });
+    expect(outcome.value).toMatchObject({ retrying: false, retryCount: 3, delayMs: null, rescheduled: null });
   });
 
   // The returning value has been outside the process; the fact that this context

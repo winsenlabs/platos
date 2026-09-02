@@ -36,7 +36,7 @@ export function toNotificationRequestView(request: NotificationRequested): Notif
     payload: request.payload,
     delivery: toDestinationInput(request.destination),
     severity: request.severity,
-    attempt: request.attempt,
+    retryCount: request.retryCount,
     requestedAt: request.requestedAt,
     summary: summarize(request),
   };

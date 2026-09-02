@@ -67,7 +67,7 @@ export async function testNotificationRule(
     payload: { ruleId: rule.ruleId, ruleName: rule.name, synthetic: true },
     destination: destination.value,
     severity: severityOf(eventName),
-    attempt: 0,
+    retryCount: 0,
     requestedAt: new Date(now.getTime()),
   });
 

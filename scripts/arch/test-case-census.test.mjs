@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +14 for the eventing suites (WIN-256). The two are disjoint: 88 + 14 = 102.
+  assert.equal(live.totalFiles, 102);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,7 +234,9 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  // 67 -> 88 -> 102: +21 providers, +14 the suites `eventing` brings with it
+  // (WIN-256, ADR M0.3 §1 row 17).
+  assert.equal(files, 102);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -244,6 +247,10 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 146);
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
+  // The WIN-256 `eventing` context. Pinned beside the five above so a suite
+  // deleted from it is the same kind of failure as one deleted from them.
+  assert.equal(EXPECTED["packages/contexts/eventing"].cases, 142);
+  assert.equal(EXPECTED["packages/contexts/eventing"].files, 14);
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {

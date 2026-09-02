@@ -109,7 +109,7 @@ function requestFor(
     payload: event.payload,
     destination: rule.destination,
     severity: severityOf(event.name),
-    attempt: 0,
+    retryCount: 0,
     requestedAt: new Date(requestedAt.getTime()),
   });
 }
