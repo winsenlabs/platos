@@ -75,17 +75,26 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328. WIN-256 made packages/kernel and four contexts real, so
-  // the ADR M0.3 §6 file-size budget now applies to real production source
-  // rather than to placeholders. Every one of the 263 is inside the 400/500-line
-  // budget.
+  // 74 -> 263 -> 328 -> 383. WIN-256 made packages/kernel and four contexts
+  // real, so the ADR M0.3 §6 file-size budget now applies to real production
+  // source rather than to placeholders. Every one of the 263 is inside the
+  // 400/500-line budget.
   //
   // +65: the same issue makes `providers` real. The budget bit once while it was
   // being written — one test module reached 441 effective lines — and the answer
   // was to split it along the seam the budget was pointing at, into a write-path
-  // suite and a read-path suite, rather than to raise the number. Every one of
-  // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  // suite and a read-path suite, rather than to raise the number.
+  //
+  // +55: the same issue makes `skills` real. Every one is inside the budget, and
+  // the largest is the in-memory repository double at roughly 330 counted lines
+  // — a deliberate consequence of splitting the context into 14 domain modules
+  // and 13 named use cases rather than a registry service, which is the shape §6
+  // exists to force.
+  //
+  // The skills branch pinned 318 (263 + 55) because it never saw providers. The
+  // two axes are disjoint: 328 + 55 = 318 + 65 = 383. Every one of the 383 is
+  // inside the budget and none is inside the 400-line warning band.
+  assert.equal(result.fileCount, 383);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

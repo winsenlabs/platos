@@ -218,9 +218,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 397. Three adopting slices make disjoint
-    // projects real, so the census is the sum of all three, not either branch's
-    // pin:
+    // M2 INTEGRATION DELTA — 104 -> 452. Four adopting slices make disjoint
+    // projects real, so the census is the sum of all of them, not any one
+    // branch's pin:
     //
     //   104 -> 310  The 104 was the all-placeholder skeleton. WIN-256 made
     //               packages/kernel and four contexts real (identity-access,
@@ -240,10 +240,22 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               lifecycle, health, the binding table and their tests) and 2
     //               making apps/mcp-stdio a real stdio binary, minus nothing —
     //               its 9 released placeholders were replaced in place.
+    //   397 -> 452  +55: WIN-256 makes `skills` real. The files that matter to
+    //               these rules are the four driven ports and the fourteen
+    //               domain modules: `domain/` and `application/` import
+    //               `@platos/kernel`, their own siblings, and the published
+    //               `contracts/` of `tenancy` and `files` — nothing else. The
+    //               network fetch, the environment-key directory and the
+    //               confined runtime are reachable only as port interfaces,
+    //               which is what keeps a context that fetches URLs and runs
+    //               sandboxed code free of every banned import. No rule needed
+    //               changing.
     //
-    // WIN-297 branched from WIN-256 before the providers commit and so pinned
-    // 310 + 22 = 332; WIN-256's tip pinned 375 and never saw the apps.
-    // 375 + 22 = 332 + 65 = 397.
+    // The branches pinned partial sums because each saw only its own slice:
+    // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
+    // WIN-256's providers tip pinned 375; the skills branch pinned
+    // 310 + 55 = 365 with neither providers nor the apps. All four slices are
+    // disjoint, so the integrated census is 397 + 55 = 365 + 65 + 22 = 452.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -251,7 +263,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 452, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

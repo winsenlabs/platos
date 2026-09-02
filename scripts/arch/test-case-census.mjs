@@ -99,8 +99,31 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * `files` stays at the 134 that closed MAJOR 2.
+ *
+ * SKILLS ADOPTION (WIN-256, M2.1). `packages/contexts/skills` goes from a
+ * generator placeholder to a real context and carries the second delta:
+ *
+ *   skills 0 -> 302 cases across 0 -> 20 files; 1000 -> 1302 total. Ten domain
+ *   suites (manifest parse and its YAML subset, the catalogue identity and its
+ *   ordering, visibility, the install pair, prompt composition, tool
+ *   namespacing, environment readiness, category derivation, import-source
+ *   rewriting), nine application suites (register, import, install, bind,
+ *   compose-runtime, run-tool, seed, read-catalogue, erasure target) and one
+ *   contract suite exercising the published surface alone.
+ *
+ *   Eleven semantic mutations were applied to this context's own source and all
+ *   eleven were killed; the two narrowest kills are the budget boundary
+ *   (`>` to `>=` in `composeSkills`, caught only by the exactly-fills-the-budget
+ *   case) and the gate ordering in `bindSkill` (moving the readiness check after
+ *   the write, caught only by "does NOT leave a materialised install behind").
+ *
+ * The skills and providers axes are disjoint, so the integrated total is the
+ * SUM: 717 + 283 + 302 = 1302. The skills branch pinned 1019 (717 + 302)
+ * because it predates the providers commit.
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -129,7 +152,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
-  "packages/contexts/skills": { files: 0, cases: 0 },
+  "packages/contexts/skills": { files: 20, cases: 302 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
   "packages/contexts/tools": { files: 0, cases: 0 },
   "packages/kernel": { files: 3, cases: 44 },
@@ -142,7 +165,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1302;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

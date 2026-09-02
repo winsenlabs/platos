@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +20 for the skills suites. The two are disjoint: 88 + 20 = 108.
+  assert.equal(live.totalFiles, 108);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,7 +234,8 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  // Same 108 as above, re-derived from the pinned rows rather than the tree.
+  assert.equal(files, 108);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -254,7 +256,29 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283);
+});
+
+test("the skills adoption is pinned, and moved nothing else", () => {
+  // WIN-256 M2.1: skills goes 0 -> 302 across 0 -> 20 files. Integrated with
+  // the providers slice the runtime total is 717 + 283 + 302 = 1302; the skills
+  // branch pinned 1019 because it predates the providers commit and the two
+  // adoptions touch disjoint packages.
+  assert.equal(EXPECTED["packages/contexts/skills"].cases, 302);
+  assert.equal(EXPECTED["packages/contexts/skills"].files, 20);
+  // Every previously-real package is byte-for-byte where the 2026-09-02
+  // verification left it: an adoption that quietly moved another context's
+  // numbers would be caught here rather than absorbed into the new total.
+  const untouched = {
+    "packages/kernel": 44,
+    "packages/contexts/identity-access": 231,
+    "packages/contexts/secrets": 162,
+    "packages/contexts/tenancy": 146,
+    "packages/contexts/files": 134,
+    "packages/contexts/providers": 283,
+  };
+  for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
+  const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
+  assert.equal(sum + 302, EXPECTED_RUNTIME_TOTAL);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
