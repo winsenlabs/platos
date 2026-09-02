@@ -218,9 +218,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 397. Three adopting slices make disjoint
-    // projects real, so the census is the sum of all three, not either branch's
-    // pin:
+    // M2 INTEGRATION DELTA — 104 -> 448. Four adopting slices make disjoint
+    // projects real, so the census is the sum of all four, not any one
+    // branch's pin:
     //
     //   104 -> 310  The 104 was the all-placeholder skeleton. WIN-256 made
     //               packages/kernel and four contexts real (identity-access,
@@ -240,10 +240,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               lifecycle, health, the binding table and their tests) and 2
     //               making apps/mcp-stdio a real stdio binary, minus nothing —
     //               its 9 released placeholders were replaced in place.
+    //   397 -> 448  +51: THIS BRANCH. WIN-256 makes `jobs` real. It is the
+    //               first adopted context that CALLS a kernel decoupling port
+    //               rather than only holding one — `request-approval.ts`
+    //               suspends a run through `DurableRuntime` and
+    //               `resolve-approval.ts` resumes it — so the no-infra-in-core
+    //               and domain-imports-only-kernel rules judged that shape for
+    //               the first time here. Neither needed changing.
     //
     // WIN-297 branched from WIN-256 before the providers commit and so pinned
-    // 310 + 22 = 332; WIN-256's tip pinned 375 and never saw the apps.
-    // 375 + 22 = 332 + 65 = 397.
+    // 310 + 22 = 332; WIN-256's providers tip pinned 375 and never saw the
+    // apps; this branch was built on 310 and pinned 361. 397 + 51 = 448.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -251,7 +258,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 448, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

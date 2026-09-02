@@ -76,7 +76,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * DELTAS AGAINST `3ed8f3ce972289908a7d129bbb682e977405770f`, the head the
  * 2026-09-02 independent verification reproduced. It recorded 716 cases across
  * 67 files, split kernel 44, identity-access 231, secrets 162, tenancy 146,
- * files 133. This census reproduces that split exactly and carries ONE delta:
+ * files 133. This census reproduces that split exactly and carries TWO deltas:
  *
  *   files 133 -> 134 (+1), 716 -> 717 total. The storage-key separator case
  *   added to close MAJOR 2 of that verification —
@@ -98,9 +98,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   pair — "Test Files 21 passed (21) / Tests 283 passed (283)" — which is the
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
- * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * THIRD DELTA — `packages/contexts/jobs` becomes real, rebased onto v1 @
+ * `95cbacc1`:
+ *
+ *   jobs 0 -> 350 across 0 -> 16 files, 1000 -> 1350 total. WIN-256 made
+ *   `packages/contexts/jobs` real: two aggregates (`Job`, `AgentApproval`), the
+ *   execution-request admission gate, the idempotent execute path, and the
+ *   approval suspend/resume seam ADR M0.3 §1 names for this context. The split
+ *   is domain 253 across 10 files and application+contracts 97 across 6.
+ *   `jobs` was pinned at 0/0 as an undeclared context, so this is the first
+ *   non-zero pin for it rather than a movement of an existing one.
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -123,7 +133,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
-  "packages/contexts/jobs": { files: 0, cases: 0 },
+  "packages/contexts/jobs": { files: 16, cases: 350 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
@@ -142,7 +152,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1350;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +16 for the jobs context rebased onto v1 @ 95cbacc1.
+  assert.equal(live.totalFiles, 104);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,7 +234,7 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  assert.equal(files, 104);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -244,6 +245,11 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 146);
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
+  // The five packages above are UNCHANGED by WIN-256's jobs work. Asserting
+  // that here is the point: a context arriving must not perturb its siblings,
+  // and this is where a silent perturbation would be caught.
+  assert.equal(EXPECTED["packages/contexts/jobs"].cases, 350);
+  assert.equal(EXPECTED["packages/contexts/jobs"].files, 16);
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {

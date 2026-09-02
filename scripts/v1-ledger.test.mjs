@@ -541,7 +541,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +51: THIS BRANCH makes `packages/contexts/jobs` real. domain 23 (two
+    // aggregates, the invocation acceptance table, the payload admission rules,
+    // the execution-request gate and the idempotency decision, each with its
+    // co-located suite), application 17, its ports 4, its in-memory testing
+    // doubles 6, and the contracts barrel 1. The four generator placeholders it
+    // replaces were already tracked, so they do not appear in this delta —
+    // adoption releases a source tree, it does not add files. Nothing else
+    // moved.
+    packages: 323,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -620,7 +629,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  // 20 -> 346 -> 397: 323 packages + 9 docs-content + 17 root-infra + the
+  // 51 files `packages/contexts/jobs` releases on this branch.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 397);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +640,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +397 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24,
+    // WIN-256 jobs +51); this one re-derives it by summing the per-area counts
+    // independently.
+    rulesDocument.baseline.totalFiles + 397
   );
 });
 
