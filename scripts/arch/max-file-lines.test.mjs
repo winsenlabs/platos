@@ -75,17 +75,23 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328. WIN-256 made packages/kernel and four contexts real, so
-  // the ADR M0.3 §6 file-size budget now applies to real production source
-  // rather than to placeholders. Every one of the 263 is inside the 400/500-line
-  // budget.
+  // 74 -> 263 -> 328 -> 376. WIN-256 made packages/kernel and four contexts
+  // real, so the ADR M0.3 §6 file-size budget now applies to real production
+  // source rather than to placeholders. Every one of the 263 is inside the
+  // 400/500-line budget.
   //
   // +65: the same issue makes `providers` real. The budget bit once while it was
   // being written — one test module reached 441 effective lines — and the answer
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +48: THIS BRANCH makes `packages/contexts/privacy` real. `packages/kernel`
+  // and `apps/**` are not selected here, so the move is exactly the new
+  // context's tree under `packages/contexts/**`. Its largest effective file is
+  // well inside the 400-line warning, which is the point of splitting the
+  // erasure orchestration into named use-case modules rather than one service.
+  assert.equal(result.fileCount, 376);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

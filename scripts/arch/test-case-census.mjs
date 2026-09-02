@@ -98,9 +98,49 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   pair — "Test Files 21 passed (21) / Tests 283 passed (283)" — which is the
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
- * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * THIRD DELTA — `packages/contexts/privacy` becomes real (WIN-256, ADR M0.3 §1
+ * row 18), rebased onto v1 @ `95cbacc1`. 0 -> 15 files, 0 -> 253 cases;
+ * 1000 -> 1253 total. This is the whole of the new suite and nothing else
+ * moved: right-to-erasure orchestration over the kernel `ErasureTarget[]`, the
+ * erased-subject register that is the write barrier, the legal-hold
+ * adjudication, the two status vocabularies and their lossy projection, and the
+ * retry/lease schedule. The split is
+ *
+ *   domain/            118  alias 16, content-free 9, erasure-operation 27,
+ *                           legal-hold 12, retry-schedule 15, target-outcome 27,
+ *                           tombstone 12
+ *   application/       111  guard-subject-write 21, inventory-subject 9,
+ *                           request-erasure 24, retry-erasure 16,
+ *                           run-erasure-pass 25, seal-subject 11,
+ *                           erasure-events 3, record-pass 2
+ *   application/testing 12  in-memory-privacy-repository
+ *   contracts/          12  index
+ *
+ * 118 + 111 + 12 + 12 = 253, which is the pinned row and the number vitest
+ * prints. The `domain/` subtotal read 123 when this delta was first written —
+ * an addition error in the prose, not in the pin — so the stated split did not
+ * reconcile to the number it was explaining. Corrected here; the per-file
+ * figures beside it were right all along and are unchanged.
+ *
+ * Four of those 111 are the cases the FIRST mutation control added rather than
+ * the first draft: two in `guard-subject-write` pinning that the barrier
+ * re-applies read-time expiry instead of trusting its store, and two in
+ * `request-erasure` pinning that a write landing MID-SWEEP is refused. THIRTEEN
+ * MORE are the cases the 2026-09-03 independent verification's five surviving
+ * mutants forced: erasure-events +3 (the `assertContentFree` wiring and the
+ * `retainedRecords` count), seal-subject +2 (a store-refused seal must not be
+ * reported as sealed), run-erasure-pass +3 (a UnitOfWork failure must surface
+ * every touched target as unknown), record-pass +2 (a failed progress write
+ * must not be swallowed), request-erasure +3 (the same three properties seen
+ * from the use case that composes them). Every one of those properties was
+ * claimed in prose and survived its mutation until these cases existed, which
+ * is the whole reason the control is run.
+ *
+ * A package going 0 -> non-zero is exactly the transition this census exists to
+ * force a reviewer to look at, which is why the zero rows are declared.
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -126,7 +166,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
-  "packages/contexts/privacy": { files: 0, cases: 0 },
+  "packages/contexts/privacy": { files: 15, cases: 253 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
@@ -142,7 +182,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1253;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

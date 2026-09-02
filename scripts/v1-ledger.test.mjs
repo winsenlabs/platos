@@ -541,7 +541,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +48: THIS BRANCH makes ADR M0.3 §1 row 18 real. `packages/contexts/
+    // privacy` adds 48 net files — 33 source (10 domain modules, 4 driven
+    // ports, 13 use-case and composition modules, 3 in-memory doubles, 2
+    // contracts entrypoints, 1 barrel) and 15 test suites. The three
+    // scaffolding files the generator owns were already tracked, so adoption
+    // itself moves nothing here; only the released source tree does. No other
+    // package moved.
+    packages: 320,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -620,7 +628,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  // 20 -> 346 -> 394: 320 packages + 9 docs-content + 17 root-infra + the
+  // 48 files `packages/contexts/privacy` releases on this branch.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 394);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +639,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +394 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24,
+    // WIN-256 privacy +48); this one re-derives it by summing the per-area
+    // counts independently.
+    rulesDocument.baseline.totalFiles + 394
   );
 });
 

@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +15 for the privacy context rebased onto v1 @ 95cbacc1.
+  assert.equal(live.totalFiles, 103);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,17 +234,26 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  assert.equal(files, 103);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
-  // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case.
+  // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case, then
+  // +240 in `privacy` when WIN-256 made ADR M0.3 §1 row 18 real: 716 + 1 + 240
+  // = 957, which is EXPECTED_RUNTIME_TOTAL and what vitest prints. This comment
+  // read "+236" — the implementer's own count, carried into the commit message
+  // and wrong by 4 — while the pin beside it was already the true 240; the
+  // arithmetic above is now stated so the two cannot silently disagree again.
+  // The five packages below are asserted UNMOVED, which is what makes the new
+  // context an addition rather than a re-baseline.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
   assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 231);
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 146);
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
+  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240);
+  assert.equal(EXPECTED["packages/contexts/privacy"].files, 15);
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {
