@@ -23,11 +23,12 @@
 //   not already name. Every rule is guarded by exact `hostname` equality, and
 //   each produces either the SAME host (`claude.ai`, carried over as
 //   `url.origin`) or one of two hardcoded literals (`raw.githubusercontent.com`,
-//   `gist.githubusercontent.com`). The attacker-influenced parts of a URL —
-//   path, query, userinfo — are only ever interpolated AFTER the authority has
-//   been terminated, so they cannot reach the host position. A URL matching no
-//   rule is returned unchanged. Therefore the fetched host is always either the
-//   submitted host or one of those two constants.
+//   `gist.githubusercontent.com`). The attacker-influenced parts of a URL are
+//   interpolated only AFTER the authority has been terminated — path and query
+//   always follow a `/`, and userinfo is dropped outright — so none of them can
+//   reach the host position. A URL matching no rule is returned unchanged.
+//   Therefore the fetched host is always either the submitted host or one of
+//   those two constants.
 //
 // WHAT THIS MODULE DOES NOT ENFORCE. There is no address check here, and
 // admission is not safety: `http://169.254.169.254/…`, `http://127.0.0.1/…` and
@@ -38,8 +39,9 @@
 // (`application/ports/skill-source-fetcher.ts`), to be applied to the URL that
 // is ACTUALLY FETCHED — the rewritten one — and to every redirect hop under
 // clause 2. It is NOT applied to the submitted URL, and does not need to be: by
-// HOST CLOSURE, a submitted host that differs from the fetched host is one of
-// the two constants above, and any attacker-chosen host IS the fetched host.
+// HOST CLOSURE the two hosts differ only when the submitted one was `github.com`
+// or `gist.github.com` and the fetched one is the matching constant, so an
+// attacker-chosen host is never anything but the fetched host itself.
 //
 // AND NO ADAPTER SATISFIES THAT PORT YET. The only `SkillSourceFetcher` in this
 // repository is the in-memory double under `application/testing/`, which
