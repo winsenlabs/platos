@@ -85,7 +85,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +63: the same issue makes `cost-monitoring` real. The budget bit once again,
+  // at 412 effective lines in the alerting suite, and the answer was again to
+  // split along the seam it pointed at — recording a crossing is one durable
+  // decision and sending one is another, and they were only in one file because
+  // they were written in one sitting. Every one of the 391 is inside the budget
+  // and none is inside the warning band.
+  assert.equal(result.fileCount, 391);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

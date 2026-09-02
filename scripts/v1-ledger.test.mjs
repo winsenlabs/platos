@@ -541,7 +541,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +63: the same issue makes `cost-monitoring` real (ADR M0.3 §1 context
+    // 13) — 15 domain modules and 12 domain suites, 16 application modules and
+    // 8 application suites, 4 ports, 6 in-memory doubles, and the contracts
+    // barrel with its suite. The 63 are NET of the same 4 generated
+    // placeholders every adoption releases and this code replaced in place.
+    //
+    // The ledger's own kind split reconciles it independently: source moves
+    // 1261 -> 1303 (+42) and test 527 -> 548 (+21), and 42 + 21 = 63. A file
+    // miscounted as source rather than test would keep this total right and
+    // move that split, which is why both are pinned.
+    packages: 335,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -620,7 +631,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  // COST-MONITORING REBASE DELTA — 346 -> 409, as ONE reconciliation. Adopting
+  // `cost-monitoring` (ADR M0.3 section 1 context 13) adds +63 to `packages`
+  // alone: 272 -> 335, exactly the files enumerated above. It adds NO
+  // root-infra file — adoption is one line appended to the generator's
+  // ADOPTED_PROJECTS list, in a file that already existed, the same way
+  // adopting `providers` was — and no docs-content file. So 346 + 63 = 409,
+  // and every other area is unmoved. Neither parent pin was right alone: v1
+  // pinned 346 and never saw this context, this branch pinned 361 and never saw
+  // WIN-297's apps or WIN-284's harness.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 409);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +649,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration plus the cost-monitoring rebase: the same +20 -> +409
+    // combined delta as the totalFiles assertion above (WIN-299 +5, WIN-284
+    // +19, WIN-256 +278, WIN-297 +24, cost-monitoring +63); this one re-derives
+    // it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 409
   );
 });
 

@@ -99,8 +99,22 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * `files` stays at the 134 that closed MAJOR 2.
+ *
+ * WIN-256, `cost-monitoring` (ADR M0.3 §1 context 13). One row again:
+ *
+ *   cost-monitoring 0 -> 21 files, 0 -> 335 cases; 1000 -> 1335 total. 12
+ *   domain suites, 8 application suites and the contracts-barrel suite. The
+ *   census REFUSED nothing in that tree, so its 335 is a statically exact
+ *   count, and `pnpm --filter @platos/context-cost-monitoring exec vitest run`
+ *   prints the same pair — "Test Files 21 passed (21) / Tests 335 passed
+ *   (335)" — which is the agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Verified as a live control: deleting one it() from
+ * cost-monitoring/domain/guard.test.ts leaves the file count at 109 and turns
+ * the case count red, which is the drift a file-count pin cannot see.
+ *
+ * Any further drift is a finding to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -118,7 +132,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/agents": { files: 0, cases: 0 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
-  "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
+  "packages/contexts/cost-monitoring": { files: 21, cases: 335 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
@@ -142,7 +156,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1335;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

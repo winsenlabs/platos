@@ -251,7 +251,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    //   397 -> 460  +63: this branch makes `cost-monitoring` real (ADR M0.3
+    //               section 1 context 13). It is the first adopted context that
+    //               depends on another ADOPTED context rather than only on
+    //               leaves — `providers` — so it is the first real exercise of
+    //               rule (d) across a TWO-HOP path in the DAG: its application
+    //               layer calls `ProvidersContract.priceModelUsage` through the
+    //               published contract entrypoint, and `providers` in turn
+    //               imports `tenancy` and `secrets`. Neither rule needed
+    //               changing, and the (c) contracts-only rule is what keeps
+    //               this context out of `providers/domain`, where the rate
+    //               arithmetic it wanted actually lives.
+    assert.equal(result.fileCount, 460, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

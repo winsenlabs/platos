@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +21 for the cost-monitoring context.
+  assert.equal(live.totalFiles, 109);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -231,9 +232,10 @@ test("the census is not vacuous — it reads the real suites", () => {
 test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +21 for the cost-monitoring context.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  assert.equal(files, 109);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -254,7 +256,18 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 335);
+});
+
+test("the cost-monitoring context is pinned at what vitest prints", () => {
+  // The ONE row WIN-256's cost-monitoring slice moves. `pnpm --filter
+  // @platos/context-cost-monitoring exec vitest run` prints "Test Files 21
+  // passed (21) / Tests 335 passed (335)"; the AST census reproduces both with
+  // zero refusals. Every other package is held at its previous value by the
+  // test above, so a suite quietly deleted elsewhere while this context landed
+  // cannot hide inside the new total.
+  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
+  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 335);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
