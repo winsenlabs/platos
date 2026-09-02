@@ -98,6 +98,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/tenancy", // WIN-256 — the org/project/environment tree and its authorization
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
   "packages/contexts/files", // WIN-256 — attachments + artifacts, and the ObjectStore port it owns
+  "packages/contexts/providers", // WIN-256 — provider keys, the model catalogue, rate cards, and the ModelRouter port it owns
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption
