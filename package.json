@@ -118,6 +118,12 @@
     "test:evidence-lifecycle": "node --test scripts/evidence-lifecycle.test.mjs",
     "audit:docs-build": "pnpm --filter docs validate && pnpm --filter docs broken-links",
     "audit:v1-ledger": "node scripts/v1-ledger.mjs --check",
+    "generate:differential-coverage": "node scripts/differential-coverage.mjs --write",
+    "audit:differential-coverage": "node scripts/differential-coverage.mjs --check",
+    "test:differential-coverage": "node --test scripts/differential-coverage.test.mjs",
+    "test:differential-harness": "node --test tests/differential-harness/comparators.test.mjs tests/differential-harness/negative-controls.test.mjs tests/differential-harness/normalisers.test.mjs tests/differential-harness/twin-run.test.mjs",
+    "test:differential-harness:controls": "node tests/differential-harness/negative-controls.mjs",
+    "test:differential-harness:store": "node tests/differential-harness/postgres-conservation.mjs",
     "test:win254": "node --test scripts/docs-link-integrity.test.mjs scripts/design-provenance.test.mjs scripts/protected-paths.test.mjs scripts/evidence-lifecycle.test.mjs scripts/verify-win254.test.mjs",
     "generate:win254": "node scripts/verify-win254.mjs --regenerate",
     "verify:win254": "node scripts/verify-win254.mjs"

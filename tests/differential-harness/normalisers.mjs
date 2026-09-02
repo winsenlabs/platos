@@ -60,10 +60,76 @@ function mapStrings(value, transform, key = null) {
   return value;
 }
 
+// Object keys are visited in SORTED order, not insertion order. `identifier-
+// ordinal` assigns ordinals by first appearance, so if two subjects built the
+// same object with its keys in different orders — trivially possible once the
+// oracle is a recording and the candidate is a live transport — the same
+// identifier would get different ordinals on each side and the run would report
+// a false divergence. Sorting makes the traversal a property of the content
+// rather than of how each side happened to construct it. Array order is
+// preserved, because array order IS content.
 function collectStrings(value, visit) {
   if (typeof value === "string") visit(value);
   else if (Array.isArray(value)) for (const entry of value) collectStrings(entry, visit);
-  else if (isPlainObject(value)) for (const entry of Object.values(value)) collectStrings(entry, visit);
+  else if (isPlainObject(value)) {
+    for (const key of Object.keys(value).sort()) collectStrings(value[key], visit);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// store-row-canonical-order
+// ---------------------------------------------------------------------------
+
+// FOUND BY THE TWIN-POSTGRESQL RUN, not by reasoning about it.
+//
+// `identifier-ordinal` numbers identifiers by FIRST APPEARANCE. A store dump
+// ordered by a UUID primary key comes back in an order that is effectively
+// random and differs between two isolated stores, so the same logical row got a
+// different ordinal on each side and the run reported store-row-missing and
+// store-row-extra for rows that were identical. A FALSE POSITIVE, and an
+// intermittent one — it passed twice before it failed.
+//
+// The fix is to make ordinal assignment depend on content instead of physical
+// order: rows are sorted by their own content with identifier-shaped and
+// instant-shaped values masked out, which is stable across two stores because
+// it uses only the parts neither store randomises.
+//
+// This erases nothing that was ever compared. `compareStore` treats a table as
+// a MULTISET, so row order carries no signal for it to lose; the ordering
+// exists solely so identifier ordinals line up. Its divergent fixture proves
+// that: two tables with different row CONTENT still diverge after sorting.
+const MASK_PATTERNS = [
+  [UUID_PATTERN, "<uuid>"],
+  [ULID_PATTERN, "<ulid>"],
+  [INSTANT_PATTERN, "<instant>"],
+];
+
+function maskNondeterminism(text) {
+  let masked = text;
+  for (const [pattern, token] of MASK_PATTERNS) masked = masked.replace(pattern, token);
+  return masked;
+}
+
+function canonicalSortKey(row) {
+  const ordered = Object.keys(row ?? {})
+    .sort()
+    .map((field) => [field, row[field]]);
+  return maskNondeterminism(JSON.stringify(ordered));
+}
+
+function applyStoreRowCanonicalOrder(observation) {
+  if (!isPlainObject(observation.store)) return observation;
+  const store = {};
+  for (const [table, rows] of Object.entries(observation.store)) {
+    store[table] = Array.isArray(rows)
+      ? [...rows].sort((left, right) => {
+          const leftKey = canonicalSortKey(left);
+          const rightKey = canonicalSortKey(right);
+          return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+        })
+      : rows;
+  }
+  return { ...observation, store };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +288,26 @@ function sortAtPath(value, segments) {
 // ---------------------------------------------------------------------------
 
 export const NORMALISERS = Object.freeze([
+  // MUST run before identifier-ordinal: it is what makes first-appearance
+  // ordinals stable across two stores.
+  Object.freeze({
+    id: "store-row-canonical-order",
+    dimensions: Object.freeze(["store"]),
+    erases: "The physical order rows are returned in by an unordered store dump, which two isolated stores keyed by random identifiers do not agree on.",
+    preserves:
+      "Row content and multiset membership in full. The store comparator already compares a table as a multiset, so ordering carried no signal for this to lose; it exists only so identifier ordinals line up across the two sides.",
+    apply: applyStoreRowCanonicalOrder,
+    sensitivity: Object.freeze({
+      equivalent: Object.freeze([
+        { store: { project: [{ slug: "alpha" }, { slug: "beta" }] } },
+        { store: { project: [{ slug: "beta" }, { slug: "alpha" }] } },
+      ]),
+      divergent: Object.freeze([
+        { store: { project: [{ slug: "alpha" }, { slug: "beta" }] } },
+        { store: { project: [{ slug: "alpha" }, { slug: "gamma" }] } },
+      ]),
+    }),
+  }),
   Object.freeze({
     id: "instant-rank",
     dimensions: Object.freeze(["schema", "events", "sideEffects", "store"]),
@@ -255,7 +341,7 @@ export const NORMALISERS = Object.freeze([
     dimensions: Object.freeze(["schema", "events", "sideEffects", "store"]),
     erases: "The random value of UUID and ULID identifiers, which two isolated stores generate independently.",
     preserves:
-      "Referential structure. Ordinals are assigned by first appearance, so a side that reuses one identifier where the other uses two distinct identifiers still diverges, and so does a side that emits a different NUMBER of identifiers.",
+      "Referential structure and count. Ordinals are assigned over a key-sorted traversal, so a side that reuses one identifier where the other uses two distinct ones still diverges, as does a side emitting a different NUMBER of identifiers. STATED LIMIT: a permutation of identifiers that each appear exactly once and never co-occur is NOT observable, because which random value a store minted for which row is precisely the nondeterminism being erased.",
     apply: applyIdentifierOrdinal,
     sensitivity: Object.freeze({
       equivalent: Object.freeze([

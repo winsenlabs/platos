@@ -144,8 +144,27 @@ export async function twinRun(scenario, subjects, options = {}) {
   // Isolation assertion. Two sides that report the same store identity were
   // not twin-run against isolated equivalent stores, they were run twice
   // against one store — which compares equal for free.
+  //
+  // A scenario comparing `store` state MUST have both sides name their store.
+  // Without that requirement the guard is opt-in: a subject that simply omits
+  // `storeIdentity` skips the isolation check entirely, and "isolated
+  // equivalent stores" becomes an assumption rather than an assertion. Omission
+  // is the easiest way for a guard to stop guarding, so it is refused.
   const oracleStore = oracle.storeIdentity ?? null;
   const candidateStore = candidate.storeIdentity ?? null;
+  if (scenario.dimensions.includes("store") && (oracleStore === null || candidateStore === null)) {
+    return {
+      scenario: scenario.id,
+      verdict: "invalid",
+      failures: [
+        `${scenario.id} compares store state, so both sides must name their store; ` +
+          `saw oracle=${oracleStore ?? "<absent>"} candidate=${candidateStore ?? "<absent>"}. ` +
+          "Without both, isolation is assumed rather than checked.",
+      ],
+      divergences: [],
+      startedAt: started,
+    };
+  }
   if (oracleStore !== null && oracleStore === candidateStore) {
     return {
       scenario: scenario.id,

@@ -29,87 +29,13 @@ import { execFileSync } from "node:child_process";
 import { realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+import { NORMALISERS } from "./normalisers.mjs";
+import { CONSERVATION_SCENARIO, SCENARIO_REGISTRY, TIER_BOUNDARY_SCENARIO } from "./scenarios.mjs";
 import { createPostgresSubject, runStatement, startTwinStores } from "./subjects/postgres-twin.mjs";
 import { twinRun } from "./twin-run.mjs";
 
-const ORGANIZATION_SLUG = "win284-conservation";
+export const SCENARIOS = SCENARIO_REGISTRY;
 
-// Deliberately real tenancy tables with a real foreign key and a real cascade,
-// so "state conservation" means something a reviewer can check against the
-// schema rather than against a fixture invented for the harness.
-//
-// TIMESTAMP NOTE: each operation is its own `psql` process, so two operations
-// cannot land in the same millisecond in practice and instant-rank sees the
-// same number of distinct instants on both sides. If they ever did tie, the
-// ranks would differ and the run would report a FALSE POSITIVE — never a false
-// negative. That is the safe direction for a harness to fail in.
-export const CONSERVATION_SCENARIO = Object.freeze({
-  id: "tenancy-organization-project-conservation",
-  title: "Organization and Project lifecycle conserved across two isolated stores",
-  dimensions: Object.freeze(["status", "schema", "events", "auth", "sideEffects", "usage", "store"]),
-  storeTables: Object.freeze(["Organization", "Project"]),
-  resultOf: "select-projects",
-  sideEffectVerbs: Object.freeze({
-    "insert-organization": "insert",
-    "insert-project-alpha": "insert",
-    "insert-project-beta": "insert",
-    "archive-project-beta": "update",
-  }),
-  operations: Object.freeze([
-    Object.freeze({
-      id: "insert-organization",
-      target: "Organization",
-      sql: `INSERT INTO public."Organization" (id, slug, name, "createdAt", "updatedAt")
-            VALUES (gen_random_uuid(), '${ORGANIZATION_SLUG}', 'WIN-284 conservation', now(), now())
-            RETURNING slug, name`,
-    }),
-    Object.freeze({
-      id: "insert-project-alpha",
-      target: "Project",
-      sql: `INSERT INTO public."Project" (id, "organizationId", slug, name, "createdAt", "updatedAt")
-            SELECT gen_random_uuid(), o.id, 'alpha', 'Alpha', now(), now()
-            FROM public."Organization" o WHERE o.slug = '${ORGANIZATION_SLUG}'
-            RETURNING slug, name`,
-    }),
-    Object.freeze({
-      id: "insert-project-beta",
-      target: "Project",
-      sql: `INSERT INTO public."Project" (id, "organizationId", slug, name, "createdAt", "updatedAt")
-            SELECT gen_random_uuid(), o.id, 'beta', 'Beta', now(), now()
-            FROM public."Organization" o WHERE o.slug = '${ORGANIZATION_SLUG}'
-            RETURNING slug, name`,
-    }),
-    Object.freeze({
-      id: "archive-project-beta",
-      target: "Project",
-      sql: `UPDATE public."Project" SET "archivedAt" = now(), "updatedAt" = now()
-            WHERE slug = 'beta' RETURNING slug, name`,
-    }),
-    Object.freeze({
-      id: "select-projects",
-      sql: `SELECT slug, name, ("archivedAt" IS NOT NULL) AS archived
-            FROM public."Project" ORDER BY slug`,
-    }),
-  ]),
-});
-
-// The end-user tier boundary, enforced by PostgreSQL from grants derived from
-// the real end-user.prisma model list.
-export const TIER_BOUNDARY_SCENARIO = Object.freeze({
-  id: "tenancy-end-user-tier-boundary",
-  title: "The end-user tier cannot read an operator-only table",
-  dimensions: Object.freeze(["status", "events", "auth"]),
-  resultOf: "read-operator-table",
-  operations: Object.freeze([
-    Object.freeze({
-      id: "read-operator-table",
-      role: "restricted",
-      sql: `SELECT slug FROM public."Organization"`,
-    }),
-  ]),
-});
-
-export const SCENARIOS = Object.freeze([CONSERVATION_SCENARIO, TIER_BOUNDARY_SCENARIO]);
 
 // ---------------------------------------------------------------------------
 // Seeded divergences applied to the REAL candidate store
@@ -187,15 +113,19 @@ function resetStore(store) {
   runStatement(store, `DELETE FROM public."Organization" RETURNING id`, "owner");
 }
 
-async function runPhase(scenario, stores, seed = null) {
+async function runPhase(scenario, stores, seed = null, options = {}) {
   const oracleScenario = scenario;
   const candidateScenario = seed ? seed.seed(scenario) : scenario;
   const oracle = createPostgresSubject({ side: "oracle", store: stores.oracle });
   const candidate = createPostgresSubject({ side: "candidate", store: stores.candidate });
-  return twinRun(scenario, {
-    oracle: { run: () => oracle.run(oracleScenario) },
-    candidate: { run: () => candidate.run(candidateScenario) },
-  });
+  return twinRun(
+    scenario,
+    {
+      oracle: { run: () => oracle.run(oracleScenario) },
+      candidate: { run: () => candidate.run(candidateScenario) },
+    },
+    options,
+  );
 }
 
 export async function runConservation(options = {}) {
@@ -234,6 +164,28 @@ export async function runConservation(options = {}) {
           : `${clean.verdict}: ${[...(clean.failures ?? []), ...(clean.divergences ?? []).map((entry) => `${entry.code} ${entry.path}`)].join("; ")}`,
       });
     }
+
+    // Parity has to be EARNED. If the two stores compared equal with the
+    // register switched off, they were not independently populated and the
+    // clean phase above would be proving nothing about normalisation. This
+    // phase requires them to diverge without it — real independent UUIDs,
+    // clocks and sequence starts, exactly the nondeterminism the register
+    // exists to absorb.
+    resetStore(twins.stores.oracle);
+    resetStore(twins.stores.candidate);
+    const unnormalised = await runPhase(CONSERVATION_SCENARIO, twins.stores, null, {
+      skipNormalisers: NORMALISERS.map((normaliser) => normaliser.id),
+    });
+    results.push({
+      phase: "earned-parity",
+      id: "clean-run-diverges-without-the-register",
+      verdict: unnormalised.verdict,
+      passed: unnormalised.verdict === "divergent",
+      observedCodes: [...new Set((unnormalised.divergences ?? []).map((entry) => entry.code))],
+      detail: unnormalised.verdict === "divergent"
+        ? `${unnormalised.divergences.length} divergences without normalisation, so the stores really are independent`
+        : `the two stores compared as ${unnormalised.verdict} with normalisation off; they are not independently populated`,
+    });
 
     for (const seed of STORE_SEEDS) {
       const scenario = seed.scenario ?? CONSERVATION_SCENARIO;

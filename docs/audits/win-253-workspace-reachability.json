@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "948bd46b15f7da6d61da5c7b61a4ff53237fd5e033cee6e977f997afd0480c18",
+  "evidenceSha256": "eb670fdd097ef97039f15e6b225be127e9ef71b5e1050a6546520a298906d79f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 114,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8d5e60b8cdf43475af38a163d3a74bef42f20300b7f75e9b9e7f0b5301934499",
+    "aggregateSha256": "c46dfdc7d023b148899fbc0d013d98f66068ae9b68e467d37caac6825349b574",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "4efddd6c5e2aa139b82ab4337ccbe13a10f78631af087705f5ea1108daf7654a"
+        "sha256": "d2a1572c2b104b38919e66329ac8c65528ba26b1282209f85a1bfb75a007d35d"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -3953,7 +3953,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "2ed4df6d173b771c7d37bfbcc4151a591c88409655db320ad2d12b93e2760216"
+        "sha256": "d6993ac43b4f0b72d77a61514f67081ea27d5c2f3e245241f56f5e70c929f1fb"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4014,6 +4014,14 @@
       {
         "path": "docs/audits/win-252-root-entry-manifest.md",
         "sha256": "db013073bb0308d3c9553ce0df5baa194f4cac9b8974685402d11722f1688618"
+      },
+      {
+        "path": "docs/audits/win-284-differential-coverage.json",
+        "sha256": "09efd198e59dd5ed9e151ac08585ea9dd18b8b3a5433594b779a2f3b0b988f03"
+      },
+      {
+        "path": "docs/audits/win-284-differential-coverage.md",
+        "sha256": "f772b6e4057369ae505d0ae1ae6643e3bcd42870a7ee2c2362226c42b283e480"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -5941,7 +5949,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "78fee4329bfe68b9f9a9dcfc50421ea5b4fb72c9209787d0516abdf9dbbb6696"
+        "sha256": "54abb5fa0e35fbc47b93e6d31476b5cbab6a35a1cfa631c5a939ab2c6d62a992"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -10741,7 +10749,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "bd6028cac76dda737637ee34464621ebe12ad35e85f302153971c3973aa731d1"
+        "sha256": "7749bdb97d9ae37d79a398fe2b31dd497e2489611b925e5265b0a6b953228046"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -13549,7 +13557,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "d5d874197e7cc703277ad884312d0db85d23e0f17390b0077017ab20b74d2dcf"
+        "sha256": "5216fea7e44c813d8f680d74d9ee3d5f8e155d7d082fb2325ff116b4700f2b16"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -13576,6 +13584,14 @@
         "sha256": "d59c4a70c1e2113dae185992b3f5c8a397226032f44a5831704c756ac6794449"
       },
       {
+        "path": "scripts/differential-coverage.mjs",
+        "sha256": "920b83598e525cb0d6f477e36856b79a8bb38a5ed94134006852c1626e9e7294"
+      },
+      {
+        "path": "scripts/differential-coverage.test.mjs",
+        "sha256": "e6b0379669cdc3ed5adc0eb0e661b469346976a32f54877c20022155ece70815"
+      },
+      {
         "path": "scripts/docs-examples.mjs",
         "sha256": "6a2909c17099f9af689ee75d5233bdccbe6ea4ed2faac7110973946825af003e"
       },
@@ -13589,15 +13605,15 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "694722b6e62b63ea83185b623978ced3286999c4e9fb38bf7fde6551fc040c4a"
+        "sha256": "e2e2866f4fdcca3de302eb14dde6fb9043993e8afab16f3a97f2cfd5f8ce6343"
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "c8862bcf4bd68a104ee5e928c304798c4fd5656efa830f95d287b5904f473b58"
+        "sha256": "b9e2b3a9db26404a72f0a71e4167b933c37ab793a6c10031c31ddc2b926df9a6"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "a071b397e2bd4b6d8126af5f7d203206afa495ea140e36233a513427fea8faac"
+        "sha256": "7f53a821e8fe80838e479c3ad193b76eb9659d20458f770e285f6e87c0ed2274"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -13641,7 +13657,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "860c3943d5ddb6a684b70e28a7e8f75bd83b15b06671f3268f14c3523f8b95ab"
+        "sha256": "9c7e8f2d2b62cf3df450c9c0bfdc56d120fb68d18ba38a9925fb39b30051e727"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -13713,7 +13729,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "2d85482cfcf55a85c033a4a0044f55169ea99ea5f78aacb05426711fb574a14d"
+        "sha256": "f945b2e6636780eef84052892d64549ba05bc05d0551e059ddf5096db35a1ea0"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -13870,6 +13886,66 @@
       {
         "path": "tests/browser-evidence/visual-projects.ts",
         "sha256": "f6a72993521078747d01c995c209db53ffff22a00e182d63e74dc6e234bf1c86"
+      },
+      {
+        "path": "tests/differential-harness/README.md",
+        "sha256": "fa4e9544315988223a09f1f9b6d1967e9289a1749e0eabde8948ee3c3fd027ff"
+      },
+      {
+        "path": "tests/differential-harness/comparators.mjs",
+        "sha256": "38af44cf28c7227ddbeabf01f89c41d4f0e7c94b11635d14ff22fa2aa49fbbb0"
+      },
+      {
+        "path": "tests/differential-harness/comparators.test.mjs",
+        "sha256": "a5e391cf6e2e9e7ce65fc8ab6f61622a3c5e46c294cbe87c1307548f3fd2e30c"
+      },
+      {
+        "path": "tests/differential-harness/negative-controls.mjs",
+        "sha256": "249da15611e5f5d688d30e2eeec5cd6779804584b937061e20fea6edecaec066"
+      },
+      {
+        "path": "tests/differential-harness/negative-controls.test.mjs",
+        "sha256": "41ebdc3d6b006348791e7d6eeac87fc53e7cdbe1eb5000f7651a00a152493e2c"
+      },
+      {
+        "path": "tests/differential-harness/normalisers.mjs",
+        "sha256": "a17f5e4ba7ed44ba5a2c76de0ec6cfa850665f0b59c1faf123277edf90f26032"
+      },
+      {
+        "path": "tests/differential-harness/normalisers.test.mjs",
+        "sha256": "b14eeebb508fbe67ab7b51028cb488603c46df62648696d19ba8b9ad70098000"
+      },
+      {
+        "path": "tests/differential-harness/observation.mjs",
+        "sha256": "22c712ba025e86f230fa9fbe33cea764238a32ee08a74ca6240e5cf557dbbaed"
+      },
+      {
+        "path": "tests/differential-harness/postgres-conservation.mjs",
+        "sha256": "8d3e64a93661989aa62c7bec3611427e2d274338fa0819f288a17cffc50f520b"
+      },
+      {
+        "path": "tests/differential-harness/scenarios.mjs",
+        "sha256": "48d4dc1ba3009d00756b631c90521ae562ddf87be87b9bcf7226fb86b521c414"
+      },
+      {
+        "path": "tests/differential-harness/seeds.mjs",
+        "sha256": "6dc9685d67a36badf44fbb7abb3ccc1c19e6d4b7c4be3c910df855d7ecc94acf"
+      },
+      {
+        "path": "tests/differential-harness/subjects/postgres-twin.mjs",
+        "sha256": "2fa82fe0c4885a698788a09d0824aa8ce45f4727b9cb8188db1a556d1c08020a"
+      },
+      {
+        "path": "tests/differential-harness/subjects/recorded.mjs",
+        "sha256": "3f060cd7352f5c0c93ec0717ac739a12a932bdc924e65f9cab327c9912081a40"
+      },
+      {
+        "path": "tests/differential-harness/twin-run.mjs",
+        "sha256": "0766915400b96e8c406540827f1ae77b740aa30394a88f709704daa7242385f5"
+      },
+      {
+        "path": "tests/differential-harness/twin-run.test.mjs",
+        "sha256": "393afe77edd3bb4f9fbec3343ff369b38c8090f163bc48fb2975d16a5af17ead"
       },
       {
         "path": "tests/persisted-state-gate/agent-runtime-health.mjs",
@@ -19997,6 +20073,16 @@
               "line": 12
             },
             {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 3359
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.md",
+              "kind": "reference",
+              "line": 48
+            },
+            {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
               "kind": "reference",
               "line": 1855
@@ -20200,6 +20286,11 @@
               "from": "SECURITY.md",
               "kind": "reference",
               "line": 30
+            },
+            {
+              "from": "tests/differential-harness/README.md",
+              "kind": "reference",
+              "line": 225
             }
           ],
           "reversePaths": [
@@ -20358,6 +20449,14 @@
             [
               "docs/audits/win-234-route-capability-parity.json",
               "docs/audits/win-234-route-capability-parity.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.md",
+              "docs/audits/win-284-differential-coverage.md"
             ],
             [
               "docs/audits/win253-removals/clickhouse-split.json",
@@ -20522,6 +20621,10 @@
             [
               "SECURITY.md",
               "SECURITY.md"
+            ],
+            [
+              "tests/differential-harness/README.md",
+              "tests/differential-harness/README.md"
             ]
           ],
           "roots": [
@@ -20568,6 +20671,8 @@
             "docs/audits/sbom/platos-webapp.image-inventory.json",
             "docs/audits/win-234-route-capability-parity.generated.md",
             "docs/audits/win-234-route-capability-parity.json",
+            "docs/audits/win-284-differential-coverage.json",
+            "docs/audits/win-284-differential-coverage.md",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/audits/win253-removals/clickhouse-split.md",
             "docs/authentication.md",
@@ -20604,7 +20709,8 @@
             "internal-packages/docs/src/repository.ts",
             "internal-packages/schedule-engine/README.md",
             "internal-packages/tenancy-database/README.md",
-            "packages/core/CHANGELOG.md"
+            "packages/core/CHANGELOG.md",
+            "tests/differential-harness/README.md"
           ]
         },
         "generated": {
@@ -21295,6 +21401,11 @@
               "line": 296
             },
             {
+              "from": "tests/differential-harness/README.md",
+              "kind": "reference",
+              "line": 225
+            },
+            {
               "from": "tests/persisted-state-gate/artifact-schema.json",
               "kind": "reference",
               "line": 31
@@ -21616,6 +21727,10 @@
               "tests/browser-evidence/verify-artifacts.test.mjs"
             ],
             [
+              "tests/differential-harness/README.md",
+              "tests/differential-harness/README.md"
+            ],
+            [
               "tests/persisted-state-gate/artifact-schema.json",
               "tests/persisted-state-gate/artifact-schema.json"
             ],
@@ -21727,6 +21842,7 @@
             "tests/browser-evidence/global-setup.ts",
             "tests/browser-evidence/verify-artifacts.mjs",
             "tests/browser-evidence/verify-artifacts.test.mjs",
+            "tests/differential-harness/README.md",
             "tests/persisted-state-gate/artifact-schema.json",
             "tests/persisted-state-gate/budgets.v1.json",
             "tests/persisted-state-gate/candidate-identity-contract.test.mjs",
@@ -21778,7 +21894,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "4759fff3b72d602788a1f5fd692506c1f098f8335c5c308e875072ebe333b90e",
+      "evidenceSha256": "68ef2384c5f602ac606cb32aeb7e23918e32e7d2f186c36f99077d8a69954ca2",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -22493,6 +22609,16 @@
               "from": "docs/audits/win-252-root-entry-manifest.md",
               "kind": "workspace-owned-file",
               "line": 38
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "workspace-owned-file",
+              "line": 7
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.md",
+              "kind": "workspace-owned-file",
+              "line": 1
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
@@ -24428,6 +24554,11 @@
               "from": "SECURITY.md",
               "kind": "reference",
               "line": 72
+            },
+            {
+              "from": "tests/differential-harness/README.md",
+              "kind": "reference",
+              "line": 19
             }
           ],
           "reversePaths": [
@@ -24850,6 +24981,14 @@
             [
               "docs/audits/win-252-root-entry-manifest.md",
               "docs/audits/win-252-root-entry-manifest.md"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.md",
+              "docs/audits/win-284-differential-coverage.md"
             ],
             [
               "docs/audits/win253-removals/clickhouse-split.json",
@@ -26398,6 +26537,10 @@
             [
               "SECURITY.md",
               "SECURITY.md"
+            ],
+            [
+              "tests/differential-harness/README.md",
+              "tests/differential-harness/README.md"
             ]
           ],
           "roots": [
@@ -26511,6 +26654,8 @@
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win-252-root-entry-manifest.json",
             "docs/audits/win-252-root-entry-manifest.md",
+            "docs/audits/win-284-differential-coverage.json",
+            "docs/audits/win-284-differential-coverage.md",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/audits/win253-removals/clickhouse-split.md",
             "docs/authentication.md",
@@ -26892,7 +27037,8 @@
             "packages/react-hooks/README.md",
             "packages/redis-worker/CHANGELOG.md",
             "references/entity-docs-mcp-bridge/README.md",
-            "references/entity-hello-world/README.md"
+            "references/entity-hello-world/README.md",
+            "tests/differential-harness/README.md"
           ]
         },
         "generated": {
@@ -27251,7 +27397,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 125
+              "line": 131
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -27271,7 +27417,7 @@
             {
               "from": "scripts/evidence-lifecycle.test.mjs",
               "kind": "reference",
-              "line": 91
+              "line": 35
             },
             {
               "from": "scripts/protected-paths.test.mjs",
@@ -27342,6 +27488,11 @@
               "from": "tests/browser-evidence/verify-artifacts.test.mjs",
               "kind": "reference",
               "line": 290
+            },
+            {
+              "from": "tests/differential-harness/README.md",
+              "kind": "reference",
+              "line": 19
             }
           ],
           "reversePaths": [
@@ -27484,6 +27635,10 @@
             [
               "tests/browser-evidence/verify-artifacts.test.mjs",
               "tests/browser-evidence/verify-artifacts.test.mjs"
+            ],
+            [
+              "tests/differential-harness/README.md",
+              "tests/differential-harness/README.md"
             ]
           ],
           "roots": [
@@ -27521,7 +27676,8 @@
             "tests/browser-evidence/contracts.ts",
             "tests/browser-evidence/global-setup.ts",
             "tests/browser-evidence/verify-artifacts.mjs",
-            "tests/browser-evidence/verify-artifacts.test.mjs"
+            "tests/browser-evidence/verify-artifacts.test.mjs",
+            "tests/differential-harness/README.md"
           ]
         }
       },
@@ -27531,7 +27687,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "de10573f42f7c6b135e9ea30926be3d0526bd5d9b7aa22ae12e7b43625fa1734",
+      "evidenceSha256": "3ce51de284d3324c61a3d8b11ad2a932e9f28c02e7d2037d031ec51a71df7795",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -28248,7 +28404,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 231
+              "line": 251
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -29101,7 +29257,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "ef365ef29305163d3b0aa4b5125142ee6d955b202090829b493787b8de1a0a07",
+      "evidenceSha256": "eadc27104107d6caae492945a13391e9d7b35b6da22b81fafb9eb2300c1f3d12",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -29547,7 +29703,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 186
+              "line": 192
             }
           ],
           "reversePaths": [
@@ -29659,7 +29815,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "5660eed2a492dd87661139189fbbef35718cbdb48db9c1bf726c35604cc60504",
+      "evidenceSha256": "afc4c00246f6f91d1d4dade75fd775b9ff7e008e59996f6f36414ded8f80931a",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -30766,7 +30922,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 591
             }
           ],
           "reversePaths": [
@@ -30791,7 +30947,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "877290daba1bf08893b55434d2f62d2898b2be24e1c5da0d7d2703cff94014fc",
+      "evidenceSha256": "89d4e98e1f3326f86b7fc28ba683c5b5ccedcdd6241afb02196a16635ae39ce3",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -31922,7 +32078,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 569
+              "line": 590
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -32147,7 +32303,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "85a1f9ddb10d3c9bb5b93e93281b4e5c34288333154c76930cc09434d73a0ddb",
+      "evidenceSha256": "7b3685187646e4247c79171497ee6fddebf3dcb42141d1a994ccdbe8889e0f9e",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -33754,7 +33910,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 157
+              "line": 163
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -33780,6 +33936,21 @@
               "from": "scripts/route-capability-parity.test.mjs",
               "kind": "reference",
               "line": 540
+            },
+            {
+              "from": "tests/differential-harness/postgres-conservation.mjs",
+              "kind": "reference",
+              "line": 217
+            },
+            {
+              "from": "tests/differential-harness/scenarios.mjs",
+              "kind": "reference",
+              "line": 23
+            },
+            {
+              "from": "tests/differential-harness/subjects/postgres-twin.mjs",
+              "kind": "reference",
+              "line": 6
             },
             {
               "from": "tests/persisted-state-gate/run-performance.mjs",
@@ -34024,6 +34195,18 @@
               "scripts/route-capability-parity.test.mjs"
             ],
             [
+              "tests/differential-harness/postgres-conservation.mjs",
+              "tests/differential-harness/postgres-conservation.mjs"
+            ],
+            [
+              "tests/differential-harness/scenarios.mjs",
+              "tests/differential-harness/scenarios.mjs"
+            ],
+            [
+              "tests/differential-harness/subjects/postgres-twin.mjs",
+              "tests/differential-harness/subjects/postgres-twin.mjs"
+            ],
+            [
               "tests/persisted-state-gate/run-performance.mjs",
               "tests/persisted-state-gate/run-performance.mjs"
             ],
@@ -34096,6 +34279,9 @@
             "scripts/license-distribution.test.mjs",
             "scripts/root-entry-manifest.test.mjs",
             "scripts/route-capability-parity.test.mjs",
+            "tests/differential-harness/postgres-conservation.mjs",
+            "tests/differential-harness/scenarios.mjs",
+            "tests/differential-harness/subjects/postgres-twin.mjs",
             "tests/persisted-state-gate/run-performance.mjs",
             "tests/persisted-state-gate/seed.ts",
             "tests/postgres-memory-evidence/provision-sentinel.mjs",
@@ -34206,7 +34392,7 @@
           "internal-packages/tenancy-database"
         ]
       },
-      "evidenceSha256": "f6a9c24945778a2137c2fd358cbbd7394947c018ed3ed4ea0889976a8afac1ed",
+      "evidenceSha256": "bd0068d565959bf8eee6bb9c80604acd7eb2b90b3ed342253de7cd64b6244d38",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -34623,7 +34809,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 231
+              "line": 251
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35320,7 +35506,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "aa12334b560d829a6243ac74f0c70ed6497746af27e6ccf2fe9955df5d4a5829",
+      "evidenceSha256": "f5f4fff005c420495046b9972b5b83a71494a39ad355c23fbb87251fa55e0443",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -36552,7 +36738,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2342
+              "line": 2408
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -36714,7 +36900,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "77f5312f5e02a7650f441b2aebf2c3dcdb6157496c57ebb09b9ca3a90d180a7d",
+      "evidenceSha256": "153d13a5648a0c9680c5cb479a11dce88babaf6b2b2ce05b2928f482168fc627",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -52775,7 +52961,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 240
+              "line": 260
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54331,7 +54517,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9f947e163cbdcf06cb83fd6d67c8778950b77d3fdd47112df051cc3cba90c780",
+      "evidenceSha256": "d9cf2fc5495d6d119784b6da77280eb0fa7c7fcfedc9595d3c60a7d4159899df",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -56528,6 +56714,11 @@
               "line": 103
             },
             {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 7191
+            },
+            {
               "from": "docs/entity-connect.md",
               "kind": "reference",
               "line": 47
@@ -56610,6 +56801,10 @@
               "docs/audits/sbom/closure-contract.md"
             ],
             [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
               "docs/entity-connect.md",
               "docs/entity-connect.md"
             ],
@@ -56653,6 +56848,7 @@
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/sbom/closure-contract.md",
+            "docs/audits/win-284-differential-coverage.json",
             "docs/entity-connect.md",
             "docs/tool-gateway.md",
             "packages/platools-js/CHANGELOG.md",
@@ -57003,7 +57199,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1629d12204bbdeed0793c848fcb01eeefe21f17e4810a62894bd6279267e9b7c",
+      "evidenceSha256": "361014d053c4ca440c5250b956bd0f9224faea3b720a7250bda08aad71c2a8d5",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -57177,6 +57373,11 @@
               "line": 229
             },
             {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 7181
+            },
+            {
               "from": "docs/launch/release-notes-v1.0.0.md",
               "kind": "reference",
               "line": 56
@@ -57337,6 +57538,10 @@
               "docs/audits/sbom/closure-contract.md"
             ],
             [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
               "docs/launch/release-notes-v1.0.0.md",
               "docs/launch/release-notes-v1.0.0.md"
             ],
@@ -57428,6 +57633,7 @@
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/sbom/closure-contract.md",
+            "docs/audits/win-284-differential-coverage.json",
             "docs/launch/release-notes-v1.0.0.md",
             "docs/sdk-v1-migration.md",
             "docs/trigger-integration.md",
@@ -57801,7 +58007,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a4b1e028b6c20a75527b1868073040827b1a8fa40206d1044a530a32cd472c1d",
+      "evidenceSha256": "d1a1c7ad0e7bf84b6ad02594737ef54b5318ef216f8cf2fc5d3872eedba57d57",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -58566,6 +58772,11 @@
               "line": 186
             },
             {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 7201
+            },
+            {
               "from": "examples/platos-nextjs-starter/app/platos/token/route.ts",
               "kind": "reference",
               "line": 1
@@ -58623,6 +58834,10 @@
               "docs/audits/M0.5-dependency-sbom.md"
             ],
             [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
               "examples/platos-nextjs-starter/app/platos/token/route.ts",
               "examples/platos-nextjs-starter/app/platos/token/route.ts"
             ],
@@ -58657,6 +58872,7 @@
             "content/docs/sdks.md",
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
+            "docs/audits/win-284-differential-coverage.json",
             "examples/platos-nextjs-starter/README.md",
             "examples/platos-nextjs-starter/app/platos/token/route.ts",
             "examples/platos-nextjs-starter/package.json",
@@ -58882,7 +59098,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3ddee5eedaa069dcea7168463acf12e2378d0c067fb95ac528c97715a6d5ec34",
+      "evidenceSha256": "6527adf3c12f2a15ee8e3b9b35ff7a5c0b13a2fe6c1aa05ede058487d56beb08",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

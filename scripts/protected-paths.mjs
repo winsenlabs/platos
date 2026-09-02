@@ -10,7 +10,17 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const MANIFEST_PATH = "docs/audits/win-254-protected-paths.json";
 export const LIFECYCLE_PATH = "docs/audits/win-254-evidence-lifecycle.json";
 export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
-export const EXPECTED_PATH_SET_SHA256 = "23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec";
+// DELTA — WIN-284 moves the anchor from
+// 23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec (781 paths)
+// to the value below (783 paths). The set grew by exactly two and shrank by
+// none; the two additions are docs/audits/win-284-differential-coverage.json
+// and .md, which fall inside the existing `docs/**` selection rather than
+// widening it. Verified by diffing the committed manifest's path set against
+// the one at v1 @ 980515b: added exactly those two entries, removed nothing.
+// The anchor is re-pinned by hand rather than derived so that a protected path
+// LEAVING the set stays a hard failure — a silently shrinking protected set is
+// the failure this anchor exists to catch.
+export const EXPECTED_PATH_SET_SHA256 = "999b41afb656e5a0cd3ef964ce46f354e5667049660fd5b9303d4787d083473f";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

@@ -148,6 +148,30 @@ test("usage: cost within the ceiling is quiet, cost beyond it is not", () => {
   assert.deepEqual(outside.map((entry) => entry.code), ["cost-changed"]);
 });
 
+test("usage: an unmeasured component is not compared, and dropping it is itself a divergence", () => {
+  // The hole this closes: a subject that does not model cost reports
+  // `costMicros: 0`, both sides "agree" on zero, and the usage dimension
+  // records agreement about a number neither side measured.
+  const unmetered = withPatch((observation) => {
+    observation.usage.measured = ["inputUnits", "outputUnits"];
+    observation.usage.costMicros = 999999;
+  });
+  const found = compareUsage(reference(), unmetered);
+  assert.deepEqual(found.map((entry) => entry.code), ["usage-measurement-changed"]);
+  assert.ok(
+    !found.some((entry) => entry.path === "usage.costMicros"),
+    "a component neither side agreed to meter must not be compared as if it were",
+  );
+
+  // Two sides that both meter only units compare those units and nothing else.
+  const bothUnmetered = (value) =>
+    withPatch((observation) => {
+      observation.usage.measured = ["inputUnits", "outputUnits"];
+      observation.usage.costMicros = value;
+    });
+  assert.deepEqual(compareUsage(bothUnmetered(0), bothUnmetered(500)), []);
+});
+
 test("usage: the default tolerance is exact", () => {
   const found = compareUsage(reference(), withPatch((observation) => { observation.usage.costMicros = 901; }));
   assert.deepEqual(found.map((entry) => entry.code), ["cost-changed"]);

@@ -31,8 +31,16 @@ function has(errors, text) {
 
 test("committed lifecycle manifest classifies every approved evidence path exactly once", () => {
   const manifest = committed();
-  assert.equal(manifest.entryCount, 246, "exact protected evidence corpus includes the design and licence provenance receipts plus vendored source artifacts");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 221, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
+  // DELTA — WIN-284 moves 246 to 248, both ACCEPTED (221 -> 223). The two are
+  // docs/audits/win-284-differential-coverage.{json,md}, the generated
+  // differential capability coverage matrix. They are pinned in
+  // EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS rather than left to the ambiguous-root
+  // rule, which refuses to guess. ACCEPTED rather than POINT-IN-TIME because
+  // the matrix is reconciled to the four M0 censuses on every run and its
+  // covered column moves as M4-M6 land; a snapshot classification would be
+  // false about what the artifact is for.
+  assert.equal(manifest.entryCount, 248, "exact protected evidence corpus includes the design and licence provenance receipts plus vendored source artifacts");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 223, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 20);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

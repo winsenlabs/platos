@@ -153,6 +153,26 @@ jobs:
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity
           pnpm test:sbom
+          pnpm test:differential-coverage
+          pnpm audit:differential-coverage
+
+      - name: WIN-284 differential harness and its negative controls
+        # The suites prove the comparators, the register and the engine's
+        # refusals. `test:differential-harness:controls` then runs the whole
+        # seeded-divergence catalogue end to end and exits non-zero if ANY
+        # seeded divergence goes uncaught or any vacuous run is reported as
+        # parity. Both are here rather than only in the suite because the
+        # catalogue is the acceptance evidence for this issue, and evidence
+        # should be legible as its own step in the log rather than buried
+        # inside a test summary.
+        #
+        # The catalogue's size is deliberately NOT quoted here. It grows as
+        # surfaces land, and a count pinned in prose is a fact that goes stale
+        # silently — `assertSeedCoverage` is what enforces completeness, and it
+        # is executable.
+        run: |
+          pnpm test:differential-harness
+          pnpm test:differential-harness:controls
 
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
@@ -248,6 +268,40 @@ jobs:
 
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
+
+  differential-state-conservation:
+    name: differential-state-conservation
+    # WIN-284. Twin-runs the harness against TWO isolated PostgreSQL databases
+    # built from the real tenancy schema by the repository's own
+    # `prisma migrate deploy`, then seeds five real store-level divergences and
+    # requires each to be caught. It is a separate job because it needs a Docker
+    # daemon, which the typecheck job's service containers do not provide.
+    #
+    # The runner FAILS when Docker is absent rather than skipping. A skipped
+    # conservation run is indistinguishable from a passing one in a summary, and
+    # that is precisely the vacuity this issue exists to prevent.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Twin-store state conservation and seeded store divergences
+        run: pnpm test:differential-harness:store
 
   postgres-memory-evidence:
     name: postgres-memory-evidence

@@ -34,6 +34,22 @@ import { assertComparatorCoverage } from "./comparators.mjs";
 import { createRecordedSubject, createSeededCandidateSubject } from "./subjects/recorded.mjs";
 import { twinRun } from "./twin-run.mjs";
 
+// The frozen, admin-enforced oracle this harness is built against. It is
+// carried as provenance on the recordings below.
+//
+// SAID PLAINLY SO NOBODY HAS TO INFER IT: the self-test recording is a
+// SYNTHETIC FIXTURE, not a capture from that commit. Nothing here has replayed
+// real `main` behaviour, and nothing here claims to. Its job is to exercise the
+// comparators, the register and the engine's refusals with a subject that has
+// no moving parts, so a control that fails is unambiguously the harness's
+// fault and not the environment's.
+//
+// Capturing genuine oracle recordings needs a running instance of the frozen
+// commit to read — `test.platos.dev`, read-only per the charter — and it only
+// becomes useful once there is a V1 candidate to twin-run those recordings
+// against. Both belong with the surfaces WIN-285 covers. The state-conservation
+// half of this issue is where real systems are compared today, and that runs
+// against two live PostgreSQL stores, not against a fixture.
 export const ORACLE_COMMIT = "89c12b8aa8da75c561dc879f370aaefb6e3359bc";
 
 // Every dimension, so a seed in any dimension reaches its comparator.
@@ -48,14 +64,14 @@ function oracleSubject() {
   return createRecordedSubject({
     side: "oracle",
     recordings: { [SELF_TEST_SCENARIO.id]: baselineObservation("oracle") },
-    provenance: { commit: ORACLE_COMMIT, capturedAt: "2026-09-02T00:00:00.000Z", note: "frozen oracle recording" },
+    provenance: { commit: ORACLE_COMMIT, capturedAt: "2026-09-02T00:00:00.000Z", note: "synthetic self-test fixture; not a capture from the oracle commit" },
   });
 }
 
 function cleanCandidateSubject() {
   return createSeededCandidateSubject({
     recordings: { [SELF_TEST_SCENARIO.id]: baselineObservation("candidate") },
-    provenance: { commit: ORACLE_COMMIT, capturedAt: "2026-09-02T00:00:00.000Z", note: "clean candidate recording" },
+    provenance: { commit: ORACLE_COMMIT, capturedAt: "2026-09-02T00:00:00.000Z", note: "synthetic self-test fixture; differs only in nondeterminism" },
     transform: (observation) => observation,
     label: "clean",
   });
@@ -122,7 +138,7 @@ function emptyObservation(side) {
     events: [],
     auth: { principal: null, scopes: [], decision: "allow", reason: null },
     sideEffects: [],
-    usage: { inputUnits: 0, outputUnits: 0, costMicros: 0, durationMs: 0 },
+    usage: { measured: [], inputUnits: 0, outputUnits: 0, costMicros: 0, durationMs: 0 },
     store: {},
   };
 }

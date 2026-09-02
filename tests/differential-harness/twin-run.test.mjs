@@ -46,6 +46,45 @@ test("VACUITY: a dimension present on one side only is still refused", async () 
   assert.equal(result.verdict, "vacuous");
 });
 
+test("VACUITY: a subject that meters nothing makes the usage dimension vacuous", async () => {
+  const unmetered = (observation) => ({ ...observation, usage: { ...observation.usage, measured: [] } });
+  const result = await twinRun(scenario({ dimensions: ["usage"] }), {
+    oracle: subject("oracle", unmetered),
+    candidate: subject("candidate", unmetered),
+  });
+  assert.equal(result.verdict, "vacuous", "three zeroes nobody measured is not agreement about usage");
+});
+
+test("VACUITY: a store comparison with an unnamed store is refused, not assumed isolated", async () => {
+  // Omission is the easiest way for a guard to stop guarding. A subject that
+  // simply leaves `storeIdentity` off would otherwise skip the isolation check
+  // entirely and the run would report parity over stores nobody checked were
+  // separate.
+  const anonymous = (observation) => {
+    const next = { ...observation };
+    delete next.storeIdentity;
+    return next;
+  };
+  const result = await twinRun(scenario({ dimensions: ["store"] }), {
+    oracle: subject("oracle", anonymous),
+    candidate: subject("candidate", anonymous),
+  });
+  assert.equal(result.verdict, "invalid");
+  assert.match(result.failures[0], /isolation is assumed rather than checked/u);
+
+  // One side naming its store is still not enough.
+  const halfNamed = await twinRun(scenario({ dimensions: ["store"] }), {
+    oracle: subject("oracle"),
+    candidate: subject("candidate", anonymous),
+  });
+  assert.equal(halfNamed.verdict, "invalid");
+});
+
+test("an empty store identity is rejected, because it would compare equal on both sides", () => {
+  const observation = { ...baselineObservation("oracle"), storeIdentity: "" };
+  assert.ok(validateObservation(observation).some((error) => error.includes("storeIdentity")));
+});
+
 test("VACUITY: two sides pointed at the same store cannot diverge and are refused", async () => {
   const shared = (side) => subject(side, (observation) => ({ ...observation, storeIdentity: "one-store" }));
   const result = await twinRun(scenario(), { oracle: shared("oracle"), candidate: shared("candidate") });

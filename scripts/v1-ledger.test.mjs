@@ -525,10 +525,31 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
-    "docs-content": 9,
-    "root-infra": 10,
+    //
+    // WIN-284 DELTA (+19 total: docs-content 9->11, root-infra 10->27).
+    //
+    // docs-content +2 — the generated differential capability coverage matrix,
+    // docs/audits/win-284-differential-coverage.{json,md}. Both classify under
+    // the existing docs-content.evidence.audit-receipts and .audit-notes rules
+    // and are pinned ACCEPTED in scripts/evidence-lifecycle.mjs, because they
+    // are reconciled to the M0 censuses on every run rather than being a
+    // snapshot of what coverage looked like on some past date.
+    //
+    // root-infra +17 — two under scripts/ (differential-coverage.mjs and its
+    // mutation suite, classified root-infra.tooling.scripts and
+    // root-infra.test.script-suites) and fifteen under
+    // tests/differential-harness/ (README, observation, normalisers,
+    // comparators, twin-run, seeds, scenarios, the two runners, four test
+    // suites and two subjects), all classified root-infra.test.harness.
+    //
+    // No new ledger rule was needed: tests/** and scripts/** already have
+    // owning rules, so only the fingerprint moves. Every added file is
+    // enumerated above and conserves exactly to these deltas; attributed for
+    // ledger-owner review, not forced to green.
+    "docs-content": 11,
+    "root-infra": 27,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 20);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 39);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -537,7 +558,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 20
+    rulesDocument.baseline.totalFiles + 39
   );
 });
 

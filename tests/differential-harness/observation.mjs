@@ -125,12 +125,28 @@ function validateSideEffects(sideEffects, errors) {
   }
 }
 
+// Components a subject can meter. `durationMs` is reported but never compared —
+// timing is performance and performance parity is WIN-285's gate battery.
+export const USAGE_COMPONENTS = Object.freeze(["inputUnits", "outputUnits", "costMicros"]);
+
 function validateUsage(usage, errors) {
   if (!requirePlainObject(usage, "usage", errors)) return;
-  for (const field of ["inputUnits", "outputUnits", "costMicros", "durationMs"]) {
+  for (const field of [...USAGE_COMPONENTS, "durationMs"]) {
     if (requireFiniteNumber(usage[field], `usage.${field}`, errors) && usage[field] < 0) {
       errors.push(`usage.${field} must not be negative`);
     }
+  }
+  // A subject must say WHICH components it actually meters. Without this a
+  // subject that does not model cost still reports `costMicros: 0`, both sides
+  // agree on zero, and the usage dimension records agreement about a number
+  // neither side ever measured. Declaring the measured set turns that from a
+  // silent constant into a stated limit the coverage matrix can read.
+  if (!requireArray(usage.measured, "usage.measured", errors)) return;
+  for (const field of usage.measured) {
+    if (!USAGE_COMPONENTS.includes(field)) errors.push(`usage.measured names unknown component ${field}`);
+  }
+  if (new Set(usage.measured).size !== usage.measured.length) {
+    errors.push("usage.measured must not repeat a component");
   }
 }
 
@@ -151,6 +167,12 @@ export function validateObservation(observation) {
     errors.push(`observation.side must be one of ${SIDES.join(", ")}`);
   }
   requireNonEmptyString(observation.subject, "observation.subject", errors);
+  // Optional overall — a subject with no store legitimately has none — but when
+  // present it must be a real name. `storeIdentity: ""` would compare equal
+  // across both sides and silently defeat the isolation assertion in twinRun.
+  if (observation.storeIdentity !== undefined && observation.storeIdentity !== null) {
+    requireNonEmptyString(observation.storeIdentity, "observation.storeIdentity", errors);
+  }
   validateResponse(observation.response, errors);
   validateEvents(observation.events, errors);
   validateAuth(observation.auth, errors);
@@ -196,7 +218,10 @@ export function countComparableFacts(observation, dimension) {
     case "sideEffects":
       return observation.sideEffects?.length ?? 0;
     case "usage":
-      return observation.usage ? 4 : 0;
+      // Only metered components count. A subject that meters nothing makes the
+      // usage dimension vacuous and the run is refused, rather than recording
+      // agreement about three zeroes nobody measured.
+      return observation.usage?.measured?.length ?? 0;
     case "store":
       return Object.values(observation.store ?? {}).reduce((total, rows) => total + rows.length, 0);
     default:

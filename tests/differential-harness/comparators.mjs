@@ -35,6 +35,7 @@ export const DIVERGENCE_CODES = Object.freeze([
   "side-effect-extra",
   "usage-changed",
   "cost-changed",
+  "usage-measurement-changed",
   "store-table-missing",
   "store-table-added",
   "store-row-missing",
@@ -374,17 +375,29 @@ export function compareSideEffects(oracle, candidate) {
   return divergences;
 }
 
+// Compares only the components BOTH sides declare they meter. A side that
+// silently stops metering something is not agreement, it is a change in what is
+// being measured, and it gets its own code so the report says so rather than
+// reporting "0 == 0" as parity.
 export function compareUsage(oracle, candidate, options = {}) {
   const tolerance = assertTolerance(options.tolerance);
   const divergences = [];
-  for (const field of ["inputUnits", "outputUnits", "costMicros"]) {
-    const left = oracle.usage[field];
-    const right = candidate.usage[field];
-    const allowed = Math.abs(left) * (tolerance[field] ?? 0);
-    if (Math.abs(left - right) > allowed) {
+  const left = [...(oracle.usage.measured ?? [])].sort();
+  const right = [...(candidate.usage.measured ?? [])].sort();
+  if (JSON.stringify(left) !== JSON.stringify(right)) {
+    divergences.push(
+      divergence("usage", "usage-measurement-changed", "usage.measured", left, right,
+        `the metered components changed from [${left.join(", ")}] to [${right.join(", ")}]`),
+    );
+  }
+  for (const field of left.filter((component) => right.includes(component))) {
+    const oracleValue = oracle.usage[field];
+    const candidateValue = candidate.usage[field];
+    const allowed = Math.abs(oracleValue) * (tolerance[field] ?? 0);
+    if (Math.abs(oracleValue - candidateValue) > allowed) {
       divergences.push(
         divergence("usage", field === "costMicros" ? "cost-changed" : "usage-changed", `usage.${field}`,
-          left, right, `usage.${field} moved from ${left} to ${right}`),
+          oracleValue, candidateValue, `usage.${field} moved from ${oracleValue} to ${candidateValue}`),
       );
     }
   }

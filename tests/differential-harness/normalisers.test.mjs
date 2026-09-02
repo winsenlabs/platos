@@ -158,6 +158,60 @@ test("normaliserById refuses an unknown id rather than silently doing nothing", 
   assert.throws(() => normaliserById("not-a-normaliser"), /unknown normaliser/u);
 });
 
+// REGRESSION — found by the twin-PostgreSQL run, not by reasoning about it.
+//
+// A store dump ordered by a UUID primary key comes back in an effectively
+// random order that differs between two isolated stores. `identifier-ordinal`
+// numbers identifiers by first appearance, so the same logical row was given a
+// different ordinal on each side and the run reported store-row-missing plus
+// store-row-extra for rows that were identical. A FALSE POSITIVE, and an
+// intermittent one: it passed twice before it failed.
+test("REGRESSION: store rows in different physical orders do not diverge", () => {
+  const rows = [
+    { id: "0b8f2a4c-1d3e-4f5a-8b9c-0d1e2f3a4b5c", slug: "alpha", name: "Alpha" },
+    { id: "7c9e1b2d-3f4a-4b6c-9d8e-1a2b3c4d5e6f", slug: "beta", name: "Beta" },
+  ];
+  const forwards = normalise({ store: { project: [rows[0], rows[1]] } });
+  const backwards = normalise({ store: { project: [rows[1], rows[0]] } });
+  assert.deepEqual(forwards, backwards, "physical row order must not survive normalisation");
+
+  // And the fix must not have gone too far: different row CONTENT still diverges.
+  const changed = normalise({
+    store: { project: [rows[0], { ...rows[1], name: "Beta (changed)" }] },
+  });
+  assert.notDeepEqual(forwards, changed);
+});
+
+test("identifier ordinals do not depend on the order the two sides built their objects", () => {
+  // Same defect class as the store-row-order regression above, one level up:
+  // once the oracle is a recording and the candidate is a live transport, the
+  // two sides will build the same object with its keys in different orders.
+  // Ordinals are assigned over a key-sorted traversal so that cannot become a
+  // false divergence.
+  const identifier = "0b8f2a4c-1d3e-4f5a-8b9c-0d1e2f3a4b5c";
+  const other = "7c9e1b2d-3f4a-4b6c-9d8e-1a2b3c4d5e6f";
+  const forwards = normalise({ store: { row: [{ alpha: identifier, beta: other }] } });
+  const backwards = normalise({ store: { row: [{ beta: other, alpha: identifier }] } });
+  assert.deepEqual(forwards, backwards);
+
+  // STATED LIMIT, asserted rather than left implicit. Ordinal normalisation
+  // cannot detect a PERMUTATION of two otherwise-indistinguishable random
+  // identifiers across two fields, and it should not pretend to: which random
+  // UUID a store happened to mint for which row is exactly the nondeterminism
+  // being erased. What it does preserve is referential STRUCTURE, proven
+  // immediately below. The residual blind spot is narrow — a permutation among
+  // identifiers that each appear exactly once and never co-occur — and it is
+  // recorded in the README rather than papered over.
+  const permuted = normalise({ store: { row: [{ alpha: other, beta: identifier }] } });
+  assert.deepEqual(forwards, permuted, "a permutation of two single-use random identifiers is not observable");
+
+  // The sensitivity that does exist and matters: aliasing. One identifier used
+  // in two places is a different fact from two distinct identifiers, and that
+  // survives normalisation.
+  const aliased = normalise({ store: { row: [{ alpha: identifier, beta: identifier }] } });
+  assert.notDeepEqual(forwards, aliased);
+});
+
 test("instant-rank preserves relative order across sides", () => {
   const left = normalise({ events: [{ at: "2026-01-01T00:00:00Z" }, { at: "2026-01-01T00:00:10Z" }] });
   const right = normalise({ events: [{ at: "2026-06-01T09:00:00Z" }, { at: "2026-06-01T09:00:30Z" }] });

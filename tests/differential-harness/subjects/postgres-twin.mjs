@@ -64,6 +64,10 @@ function psql(container, database, statement, options = {}) {
   if (options.password) args.push("--env", `PGPASSWORD=${options.password}`);
   args.push(
     container, "psql", "-X", "-q", "-A", "-t", "--no-psqlrc",
+    // TCP, never the default unix socket. See waitForReady: the image's
+    // initialisation phase runs a temporary server that listens on the socket
+    // ONLY, so a socket connection can reach a server that is about to vanish.
+    "-h", "127.0.0.1",
     "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose",
     "-U", user, "-d", database, "-c", statement,
   );
@@ -118,15 +122,21 @@ export async function startTwinStores(options = {}) {
   };
 
   try {
-    await waitForReady(container, OWNER_ROLE);
+    await waitForReady(container, OWNER_ROLE, password);
     const port = docker(["port", container, "5432/tcp"]).trim().split("\n")[0].split(":").pop();
     const endUserModels = readEndUserModels(repositoryRoot);
 
+    // Roles are cluster-wide in PostgreSQL, so the restricted role is created
+    // once and only its per-database grants are applied twice. Creating it
+    // inside the per-database loop fails on the second pass with 2BP01,
+    // because the first database's grants already depend on it.
+    createRestrictedRole(container, password);
+
     const stores = {};
     for (const [side, database] of [["oracle", "twin_oracle"], ["candidate", "twin_candidate"]]) {
-      psql(container, "postgres", `CREATE DATABASE ${quoteIdentifier(database)}`);
+      psql(container, "postgres", `CREATE DATABASE ${quoteIdentifier(database)}`, { password });
       applySchema(repositoryRoot, `postgresql://${OWNER_ROLE}:${password}@127.0.0.1:${port}/${database}`);
-      grantRestrictedRole(container, database, password, endUserModels);
+      grantRestrictedRole(container, database, endUserModels, password);
       stores[side] = { side, container, database, port, password, endUserModels };
     }
 
@@ -141,19 +151,35 @@ export async function startTwinStores(options = {}) {
   }
 }
 
-async function waitForReady(container, user) {
-  const deadline = Date.now() + 90_000;
+// FOUND ON HOSTED CI, not locally — it passed on two machines first.
+//
+// The postgres image runs a TEMPORARY server during initialisation so it can
+// apply init scripts, then stops it and starts the real one. That temporary
+// server listens on the unix socket ONLY. `pg_isready` with no host talks to
+// the socket, so it happily reports ready against a server that is seconds from
+// disappearing, and the next statement dies with
+// `connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed`.
+//
+// Probing over TCP closes the race by construction: the initialisation server
+// does not listen on TCP at all, so a successful TCP query can only have been
+// answered by the real one. Two consecutive successes are required rather than
+// one, because a probe is cheap and a provisioning race is expensive to debug.
+async function waitForReady(container, user, password) {
+  const deadline = Date.now() + 120_000;
   let lastError = "never probed";
+  let consecutive = 0;
   while (Date.now() < deadline) {
     try {
-      docker(["exec", container, "pg_isready", "-U", user, "-d", "postgres"], { stdio: "pipe" });
-      return;
+      psql(container, "postgres", "SELECT 1", { user, password });
+      consecutive += 1;
+      if (consecutive >= 2) return;
     } catch (error) {
-      lastError = error.message;
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      consecutive = 0;
+      lastError = (error.stderr ?? error.message ?? String(error)).trim();
     }
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`twin PostgreSQL never became ready: ${lastError}`);
+  throw new Error(`twin PostgreSQL never became ready over TCP: ${lastError}`);
 }
 
 function applySchema(repositoryRoot, databaseUrl) {
@@ -168,10 +194,21 @@ function applySchema(repositoryRoot, databaseUrl) {
   });
 }
 
-function grantRestrictedRole(container, database, password, endUserModels) {
-  const statements = [
-    `DROP ROLE IF EXISTS ${quoteIdentifier(RESTRICTED_ROLE)}`,
+function createRestrictedRole(container, password) {
+  psql(
+    container,
+    "postgres",
     `CREATE ROLE ${quoteIdentifier(RESTRICTED_ROLE)} LOGIN PASSWORD ${literal(password)}`,
+    { password },
+  );
+}
+
+// The restricted role's reach IS the end-user model list, and nothing else. No
+// table outside that list is granted, so a scenario running as this role
+// against an operator-owned table is refused by PostgreSQL with a real 42501
+// rather than by a rule the harness wrote for itself.
+function grantRestrictedRole(container, database, endUserModels, password) {
+  const statements = [
     `GRANT CONNECT ON DATABASE ${quoteIdentifier(database)} TO ${quoteIdentifier(RESTRICTED_ROLE)}`,
     `GRANT USAGE ON SCHEMA public TO ${quoteIdentifier(RESTRICTED_ROLE)}`,
     ...endUserModels.map(
@@ -179,7 +216,7 @@ function grantRestrictedRole(container, database, password, endUserModels) {
         `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${quoteIdentifier(model)} TO ${quoteIdentifier(RESTRICTED_ROLE)}`,
     ),
   ];
-  for (const statement of statements) psql(container, database, statement);
+  psql(container, database, `${statements.join(";\n")};`, { password });
 }
 
 function literal(value) {
@@ -198,16 +235,13 @@ export function runStatement(store, statement, role = "owner") {
   const user = role === "owner" ? OWNER_ROLE : RESTRICTED_ROLE;
   const wrapped = `WITH op AS (${statement}) SELECT coalesce(json_agg(op), '[]'::json)::text FROM op`;
   try {
-    const output = docker([
-      "exec", "--env", `PGPASSWORD=${store.password}`, store.container,
-      "psql", "-X", "-q", "-A", "-t", "--no-psqlrc",
-      "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose",
-      "-U", user, "-d", store.database, "-c", wrapped,
-    ], { stdio: ["ignore", "pipe", "pipe"] });
+    // One connection path for provisioning and for scenarios, so the TCP fix
+    // above cannot be applied to one and forgotten on the other.
+    const output = psql(store.container, store.database, wrapped, { user, password: store.password });
     return { ok: true, rows: JSON.parse(output.trim() || "[]"), sqlstate: null, message: null };
   } catch (error) {
     const text = `${error.stdout ?? ""}${error.stderr ?? ""}`;
-    const sqlstate = /SQLSTATE\s+([0-9A-Z]{5})/u.exec(text)?.[1] ?? null;
+    const sqlstate = readSqlstate(text);
     if (sqlstate === null) {
       // A failure the subject cannot classify is raised, never folded into a
       // comparable "it failed somehow" that would compare equal on both sides.
@@ -217,9 +251,22 @@ export function runStatement(store, statement, role = "owner") {
   }
 }
 
+// Under `VERBOSITY=verbose` psql prints the SQLSTATE inline on the ERROR line
+// ("ERROR:  42501: permission denied ..."), not as a separate "SQLSTATE 42501"
+// field. Both spellings are read, because the inline form is what pg16 emits
+// and assuming the other one made every denial look unclassifiable.
+export function readSqlstate(text) {
+  return (
+    /^ERROR:\s+([0-9A-Z]{5}):/mu.exec(text)?.[1] ??
+    /SQLSTATE\s+([0-9A-Z]{5})/u.exec(text)?.[1] ??
+    null
+  );
+}
+
 function firstErrorLine(text) {
   const line = text.split("\n").find((entry) => entry.startsWith("ERROR:"));
-  return line ? line.replace(/^ERROR:\s*/u, "").trim() : null;
+  if (!line) return null;
+  return line.replace(/^ERROR:\s*/u, "").replace(/^[0-9A-Z]{5}:\s*/u, "").trim();
 }
 
 export function dumpTable(store, table) {
@@ -305,9 +352,13 @@ export function createPostgresSubject({ side, store }) {
         },
         sideEffects,
         usage: {
-          // Statement and row accounting only. `costMicros` is zero because
-          // this subject does not model money, and a scenario that wants cost
-          // parity evidence must say so and use a metered subject instead.
+          // Statement and row accounting ONLY, and `measured` says so. Without
+          // that declaration both sides would report `costMicros: 0` and the
+          // usage comparator would record agreement about a number neither side
+          // ever measured — a dimension quietly comparing a constant. Declaring
+          // the metered set makes the limit explicit: cost parity is uncovered
+          // until a metered surface exists to twin-run.
+          measured: ["inputUnits", "outputUnits"],
           inputUnits: scenario.operations.length,
           outputUnits: rowsReturned,
           costMicros: 0,

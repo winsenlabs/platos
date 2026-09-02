@@ -119,7 +119,12 @@ function hasCaseError(errors, fragment) {
 test("the live corpora are enumerated with exact non-vacuous counts", () => {
   const result = validateDocsLinkIntegrity(repositoryRoot, { minimums: false });
   assert.deepEqual(result.stats, {
-    docsMarkdownFiles: 392,
+    // DELTA — WIN-284 adds one: docs/audits/win-284-differential-coverage.md,
+    // the generated coverage summary. Its sibling README lives under
+    // tests/differential-harness/ and so is outside this corpus. The count is
+    // pinned rather than derived so a document appearing or vanishing is a
+    // failure someone reads, not a number that quietly follows the tree.
+    docsMarkdownFiles: 393,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,

@@ -61,6 +61,7 @@ export function baselineObservation(side, overrides = {}) {
       { kind: "notify", target: "outbox", detail: { channel: "records" } },
     ],
     usage: {
+      measured: ["inputUnits", "outputUnits", "costMicros"],
       inputUnits: 120,
       outputUnits: 45,
       costMicros: 900,
@@ -310,6 +311,18 @@ export const SEEDS = Object.freeze([
     seed: (observation) => {
       const next = clone(observation);
       next.usage.costMicros = Math.round(next.usage.costMicros * 1.05);
+      return next;
+    },
+  }),
+  Object.freeze({
+    id: "usage-measurement-dropped",
+    dimension: "usage",
+    describes: "The candidate stops metering cost altogether. Both sides would then report zero and a naive comparator would call that agreement, when in fact one side stopped measuring.",
+    expectedCodes: Object.freeze(["usage-measurement-changed"]),
+    seed: (observation) => {
+      const next = clone(observation);
+      next.usage.measured = next.usage.measured.filter((component) => component !== "costMicros");
+      next.usage.costMicros = 0;
       return next;
     },
   }),
