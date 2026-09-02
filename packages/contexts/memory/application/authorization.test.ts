@@ -10,6 +10,7 @@ import {
   type ThreadId,
 } from "../domain/index.js";
 import {
+  authorizeMutation,
   authorizeRead,
   authorizeWrite,
   requireAccess,
@@ -333,6 +334,59 @@ describe("authorizeWrite", () => {
     expect(scope.ok).toBe(false);
     if (scope.ok) throw new Error("unreachable");
     expect(scope.error.code).toBe("MEMORY_AGENT_AMBIGUOUS");
+  });
+});
+
+describe("authorizeMutation — the gate for changing a row that already exists", () => {
+  it("resolves the same readable agents as a read", async () => {
+    const { dependencies } = harness();
+    const scope = await authorizeMutation(dependencies, {
+      authorization: runtimeGrant(),
+      endUserId: null,
+      actingAgentId: null,
+      requestedAgentIds: [],
+    });
+    expect(scope.ok).toBe(true);
+    if (!scope.ok) throw new Error("unreachable");
+    expect(scope.value.agentIds).toEqual([AGENT]);
+  });
+
+  it("REFUSES a `metadata` operator grant that `authorizeRead` accepts", async () => {
+    const { dependencies, tenancy } = harness();
+    const request = {
+      authorization: tenancy.grant("metadata"),
+      endUserId: SUBJECT_ID,
+      actingAgentId: AGENT,
+      requestedAgentIds: [],
+    };
+    expect((await authorizeRead(dependencies, request)).ok).toBe(true);
+
+    const mutation = await authorizeMutation(dependencies, request);
+    expect(mutation.ok).toBe(false);
+    if (mutation.ok) throw new Error("unreachable");
+    expect(mutation.error.code).toBe("MEMORY_SCOPE_MISMATCH");
+  });
+
+  it("accepts a `secret:mutate` operator grant", async () => {
+    const { dependencies, tenancy } = harness();
+    const scope = await authorizeMutation(dependencies, {
+      authorization: tenancy.grant("secret:mutate"),
+      endUserId: SUBJECT_ID,
+      actingAgentId: AGENT,
+      requestedAgentIds: [],
+    });
+    expect(scope.ok).toBe(true);
+  });
+
+  it("accepts the runtime grant, which extraction and feedback both hold", async () => {
+    const { dependencies } = harness();
+    const scope = await authorizeMutation(dependencies, {
+      authorization: runtimeGrant(),
+      endUserId: null,
+      actingAgentId: null,
+      requestedAgentIds: [],
+    });
+    expect(scope.ok).toBe(true);
   });
 });
 

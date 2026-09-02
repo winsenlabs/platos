@@ -41,7 +41,7 @@ import {
   type MemoryId,
   type MemoryVisibility,
 } from "../domain/index.js";
-import { authorizeRead } from "./authorization.js";
+import { authorizeMutation } from "./authorization.js";
 import type { MemoryDependencies } from "./dependencies.js";
 import { embedQuery } from "./embedding.js";
 import { CLEAR_EMBEDDING, KEEP_EMBEDDING, type EmbeddingDirective } from "./ports/index.js";
@@ -63,7 +63,7 @@ export async function revise(
   dependencies: MemoryDependencies,
   command: ReviseCommand,
 ): Promise<Result<Memory>> {
-  const scope = await authorizeRead(dependencies, { ...command, requestedAgentIds: [] });
+  const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
 
   const found = await dependencies.repository.findMemory(

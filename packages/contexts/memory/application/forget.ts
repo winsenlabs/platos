@@ -35,7 +35,7 @@ import {
   type Memory,
   type MemoryId,
 } from "../domain/index.js";
-import { authorizeRead } from "./authorization.js";
+import { authorizeMutation } from "./authorization.js";
 import type { MemoryDependencies } from "./dependencies.js";
 import { KEEP_EMBEDDING } from "./ports/index.js";
 
@@ -78,7 +78,7 @@ export async function forget(
   dependencies: MemoryDependencies,
   command: ForgetCommand,
 ): Promise<Result<boolean>> {
-  const scope = await authorizeRead(dependencies, { ...command, requestedAgentIds: [] });
+  const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
   return dependencies.unitOfWork.run(async (transaction) => {
     const deleted = await dependencies.repository.deleteMemories(
@@ -101,7 +101,7 @@ export async function forgetMany(
   const maximum = dependencies.policy.page.bulkDeleteMax;
   if (ids.length > maximum) return err(bulkLimitExceeded(ids.length, maximum));
 
-  const scope = await authorizeRead(dependencies, { ...command, requestedAgentIds: [] });
+  const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
   return dependencies.unitOfWork.run(async (transaction) =>
     dependencies.repository.deleteMemories(scope.value.subject, scope.value.agentIds, ids, transaction),
@@ -113,7 +113,7 @@ async function transition(
   command: ForgetCommand,
   apply: (memory: Memory, now: Date) => Result<Memory>,
 ): Promise<Result<LifecycleChange>> {
-  const scope = await authorizeRead(dependencies, { ...command, requestedAgentIds: [] });
+  const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
 
   const found = await dependencies.repository.findMemory(

@@ -252,6 +252,36 @@ export async function authorizeRead(
   return resolveReadScope(dependencies, subject.value, request.requestedAgentIds);
 }
 
+/**
+ * Verify, REQUIRE the mutating grant, and resolve the readable agents.
+ *
+ * The gate for an operation that CHANGES an existing row rather than creating
+ * one: archive, restore, revise, forget, forget-many, forget-entity. All six
+ * find their subject by id inside the caller's agent scope — which is a read —
+ * and then mutate it, so they need the read scope AND the `secret:mutate`
+ * access an operator's `metadata` grant does not carry.
+ *
+ * It exists as a third entry point rather than a flag on `authorizeRead`
+ * because the distinction is the one that matters most here: `authorizeRead`
+ * must stay reachable under `metadata`, and a boolean parameter is how it would
+ * eventually be called with the wrong value at one of six call sites.
+ */
+export async function authorizeMutation(
+  dependencies: MemoryDependencies,
+  request: SubjectRequest & {
+    readonly authorization: unknown;
+    readonly requestedAgentIds: readonly AgentId[];
+  },
+): Promise<Result<ReadScope>> {
+  const granted = verifyGrant(dependencies, request.authorization);
+  if (!granted.ok) return err(granted.error);
+  const mutable = requireAccess(granted.value, "secret:mutate");
+  if (!mutable.ok) return err(mutable.error);
+  const subject = subjectFor(mutable.value, request);
+  if (!subject.ok) return err(subject.error);
+  return resolveReadScope(dependencies, subject.value, request.requestedAgentIds);
+}
+
 /** Verify, resolve the subject, and resolve the writing agent. One step. */
 export async function authorizeWrite(
   dependencies: MemoryDependencies,

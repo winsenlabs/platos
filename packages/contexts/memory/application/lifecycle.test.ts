@@ -293,6 +293,48 @@ describe("forget", () => {
   });
 });
 
+describe("a `metadata` grant reads but does not destroy", () => {
+  const metadataRead = (context: MemoryHarness) => ({
+    ...READ,
+    authorization: context.tenancy.grant("metadata"),
+    endUserId: SUBJECT_ID,
+    actingAgentId: AGENT,
+  });
+
+  it("lists under `metadata`", async () => {
+    const context = harness();
+    seed(context, "mem-1");
+    const listed = await listMemories(context.dependencies, metadataRead(context));
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) throw new Error("unreachable");
+    expect(listed.value).toHaveLength(1);
+  });
+
+  it("REFUSES to archive, restore, revise, forget or bulk-forget under `metadata`", async () => {
+    const context = harness();
+    seed(context, "mem-1");
+    const command = {
+      authorization: context.tenancy.grant("metadata"),
+      endUserId: SUBJECT_ID,
+      actingAgentId: AGENT,
+      memoryId: asIdentifier<MemoryId>("mem-1"),
+    };
+    for (const outcome of [
+      await archive(context.dependencies, command),
+      await restore(context.dependencies, command),
+      await revise(context.dependencies, { ...command, content: "rewritten" }),
+      await forget(context.dependencies, command),
+      await forgetMany(context.dependencies, { ...command, memoryIds: [command.memoryId] }),
+    ]) {
+      expect(outcome.ok).toBe(false);
+      if (outcome.ok) throw new Error("unreachable");
+      expect(outcome.error.code).toBe("MEMORY_SCOPE_MISMATCH");
+    }
+    expect(context.repository.all()).toHaveLength(1);
+    expect(context.repository.all()[0]?.content).toBe(memoryFixture().content);
+  });
+});
+
 describe("revise", () => {
   const command = {
     authorization: runtimeGrant(),

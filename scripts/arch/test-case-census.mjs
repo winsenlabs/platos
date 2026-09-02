@@ -104,12 +104,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * WIN-256 DELTA — the `memory` context (ADR M0.3 §1 context 8). One row moves:
  *
- *   memory 0 -> 28 files, 0 -> 590 cases; 1000 -> 1590 total. 15 domain suites,
+ *   memory 0 -> 28 files, 0 -> 596 cases; 1000 -> 1596 total. 15 domain suites,
  *   12 application suites and the contracts-barrel suite. The census REFUSED
- *   nothing in that tree, so its 590 is a statically exact count, and
+ *   nothing in that tree, so its 596 is a statically exact count, and
  *   `pnpm --filter @platos/context-memory exec vitest run` prints the same pair
- *   — "Test Files 28 passed (28) / Tests 590 passed (590)" — which is the
+ *   — "Test Files 28 passed (28) / Tests 596 passed (596)" — which is the
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ *   The last SIX of those 596 arrived with the `authorizeMutation` gate: a
+ *   self-review found archive, restore, revise, forget, forget-many and
+ *   forget-entity reaching the READ gate, which an operator's `metadata` grant
+ *   passes, so a grant that may not mutate could destroy a row. The gate and
+ *   its six cases landed together, and mutation M11 below proves them a
+ *   control rather than a claim.
  *
  * Verified as a live control: deleting one `it()` from
  * `packages/contexts/memory/domain/fusion.test.ts` leaves the file count at 116
@@ -137,7 +144,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
-  "packages/contexts/memory": { files: 28, cases: 590 },
+  "packages/contexts/memory": { files: 28, cases: 596 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
@@ -155,7 +162,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1590;
+export const EXPECTED_RUNTIME_TOTAL = 1596;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -45,7 +45,7 @@ import {
   type MemoryRelationshipId,
   type ThreadId,
 } from "../domain/index.js";
-import { authorizeRead, authorizeWrite, type WriteScope } from "./authorization.js";
+import { authorizeMutation, authorizeWrite, type WriteScope } from "./authorization.js";
 import type { MemoryDependencies } from "./dependencies.js";
 import { embedQuery } from "./embedding.js";
 
@@ -234,7 +234,7 @@ export async function forgetEntity(
   dependencies: MemoryDependencies,
   command: ForgetEntityCommand,
 ): Promise<Result<boolean>> {
-  const scope = await authorizeRead(dependencies, { ...command, requestedAgentIds: [] });
+  const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
   return dependencies.unitOfWork.run(async (transaction) =>
     dependencies.graph.deleteEntity(
