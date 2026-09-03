@@ -101,6 +101,16 @@ export interface AgentView {
 export interface AgentPageView {
   readonly items: readonly AgentView[];
   readonly total: number;
+  /**
+   * The window that was APPLIED, after `AgentsPolicy.maxPageSize` clamped it.
+   *
+   * Published rather than kept inside, for the reason `AgentVersionPageView`
+   * below publishes the same pair: a caller that asked for ten thousand rows and
+   * got two hundred needs to be told, and a clamp invisible on the answer is a
+   * clamp nothing can prove.
+   */
+  readonly offset: number;
+  readonly limit: number;
 }
 
 export interface AgentVersionView {
@@ -174,6 +184,9 @@ export interface PostmanTemplateView {
 export interface PostmanTemplatePageView {
   readonly items: readonly PostmanTemplateView[];
   readonly total: number;
+  /** The window that was APPLIED. See `AgentPageView`. */
+  readonly offset: number;
+  readonly limit: number;
 }
 
 /**

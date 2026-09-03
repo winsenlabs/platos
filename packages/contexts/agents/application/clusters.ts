@@ -27,6 +27,7 @@ import {
   byClusterOrder,
   clusterAlreadyExists,
   clusterNotFound,
+  clusterSlugIsTaken,
   electOnJoin,
   electOnLeave,
   assignCluster,
@@ -106,7 +107,16 @@ export async function createCluster(
   const now = dependencies.clock.now();
   const taken = existing.value.map((cluster) => cluster.slug as string);
   const slug = resolveSlug(baseSlug.value, taken, now);
-  if (taken.includes(slug)) return err(clusterAlreadyExists(scope.environmentId, slug));
+  // Asked of the DOMAIN predicate rather than re-implemented here. The rule —
+  // a cluster slug is unique within an ENVIRONMENT — has one statement, in
+  // `domain/cluster.ts`, and this is its caller. The inline `taken.includes`
+  // that stood here was a second implementation of it, and it also dropped the
+  // environment comparison the rule is about: correct only for as long as
+  // `listClusters` is scoped, which is an adapter's promise rather than this
+  // context's guarantee.
+  if (clusterSlugIsTaken(existing.value, scope.environmentId, slug)) {
+    return err(clusterAlreadyExists(scope.environmentId, slug));
+  }
 
   // A primary named at creation must already be bound HERE. Accepting an
   // unbound id would write a cluster whose primary is an agent this environment

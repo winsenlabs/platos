@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { asAgentsIdentifier, type AgentId, type RouteLabel } from "../domain/index.js";
+import { asAgentsIdentifier, collisionToken, type AgentId, type RouteLabel, type Slug } from "../domain/index.js";
 import { createAgent } from "./create-agent.js";
 import { removeAgent } from "./delete-agent.js";
 import { buildAgentsTestContext, seedBoundAgent, testAgent, testEnvironmentScope } from "./testing/fixtures.js";
@@ -53,6 +53,36 @@ describe("creating an agent", () => {
     if (!created.ok) throw new Error("unreachable");
     expect(created.value.agent.slug).not.toBe("support");
     expect(created.value.agent.slug).toMatch(/^support-/u);
+  });
+
+  // The sibling of the cluster case in `clusters.test.ts`, and dead for the same
+  // reason: `resolveSlug` disambiguates once, and the second collision — two
+  // agents created in the same millisecond under one project — is what this
+  // refusal is for. It could be deleted outright at full green.
+  it("REFUSES when even the disambiguated slug is taken, rather than leaving it to the index", async () => {
+    const { context, authorization } = newContext();
+    context.repository.seedAgent(
+      testAgent(context.scope, { agentId: asAgentsIdentifier<AgentId>("agent-elsewhere") }),
+    );
+    context.repository.seedAgent(
+      testAgent(context.scope, {
+        agentId: asAgentsIdentifier<AgentId>("agent-collided"),
+        slug: asAgentsIdentifier<Slug>(`support-${collisionToken(context.clock.now())}`),
+      }),
+    );
+    const created = await createAgent(context.dependencies, {
+      authorization,
+      name: "Support",
+      createdBy: "operator-1",
+    });
+    expect(created.ok).toBe(false);
+    if (created.ok) throw new Error("unreachable");
+    expect(created.error.code).toBe("AGENTS_AGENT_ALREADY_EXISTS");
+    // The store double simulates the unique index and raises the same code, so
+    // the code alone cannot tell this refusal from that one. The write log can:
+    // the guard refuses BEFORE any transaction is opened.
+    expect(context.repository.writes).toEqual([]);
+    expect(context.unitOfWork.transactions).toHaveLength(0);
   });
 
   it("takes the model from the DEFAULT route when the request names none", async () => {

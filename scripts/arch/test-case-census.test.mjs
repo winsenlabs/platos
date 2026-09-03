@@ -261,19 +261,23 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 test("the agents context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's agents slice moves. `pnpm --filter
   // @platos/context-agents exec vitest run` prints "Test Files 25 passed (25) /
-  // Tests 517 passed (517)"; the AST census reproduces both with zero refusals.
+  // Tests 515 passed (515)"; the AST census reproduces both with zero refusals.
   // Every other package is held at its previous value by the tests above, so a
   // suite quietly deleted elsewhere while agents landed cannot hide inside the
   // new total.
   //
-  // 513 -> 517 with the FILE count unchanged: the four cases the 2026-09-03
-  // verification added to `application/agent-write.test.ts` to make
-  // `removeAgent`'s thread-hold release provable. That is the shape of drift a
-  // file-count pin is blind to and this census is not; the delta is enumerated
-  // in the header of scripts/arch/test-case-census.mjs.
+  // 513 -> 517 -> 515 with the FILE count unchanged throughout. That is the
+  // shape of drift a file-count pin is blind to and this census is not, and the
+  // second move is a DECREASE, which is the movement most worth a second look:
+  // two dead functions were deleted with the four cases that were their only
+  // callers, and two new cases were added for guards that had none. Both
+  // addends are spelled out below so a deletion cannot hide inside an addition
+  // and reach the same total; the reasoning is in the header of
+  // scripts/arch/test-case-census.mjs.
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
-  assert.equal(EXPECTED["packages/contexts/agents"].cases, 517);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 517);
+  assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
+  assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 515);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

@@ -167,14 +167,3 @@ export function byListingOrder(left: Agent, right: Agent): number {
   return left.agentId > right.agentId ? -1 : 1;
 }
 
-/** True when an agent already carries the slug another agent wants. */
-export function slugIsTaken(
-  agents: readonly Agent[],
-  projectId: ProjectId,
-  slug: Slug,
-  excluding: AgentId | null = null,
-): boolean {
-  return agents.some(
-    (agent) => agent.projectId === projectId && agent.slug === slug && agent.agentId !== excluding,
-  );
-}

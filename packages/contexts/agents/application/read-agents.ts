@@ -25,7 +25,7 @@ import {
 } from "../domain/index.js";
 import { verifyOperator } from "./authorization.js";
 import type { AgentsDependencies } from "./dependencies.js";
-import type { BoundAgent, BoundAgentPage } from "./ports/index.js";
+import type { BoundAgent } from "./ports/index.js";
 
 export interface ReadAgentsQuery {
   readonly authorization: unknown;
@@ -37,6 +37,24 @@ export interface DescribeAgentQuery extends ReadAgentsQuery {
 
 export interface DescribeAgentBySlugQuery extends ReadAgentsQuery {
   readonly slug: string;
+}
+
+/**
+ * One page of bound agents, and THE WINDOW THAT WAS ACTUALLY APPLIED.
+ *
+ * `limit` and `offset` are the clamped values, not the caller's. Returning them
+ * is what makes `AgentsPolicy.maxPageSize` a rule rather than a decoration:
+ * nothing downstream caps a page — the repository passes the number it is handed
+ * straight to `take:` — so if the clamp is not visible in the answer it is not
+ * visible anywhere, and deleting it changes nothing any test can see. This
+ * mirrors `VersionHistoryPage`, where the same pair is returned for the same
+ * reason and is asserted in `version-history.test.ts`.
+ */
+export interface AgentsPage {
+  readonly items: readonly BoundAgent[];
+  readonly total: number;
+  readonly offset: number;
+  readonly limit: number;
 }
 
 export interface PageAgentsQuery extends ReadAgentsQuery {
@@ -64,18 +82,22 @@ export async function listAgents(
 export async function pageAgents(
   dependencies: AgentsDependencies,
   query: PageAgentsQuery,
-): Promise<Result<BoundAgentPage>> {
+): Promise<Result<AgentsPage>> {
   const granted = verifyOperator(dependencies, query.authorization);
   if (!granted.ok) return err(granted.error);
   const search = query.search?.trim();
-  return dependencies.repository.pageBoundAgents(granted.value.scope, {
-    limit: Math.min(Math.max(Math.trunc(query.limit), 1), dependencies.policy.maxPageSize),
-    offset: Math.max(Math.trunc(query.offset), 0),
+  const limit = Math.min(Math.max(Math.trunc(query.limit), 1), dependencies.policy.maxPageSize);
+  const offset = Math.max(Math.trunc(query.offset), 0);
+  const page = await dependencies.repository.pageBoundAgents(granted.value.scope, {
+    limit,
+    offset,
     // An empty search is NOT a search. Passing `""` down would make every
     // adapter decide privately whether that means "everything" or "nothing".
     search: search === undefined || search === "" ? null : search,
     active: statusFilter(query.status),
   });
+  if (!page.ok) return err(page.error);
+  return ok({ items: page.value.items, total: page.value.total, offset, limit });
 }
 
 /** `active` and `paused` are the surface's words for one boolean column. */

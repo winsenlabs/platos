@@ -32,11 +32,23 @@ import {
 } from "../domain/index.js";
 import { verifyOperator } from "./authorization.js";
 import type { AgentsDependencies } from "./dependencies.js";
-import type { TemplatePage } from "./ports/index.js";
 import { requireBound } from "./read-agents.js";
 
 export interface TemplateQueryBase {
   readonly authorization: unknown;
+}
+
+/**
+ * One page of templates, and THE WINDOW THAT WAS ACTUALLY APPLIED.
+ *
+ * The same reason as `AgentsPage` next door: nothing below this line caps a
+ * page, so a clamp that is not in the answer is provable nowhere.
+ */
+export interface TemplatesPage {
+  readonly items: readonly PostmanTemplate[];
+  readonly total: number;
+  readonly offset: number;
+  readonly limit: number;
 }
 
 export interface PageTemplatesQuery extends TemplateQueryBase {
@@ -64,16 +76,20 @@ export interface UpdateTemplateCommand extends DescribeTemplateQuery, TemplatePa
 export async function pageTemplates(
   dependencies: AgentsDependencies,
   query: PageTemplatesQuery,
-): Promise<Result<TemplatePage>> {
+): Promise<Result<TemplatesPage>> {
   const granted = verifyOperator(dependencies, query.authorization);
   if (!granted.ok) return err(granted.error);
   const search = query.search?.trim();
-  return dependencies.scaffolding.pageTemplates(granted.value.scope, {
-    limit: Math.min(Math.max(Math.trunc(query.limit), 1), dependencies.policy.maxPageSize),
-    offset: Math.max(Math.trunc(query.offset), 0),
+  const limit = Math.min(Math.max(Math.trunc(query.limit), 1), dependencies.policy.maxPageSize);
+  const offset = Math.max(Math.trunc(query.offset), 0);
+  const page = await dependencies.scaffolding.pageTemplates(granted.value.scope, {
+    limit,
+    offset,
     agentId: query.agentId ?? null,
     search: search === undefined || search === "" ? null : search,
   });
+  if (!page.ok) return err(page.error);
+  return ok({ items: page.value.items, total: page.value.total, offset, limit });
 }
 
 export async function describeTemplate(

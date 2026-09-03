@@ -24,7 +24,7 @@
 // possible. `verifyOperator` returns the grant; its `scope` is the only
 // environment the caller gets.
 
-import { err, ok, type EnvironmentScope, type ProjectId, type Result } from "@platos/kernel";
+import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import {
   authorizes,
   type EnvironmentOperatorAuthorization as TenancyOperatorGrant,
@@ -83,19 +83,6 @@ export function verifyOperatorGrant(
     return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));
   }
   return ok(verified.value);
-}
-
-/**
- * The project an environment grant reaches.
- *
- * `Agent` hangs off Project and `AgentBinding` off Environment, so almost every
- * use case here needs both. Deriving the project from the grant's own re-derived
- * scope — rather than accepting one on the command — is what keeps the
- * project-scoped half of this context inside the environment-scoped
- * authorization it was granted.
- */
-export function projectOf(grant: TenancyOperatorGrant): ProjectId {
-  return grant.scope.projectId;
 }
 
 function pathOf(scope: {

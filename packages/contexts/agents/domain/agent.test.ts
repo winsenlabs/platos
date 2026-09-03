@@ -9,14 +9,12 @@ import {
   deactivate,
   MAX_AGENT_DESCRIPTION_LENGTH,
   MAX_AGENT_NAME_LENGTH,
-  slugIsTaken,
   touchesAgentRow,
   type Agent,
 } from "./agent.js";
 import { asAgentsIdentifier, type AgentId, type Slug } from "./identifiers.js";
 
 const PROJECT = asIdentifier<ProjectId>("proj-1");
-const OTHER_PROJECT = asIdentifier<ProjectId>("proj-2");
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 const LATER = new Date("2026-02-01T00:00:00.000Z");
 
@@ -151,25 +149,5 @@ describe("the listing order is total", () => {
 
   it("reports an agent as equal to itself", () => {
     expect(byListingOrder(agent(), agent())).toBe(0);
-  });
-});
-
-describe("slug uniqueness is scoped to the project", () => {
-  const held = [agent(), agent({ agentId: asAgentsIdentifier<AgentId>("agent-2"), projectId: OTHER_PROJECT })];
-
-  it("reports a slug taken inside its own project", () => {
-    expect(slugIsTaken(held, PROJECT, asAgentsIdentifier<Slug>("support"))).toBe(true);
-  });
-
-  it("does not report a slug taken by ANOTHER project's agent", () => {
-    expect(slugIsTaken(held, asIdentifier<ProjectId>("proj-3"), asAgentsIdentifier<Slug>("support"))).toBe(
-      false,
-    );
-  });
-
-  it("excludes the agent that already holds it, so a rename to itself passes", () => {
-    expect(
-      slugIsTaken(held, PROJECT, asAgentsIdentifier<Slug>("support"), asAgentsIdentifier<AgentId>("agent-1")),
-    ).toBe(false);
   });
 });

@@ -224,6 +224,11 @@ describe("reading templates", () => {
     });
     if (!paged.ok) throw new Error("unreachable");
     expect(paged.value.total).toBe(1);
+    // The other half of the name. See `agent-read.test.ts` for why the total
+    // cannot carry it: the store honours whatever limit it is given, so 10_000
+    // and 200 return the same single row.
+    expect(paged.value.limit).toBe(context.dependencies.policy.maxPageSize);
+    expect(paged.value.offset).toBe(0);
   });
 
   it("treats a blank search as no search", async () => {

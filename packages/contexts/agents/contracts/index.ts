@@ -345,6 +345,8 @@ export function agentsContract(dependencies: AgentsDependencies): AgentsContract
       map(await useCases.pageAgents(dependencies, query), (page) => ({
         items: page.items.map(useCases.toAgentView),
         total: page.total,
+        offset: page.offset,
+        limit: page.limit,
       })),
     describeAgent: async (query) =>
       map(await useCases.describeAgent(dependencies, query), useCases.toAgentView),
@@ -429,6 +431,8 @@ export function agentsContract(dependencies: AgentsDependencies): AgentsContract
       map(await useCases.pageTemplates(dependencies, query), (page) => ({
         items: page.items.map(useCases.toTemplateView),
         total: page.total,
+        offset: page.offset,
+        limit: page.limit,
       })),
     describeTemplate: async (query) =>
       map(await useCases.describeTemplate(dependencies, query), useCases.toTemplateView),

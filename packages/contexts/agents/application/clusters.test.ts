@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   asAgentsIdentifier,
+  collisionToken,
   primaryAgentOf,
   type AgentBindingId,
   type AgentClusterId,
@@ -41,6 +42,34 @@ describe("creating a cluster", () => {
     const created = await createCluster(context.dependencies, { authorization, name: "Frontline" });
     if (!created.ok) throw new Error("unreachable");
     expect(created.value.cluster.slug).toMatch(/^frontline-/u);
+  });
+
+  // THE REFUSAL THE DISAMBIGUATION LEAVES BEHIND, and the one arrangement in
+  // this file that reached it was none. `resolveSlug` is ONE ROUND by design:
+  // "frontline" is taken, so it appends the millisecond token — and if THAT is
+  // taken too, which is what two clusters created in the same millisecond look
+  // like, the use case must refuse. Until this case existed the whole guard
+  // could be deleted at full green, and the failure it prevents is an opaque
+  // unique-index violation reaching an operator instead of a sentence.
+  it("REFUSES when even the disambiguated slug is taken, rather than leaving it to the index", async () => {
+    const { context, authorization } = newContext();
+    context.repository.seedCluster(testCluster(context.scope));
+    context.repository.seedCluster(
+      testCluster(context.scope, {
+        clusterId: asAgentsIdentifier<AgentClusterId>("cluster-2"),
+        slug: asAgentsIdentifier<Slug>(`frontline-${collisionToken(context.clock.now())}`),
+      }),
+    );
+    const created = await createCluster(context.dependencies, { authorization, name: "Frontline" });
+    expect(created.ok).toBe(false);
+    if (created.ok) throw new Error("unreachable");
+    expect(created.error.code).toBe("AGENTS_CLUSTER_ALREADY_EXISTS");
+    // THE CODE ALONE PROVES NOTHING HERE, and that is the whole trap: the store
+    // double simulates the unique index and raises the SAME error, so this case
+    // would pass just as happily with the guard deleted. What separates the two
+    // is WHERE the refusal happened — no insert was ever issued.
+    expect(context.repository.writes).toEqual([]);
+    expect(context.unitOfWork.transactions).toHaveLength(0);
   });
 
   it("ignores a same-slug cluster in ANOTHER environment", async () => {

@@ -81,6 +81,15 @@ describe("reading agents", () => {
     if (!paged.ok) throw new Error("unreachable");
     expect(paged.value.items).toHaveLength(1);
     expect(paged.value.total).toBe(1);
+    // The clamp this case is NAMED for, asserted rather than assumed. Nothing
+    // below the use case caps a page — the in-memory double slices by whatever
+    // limit it is handed and a Postgres adapter passes it to `take:` — so with
+    // one seeded agent the item count is 1 whether the clamp fired or not, and
+    // deleting `Math.min(..., policy.maxPageSize)` left this green. The
+    // effective window is the only place the rule is observable.
+    expect(paged.value.limit).toBe(context.dependencies.policy.maxPageSize);
+    // And the offset floor beside it: -4 is not a page position.
+    expect(paged.value.offset).toBe(0);
   });
 
   it("narrows by status, using the surface's own vocabulary", async () => {

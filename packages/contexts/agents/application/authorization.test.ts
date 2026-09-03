@@ -2,7 +2,7 @@ import { asIdentifier, environmentScope, type EnvironmentId, type OrganizationId
 import { isEnvironmentOperatorAuthorization, requireAuthorization } from "@platos/context-tenancy";
 import { describe, expect, it } from "vitest";
 
-import { projectOf, verifyOperator, verifyOperatorGrant } from "./authorization.js";
+import { verifyOperator, verifyOperatorGrant } from "./authorization.js";
 import { buildAgentsTestContext, testEnvironmentScope } from "./testing/fixtures.js";
 import { otherEnvironment } from "./testing/in-memory-peers.js";
 
@@ -104,15 +104,6 @@ describe("scope confirmation", () => {
     const granted = verifyOperatorGrant(context.dependencies, {}, context.scope);
     if (granted.ok) throw new Error("unreachable");
     expect(granted.error.code).not.toBe("AGENTS_SCOPE_MISMATCH");
-  });
-});
-
-describe("the project comes from the grant", () => {
-  it("reads the project off the grant's own re-derived scope", () => {
-    const context = buildAgentsTestContext();
-    const granted = verifyOperator(context.dependencies, context.tenancy.grant());
-    if (!granted.ok) throw new Error("unreachable");
-    expect(projectOf(granted.value)).toBe(context.scope.projectId);
   });
 });
 

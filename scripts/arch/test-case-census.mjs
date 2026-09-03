@@ -142,6 +142,42 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `releaseAll` that records the call and frees nothing leaves every one of them
  * green — reported as a finding, not fixed here.
  *
+ * BLOCKER-CLOSURE DELTA (2026-09-04) — agents 517 -> 515 (-4 +2), 1517 -> 1515.
+ * The file count is UNCHANGED at 25. This row goes DOWN, which is the movement
+ * this census exists to make a reviewer look at, so the arithmetic is written
+ * out rather than summarised: 517 - 3 - 1 + 2 = 515.
+ *
+ *   -3  `domain/agent.test.ts`, the whole "slug uniqueness is scoped to the
+ *       project" block, deleted WITH the function it tested.
+ *       `domain/agent.ts::slugIsTaken` was a second implementation of a rule the
+ *       use case already applies, and an unwireable one: it reads `Agent[]`
+ *       filtered by project, and the only caller — `create-agent.ts` — holds
+ *       `readonly string[]` from `listProjectSlugs(projectId)`, a read the
+ *       repository port deliberately shapes that way. Its `excluding` parameter
+ *       had no possible caller either: nothing in this context renames a slug.
+ *       The rule keeps exactly one home, in the use case, over the data it has.
+ *   -1  `application/authorization.test.ts`, "reads the project off the grant's
+ *       own re-derived scope", deleted WITH `authorization.ts::projectOf` — a
+ *       one-line duplicate of `grant.scope.projectId`, which `create-agent.ts`
+ *       reads directly. Nothing else in the tree called it.
+ *   +2  the two "REFUSES when even the disambiguated slug is taken" cases, one
+ *       in `application/clusters.test.ts` and one in
+ *       `application/agent-write.test.ts`. `resolveSlug` disambiguates ONCE by
+ *       design, and both use cases carry a guard for the second collision so an
+ *       operator gets a sentence rather than a unique-index violation. Neither
+ *       guard had a case, and the trap is that the obvious one is VACUOUS: the
+ *       in-memory stores simulate the index and raise the SAME error code, so a
+ *       case asserting only the code passes with the guard deleted. Both assert
+ *       the WRITE LOG is empty, which is the only thing that separates
+ *       "refused before the write" from "refused by the store".
+ *
+ * `domain/cluster.ts::clusterSlugIsTaken` was the third of these unwired guards
+ * and is the one that was WIRED rather than deleted: `clusters.ts` holds the
+ * full `AgentCluster[]`, so the predicate fits its call site exactly, and it
+ * restores the environment comparison the inline `taken.includes(slug)` had
+ * dropped. Its own cases are unchanged, which is why they are not in the
+ * arithmetic above.
+ *
  * No other package moved. Any further drift is a finding to report, not a number
  * to force.
  */
@@ -158,7 +194,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
-  "packages/contexts/agents": { files: 25, cases: 517 },
+  "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
@@ -185,7 +221,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1517;
+export const EXPECTED_RUNTIME_TOTAL = 1515;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
