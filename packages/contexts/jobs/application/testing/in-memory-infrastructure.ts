@@ -18,6 +18,7 @@
 import {
   err,
   ok,
+  type DomainError,
   type DurableRuntime,
   type JobHandle,
   type JobId as RuntimeJobId,
@@ -123,11 +124,28 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
 export class ScriptedJobHandlerRuntime implements JobHandlerRuntime {
   private readonly outcomes: HandlerOutcome[] = [];
   private syntaxErrors: (string | null)[] = [];
+  private runFailure: DomainError | null = null;
   readonly invocations: HandlerInvocation[] = [];
 
   /** Queue the outcome of the next `run`. */
   willReturn(outcome: HandlerOutcome): this {
     this.outcomes.push(outcome);
+    return this;
+  }
+
+  /**
+   * Make the next `run` fail as a PORT, not as a handler.
+   *
+   * The distinction is the whole point of this injector. Every member of
+   * `HandlerOutcome` is a handler that ran and lost, and each maps to one of the
+   * eleven inherited execution codes. `Result`'s error half is the other case —
+   * "could not run this at all", the sandbox or the store — and it carries
+   * whatever code that adapter mints, which the execution union does NOT contain.
+   * `execute-job.ts::settle` must refuse to cache it; without an injector here
+   * nothing could put such an error in front of that guard.
+   */
+  failNextRun(error: DomainError): this {
+    this.runFailure = error;
     return this;
   }
 
@@ -139,6 +157,11 @@ export class ScriptedJobHandlerRuntime implements JobHandlerRuntime {
 
   async run(invocation: HandlerInvocation): Promise<Result<HandlerOutcome>> {
     this.invocations.push(invocation);
+    if (this.runFailure !== null) {
+      const failure = this.runFailure;
+      this.runFailure = null;
+      return err(failure);
+    }
     const next = this.outcomes.shift();
     return ok(next ?? { kind: "completed", value: null });
   }

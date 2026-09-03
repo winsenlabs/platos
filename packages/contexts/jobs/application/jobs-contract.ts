@@ -37,7 +37,7 @@ import { createJobsErasureTarget } from "./jobs-erasure-target.js";
 import { describeApproval, listApprovals, markApprovalConsumed } from "./read-approvals.js";
 import { describeJob, describeJobByKey, listJobs, readJobSource } from "./read-jobs.js";
 import { registerJob } from "./register-job.js";
-import { mcpApprovalTimeout, requestApproval } from "./request-approval.js";
+import { genericApprovalTimeout, mcpApprovalTimeout, requestApproval } from "./request-approval.js";
 import { resolveApprovalDecision } from "./resolve-approval.js";
 import { sweepAllScopes, sweepExpiredApprovals } from "./sweep-expired-approvals.js";
 import { toApprovalView, toJobView } from "./views.js";
@@ -77,6 +77,32 @@ async function execute(
 }
 
 /**
+ * THE ONE DISCRIMINATOR FOR "IS THIS THE MCP TOOL-CALL PATH?".
+ *
+ * A tool name — carried either on `deduplicateOn` or on its own — is what makes a
+ * request the MCP tool-call path. `source` is deliberately NOT consulted:
+ * `domain/approval-status.ts` says the source column is free-form and its list is
+ * the KNOWN set rather than a closed one, so branching on it would send every
+ * unrecognised source down whichever side the `else` happened to be.
+ *
+ * It is ONE function because two call sites read it — the action label and the
+ * timeout clamp — and they must not be able to disagree about which path a
+ * request is on. They did disagree before: the label discriminated and the
+ * timeout did not, so a GENERIC approval carrying no timeout was given the MCP
+ * path's hour instead of five minutes, and a generic request for five seconds was
+ * clamped UP to the MCP path's sixty-second floor. Both are silent: nothing
+ * refuses, a human simply gets a different window than the contract promises.
+ *
+ * A blank or whitespace-only tool name is NOT a tool name, which is why the
+ * trimming happens here rather than at each caller.
+ */
+function mcpToolNameFor(request: RequestApprovalCommandView): string | null {
+  const toolName = request.deduplicateOn?.toolName ?? request.toolName ?? null;
+  if (toolName === null || toolName.trim() === "") return null;
+  return toolName;
+}
+
+/**
  * The label a human reads in the approval queue.
  *
  * A caller that says what is being approved is taken at its word. A caller that
@@ -91,8 +117,8 @@ async function execute(
 function approvalActionFor(request: RequestApprovalCommandView): Result<string> {
   const supplied = (request.action ?? "").trim();
   if (supplied !== "") return ok(supplied);
-  const toolName = request.deduplicateOn?.toolName ?? request.toolName ?? null;
-  if (toolName === null || toolName.trim() === "") {
+  const toolName = mcpToolNameFor(request);
+  if (toolName === null) {
     return err(
       invalidRequest("an approval needs an action, or a tool name to derive the MCP label from", [
         { field: "action", code: "REQUIRED", message: "action or toolName must be supplied" },
@@ -106,6 +132,12 @@ function approvalActionFor(request: RequestApprovalCommandView): Result<string> 
  * Build the domain request, computing the dedupe digest only when the caller
  * asked for one. The digest subject is a wire format (`approval-request.ts`), so
  * it is built by the domain rather than assembled here.
+ *
+ * THE TIMEOUT CLAMP IS CHOSEN BY `mcpToolNameFor`, the same discriminator the
+ * action label uses. `request-approval.ts` exposes the two clamps as named
+ * functions precisely "so a transport does not re-derive it and pick up the MCP
+ * path's different floor and default by mistake"; this binder is the transport
+ * for every caller of the contract, so it is the one place that choice is made.
  */
 function approvalRequestFrom(
   dependencies: JobsDependencies,
@@ -139,7 +171,10 @@ function approvalRequestFrom(
             dedupe.toolName,
             dedupe.arguments,
           ),
-    timeoutSeconds: mcpApprovalTimeout(request.timeoutSeconds),
+    timeoutSeconds:
+      mcpToolNameFor(request) === null
+        ? genericApprovalTimeout(request.timeoutSeconds)
+        : mcpApprovalTimeout(request.timeoutSeconds),
   };
 }
 

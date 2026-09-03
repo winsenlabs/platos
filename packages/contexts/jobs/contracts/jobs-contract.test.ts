@@ -373,3 +373,75 @@ describe("createJobsContract", () => {
     expect(contract.erasureTarget().targetName).toBe("jobs");
   });
 });
+
+// THE BINDER APPLIED THE MCP CLAMP TO EVERY PATH. `genericApprovalTimeout` had
+// zero callers while `approvalRequestFrom` hardcoded `mcpApprovalTimeout` — and
+// the very function that decides the MCP path for the ACTION label sat forty
+// lines above it, unread by the timeout. `request-approval.ts` says the two
+// clamps are named functions "so a transport does not re-derive it and pick up
+// the MCP path's different floor and default by mistake"; this binder is that
+// transport, and it made exactly that mistake.
+//
+// The consequence is silent in both directions and neither is a refusal:
+//
+//   generic, no timeout  -> 3600 s instead of 300 s. A decision the contract
+//                           says expires in five minutes stays answerable, and
+//                           the run parked on it stays parked, for an hour.
+//   generic, 5 s asked   -> clamped UP to 60 s by the MCP floor. A caller that
+//                           asked for a five-second window got a minute.
+//
+// Both timeout paths are pinned below THROUGH THE PUBLISHED BINDER rather than
+// against the clamp functions, which already had unit tests and were never the
+// thing that was wrong. `timeoutSeconds` is on `ApprovalView`, so the assertion
+// reads the number a caller actually receives.
+describe("createJobsContract — which approval timeout clamp each path gets", () => {
+  let context: JobsTestContext;
+  let contract: JobsContract;
+
+  beforeEach(() => {
+    context = buildJobsTestContext();
+    contract = createJobsContract(context.dependencies);
+  });
+
+  async function open(request: Record<string, unknown>): Promise<number> {
+    const opened = await contract.requestApproval({
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      source: "request_approval",
+      action: "Delete everything",
+      ...request,
+    } as Parameters<JobsContract["requestApproval"]>[0]);
+    if (!opened.ok) throw new Error("unreachable");
+    return opened.value.approval.timeoutSeconds;
+  }
+
+  it("gives a GENERIC approval the 300-second default, not the MCP hour", async () => {
+    expect(await open({})).toBe(300);
+  });
+
+  it("honours a GENERIC approval's five seconds instead of raising it to the MCP floor", async () => {
+    expect(await open({ timeoutSeconds: 5 })).toBe(5);
+  });
+
+  it("gives an MCP tool call the 3600-second default", async () => {
+    expect(await open({ deduplicateOn: { toolName: "fs.delete", arguments: { path: "/tmp" } } })).toBe(3600);
+  });
+
+  it("raises an MCP tool call's five seconds to the 60-second floor", async () => {
+    expect(
+      await open({ deduplicateOn: { toolName: "fs.delete", arguments: { path: "/tmp" } }, timeoutSeconds: 5 }),
+    ).toBe(60);
+  });
+
+  // The discriminator is the SAME one `approvalActionFor` reads, which accepts a
+  // bare `toolName` as well as `deduplicateOn.toolName`. Pinning only the dedupe
+  // shape would let the two drift apart again.
+  it("treats a bare toolName as the MCP path too", async () => {
+    expect(await open({ source: "mcp_tool_call", toolName: "files.delete" })).toBe(3600);
+  });
+
+  // And a blank one is not a tool name, so it does NOT buy the MCP window.
+  it("does not let a whitespace toolName buy the MCP hour", async () => {
+    expect(await open({ toolName: "   " })).toBe(300);
+  });
+});

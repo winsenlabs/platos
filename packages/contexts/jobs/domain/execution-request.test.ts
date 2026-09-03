@@ -1,9 +1,28 @@
 import { describe, expect, it } from "vitest";
 
 import { admitExecutionRequest, digestSubject, IDENTIFIER_PATTERN } from "./execution-request.js";
-import { stableJson } from "./payload.js";
+import { PAYLOAD_LIMITS, stableJson } from "./payload.js";
 
 const NO_SECRETS: readonly string[] = [];
+
+/**
+ * A payload that PASSES `isAdmissibleJson` and FAILS the byte cap.
+ *
+ * `{ blob: "x".repeat(70_000) }` — the fixture the case below it uses — does NOT
+ * separate the two rules: `isAdmissibleJson` refuses it on `maxStringLength`
+ * (8192) long before `withinSizeCap` is consulted, so that case stays green with
+ * the cap's call site deleted. This shape sits inside every other limit — 100
+ * entries at 8192 characters each, one level deep, no sensitive key — and
+ * serialises to roughly 819 KB, so the 64 KB cap is the only rule that can
+ * refuse it.
+ */
+function oversizedButAdmissible(): Record<string, string> {
+  const value: Record<string, string> = {};
+  for (let index = 0; index < PAYLOAD_LIMITS.maxCollectionItems; index += 1) {
+    value[`k${String(index).padStart(3, "0")}`] = "x".repeat(PAYLOAD_LIMITS.maxStringLength);
+  }
+  return value;
+}
 
 function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -136,6 +155,31 @@ describe("payload admission", () => {
 
   it("REFUSES an oversized payload", () => {
     expect(admitExecutionRequest(body({ payload: { blob: "x".repeat(70_000) } }), NO_SECRETS).ok).toBe(false);
+  });
+
+  // THE 64 KB CAP WAS UNFALSIFIABLE HERE. The case above is the only oversize
+  // fixture the suite had, and `isAdmissibleJson` refuses it first — so deleting
+  // `withinSizeCap` from this admission gate left every test green. The cap is
+  // load-bearing and reachable: an admissible 819 KB body is persisted verbatim
+  // into a seven-day idempotency record and replayed from it. This case is the
+  // one that can tell the two rules apart, and it asserts the CAP'S OWN message
+  // so a refusal arriving from the admissibility branch would not satisfy it.
+  it("REFUSES a payload that is ADMISSIBLE but exceeds the BYTE CAP", () => {
+    const admitted = admitExecutionRequest(body({ payload: oversizedButAdmissible() }), NO_SECRETS);
+    expect(admitted.ok).toBe(false);
+    if (admitted.ok) throw new Error("unreachable");
+    expect(admitted.error.code).toBe("INVALID_REQUEST");
+    expect(admitted.error.message).toBe(`payload exceeds ${PAYLOAD_LIMITS.maxJsonBytes} bytes`);
+  });
+
+  it("ADMITS the same shape once it is inside the cap, so the cap is what refused it", () => {
+    // Same keys, same depth, same key names — one thousandth of the bytes. If
+    // this were refused too, the case above would be proving the wrong rule.
+    const small: Record<string, string> = {};
+    for (let index = 0; index < PAYLOAD_LIMITS.maxCollectionItems; index += 1) {
+      small[`k${String(index).padStart(3, "0")}`] = "x";
+    }
+    expect(admitExecutionRequest(body({ payload: small }), NO_SECRETS).ok).toBe(true);
   });
 });
 

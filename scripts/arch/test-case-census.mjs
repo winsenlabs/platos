@@ -109,7 +109,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   `jobs` was pinned at 0/0 as an undeclared context, so this is the first
  *   non-zero pin for it rather than a movement of an existing one.
  *
- *   jobs 350 -> 354 (+4), 1067 -> 1071 total, file count UNCHANGED at 16. The
+ *   jobs 350 -> 354 (+4), 1350 -> 1354 total, file count UNCHANGED at 16. The
  *   2026-09-03 independent verification of the jobs branch found two surviving
  *   mutants, and these four cases are exactly the ones that kill them. Both were
  *   reproduced as controls before the cases were written, and each was watched
@@ -154,6 +154,32 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   These are added cases in existing files, which is why `files` does not move
  *   — precisely the drift a file-count pin cannot see and the case pin can.
  *
+ *   jobs 367 -> 378 (+11), 1367 -> 1378 total, file count STILL UNCHANGED at 16.
+ *   The 2026-09-03 independent RE-CHECK of the rebased branch found three
+ *   substantive survivors and these eleven cases kill them. Each was reproduced
+ *   as a control first — the mutation applied, the suite watched go red, the
+ *   mutation reverted, the suite watched go green:
+ *
+ *     +6 in `contracts/jobs-contract.test.ts` (24 -> 30). The binder applied the
+ *     MCP timeout clamp to EVERY path: `genericApprovalTimeout` had zero callers
+ *     while `approvalRequestFrom` hardcoded `mcpApprovalTimeout`, so a generic
+ *     approval with no timeout got 3600 s instead of 300 s and a generic request
+ *     for 5 s was clamped UP to 60 s. Both timeout paths are now pinned THROUGH
+ *     the published binder, in both directions: hardcoding either clamp turns
+ *     three of the six red.
+ *
+ *     +3 in `application/execute-job.test.ts` (30 -> 33). Two for `settle`'s
+ *     fail-closed error-code filter, which nothing could reach — the only test
+ *     that named a non-execution failure injected it into `findJob`, which fails
+ *     at stage 1, before a reservation exists. One for `classify`'s 64 KB cap,
+ *     whose only oversize fixture was a single 70,000-character string that
+ *     `isAdmissibleJson` refuses first.
+ *
+ *     +2 in `domain/execution-request.test.ts` (29 -> 31). The same 64 KB cap at
+ *     the OTHER wired site, `admitExecutionRequest`, plus the control that the
+ *     same shape inside the cap is admitted — so the refusal is proved to come
+ *     from the cap rather than from any other limit.
+ *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
  */
@@ -178,7 +204,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
-  "packages/contexts/jobs": { files: 16, cases: 367 },
+  "packages/contexts/jobs": { files: 16, cases: 378 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
@@ -197,7 +223,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1367;
+export const EXPECTED_RUNTIME_TOTAL = 1378;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

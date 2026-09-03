@@ -1,7 +1,7 @@
 import { asIdentifier } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import type { JobId } from "../domain/index.js";
+import { PAYLOAD_LIMITS, repositoryUnavailable, type JobId } from "../domain/index.js";
 import { executeJob } from "./execute-job.js";
 import {
   aJob,
@@ -17,6 +17,25 @@ const OTHER_SCOPE = testEnvironmentScope("env-2");
 
 async function seed(context: JobsTestContext, overrides = {}): Promise<void> {
   await context.jobs.insertJob(SCOPE, aJob(overrides), { transactionId: asIdentifier("seed") });
+}
+
+/**
+ * A payload that PASSES `isAdmissibleJson` and FAILS the byte cap.
+ *
+ * The distinction is what makes the cap falsifiable at all. Every oversize
+ * fixture in this suite before now was one enormous string, which
+ * `isAdmissibleJson` refuses on `maxStringLength` long before the cap is
+ * consulted — so deleting the cap's call site changed nothing anyone could
+ * observe. This shape stays inside every OTHER limit (100 entries, 8192 chars
+ * each, one level deep, no sensitive key) and clears 64 KB by an order of
+ * magnitude, so the cap is the ONLY thing that can refuse it.
+ */
+function oversizedButAdmissible(): Record<string, string> {
+  const value: Record<string, string> = {};
+  for (let index = 0; index < PAYLOAD_LIMITS.maxCollectionItems; index += 1) {
+    value[`k${String(index).padStart(3, "0")}`] = "x".repeat(PAYLOAD_LIMITS.maxStringLength);
+  }
+  return value;
 }
 
 describe("executeJob — stage 1, resolving the job", () => {
@@ -348,5 +367,59 @@ describe("executeJob — stage 5, running the handler", () => {
     expect(
       context.idempotency.peek({ environmentId: SCOPE.environmentId, requestId: request.requestId }),
     ).toBeNull();
+  });
+
+  // THE CAP WAS UNFALSIFIABLE AT THIS CALL SITE. The only oversize result the
+  // suite offered was one 70,000-character string, which `isAdmissibleJson`
+  // refuses on `maxStringLength` — so `classify`'s `withinSizeCap(value)` could be
+  // deleted outright and every test stayed green. Note the asymmetry the
+  // verification found: the admissibility half of the same pair WAS killed, so
+  // "the result is re-admitted against the SAME rules as the payload" was only
+  // half true in test terms. A handler's result is persisted into a seven-day
+  // idempotency record and replayed from it, so an 819 KB result the cap does not
+  // stop is 819 KB in the reservation store for a week.
+  it("REFUSES a result that is admissible but exceeds the BYTE CAP", async () => {
+    context.handlers.willReturn({ kind: "completed", value: oversizedButAdmissible() });
+    const outcome = await executeJob(context.dependencies, { scope: SCOPE, request: anExecutionRequest() });
+    if (outcome.ok) throw new Error("unreachable");
+    expect(outcome.error.code).toBe("JOB_RESULT_REJECTED");
+    expect(outcome.error.details).toEqual({ reason: "result exceeds the size cap" });
+  });
+});
+
+// THE FAIL-CLOSED FILTER IN `settle` HAD NO TEST THAT COULD REACH IT. Its
+// docblock spends a paragraph on the property — a repository or sandbox-port
+// error must leave the `running` reservation to expire "rather than being handed
+// a cached failure whose code it was never promised" — and deleting the filter
+// left all 367 tests green. The one test that named a non-execution failure
+// injected it into `findJob`, which fails at stage 1, BEFORE any reservation
+// exists; nothing had ever driven such an error past stage 4. `failNextRun` is
+// the injector that can: it fails the PORT rather than the handler, which is the
+// only way an error outside the eleven inherited codes reaches `settle`.
+describe("executeJob — settling a reservation after a NON-execution failure", () => {
+  let context: JobsTestContext;
+  const request = anExecutionRequest();
+  const key = { environmentId: SCOPE.environmentId, requestId: request.requestId };
+
+  beforeEach(async () => {
+    context = buildJobsTestContext();
+    await seed(context);
+    context.handlers.failNextRun(repositoryUnavailable("sandbox worker could not start"));
+  });
+
+  it("leaves the reservation RUNNING rather than caching a foreign code", async () => {
+    const outcome = await executeJob(context.dependencies, { scope: SCOPE, request });
+    if (outcome.ok) throw new Error("unreachable");
+    expect(outcome.error.code).toBe("JOBS_REPOSITORY_UNAVAILABLE");
+    // Reserved at stage 4, so the record exists — but it must still say `running`.
+    expect(context.idempotency.peek(key)).toEqual({ state: "running", digest: expect.anything() });
+  });
+
+  it("tells a retry IDEMPOTENCY_IN_PROGRESS, not a replayed foreign failure", async () => {
+    await executeJob(context.dependencies, { scope: SCOPE, request });
+    const retry = await executeJob(context.dependencies, { scope: SCOPE, request });
+    if (retry.ok) throw new Error("unreachable");
+    expect(retry.error.code).toBe("IDEMPOTENCY_IN_PROGRESS");
+    expect(retry.error.details).not.toEqual({ replayed: true });
   });
 });
