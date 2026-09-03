@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "27d19c7d0d7215b9929b689e126783844aa5617df16112fa37d5758fcf0ffd61",
+  "evidenceSha256": "df5e0e6bbe52bb358fc5a9a6bf04f34618e1366d53648f75ddc813cc167cf653",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5df6c912b4026e515510850cd110852f786f9ad8b8481e8278d293f32a89084d",
+    "aggregateSha256": "00e2760c20ac8a3168822581063a1bedb44724fa0cd743aded82349162cd6fca",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -15029,7 +15029,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "999c6430476b6a9de435737b2fd0ab06e360a38d7350bb5e89b4178817c644f8"
+        "sha256": "478c8c7626cd55b8af62a5a83c26f17b5e88f712b89d9d116649c4fd1e39704f"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -49791,7 +49791,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 267
+              "line": 276
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50059,7 +50059,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "f6118e145ce7fb6c73aa72c86d5ddff7b64071a0d29616741d56030c16f903a3",
+      "evidenceSha256": "61b5b1105fc0ade69b79c3bc03bcb13fbeb38c266c81dc42ff774cc4a8a1792c",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
