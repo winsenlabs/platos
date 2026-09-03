@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "43160763c6ae4fb30c5f2abb45c8f011a2b03be65881be2597ff3bef710a0424",
+  "evidenceSha256": "e57de75a26c777401dd3ca6f4099236610c1a97e35270cf192e1161c279539d3",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ee3d5550618df5fae963d013fad84001c8d77bddcdede129e40f1a90ccaff296",
+    "aggregateSha256": "9fc6633b2110294f20918dde10c04972071bc12859fe409eae2a42522e395a8a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -14873,7 +14873,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "e2b146398c146694b257c1f2ed160ced2babca4df7c181e22f85a63fded49bc6"
+        "sha256": "56c3bf027047f8bb3c8aa02bea70f9abca83635ea8463d4a5bc208df87646169"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14925,7 +14925,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "3393d65c13db2ef771cac4378cc44d161924f40d5a95a14a8575e141d19f4394"
+        "sha256": "7d0fdca034180dd817578819bea5922fc1ac1e0338cc40c4216089cf365e19a8"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
