@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
+  "evidenceSha256": "f1a4a355234204616fd1e73ba7801472f1a6861b2bc975d90b14f0656852c5f1",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 165,
+        "sha256": "d564f9d499572005b93a30317bb8d60ec26f15e8ab4aed25f7b3a5773de6bac0"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 165,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
+    "aggregateSha256": "8f2ccf076a92d868e773cc7ea399f43cbac16b27f64ab61e2ea05784a5cac8cd",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "2a2372d20607a52049f2ec82e6ce0693ea863fa176425313ae3b4bccf29c339e"
+        "sha256": "ee05a97224220f7c5facf0865e6ddb3bd74102d03574471c063e659b5ad76af0"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11204,24 +11204,200 @@
         "sha256": "d2505dc38102afabad57fe02fe98c8b4f8ba6b62c0028a0a3b57a9bdbec3fcd2"
       },
       {
+        "path": "packages/contexts/eventing/application/dependencies.ts",
+        "sha256": "2254a9f4f03b4a109cf3186766ba25a311cf218f9b68388e534268522506d5b5"
+      },
+      {
+        "path": "packages/contexts/eventing/application/eventing-contract.ts",
+        "sha256": "98b18671048f7b3a8646aa4f49bbd251eee472d0a80500847155a9ff7306a14e"
+      },
+      {
+        "path": "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+        "sha256": "5ce01c7a9368da7d1137b06b9acbd0457fac3b44581d0be4f486a0dbf10bcd6e"
+      },
+      {
+        "path": "packages/contexts/eventing/application/eventing-erasure-target.ts",
+        "sha256": "7c91a109ff4050d5213e119fa03d200c8adc30013edf82e3ef260344af959f50"
+      },
+      {
         "path": "packages/contexts/eventing/application/index.ts",
-        "sha256": "42eb5194b74e2bae1617cca43af79b125655ea6dc6792c840708da4ea36c4718"
+        "sha256": "d9fca2d8f0b2233144f2256421c0832e82e399693f26827a122585ac9d7b1f8b"
+      },
+      {
+        "path": "packages/contexts/eventing/application/ports/destination-screen.ts",
+        "sha256": "00fcc04588e92e96dfe639e261884da0b91845b5ff3c9edf2358d63a542078c6"
       },
       {
         "path": "packages/contexts/eventing/application/ports/index.ts",
-        "sha256": "ac5195db965145ad43d0debb06cdee1ca7ce0d0fc8f827afa52847e32c44dfd1"
+        "sha256": "e61478f7d5d5dd27b4d4a6286742f817890613921e574167bb2232ab996bf868"
+      },
+      {
+        "path": "packages/contexts/eventing/application/ports/notification-queue.ts",
+        "sha256": "34743feed1a479a4255d968ca8f37e574a995c8efdf9af7c6b0121ec0eba2e95"
+      },
+      {
+        "path": "packages/contexts/eventing/application/ports/notification-rule-repository.ts",
+        "sha256": "a3a84186f26948308fe76adf001b57485f2ec0e1a3fb4427b097af7d1f5712ac"
+      },
+      {
+        "path": "packages/contexts/eventing/application/read-notification-rules.ts",
+        "sha256": "8b4341959f7a0c8dc01eb9a3eeb726322cb927ee4d6f925584831d36765364d5"
+      },
+      {
+        "path": "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+        "sha256": "75b5101e50fba5881c680fd88ade3389403bbedefde66e3fb3f324108f89958e"
+      },
+      {
+        "path": "packages/contexts/eventing/application/record-delivery-failure.ts",
+        "sha256": "f2f701be81429d7b9a2e9ec2876ed2127ba9ed6b16e44cc9fc3602d14b483551"
+      },
+      {
+        "path": "packages/contexts/eventing/application/register-notification-rule.test.ts",
+        "sha256": "dca688df0c1f942175b48155821acca3996ed2fa718b3e4ef5e569115072e463"
+      },
+      {
+        "path": "packages/contexts/eventing/application/register-notification-rule.ts",
+        "sha256": "7ad6051fb75935eaf80e8f35287828e7a1c5998c3d8ab71acaff42fa0f212174"
+      },
+      {
+        "path": "packages/contexts/eventing/application/route-observed-event.test.ts",
+        "sha256": "b1e9ed1e3b665e83ecf20d385c643c082cb4bbf38870cb98ab2c84075d3c31da"
+      },
+      {
+        "path": "packages/contexts/eventing/application/route-observed-event.ts",
+        "sha256": "cefb772114a4f8c3fc861d9896f040ad1b8fbc0db60bae82a30dfc4750d93d34"
+      },
+      {
+        "path": "packages/contexts/eventing/application/screen-destination.ts",
+        "sha256": "50826c89d8e237c53e271e75275ebc7925fca91e1b286038e31dc3158d05193e"
+      },
+      {
+        "path": "packages/contexts/eventing/application/test-notification-rule.ts",
+        "sha256": "2a9e4531451359ce2278ef52388cc244b752f82a1fc336578effbd2fc3675531"
+      },
+      {
+        "path": "packages/contexts/eventing/application/testing/fixtures.ts",
+        "sha256": "3fa8fd679914fe02d097a18b060cd047f7b9fbc4004045ae03888584e72647f6"
+      },
+      {
+        "path": "packages/contexts/eventing/application/testing/in-memory-queue.ts",
+        "sha256": "8da063a8ab33dc98312f3f9c8b9b5d1848db283a4c703c39b77eb9e64fb5e87c"
+      },
+      {
+        "path": "packages/contexts/eventing/application/testing/in-memory-rule-repository.ts",
+        "sha256": "bf35b57e8dbde4c121465f909523026343ef104ffbd9ed2369bd4e63bdd904c7"
+      },
+      {
+        "path": "packages/contexts/eventing/application/testing/index.ts",
+        "sha256": "777520c8252a0b85a3939c924a71c9b0198d6c9b8a53c96dc1bc5ef4866ad59f"
+      },
+      {
+        "path": "packages/contexts/eventing/application/update-notification-rule.test.ts",
+        "sha256": "1f5438eb4cb55511072cf7c0abddccd7f6e3c5b2c3411a08757f1bcd183ecfe1"
+      },
+      {
+        "path": "packages/contexts/eventing/application/update-notification-rule.ts",
+        "sha256": "74798d7eaa7c4e060af34698d82e3e51cb2398ce38827e21e4bb12105a9d2272"
+      },
+      {
+        "path": "packages/contexts/eventing/application/views.ts",
+        "sha256": "c51394993c5c2f4acb2d67cf53b2218517af0533e236c1df6eae44033cece04a"
+      },
+      {
+        "path": "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+        "sha256": "03ad551de43ee07d29dddb9df07308ae21342e2334a844c83616529452142537"
       },
       {
         "path": "packages/contexts/eventing/contracts/index.ts",
-        "sha256": "69a070ae778a7ba8ef779c754bddcda6b58deebf32c65c2028fa6f90fc27db2e"
+        "sha256": "3037faa6b865bee993140376cfffac8985fca68661c34373f4aa2eacf4af91fb"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/coercions.ts",
+        "sha256": "cd7fbac7c6ec8e3990c1de66ccd687d3a44eefc8c18035dfc4a499c97877ce07"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/destination.test.ts",
+        "sha256": "df10ab04251b99848cc416f3cfcbe20287d1e00ed3884016855e8de646e483c6"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/destination.ts",
+        "sha256": "96f4675be9f403e6e6d026c614084e7291769e30d1c51591ae62f74e932dc612"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/errors.ts",
+        "sha256": "4ab68a422b2fcb4c86f481f3ea42b2c3116e065303b18aa09e529dd7cc954953"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/event-pattern.test.ts",
+        "sha256": "60a1dd8da392c0fa4bb029fbfee62adc360ffcdff621340bd51ebc30c7cdd04d"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/event-pattern.ts",
+        "sha256": "cf85031b4d3ab9feb6b6d7973c98b550fd22df7c15d1a47c93dda1370fd53d13"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/identifiers.ts",
+        "sha256": "3245b0c3cb518030972106b1e8eac3bbece08a021698b4f1b327e1a979da1819"
       },
       {
         "path": "packages/contexts/eventing/domain/index.ts",
-        "sha256": "c4ccfe963b55b5b24a6d6a7fd3b5905f77525f2bf61743cb408f2abd036e5942"
+        "sha256": "7f08b4136aede04a7c1418361cef4b53b4354642f16a45fff54e1da50e13c774"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/legacy-rows.test.ts",
+        "sha256": "279e64d6efd2ebe7f424e3401d1561cfd1a54e592c212041c6924f80873217f0"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/legacy-rows.ts",
+        "sha256": "672fe8a1954707903adab53fbd2c3afa60e544cee60991ccd9b2337887c78066"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/notification-request.test.ts",
+        "sha256": "c95bc59d8c8cf48d89f3b8c9c457aa0c7db177b992675baef240ed1c0f884e00"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/notification-request.ts",
+        "sha256": "b17975e3b9361b461c222288a36e4de983bca55e494b75f6b1875da480d28f01"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/notification-rule.test.ts",
+        "sha256": "badcb944bebd8bbf53ea3d313d205127760250af496d4e34d6023aaab1f7b41a"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/notification-rule.ts",
+        "sha256": "27684720abbe8736920de81490d03fb4f03e47ab91770f7e89afe8015fbf43c1"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/observed-event.test.ts",
+        "sha256": "03e5bd62b490211c517f72d9cf171480a0488d2b6faa09aea38c8c82e2e816f6"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/observed-event.ts",
+        "sha256": "2bce277076d83c63402e6ae5a6fb036319ffa3851c863c2e3a7d575887baff2a"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/retry-schedule.test.ts",
+        "sha256": "7f24fb1c243b90255ccbdee81ece9f2f4462aaa46535a08a4330973bdef3df00"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/retry-schedule.ts",
+        "sha256": "a17b2827ed3130fa26cbcfb9f9ace592c6957b1a4414d8c72dc0cea3a3fa3fdc"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/rule-filter.test.ts",
+        "sha256": "5a01b92b4ce8efe833603cdc594644d2f0ff08ea421faccee6b844ac946b8f6f"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/rule-filter.ts",
+        "sha256": "033aaaf5b5fa91c6b3f9e620d7c58c69f3d3167621fbad1e167670818f0d1c52"
+      },
+      {
+        "path": "packages/contexts/eventing/domain/rule-name.ts",
+        "sha256": "0e9e4f7cd1a51456c9756a07bc1636b0716db8842c521c6f8c73a1eb70be9516"
       },
       {
         "path": "packages/contexts/eventing/package.json",
-        "sha256": "fcb0fc39198315b62cf9a06518314c136a174776a7eec1532b0feb36b376f2b7"
+        "sha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d"
       },
       {
         "path": "packages/contexts/eventing/tsconfig.json",
@@ -14649,7 +14825,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "eb317b8e527be6a1984c79c84c6cc1bc36f2ada5f7deb5f2310c490d289871ec"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14681,7 +14857,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "3554ac1b6ee8e4b69e8ce72546230edb53688aeffcdb9a3822e51ae0c1897833"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14701,7 +14877,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "ec2a2f4651ba0bfeabd694c2a4ad60ea0b1f3941e63089c333f66ced6654a11a"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14717,11 +14893,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
+        "sha256": "7e06a0a23b4db6b495484e3425281418f47bf8436e2146cd0336b51b2538b227"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
+        "sha256": "de1b2953e419b5dd0adf3bd2a4a99ab59213bfc578cdc25aeb958d63cd4854ed"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14953,7 +15129,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
+        "sha256": "7c6a029ea96c89316d29e0615bdba5bb20f9a02c94276c67cd064210c46aa839"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15061,7 +15237,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f754056ca550348ee1b0d8f16a37828a5c7df867a4ba306307173d64dd69b770"
+        "sha256": "09e42228957c752782feee8372a14214687e7c164f210bf0991f6d1761d5d1df"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -16136,7 +16312,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 45
+      "testsFixtures": 46
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -18362,6 +18538,11 @@
               "line": 7
             },
             {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 90
+            },
+            {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
               "line": 271
@@ -19334,6 +19515,10 @@
               "packages/platos-embed/tests/embed.test.ts"
             ],
             [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/audit-licenses.test.mjs",
               "scripts/audit-licenses.test.mjs"
             ],
@@ -19638,6 +19823,7 @@
             "packages/contexts/secrets/domain/envelope.test.ts",
             "packages/platos-client/tests/generated-contracts.test.ts",
             "packages/platos-embed/tests/embed.test.ts",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/deploy-platos.test.mjs",
@@ -19712,7 +19898,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "1f6581f86ce3078d74c029b441c9f32da20088ab2b93aed37192236092118d54",
+      "evidenceSha256": "202d28d79ecb312ca77e0399a5bb0f8efa94cf02a53f2ca7d0b845fa8da2580a",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -20097,14 +20283,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/eventing/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/eventing/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -20207,14 +20385,6 @@
               "packages/contexts/cost-monitoring/contracts/index.ts"
             ],
             [
-              "packages/contexts/eventing/application/ports/index.ts",
-              "packages/contexts/eventing/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/eventing/contracts/index.ts",
-              "packages/contexts/eventing/contracts/index.ts"
-            ],
-            [
               "packages/contexts/governance/application/ports/index.ts",
               "packages/contexts/governance/application/ports/index.ts"
             ],
@@ -20283,8 +20453,6 @@
             "packages/contexts/conversations/contracts/index.ts",
             "packages/contexts/cost-monitoring/application/ports/index.ts",
             "packages/contexts/cost-monitoring/contracts/index.ts",
-            "packages/contexts/eventing/application/ports/index.ts",
-            "packages/contexts/eventing/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
             "packages/contexts/governance/contracts/index.ts",
             "packages/contexts/jobs/application/ports/index.ts",
@@ -20663,7 +20831,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "3a42da7939487eef5b73a2b85aeb2d89dab184af08cad947b1c612e118751be9",
+      "evidenceSha256": "faf26de4eff458fbaf662912ef8c759004bcc2466aa2c1e422ec7879a932647a",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -30590,6 +30758,11 @@
               "line": 9
             },
             {
+              "from": "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "kind": "reference",
+              "line": 48
+            },
+            {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
               "line": 92
@@ -30661,6 +30834,10 @@
               "internal-packages/run-engine/src/run-queue/tests/releaseConcurrency.test.ts"
             ],
             [
+              "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "packages/contexts/eventing/domain/legacy-rows.test.ts"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ]
@@ -30682,6 +30859,7 @@
             "internal-packages/run-engine/src/run-queue/tests/enqueueMessage.test.ts",
             "internal-packages/run-engine/src/run-queue/tests/nack.test.ts",
             "internal-packages/run-engine/src/run-queue/tests/releaseConcurrency.test.ts",
+            "packages/contexts/eventing/domain/legacy-rows.test.ts",
             "scripts/v1-ledger.test.mjs"
           ]
         }
@@ -30692,7 +30870,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a4aa8f3d1e397f6adba132a7979b6f9f23fd22c0009e1db1d117467c61b25dd7",
+      "evidenceSha256": "a2216d693731710e79e295e45dc9b7c66f252aeda5489acae84369c8025c9c8c",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -32357,7 +32535,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 681
             }
           ],
           "reversePaths": [
@@ -32382,7 +32560,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
+      "evidenceSha256": "0432273e6babc1bbc700069c6f6f7fe7cebb7b697dd949e8fa32ab2bafc66beb",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33691,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 664
+              "line": 680
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33916,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
+      "evidenceSha256": "820fb78be95d7b411575074e2440625433cfbd3b76c04ecf68e8ed1d99d12b0b",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -39773,6 +39951,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "kind": "reference",
+              "line": 49
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 103
@@ -39780,11 +39963,16 @@
           ],
           "reversePaths": [
             [
+              "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "packages/contexts/eventing/domain/legacy-rows.test.ts"
+            ],
+            [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/eventing/domain/legacy-rows.test.ts",
             "scripts/arch/sole-writer.test.mjs"
           ]
         }
@@ -39844,7 +40032,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "c37e7f611fc4ef6b3c87e40ec66e1f71bd3ed548fb485abe28df2330f41c8a7a",
+      "evidenceSha256": "734e058c6e3beb86a3c93eaca83d5962f8271114ff941ec713502d9f26922785",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -44460,7 +44648,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 541
             }
           ],
           "reversePaths": [
@@ -44539,7 +44727,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "49a45ce8ef88fd341f4e2591cc876e46bfaa8000c52b981a557929b33571bee7",
+      "evidenceSha256": "0c694bc86a616da5a77fa95831d14ce9e089a7d79f79b227cd90fa8dfc81a778",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -45243,26 +45431,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/eventing/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/eventing/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/eventing/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/eventing/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/eventing/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -45280,22 +45448,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/eventing/application/index.ts",
-              "packages/contexts/eventing/application/index.ts"
-            ],
-            [
-              "packages/contexts/eventing/application/ports/index.ts",
-              "packages/contexts/eventing/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/eventing/contracts/index.ts",
-              "packages/contexts/eventing/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/eventing/domain/index.ts",
-              "packages/contexts/eventing/domain/index.ts"
-            ],
-            [
               "packages/contexts/eventing/package.json",
               "packages/contexts/eventing/package.json"
             ],
@@ -45310,10 +45462,6 @@
           ],
           "roots": [
             "packages/contexts/eventing/README.md",
-            "packages/contexts/eventing/application/index.ts",
-            "packages/contexts/eventing/application/ports/index.ts",
-            "packages/contexts/eventing/contracts/index.ts",
-            "packages/contexts/eventing/domain/index.ts",
             "packages/contexts/eventing/package.json",
             "packages/contexts/eventing/tsconfig.json"
           ]
@@ -45351,6 +45499,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/eventing/package.json",
               "kind": "workspace-script",
@@ -45361,6 +45514,12 @@
               "from": "packages/contexts/eventing/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/eventing/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -45411,10 +45570,183 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/register-notification-rule.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/route-observed-event.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/update-notification-rule.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/destination.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/event-pattern.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/notification-request.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/notification-rule.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/observed-event.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/retry-schedule.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/rule-filter.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 265
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 546
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+              "packages/contexts/eventing/application/eventing-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+              "packages/contexts/eventing/application/record-delivery-failure.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/register-notification-rule.test.ts",
+              "packages/contexts/eventing/application/register-notification-rule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/route-observed-event.test.ts",
+              "packages/contexts/eventing/application/route-observed-event.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/update-notification-rule.test.ts",
+              "packages/contexts/eventing/application/update-notification-rule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+              "packages/contexts/eventing/contracts/eventing-contract.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/destination.test.ts",
+              "packages/contexts/eventing/domain/destination.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/event-pattern.test.ts",
+              "packages/contexts/eventing/domain/event-pattern.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/legacy-rows.test.ts",
+              "packages/contexts/eventing/domain/legacy-rows.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/notification-request.test.ts",
+              "packages/contexts/eventing/domain/notification-request.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/notification-rule.test.ts",
+              "packages/contexts/eventing/domain/notification-rule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/observed-event.test.ts",
+              "packages/contexts/eventing/domain/observed-event.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/retry-schedule.test.ts",
+              "packages/contexts/eventing/domain/retry-schedule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/rule-filter.test.ts",
+              "packages/contexts/eventing/domain/rule-filter.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/package.json",
+              "packages/contexts/eventing/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+            "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+            "packages/contexts/eventing/application/register-notification-rule.test.ts",
+            "packages/contexts/eventing/application/route-observed-event.test.ts",
+            "packages/contexts/eventing/application/update-notification-rule.test.ts",
+            "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+            "packages/contexts/eventing/domain/destination.test.ts",
+            "packages/contexts/eventing/domain/event-pattern.test.ts",
+            "packages/contexts/eventing/domain/legacy-rows.test.ts",
+            "packages/contexts/eventing/domain/notification-request.test.ts",
+            "packages/contexts/eventing/domain/notification-rule.test.ts",
+            "packages/contexts/eventing/domain/observed-event.test.ts",
+            "packages/contexts/eventing/domain/retry-schedule.test.ts",
+            "packages/contexts/eventing/domain/rule-filter.test.ts",
+            "packages/contexts/eventing/package.json",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/v1-ledger.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -45472,8 +45804,8 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "033eaa0e4604670daae51664f0916835a51d13873054f1091f35f1b3f2417831",
-      "manifestSha256": "fcb0fc39198315b62cf9a06518314c136a174776a7eec1532b0feb36b376f2b7",
+      "evidenceSha256": "3801a2dadc6ed81804039c8fb5cbcd48abd21a04615bf15549b9c5c15c0dbf6f",
+      "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
         "reachable": false,
@@ -47742,7 +48074,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 245
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48539,7 +48871,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d1582978c47b320c1f164535a7e6504c0eeabfa04aa5db5bb239f2f0b12218f9",
+      "evidenceSha256": "f05a94bfd4c0d3e0915fa4913d4fd0d9a0f9011a397085430fd93b79c4bef89d",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -51088,7 +51420,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 255
+              "line": 275
             }
           ],
           "reversePaths": [
@@ -51523,7 +51855,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f4caaf5adb015a941ee809ab050c112eae47ab70af5ade42d874dc06c1dc1d61",
+      "evidenceSha256": "f0e154131ac07054ccc9cf21ff455146537cffc1f43ea1d60e8366d8800efb56",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52313,7 +52645,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 243
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52786,7 +53118,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "254d18866f26a90a57b01d209558b0501871d3728dc8789b59513818466119ed",
+      "evidenceSha256": "f247e1bfb7db6ae230fbccbf31dbe1ab4af01b90f95c090ce9bbcd043c3061f3",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54021,10 +54353,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/eventing/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -54090,10 +54418,6 @@
               "packages/contexts/cost-monitoring/application/index.ts"
             ],
             [
-              "packages/contexts/eventing/application/index.ts",
-              "packages/contexts/eventing/application/index.ts"
-            ],
-            [
               "packages/contexts/governance/application/index.ts",
               "packages/contexts/governance/application/index.ts"
             ],
@@ -54140,7 +54464,6 @@
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/application/index.ts",
-            "packages/contexts/eventing/application/index.ts",
             "packages/contexts/governance/application/index.ts",
             "packages/contexts/jobs/application/index.ts",
             "packages/contexts/memory/application/index.ts",
@@ -54252,6 +54575,24 @@
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/eventing/application/dependencies.ts",
+              "from": "packages/contexts/eventing",
+              "line": 23,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/eventing/application/index.ts",
+              "from": "packages/contexts/eventing",
+              "line": 30,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/eventing/application/testing/fixtures.ts",
+              "from": "packages/contexts/eventing",
+              "line": 24,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/files/application/dependencies.ts",
               "from": "packages/contexts/files",
               "line": 22,
@@ -54298,6 +54639,18 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/index.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/files",
               "packages/contexts/files/application/dependencies.ts"
             ],
@@ -54324,6 +54677,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/eventing",
             "packages/contexts/files",
             "packages/contexts/providers"
           ]
@@ -54449,7 +54803,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 244
+              "line": 247
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55169,7 +55523,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1c694231aeca6e869afb5cbb7cb68bdd0b89685bb9c5bdcba0eb5356301e12",
+      "evidenceSha256": "6b0c6bb9f9c08c9b880f385041442231aa72b6747ea912c045f77ab1b6af055d",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55566,7 +55920,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 552,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55751,7 +56105,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
+      "evidenceSha256": "1bea15d5782c236e9f79851e3514c5507ffce61bc57d95202ce39c210794715f",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -58303,10 +58657,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/eventing/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -58380,10 +58730,6 @@
               "packages/contexts/cost-monitoring/domain/index.ts"
             ],
             [
-              "packages/contexts/eventing/domain/index.ts",
-              "packages/contexts/eventing/domain/index.ts"
-            ],
-            [
               "packages/contexts/governance/domain/index.ts",
               "packages/contexts/governance/domain/index.ts"
             ],
@@ -58432,7 +58778,6 @@
             "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/cost-monitoring/domain/index.ts",
-            "packages/contexts/eventing/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
             "packages/contexts/jobs/domain/index.ts",
             "packages/contexts/memory/domain/index.ts",
@@ -58559,6 +58904,174 @@
               "file": "apps/core-api/src/runtime/process-ports.ts",
               "from": "apps/core-api",
               "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/dependencies.ts",
+              "from": "packages/contexts/eventing",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/eventing-contract.ts",
+              "from": "packages/contexts/eventing",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/eventing-erasure-target.ts",
+              "from": "packages/contexts/eventing",
+              "line": 42,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/ports/destination-screen.ts",
+              "from": "packages/contexts/eventing",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/ports/notification-queue.ts",
+              "from": "packages/contexts/eventing",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/ports/notification-rule-repository.ts",
+              "from": "packages/contexts/eventing",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/read-notification-rules.ts",
+              "from": "packages/contexts/eventing",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/record-delivery-failure.ts",
+              "from": "packages/contexts/eventing",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/register-notification-rule.ts",
+              "from": "packages/contexts/eventing",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/register-notification-rule.ts",
+              "from": "packages/contexts/eventing",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/route-observed-event.ts",
+              "from": "packages/contexts/eventing",
+              "line": 44,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/screen-destination.ts",
+              "from": "packages/contexts/eventing",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/test-notification-rule.ts",
+              "from": "packages/contexts/eventing",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/testing/fixtures.ts",
+              "from": "packages/contexts/eventing",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/testing/in-memory-queue.ts",
+              "from": "packages/contexts/eventing",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/testing/in-memory-rule-repository.ts",
+              "from": "packages/contexts/eventing",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/application/update-notification-rule.ts",
+              "from": "packages/contexts/eventing",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/contracts/index.ts",
+              "from": "packages/contexts/eventing",
+              "line": 3,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/coercions.ts",
+              "from": "packages/contexts/eventing",
+              "line": 11,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/destination.ts",
+              "from": "packages/contexts/eventing",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/errors.ts",
+              "from": "packages/contexts/eventing",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/event-pattern.ts",
+              "from": "packages/contexts/eventing",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/identifiers.ts",
+              "from": "packages/contexts/eventing",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/notification-request.ts",
+              "from": "packages/contexts/eventing",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/notification-rule.ts",
+              "from": "packages/contexts/eventing",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/observed-event.ts",
+              "from": "packages/contexts/eventing",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/rule-filter.ts",
+              "from": "packages/contexts/eventing",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/eventing/domain/rule-name.ts",
+              "from": "packages/contexts/eventing",
+              "line": 13,
               "specifier": "@platos/kernel"
             },
             {
@@ -59716,7 +60229,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 432,
               "specifier": "@platos/kernel"
             }
           ],
@@ -59736,6 +60249,114 @@
             [
               "apps/core-api",
               "apps/core-api/src/runtime/process-ports.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/eventing-contract.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/eventing-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/ports/destination-screen.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/ports/notification-queue.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/ports/notification-rule-repository.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/read-notification-rules.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/record-delivery-failure.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/register-notification-rule.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/route-observed-event.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/screen-destination.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/test-notification-rule.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/testing/in-memory-queue.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/testing/in-memory-rule-repository.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/application/update-notification-rule.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/coercions.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/destination.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/event-pattern.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/notification-request.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/notification-rule.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/observed-event.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/rule-filter.ts"
+            ],
+            [
+              "packages/contexts/eventing",
+              "packages/contexts/eventing/domain/rule-name.ts"
             ],
             [
               "packages/contexts/files",
@@ -60360,6 +60981,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/eventing",
             "packages/contexts/files",
             "packages/contexts/identity-access",
             "packages/contexts/providers",
@@ -60373,6 +60995,51 @@
           "reasons": [
             {
               "from": "apps/core-api/src/runtime/process-ports.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/route-observed-event.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/application/update-notification-rule.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/eventing/domain/notification-request.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/notification-rule.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/eventing/domain/observed-event.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/eventing/domain/rule-filter.test.ts",
               "kind": "reference",
               "line": 1
             },
@@ -60644,7 +61311,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 227
+              "line": 228
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60671,6 +61338,42 @@
             [
               "apps/core-api/src/runtime/process-ports.test.ts",
               "apps/core-api/src/runtime/process-ports.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+              "packages/contexts/eventing/application/eventing-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+              "packages/contexts/eventing/application/record-delivery-failure.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/route-observed-event.test.ts",
+              "packages/contexts/eventing/application/route-observed-event.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/application/update-notification-rule.test.ts",
+              "packages/contexts/eventing/application/update-notification-rule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+              "packages/contexts/eventing/contracts/eventing-contract.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/notification-request.test.ts",
+              "packages/contexts/eventing/domain/notification-request.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/notification-rule.test.ts",
+              "packages/contexts/eventing/domain/notification-rule.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/observed-event.test.ts",
+              "packages/contexts/eventing/domain/observed-event.test.ts"
+            ],
+            [
+              "packages/contexts/eventing/domain/rule-filter.test.ts",
+              "packages/contexts/eventing/domain/rule-filter.test.ts"
             ],
             [
               "packages/contexts/files/application/artifact-revisions.test.ts",
@@ -60907,6 +61610,15 @@
           ],
           "roots": [
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
+            "packages/contexts/eventing/application/record-delivery-failure.test.ts",
+            "packages/contexts/eventing/application/route-observed-event.test.ts",
+            "packages/contexts/eventing/application/update-notification-rule.test.ts",
+            "packages/contexts/eventing/contracts/eventing-contract.test.ts",
+            "packages/contexts/eventing/domain/notification-request.test.ts",
+            "packages/contexts/eventing/domain/notification-rule.test.ts",
+            "packages/contexts/eventing/domain/observed-event.test.ts",
+            "packages/contexts/eventing/domain/rule-filter.test.ts",
             "packages/contexts/files/application/artifact-revisions.test.ts",
             "packages/contexts/files/application/bind-attachments-to-turn.test.ts",
             "packages/contexts/files/application/files-erasure-target.test.ts",
@@ -61707,7 +62419,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "421b333636f20402a656e12326244c020c60f25ce34c2a0b64c7b61bfb87117f",
+      "evidenceSha256": "74da300e855d5deee57504e5f7541ac8c05f45f22d3cc9d4f9fc0ef0c26ebf2a",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

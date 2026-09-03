@@ -220,8 +220,9 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
-  assert.equal(live.totalFiles, 88);
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +14 for the eventing suites (WIN-256). The two are disjoint: 88 + 14 = 102.
+  assert.equal(live.totalFiles, 102);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,7 +234,9 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 88);
+  // 67 -> 88 -> 102: +21 providers, +14 the suites `eventing` brings with it
+  // (WIN-256, ADR M0.3 §1 row 17).
+  assert.equal(files, 102);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -244,6 +247,23 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 146);
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
+  // The WIN-256 `eventing` context. Pinned beside the five above so a suite
+  // deleted from it is the same kind of failure as one deleted from them.
+  //
+  // 142 -> 147 (2026-09-03). Five cases closing the coverage the independent
+  // verification found: three for the drain-boundary `reparse` guard, which was
+  // entirely dead to the suite, one for the duplicate-name pre-flight, and one
+  // for an erasure plan carrying this target's name but no subject rider. The
+  // FILE count deliberately does not move — all five went into existing files,
+  // which is the drift `docs/v1-ledger-rules.json` cannot see and this can.
+  //
+  // 147 -> 149 (2026-09-03, after the rebase onto 95cbacc1). Two more, still in
+  // existing files: the pair of controls that turn the two argued
+  // equivalent-mutant survivors in `assertNameFree` into killed mutations —
+  // one asserting the same-name re-PUT performs no store lookup, one driving
+  // the stale-read interleaving the id-inequality test exists for.
+  assert.equal(EXPECTED["packages/contexts/eventing"].cases, 149);
+  assert.equal(EXPECTED["packages/contexts/eventing"].files, 14, "the file count did NOT move; the case count did");
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {
@@ -254,7 +274,12 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283);
+  // The runtime total is re-derived from the three slices that contribute
+  // cases, so a row moved without its delta cannot hide inside it. The eventing
+  // context is the third: 142 at adoption, 147 after the 2026-09-03
+  // verification's five cases, 149 after the two that close its last two
+  // survivors — all with the file count held at 14.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
