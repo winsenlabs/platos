@@ -330,7 +330,7 @@ describe("removing an agent from an environment", () => {
   // still bound; an unbind leaves them pinned to a version of an agent that
   // this environment no longer serves at all, until each hold lapses on its own
   // timetable. So these assert the EFFECT on the lock — that the hold is gone —
-  // rather than merely that a release was attempted, because a `releaseAll`
+  // rather than merely that a release was CALLED, because a `releaseAll`
   // that recorded the call and freed nothing would pass the weaker check.
   it("RELEASES every thread hold for the agent it just unbound", async () => {
     const { context, authorization } = newContext();
