@@ -2042,37 +2042,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 3724,
+    "totalFiles": 3815,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 30,
       "apps-mcp-stdio": 7,
       "apps-webapp": 183,
-      "docs-content": 729,
+      "docs-content": 733,
       "internal-packages": 1164,
-      "packages": 844,
-      "root-infra": 253
+      "packages": 909,
+      "root-infra": 275
     },
     "kindCounts": {
       "asset": 155,
       "config": 267,
-      "doc": 604,
+      "doc": 606,
       "fixture": 1,
-      "generated": 41,
+      "generated": 43,
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1231,
-      "test": 514
+      "source": 1280,
+      "test": 552
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1582,
-      "regenerate": 36,
-      "retain": 2097,
+      "move-refactor": 1604,
+      "regenerate": 38,
+      "retain": 2164,
       "unresolved": 2
     },
-    "protectedCount": 1623,
+    "protectedCount": 1627,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2116,8 +2116,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 10,
-      "docs-content.evidence.audit-receipts": 16,
+      "docs-content.evidence.audit-notes": 12,
+      "docs-content.evidence.audit-receipts": 18,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2164,8 +2164,8 @@
       "packages.config.build": 28,
       "packages.contexts.config": 34,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 193,
-      "packages.contexts.test": 64,
+      "packages.contexts.source": 237,
+      "packages.contexts.test": 85,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,
@@ -2200,12 +2200,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
-      "root-infra.test.harness": 54,
-      "root-infra.test.script-suites": 28,
+      "root-infra.test.harness": 69,
+      "root-infra.test.script-suites": 30,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 69,
+      "root-infra.tooling.scripts": 74,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "c0d14114b4285b38246e22ea3239fdbf5da53c2c9fe05aa36cb03956fa33a221"
+    "classificationSha256": "69f5de3c7295bce52935225c84145eafce1830ed92c04f35f731523a6218e412"
   }
 }
