@@ -256,18 +256,24 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 335);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 345);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's cost-monitoring slice moves. `pnpm --filter
   // @platos/context-cost-monitoring exec vitest run` prints "Test Files 21
-  // passed (21) / Tests 335 passed (335)"; the AST census reproduces both with
+  // passed (21) / Tests 345 passed (345)"; the AST census reproduces both with
   // zero refusals. Every other package is held at its previous value by the
   // test above, so a suite quietly deleted elsewhere while this context landed
   // cannot hide inside the new total.
+  //
+  // 335 -> 345 on the v1 rebase: ten cases closing the three money-path
+  // survivors the review named, in three files that already existed. THE FILE
+  // COUNT DOES NOT MOVE, and that is the whole point of this pin — 21 stays 21
+  // while the case count rises, which is exactly the drift
+  // `docs/v1-ledger-rules.json`'s file counts cannot see.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
-  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 335);
+  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 345);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

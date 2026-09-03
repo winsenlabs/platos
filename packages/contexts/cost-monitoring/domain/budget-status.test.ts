@@ -68,6 +68,37 @@ describe("evaluating one cap", () => {
     expect(status.runsPercentBasisPoints).toBe(0);
   });
 
+  // TURN UTILISATION, AT AN EXACT VALUE RATHER THAN AT ZERO.
+  //
+  // The only assertion this figure had was the uncapped `0` above, which the
+  // `limitCents <= 0` early return produces without the arithmetic ever running.
+  // The rounding was therefore unpinned: `Math.trunc` in place of `Math.round`
+  // passed. It is the figure an operator reads beside the spend percentage, and
+  // it is the only place in this context where a ratio is rounded at all — the
+  // spend side is exact bigint precisely so nothing decides on a rounded number.
+  it("reports turn utilisation in basis points, rounded HALF-UP, at exact values", () => {
+    const capped = (tasks: number) =>
+      evaluateBudget(budget({ limitCents: 0, runsLimit: 3 }), WINDOW, reading(0, tasks), AT)
+        .runsPercentBasisPoints;
+    // 1/3 = 33.3333…%. 3333.33… basis points rounds to 3333, and truncation
+    // agrees, so this one alone would not catch it.
+    expect(capped(1)).toBe(3_333);
+    // 2/3 = 66.6666…%. 6666.66… rounds UP to 6667; truncation gives 6666.
+    expect(capped(2)).toBe(6_667);
+    expect(capped(3)).toBe(10_000);
+    // Past the cap the figure keeps climbing rather than clamping at 100%.
+    expect(capped(6)).toBe(20_000);
+  });
+
+  it("rounds turn utilisation half-up at an exact .5 basis point", () => {
+    // 1/16 = 6.25% = 625 basis points exactly; 1/32 = 312.5, which is the tie.
+    const at = (tasks: number, runsLimit: number) =>
+      evaluateBudget(budget({ limitCents: 0, runsLimit }), WINDOW, reading(0, tasks), AT)
+        .runsPercentBasisPoints;
+    expect(at(1, 16)).toBe(625);
+    expect(at(1, 32)).toBe(313);
+  });
+
   it("separates BREACHED from BLOCKED when an override is in force", () => {
     // A surface with only `blocked` would show an overridden cap running at
     // 150% as healthy.
@@ -114,6 +145,52 @@ describe("choosing the blocker", () => {
   it("returns null when nothing blocks", () => {
     expect(firstBlocker([evaluateBudget(budget(), WINDOW, reading(1), AT)])).toBeNull();
     expect(firstBlocker([])).toBeNull();
+  });
+
+  // THE CASE THAT SEPARATES `blocked` FROM `breached` AT THIS FUNCTION.
+  //
+  // `evaluateBudget` is tested for the distinction; this function is the one
+  // that CONSUMES it, and every case above it uses caps where the two agree —
+  // an unoverridden cap is breached exactly when it is blocked. Selecting on
+  // `breached` therefore returns the same status and passes.
+  //
+  // The two only differ under an override, and the difference is a refusal
+  // naming the one cap the operator explicitly excepted from. That is the exact
+  // failure the `blocked`/`breached` split exists to prevent, and it is the
+  // money-facing one: `evaluate-budgets.ts` and `summarise-consumption.ts` both
+  // turn this status into the reason a spend was stopped.
+  it("SKIPS an overridden cap that is breached, and names the one that blocks", () => {
+    const excepted = evaluateBudget(
+      budget({
+        budgetId: asCostIdentifier<BudgetId>("excepted"),
+        overrideUntil: new Date("2026-01-15T13:00:00.000Z"),
+      }),
+      WINDOW,
+      reading(9_000),
+      AT,
+    );
+    const real = evaluateBudget(
+      budget({ budgetId: asCostIdentifier<BudgetId>("real") }),
+      WINDOW,
+      reading(1_000),
+      AT,
+    );
+    // The overridden cap is FIRST and is running at 900%. Selecting on
+    // `breached` would name it and refuse the spend the operator just excepted.
+    expect(excepted.breached).toBe(true);
+    expect(excepted.blocked).toBe(false);
+    expect(firstBlocker([excepted, real])?.budget.budgetId).toBe("real");
+  });
+
+  it("returns null when the ONLY breached cap is overridden", () => {
+    const excepted = evaluateBudget(
+      budget({ overrideUntil: new Date("2026-01-15T13:00:00.000Z") }),
+      WINDOW,
+      reading(9_000),
+      AT,
+    );
+    expect(excepted.breached).toBe(true);
+    expect(firstBlocker([excepted])).toBeNull();
   });
 
   it("renders one refusal, naming the dimension that actually blocked", () => {

@@ -170,6 +170,50 @@ describe("folding a window", () => {
   });
 });
 
+// `limitToMoney` IS ASSERTED, NOT MERELY USED.
+//
+// It appears throughout this file as a way to BUILD a spend figure, which reads
+// like coverage and is not: every one of those cases passes a whole-cent cap, so
+// the conversion is only ever exercised where truncation, rounding and flooring
+// all agree. Replacing `Math.trunc` with `Math.ceil` left the whole 335-case
+// suite green.
+//
+// The cap is the OTHER SIDE of every money comparison in this context, and
+// `LimitCents` is a `number`. `Budget.limitCents` is an `Int` column, but the
+// value crosses a contract boundary as JSON before it gets here, and three
+// separate functions each re-read it — `limitToMoney`, `hasCrossed` and
+// `utilisationBasisPoints` all call `Math.trunc(limitCents)` independently. Their
+// AGREEMENT is the property worth pinning: if they ever disagreed about the same
+// fractional cap, the figure shown to the operator and the decision to stop the
+// spend would be about two different caps.
+describe("the cap, as an exact amount", () => {
+  it("converts whole cents to micro-cents exactly", () => {
+    expect(limitToMoney(1_000).microCents).toBe(1_000_000_000n);
+    expect(limitToMoney(1).microCents).toBe(1_000_000n);
+    expect(limitToMoney(0).microCents).toBe(0n);
+  });
+
+  it("TRUNCATES a fractional cap rather than rounding it up", () => {
+    // 1000.9c is not a cap of 1001c. Rounding up hands out a tenth of a cent
+    // nobody granted, on every comparison, for the life of the cap.
+    expect(limitToMoney(1_000.9).microCents).toBe(1_000_000_000n);
+    expect(limitToMoney(1_000.5).microCents).toBe(1_000_000_000n);
+    expect(limitToMoney(0.9).microCents).toBe(0n);
+  });
+
+  it("agrees with the two functions that read the cap independently", () => {
+    // A fractional cap of 1000.9c truncates to 1000c everywhere or nowhere.
+    const atTruncatedCap = limitToMoney(1_000);
+    expect(isAtLimit(atTruncatedCap, 1_000.9)).toBe(true);
+    expect(utilisationBasisPoints(atTruncatedCap, 1_000.9)).toBe(10_000);
+    expect(hasCrossed(atTruncatedCap, 1_000.9, 100)).toBe(true);
+    // And one micro-cent below it is below the cap on all three.
+    const justUnder = { ...atTruncatedCap, microCents: atTruncatedCap.microCents - 1n };
+    expect(isAtLimit(justUnder, 1_000.9)).toBe(false);
+    expect(hasCrossed(justUnder, 1_000.9, 100)).toBe(false);
+  });
+});
+
 describe("utilisation", () => {
   it("is exact basis points, not a rounded float", () => {
     expect(utilisationBasisPoints(limitToMoney(50), 100)).toBe(5_000);

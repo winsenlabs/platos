@@ -11,7 +11,14 @@ import {
   type SkillSlug,
 } from "../domain/index.js";
 import { evaluateForScope } from "./evaluate-budgets.js";
-import { recordTurn, releaseSpend, reserveSpend, settleSpend } from "./record-spend.js";
+import { estimateSpend } from "./guard-spend.js";
+import {
+  recordTurn,
+  releaseSpend,
+  reserveSpend,
+  settlePricedSpend,
+  settleSpend,
+} from "./record-spend.js";
 import { seriesFor } from "./read-spend.js";
 import { summariseConsumption, sweepBreaches } from "./summarise-consumption.js";
 import { buildCostTestContext, cents, testBudget } from "./testing/index.js";
@@ -154,6 +161,106 @@ describe("writing to the ledger", () => {
     await releaseSpend(context.dependencies, held.value);
     const verdict = await evaluateForScope(context.dependencies, context.scope, { userId: "user-1" });
     expect(verdict.caps[0]?.spent.microCents).toBe(0n);
+  });
+});
+
+// `settlePricedSpend` — THE STEP WHERE AN ESTIMATE BECOMES THE TRUTH.
+//
+// It had no case at all. Its own comment states the two rules it exists for —
+// "a pricing failure settles nothing rather than settling zero", and the ledger
+// failure it must surface — and both branches could be deleted with the whole
+// 335-case suite still green. It is the money path in the most literal sense:
+// this is where the number that will be billed enters the ledger.
+describe("settling a reservation with a PRICED amount", () => {
+  async function reserved(context: ReturnType<typeof buildCostTestContext>) {
+    context.repository.seedBudget(
+      testBudget(context.scope, {
+        limitCents: 1_000,
+        target: { ...ENVIRONMENT_WIDE, subject: "user", targetId: "user-1" },
+      }),
+    );
+    const held = await reserveSpend(context.dependencies, {
+      scope: context.scope,
+      subject: USER,
+      estimate: cents(600),
+    });
+    if (!held.ok) throw new Error("unreachable");
+    return held.value;
+  }
+
+  it("writes the EXACT priced amount, to the micro-cent, and clears the hold", async () => {
+    const context = buildCostTestContext();
+    const handle = await reserved(context);
+    context.providers.seedRateCard({
+      model: "anthropic:claude",
+      inputUsdPerToken: "0.000003",
+      outputUsdPerToken: "0.000015",
+    });
+    const priced = await estimateSpend(context.dependencies, {
+      model: "anthropic:claude",
+      usage: { inputTokens: 1_000, outputTokens: 100 },
+    });
+
+    const settled = await settlePricedSpend(context.dependencies, { handle, amount: priced });
+    expect(settled.ok).toBe(true);
+
+    const verdict = await evaluateForScope(context.dependencies, context.scope, { userId: "user-1" });
+    // 1000 * 3e-6 + 100 * 1.5e-5 USD = 0.0045 USD = 0.45 cents = 450000
+    // micro-cents. The 600c estimate is gone, replaced by the priced figure —
+    // not added to it, and not rounded to a whole cent.
+    expect(verdict.caps[0]?.reading.settled.microCents).toBe(450_000n);
+    expect(verdict.caps[0]?.reading.reserved.microCents).toBe(0n);
+    expect(verdict.caps[0]?.spent.microCents).toBe(450_000n);
+  });
+
+  it("SETTLES NOTHING when pricing failed, and leaves the reservation standing", async () => {
+    // Settling zero would replace a real 600c hold with nothing and report the
+    // turn as free. The reservation must survive so the spend stays visible to
+    // every concurrent guard until someone can price it.
+    const context = buildCostTestContext();
+    const handle = await reserved(context);
+    const unpriced = await estimateSpend(context.dependencies, {
+      model: "unknown:model",
+      usage: { inputTokens: 1_000 },
+    });
+    expect(unpriced.ok).toBe(false);
+
+    const settled = await settlePricedSpend(context.dependencies, { handle, amount: unpriced });
+    expect(settled.ok).toBe(false);
+
+    const verdict = await evaluateForScope(context.dependencies, context.scope, { userId: "user-1" });
+    expect(verdict.caps[0]?.reading.settled.microCents).toBe(0n);
+    expect(verdict.caps[0]?.reading.reserved.microCents).toBe(600_000_000n);
+    expect(verdict.caps[0]?.spent.microCents).toBe(600_000_000n);
+  });
+
+  it("SURFACES a ledger failure rather than reporting a settlement that did not happen", async () => {
+    // The caller's next move — releasing the hold, retrying, alerting — depends
+    // on knowing the write did not land. An `ok` here would strand the
+    // reservation in the window with nobody left holding its handle.
+    const context = buildCostTestContext();
+    await reserved(context);
+    context.providers.seedRateCard({
+      model: "anthropic:claude",
+      inputUsdPerToken: "0.000003",
+      outputUsdPerToken: "0",
+    });
+    const priced = await estimateSpend(context.dependencies, {
+      model: "anthropic:claude",
+      usage: { inputTokens: 1_000 },
+    });
+    if (!priced.ok) throw new Error("unreachable");
+
+    const settled = await settlePricedSpend(context.dependencies, {
+      handle: { reservationId: "res-not-mine" },
+      amount: priced,
+    });
+    expect(settled.ok).toBe(false);
+
+    // And nothing moved: the real hold is untouched and no spend was recorded.
+    const verdict = await evaluateForScope(context.dependencies, context.scope, { userId: "user-1" });
+    expect(verdict.caps[0]?.reading.settled.microCents).toBe(0n);
+    expect(verdict.caps[0]?.reading.reserved.microCents).toBe(600_000_000n);
   });
 });
 

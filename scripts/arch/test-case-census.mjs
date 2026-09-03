@@ -103,12 +103,36 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * WIN-256, `cost-monitoring` (ADR M0.3 §1 context 13). One row again:
  *
- *   cost-monitoring 0 -> 21 files, 0 -> 335 cases; 1000 -> 1335 total. 12
+ *   cost-monitoring 0 -> 21 files, 0 -> 345 cases; 1000 -> 1345 total. 12
  *   domain suites, 8 application suites and the contracts-barrel suite. The
- *   census REFUSED nothing in that tree, so its 335 is a statically exact
+ *   census REFUSED nothing in that tree, so its 345 is a statically exact
  *   count, and `pnpm --filter @platos/context-cost-monitoring exec vitest run`
- *   prints the same pair — "Test Files 21 passed (21) / Tests 335 passed
- *   (335)" — which is the agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *   prints the same pair — "Test Files 21 passed (21) / Tests 345 passed
+ *   (345)" — which is the agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ *   The last TEN (335 -> 345) close the three money-path survivors the v1
+ *   rebase review named, and they add no file — 21 stays 21. Each was found by
+ *   mutating the ORIGINAL 335-case suite and watching it stay green, and each
+ *   is a MONEY figure that was reached but never asserted at an exact value:
+ *
+ *     +3 `settlePricedSpend` (application/consumption.test.ts). The step where
+ *        a priced estimate becomes the settled truth had NO case at all. Both
+ *        rules its own comment states — a pricing failure settles nothing
+ *        rather than zero, and a ledger failure surfaces — could be deleted
+ *        with the whole suite green.
+ *
+ *     +3 `limitToMoney` (domain/spend.test.ts). It appeared throughout that
+ *        file as a way to BUILD a spend figure, never as the subject of an
+ *        assertion, and always with a whole-cent cap — where truncating,
+ *        rounding and flooring all agree. The cap is the other side of every
+ *        money comparison in this context.
+ *
+ *     +4 `firstBlocker` and `runsBasisPoints` (domain/budget-status.test.ts).
+ *        The blocker was only ever chosen among caps where `blocked` and
+ *        `breached` agree, so selecting on `breached` — naming a cap the
+ *        operator had explicitly excepted — passed. Turn utilisation was only
+ *        ever asserted at the uncapped 0, which the early return produces
+ *        without the arithmetic running at all.
  *
  * Verified as a live control: deleting one it() from
  * cost-monitoring/domain/guard.test.ts leaves the file count at 109 and turns
@@ -132,7 +156,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/agents": { files: 0, cases: 0 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
-  "packages/contexts/cost-monitoring": { files: 21, cases: 335 },
+  "packages/contexts/cost-monitoring": { files: 21, cases: 345 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
@@ -156,7 +180,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1335;
+export const EXPECTED_RUNTIME_TOTAL = 1345;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
