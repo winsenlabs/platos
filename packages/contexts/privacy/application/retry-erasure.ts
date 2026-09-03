@@ -22,7 +22,7 @@
 // pass whose process died leaves an expiring lease the next pass reclaims,
 // rather than a row nobody dares touch.
 
-import { asIdentifier, err, ok, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, type DomainError, type Result } from "@platos/kernel";
 
 import {
   canRetry,
@@ -33,6 +33,7 @@ import {
   projectOperation,
   retryBudgetExhausted,
   retryNotPermitted,
+  subjectMismatch,
   subjectNotResolved,
   targetsNeedingRetry,
   leaseHeld,
@@ -49,21 +50,33 @@ import { resolveSubjectContext, type ResolvedSubjectContext } from "./resolve-su
 import { runErasurePass } from "./run-erasure-pass.js";
 import { sealSubject } from "./seal-subject.js";
 
+/**
+ * Record the refusal, then hand back the very error that was recorded.
+ *
+ * THE LABEL IS THE RETURNED ERROR'S OWN CODE, not a string beside it. The
+ * refused event is what an auditor reads to learn why an erasure did not
+ * happen, and for as long as the two were written separately they could
+ * disagree — the subject-mismatch branch spent its whole life emitting
+ * `PRIVACY_IDEMPOTENCY_KEY_CONFLICT` while returning
+ * `PRIVACY_SUBJECT_NOT_RESOLVED`, so the record named a cause the caller was
+ * never told. Composing them from one value is what makes that class of drift
+ * unrepresentable rather than merely tested for.
+ */
 async function refuse(
   dependencies: PrivacyDependencies,
   args: {
     readonly row: PersistedErasureOperation;
     readonly context: ResolvedSubjectContext | null;
-    readonly refusal: string;
+    readonly refusal: DomainError;
   },
-): Promise<void> {
+): Promise<Result<never>> {
   await dependencies.unitOfWork.run((transaction) =>
     appendPrivacyEvent(dependencies, {
       name: PRIVACY_EVENT_NAMES.erasureRefused,
       organizationId: args.row.organizationId,
       payload: refusedEvent({
         subjectKeyHash: args.row.subjectKeyHash,
-        refusal: args.refusal,
+        refusal: args.refusal.code,
         operationId: args.row.operationId,
         policyVersion: args.row.policyVersion,
         legalHoldPolicyId: args.row.legalHoldPolicyId,
@@ -72,6 +85,7 @@ async function refuse(
       transaction,
     }),
   );
+  return err(args.refusal);
 }
 
 /** Take the lease, or report that another pass holds it. */
@@ -110,12 +124,18 @@ export async function retryErasure(
   const record = projectOperation(row, required);
   const permitted = canRetry(record);
   if (!permitted.allowed) {
-    await refuse(dependencies, { row, context: null, refusal: "PRIVACY_RETRY_NOT_PERMITTED" });
-    return err(retryNotPermitted(permitted.reason ?? "retry is not permitted"));
+    return refuse(dependencies, {
+      row,
+      context: null,
+      refusal: retryNotPermitted(permitted.reason ?? "retry is not permitted"),
+    });
   }
   if (isExhausted(row.retryCount, dependencies.policy.retry)) {
-    await refuse(dependencies, { row, context: null, refusal: "PRIVACY_RETRY_BUDGET_EXHAUSTED" });
-    return err(retryBudgetExhausted(row.retryCount, dependencies.policy.retry.maxRetries));
+    return refuse(dependencies, {
+      row,
+      context: null,
+      refusal: retryBudgetExhausted(row.retryCount, dependencies.policy.retry.maxRetries),
+    });
   }
 
   const context = await resolveSubjectContext(dependencies, {
@@ -124,24 +144,33 @@ export async function retryErasure(
   });
   if (!context.ok) return err(context.error);
   // A retry the record cannot be pointed at is refused, not narrowed. See above.
+  //
+  // THIS IS THE ORDINARY CASE ON A SECOND PASS, not an exotic one: the first
+  // pass destroyed the identity rows that resolve the handle, so the SAME
+  // externalUserId that opened the operation is exactly the handle most likely
+  // to resolve to nobody now. Running narrow here would sweep the empty set and
+  // certify it.
   if (context.value.subjects.length === 0) {
-    await refuse(dependencies, {
+    return refuse(dependencies, {
       row,
       context: context.value,
-      refusal: "PRIVACY_SUBJECT_NOT_RESOLVED",
+      refusal: subjectNotResolved(row.subjectKeyHash),
     });
-    return err(subjectNotResolved(row.subjectKeyHash));
   }
   // The re-supplied handle must name the same person the operation was opened
   // for. Without this, an operator could point a finished receipt at a different
   // subject and have the retry certify them.
+  //
+  // A DIFFERENT CODE from the guard above, and the difference is load-bearing.
+  // The two say opposite things about the directory — "it found nobody" against
+  // "it found the wrong person" — and while they shared one code, neither could
+  // be proved: a test asserting it could not say which guard answered.
   if (context.value.subjectKeyHash !== row.subjectKeyHash) {
-    await refuse(dependencies, {
+    return refuse(dependencies, {
       row,
       context: context.value,
-      refusal: "PRIVACY_IDEMPOTENCY_KEY_CONFLICT",
+      refusal: subjectMismatch(row.operationId, row.subjectKeyHash),
     });
-    return err(subjectNotResolved(row.subjectKeyHash));
   }
 
   const leased = await claim(dependencies, row);

@@ -23,6 +23,20 @@ const EXTERNAL_ID = "walle-1";
 const KEY = asIdentifier<IdempotencyKey>("key-1");
 const SUBJECT = testEnvironmentSubject("eu-1");
 
+/**
+ * The `refusal` an auditor would read on the most recent refused event.
+ *
+ * Read as a string rather than compared to a constant list on purpose: the point
+ * of the assertions that use it is that the label and the returned error agree,
+ * and a helper that could only return known codes would assert half of that.
+ */
+function refusalLabel(context: PrivacyTestContext): string | undefined {
+  const event = [...context.outbox.appended]
+    .reverse()
+    .find((appended) => appended.name === PRIVACY_EVENT_NAMES.erasureRefused);
+  return (event?.payload as { refusal?: string } | undefined)?.refusal;
+}
+
 function seed(target: InMemoryErasureTarget): void {
   target.seed({
     model: "TestRow",
@@ -122,10 +136,12 @@ describe("retryErasure", () => {
   it("REFUSES a completed operation rather than re-issuing deletes", async () => {
     tools.eraseRejects = false;
     await retry();
+    context.outbox.appended.length = 0;
     const again = await retry();
     expect(again.ok).toBe(false);
     if (again.ok) throw new Error("unreachable");
     expect(again.error.code).toBe("PRIVACY_RETRY_NOT_PERMITTED");
+    expect(refusalLabel(context)).toBe("PRIVACY_RETRY_NOT_PERMITTED");
   });
 
   it("refuses a held operation until the hold is released", async () => {
@@ -146,7 +162,7 @@ describe("retryErasure", () => {
     expect(refused.ok).toBe(false);
   });
 
-  it("REFUSES rather than running narrow when the subject can no longer be resolved", async () => {
+  it("REFUSES rather than running narrow when a handle nobody knows is supplied", async () => {
     const refused = await retry({ externalUserId: "never-seen" });
     expect(refused.ok).toBe(false);
     if (refused.ok) throw new Error("unreachable");
@@ -155,24 +171,59 @@ describe("retryErasure", () => {
     expect(files.remaining()).toHaveLength(1);
   });
 
+  // THE SCENARIO THIS MODULE'S HEADER IS ABOUT, and until 2026-09-03 the one
+  // scenario it had no case for. The handle is the SAME one that opened the
+  // operation — so it still digests to the operation's own `subjectKeyHash` and
+  // the different-person guard below cannot fire — but the first pass destroyed
+  // the identity rows that resolve it, so the directory now answers with
+  // nobody. That is the ordinary shape of a second pass, not an exotic one.
+  //
+  // While both guards returned `PRIVACY_SUBJECT_NOT_RESOLVED` this case was
+  // unreachable by assertion: the "handle nobody knows" case above hits BOTH
+  // conditions and reports the same code either way, so deleting the guard here
+  // left the suite green. Distinct codes plus this case are what make each guard
+  // separately provable.
+  it("REFUSES rather than running narrow when the SAME handle now resolves to nobody", async () => {
+    context.directory.register(EXTERNAL_ID, { subjects: [], aliases: [] });
+    context.outbox.appended.length = 0;
+    const refused = await retry();
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error("unreachable");
+    expect(refused.error.code).toBe("PRIVACY_SUBJECT_NOT_RESOLVED");
+    // The record an auditor reads names the same cause the caller was given.
+    expect(refusalLabel(context)).toBe("PRIVACY_SUBJECT_NOT_RESOLVED");
+    // Nothing ran, so the rows the first pass restored are still there.
+    expect(files.remaining()).toHaveLength(1);
+    expect(tools.remaining()).toHaveLength(1);
+  });
+
   it("REFUSES a re-supplied handle that names a DIFFERENT person", async () => {
     context.directory.register("someone-else", {
       subjects: [testEnvironmentSubject("eu-2")],
       aliases: testAliases("someone-else", "eu-2"),
     });
+    context.outbox.appended.length = 0;
     const refused = await retry({ externalUserId: "someone-else" });
     expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error("unreachable");
+    // Not "resolved nobody": the directory resolved somebody, and it is the
+    // wrong somebody. The refusal an auditor reads says exactly that, because
+    // it IS the returned error's code rather than a string written beside it.
+    expect(refused.error.code).toBe("PRIVACY_SUBJECT_MISMATCH");
     expect(context.outbox.names()).toContain(PRIVACY_EVENT_NAMES.erasureRefused);
+    expect(refusalLabel(context)).toBe("PRIVACY_SUBJECT_MISMATCH");
   });
 
   it("refuses once the automatic retry budget is spent", async () => {
     const row = context.repository.allOperations()[0];
     if (row === undefined) throw new Error("unreachable");
     context.repository.seedOperation({ ...row, retryCount: DEFAULT_PRIVACY_POLICY.retry.maxRetries });
+    context.outbox.appended.length = 0;
     const refused = await retry();
     expect(refused.ok).toBe(false);
     if (refused.ok) throw new Error("unreachable");
     expect(refused.error.code).toBe("PRIVACY_RETRY_BUDGET_EXHAUSTED");
+    expect(refusalLabel(context)).toBe("PRIVACY_RETRY_BUDGET_EXHAUSTED");
   });
 
   it("refuses while another pass holds the lease", async () => {
@@ -245,6 +296,36 @@ describe("retryErasure", () => {
     if (!second.ok) throw new Error("unreachable");
     expect(second.value.status).toBe("verification_failed");
     expect(second.value.outcomes[0]?.note).toContain("not refuted by this pass");
+  });
+
+  // The re-seal on the retry path was prose only: skipping `sealSubject` here
+  // entirely left every case green, because the FIRST pass had already sealed
+  // the aliases and nothing looked at the expiry afterwards. The barrier would
+  // then have covered the remainder of the first pass's window rather than the
+  // whole of this one — and a pass whose barrier lapses mid-sweep is how a write
+  // reintroduces the person the sweep is destroying. `seal-subject.test.ts`
+  // proves `sealSubject` extends; this proves the retry CALLS it.
+  it("EXTENDS the tombstone window, so the barrier covers the whole of THIS pass", async () => {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const before = context.repository
+      .allTombstones()
+      .map((row) => row.expiresAt.getTime())
+      .sort((left, right) => left - right);
+    expect(before.length).toBeGreaterThan(0);
+
+    context.clock.advanceDays(1);
+    tools.eraseRejects = false;
+    const retried = await retry();
+    if (!retried.ok) throw new Error("unreachable");
+
+    const after = context.repository
+      .allTombstones()
+      .map((row) => row.expiresAt.getTime())
+      .sort((left, right) => left - right);
+    // Every row moved out by exactly the day that elapsed, and no row was added:
+    // an extend, not a second insert that would leave the barrier momentarily
+    // open between a delete and a re-insert.
+    expect(after).toEqual(before.map((instant) => instant + dayMs));
   });
 
   it("appends a fresh intent record for the pass, naming only the unsettled targets", async () => {

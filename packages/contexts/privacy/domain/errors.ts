@@ -19,6 +19,7 @@ export const PRIVACY_ERROR_CODES = [
   "PRIVACY_IDEMPOTENCY_KEY_CONFLICT",
   "PRIVACY_OPERATION_NOT_FOUND",
   "PRIVACY_SUBJECT_NOT_RESOLVED",
+  "PRIVACY_SUBJECT_MISMATCH",
   "PRIVACY_ALIAS_INVALID",
   "PRIVACY_LEGAL_HOLD_IN_FORCE",
   "PRIVACY_SUBJECT_ERASED",
@@ -73,6 +74,32 @@ export function subjectNotResolved(subjectKeyHash: string): DomainError {
     "precondition_failed",
     "erasure discovery resolved no subject; refusing to certify an empty sweep",
     { details: { subjectKeyHash } },
+  );
+}
+
+/**
+ * Discovery resolved SOMEBODY, and it is not the person this operation is about.
+ *
+ * Deliberately NOT `subjectNotResolved`. The two refusals sit next to each other
+ * on the retry path and they mean opposite things about the directory: one says
+ * it found nobody, the other says it found the wrong person. They shared a code
+ * until 2026-09-03, and the cost was exact — a test asserting the shared code
+ * could not tell which branch produced it, so the "resolved nobody" guard could
+ * be deleted with the suite still green, and the refusal an auditor reads named
+ * a cause the returned error contradicted. Distinct codes are what make the two
+ * branches separately provable, and separately legible on the record.
+ *
+ * `conflict`, for the same reason `idempotencyKeyConflict` is: the caller
+ * addressed a real operation, just not one about the subject they named. This is
+ * what someone pointing a finished receipt at a second person looks like from
+ * inside.
+ */
+export function subjectMismatch(operationId: string, subjectKeyHash: string): DomainError {
+  return domainError(
+    "PRIVACY_SUBJECT_MISMATCH",
+    "conflict",
+    "the re-supplied handle resolves to a different subject than this operation was opened for",
+    { details: { operationId, subjectKeyHash } },
   );
 }
 

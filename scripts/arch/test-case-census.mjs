@@ -99,8 +99,8 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * THIRD DELTA — `packages/contexts/privacy` becomes real (WIN-256, ADR M0.3 §1
- * row 18), rebased onto v1 @ `95cbacc1`. 0 -> 15 files, 0 -> 252 cases;
- * 1000 -> 1252 total. This is the whole of the new suite and nothing else
+ * row 18), rebased onto v1 @ `95cbacc1`. 0 -> 15 files, 0 -> 254 cases;
+ * 1000 -> 1254 total. This is the whole of the new suite and nothing else
  * moved: right-to-erasure orchestration over the kernel `ErasureTarget[]`, the
  * erased-subject register that is the write barrier, the legal-hold
  * adjudication, the two status vocabularies and their lossy projection, and the
@@ -109,19 +109,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   domain/            118  alias 16, content-free 9, erasure-operation 27,
  *                           legal-hold 12, retry-schedule 15, target-outcome 27,
  *                           tombstone 12
- *   application/       110  guard-subject-write 21, inventory-subject 9,
- *                           request-erasure 28, retry-erasure 18,
+ *   application/       112  guard-subject-write 21, inventory-subject 9,
+ *                           request-erasure 28, retry-erasure 20,
  *                           run-erasure-pass 24, seal-subject 10
  *   application/testing 12  in-memory-privacy-repository
  *   contracts/          12  index
  *
- * 118 + 110 + 12 + 12 = 252, which is the pinned row and the number vitest
+ * 118 + 112 + 12 + 12 = 254, which is the pinned row and the number vitest
  * prints. The `domain/` subtotal read 123 when this delta was first written —
  * an addition error in the prose, not in the pin — so the stated split did not
  * reconcile to the number it was explaining. Corrected here; the per-file
  * figures beside it were right all along and are unchanged.
  *
- * Four of those 110 are the cases the FIRST mutation control added rather than
+ * Four of those 112 are the cases the FIRST mutation control added rather than
  * the first draft: two in `guard-subject-write` pinning that the barrier
  * re-applies read-time expiry instead of trusting its store, and two in
  * `request-erasure` pinning that a write landing MID-SWEEP is refused. TWELVE
@@ -146,6 +146,27 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * mutation until these cases existed, which is the whole reason the control is
  * run. NO production module changed to close them: the guards were all present
  * and correct, and nothing executable reached any of them.
+ *
+ * TWO MORE, 2026-09-04, closing the three erasure-path blockers the 2026-09-03
+ * verification left open. Both land in `retry-erasure`, so the file count is
+ * still 15 and the arithmetic is 252 + 2 = 254, never a re-baseline:
+ *
+ *   retry-erasure     +2  the SAME handle, whose rows the first pass destroyed,
+ *                         now resolving to NOBODY — the scenario the module
+ *                         header describes and the one arrangement it had no
+ *                         case for, because the only unresolved-subject case
+ *                         supplied a handle that failed the NEXT guard too and
+ *                         both guards then answered with one code (1); and the
+ *                         retry-path RE-SEAL, which was prose alone — deleting
+ *                         the `sealSubject` call left every case green (1)
+ *
+ * UNLIKE the twelve above, one production module DID change: the two guards were
+ * given distinct codes (`PRIVACY_SUBJECT_NOT_RESOLVED` and the new
+ * `PRIVACY_SUBJECT_MISMATCH`), and the refused event's label is now the returned
+ * error's own `code` rather than a string written beside it — which is what
+ * makes the mislabelled subject-mismatch refusal unrepresentable rather than
+ * merely asserted against. Four existing cases gained refusal-label assertions;
+ * gaining an assertion is not a case, so they move no number here.
  *
  * A package going 0 -> non-zero is exactly the transition this census exists to
  * force a reviewer to look at, which is why the zero rows are declared.
@@ -177,7 +198,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
-  "packages/contexts/privacy": { files: 15, cases: 252 },
+  "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
@@ -193,7 +214,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1252;
+export const EXPECTED_RUNTIME_TOTAL = 1254;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -265,11 +265,11 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 });
 
 test("the privacy context rebased onto v1 @ 95cbacc1 is pinned at what vitest prints", () => {
-  // 240 -> 252, and the FILE count does not move. That is the whole point of a
-  // case pin: all twelve cases the 2026-09-03 verification forced landed in
-  // suites that already existed, because a guard is proved from the use case
-  // that can reach it rather than from a new file next to its definition. A
-  // file-count pin sees none of this.
+  // 240 -> 254, and the FILE count does not move once. That is the whole point
+  // of a case pin: every case the two mutation controls forced landed in a suite
+  // that already existed, because a guard is proved from the use case that can
+  // reach it rather than from a new file next to its definition. A file-count
+  // pin sees none of this.
   //
   //   240  the context as built
   //    +7  request-erasure    the content-free wiring (2), no sweep without a
@@ -279,12 +279,19 @@ test("the privacy context rebased onto v1 @ 95cbacc1 is pinned at what vitest pr
   //    +2  retry-erasure      a refused progress write, from the retry
   //    +1  seal-subject       a store-refused seal is not a seal of zero
   //   ---
-  //   252, which is EXPECTED_RUNTIME_TOTAL minus the 1000 the four earlier
+  //   252  the 2026-09-03 verification's head
+  //    +2  retry-erasure      2026-09-04: the SAME handle now resolving to
+  //                           nobody (1), and the retry-path re-seal extending
+  //                           the tombstone window (1)
+  //   ---
+  //   254, which is EXPECTED_RUNTIME_TOTAL minus the 1000 the four earlier
   //   packages contribute, and the number `pnpm --filter
-  //   @platos/context-privacy exec vitest run` prints.
-  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 252);
+  //   @platos/context-privacy exec vitest run` prints. The subtraction is
+  //   written out, and the two additions are written out separately, so a
+  //   deletion cannot hide inside an addition and reach the same total.
+  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 252);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 254);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
