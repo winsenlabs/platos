@@ -108,6 +108,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
   "packages/contexts/files", // WIN-256 — attachments + artifacts, and the ObjectStore port it owns
   "packages/contexts/providers", // WIN-256 — provider keys, the model catalogue, rate cards, and the ModelRouter port it owns
+  "packages/contexts/agents", // WIN-256 — agent definitions, immutable versions, bindings and the canary split, clusters, skill loadout, macros and saved requests
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
