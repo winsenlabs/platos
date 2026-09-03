@@ -260,16 +260,20 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 
 test("the observability context rebased onto v1 @ 95cbacc1 is pinned at what vitest prints", () => {
   // The ONE row this rebase moves. `pnpm --filter @platos/context-observability
-  // exec vitest run` prints "Test Files 15 passed (15) / Tests 287 passed
-  // (287)"; the AST census reproduces both with zero refusals. Every other
+  // exec vitest run` prints "Test Files 15 passed (15) / Tests 288 passed
+  // (288)"; the AST census reproduces both with zero refusals. Every other
   // package is held at its earlier value by the tests above, so a suite quietly
   // deleted elsewhere while observability landed cannot hide inside the total.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
-  assert.equal(EXPECTED["packages/contexts/observability"].cases, 287);
-  // 281 is what the source branch's tip pinned; the +6 is enumerated in the
-  // module header and is entirely new money-path cases, not a renumbering.
-  assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 287);
+  assert.equal(EXPECTED["packages/contexts/observability"].cases, 288);
+  // 281 is what the source branch's tip pinned; the +6 and the later +1 are
+  // enumerated in the module header and are entirely new money-path cases, not
+  // a renumbering. Both addends are written out so a deletion cannot hide
+  // inside an addition and reach the same total.
+  assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
+  // The file count did NOT move for the +1: it landed in the file the +6
+  // created, which is exactly the drift a file-count pin cannot see.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 288);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

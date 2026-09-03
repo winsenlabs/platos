@@ -106,11 +106,11 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * rebased onto v1 @ 95cbacc1. Another 0/0 placeholder becomes real, and again
  * exactly ONE row moves:
  *
- *   observability 0 -> 15 files, 0 -> 287 cases; 1000 -> 1287 total. 9 domain
+ *   observability 0 -> 15 files, 0 -> 288 cases; 1000 -> 1288 total. 9 domain
  *   suites, 5 application suites and the contracts-barrel suite. The census
- *   REFUSED nothing in that tree, so its 287 is a statically exact count, and
+ *   REFUSED nothing in that tree, so its 288 is a statically exact count, and
  *   `pnpm --filter @platos/context-observability exec vitest run` prints the
- *   same pair — "Test Files 15 passed (15) / Tests 287 passed (287)".
+ *   same pair — "Test Files 15 passed (15) / Tests 288 passed (288)".
  *
  * The source branch's own tip pinned observability at 14 files / 281 cases. The
  * difference is the six cases this rebase adds, all of them on the MONEY path:
@@ -124,6 +124,22 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   +1 case in `contracts/observability-contract.test.ts` — the empty-lane
  *   control, which keeps "a Turn that called no tool" expressible now that the
  *   default fixture populates all four lanes.
+ *
+ * ONE MORE, 2026-09-04 (287 -> 288), closing the money-path blocker that
+ * verification left open. It lands in the file the six above created, so the
+ * file count does not move and the arithmetic is 281 + 6 + 1 = 288:
+ *
+ *   +1 case in `application/drain-projections.lanes.test.ts` — the PRICING
+ *   RATES, end to end. `domain/observed-work-codec.ts::readRates` was reachable
+ *   only through `readStep` and `readUsage` and no payload fixture carried a
+ *   `rates` key, so it was only ever called with `undefined`: inserting
+ *   `if (value !== null) return undefined;` at the top left 287 green.
+ *   `domain/projection.ts::rateColumns` fills six columns from that read, so
+ *   every step and usage row delivered from an envelope carried DEFAULT PRICES.
+ *   `rateColumns` is covered through `testStep`, which is exactly what masked
+ *   it. The fixture now carries rates on the step AND the usage event, and the
+ *   case asserts `pricing_version` and the per-million columns on the SINK rows
+ *   with exact values. NO production module changed.
  *
  * Every other package is unchanged. Any further drift is a finding to report,
  * not a number to force.
@@ -151,7 +167,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
-  "packages/contexts/observability": { files: 15, cases: 287 },
+  "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
@@ -168,7 +184,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1287;
+export const EXPECTED_RUNTIME_TOTAL = 1288;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

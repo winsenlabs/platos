@@ -151,6 +151,23 @@ export function testTurnWork(overrides: Partial<TurnWork> = {}): TurnWork {
  * A test that wants an absent lane overrides it — `testFinalizedPayload({ usage:
  * undefined })` — and "an absent list is not a producer defect" stays proved by
  * the cases in `domain/envelope.test.ts`, which build their own payload.
+ *
+ * THE STEP AND THE USAGE EVENT CARRY `rates`, AND THEY DID NOT USED TO. That
+ * omission was the same defect one level down. `readRates` was reachable only
+ * through `readStep` and `readUsage`, no fixture anywhere carried a `rates` key,
+ * and so it was only ever called with `undefined`: inserting `if (value !==
+ * null) return undefined;` at the top of it left the package at 15 files / 287
+ * passed. `domain/projection.ts::rateColumns` then filled `pricing_source`,
+ * `pricing_version` and the four per-million columns from that dead read, so
+ * EVERY step and usage row delivered from an envelope carried DEFAULT PRICES —
+ * zeroes and empty strings — and nothing could tell. `rateColumns` itself is
+ * covered, through `testStep`, which is exactly what masked it: the projection
+ * was proved from a hand-built domain value and never from a payload.
+ *
+ * The numbers match `testStep` above deliberately. The two fixtures describe the
+ * same Turn from the two ends of the codec, and a rate that differed between
+ * them would make "the row the projection built" and "the row the drain
+ * delivered" incomparable.
  */
 export function testFinalizedPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -179,6 +196,14 @@ export function testFinalizedPayload(overrides: Record<string, unknown> = {}): R
         startedAt: "2026-01-01T00:00:00.000Z",
         completedAt: "2026-01-01T00:00:02.000Z",
         tokens: { inputTokens: 1000, outputTokens: 250, cacheReadInputTokens: 400 },
+        rates: {
+          pricingSource: "catalogue",
+          pricingVersion: "price-1",
+          inputUsdPerToken: 0.000_003,
+          outputUsdPerToken: 0.000_015,
+          cacheReadUsdPerToken: 0.000_000_3,
+          cacheWriteUsdPerToken: 0.000_003_75,
+        },
         costCents: 125,
       },
     ],
@@ -207,6 +232,14 @@ export function testFinalizedPayload(overrides: Record<string, unknown> = {}): R
         model: "model-a",
         occurredAt: "2026-01-01T00:00:02.000Z",
         tokens: { inputTokens: 1000, outputTokens: 250 },
+        rates: {
+          pricingSource: "catalogue",
+          pricingVersion: "price-1",
+          inputUsdPerToken: 0.000_003,
+          outputUsdPerToken: 0.000_015,
+          cacheReadUsdPerToken: 0.000_000_3,
+          cacheWriteUsdPerToken: 0.000_003_75,
+        },
         costCents: 125,
       },
     ],

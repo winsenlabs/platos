@@ -15,6 +15,15 @@
 // deleted outright with `readTurnWork` hard-wired to empty lists and the
 // package still compiled and returned 14 files / 281 passed.
 //
+// AND THE PRICES THOSE LANES ARE MULTIPLIED BY. The same omission ran one level
+// down: `readRates` was reachable only through `readStep` and `readUsage`, no
+// payload fixture carried a `rates` key, and it was therefore only ever called
+// with `undefined`. `rateColumns` filled six columns from that dead read, so
+// every step and usage row delivered from an envelope carried DEFAULT PRICES.
+// The heading above claimed the money path was proven from the queue to the
+// sink while the prices on it were not read at all; the case below is what
+// makes the claim true rather than the claim trimmed to what was proven.
+//
 // Every case below asserts on the ROW IN THE SINK. A lane can be lost at the
 // read, at the projection, or at the insert, and only the far end catches all
 // three.
@@ -92,6 +101,49 @@ describe("drainProjections — the four analytical lanes", () => {
     expect(toolCalls[0]?.tool_call_id).toBe(TEST_TOOL_CALL_UUID);
     expect(toolCalls[0]?.tool_name).toBe("search");
     expect(toolCalls[0]?.environment_id).toBe("env-1");
+  });
+
+  it("delivers the PRICING RATES end to end, so a row is never billed at default prices", async () => {
+    // THE MONEY PATH ONE LEVEL DOWN, and the last part of it that was read by
+    // nobody. `domain/observed-work-codec.ts::readRates` was reachable only
+    // through `readStep` and `readUsage`, and no payload fixture in the package
+    // carried a `rates` key — so it was only ever called with `undefined`.
+    // Inserting `if (value !== null) return undefined;` at the top of it left 15
+    // files / 287 passed. `domain/projection.ts::rateColumns` fills
+    // `pricing_source`, `pricing_version` and the four per-million columns from
+    // that value, so every step and usage row delivered from an envelope carried
+    // DEFAULT PRICES: empty catalogue, zero per million. `rateColumns` IS
+    // covered — through `testStep` in `domain/projection.test.ts` — and that
+    // coverage is precisely what masked this, because it proves the projection
+    // from a hand-built domain value that never went through the codec.
+    //
+    // Asserted at the SINK and with EXACT values. A rate can be lost at the read
+    // or flattened at the projection, and both arrive at the far end as a row
+    // that looks plausible and is priced at zero.
+    finalized(context);
+
+    const drained = await drainProjections(context.dependencies);
+    if (!drained.ok) throw new Error(drained.error.code);
+    expect(drained.value.delivered).toBe(1);
+
+    const step = context.sink.rows("steps_v1")[0];
+    expect(step?.step_id).toBe(TEST_STEP_UUID);
+    expect(step?.pricing_source).toBe("catalogue");
+    expect(step?.pricing_version).toBe("price-1");
+    // 0.000003 USD per token is 3 USD per million, through `usdPerMillion` into
+    // the DECIMAL(_,12) column. A dead reader makes this "0.000000000000".
+    expect(step?.fresh_input_usd_per_million).toBe("3.000000000000");
+    expect(step?.output_usd_per_million).toBe("15.000000000000");
+    expect(step?.cache_read_usd_per_million).toBe("0.300000000000");
+    expect(step?.cache_write_usd_per_million).toBe("3.750000000000");
+
+    // The usage lane reads its rates through the same function and projects
+    // them through the same columns, and it is the table the bill is computed
+    // from, so it is pinned here rather than left to the step alone.
+    const usage = context.sink.rows("usage_events_v1")[0];
+    expect(usage?.pricing_version).toBe("price-1");
+    expect(usage?.fresh_input_usd_per_million).toBe("3.000000000000");
+    expect(usage?.output_usd_per_million).toBe("15.000000000000");
   });
 
   it("inserts all FOUR lanes in one batch, and the receipt counts them", async () => {
