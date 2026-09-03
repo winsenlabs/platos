@@ -1,7 +1,7 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-02T18:17:09.588Z",
+  "scannedAt": "2026-09-02T07:50:35.129Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
@@ -13,7 +13,7 @@
     "cacheFallbacks": 0,
     "limitations": []
   },
-  "lockfileSha256": "21487f276df172fcf605ab63ad3607ad72229c684e2d13c9544f79fbfd0656d7",
+  "lockfileSha256": "8a40856ee5f8b529bd3e163423f52187bd541b6daaa4b543bd63455da458eb6c",
   "ecosystem": "npm",
   "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {
@@ -24,19 +24,19 @@
     "componentCount": 330,
     "distinctNames": 303
   },
-  "scanSetSha256": "16448697399cd2a73f023d0a9e8ff806077580bfd7f6e165f0ad7e7c6a51f103",
+  "scanSetSha256": "b185796f6eb2f0dfe7d73ba5b565e7f57730ecf81359577ad1744aac69d6092b",
   "imageScanSetSha256": {
-    "agent": "f971f028d668d880d2c983f52d71f40b104e0a8c0e3dd714eb0af164b6486751",
+    "agent": "dfbd8df6efd70780e5554f77656c93cf30dc3871bd992701798501a5a73a3a2b",
     "webapp": "b8b4fb78428532a9545374f8eaa5ce78223a2b29ce3c588875bde605550d287b"
   },
   "componentsScanned": 876,
   "agentComponents": 718,
   "webappComponents": 330,
-  "findingsCount": 151,
+  "findingsCount": 155,
   "withdrawnCount": 0,
   "bySeverity": {
     "CRITICAL": 3,
-    "HIGH": 55,
+    "HIGH": 59,
     "MODERATE": 75,
     "LOW": 18
   },
@@ -530,7 +530,7 @@
       "versionsInClosure": [
         "8.11.0",
         "8.18.0",
-        "8.21.1"
+        "8.18.3"
       ],
       "shipsIn": [
         "agent",
@@ -576,6 +576,18 @@
           ]
         },
         {
+          "id": "GHSA-96hv-2xvq-fx4p",
+          "cves": [
+            "CVE-2026-48779"
+          ],
+          "version": "8.18.3",
+          "severity": "HIGH",
+          "fixedIn": "5.2.5",
+          "images": [
+            "agent"
+          ]
+        },
+        {
           "id": "GHSA-58qx-3vcg-4xpx",
           "cves": [
             "CVE-2026-45736"
@@ -594,6 +606,18 @@
             "CVE-2026-45736"
           ],
           "version": "8.18.0",
+          "severity": "MODERATE",
+          "fixedIn": "8.20.1",
+          "images": [
+            "agent"
+          ]
+        },
+        {
+          "id": "GHSA-58qx-3vcg-4xpx",
+          "cves": [
+            "CVE-2026-45736"
+          ],
+          "version": "8.18.3",
           "severity": "MODERATE",
           "fixedIn": "8.20.1",
           "images": [
@@ -1029,6 +1053,44 @@
       "withdrawn": null
     },
     {
+      "package": "engine.io",
+      "version": "6.6.6",
+      "id": "GHSA-gr94-w7qr-f4j3",
+      "aliases": [
+        "CVE-2026-59724"
+      ],
+      "cves": [
+        "CVE-2026-59724"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "Socket.IO: Engine.IO WebTransport SID DoS",
+      "fixedIn": "6.6.7",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "engine.io",
+      "version": "6.6.6",
+      "id": "GHSA-r635-g3xr-vw7x",
+      "aliases": [
+        "CVE-2026-59725"
+      ],
+      "cves": [
+        "CVE-2026-59725"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "Socket.IO: Engine.IO Polling Transport Connection Exhaustion",
+      "fixedIn": "6.6.7",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
       "package": "express-rate-limit",
       "version": "8.2.1",
       "id": "GHSA-46wh-pxpv-q5gq",
@@ -1080,44 +1142,6 @@
       "cvss": null,
       "summary": "fast-uri vulnerable to host confusion via backslash authority introducer",
       "fixedIn": "2.4.4",
-      "images": [
-        "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-uri",
-      "version": "3.0.6",
-      "id": "GHSA-f65p-4m7j-42xc",
-      "aliases": [
-        "CVE-2026-75975"
-      ],
-      "cves": [
-        "CVE-2026-75975"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
-      "fixedIn": "2.4.5",
-      "images": [
-        "agent"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "fast-uri",
-      "version": "3.0.6",
-      "id": "GHSA-jqff-g426-hqxp",
-      "aliases": [
-        "CVE-2026-76172"
-      ],
-      "cves": [
-        "CVE-2026-76172"
-      ],
-      "severity": "HIGH",
-      "cvss": null,
-      "summary": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
-      "fixedIn": "2.4.5",
       "images": [
         "agent"
       ],
@@ -1425,6 +1449,63 @@
       "cvss": null,
       "summary": "Multer vulnerable to Denial of Service via deeply nested field names",
       "fixedIn": "2.2.0",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "nanoid",
+      "version": "3.3.8",
+      "id": "GHSA-28wg-ghj8-5hjv",
+      "aliases": [
+        "CVE-2026-67214"
+      ],
+      "cves": [
+        "CVE-2026-67214"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "fixedIn": "3.3.16",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "nanoid",
+      "version": "3.3.8",
+      "id": "GHSA-2v37-7h3g-55p8",
+      "aliases": [
+        "CVE-2026-67213"
+      ],
+      "cves": [
+        "CVE-2026-67213"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "nanoid: custom generators can loop indefinitely when size is zero",
+      "fixedIn": "3.3.18",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "nanoid",
+      "version": "3.3.8",
+      "id": "GHSA-xwg4-73v4-xw9w",
+      "aliases": [
+        "CVE-2026-73086"
+      ],
+      "cves": [
+        "CVE-2026-73086"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "nanoid: Integer Overflow or Wraparound",
+      "fixedIn": "3.3.12",
       "images": [
         "agent"
       ],
@@ -1744,6 +1825,25 @@
     {
       "package": "ws",
       "version": "8.18.0",
+      "id": "GHSA-96hv-2xvq-fx4p",
+      "aliases": [
+        "CVE-2026-48779"
+      ],
+      "cves": [
+        "CVE-2026-48779"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
+      "fixedIn": "5.2.5",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "ws",
+      "version": "8.18.3",
       "id": "GHSA-96hv-2xvq-fx4p",
       "aliases": [
         "CVE-2026-48779"
@@ -2637,26 +2737,6 @@
     {
       "package": "qs",
       "version": "6.14.1",
-      "id": "GHSA-4mjr-xmp4-gh2g",
-      "aliases": [
-        "CVE-2026-82417"
-      ],
-      "cves": [
-        "CVE-2026-82417"
-      ],
-      "severity": "MODERATE",
-      "cvss": null,
-      "summary": "qs: Denial of Service via Attacker Controlled isBuffer",
-      "fixedIn": "6.16.0",
-      "images": [
-        "agent",
-        "webapp"
-      ],
-      "withdrawn": null
-    },
-    {
-      "package": "qs",
-      "version": "6.14.1",
       "id": "GHSA-q8mj-m7cp-5q26",
       "aliases": [
         "CVE-2026-8723"
@@ -3172,6 +3252,25 @@
     {
       "package": "ws",
       "version": "8.18.0",
+      "id": "GHSA-58qx-3vcg-4xpx",
+      "aliases": [
+        "CVE-2026-45736"
+      ],
+      "cves": [
+        "CVE-2026-45736"
+      ],
+      "severity": "MODERATE",
+      "cvss": null,
+      "summary": "ws: Uninitialized memory disclosure",
+      "fixedIn": "8.20.1",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "ws",
+      "version": "8.18.3",
       "id": "GHSA-58qx-3vcg-4xpx",
       "aliases": [
         "CVE-2026-45736"

@@ -3,14 +3,14 @@
   "generatedBy": "scripts/audit-sbom.mjs generate",
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
-  "lockfileSha256": "21487f276df172fcf605ab63ad3607ad72229c684e2d13c9544f79fbfd0656d7",
+  "lockfileSha256": "8a40856ee5f8b529bd3e163423f52187bd541b6daaa4b543bd63455da458eb6c",
   "licenseIndexSha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b",
   "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe",
+      "sha256": "bb31518f442fa32a5c7dd17d1a284eae784503646cc6e8cf5d25d35dc3daf108",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
@@ -74,11 +74,11 @@
         },
         {
           "file": "package.json",
-          "sha256": "5969c28f395c5d0e573d912439442234273434d017e7a49edcfe3765ebef8151"
+          "sha256": "870c9a67adbe0b4944af90d8af0940c944aa23f3d5f8b5a9f32750faddb3f275"
         },
         {
           "file": "pnpm-lock.yaml",
-          "sha256": "21487f276df172fcf605ab63ad3607ad72229c684e2d13c9544f79fbfd0656d7"
+          "sha256": "8a40856ee5f8b529bd3e163423f52187bd541b6daaa4b543bd63455da458eb6c"
         },
         {
           "file": "scripts/image-package-inventory.mjs",
@@ -89,7 +89,7 @@
           "sha256": "360b978afaf1d522a5b98479b5ab6f44e6b007e6cb71655f5c6ae55178f9fff7"
         }
       ],
-      "buildInputsSha256": "d667607eefba6554c2953642b871d2f888756e6490f7e7f89ef0910c200e9e07"
+      "buildInputsSha256": "972675185cf9a1d0a20523c48c3de6924c8efb05c00dd0920c3b2161dd4daa83"
     }
   }
 }

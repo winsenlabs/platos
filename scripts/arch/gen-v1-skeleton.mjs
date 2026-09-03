@@ -63,7 +63,16 @@ const KERNEL_PORTS = [
 export const OWNED_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
 export const ROOT_SOLUTION_PATH = "tsconfig.json";
 export const EXPECTED_PROJECT_COUNT = 32;
-export const EXPECTED_EDGE_COUNT = 94;
+// 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
+// binds twelve adapters to the ports they implement and three of those ports
+// (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
+// edge a quarter of its one job cannot be typed. It is also the only project
+// that can implement Clock, IdGenerator and Logger — kernel ports with no vendor
+// SDK and therefore no adapter of their own. The kernel is a leaf (rule (f)), so
+// this edge cannot create a cycle, and the 17-context DAG is unchanged. The
+// independent expectation in scripts/arch/v1-project-graph.mjs carries the same
+// delta and is maintained separately on purpose.
+export const EXPECTED_EDGE_COUNT = 95;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -99,6 +108,8 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
   "packages/contexts/files", // WIN-256 — attachments + artifacts, and the ObjectStore port it owns
   "packages/contexts/providers", // WIN-256 — provider keys, the model catalogue, rate cards, and the ModelRouter port it owns
+  "apps/core-api", // WIN-297 — the bootable process and THE composition root
+  "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption
@@ -147,8 +158,19 @@ const BUILD_SCRIPTS = { build: "tsc -b", clean: "tsc -b --clean" };
 // These packages are `private`, so the emitted test JavaScript in dist/ is inert.
 const ADOPTED_SCRIPTS = { ...BUILD_SCRIPTS, test: "vitest run" };
 
+// An adopted APP is additionally a process, so it gets the one script that
+// starts it. `start` runs the built entry point rather than a bundler or a
+// watcher: the thing CI proves and the thing an operator runs must be the same
+// artifact, or the executable start/stop evidence is about something that never
+// ships (WIN-297).
+const ADOPTED_APP_SCRIPTS = { ...ADOPTED_SCRIPTS, start: "node dist/main.js" };
+
+// Projects whose adopted script set is the app set rather than the library set.
+const APP_PROJECTS = new Set(["apps/core-api", "apps/mcp-stdio"]);
+
 function scriptsFor(project, adopted) {
-  return adoptedSet(adopted).has(project) ? ADOPTED_SCRIPTS : BUILD_SCRIPTS;
+  if (!adoptedSet(adopted).has(project)) return BUILD_SCRIPTS;
+  return APP_PROJECTS.has(project) ? ADOPTED_APP_SCRIPTS : ADOPTED_SCRIPTS;
 }
 
 function pascal(name) {
@@ -224,14 +246,37 @@ function adapterManifest(adapter, adopted) {
   });
 }
 
-function appManifest({ name, description, dependencies, scripts }) {
+// The external runtime dependencies apps/core-api needs to BE a process
+// (WIN-297). They are declared here, in the generator, because a project's
+// manifest is SCAFFOLDING: adoption releases a project's source tree and never
+// its package.json, so the only honest place to add a runtime dependency is the
+// generator that owns the file.
+//
+// Specifiers are byte-identical to apps/agent's, so pnpm resolves them to the
+// entries already in pnpm-lock.yaml (@nestjs 11.1.18) instead of opening a new
+// resolution. A composition root that forced a second major of the framework
+// into the lockfile would be a supply-chain change disguised as a bootstrap.
+//
+// ADR M0.3 §4 names Nest as the composition-root framework. It appears HERE and
+// in apps/core-api only: `no-infra-in-core` (rule (a)) keeps it out of every
+// context's domain/ and application/, and WIN-297 adds the negative control that
+// proves that rule can still fail.
+const CORE_API_RUNTIME_DEPENDENCIES = {
+  "@nestjs/common": "^11.0.0",
+  "@nestjs/core": "^11.0.0",
+  "@nestjs/platform-express": "^11.0.0",
+  "reflect-metadata": "^0.2.2",
+  rxjs: "^7.8.1",
+};
+
+function appManifest({ name, description, dependencies, scripts, externalDependencies = {} }) {
   return packageManifest({
     scripts,
     name,
     description,
     main: "./dist/main.js",
     types: "./dist/main.d.ts",
-    dependencies: workspaceDependencies(dependencies),
+    dependencies: { ...workspaceDependencies(dependencies), ...externalDependencies },
   });
 }
 
@@ -261,6 +306,7 @@ export function projectReferences() {
     );
   }
   references.set("apps/core-api", [
+    "packages/kernel",
     ...CONTEXT_NAMES.map((name) => `packages/contexts/${name}`),
     ...ADAPTERS.map((adapter) => `packages/adapters/${adapter.dir}`),
   ]);
@@ -273,6 +319,21 @@ function relativeReference(fromProject, toProject) {
   return path.startsWith(".") ? path : `./${path}`;
 }
 
+// apps/core-api hosts Nest, and Nest 11's dependency injection reads metadata
+// that only the LEGACY decorator transform emits. `.configs/tsconfig.base.json`
+// sets `experimentalDecorators: false` repository-wide, which selects the TC39
+// standard decorators Nest does not support, so the composition root overrides
+// both flags for its own project and nothing else.
+//
+// This is deliberately the narrowest possible blast radius: no context, no
+// adapter and no other app can see these options, so `@nestjs/*` cannot become
+// compilable inside a layer that ADR M0.3 §2 bans it from. Flipping them in the
+// base config instead would have made the framework legal everywhere in order to
+// make it legal in one place.
+const PROJECT_COMPILER_OPTION_OVERRIDES = {
+  "apps/core-api": { experimentalDecorators: true, emitDecoratorMetadata: true },
+};
+
 function projectTsconfig(project, include, references, rootDir) {
   const extendsPath = relative(project, ROOT_SOLUTION_PATH).split("\\").join("/");
   return `${JSON.stringify({
@@ -284,6 +345,7 @@ function projectTsconfig(project, include, references, rootDir) {
       rootDir,
       outDir: "dist",
       tsBuildInfoFile: "dist/.tsbuildinfo",
+      ...(PROJECT_COMPILER_OPTION_OVERRIDES[project] ?? {}),
     },
     include,
     exclude: ["dist", "node_modules"],
@@ -423,6 +485,7 @@ export function renderSkeleton(adopted) {
   }
 
   const coreDependencies = [
+    "@platos/kernel",
     ...CONTEXT_NAMES.map((name) => `@platos/context-${name}`),
     ...ADAPTERS.map((adapter) => `@platos/adapter-${adapter.dir}`),
   ];
@@ -431,12 +494,19 @@ export function renderSkeleton(adopted) {
     name: "@platos/core-api",
     description: "THE single V1 deployable: the composition root and every transport.",
     dependencies: coreDependencies,
+    externalDependencies: CORE_API_RUNTIME_DEPENDENCIES,
   }));
   put("apps/core-api/tsconfig.json", projectTsconfig("apps/core-api", ["src/**/*.ts"], references.get("apps/core-api"), "src"));
   put(
     "apps/core-api/README.md",
-    `# @platos/core-api\n\nADR M0.3 §4: THE single V1 deployable. It is the composition root — the ONLY\nplace that may import \`packages/adapters/*\` — and it hosts every transport.\nTransports are thin: they call context use-cases and hold no business rule.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
+    `# @platos/core-api\n\nADR M0.3 §4: THE single V1 deployable. It is the composition root — the ONLY\nplace that may import \`packages/adapters/*\` — and it hosts every transport.\nTransports are thin: they call context use-cases and hold no business rule.\n\nThis project's SOURCE tree is adopted (WIN-297): \`src/\` is hand-written, and\n\`scripts/arch/composition-root.mjs\` narrows \`adapters-only-from-core\` further,\nto the one composition module inside it. Its \`package.json\`, \`tsconfig.json\` and\nthis README stay generated by \`scripts/arch/gen-v1-skeleton.mjs\`.\n\nRun it with \`pnpm --filter @platos/core-api start\` after \`pnpm build:v1\`.\n`
   );
+  // The source placeholders below are still rendered for an UNADOPTED
+  // apps/core-api — `put()` drops them once the project is adopted. Deleting the
+  // emitters instead of letting adoption release them would break the
+  // EXPECTED_PLACEHOLDER_FILE_COUNT invariant and, worse, silently disarm the
+  // monotonicity lock: un-adopting would then produce no MISSING placeholder to
+  // fail on.
   put(
     "apps/core-api/src/main.ts",
     `${HEADER}// Process entry point. Boots the composition root and nothing else.\n` +
@@ -473,7 +543,7 @@ export function renderSkeleton(adopted) {
   put("apps/mcp-stdio/tsconfig.json", projectTsconfig("apps/mcp-stdio", ["src/**/*.ts"], references.get("apps/mcp-stdio"), "src"));
   put(
     "apps/mcp-stdio/README.md",
-    `# @platos/mcp-stdio\n\nADR M0.3 §4: a thin stdio binary. It owns no business logic; it reuses the\n\`tools\` context transport surface published through that context's\n\`contracts/\`.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
+    `# @platos/mcp-stdio\n\nADR M0.3 §4: a thin stdio binary. It owns no business logic; it reuses the\n\`tools\` context transport surface published through that context's\n\`contracts/\`.\n\nThis project's SOURCE tree is adopted (WIN-297). It is a real process with a\nfail-closed startup, but it holds no adapter: \`adapters-only-from-core\`\n(rule (j)) names \`apps/core-api\` alone, so this binary receives its\n\`ToolsContract\` from a host-supplied runtime module and refuses to start\nwithout one. Its \`package.json\`, \`tsconfig.json\` and this README stay generated\nby \`scripts/arch/gen-v1-skeleton.mjs\`.\n`
   );
   put(
     "apps/mcp-stdio/src/main.ts",

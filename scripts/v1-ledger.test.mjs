@@ -516,9 +516,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   const expectedDeltas = {
     "apps-agent": 0,
     "apps-webapp": 0,
-    "apps-core-api": 0,
-    "apps-mcp-stdio": 0,
-    // 1 -> 207 -> 272. WIN-252 added packages/core/NOTICE (the upstream MIT
+    // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
+    // (composition/{adapter-bindings,registry}, config/{schema,load},
+    // health/readiness, http/{health.controller,http.module,token},
+    // runtime/{correlation,in-flight,lifecycle,process-ports}) classified by the
+    // new apps-core-api.source.process rule, plus 7 suites. main.ts,
+    // app.module.ts and the six transport seams were rewritten in place and add
+    // no files. The transports rule stays at exactly 6 — the new rule is
+    // declared ahead of it so process code does not inherit transport evidence.
+    "apps-core-api": 19,
+    // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
+    // loader), the in-repository host runtime the executable evidence points at,
+    // and its suite.
+    "apps-mcp-stdio": 3,
+    // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
     // attribution, kept out of LICENSE so every publishable package's LICENSE
     // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
     // added 206 files making packages/kernel and four contexts real
@@ -534,6 +545,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
+<<<<<<< HEAD
     //
     // M2 INTEGRATION DELTA — packages 1 -> 272, docs-content 9 -> 13,
     // root-infra 10 -> 37, total +20 -> +322. Three branches add files on
@@ -589,12 +601,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // No new ledger rule was needed by any branch: docs/audits/**, packages/**,
     // tests/** and scripts/** already have owning rules, so only the
     // fingerprint moves. Every added file is enumerated above and conserves
-    // exactly to these deltas; attributed for ledger-owner review, not forced
-    // to green. 20 + 5 + 19 + 278 = 322.
+    // WIN-297 (composition root) contributes +24 (apps-core-api +19,
+    // apps-mcp-stdio +3, root-infra +2), all attributed above and below.
+    //
+    //   root-infra +2 — scripts/arch/composition-root.mjs, which narrows rule
+    //   (j) from a package to the single file entitled to import an adapter,
+    //   and its 22-control suite, which carries the real-tree negative
+    //   controls for rules (j) and (a). These are DISTINCT from WIN-256's own
+    //   +2 (the test-case census and its control suite): both branches moved
+    //   root-infra from 15 to 17 on their own lineage, but on different files,
+    //   so the integrated value is 10 + 3 + 17 + 7 + 2 = 39, not 17.
+    //
+    // No new ledger rule was needed by any branch beyond WIN-297's
+    // apps-core-api.source.process rule, which is declared ahead of the
+    // transports rule so process code does not inherit transport evidence.
+    // Every added file is enumerated above and conserves exactly to these
+    // deltas; attributed for ledger-owner review, not forced to green.
+    // 20 + 5 + 19 + 278 + 24 = 346.
     "docs-content": 13,
-    "root-infra": 37,
+    "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 322);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -603,10 +630,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +322 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278); this one
-    // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 322
+    // M2 integration: same +20 -> +346 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
+    // this one re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 346
   );
 });
 

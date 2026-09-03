@@ -462,33 +462,51 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 178 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 169 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // 201 -> 182. WIN-256 adopted 5 projects (packages/kernel and four contexts)
-  // out of generator ownership, releasing 19 placeholders to real source. The
-  // generator still owns all 97 scaffolding files plus the 85 placeholders of
-  // the 27 unadopted projects.
+  // M2 INTEGRATION DELTA — 201 -> 169. Adoption RELEASES placeholders, so this
+  // count only ever falls, and the three adopting slices release placeholders
+  // from DISJOINT projects. The integrated count is therefore the sum of all
+  // three reductions, not the smaller of the two branch pins:
   //
-  // 182 -> 178. Adopting `providers` (context 6) releases its 4 placeholders —
-  // domain/index.ts, application/index.ts, application/ports/index.ts and
-  // contracts/index.ts — to real source. The generator now owns the same 97
-  // scaffolding files plus the 81 placeholders of the 26 still-unadopted
-  // projects, and the project count is unchanged at 32 because adoption
-  // releases a project's PLACEHOLDERS, not its scaffolding.
+  //   201 -> 182  WIN-256 slices 1-5 adopt 5 projects (packages/kernel and the
+  //               secrets, files, tenancy and identity-access contexts),
+  //               releasing 19 placeholders.
+  //   182 -> 178  WIN-256 adopts `providers` (context 6), releasing its 4 —
+  //               domain/index.ts, application/index.ts,
+  //               application/ports/index.ts and contracts/index.ts.
+  //   178 -> 169  WIN-297 adopts the two apps, releasing 9: apps/core-api's 8
+  //               (main.ts, app.module.ts and the six transport seams) and
+  //               apps/mcp-stdio's 1 (main.ts).
   //
-  // This canary was the one `tejas/win-256-providers-context` left behind: at
-  // 25b231b it still asserted 182 while its own committed evidence recorded
-  // 178, so `pnpm test:workspace-reachability` — the FIRST step of the ci.yml
-  // typecheck job — was already red on that branch before this rebase. The
-  // number is reconciled here with its delta, not forced.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 178);
+  // WIN-297 branched from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so
+  // it pinned 182 - 9 = 173 and never saw the providers release; WIN-256's tip
+  // pinned 178 and never saw the apps. Neither pin is correct here. 201 - 19 -
+  // 4 - 9 = 169, which is 178 - 9 and 173 - 4 alike.
+  //
+  // The generator now owns the same 97 SCAFFOLDING files plus the 72
+  // placeholders of the 24 still-unadopted projects. The scaffolding tier is
+  // untouched and stays byte-compared: adoption releases only a project's
+  // source tree, so every adopted project still owes its generated
+  // package.json, tsconfig.json and README.md. The project count is unchanged
+  // at 32 for the same reason — adoption releases a project's PLACEHOLDERS,
+  // not its scaffolding. That is what lets the generator carry apps/core-api's
+  // new @nestjs runtime dependencies and its two decorator compiler options,
+  // which scaffolding a hand edit could not have added.
+  //
+  // This canary is the FIRST step of the ci.yml typecheck job and it was
+  // already red on `tejas/win-256-providers-context` at 25b231b, which asserted
+  // 182 while its own committed evidence recorded 178. It is reconciled here
+  // with its full delta, not forced.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 169);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 178);
+  // Same 169 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 169);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

@@ -88,8 +88,25 @@ export function v1DistDirectories(root = repositoryRoot) {
         throw new Error(`V1 project ${reference.path} must not set alternate output option ${forbidden}`);
       }
     }
+    // The six OUTPUT options every V1 project must set identically. This check
+    // exists so `clean:v1` can only ever delete a `dist/` it fully understands;
+    // an unexpected output option could point emitted files somewhere this
+    // script would then remove, or fail to remove.
+    //
+    // WIN-297 allows ONE project a strictly non-output addition. Nest 11's
+    // dependency injection reads metadata only the legacy decorator transform
+    // emits, and `.configs/tsconfig.base.json` sets `experimentalDecorators:
+    // false` repository-wide. `apps/core-api` — the Nest composition root, and
+    // the only project ADR M0.3 §4 puts a framework in — overrides both flags
+    // for itself. Neither affects where output goes, so the safety property this
+    // check protects is untouched, and allowing them HERE rather than widening
+    // `expectedCompilerOptionKeys` for all 32 projects keeps the exception
+    // named, reviewable and impossible to inherit by accident.
     const expectedCompilerOptionKeys = [
       "composite", "declaration", "declarationMap", "outDir", "rootDir", "tsBuildInfoFile",
+      ...(normalizedReferencePath(reference.path) === "apps/core-api"
+        ? ["emitDecoratorMetadata", "experimentalDecorators"]
+        : []),
     ];
     const expectedRootDir = normalizedReferencePath(reference.path).startsWith("packages/contexts/") ? "." : "src";
     if (

@@ -15,9 +15,12 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run",
+    "start": "node dist/main.js"
   },
   "dependencies": {
+    "@platos/kernel": "workspace:*",
     "@platos/context-identity-access": "workspace:*",
     "@platos/context-tenancy": "workspace:*",
     "@platos/context-secrets": "workspace:*",
@@ -46,6 +49,11 @@
     "@platos/adapter-model-router-providers": "workspace:*",
     "@platos/adapter-channel-slack": "workspace:*",
     "@platos/adapter-notifier-email": "workspace:*",
-    "@platos/adapter-notifier-webhook": "workspace:*"
+    "@platos/adapter-notifier-webhook": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
   }
 }

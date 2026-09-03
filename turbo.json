@@ -74,6 +74,20 @@
       ],
       "outputs": []
     },
+    "@platos/core-api#test": {
+      "dependsOn": [
+        "^build",
+        "build"
+      ],
+      "outputs": []
+    },
+    "@platos/mcp-stdio#test": {
+      "dependsOn": [
+        "^build",
+        "build"
+      ],
+      "outputs": []
+    },
     "test:dev": {
       "outputs": [],
       "cache": false

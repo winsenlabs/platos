@@ -106,6 +106,11 @@ const v1ReleaseGateCommands = [
   "pnpm test:kernel-content",
   "pnpm audit:sole-writer",
   "pnpm test:sole-writer",
+  // WIN-297: rule (j) narrowed from a package to the one file, plus the
+  // real-tree negative controls for rules (j) and (a). See the note on the same
+  // pair in expectedV1EvidenceCommands below.
+  "pnpm audit:composition-root",
+  "pnpm test:composition-root",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -117,6 +122,10 @@ const v1ReleaseGateCommands = [
   "pnpm build:v1",
   // WIN-256: the V1 packages' own suites, ordered after build:v1 because a
   // context test resolves its peers through their built dist/ entrypoints.
+  // WIN-297 widened the filter to apps/core-api and apps/mcp-stdio, whose
+  // executable start/stop evidence spawns the BUILT dist/main.js — which is why
+  // this must stay after build:v1 and why those two projects' turbo `test` task
+  // depends on their own `build`, not only on `^build`.
   "pnpm test:v1-packages",
 ];
 const repositoryGovernanceCommands = [
@@ -241,6 +250,16 @@ const expectedV1EvidenceCommands = [
   "pnpm test:kernel-content",
   "pnpm audit:sole-writer",
   "pnpm test:sole-writer",
+  // WIN-297: rule (j) `adapters-only-from-core` names a PACKAGE; ADR M0.3 §4
+  // says "THE composition root: the one place adapters are bound to context
+  // ports". Twelve adapter imports scattered across six transport directories
+  // satisfy the rule and not the sentence. This gate narrows rule (j) to one
+  // FILE, cross-checks the binding table against the ADR §4/§13 ownership map,
+  // and pins the single declared run-time-resolved import. Its negative controls
+  // — including the real-tree rule (j) and rule (a) controls this issue's
+  // acceptance requires — are in the test beside it.
+  "pnpm audit:composition-root",
+  "pnpm test:composition-root",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -248,7 +267,8 @@ const expectedV1EvidenceCommands = [
   "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
   // WIN-256: the V1 packages' own suites. Runs AFTER build:v1 because a context
-  // test resolves its peers through their built dist/ entrypoints.
+  // test resolves its peers through their built dist/ entrypoints — and, since
+  // WIN-297, because the two apps' executable evidence spawns dist/main.js.
   "pnpm test:v1-packages",
   // WIN-256 owner decision 9 (2026-09-02): the per-package test CASE census.
   // `test:v1-packages` above prints a case count and passes at any value, and
@@ -2159,17 +2179,20 @@ test("committed CI and image-build policy is executable, correlated, and complet
     7,
     "relocated command selector must cover all seven commands"
   );
-  // M2 INTEGRATION DELTA — 16 -> 22. Two branches add release gates on
+  // M2 INTEGRATION DELTA — 16 -> 24. Three branches add release gates on
   // independent axes, so the pinned count is their SUM:
   //   +1 WIN-299 (M2.6): audit:advisory:nonvacuity.
   //   +5 WIN-256: the two gates ADR M0.3 specifies that M1 did not build —
   //      §5.3 kernel-content (audit + test) and §5.2 sole-writer (audit +
   //      test) — plus test:v1-packages, which runs the V1 packages' own suites
   //      now that packages/kernel holds real code and 44 real assertions.
+  //   +2 WIN-297: composition-root (audit + test), which narrows rule (j) from
+  //      a package to one file and carries the real-tree negative controls for
+  //      rules (j) and (a).
   assert.equal(
     v1ReleaseGateCommands.length,
-    22,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, and the ADR M0.3 kernel-content and sole-writer gates"
+    24,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, and the composition-root gate"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4307,7 +4330,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 356. Three independent
+  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 358. Four independent
   // contributions land on this count, on axes that do not interact, so the
   // pinned number is their SUM rather than any one side alone:
   //
@@ -4331,12 +4354,15 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   test:v1-packages). Each asserts that appending `|| true` to that gate's
   //   command is detected.
   //
-  // 340 + 2 + 9 + 5 = 356. The count is pinned rather than derived so that a
-  // control silently disappearing is a failure rather than a smaller number
+  //   WIN-297 (composition root), +2. audit/test:composition-root join the
+  //   same V1 release gate list, so each gains the same `|| true` control.
+  //
+  // 340 + 2 + 9 + 5 + 2 = 358. The count is pinned rather than derived so that
+  // a control silently disappearing is a failure rather than a smaller number
   // nobody reads.
   assert.equal(
     controls.length,
-    356,
+    358,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

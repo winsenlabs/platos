@@ -10,7 +10,51 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 export const EXPECTED_PROJECT_COUNT = 32;
-export const EXPECTED_EDGE_COUNT = 94;
+// 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
+// `packages/kernel`.
+//
+// The composition root binds twelve adapters to the ports they implement, and
+// THREE of those ports — OutboxWriter, DurableRuntime, EventBus — are
+// kernel-hosted (ADR M0.3 §4/§13). Without this edge the root cannot name them,
+// so a quarter of its one job is inexpressible. It is also the only place that
+// can implement the kernel ports with no adapter of their own: `Clock`,
+// `IdGenerator` and `Logger` have no vendor SDK, so ADR M0.3 §4's "one adapter,
+// one port, one SDK" does not describe them, and §5.3 forbids the kernel from
+// implementing itself.
+//
+// This is an edge to the kernel, which every project may import by construction
+// (rule (f) makes the kernel a leaf, so it can never create a cycle). It does
+// not widen the context DAG, and `EXPECTED_CONTEXT_DEPENDS_ON` below is
+// unchanged.
+export const EXPECTED_EDGE_COUNT = 95;
+
+// EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
+//
+// WIN-297 finding: before this split, `checkV1ProjectGraph` required every entry
+// in every V1 manifest's `dependencies` to be `workspace:*` AND to appear in the
+// 94-edge workspace graph. Both halves are right for a skeleton of declaration
+// files. Together they also said "no V1 project may ever have a runtime
+// dependency", which makes `apps/core-api` — the project ADR M0.3 §4 defines as
+// the NEST composition root — uninhabitable by the framework that definition
+// names.
+//
+// The workspace property is preserved in full: workspace edges are still exact,
+// still `workspace:*`, still counted, still cross-checked against references and
+// source imports. What is added is a new property that did not exist: an
+// external dependency must be DECLARED HERE, with its exact range, or the audit
+// fails — so an SDK cannot appear in a context, and a range cannot drift,
+// without moving a reviewed line in this file.
+//
+// Every project not named here must have zero external dependencies.
+export const EXPECTED_EXTERNAL_DEPENDENCIES = {
+  "apps/core-api": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    rxjs: "^7.8.1",
+  },
+};
 export const EXPECTED_ALIASES = {
   "@platos/kernel": ["packages/kernel/src/index.ts"],
   "@platos/kernel/*": ["packages/kernel/src/*"],
@@ -81,6 +125,9 @@ function expectedReferences() {
     graph.set(`packages/adapters/${adapter}`, [owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`]);
   }
   graph.set("apps/core-api", [
+    // WIN-297: the composition root names kernel ports directly. See the note on
+    // EXPECTED_EDGE_COUNT.
+    "packages/kernel",
     ...EXPECTED_CONTEXT_NAMES.map((name) => `packages/contexts/${name}`),
     ...Object.keys(EXPECTED_ADAPTER_OWNERS).map((name) => `packages/adapters/${name}`),
   ]);
@@ -296,14 +343,35 @@ export function checkV1ProjectGraph(root = repositoryRoot) {
       }
     }
 
+    // Two axes, judged separately (WIN-297). A dependency is a WORKSPACE edge
+    // when its name resolves to a V1 project; everything else is EXTERNAL and is
+    // held to the declared allow-list instead of to the graph.
+    const declaredDependencies = Object.keys(manifest.dependencies ?? {});
     const expectedDependencyNames = expected.map(packageName);
-    const actualDependencies = Object.keys(manifest.dependencies ?? {});
+    const actualDependencies = declaredDependencies.filter((name) => projectForSpecifier(name) !== null);
+    const actualExternal = declaredDependencies.filter((name) => projectForSpecifier(name) === null);
     dependencyEdgeCount += actualDependencies.length;
     if (!sameSet(actualDependencies, expectedDependencyNames)) {
       errors.push(`${project} dependencies ${describeSet(actualDependencies)}; expected ${describeSet(expectedDependencyNames)}`);
     }
     for (const dependency of actualDependencies) {
       if (manifest.dependencies[dependency] !== "workspace:*") errors.push(`${project} dependency ${dependency} must be workspace:*`);
+    }
+
+    const expectedExternal = EXPECTED_EXTERNAL_DEPENDENCIES[project] ?? {};
+    if (!sameSet(actualExternal, Object.keys(expectedExternal))) {
+      errors.push(
+        `${project} external dependencies ${describeSet(actualExternal)}; expected ${describeSet(Object.keys(expectedExternal))}` +
+          ` — declare it in EXPECTED_EXTERNAL_DEPENDENCIES or remove it`
+      );
+    }
+    for (const dependency of actualExternal) {
+      const range = expectedExternal[dependency];
+      if (range !== undefined && manifest.dependencies[dependency] !== range) {
+        errors.push(
+          `${project} external dependency ${dependency} is ${manifest.dependencies[dependency]}; expected the reviewed range ${range}`
+        );
+      }
     }
     const expectedEntry = expectedManifestEntry(project);
     if (manifest.main !== expectedEntry.main || manifest.types !== expectedEntry.types) {

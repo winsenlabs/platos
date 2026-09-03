@@ -102,6 +102,40 @@ test("cleanup rejects a symlink in any project ancestor before deletion", () => 
   }
 });
 
+test("the decorator exception is scoped to apps/core-api and nowhere else", () => {
+  // WIN-297 lets ONE project set experimentalDecorators/emitDecoratorMetadata:
+  // apps/core-api, because Nest 11's DI reads metadata only the legacy transform
+  // emits and the repository base config turns it off. Without this control the
+  // exception would be indistinguishable from having widened the allowed option
+  // set for all 32 projects — which would make @nestjs compilable inside a
+  // context, one directory from code ADR M0.3 §2 bans it from.
+  for (const project of ["packages/kernel", "packages/contexts/tenancy", "apps/mcp-stdio"]) {
+    const root = fixture();
+    mutateJson(join(root, project, "tsconfig.json"), (config) => {
+      config.compilerOptions.experimentalDecorators = true;
+    });
+    assert.throws(() => cleanV1(root), /exact generated dist output options/u, project);
+    assertAllSentinelsRemain(root);
+  }
+
+  // And the exception really is exercised: core-api sets both, and passes.
+  const clean = fixture();
+  const coreApi = JSON.parse(readFileSync(join(clean, "apps/core-api/tsconfig.json"), "utf8"));
+  assert.equal(coreApi.compilerOptions.experimentalDecorators, true);
+  assert.equal(coreApi.compilerOptions.emitDecoratorMetadata, true);
+  assert.doesNotThrow(() => v1DistDirectories(clean));
+});
+
+test("apps/core-api still fails if it drops a required OUTPUT option", () => {
+  // The exception adds two keys; it does not make the set optional.
+  const root = fixture();
+  mutateJson(join(root, "apps/core-api/tsconfig.json"), (config) => {
+    delete config.compilerOptions.declarationMap;
+  });
+  assert.throws(() => cleanV1(root), /exact generated dist output options/u);
+  assertAllSentinelsRemain(root);
+});
+
 test("alternate TypeScript output settings fail before any internal or external deletion", () => {
   for (const [option, expected] of [
     ["declarationDir", /alternate output option declarationDir/u],
