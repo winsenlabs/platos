@@ -24,6 +24,8 @@ import type {
 import {
   admitExecutionRequest,
   computeApprovalDigest,
+  invalidRequest,
+  mcpActionLabel,
   type AgentId,
   type ApprovalRequest,
   type ThreadId,
@@ -75,6 +77,32 @@ async function execute(
 }
 
 /**
+ * The label a human reads in the approval queue.
+ *
+ * A caller that says what is being approved is taken at its word. A caller that
+ * says nothing is on the MCP tool-call path, which in the live system does not
+ * compose the string itself — the server writes `` `MCP tool call: ${toolName}` ``
+ * — so the default comes from the ONE definition of it, `mcpActionLabel`, rather
+ * than being re-spelled here. Neither an action nor a tool name is refused: an
+ * approval whose action is blank is a question no human can answer, and
+ * defaulting it to something plausible would put that unanswerable question in
+ * front of one.
+ */
+function approvalActionFor(request: RequestApprovalCommandView): Result<string> {
+  const supplied = (request.action ?? "").trim();
+  if (supplied !== "") return ok(supplied);
+  const toolName = request.deduplicateOn?.toolName ?? request.toolName ?? null;
+  if (toolName === null || toolName.trim() === "") {
+    return err(
+      invalidRequest("an approval needs an action, or a tool name to derive the MCP label from", [
+        { field: "action", code: "REQUIRED", message: "action or toolName must be supplied" },
+      ]),
+    );
+  }
+  return ok(mcpActionLabel(toolName));
+}
+
+/**
  * Build the domain request, computing the dedupe digest only when the caller
  * asked for one. The digest subject is a wire format (`approval-request.ts`), so
  * it is built by the domain rather than assembled here.
@@ -82,12 +110,13 @@ async function execute(
 function approvalRequestFrom(
   dependencies: JobsDependencies,
   request: RequestApprovalCommandView,
+  action: string,
 ): ApprovalRequest {
   const dedupe = request.deduplicateOn ?? null;
   return {
     approvalId: request.approvalId,
     source: request.source,
-    action: request.action,
+    action,
     details: request.details ?? null,
     agentId: request.agentId === undefined || request.agentId === null ? null : asIdentifier<AgentId>(request.agentId),
     threadId:
@@ -118,9 +147,11 @@ async function openApproval(
   dependencies: JobsDependencies,
   request: RequestApprovalCommandView,
 ): Promise<Result<ApprovalRequestedView>> {
+  const action = approvalActionFor(request);
+  if (!action.ok) return err(action.error);
   const opened = await requestApproval(dependencies, {
     scope: request.scope,
-    request: approvalRequestFrom(dependencies, request),
+    request: approvalRequestFrom(dependencies, request, action.value),
     parkRunId: request.parkRunId ?? null,
   });
   if (!opened.ok) return err(opened.error);

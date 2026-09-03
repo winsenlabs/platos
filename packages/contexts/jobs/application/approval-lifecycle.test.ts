@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type { ApprovalId, RequestDigest } from "../domain/index.js";
 import { genericApprovalTimeout, mcpApprovalTimeout, requestApproval } from "./request-approval.js";
+import { resolveApproval as decide } from "../domain/index.js";
 import { resolveApprovalDecision } from "./resolve-approval.js";
 import { sweepAllScopes, sweepExpiredApprovals } from "./sweep-expired-approvals.js";
 import {
@@ -343,6 +344,84 @@ describe("resolveApprovalDecision — resuming the parked run", () => {
   });
 });
 
+// THE RACE THE CONDITIONAL WRITE DEFENDS AGAINST.
+//
+// Two dashboards click Approve at the same instant. Both read a pending row,
+// both build a valid resolution, and the repository's guarded update lets
+// exactly one land. The loser must be told; it must NOT be handed `ok` and it
+// must not resume the parked run with its own decision.
+//
+// Nothing reached this branch. Resolving twice through the use case cannot: the
+// second call re-reads a row that is no longer pending and the domain refuses it
+// before any write. The rival's write has to land BETWEEN our read and our
+// write, which is what `beforeNextResolve` arranges.
+describe("resolveApprovalDecision — the loser of a concurrent decision", () => {
+  let context: JobsTestContext;
+
+  beforeEach(async () => {
+    context = buildJobsTestContext();
+    await requestApproval(context.dependencies, { scope: SCOPE, request: anApprovalRequest() });
+  });
+
+  async function rivalRejectsFirst(): Promise<void> {
+    const stored = await context.approvals.findByApprovalId(SCOPE, APPROVAL);
+    if (!stored.ok || stored.value === null) throw new Error("unreachable");
+    const rival = decide(stored.value, "rejected", context.clock.now(), {
+      respondedBy: "the-other-dashboard",
+      comment: null,
+      edit: null,
+    });
+    if (!rival.ok) throw new Error("unreachable");
+    context.approvals.beforeNextResolve(() => context.approvals.forceStored(SCOPE, rival.value));
+  }
+
+  it("is REFUSED as already resolved, not told its decision landed", async () => {
+    await rivalRejectsFirst();
+    const loser = await resolveApprovalDecision(context.dependencies, {
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      decision: "approved",
+    });
+    expect(loser.ok).toBe(false);
+    if (loser.ok) throw new Error("unreachable");
+    expect(loser.error.code).toBe("JOBS_APPROVAL_ALREADY_RESOLVED");
+    // The winner's decision stands.
+    const stored = await context.approvals.findByApprovalId(SCOPE, APPROVAL);
+    if (!stored.ok || stored.value === null) throw new Error("unreachable");
+    expect(stored.value.status).toBe("rejected");
+  });
+
+  it("does NOT resume the parked run with the loser's decision", async () => {
+    const opened = await requestApproval(context.dependencies, {
+      scope: SCOPE,
+      request: anApprovalRequest({ approvalId: asIdentifier<ApprovalId>("appr-0002") }),
+      parkRunId: RUN,
+    });
+    if (!opened.ok) throw new Error("unreachable");
+    const stored = opened.value.approval;
+    const rival = decide(stored, "rejected", context.clock.now(), {
+      respondedBy: "the-other-dashboard",
+      comment: null,
+      edit: null,
+    });
+    if (!rival.ok) throw new Error("unreachable");
+    context.approvals.beforeNextResolve(() => context.approvals.forceStored(SCOPE, rival.value));
+
+    const loser = await resolveApprovalDecision(context.dependencies, {
+      scope: SCOPE,
+      approvalId: asIdentifier<ApprovalId>("appr-0002"),
+      decision: "approved",
+      resumeToken: opened.value.resumeToken,
+    });
+
+    expect(loser.ok).toBe(false);
+    // The run is still parked on the WINNER's decision, which some other caller
+    // will deliver. Resuming here would continue the run on a rejection's
+    // opposite.
+    expect(context.durableRuntime.resumes).toHaveLength(0);
+  });
+});
+
 describe("sweepExpiredApprovals", () => {
   let context: JobsTestContext;
 
@@ -391,6 +470,35 @@ describe("sweepExpiredApprovals", () => {
     if (!report.ok) throw new Error("unreachable");
     expect(report.value.timedOut).toBe(0);
     expect(report.value.retained).toHaveLength(0);
+  });
+
+  // THE `retained` DIAGNOSTIC CHANNEL WAS DEAD. Only the scope-level failure in
+  // `sweepAllScopes` ever populated it; the per-ROW push had no caller, so
+  // deleting it left 354 green and a row the sweep could not take vanished from
+  // the report entirely. That is the one thing this report exists to say: the
+  // pass deliberately continues past a failure, so a failure it does not name is
+  // a row nobody will ever look at.
+  it("NAMES a sweepable row it could not take, with the reason", async () => {
+    context.clock.advanceSeconds(61);
+    context.approvals.failNextResolve("write conflict");
+    const report = await sweepExpiredApprovals(context.dependencies, SCOPE);
+    if (!report.ok) throw new Error("unreachable");
+    expect(report.value.examined).toBe(1);
+    expect(report.value.timedOut).toBe(0);
+    expect(report.value.retained).toEqual([
+      { approvalId: APPROVAL, reason: "JOBS_REPOSITORY_UNAVAILABLE" },
+    ]);
+  });
+
+  it("carries that row through to the all-scopes report rather than losing it", async () => {
+    context.clock.advanceSeconds(61);
+    context.approvals.failNextResolve("write conflict");
+    const report = await sweepAllScopes(context.dependencies);
+    if (!report.ok) throw new Error("unreachable");
+    expect(report.value.totalTimedOut).toBe(0);
+    expect(report.value.perScope[0]?.retained).toEqual([
+      { approvalId: APPROVAL, reason: "JOBS_REPOSITORY_UNAVAILABLE" },
+    ]);
   });
 });
 

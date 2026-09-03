@@ -35,6 +35,8 @@ export class InMemoryApprovalsRepository implements ApprovalsRepository {
   private readonly rows: Stored[] = [];
   private pendingFailure: string | null = null;
   private findPendingFailure: string | null = null;
+  private resolveFailure: string | null = null;
+  private beforeResolve: (() => void) | null = null;
 
   /** Make the NEXT call — whichever it is — fail, once. */
   failNext(reason = "injected"): void {
@@ -48,6 +50,31 @@ export class InMemoryApprovalsRepository implements ApprovalsRepository {
    */
   failNextFindPending(reason = "injected"): void {
     this.findPendingFailure = reason;
+  }
+
+  /**
+   * Make the next `resolve` fail, once.
+   *
+   * Targeted rather than using `failNext`, for the same reason
+   * `failNextFindPending` is: a sweep calls `findPending` and then `resolve`, so
+   * an untargeted one-shot is always consumed by the read and the write-failure
+   * branch is unreachable.
+   */
+  failNextResolve(reason = "injected"): void {
+    this.resolveFailure = reason;
+  }
+
+  /**
+   * Run `rival` exactly once, immediately BEFORE the next guarded update.
+   *
+   * This is the only way to express the race the conditional write defends
+   * against: two callers both read a pending row, then both write. Resolving
+   * twice through the use case cannot reach it — the second call re-reads a row
+   * that is no longer pending and is refused by the domain before any write.
+   * One-shot, so a rival that itself resolves does not recurse.
+   */
+  beforeNextResolve(rival: () => void): void {
+    this.beforeResolve = rival;
   }
 
   private takeFailure<Value>(): Result<Value> | null {
@@ -140,6 +167,16 @@ export class InMemoryApprovalsRepository implements ApprovalsRepository {
     approval: Approval,
     _transaction: TransactionScope,
   ): Promise<Result<boolean>> {
+    if (this.beforeResolve !== null) {
+      const rival = this.beforeResolve;
+      this.beforeResolve = null;
+      rival();
+    }
+    if (this.resolveFailure !== null) {
+      const reason = this.resolveFailure;
+      this.resolveFailure = null;
+      return err(repositoryUnavailable(reason));
+    }
     const failure = this.takeFailure<boolean>();
     if (failure) return failure;
     const row = this.inScope(scope).find((candidate) => candidate.approval.rowId === approval.rowId);
@@ -220,5 +257,17 @@ export class InMemoryApprovalsRepository implements ApprovalsRepository {
 
   size(): number {
     return this.rows.length;
+  }
+
+  /**
+   * Overwrite the stored row for an approval, without going through `resolve`.
+   *
+   * Only for arranging the RIVAL half of a race: the other caller's write has
+   * already landed by the time ours reaches the guard. Going through `resolve`
+   * would re-enter the hook that scheduled it.
+   */
+  forceStored(scope: EnvironmentScope, approval: Approval): void {
+    const row = this.inScope(scope).find((candidate) => candidate.approval.rowId === approval.rowId);
+    if (row) row.approval = approval;
   }
 }

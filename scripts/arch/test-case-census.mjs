@@ -129,6 +129,28 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *     `depth > maxDepth` -> `depth > maxDepth + 1` left all 44 green. maxDepth+1
  *     wrappers is the only nesting that separates the two predicates.
  *
+ *   jobs 354 -> 367 (+13), 1354 -> 1367 total, file count STILL UNCHANGED at 16.
+ *   The 2026-09-03 verification of the rebased branch found SIX more survivors
+ *   and these thirteen cases kill them. Each landed in the suite that can REACH
+ *   the mechanism rather than beside the module that defines it, which is why no
+ *   new file appears — exactly the drift a file-count pin cannot see:
+ *
+ *     +7 in `contracts/jobs-contract.test.ts` (17 -> 24). Which projection
+ *     `describeJob` returns (2 — swapping it to `toJobSourceView` published the
+ *     handler source and type-checked); `markApprovalConsumed`'s not-found guard
+ *     (2, including the cross-environment id); and `mcpActionLabel`, which had
+ *     no caller anywhere and is now the contract's MCP default (3, including the
+ *     refusal when neither an action nor a tool name is supplied).
+ *
+ *     +4 in `application/approval-lifecycle.test.ts` (30 -> 34). The loser of a
+ *     concurrent decision (2 — the conditional write's refusal branch was dead,
+ *     so the loser was told `ok` AND the parked run was resumed with its
+ *     decision), and the per-row `retained` diagnostic channel (2).
+ *
+ *     +2 in `application/execute-job.test.ts` (28 -> 30). A cached failure must
+ *     replay under its OWN code; only `kind: "failed"` had ever round-tripped,
+ *     and that code is the literal the mutation hard-codes.
+ *
  *   These are added cases in existing files, which is why `files` does not move
  *   — precisely the drift a file-count pin cannot see and the case pin can.
  *
@@ -156,7 +178,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
-  "packages/contexts/jobs": { files: 16, cases: 354 },
+  "packages/contexts/jobs": { files: 16, cases: 367 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
@@ -175,7 +197,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1354;
+export const EXPECTED_RUNTIME_TOTAL = 1367;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -106,7 +106,16 @@ export interface RequestApprovalCommandView {
   readonly scope: EnvironmentScope;
   readonly approvalId: ApprovalId;
   readonly source: string;
-  readonly action: string;
+  /**
+   * What a human is being asked to approve.
+   *
+   * OPTIONAL ONLY FOR THE MCP TOOL-CALL PATH, which does not compose the string
+   * itself: omitting it means "use the canonical MCP label", which is
+   * `domain/approval-request.ts`'s `mcpActionLabel` and requires a tool name.
+   * Omitting both is refused rather than defaulted — an approval whose action
+   * nobody can read is a question no human can answer.
+   */
+  readonly action?: string | null;
   readonly details?: string | null;
   readonly agentId?: string | null;
   readonly threadId?: string | null;

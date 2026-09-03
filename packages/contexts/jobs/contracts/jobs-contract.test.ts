@@ -84,6 +84,37 @@ describe("createJobsContract", () => {
     expect(described.error.code).toBe("JOBS_JOB_NOT_FOUND");
   });
 
+  // WHICH PROJECTION `describeJob` RETURNS WAS UNPINNED. `views.ts` argues that
+  // making the safe projection the default is what stops "a new call site
+  // leaking nothing by omission", and `registerJob` is asserted to honour it —
+  // but nothing asserted it of the READ, which is the call a dashboard makes.
+  // Swapping this one line to `toJobSourceView` publishes the handler source,
+  // type-checks, and left all 354 tests green.
+  it("describes an EXISTING job WITHOUT the handler — the safe projection is the default", async () => {
+    const registered = await contract.registerJob(REGISTER);
+    if (!registered.ok) throw new Error("unreachable");
+    const described = await contract.describeJob({
+      scope: SCOPE,
+      jobId: asIdentifier<JobId>(registered.value.job.id),
+    });
+    if (!described.ok) throw new Error("unreachable");
+    expect(described.value).not.toHaveProperty("handler");
+    expect(JSON.stringify(described.value)).not.toContain(REGISTER.handler);
+  });
+
+  it("keeps the two reads DIFFERENT, so the source read is the only way to the source", async () => {
+    const registered = await contract.registerJob(REGISTER);
+    if (!registered.ok) throw new Error("unreachable");
+    const query = { scope: SCOPE, jobId: asIdentifier<JobId>(registered.value.job.id) };
+    const safe = await contract.describeJob(query);
+    const source = await contract.readJobSource(query);
+    if (!safe.ok || !source.ok) throw new Error("unreachable");
+    // Same job, same fields — except the one that matters.
+    expect(source.value).toMatchObject(safe.value);
+    expect(Object.keys(source.value)).toContain("handler");
+    expect(Object.keys(safe.value)).not.toContain("handler");
+  });
+
   it("ADMITS the execution body itself rather than trusting a parsed one", async () => {
     const registered = await contract.registerJob(REGISTER);
     if (!registered.ok) throw new Error("unreachable");
@@ -231,6 +262,92 @@ describe("createJobsContract", () => {
     if (!described.ok) throw new Error("unreachable");
     expect(described.value.consumedAt).toEqual(context.clock.now());
     expect(described.value.outcome).toEqual({ deleted: 3 });
+  });
+
+  // `markApprovalConsumed`'s not-found guard had no reachable caller: every
+  // existing test consumes an approval that exists in the scope asked about, so
+  // deleting the guard and going straight to the repository write left all 354
+  // green. `markConsumed` reports a miss as `ok(false)`, which is
+  // indistinguishable from "recorded nothing" — and the id is caller-supplied.
+  it("REFUSES to consume an approval that does not exist, rather than reporting false", async () => {
+    const marked = await contract.markApprovalConsumed({
+      scope: SCOPE,
+      approvalId: asIdentifier<ApprovalId>("appr-nope"),
+      outcome: { deleted: 3 },
+    });
+    expect(marked.ok).toBe(false);
+    if (marked.ok) throw new Error("unreachable");
+    expect(marked.error.code).toBe("JOBS_APPROVAL_NOT_FOUND");
+  });
+
+  it("REFUSES to consume an approval that lives in ANOTHER environment", async () => {
+    // The scoping consequence, and the reason `ok(false)` is not good enough: an
+    // id from a neighbouring environment must be a refusal, not a quiet no-op
+    // that a caller reads as "already done".
+    const other = testEnvironmentScope("env-2");
+    await contract.requestApproval({
+      scope: other,
+      approvalId: APPROVAL,
+      source: "mcp_tool_call",
+      action: "Delete everything",
+    });
+    const marked = await contract.markApprovalConsumed({
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      outcome: { deleted: 3 },
+    });
+    expect(marked.ok).toBe(false);
+    if (marked.ok) throw new Error("unreachable");
+    expect(marked.error.code).toBe("JOBS_APPROVAL_NOT_FOUND");
+    // And the neighbour's row is untouched.
+    const neighbour = await contract.describeApproval(other, APPROVAL);
+    if (!neighbour.ok) throw new Error("unreachable");
+    expect(neighbour.value.consumedAt).toBeNull();
+  });
+
+  // `mcpActionLabel` had NO caller anywhere in the repository. It exists so the
+  // string a human reads in the approval queue has one definition; a definition
+  // nothing calls has none. It is now the contract's default for the MCP path.
+  it("defaults an MCP tool call's action to the canonical label", async () => {
+    await contract.requestApproval({
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      source: "mcp_tool_call",
+      toolName: "files.delete",
+    });
+    const described = await contract.describeApproval(SCOPE, APPROVAL);
+    if (!described.ok) throw new Error("unreachable");
+    expect(described.value.action).toBe("MCP tool call: files.delete");
+  });
+
+  it("never overwrites an action the caller supplied", async () => {
+    await contract.requestApproval({
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      source: "mcp_tool_call",
+      toolName: "files.delete",
+      action: "Delete the Q3 export",
+    });
+    const described = await contract.describeApproval(SCOPE, APPROVAL);
+    if (!described.ok) throw new Error("unreachable");
+    expect(described.value.action).toBe("Delete the Q3 export");
+  });
+
+  it("REFUSES an approval with neither an action nor a tool name to derive one", async () => {
+    // An approval whose action is blank is a question no human can answer.
+    // Defaulting it to something plausible would put that question in front of
+    // one anyway.
+    const opened = await contract.requestApproval({
+      scope: SCOPE,
+      approvalId: APPROVAL,
+      source: "request_approval",
+      action: "   ",
+    });
+    expect(opened.ok).toBe(false);
+    if (opened.ok) throw new Error("unreachable");
+    expect(opened.error.code).toBe("INVALID_REQUEST");
+    const described = await contract.describeApproval(SCOPE, APPROVAL);
+    expect(described.ok).toBe(false);
   });
 
   it("sweeps one scope and every scope", async () => {

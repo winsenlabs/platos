@@ -222,10 +222,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +16 for the jobs context rebased onto v1 @ 95cbacc1. The jobs CASE total
-  // moved again (1350 -> 1354) when the 2026-09-03 verification's two surviving
-  // mutants were killed; the FILE total did not, because all four cases were
-  // added to suites that already existed. That is exactly the drift a
-  // file-count pin cannot see.
+  // moved twice more — 1350 -> 1354 for the two mutants the 2026-09-03
+  // verification found on the pre-rebase branch, and 1354 -> 1367 for the six it
+  // found on the rebased one — and the FILE total did not move for either,
+  // because every case landed in a suite that already existed. That is exactly
+  // the drift a file-count pin cannot see.
   assert.equal(live.totalFiles, 104);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
@@ -252,12 +253,17 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // The five packages above are UNCHANGED by WIN-256's jobs work. Asserting
   // that here is the point: a context arriving must not perturb its siblings,
   // and this is where a silent perturbation would be caught.
-  // 350 -> 354: the four cases that kill the two mutants the 2026-09-03
+  // 350 -> 354 -> 367. The first four kill the two mutants the 2026-09-03
   // verification found surviving (the erasure METHOD, three cases; the payload
-  // depth cap at limit+1, one case). The file count stays 16 because all four
-  // landed in suites that already existed — the sibling packages above are
-  // still untouched, which is what this test exists to assert.
-  assert.equal(EXPECTED["packages/contexts/jobs"].cases, 354);
+  // depth cap at limit+1, one case). The next thirteen kill the six that the
+  // same verification found on the rebased branch: the `describeJob` projection
+  // (2), the conditional write's loser branch (2), `markApprovalConsumed`'s
+  // not-found guard (2), the cached failure's own code (2), the per-row
+  // `retained` channel (2), and `mcpActionLabel`, which had no caller at all
+  // (3). The file count stays 16 through BOTH deltas because every case landed
+  // in a suite that already existed — the sibling packages above are still
+  // untouched, which is what this test exists to assert.
+  assert.equal(EXPECTED["packages/contexts/jobs"].cases, 367);
   assert.equal(EXPECTED["packages/contexts/jobs"].files, 16);
 });
 
@@ -269,7 +275,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 367);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

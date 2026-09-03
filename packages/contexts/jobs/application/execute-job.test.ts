@@ -176,6 +176,32 @@ describe("executeJob — stage 4, idempotency", () => {
     expect(context.handlers.invocations).toHaveLength(1);
   });
 
+  // THE CACHED FAILURE'S CODE WAS UNPINNED. The only replay-of-failure case above
+  // uses `kind: "failed"`, whose code IS the hard-coded `JOB_EXECUTION_FAILED`,
+  // so replacing `outcome.error.code` with that literal survived all 354 tests.
+  // The `settle()` docblock argues at length that a caller must never be handed
+  // "a cached failure whose code it was never promised"; these two are the codes
+  // that can be, and neither had ever round-tripped through a 7-day reservation.
+  it.each([
+    ["timed-out", "JOB_TIMEOUT"],
+    ["result-rejected", "JOB_RESULT_REJECTED"],
+  ] as const)("REPLAYS a %s as %s, not as a generic execution failure", async (kind, code) => {
+    const fresh = buildJobsTestContext();
+    await fresh.jobs.insertJob(SCOPE, aJob(), { transactionId: asIdentifier("seed") });
+    fresh.handlers.willReturn(kind === "timed-out" ? { kind } : ({ kind, reason: "because" } as never));
+    const request = anExecutionRequest();
+
+    const first = await executeJob(fresh.dependencies, { scope: SCOPE, request });
+    const second = await executeJob(fresh.dependencies, { scope: SCOPE, request });
+
+    if (first.ok || second.ok) throw new Error("unreachable");
+    expect(first.error.code).toBe(code);
+    expect(second.error.code).toBe(code);
+    expect(second.error.details).toEqual({ replayed: true });
+    // The handler ran once: the second answer came from the reservation.
+    expect(fresh.handlers.invocations).toHaveLength(1);
+  });
+
   it("REFUSES the same request id carrying a DIFFERENT payload", async () => {
     context.handlers.willReturn({ kind: "completed", value: null });
     await executeJob(context.dependencies, { scope: SCOPE, request: anExecutionRequest() });
