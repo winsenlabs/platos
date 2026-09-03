@@ -260,13 +260,22 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 
 test("the memory context is pinned at what vitest prints", () => {
   // The ONE row this issue moves. `pnpm --filter @platos/context-memory exec
-  // vitest run` prints "Test Files 28 passed (28) / Tests 596 passed (596)";
+  // vitest run` prints "Test Files 28 passed (28) / Tests 602 passed (602)";
   // the AST census reproduces both with zero refusals. Every other package is
   // held at its earlier value by the tests above, so a suite quietly deleted
   // elsewhere while memory landed cannot hide inside the new total.
+  //
+  // 596 -> 602 on the v1 rebase: six cases closing the two defects the review
+  // named, in two files that already existed. THE FILE COUNT DOES NOT MOVE, and
+  // that is the whole point of this pin — 28 stays 28 while the case count
+  // rises, which is exactly the drift `docs/v1-ledger-rules.json`'s file counts
+  // cannot see. Four land in application/authorization.test.ts (a command may
+  // not name an acting agent the runtime grant was not minted for) and two in
+  // application/memory-erasure-target.test.ts (the receipt reports what the
+  // deletes observed, not what the plan forecast).
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
-  assert.equal(EXPECTED["packages/contexts/memory"].cases, 596);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 596);
+  assert.equal(EXPECTED["packages/contexts/memory"].cases, 602);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 602);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
