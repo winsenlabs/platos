@@ -319,6 +319,100 @@ describe("removing an agent from an environment", () => {
     expect(context.repository.writes.filter((write) => write.startsWith("insertVersion"))).toEqual([]);
   });
 
+  // WIN-256 verification defect, 2026-09-03. `removeAgent` was the ONE of the
+  // five `releaseHolds` call sites with no control: deleting its call line left
+  // all 513 cases in this package green, so the release was decorative here —
+  // it had a caller, but nothing asserted its effect. The other four
+  // (updateAgent above, canary, loadout, version-history) each pin theirs.
+  //
+  // The consequence of the missing release is worse on THIS path than on a
+  // save. A save moves live threads onto a newer version of an agent that is
+  // still bound; an unbind leaves them pinned to a version of an agent that
+  // this environment no longer serves at all, until each hold lapses on its own
+  // timetable. So these assert the EFFECT on the lock — that the hold is gone —
+  // rather than merely that a release was attempted, because a `releaseAll`
+  // that recorded the call and freed nothing would pass the weaker check.
+  it("RELEASES every thread hold for the agent it just unbound", async () => {
+    const { context, authorization } = newContext();
+    const seeded = seedBoundAgent(context);
+    const key = { scope: context.scope, agentId: seeded.agent.agentId, threadId: "thread-1" };
+    context.versionLock.seed(key, seeded.version.agentVersionId);
+    expect((await context.versionLock.read(key)).ok && (await context.versionLock.read(key)).value).toBe(
+      seeded.version.agentVersionId,
+    );
+
+    const removed = await removeAgent(context.dependencies, { authorization, agentId: seeded.agent.agentId });
+    expect(removed.ok).toBe(true);
+
+    const held = await context.versionLock.read(key);
+    if (!held.ok) throw new Error("unreachable");
+    expect(held.value).toBeNull();
+    expect(context.versionLock.releases).toEqual([`${context.scope.environmentId}/${seeded.agent.agentId}`]);
+  });
+
+  it("releases NOTHING when the unbind was refused", async () => {
+    const { context, authorization } = newContext();
+    const seeded = seedBoundAgent(context);
+    const key = { scope: context.scope, agentId: seeded.agent.agentId, threadId: "thread-1" };
+    context.versionLock.seed(key, seeded.version.agentVersionId);
+
+    // Refused: this environment cannot see that agent at all.
+    const refused = await removeAgent(context.dependencies, {
+      authorization,
+      agentId: asAgentsIdentifier<AgentId>("nope"),
+    });
+    expect(refused.ok).toBe(false);
+
+    const held = await context.versionLock.read(key);
+    if (!held.ok) throw new Error("unreachable");
+    expect(held.value).toBe(seeded.version.agentVersionId);
+    expect(context.versionLock.releases).toEqual([]);
+  });
+
+  // The `if (removed.ok)` guard on the release is its own protective mechanism,
+  // and it is NOT the same one as the call site. Dropping the condition — always
+  // releasing, committed or not — left the two cases above green, because a
+  // removal refused by `requireBound` returns before the release line is ever
+  // reached. The only way to the guard is a transaction that STARTS and then
+  // fails, which is what `failNextDeleteBinding` injects. `version-writer.ts`
+  // states the stake: a hold released inside a transaction that then rolls back
+  // sends live conversations onto a version that no longer exists, and the
+  // failure is silent.
+  it("releases NOTHING when the unbind transaction FAILED after starting", async () => {
+    const { context, authorization } = newContext();
+    const seeded = seedBoundAgent(context);
+    const key = { scope: context.scope, agentId: seeded.agent.agentId, threadId: "thread-1" };
+    context.versionLock.seed(key, seeded.version.agentVersionId);
+    context.repository.failNextDeleteBinding = "store down mid-transaction";
+
+    const removed = await removeAgent(context.dependencies, { authorization, agentId: seeded.agent.agentId });
+    if (removed.ok) throw new Error("unreachable");
+    expect(removed.error.code).toBe("AGENTS_REPOSITORY_UNAVAILABLE");
+    // The transaction was entered — this is not the `requireBound` refusal path.
+    expect(context.repository.writes.some((write) => write.startsWith("deleteBinding"))).toBe(true);
+
+    const held = await context.versionLock.read(key);
+    if (!held.ok) throw new Error("unreachable");
+    expect(held.value).toBe(seeded.version.agentVersionId);
+    expect(context.versionLock.releases).toEqual([]);
+  });
+
+  it("leaves a hold on a DIFFERENT agent alone", async () => {
+    const { context, authorization } = newContext();
+    const seeded = seedBoundAgent(context);
+    const bystander = asAgentsIdentifier<AgentId>("agent-bystander");
+    const bystanderKey = { scope: context.scope, agentId: bystander, threadId: "thread-1" };
+    context.versionLock.seed(bystanderKey, seeded.version.agentVersionId);
+
+    expect((await removeAgent(context.dependencies, { authorization, agentId: seeded.agent.agentId })).ok).toBe(
+      true,
+    );
+
+    const held = await context.versionLock.read(bystanderKey);
+    if (!held.ok) throw new Error("unreachable");
+    expect(held.value).toBe(seeded.version.agentVersionId);
+  });
+
   it("refuses an agent this environment cannot see", async () => {
     const { context, authorization } = newContext();
     expect(

@@ -114,6 +114,34 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * warning band and the answer was to split rather than to waive; see the delta
  * comment in `scripts/arch/max-file-lines.test.mjs`.
  *
+ * VERIFICATION DELTA (2026-09-03) — agents 513 -> 517 (+4), 1513 -> 1517 total.
+ * File count is UNCHANGED at 25, which is exactly the drift a file-count pin
+ * cannot see and this one can. The four cases all land in
+ * `application/agent-write.test.ts` and all close ONE blocker: `removeAgent` was
+ * the only one of the five `releaseHolds` call sites with no control, so its
+ * call line could be deleted with all 513 cases green — a release that had a
+ * caller but nothing asserting its effect.
+ *
+ *   1. "RELEASES every thread hold for the agent it just unbound" — seeds a
+ *      hold, unbinds, and reads the lock back EMPTY. Deleting the call site
+ *      turns it red.
+ *   2. "releases NOTHING when the unbind was refused" — the unauthorised /
+ *      invisible-agent input, asserting the holds survive.
+ *   3. "releases NOTHING when the unbind transaction FAILED after starting" —
+ *      the `if (removed.ok)` condition is a SECOND mechanism and dropping it
+ *      left cases 1 and 2 green, because a `requireBound` refusal returns before
+ *      the release line is reached at all. Reaching the guard needs a
+ *      transaction that starts and then fails, which is why
+ *      `InMemoryAgentsRepository.failNextDeleteBinding` was added.
+ *   4. "leaves a hold on a DIFFERENT agent alone" — pins that the release is
+ *      scoped to the agent it names.
+ *
+ * Cases 1 and 4 assert the EFFECT on the lock rather than that a release was
+ * recorded. The four pre-existing release assertions (updateAgent, canary,
+ * loadout, version-history) all check `versionLock.releases` length only, and a
+ * `releaseAll` that records the call and frees nothing leaves every one of them
+ * green — reported as a finding, not fixed here.
+ *
  * No other package moved. Any further drift is a finding to report, not a number
  * to force.
  */
@@ -130,7 +158,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
-  "packages/contexts/agents": { files: 25, cases: 513 },
+  "packages/contexts/agents": { files: 25, cases: 517 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
@@ -157,7 +185,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1513;
+export const EXPECTED_RUNTIME_TOTAL = 1517;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

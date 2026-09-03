@@ -71,6 +71,19 @@ export class InMemoryAgentsRepository implements AgentsRepository {
   /** Every write this double saw, in order. Tests assert on the sequence. */
   readonly writes: string[] = [];
 
+  /**
+   * When set, the next `deleteBinding` answers this error instead of deleting.
+   *
+   * A store that is up enough to be read and down by the time it is written is
+   * the ONLY way to reach a use case's post-commit branches from a test, and
+   * those branches are where the ordering rules live — `removeAgent` releases
+   * thread holds only when the transaction actually committed, and a double
+   * that could never fail a write would let that condition be deleted with the
+   * suite still green. Set it, make the call, and the flag clears itself so a
+   * test cannot leak an injected failure into the next one.
+   */
+  failNextDeleteBinding: string | null = null;
+
   constructor(private readonly policy: AgentsPolicy = DEFAULT_AGENTS_POLICY) {}
 
   // --- seeding -------------------------------------------------------------
@@ -262,6 +275,11 @@ export class InMemoryAgentsRepository implements AgentsRepository {
     transaction: TransactionScope,
   ): Promise<Result<boolean>> {
     this.writes.push(`deleteBinding:${transaction.transactionId}`);
+    const injected = this.failNextDeleteBinding;
+    if (injected !== null) {
+      this.failNextDeleteBinding = null;
+      return err(repositoryUnavailable(injected));
+    }
     if (binding.environmentId !== scope.environmentId) return ok(false);
     return ok(this.bindings.delete(binding.agentBindingId));
   }

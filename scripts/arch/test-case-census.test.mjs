@@ -261,13 +261,19 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 test("the agents context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's agents slice moves. `pnpm --filter
   // @platos/context-agents exec vitest run` prints "Test Files 25 passed (25) /
-  // Tests 513 passed (513)"; the AST census reproduces both with zero refusals.
+  // Tests 517 passed (517)"; the AST census reproduces both with zero refusals.
   // Every other package is held at its previous value by the tests above, so a
   // suite quietly deleted elsewhere while agents landed cannot hide inside the
   // new total.
+  //
+  // 513 -> 517 with the FILE count unchanged: the four cases the 2026-09-03
+  // verification added to `application/agent-write.test.ts` to make
+  // `removeAgent`'s thread-hold release provable. That is the shape of drift a
+  // file-count pin is blind to and this census is not; the delta is enumerated
+  // in the header of scripts/arch/test-case-census.mjs.
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
-  assert.equal(EXPECTED["packages/contexts/agents"].cases, 513);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 513);
+  assert.equal(EXPECTED["packages/contexts/agents"].cases, 517);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 517);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
