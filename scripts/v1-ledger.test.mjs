@@ -541,7 +541,34 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    // WIN-256 OBSERVABILITY DELTA — packages 272 -> 320, total +346 -> +394.
+    // ONE merged delta, enumerated here and nowhere else. Adopting
+    // `packages/contexts/observability` lands 48 tracked files, every one of
+    // them under that context and none anywhere else:
+    //
+    //   33 source — 14 domain modules plus the domain barrel, 4 ports modules
+    //   plus their barrel, 7 application modules plus the application barrel,
+    //   the contracts barrel, and the 5 in-memory testing doubles.
+    //   15 test — 9 domain suites, 5 application suites, and the contract suite.
+    //
+    // The 48 are NET of the 4 generated placeholders adoption released, which
+    // this code replaced in place — the same accounting the five contexts above
+    // use. kindCounts moves source 1280 -> 1313 (+33) and test 552 -> 567 (+15),
+    // which conserve to the same 48, and ruleCounts moves
+    // packages.contexts.source 237 -> 270 and packages.contexts.test 85 -> 100.
+    //
+    // The source branch (tejas/win-256-observability @ 2e8f45ef) recorded 47,
+    // not 48. `application/drain-projections.lanes.test.ts` is added here: the
+    // end-to-end cases for the tool-call and usage lanes took
+    // drain-projections.test.ts to 453 effective lines, past the ADR M0.3 §6
+    // 400-line warning band, and the budget's answer is a split along the seam
+    // it points at rather than a raised threshold.
+    //
+    // Adoption itself adds no file: it is one line appended to the generator's
+    // ADOPTED_PROJECTS list, in a file that already existed. No new ledger rule
+    // was needed — packages/** already owns the tree — so only the fingerprint
+    // moves.
+    packages: 320,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -616,11 +643,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // 20 + 5 + 19 + 278 + 24 = 346, and + the 48-file observability context = 394.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 394);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +656,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // Same +394 combined delta as the totalFiles assertion above (WIN-299 +5,
+    // WIN-284 +19, WIN-256 +278 + the 48-file observability context, WIN-297
+    // +24); this one re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 394
   );
 });
 

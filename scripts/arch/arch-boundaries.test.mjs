@@ -218,6 +218,25 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
+    // WIN-256 OBSERVABILITY DELTA — 397 -> 445, ONE merged delta on top of the
+    // M2 integration note below. +48: making `packages/contexts/observability`
+    // real hands the boundary gate 48 more files (33 source, 15 test),
+    // replacing its 4 released placeholders in place.
+    //
+    // What it adds to the gate's evidence is rule (a) no-infra-in-core judged on
+    // the context most tempted to break it. This context's whole job is writing
+    // to a column store, and its domain and application layers still import no
+    // client for one: the ClickHouse SDK lives behind the `ObservabilitySink`
+    // port and is bound only in `packages/adapters/clickhouse-observability`.
+    // The whole-package grep for `@platos/adapter-*` returns nothing, and its
+    // only peer import is `@platos/context-tenancy`, which is on its §1
+    // allow-list. No rule was changed, weakened, or given an exception to
+    // accommodate the context.
+    //
+    // The source branch pinned 375 + 48 = 423: it branched before WIN-297's two
+    // apps (+22). 397 + 48 = 445 is the reconciled value.
+    //
+    // ---- the M2 integration delta this one sits on, kept verbatim ----
     // M2 INTEGRATION DELTA — 104 -> 397. Three adopting slices make disjoint
     // projects real, so the census is the sum of all three, not either branch's
     // pin:
@@ -251,7 +270,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 445, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

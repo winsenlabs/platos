@@ -101,6 +101,32 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * OBSERVABILITY DELTA (2026-09-03), `tejas/win-256-observability` @ 2e8f45ef
+ * rebased onto v1 @ 95cbacc1. Another 0/0 placeholder becomes real, and again
+ * exactly ONE row moves:
+ *
+ *   observability 0 -> 15 files, 0 -> 287 cases; 1000 -> 1287 total. 9 domain
+ *   suites, 5 application suites and the contracts-barrel suite. The census
+ *   REFUSED nothing in that tree, so its 287 is a statically exact count, and
+ *   `pnpm --filter @platos/context-observability exec vitest run` prints the
+ *   same pair — "Test Files 15 passed (15) / Tests 287 passed (287)".
+ *
+ * The source branch's own tip pinned observability at 14 files / 281 cases. The
+ * difference is the six cases this rebase adds, all of them on the MONEY path:
+ *
+ *   +5 cases in the NEW file `application/drain-projections.lanes.test.ts`
+ *   (14 -> 15 files) — the tool-call and usage lanes proven end to end from the
+ *   queue to the sink, their conservation across one insert, and the two
+ *   parking refusals. `readToolCall` and `readUsage` had ZERO coverage before
+ *   them. The file is new rather than appended because those cases took
+ *   drain-projections.test.ts past the 400-line warning band.
+ *   +1 case in `contracts/observability-contract.test.ts` — the empty-lane
+ *   control, which keeps "a Turn that called no tool" expressible now that the
+ *   default fixture populates all four lanes.
+ *
+ * Every other package is unchanged. Any further drift is a finding to report,
+ * not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -125,7 +151,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
-  "packages/contexts/observability": { files: 0, cases: 0 },
+  "packages/contexts/observability": { files: 15, cases: 287 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
@@ -142,7 +168,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1287;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

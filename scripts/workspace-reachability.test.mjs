@@ -462,8 +462,25 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 169 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 165 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
+  // WIN-256 OBSERVABILITY DELTA — 169 -> 165, ONE merged delta on top of the M2
+  // integration note below. Adopting `packages/contexts/observability` releases
+  // exactly its 4 placeholders — domain/index.ts, application/index.ts,
+  // application/ports/index.ts and contracts/index.ts — the same four every
+  // context adoption before it released. The scaffolding tier is untouched (97),
+  // so 97 + 68 = 165; the project count stays 32 because adoption releases a
+  // project's PLACEHOLDERS, never its scaffolding.
+  //
+  // The branch this lands from (tejas/win-256-observability @ 2e8f45ef) pinned
+  // 174: it branched at 75ee484d, BEFORE `providers` (-4) and before WIN-297's
+  // two apps (-9), so it never saw either release. 178 - 4 = 174 was right on
+  // that base and is wrong here. 169 - 4 = 165 is the reconciled value and it is
+  // DERIVED, not forced: the generator now reports "9 project(s) adopted,
+  // 36 placeholder(s) released" against the 8 and 32 it reported before, and
+  // 4 x 9 = 36.
+  //
+  // ---- the M2 integration delta this one sits on, kept verbatim ----
   // M2 INTEGRATION DELTA — 201 -> 169. Adoption RELEASES placeholders, so this
   // count only ever falls, and the three adopting slices release placeholders
   // from DISJOINT projects. The integrated count is therefore the sum of all
@@ -498,15 +515,15 @@ test("generated ownership includes the generator's exact 169 outputs across 32 V
   // already red on `tejas/win-256-providers-context` at 25b231b, which asserted
   // 182 while its own committed evidence recorded 178. It is reconciled here
   // with its full delta, not forced.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 169);
+  assert.equal(report.generatedOwnership.ownedOutputCount, 165);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 169 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 169);
+  // Same 165 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 165);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
