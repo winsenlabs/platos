@@ -75,7 +75,7 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372. WIN-256 made packages/kernel and four contexts
+  // 74 -> 263 -> 328 -> 372 -> 427. WIN-256 made packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
   // 400/500-line budget.
@@ -90,10 +90,19 @@ test("the live selectors scan an exact nonzero source census", () => {
   // (apps/agent/src/mcp-platform/events.service.ts) that was already over the
   // 500-line hard error, and no file in the replacement exceeds 200.
   //
-  // The eventing branch pinned 307 (263 + 44) because it never saw providers.
-  // The two axes are disjoint: 328 + 44 = 307 + 65 = 372. Every one of the 372
-  // is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 372);
+  // +55: the same issue makes `skills` real. Every one is inside the budget, and
+  // the largest is the in-memory repository double at roughly 330 counted lines
+  // — a deliberate consequence of splitting the context into 14 domain modules
+  // and 13 named use cases rather than a registry service, which is the shape §6
+  // exists to force.
+  //
+  // Each branch pinned only the axis it could see: eventing pinned 307
+  // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
+  // respectively once rebased onto the providers tip. The three axes are
+  // disjoint, so the integrated census is their SUM and not either branch pin:
+  // 328 + 44 + 55 = 372 + 55 = 383 + 44 = 427. Every one of the 427 is inside
+  // the budget and none is inside the 400-line warning band.
+  assert.equal(result.fileCount, 427);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

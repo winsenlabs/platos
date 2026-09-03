@@ -161,8 +161,79 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The eventing mutation result is therefore 43 of 43 KILLED, with no argued
  * equivalence left standing.
  *
- * The eventing and providers axes are disjoint, and so are the two apps
- * WIN-297 adopted, so the integrated total is the SUM: 717 + 283 + 142 = 1142.
+ * SKILLS ADOPTION (WIN-256, M2.1). `packages/contexts/skills` goes from a
+ * generator placeholder to a real context and carries the second delta:
+ *
+ *   skills 0 -> 302 cases across 0 -> 20 files; 1000 -> 1302 total. Ten domain
+ *   suites (manifest parse and its YAML subset, the catalogue identity and its
+ *   ordering, visibility, the install pair, prompt composition, tool
+ *   namespacing, environment readiness, category derivation, import-source
+ *   rewriting), nine application suites (register, import, install, bind,
+ *   compose-runtime, run-tool, seed, read-catalogue, erasure target) and one
+ *   contract suite exercising the published surface alone.
+ *
+ *   Eleven semantic mutations were applied to this context's own source and all
+ *   eleven were killed; the two narrowest kills are the budget boundary
+ *   (`>` to `>=` in `composeSkills`, caught only by the exactly-fills-the-budget
+ *   case) and the gate ordering in `bindSkill` (moving the readiness check after
+ *   the write, caught only by "does NOT leave a materialised install behind").
+ *
+ * VERIFICATION DELTA (2026-09-03) — skills 302 -> 306 cases, 1302 -> 1306 total.
+ * FILE count unchanged at 20: all four cases went into an existing suite, which
+ * is exactly the drift a file-count pin cannot see and this one can.
+ *
+ * The "eleven, all killed" claim above is superseded rather than deleted, so the
+ * two can be compared. The rebase onto `95cbacc1` re-ran a 25-mutation set over
+ * this context's guards — visibility and the organization conjunct, both halves
+ * of the install-enabled conjunction, the readiness gate at bind and at run,
+ * protocol admission, the three host-rewrite rules, the sandbox preconditions,
+ * all four erasure decisions, the prompt budget boundary. FOUR SURVIVED, and
+ * every one of them was a security boundary:
+ *
+ *   SK11/SK13/SK14  each `hostname !==` guard in domain/import-source.ts
+ *                   relaxed to `!hostname.endsWith(...)`. All three left 302/302
+ *                   green. "Every rule is guarded by exact hostname equality" is
+ *                   the sentence that module's header rests its HOST CLOSURE
+ *                   argument on — and the reason it gives for the submitted URL
+ *                   needing no address check of its own — and nothing tested it.
+ *                   The suite had a PREFIX look-alike only. +4 cases supplying
+ *                   SUFFIX look-alikes; each rule's relaxation is now red.
+ *   SK19            the `isToolOfSkill` pre-check in `resolveDispatchedTool`.
+ *                   Deleted rather than covered: it is a PROVABLY equivalent
+ *                   mutant, not a coverage gap. `namespaceTool` always emits the
+ *                   slug's prefix plus the separator, so the loop beneath it
+ *                   accepts exactly the names the pre-check admits and rejects
+ *                   exactly the ones it refuses. No test can distinguish the two
+ *                   versions. It was also a prefix-split shortcut sitting above
+ *                   a comment explaining why that function does not split
+ *                   prefixes. The property stays pinned by the existing "REFUSES
+ *                   a name belonging to a different skill".
+ *
+ * Re-run after both changes: 24 of 24 applicable mutations KILLED, SK19's anchor
+ * gone with the line.
+ *
+ * M2 WAVE-B INTEGRATION — THE TWO ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
+ * `eventing` and `skills` touch DISJOINT packages and each moves this same
+ * runtime total on its own axis, so the integrated number is the sum of both
+ * deltas and is correct on neither branch alone:
+ *
+ *   717   the five slice-1-5 packages (kernel 44, identity-access 231,
+ *         secrets 162, tenancy 146, files 134).
+ *   +283  providers (21 files).
+ *   +149  eventing (14 files) — 142 at adoption, 147 after the 2026-09-03
+ *         verification's five cases, 149 after the two that kill its last two
+ *         argued equivalent-mutant survivors, all with the file count at 14.
+ *   +306  skills (20 files) — 302 at adoption, 306 after the four host-closure
+ *         cases the re-run mutation sweep forced, with the file count at 20.
+ *
+ *   717 + 283 + 149 + 306 = 1455, and 88 + 14 + 20 = 122 files.
+ *
+ * The eventing branch pinned 1149 and the skills branch pinned 1306; each was
+ * right for its own tree and wrong for this one. Picking either would silently
+ * drop a whole context's suite out of the pinned total while the census stayed
+ * green on the branch it came from — which is precisely the drift this constant
+ * exists to catch. The skills branch pinned 1019 (717 + 302) before its rebase
+ * onto the providers commit, for the same reason.
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
@@ -194,7 +265,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
-  "packages/contexts/skills": { files: 0, cases: 0 },
+  "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
   "packages/contexts/tools": { files: 0, cases: 0 },
   "packages/kernel": { files: 3, cases: 44 },
@@ -207,7 +278,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1149;
+export const EXPECTED_RUNTIME_TOTAL = 1455;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

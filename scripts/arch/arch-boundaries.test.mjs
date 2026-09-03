@@ -218,7 +218,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 441. Four adopting slices make disjoint
+    // M2 INTEGRATION DELTA — 104 -> 496. Five adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
     //
@@ -245,12 +245,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               the `eventing -> tenancy` DAG edge held against a context
     //               whose legacy original imported @nestjs, ioredis and a Prisma
     //               client directly.
+    //   441 -> 496  +55: WIN-256 makes `skills` real. The files that matter to
+    //               these rules are the four driven ports and the fourteen
+    //               domain modules: `domain/` and `application/` import
+    //               `@platos/kernel`, their own siblings, and the published
+    //               `contracts/` of `tenancy` and `files` — nothing else. The
+    //               network fetch, the environment-key directory and the
+    //               confined runtime are reachable only as port interfaces,
+    //               which is what keeps a context that fetches URLs and runs
+    //               sandboxed code free of every banned import. No rule needed
+    //               changing.
     //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
-    // 310 + 44 = 354 with neither providers nor the apps. All four slices are
-    // disjoint, so the integrated census is 397 + 44 = 354 + 65 + 22 = 441.
+    // 397 + 44 = 441 and the skills branch pinned 397 + 55 = 452, each blind to
+    // the other context. All five slices are disjoint and eventing and skills
+    // move this census on INDEPENDENT axes, so the integrated census is their
+    // SUM and not either pin: 397 + 44 + 55 = 441 + 55 = 452 + 44 = 496.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -258,7 +270,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 441, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 496, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

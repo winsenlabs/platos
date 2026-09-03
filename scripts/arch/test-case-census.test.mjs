@@ -221,8 +221,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +14 for the eventing suites (WIN-256). The two are disjoint: 88 + 14 = 102.
-  assert.equal(live.totalFiles, 102);
+  // +14 for the eventing suites and +20 for the skills suites (WIN-256). The
+  // three axes are disjoint and both adoptions move THIS SAME number, so it is
+  // their sum: 88 + 14 + 20 = 122. The eventing branch pinned 102 and the
+  // skills branch pinned 108; each is right alone and wrong here.
+  assert.equal(live.totalFiles, 122);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -234,9 +237,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  // 67 -> 88 -> 102: +21 providers, +14 the suites `eventing` brings with it
-  // (WIN-256, ADR M0.3 §1 row 17).
-  assert.equal(files, 102);
+  // 67 -> 88 -> 102 -> 122: +21 providers, +14 the suites `eventing` brings
+  // with it (ADR M0.3 §1 row 17), +20 the suites `skills` brings. Same 122 as
+  // above, re-derived from the pinned rows rather than the tree.
+  assert.equal(files, 122);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -274,12 +278,48 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  // The runtime total is re-derived from the three slices that contribute
-  // cases, so a row moved without its delta cannot hide inside it. The eventing
+  // The runtime total is re-derived from the FOUR slices that contribute cases,
+  // so a row moved without its delta cannot hide inside it. The eventing
   // context is the third: 142 at adoption, 147 after the 2026-09-03
   // verification's five cases, 149 after the two that close its last two
-  // survivors — all with the file count held at 14.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149);
+  // survivors — all with the file count held at 14. Skills is the fourth, at
+  // 306, and is pinned by its own test below.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306);
+});
+
+test("the skills adoption is pinned, and moved nothing else", () => {
+  // WIN-256 M2.1: skills goes 0 -> 302 across 0 -> 20 files. Integrated with
+  // the providers slice the runtime total is 717 + 283 + 302 = 1302; the skills
+  // branch pinned 1019 because it predates the providers commit and the two
+  // adoptions touch disjoint packages.
+  //
+  // 302 -> 306 (2026-09-03, after the rebase onto 95cbacc1). Four cases closing
+  // the host-closure survivors the re-run mutation sweep found — suffix
+  // look-alikes for each of the three rewrite rules, plus the closure property
+  // over all of them. The FILE count deliberately does not move: all four went
+  // into the existing domain/import-source.test.ts, which is the drift
+  // `docs/v1-ledger-rules.json` cannot see and this can.
+  assert.equal(EXPECTED["packages/contexts/skills"].cases, 306);
+  assert.equal(EXPECTED["packages/contexts/skills"].files, 20);
+  // Every previously-real package is byte-for-byte where the 2026-09-02
+  // verification left it: an adoption that quietly moved another context's
+  // numbers would be caught here rather than absorbed into the new total.
+  const untouched = {
+    "packages/kernel": 44,
+    "packages/contexts/identity-access": 231,
+    "packages/contexts/secrets": 162,
+    "packages/contexts/tenancy": 146,
+    "packages/contexts/files": 134,
+    "packages/contexts/providers": 283,
+  };
+  for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
+  const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
+  // M2 WAVE-B: `eventing` lands in the same integration branch on an
+  // INDEPENDENT axis, so this re-derivation carries its 149 too. Without that
+  // term the identity would hold only on the skills branch alone, which is
+  // exactly the side-picking this comment exists to prevent: 1000 + 149 + 306
+  // = 1455.
+  assert.equal(sum + 149 + 306, EXPECTED_RUNTIME_TOTAL);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
