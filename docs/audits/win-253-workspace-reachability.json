@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "483eb02b70f042bfb1ff9b30460403db59e512d49434393ba682ec5cf9511391",
+  "evidenceSha256": "b8886ac72a60be72a5fb80fcc98bbca939eabcd72d091c30c367877ee79dba11",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9db12feff1a3ffa0990d4766f3c3e13e5a0a281f61b97e3c9f39fb61fa8b7503",
+    "aggregateSha256": "9662a75561c9716cd7907fc2702b200248957b5ba072306bd6e91a8325c33315",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11097,7 +11097,7 @@
       },
       {
         "path": "packages/contexts/agents/application/agent-write.test.ts",
-        "sha256": "95ad564b1c42a3a721d69891d5b294c6f7de77880470995c30adadfcf5a9a40b"
+        "sha256": "ff29c77a19f261af9f97d44ff518ccfd287eaadeaa4307542661e407df80ec35"
       },
       {
         "path": "packages/contexts/agents/application/authorization.test.ts",
