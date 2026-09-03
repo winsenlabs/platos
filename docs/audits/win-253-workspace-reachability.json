@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
+  "evidenceSha256": "b3661960444c4f2cb13c2ee41c8326ad5da79c8cab81e3b4fec72071b9760826",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 165,
+        "sha256": "00196a37454af4b64348c3f89adda962ca4157a5a7845247865bb6c0ad55f4b4"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 165,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
+    "aggregateSha256": "b86fb52fe5ec7b1107ce3e2429f059b5527ea80e0bc62ef0187f719d341563a2",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -12300,24 +12300,244 @@
         "sha256": "f2852004e58f023d2b593b330282933f3f2c69a0e1333500a62e1063fb7c4f74"
       },
       {
+        "path": "packages/contexts/skills/application/bind-skill.test.ts",
+        "sha256": "73934986fa1ab888340172164377b0f317d6e8c62334ec93a7dd2636efff4928"
+      },
+      {
+        "path": "packages/contexts/skills/application/bind-skill.ts",
+        "sha256": "b47fe18b5867a819634778cc6f5ca76e8d70db2ed0d1e60cdba35e711657f0ba"
+      },
+      {
+        "path": "packages/contexts/skills/application/compose-runtime.test.ts",
+        "sha256": "e326cbb3b59ffb261c2daf222e29fbdb82f4344f90b2c70a468a0e549e1bf475"
+      },
+      {
+        "path": "packages/contexts/skills/application/compose-runtime.ts",
+        "sha256": "d4ff745fc0b83a1b4e8497a5bee9c36734f92639aab80e8ba2c6ef5ca03298d2"
+      },
+      {
+        "path": "packages/contexts/skills/application/dependencies.ts",
+        "sha256": "30cc4277c46d1b7ad5a9ef4e1a2385ca6c747319df671ca8c2c36ae9a4669274"
+      },
+      {
+        "path": "packages/contexts/skills/application/import-skill.test.ts",
+        "sha256": "b1089c6b3362fedc67efb81446ae6e3a5e424d495f3d98da11f49343c1ff5b46"
+      },
+      {
+        "path": "packages/contexts/skills/application/import-skill.ts",
+        "sha256": "6572b78047645758f983ccad6022b4c07efcaf1e028b3514eb97a3473332633b"
+      },
+      {
         "path": "packages/contexts/skills/application/index.ts",
-        "sha256": "0437fbbb41d3b9c5cade771468fc828577cf891a104f56ada5b57cf6440938e6"
+        "sha256": "da6048e2c44a26dc769cce5370b108dab6fb5336cc50406dd65ebdfaedae6069"
+      },
+      {
+        "path": "packages/contexts/skills/application/install-skill.test.ts",
+        "sha256": "fb36568d10560fd314591c2e1a981d616325cf4bbfa95920bb5b30150ae725be"
+      },
+      {
+        "path": "packages/contexts/skills/application/install-skill.ts",
+        "sha256": "f2a7cc91eeff9faabb843f5294c24bcfddf2b4a07cbddccb058a01431a693582"
+      },
+      {
+        "path": "packages/contexts/skills/application/patch-skill.ts",
+        "sha256": "0c381617fed7c423ebdf6dc58c25f8d0a17cfd0620a5663bbc6b9c771c8a524c"
+      },
+      {
+        "path": "packages/contexts/skills/application/ports/environment-key-directory.ts",
+        "sha256": "f14f4e9e187cde228462c1a70a87f2a147cec9852bed2f506c9e7965d0ccf6bb"
       },
       {
         "path": "packages/contexts/skills/application/ports/index.ts",
-        "sha256": "d7a77b15968254c6afad3a6f8bc530306d8222cc1dddc246535f34561cac68fe"
+        "sha256": "661b3d49a5cd6d0d75f4fad5ed4977636e1d96acf273ed64d511353bcf43cd7e"
+      },
+      {
+        "path": "packages/contexts/skills/application/ports/skill-sandbox.ts",
+        "sha256": "c68bba047fd0bdd6a7d09c717161467531b25db56ac2387e80501149a767a6b8"
+      },
+      {
+        "path": "packages/contexts/skills/application/ports/skill-source-fetcher.ts",
+        "sha256": "dfb30c7350828393a7feb351b6a1d6097b1de3f019b906f2ac37acf13125d952"
+      },
+      {
+        "path": "packages/contexts/skills/application/ports/skills-repository.ts",
+        "sha256": "d9af56930181de93c2b4bfb87ca787c73585fafe58520a02f76a792dc268ef2a"
+      },
+      {
+        "path": "packages/contexts/skills/application/read-catalogue.test.ts",
+        "sha256": "c14f6842f37c60324e376194a30798d39a7701ab4e89226472ae7b4a19ea24ff"
+      },
+      {
+        "path": "packages/contexts/skills/application/read-catalogue.ts",
+        "sha256": "d177205bd321ebb996955c29a2fe9c4521ea6b76b02f63084e518262ab9bf516"
+      },
+      {
+        "path": "packages/contexts/skills/application/register-skill.test.ts",
+        "sha256": "32d73591c494e608265d95ec82e587c4bbec1b69266e4a1af1f4be16de967ceb"
+      },
+      {
+        "path": "packages/contexts/skills/application/register-skill.ts",
+        "sha256": "845a2623efdf4f831316ccd66accdd748b70e258ab885d5ce358a3fd6c23170f"
+      },
+      {
+        "path": "packages/contexts/skills/application/run-skill-tool.test.ts",
+        "sha256": "b259c1a9ba18f8b87824290da553b5840e13890facd54febfa9a991394e62028"
+      },
+      {
+        "path": "packages/contexts/skills/application/run-skill-tool.ts",
+        "sha256": "7f236cb46fe0d74d3f1ee10d2ea296ca48d623870450673ee2da16ee2ea349ff"
+      },
+      {
+        "path": "packages/contexts/skills/application/seed-official-skills.test.ts",
+        "sha256": "021cbf62f651a75e8b3a60bfaf1e8d1677ddbfd220842bad7295f4210ebc886b"
+      },
+      {
+        "path": "packages/contexts/skills/application/seed-official-skills.ts",
+        "sha256": "f217230d75ff8a459248e21ae53cbb8c70185b843ec007ce5cd97879e0c64ba7"
+      },
+      {
+        "path": "packages/contexts/skills/application/skills-contract.ts",
+        "sha256": "8fa09acf836346cc6d29d527ba31cb3d7d7a6c48019a17050e1aa0d3915e6b24"
+      },
+      {
+        "path": "packages/contexts/skills/application/skills-erasure-target.test.ts",
+        "sha256": "b828c856e90e402ae2182a9edf6fa992ac9af8cb264bd507c67dc72a9e74a004"
+      },
+      {
+        "path": "packages/contexts/skills/application/skills-erasure-target.ts",
+        "sha256": "0bd60c9719c24a1a56fefda6f1e57fd98b13128a00f7ed93390f27f161dc6100"
+      },
+      {
+        "path": "packages/contexts/skills/application/testing/fixtures.ts",
+        "sha256": "4a1f4d4e2a47de4234f01ff4fac4600c094ace574d46fd207a62921830e8ad0b"
+      },
+      {
+        "path": "packages/contexts/skills/application/testing/in-memory-skills-repository.ts",
+        "sha256": "3978467d19160b1ba128916ed1bce1ac319862c5560151f5cdb7397d31ec4f86"
+      },
+      {
+        "path": "packages/contexts/skills/application/testing/index.ts",
+        "sha256": "834baeff85cbe61a650ec0ed6e8d257ec8b1a36eb3922247d70cf456ca2c2db9"
+      },
+      {
+        "path": "packages/contexts/skills/application/testing/skill-sources.ts",
+        "sha256": "5a596f9dd76836f1c3320f5c5e90b100e0b9687a1b8a400a6e1cc4eaf90b4c61"
+      },
+      {
+        "path": "packages/contexts/skills/application/views.ts",
+        "sha256": "c5bd9eee658d05bec7adda4594a96069bde1d9aedf4492e81af8c875cc753195"
       },
       {
         "path": "packages/contexts/skills/contracts/index.ts",
-        "sha256": "3a11f2ffd72fca5fad5349a1b3a8bf1366d77c76c00afe5eff4cabe435bae5e6"
+        "sha256": "1220bb0cb26aa26b2d86bc7343e78e1b56117c019a50cffc143a1c785a1b63f3"
+      },
+      {
+        "path": "packages/contexts/skills/contracts/skills-contract.test.ts",
+        "sha256": "33fb59921e7df61d78be1cfade422030e690a3c2983b98a88671025386a3579e"
+      },
+      {
+        "path": "packages/contexts/skills/domain/catalogue.test.ts",
+        "sha256": "f1449ddc5fa2aaf5b6b09a839e1f58438d6d44e60141c0b91d3097f59c532333"
+      },
+      {
+        "path": "packages/contexts/skills/domain/catalogue.ts",
+        "sha256": "2b6fc6196302a769804a538fc5cbb89f06f5f50bdfdb623aab962e778321af40"
+      },
+      {
+        "path": "packages/contexts/skills/domain/category.test.ts",
+        "sha256": "47712bcedf8a7d39514f4124654201300e47916f6d10460bc08d7aa138373ea4"
+      },
+      {
+        "path": "packages/contexts/skills/domain/category.ts",
+        "sha256": "18b8a979bb02a07795c3c478e58016bcd87f1bdcac411818ae6e03fcc99e5ea7"
+      },
+      {
+        "path": "packages/contexts/skills/domain/environment-readiness.test.ts",
+        "sha256": "3c5bc60cc98d63a3df00de407d208bbc0e99286d202bbf121e298604701014f4"
+      },
+      {
+        "path": "packages/contexts/skills/domain/environment-readiness.ts",
+        "sha256": "ac1d6552a8bc5c425453b8ab2d82f1254987867a4dc26e2a32eb9c201cacaecf"
+      },
+      {
+        "path": "packages/contexts/skills/domain/errors.ts",
+        "sha256": "786acbeeec3c26c594431bdc94e0dbdbedce7451a7279c4851733eb681544d2e"
+      },
+      {
+        "path": "packages/contexts/skills/domain/identifiers.ts",
+        "sha256": "a21503f45c748326574d5a31d9a3ed8c2077898ef3a1b2788eed14bb2110eb1e"
+      },
+      {
+        "path": "packages/contexts/skills/domain/import-source.test.ts",
+        "sha256": "9235ff5d65d57387f006443eb528c3b93534d996489778f514148811b54fe6c8"
+      },
+      {
+        "path": "packages/contexts/skills/domain/import-source.ts",
+        "sha256": "44218e8cbb5fc18e9ffd161df4678216b96aad8d31d591d565b34db944dd88a5"
       },
       {
         "path": "packages/contexts/skills/domain/index.ts",
-        "sha256": "8bdab942030c5c1ff38f4467bca7277d016d0f5973c45c99522ecdcfa2a3632b"
+        "sha256": "263e680596cf2d1e462f6b13ece8a2b494f427c92fc825db4ff2dacc3619f578"
+      },
+      {
+        "path": "packages/contexts/skills/domain/installation.test.ts",
+        "sha256": "44e6f9008e2555d20710325ba153c5f9a14abc48c5f053d82f154c8ea2cb9726"
+      },
+      {
+        "path": "packages/contexts/skills/domain/installation.ts",
+        "sha256": "04b7d3d8be944b6cb1c97dceb886083ee2c987334d000b645953d57134c8f73f"
+      },
+      {
+        "path": "packages/contexts/skills/domain/manifest-parse.test.ts",
+        "sha256": "b35c0e4861a7acaa9124d0773afa5cb0dbbc308059e49af34b71e6a9e1ef63f1"
+      },
+      {
+        "path": "packages/contexts/skills/domain/manifest-parse.ts",
+        "sha256": "c83fe06564b0fed6270e47c7489347ba3076ba0d4b0f90baa60fe7827a3bfd02"
+      },
+      {
+        "path": "packages/contexts/skills/domain/manifest-yaml.test.ts",
+        "sha256": "840d667caf149f6de4b25431377dda6c13036a42521566a24d2251830552951f"
+      },
+      {
+        "path": "packages/contexts/skills/domain/manifest-yaml.ts",
+        "sha256": "d657c5138848b43ae843a6f24e408e1e600beceee2a578322c6b69b05dc58123"
+      },
+      {
+        "path": "packages/contexts/skills/domain/manifest.ts",
+        "sha256": "2492540225e3a8329d52e2ceb1adbb77d31bb3044370a4a7f33949cc4bd36b4b"
+      },
+      {
+        "path": "packages/contexts/skills/domain/policy.ts",
+        "sha256": "84c10189cd182c7489487233688c494fc080cfa60f996c3aa9b35528f1f6010e"
+      },
+      {
+        "path": "packages/contexts/skills/domain/prompt-composition.test.ts",
+        "sha256": "b10d21143efba7b65a9d9947506f83d7b0ff67a7a3d408a3d1ea65a838de475f"
+      },
+      {
+        "path": "packages/contexts/skills/domain/prompt-composition.ts",
+        "sha256": "31277fdf6db805082e4790f8eac5308fa93d5703d8445324593ec400c2cdc47c"
+      },
+      {
+        "path": "packages/contexts/skills/domain/tool-namespace.test.ts",
+        "sha256": "0fc3b0bd16ba9bbc4fe432bf25abea0243c3cef474337e7a1161a8f1b19215a2"
+      },
+      {
+        "path": "packages/contexts/skills/domain/tool-namespace.ts",
+        "sha256": "21039eb38cadf5c3d4facf8a08a9557d0c3f1c215b7cbd82192c5a95ee0c1236"
+      },
+      {
+        "path": "packages/contexts/skills/domain/visibility.test.ts",
+        "sha256": "2b3b2e8da2fb52e7e9c2889348244178d0b29e0ee1f1adc3bb29d858a146fdf2"
+      },
+      {
+        "path": "packages/contexts/skills/domain/visibility.ts",
+        "sha256": "72065e9446759e137579618efb764da51c8083f160816cac1563e6ec5de6cd31"
       },
       {
         "path": "packages/contexts/skills/package.json",
-        "sha256": "6a920bdebe0fa930bb196628cd31a0b40c177e3667af8f129ecff3718a7b870e"
+        "sha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b"
       },
       {
         "path": "packages/contexts/skills/tsconfig.json",
@@ -14649,7 +14869,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "aac76f552dce90d54c61b6245a0e4c51911379856d4b1906cfb4c33c3a690192"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14681,7 +14901,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "36d5a4fe2465ed60e9f326105b1666dba80799c82676a2e3cb033ba0cb75f989"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14701,7 +14921,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "7e9973f27626f93507f72bcec8face8cb4c6051f6e1442563c84aae0767aeb47"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14717,11 +14937,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
+        "sha256": "ced4d163f711860f9c8a19b2bc9fd2583db7ae765a5ee0412235757f1f816111"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
+        "sha256": "29b37c45637cce9d72b90c66561f641466097d2314ff5cfd7f4e463b55c276ae"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14953,7 +15173,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
+        "sha256": "9aaa99c20086005ef5d90532e79254be4f1230c83a3f12a0f5c405ea84fb3cd8"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15061,7 +15281,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f754056ca550348ee1b0d8f16a37828a5c7df867a4ba306307173d64dd69b770"
+        "sha256": "759f6484c30647efc1edf3e2959f9fc0d6e89b92917581ab69b4863ba0e5f8ce"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -16136,7 +16356,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 45
+      "testsFixtures": 46
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -20145,14 +20365,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/skills/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/skills/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -20255,14 +20467,6 @@
               "packages/contexts/privacy/contracts/index.ts"
             ],
             [
-              "packages/contexts/skills/application/ports/index.ts",
-              "packages/contexts/skills/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/skills/contracts/index.ts",
-              "packages/contexts/skills/contracts/index.ts"
-            ],
-            [
               "packages/contexts/tools/application/ports/index.ts",
               "packages/contexts/tools/application/ports/index.ts"
             ],
@@ -20295,8 +20499,6 @@
             "packages/contexts/observability/contracts/index.ts",
             "packages/contexts/privacy/application/ports/index.ts",
             "packages/contexts/privacy/contracts/index.ts",
-            "packages/contexts/skills/application/ports/index.ts",
-            "packages/contexts/skills/contracts/index.ts",
             "packages/contexts/tools/application/ports/index.ts",
             "packages/contexts/tools/contracts/index.ts"
           ]
@@ -20663,7 +20865,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "3a42da7939487eef5b73a2b85aeb2d89dab184af08cad947b1c612e118751be9",
+      "evidenceSha256": "803374b3e52d72656e767a56d44ace6ebe038fd1ad31df433bd10c9eed802387",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -32357,7 +32559,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 686
             }
           ],
           "reversePaths": [
@@ -32382,7 +32584,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
+      "evidenceSha256": "6386d48bc7481407fef5668598687a860b7ab6d7c169ef622649cee005c76bcc",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33715,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 664
+              "line": 685
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33940,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
+      "evidenceSha256": "b22a5ced27ec1c52e0cd57a2d6cd0a329dd0a8a3117315429691e74acbd0d88c",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44460,7 +44662,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 539
             }
           ],
           "reversePaths": [
@@ -44539,7 +44741,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "49a45ce8ef88fd341f4e2591cc876e46bfaa8000c52b981a557929b33571bee7",
+      "evidenceSha256": "01e8af70faa5cc74af6081ca57227f849c3297dc32f055c5c2a43c442da67e95",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -45762,10 +45964,6 @@
               "from": "packages/contexts/files/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/skills/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -45788,10 +45986,6 @@
             [
               "packages/contexts/files/tsconfig.json",
               "packages/contexts/files/tsconfig.json"
-            ],
-            [
-              "packages/contexts/skills/application/index.ts",
-              "packages/contexts/skills/application/index.ts"
             ]
           ],
           "roots": [
@@ -45799,8 +45993,7 @@
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/files/README.md",
             "packages/contexts/files/package.json",
-            "packages/contexts/files/tsconfig.json",
-            "packages/contexts/skills/application/index.ts"
+            "packages/contexts/files/tsconfig.json"
           ]
         },
         "license": {
@@ -45900,6 +46093,18 @@
               "from": "apps/core-api",
               "line": 30,
               "specifier": "@platos/context-files/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/skills/application/dependencies.ts",
+              "from": "packages/contexts/skills",
+              "line": 29,
+              "specifier": "@platos/context-files"
+            },
+            {
+              "file": "packages/contexts/skills/application/testing/fixtures.ts",
+              "from": "packages/contexts/skills",
+              "line": 28,
+              "specifier": "@platos/context-files"
             }
           ],
           "reversePaths": [
@@ -45910,10 +46115,19 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/testing/fixtures.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/skills"
           ]
         },
         "testsFixtures": {
@@ -46287,7 +46501,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "ced1baac140f3d77c3c557002aeeac7744cd238f7baa009c33ffe0b503c3f9c0",
+      "evidenceSha256": "02d66baf456eb52250b00158d08b33bc3fc1e1b0a494a75b9ecf5f49b7478218",
       "manifestSha256": "3ae6fd2ca3fccb75bada2d46933a092278e87ad0089deb376a7b97424c223a51",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -47742,7 +47956,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 244
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48539,7 +48753,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d1582978c47b320c1f164535a7e6504c0eeabfa04aa5db5bb239f2f0b12218f9",
+      "evidenceSha256": "5e00b98bd3da39f3d5c00a6ba3c3d1c910be31d3c1a72af9f5936fc57ef67085",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -51088,7 +51302,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 255
+              "line": 257
             }
           ],
           "reversePaths": [
@@ -51523,7 +51737,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f4caaf5adb015a941ee809ab050c112eae47ab70af5ade42d874dc06c1dc1d61",
+      "evidenceSha256": "109c4f3b3930e47101f01cc19189f4c55eeb5c40671c21a87dd8d2c7fdfbab13",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52313,7 +52527,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 243
+              "line": 245
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52786,7 +53000,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "254d18866f26a90a57b01d209558b0501871d3728dc8789b59513818466119ed",
+      "evidenceSha256": "e4330bc56503b46b66fbb13100c31b16dd9f7a1c2236846e486bb558fa9a4ae1",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -53015,26 +53229,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/skills/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/skills/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/skills/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/skills/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/skills/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -53060,22 +53254,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/skills/application/index.ts",
-              "packages/contexts/skills/application/index.ts"
-            ],
-            [
-              "packages/contexts/skills/application/ports/index.ts",
-              "packages/contexts/skills/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/skills/contracts/index.ts",
-              "packages/contexts/skills/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/skills/domain/index.ts",
-              "packages/contexts/skills/domain/index.ts"
-            ],
-            [
               "packages/contexts/skills/package.json",
               "packages/contexts/skills/package.json"
             ],
@@ -53092,10 +53270,6 @@
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/skills/README.md",
-            "packages/contexts/skills/application/index.ts",
-            "packages/contexts/skills/application/ports/index.ts",
-            "packages/contexts/skills/contracts/index.ts",
-            "packages/contexts/skills/domain/index.ts",
             "packages/contexts/skills/package.json",
             "packages/contexts/skills/tsconfig.json"
           ]
@@ -53133,6 +53307,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/skills/package.json",
               "kind": "workspace-script",
@@ -53143,6 +53322,12 @@
               "from": "packages/contexts/skills/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/skills/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -53193,10 +53378,233 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/skills/application/bind-skill.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/compose-runtime.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/import-skill.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/install-skill.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/read-catalogue.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/register-skill.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/run-skill-tool.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/seed-official-skills.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/skills-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/contracts/skills-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/catalogue.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/category.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/environment-readiness.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/import-source.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/installation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/manifest-parse.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/manifest-yaml.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/prompt-composition.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/tool-namespace.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/visibility.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 273
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/skills/application/bind-skill.test.ts",
+              "packages/contexts/skills/application/bind-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/compose-runtime.test.ts",
+              "packages/contexts/skills/application/compose-runtime.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/import-skill.test.ts",
+              "packages/contexts/skills/application/import-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/install-skill.test.ts",
+              "packages/contexts/skills/application/install-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/read-catalogue.test.ts",
+              "packages/contexts/skills/application/read-catalogue.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/register-skill.test.ts",
+              "packages/contexts/skills/application/register-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/run-skill-tool.test.ts",
+              "packages/contexts/skills/application/run-skill-tool.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/seed-official-skills.test.ts",
+              "packages/contexts/skills/application/seed-official-skills.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/skills-erasure-target.test.ts",
+              "packages/contexts/skills/application/skills-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/skills/contracts/skills-contract.test.ts",
+              "packages/contexts/skills/contracts/skills-contract.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/catalogue.test.ts",
+              "packages/contexts/skills/domain/catalogue.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/category.test.ts",
+              "packages/contexts/skills/domain/category.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/environment-readiness.test.ts",
+              "packages/contexts/skills/domain/environment-readiness.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/import-source.test.ts",
+              "packages/contexts/skills/domain/import-source.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/installation.test.ts",
+              "packages/contexts/skills/domain/installation.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/manifest-parse.test.ts",
+              "packages/contexts/skills/domain/manifest-parse.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/manifest-yaml.test.ts",
+              "packages/contexts/skills/domain/manifest-yaml.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/prompt-composition.test.ts",
+              "packages/contexts/skills/domain/prompt-composition.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/tool-namespace.test.ts",
+              "packages/contexts/skills/domain/tool-namespace.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/visibility.test.ts",
+              "packages/contexts/skills/domain/visibility.test.ts"
+            ],
+            [
+              "packages/contexts/skills/package.json",
+              "packages/contexts/skills/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/skills/application/bind-skill.test.ts",
+            "packages/contexts/skills/application/compose-runtime.test.ts",
+            "packages/contexts/skills/application/import-skill.test.ts",
+            "packages/contexts/skills/application/install-skill.test.ts",
+            "packages/contexts/skills/application/read-catalogue.test.ts",
+            "packages/contexts/skills/application/register-skill.test.ts",
+            "packages/contexts/skills/application/run-skill-tool.test.ts",
+            "packages/contexts/skills/application/seed-official-skills.test.ts",
+            "packages/contexts/skills/application/skills-erasure-target.test.ts",
+            "packages/contexts/skills/contracts/skills-contract.test.ts",
+            "packages/contexts/skills/domain/catalogue.test.ts",
+            "packages/contexts/skills/domain/category.test.ts",
+            "packages/contexts/skills/domain/environment-readiness.test.ts",
+            "packages/contexts/skills/domain/import-source.test.ts",
+            "packages/contexts/skills/domain/installation.test.ts",
+            "packages/contexts/skills/domain/manifest-parse.test.ts",
+            "packages/contexts/skills/domain/manifest-yaml.test.ts",
+            "packages/contexts/skills/domain/prompt-composition.test.ts",
+            "packages/contexts/skills/domain/tool-namespace.test.ts",
+            "packages/contexts/skills/domain/visibility.test.ts",
+            "packages/contexts/skills/package.json",
+            "scripts/arch/test-case-census.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -53322,8 +53730,8 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "efcc09b6a0b00a111ad3deef690dc8448c68ff28bf2ace42e6299a9453a5f7bd",
-      "manifestSha256": "6a920bdebe0fa930bb196628cd31a0b40c177e3667af8f129ecff3718a7b870e",
+      "evidenceSha256": "dd1348773c6f8c24465efd193175257ed3c92126e03ad132b007985e4a27863c",
+      "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
         "reachable": false,
@@ -54045,10 +54453,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/skills/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tenancy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -54114,10 +54518,6 @@
               "packages/contexts/privacy/application/index.ts"
             ],
             [
-              "packages/contexts/skills/application/index.ts",
-              "packages/contexts/skills/application/index.ts"
-            ],
-            [
               "packages/contexts/tenancy/package.json",
               "packages/contexts/tenancy/package.json"
             ],
@@ -54146,7 +54546,6 @@
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/observability/application/index.ts",
             "packages/contexts/privacy/application/index.ts",
-            "packages/contexts/skills/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
             "packages/contexts/tenancy/tsconfig.json",
@@ -54286,6 +54685,18 @@
               "from": "packages/contexts/providers",
               "line": 37,
               "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/skills/application/dependencies.ts",
+              "from": "packages/contexts/skills",
+              "line": 30,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/skills/application/testing/fixtures.ts",
+              "from": "packages/contexts/skills",
+              "line": 29,
+              "specifier": "@platos/context-tenancy"
             }
           ],
           "reversePaths": [
@@ -54320,12 +54731,21 @@
             [
               "packages/contexts/providers",
               "packages/contexts/providers/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/testing/fixtures.ts"
             ]
           ],
           "roots": [
             "apps/core-api",
             "packages/contexts/files",
-            "packages/contexts/providers"
+            "packages/contexts/providers",
+            "packages/contexts/skills"
           ]
         },
         "testsFixtures": {
@@ -54449,7 +54869,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 244
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55169,7 +55589,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1c694231aeca6e869afb5cbb7cb68bdd0b89685bb9c5bdcba0eb5356301e12",
+      "evidenceSha256": "05017a964878701869a4821d72d275c67fb0bf3e645f3e6c20f0f0512c8b07fc",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55566,7 +55986,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 552,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55751,7 +56171,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
+      "evidenceSha256": "1bea15d5782c236e9f79851e3514c5507ffce61bc57d95202ce39c210794715f",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -58327,10 +58747,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/skills/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -58404,10 +58820,6 @@
               "packages/contexts/privacy/domain/index.ts"
             ],
             [
-              "packages/contexts/skills/domain/index.ts",
-              "packages/contexts/skills/domain/index.ts"
-            ],
-            [
               "packages/contexts/tools/domain/index.ts",
               "packages/contexts/tools/domain/index.ts"
             ],
@@ -58438,7 +58850,6 @@
             "packages/contexts/memory/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
             "packages/contexts/privacy/domain/index.ts",
-            "packages/contexts/skills/domain/index.ts",
             "packages/contexts/tools/domain/index.ts",
             "packages/kernel/README.md",
             "packages/kernel/package.json",
@@ -59444,6 +59855,180 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/skills/application/bind-skill.ts",
+              "from": "packages/contexts/skills",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/compose-runtime.ts",
+              "from": "packages/contexts/skills",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/dependencies.ts",
+              "from": "packages/contexts/skills",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/import-skill.ts",
+              "from": "packages/contexts/skills",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/install-skill.ts",
+              "from": "packages/contexts/skills",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/patch-skill.ts",
+              "from": "packages/contexts/skills",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/ports/environment-key-directory.ts",
+              "from": "packages/contexts/skills",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/ports/skill-sandbox.ts",
+              "from": "packages/contexts/skills",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/ports/skill-source-fetcher.ts",
+              "from": "packages/contexts/skills",
+              "line": 45,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/ports/skills-repository.ts",
+              "from": "packages/contexts/skills",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/read-catalogue.ts",
+              "from": "packages/contexts/skills",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/register-skill.ts",
+              "from": "packages/contexts/skills",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/run-skill-tool.ts",
+              "from": "packages/contexts/skills",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/seed-official-skills.ts",
+              "from": "packages/contexts/skills",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/skills-contract.ts",
+              "from": "packages/contexts/skills",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/skills-erasure-target.ts",
+              "from": "packages/contexts/skills",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/testing/fixtures.ts",
+              "from": "packages/contexts/skills",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/application/testing/in-memory-skills-repository.ts",
+              "from": "packages/contexts/skills",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/contracts/index.ts",
+              "from": "packages/contexts/skills",
+              "line": 3,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/catalogue.ts",
+              "from": "packages/contexts/skills",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/errors.ts",
+              "from": "packages/contexts/skills",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/identifiers.ts",
+              "from": "packages/contexts/skills",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/import-source.ts",
+              "from": "packages/contexts/skills",
+              "line": 72,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/installation.ts",
+              "from": "packages/contexts/skills",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/manifest-parse.ts",
+              "from": "packages/contexts/skills",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/manifest-yaml.ts",
+              "from": "packages/contexts/skills",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/manifest.ts",
+              "from": "packages/contexts/skills",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/tool-namespace.ts",
+              "from": "packages/contexts/skills",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/skills/domain/visibility.ts",
+              "from": "packages/contexts/skills",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/tenancy/application/add-project-member.ts",
               "from": "packages/contexts/tenancy",
               "line": 19,
@@ -59716,7 +60301,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 432,
               "specifier": "@platos/kernel"
             }
           ],
@@ -60234,6 +60819,122 @@
               "packages/contexts/secrets/domain/secret-material.ts"
             ],
             [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/bind-skill.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/compose-runtime.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/import-skill.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/install-skill.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/patch-skill.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/ports/environment-key-directory.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/ports/skill-sandbox.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/ports/skill-source-fetcher.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/ports/skills-repository.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/read-catalogue.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/register-skill.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/run-skill-tool.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/seed-official-skills.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/skills-contract.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/skills-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/application/testing/in-memory-skills-repository.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/catalogue.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/import-source.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/installation.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/manifest-parse.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/manifest-yaml.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/manifest.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/tool-namespace.ts"
+            ],
+            [
+              "packages/contexts/skills",
+              "packages/contexts/skills/domain/visibility.ts"
+            ],
+            [
               "packages/contexts/tenancy",
               "packages/contexts/tenancy/application/add-project-member.ts"
             ],
@@ -60364,6 +61065,7 @@
             "packages/contexts/identity-access",
             "packages/contexts/providers",
             "packages/contexts/secrets",
+            "packages/contexts/skills",
             "packages/contexts/tenancy",
             "scripts/arch/gen-v1-skeleton.mjs"
           ]
@@ -60567,6 +61269,86 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/skills/application/bind-skill.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/compose-runtime.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/install-skill.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/read-catalogue.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/register-skill.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/run-skill-tool.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/seed-official-skills.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/application/skills-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 6
+            },
+            {
+              "from": "packages/contexts/skills/contracts/skills-contract.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/skills/domain/catalogue.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/category.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/environment-readiness.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/installation.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/prompt-composition.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/tool-namespace.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/skills/domain/visibility.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/tenancy/application/tenancy-service.test.ts",
               "kind": "reference",
               "line": 5
@@ -60644,7 +61426,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 227
+              "line": 228
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60825,6 +61607,70 @@
               "packages/contexts/secrets/domain/secret-version.test.ts"
             ],
             [
+              "packages/contexts/skills/application/bind-skill.test.ts",
+              "packages/contexts/skills/application/bind-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/compose-runtime.test.ts",
+              "packages/contexts/skills/application/compose-runtime.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/install-skill.test.ts",
+              "packages/contexts/skills/application/install-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/read-catalogue.test.ts",
+              "packages/contexts/skills/application/read-catalogue.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/register-skill.test.ts",
+              "packages/contexts/skills/application/register-skill.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/run-skill-tool.test.ts",
+              "packages/contexts/skills/application/run-skill-tool.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/seed-official-skills.test.ts",
+              "packages/contexts/skills/application/seed-official-skills.test.ts"
+            ],
+            [
+              "packages/contexts/skills/application/skills-erasure-target.test.ts",
+              "packages/contexts/skills/application/skills-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/skills/contracts/skills-contract.test.ts",
+              "packages/contexts/skills/contracts/skills-contract.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/catalogue.test.ts",
+              "packages/contexts/skills/domain/catalogue.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/category.test.ts",
+              "packages/contexts/skills/domain/category.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/environment-readiness.test.ts",
+              "packages/contexts/skills/domain/environment-readiness.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/installation.test.ts",
+              "packages/contexts/skills/domain/installation.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/prompt-composition.test.ts",
+              "packages/contexts/skills/domain/prompt-composition.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/tool-namespace.test.ts",
+              "packages/contexts/skills/domain/tool-namespace.test.ts"
+            ],
+            [
+              "packages/contexts/skills/domain/visibility.test.ts",
+              "packages/contexts/skills/domain/visibility.test.ts"
+            ],
+            [
               "packages/contexts/tenancy/application/tenancy-service.test.ts",
               "packages/contexts/tenancy/application/tenancy-service.test.ts"
             ],
@@ -60945,6 +61791,22 @@
             "packages/contexts/secrets/domain/environment-variable.test.ts",
             "packages/contexts/secrets/domain/metadata.test.ts",
             "packages/contexts/secrets/domain/secret-version.test.ts",
+            "packages/contexts/skills/application/bind-skill.test.ts",
+            "packages/contexts/skills/application/compose-runtime.test.ts",
+            "packages/contexts/skills/application/install-skill.test.ts",
+            "packages/contexts/skills/application/read-catalogue.test.ts",
+            "packages/contexts/skills/application/register-skill.test.ts",
+            "packages/contexts/skills/application/run-skill-tool.test.ts",
+            "packages/contexts/skills/application/seed-official-skills.test.ts",
+            "packages/contexts/skills/application/skills-erasure-target.test.ts",
+            "packages/contexts/skills/contracts/skills-contract.test.ts",
+            "packages/contexts/skills/domain/catalogue.test.ts",
+            "packages/contexts/skills/domain/category.test.ts",
+            "packages/contexts/skills/domain/environment-readiness.test.ts",
+            "packages/contexts/skills/domain/installation.test.ts",
+            "packages/contexts/skills/domain/prompt-composition.test.ts",
+            "packages/contexts/skills/domain/tool-namespace.test.ts",
+            "packages/contexts/skills/domain/visibility.test.ts",
             "packages/contexts/tenancy/application/tenancy-service.test.ts",
             "packages/contexts/tenancy/domain/ancestry.test.ts",
             "packages/contexts/tenancy/domain/entity.test.ts",
@@ -61707,7 +62569,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "421b333636f20402a656e12326244c020c60f25ce34c2a0b64c7b61bfb87117f",
+      "evidenceSha256": "6ad53cc2d9fc00996ab40db919235bdd2ae88f4889f1625326bde29ff1d5c670",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
