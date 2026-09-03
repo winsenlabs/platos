@@ -4730,7 +4730,7 @@
     "lockfileSha256": "7bc836b724d0d20933050605ebdd3fad81e99f3284ac9d16dc23ea6a6108453d",
     "vocabularySha256": "685898e45d08ae5d6b4f01a1a3e650ccad92a63413c4c5bdca36e42984c348e3",
     "ledgerRulesSha256": "3d2acfcc259fd473cb88b29ad2bf37a703ad4765fedaaa57d289812de607935f",
-    "reachabilitySha256": "348cf89721d1b33a13f9803454ca39dda6ec9fc4dacadb2ad3132ec593dfa53d",
+    "reachabilitySha256": "179e324c6a841c5cce8b88a4183c8427f8413c50eb45c472e6921877e8ef4192",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

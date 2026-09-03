@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "8c94a30f1dea3a6abcbe75f9cbf9629a2a930e737bcd56621b2449d65508939d",
+  "evidenceSha256": "ce459d224028ef6c2a50114d93dbb556e2067e0d92ffd6e1566ba1c02a553c4e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "7335e009edf79cf18b1e2c1e462d8a0c518cdea2483352c02d75af9178e231c1",
+    "aggregateSha256": "7d364d285b4dcc17bd67eb22f1e3eba90e873316f9d0b522cf86ccd9c0f10b20",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11133,11 +11133,11 @@
       },
       {
         "path": "packages/contexts/channels/application/channels-erasure-target.test.ts",
-        "sha256": "82c0f2679653cd800b0e72f4666954551694a3bfa5afed5d5aa83c63f9dd96c5"
+        "sha256": "bb40ce5408f06c477136570f9884823b76d8726fc840d2c514e8bbd18a963595"
       },
       {
         "path": "packages/contexts/channels/application/channels-erasure-target.ts",
-        "sha256": "1045193bb473521c91a786bb4794a262ebdd66084d6411f30d62be4534ae4631"
+        "sha256": "d8d19d108806f5ae2b850975b478681cff9458742070c8ba4c33521100b13d83"
       },
       {
         "path": "packages/contexts/channels/application/configure-agent-routing.test.ts",
@@ -11193,15 +11193,15 @@
       },
       {
         "path": "packages/contexts/channels/application/rotate-installation-credential.test.ts",
-        "sha256": "492b788ff79f821592f1ad8e1266e39a37b4d2f1248c24a637608471a4ac4752"
+        "sha256": "7fbfd8e141d663745419da8189a0dc86b848f904f0cd84ee77af826c003ea8d9"
       },
       {
         "path": "packages/contexts/channels/application/rotate-installation-credential.ts",
-        "sha256": "1dc0cb8db0c2f86e0e65e29faa6d8a126a5fc1be79b7c52a8ed570c82338d4d1"
+        "sha256": "1754fcb617e5cf37a63ae41c112b71bb1cc9141046a215bdc705d21bd1409a49"
       },
       {
         "path": "packages/contexts/channels/application/testing/builders.ts",
-        "sha256": "fd126cf914d8d5433a341e38439e1a1028ea70a204e14c9a1b2a39c2841c923c"
+        "sha256": "3e9dee2d827748d8d72b5f1c8a4b0aba0e1d2d722d62e38c60d342a92faf78ae"
       },
       {
         "path": "packages/contexts/channels/application/testing/fixtures.ts",
@@ -11225,7 +11225,7 @@
       },
       {
         "path": "packages/contexts/channels/contracts/channels-contract.test.ts",
-        "sha256": "adffa9790b0d065f8cb835703dd259aa2b240178889823e002762f26025e1c98"
+        "sha256": "bc317fdd2cbd4c72e89c88f5148a2b5ce3bc4b6310180f26fac445b142f2f175"
       },
       {
         "path": "packages/contexts/channels/contracts/index.ts",
@@ -11269,11 +11269,11 @@
       },
       {
         "path": "packages/contexts/channels/domain/installation.test.ts",
-        "sha256": "86c42e075da574064fa9ae20c7d8111caf594f6dc2ee9fdd398a2780344181f2"
+        "sha256": "944957fb2d1b817c6a0ad6978a2bc44cfdd5d685413aefe566158b177c6a355a"
       },
       {
         "path": "packages/contexts/channels/domain/installation.ts",
-        "sha256": "09ecd69237ab5ff605d6ceff53846f81a3b2470cdf945c40feb4dc60cee07a07"
+        "sha256": "ad8acfa93e2655626500c5a50d4ff143615c724d6c779537d747eb61ce6c4e29"
       },
       {
         "path": "packages/contexts/channels/domain/policy.ts",
@@ -14885,11 +14885,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "0878d56951a881ea0d2dfa9b57d3e208b3db81f2b1cef63061d6d0c74208c480"
+        "sha256": "768553ed601f4cd7658526b859adad972d4de7b122c5c785cdf045ed2ae4df4e"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "615d1d01129f28e3ab237cc2decb5d7c678d31943dc088001ae1c2e25543f74c"
+        "sha256": "9b393d560bfff6181dfad9c0453e5de252c7576846b9eb7dadf2d01e50e06f58"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
