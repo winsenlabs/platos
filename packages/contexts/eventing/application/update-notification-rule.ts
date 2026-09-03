@@ -89,20 +89,33 @@ async function buildEdit(
  * `(environmentId, name)`, so renaming to the rule's OWN current name is a
  * no-op, not a conflict.
  *
- * TWO GUARDS, AND THEY MASK EACH OTHER. The same-name shortcut returns before
- * the lookup; the id-inequality test admits the rule's own row when the lookup
- * happens anyway. The 2026-09-03 enumerated mutation control found each of them
- * to be an EQUIVALENT MUTANT on its own — delete either line and all 147 cases
- * stay green, because the survivor still admits the re-PUT — while deleting
- * BOTH turns "ALLOWS a rename to the rule's own current name" red. The property
- * is pinned by the PAIR, and the comment that used to sit here was wrong to
- * credit the id test alone for it.
+ * TWO GUARDS, AND ON THE RESULT ALONE THEY MASK EACH OTHER. The same-name
+ * shortcut returns before the lookup; the id-inequality test admits the rule's
+ * own row when the lookup happens anyway. The 2026-09-03 enumerated mutation
+ * control found each to be an EQUIVALENT MUTANT against the suite as it then
+ * stood — delete either line and all 147 cases stayed green, because the
+ * survivor still admitted the re-PUT — while deleting BOTH turned "ALLOWS a
+ * rename to the rule's own current name" red.
  *
- * Both lines stay, because they defend different things. The shortcut is what
- * makes the common idempotent re-PUT cost no read at all. The id test is what
- * keeps a STALE read — this rule renamed by a concurrent writer between the
- * `findRule` above and this lookup — from being reported as a conflict with
- * itself.
+ * That is a description of the SUITE, not of the code, and it is no longer
+ * true. Both lines stay because they defend different things, and each of those
+ * two things now has its own control in update-notification-rule.test.ts:
+ *
+ *   the shortcut  makes the common idempotent re-PUT cost NO READ at all.
+ *                 Pinned by "re-PUTting the rule's OWN name costs no lookup at
+ *                 all", which asserts on the store's recorded lookups, because
+ *                 the RESULT is identical either way — one query later.
+ *   the id test   keeps a STALE read from being reported as a conflict with
+ *                 itself: this rule renamed by a concurrent writer between the
+ *                 `findRule` above and this lookup. Pinned by "does NOT report
+ *                 a conflict when the clashing row is the rule's OWN, renamed
+ *                 concurrently", which drives that interleaving through the
+ *                 double's `beforeFindRuleByName` hook.
+ *
+ * Deleting either line now turns exactly one of those red. The earlier version
+ * of this comment credited the id test alone for the property, which was wrong;
+ * the version after that said the pair defends it, which was true of the suite
+ * and left both lines individually unproven. Neither is left standing on prose.
  */
 async function assertNameFree(
   dependencies: EventingDependencies,

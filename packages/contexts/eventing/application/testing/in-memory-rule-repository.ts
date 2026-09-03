@@ -50,6 +50,29 @@ export class InMemoryNotificationRuleRepository implements NotificationRuleRepos
   private failure: string | null = null;
   readonly transactions: TransactionScope[] = [];
 
+  /**
+   * Every name this double was asked to look up, in order.
+   *
+   * `assertNameFree` in update-notification-rule.ts short-circuits a re-PUT of
+   * the rule's OWN name before it reaches the store, and that shortcut's only
+   * observable effect is the read it avoids — remove it and the result is
+   * identical, one query later. Without this record the line is an equivalent
+   * mutant and cannot be pinned at all.
+   */
+  readonly nameLookups: RuleName[] = [];
+
+  /**
+   * Run just before `findRuleByName` answers, so a test can model a CONCURRENT
+   * WRITER that changed the table between a use case's two reads.
+   *
+   * That interleaving is the whole reason `assertNameFree` compares rule ids
+   * rather than trusting the lookup to miss: the row it finds under the new
+   * name can be the caller's OWN row, already renamed by someone else. It is
+   * unreachable from a double that only ever answers from a settled store, so
+   * it is offered here rather than left as an argument in a comment.
+   */
+  beforeFindRuleByName: (() => void) | null = null;
+
   /** Make the NEXT call fail with EVENTING_REPOSITORY_UNAVAILABLE. */
   failNext(reason = "injected"): void {
     this.failure = reason;
@@ -122,6 +145,8 @@ export class InMemoryNotificationRuleRepository implements NotificationRuleRepos
   }
 
   async findRuleByName(scope: EnvironmentScope, name: RuleName): Promise<Result<NotificationRule | null>> {
+    this.nameLookups.push(name);
+    this.beforeFindRuleByName?.();
     const reason = this.takeFailure();
     if (reason !== null) return err(repositoryUnavailable(reason));
     for (const rule of this.rules.values()) {

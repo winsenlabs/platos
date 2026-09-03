@@ -135,11 +135,31 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * reproducible. That claim is withdrawn. The replacement is a 43-mutation set
  * enumerated line by line in the commit message, each with its file, its exact
  * edit and its verdict: 41 KILLED, and ONE argued equivalent-mutant PAIR in
- * `assertNameFree` whose two halves mask each other (deleting either leaves the
- * suite green; deleting both turns it red, which is the 43rd mutation). The two
- * mutations this census exists to catch remain the pattern matcher's segment
- * anchor and the retry off-by-one, each of which leaves every other case in the
- * package green.
+ * `assertNameFree` whose two halves masked each other. The two mutations this
+ * census exists to catch remain the pattern matcher's segment anchor and the
+ * retry off-by-one, each of which leaves every other case in the package green.
+ *
+ * FOURTH DELTA — `eventing` 147 -> 149 cases, 1147 -> 1149 total. File count
+ * again UNCHANGED at 14. The two survivors above were re-run on the rebase onto
+ * `95cbacc1` and both reproduced exactly: delete the same-name shortcut, 147/147
+ * green; delete the id-inequality test, 147/147 green. "The pair defends it" is
+ * a statement about the SUITE, though, and the docblock over `assertNameFree`
+ * was making a stronger claim than that — it gave each line its own distinct
+ * reason to exist and neither reason had a control. Both are now pinned, and
+ * both survivors are killed:
+ *
+ *   +1 "re-PUTting the rule's OWN name costs no lookup at all" — asserts on the
+ *      store's recorded name lookups, because the shortcut's only observable
+ *      effect is the query it avoids; the RESULT is identical without it.
+ *      Deleting `|| edit.name === rule.name` now turns this red.
+ *   +1 "does NOT report a conflict when the clashing row is the rule's OWN,
+ *      renamed concurrently" — drives the stale-read interleaving the id test
+ *      exists for through the double's new `beforeFindRuleByName` hook, which
+ *      is unreachable from a store that only ever answers from a settled state.
+ *      Deleting `&& clash.value.ruleId !== rule.ruleId` now turns this red.
+ *
+ * The eventing mutation result is therefore 43 of 43 KILLED, with no argued
+ * equivalence left standing.
  *
  * The eventing and providers axes are disjoint, and so are the two apps
  * WIN-297 adopted, so the integrated total is the SUM: 717 + 283 + 142 = 1142.
@@ -164,7 +184,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
-  "packages/contexts/eventing": { files: 14, cases: 147 },
+  "packages/contexts/eventing": { files: 14, cases: 149 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
@@ -187,7 +207,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1147;
+export const EXPECTED_RUNTIME_TOTAL = 1149;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

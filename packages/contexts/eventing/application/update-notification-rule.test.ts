@@ -160,6 +160,61 @@ describe("updateNotificationRule", () => {
     expect(renamed.ok).toBe(true);
   });
 
+  // WIN-256 verification, 2026-09-03. The case above pins the PROPERTY, and the
+  // 43-mutation control found that it is pinned by the PAIR of lines in
+  // `assertNameFree` rather than by either one: the same-name shortcut and the
+  // id-inequality test mask each other, so deleting either left all 147 cases
+  // green and only deleting BOTH turned the case above red. Two equivalent
+  // mutants is a smaller finding than a hole, but "the pair defends it" is not
+  // the claim the docblock makes. It gives each line its OWN reason to exist,
+  // and neither of those reasons had a control. These two are those controls,
+  // and each turns exactly one of the two survivors into a killed mutation.
+  //
+  // Note that both are about a property the RESULT cannot show. Delete either
+  // line and this use case still answers `ok` — what changes is a query that
+  // should not have happened, and a conflict that a stale read invents. Prose
+  // was doing the work a test has to do; it is doing it here instead.
+  it("re-PUTting the rule's OWN name costs no lookup at all", async () => {
+    const rule = await seedRule(context, "failures");
+    context.repository.nameLookups.length = 0;
+
+    const renamed = await updateNotificationRule(context.dependencies, {
+      scope: testEnvironmentScope(),
+      ruleId: rule.ruleId,
+      name: "failures",
+    });
+    expect(renamed.ok).toBe(true);
+    // Kills: deleting `|| edit.name === rule.name` from assertNameFree. Without
+    // the shortcut the answer is identical and one query later, which is the
+    // whole reason the line cannot be pinned on the result.
+    expect(context.repository.nameLookups).toEqual([]);
+  });
+
+  it("does NOT report a conflict when the clashing row is the rule's OWN, renamed concurrently", async () => {
+    const rule = await seedRule(context, "failures");
+    context.repository.nameLookups.length = 0;
+    // The interleaving the id test exists for: between this use case's
+    // `findRule` and its `findRuleByName`, another writer renames THIS rule to
+    // the very name being requested. The lookup therefore hits, and the row it
+    // returns carries this rule's own id.
+    context.repository.beforeFindRuleByName = () => {
+      context.repository.beforeFindRuleByName = null;
+      context.repository.seed({ ...rule, name: asIdentifier("alerts") });
+    };
+
+    const renamed = await updateNotificationRule(context.dependencies, {
+      scope: testEnvironmentScope(),
+      ruleId: rule.ruleId,
+      name: "alerts",
+    });
+
+    // Kills: dropping `&& clash.value.ruleId !== rule.ruleId`. Without it the
+    // rule is refused as a conflict WITH ITSELF, EVENTING_RULE_NAME_TAKEN.
+    if (!renamed.ok) throw new Error(renamed.error.code);
+    expect(renamed.value.name).toBe("alerts");
+    expect(context.repository.nameLookups).toEqual(["alerts"]);
+  });
+
   it("returns the rule unchanged, and writes nothing, for an empty edit", async () => {
     const rule = await seedRule(context);
     const before = context.unitOfWork.transactions.length;
