@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
+  "evidenceSha256": "28a81f057daa7a957a4b70e19c15c10ab8053dcb8751b86944fac21e33b47e24",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 165,
+        "sha256": "a9c4b63b62d646f808cdf359791901cf82363eeb9a5c31c52f22d300a2b0cc72"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 165,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
+    "aggregateSha256": "74613cf57d9a1fd25438cc7d6440acec202a6f7e6902ed97d76afced70f78b44",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11680,24 +11680,228 @@
         "sha256": "8a080eb7abc7a50c3fc03cbd9636ccb4e7122aa8c50fc6a997c6a0cabb979674"
       },
       {
+        "path": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+        "sha256": "7be31e242cc569c1219c35d94b17e7d0ad05df68ccd8a2e4926b03563cbc6e38"
+      },
+      {
+        "path": "packages/contexts/jobs/application/dependencies.ts",
+        "sha256": "87cc817b2564c1c060d688bf116edd411d317145c199c9b97798d30a777e99f5"
+      },
+      {
+        "path": "packages/contexts/jobs/application/execute-job.test.ts",
+        "sha256": "ccced4c49a3f077cfb28b71130d7b3dcff1500f8c5598d7040bc51be75131f47"
+      },
+      {
+        "path": "packages/contexts/jobs/application/execute-job.ts",
+        "sha256": "47dd0e70400a4b4d29f8bdefac4820c1b72769e14e5aab36d20877116e89d368"
+      },
+      {
         "path": "packages/contexts/jobs/application/index.ts",
-        "sha256": "7eff751667863b9b74a181a384c190673b9df36424643dc31d352d39316b8442"
+        "sha256": "b393e08bfbb0d8955d4dc620102399055bd15e0faa69521929c1de320852a5e0"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-contract.ts",
+        "sha256": "8caf0af9a2ee71dabbbf525d0d3cb7c84017726d18a06f361eb659f9dac6dc49"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+        "sha256": "c6343771e9e2c41900de97a9bf319bddd2f7c0e74299567ded4245c8bb5538f2"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-erasure-target.ts",
+        "sha256": "9eeef13aa3019b9e962e301e76af705a2349784bc049afc1af4b8b3d24856732"
+      },
+      {
+        "path": "packages/contexts/jobs/application/minting.ts",
+        "sha256": "8d95f9a0a16eba09269f797956c082b232266ce49d2578a97d1c43fa0f817a1a"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/approvals-repository.ts",
+        "sha256": "e69d4f534a4d570384c4c1ae42401725d124c925a90739ac652dda150b7382b8"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/idempotency-store.ts",
+        "sha256": "18196391dbfafcf2a3895210389b206cc16b850b792669a74052745047da5d61"
       },
       {
         "path": "packages/contexts/jobs/application/ports/index.ts",
-        "sha256": "e54748043bb9fe29a1ecb6fa78599609a9937dbf15ef9532376a54db8f010290"
+        "sha256": "6ae4ab8c74db6102d30b6bf8ff65a295c4bf30e57d9c96877e931eab823a0e3c"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/job-handler-runtime.ts",
+        "sha256": "4b770305e3735a7613b59317d1d1175c87e72daacfa9a7c6b0d9e781daeb5814"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/jobs-repository.ts",
+        "sha256": "1fcf73c597f2c6e909fb08a2cacfcacc89b2c5fe537e753b4093e09bab23f5c5"
+      },
+      {
+        "path": "packages/contexts/jobs/application/read-approvals.ts",
+        "sha256": "6d551cfbb6f00a73e55e2e2c4d57c6c75e4cfdd6f5f728f7c110441bcece2d5b"
+      },
+      {
+        "path": "packages/contexts/jobs/application/read-jobs.ts",
+        "sha256": "b4407d35e0eab8675cfd6b69972f68a0d313dd1e668509bd6e76513bcdd79174"
+      },
+      {
+        "path": "packages/contexts/jobs/application/register-job.test.ts",
+        "sha256": "701c0ccae313dedd29b27a014c8fa54e31f8b3e5cdee03ef98e7de4ab7ac3ed7"
+      },
+      {
+        "path": "packages/contexts/jobs/application/register-job.ts",
+        "sha256": "65e3accf8d10450c35be2265bda1f89a79f5ffa28df5fc225c1a603d869c4bb9"
+      },
+      {
+        "path": "packages/contexts/jobs/application/request-approval.ts",
+        "sha256": "c6b7c3635652fdb377ee255359ffc111faa473cfe1df2d6f93c40a78888ad311"
+      },
+      {
+        "path": "packages/contexts/jobs/application/resolve-approval.ts",
+        "sha256": "1424b5ccc4b9c5a34bd567f9ab42fafb2e2b034136a3887b5d1faeea8c72e2f4"
+      },
+      {
+        "path": "packages/contexts/jobs/application/sweep-expired-approvals.ts",
+        "sha256": "db4824c80aff19e1123a4378a8d94a04bed384e21a016e185d6193b96546b627"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/builders.ts",
+        "sha256": "e3cc7367034ef891434d8214fc4130ba07645139c2181d5726bf7e8ca819c709"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/fixtures.ts",
+        "sha256": "9b9cbf8d59c240d791851a921163e207347b190488d581a6f03e2af23cdf4728"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts",
+        "sha256": "da83312c14afd51d2e338a4d515e78b335fb5dee993884f954d5763eecd2c39b"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts",
+        "sha256": "763ea448f275a3f1933aa59a52359b2a7cd06f41712da92d2b81b9a8ca3bd01f"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts",
+        "sha256": "4fbcdc137c5331687c8ad208e876550e5bfcceb8c3fb9368741e5f6415a65234"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/index.ts",
+        "sha256": "990c89e52886528a542e8325d93ee1dc6fb51dc983e8bf7165e166a690b0935a"
+      },
+      {
+        "path": "packages/contexts/jobs/application/views.test.ts",
+        "sha256": "b29b4b7a4d015635584af911b48707a52704619e3be951c0032a77ca1aa9a82e"
+      },
+      {
+        "path": "packages/contexts/jobs/application/views.ts",
+        "sha256": "a0cb19b185ff435373239dfc62e1561fb02f0603d8b1451c6628d17348b0a65d"
       },
       {
         "path": "packages/contexts/jobs/contracts/index.ts",
-        "sha256": "02d0ab767a421bfa9153826d182ed7e170cc2c00a5914c5708eb0cc847d035bf"
+        "sha256": "7adbcc0ac272ad36d67a55e2fc6ac1e20a2d27fb29fdb3782c2ff50441e20fe1"
+      },
+      {
+        "path": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+        "sha256": "fea7f82c450fe40ea5bf40d6ee8d10ae6a40d915bee5c54f38ef80330e245d78"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-request.ts",
+        "sha256": "409c2f0c4b9973dcab1f0cf62f301044b64dbaab9f70ee6c18e303f54664abe8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-status.test.ts",
+        "sha256": "255acab73f2640e54ce7e64c5862e9b75a1d3864f064f933b083b40c968ecebc"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-status.ts",
+        "sha256": "74f24e56f662dcf1575238a197aea65bf0ca884c2ba17cfc6b06304f19629813"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval.test.ts",
+        "sha256": "df0da0b9928bf2a13f6f348d53f8163000629f3b39037755894e0d385de1c61b"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval.ts",
+        "sha256": "b3c4d9b2b7ba5372ca71efaa464858c677b2e3f93715cf741d0d695bcacaf58b"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/errors.test.ts",
+        "sha256": "8ed55bd3592e1039a488cba9c795a4a758076f87349c455ff70fedcbf25902e4"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/errors.ts",
+        "sha256": "f9e411448da6730e8ddc6f19d94141c736f378a9c28f1c9984e4e3eeb06c0bd6"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/execution-request.test.ts",
+        "sha256": "9b73f3d8a074543502d5cfb5eee99c2a9f753d4bd9fe678378ecc45c9228fd44"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/execution-request.ts",
+        "sha256": "6246740bdca046c8d208ac0ddb83e16f44f4b75533ab49b3e06e336f5ca0f15d"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/idempotency.test.ts",
+        "sha256": "3245fe76c3ece8b7df2078db9d99358dbd01d2cd872efa497591f6b08f9295a8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/idempotency.ts",
+        "sha256": "f9373003c7a001f42854f1c988d8a62aa36b617468a0ebc7b6d7f78f6db22b55"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/identifiers.ts",
+        "sha256": "74f88cea99f0afa01a313106a0f11437985a23abe222cc41c0b2a348f9529f04"
       },
       {
         "path": "packages/contexts/jobs/domain/index.ts",
-        "sha256": "86b24fb0a48a50976b1347d6bdbbc38668a895fdd47618fcfc7a23d95065b95d"
+        "sha256": "bd81f036978a231c29a3d4d024b0dbc0c9eb80ce0fe7ed95bf1340502ebed0d1"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/invocation.test.ts",
+        "sha256": "beaed7dfb0dc12c068e7bee5910e98e7359589f37966e5c1902484b6ceb2f0ea"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/invocation.ts",
+        "sha256": "115f4523abf7593954ec29e70c129caeea4123de84be0765cd42a2d4ded108b8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-definition.test.ts",
+        "sha256": "c5aff89dde54c1c1e0c1ae74d63fc6e9894696a282d59b66323d3e1c772e8cff"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-definition.ts",
+        "sha256": "d06172eb3ccd638e0e481bf797fd51bced8dad88ee76ae30480ac1eeded78e2f"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-key.ts",
+        "sha256": "6a543eaa8c7659a544049447f58127bed7bedd3c8800428fe76822ee63afe0e3"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job.test.ts",
+        "sha256": "eb7ebd4c10db7fd83a440bd79d03a2c294c4197da73c3131aaa8f5354486207e"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job.ts",
+        "sha256": "53c816ec34d3c5e54013bb1079cf5cb645f29f67bc4772d8c866ee5dd544dbe8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/payload.test.ts",
+        "sha256": "337f44d9be49ae9783b51f25b2a1f881b37847ae91033cc93bed89e120ac258e"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/payload.ts",
+        "sha256": "827afcaca9282274322fa5c742ee7697ce19ac62c94f20194c0e1f2fb09d5c7f"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/scope.test.ts",
+        "sha256": "272d12bd5a4b9ca22748db2e6600df498572ec3ef43f2c5ed3324c0c4cd12715"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/scope.ts",
+        "sha256": "2fbd43ea9cf70d0a64e92b01c687658609eb967fcb6a363d4d0f970a91a2cb21"
       },
       {
         "path": "packages/contexts/jobs/package.json",
-        "sha256": "c6b1a7528aefd87c2fc85b0a93aa5b796e7ba59dcdddced0db79072b5a96e405"
+        "sha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9"
       },
       {
         "path": "packages/contexts/jobs/tsconfig.json",
@@ -14649,7 +14853,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "2916b13cf0d8a502ab3f86c1b79462fa0f62f661ddd8fb2e37309998a01e36bc"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14681,7 +14885,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "aa8901338719e72dd117fff30a7ee4274cce50dd867e708c85852cc86dacc2f2"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14701,7 +14905,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "581124b898bac44ceaef11bee6ccee6152f4e14f6e24c0dd7a33791c524ca965"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14717,11 +14921,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
+        "sha256": "3063f281a31e066187a0ba4e8d0579504c8a82a1bff9dc237c8404eb9d325653"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
+        "sha256": "39a1fbe683ad4ca84aa83afdb4a2d16bb8c915f3a2a019cbfef54c15e4cf39fc"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14953,7 +15157,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
+        "sha256": "897cdab2de4286c1af03c2d5b2866bbdc0800e717e9af61471224258960d197d"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15061,7 +15265,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f754056ca550348ee1b0d8f16a37828a5c7df867a4ba306307173d64dd69b770"
+        "sha256": "e45e6e12237687f46984f04fbc4051e38299c4cb5a497290607fe0206e39c561"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -20113,14 +20317,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/jobs/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/jobs/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/memory/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -20223,14 +20419,6 @@
               "packages/contexts/governance/contracts/index.ts"
             ],
             [
-              "packages/contexts/jobs/application/ports/index.ts",
-              "packages/contexts/jobs/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/contracts/index.ts",
-              "packages/contexts/jobs/contracts/index.ts"
-            ],
-            [
               "packages/contexts/memory/application/ports/index.ts",
               "packages/contexts/memory/application/ports/index.ts"
             ],
@@ -20287,8 +20475,6 @@
             "packages/contexts/eventing/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
             "packages/contexts/governance/contracts/index.ts",
-            "packages/contexts/jobs/application/ports/index.ts",
-            "packages/contexts/jobs/contracts/index.ts",
             "packages/contexts/memory/application/ports/index.ts",
             "packages/contexts/memory/contracts/index.ts",
             "packages/contexts/observability/application/ports/index.ts",
@@ -20663,7 +20849,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "3a42da7939487eef5b73a2b85aeb2d89dab184af08cad947b1c612e118751be9",
+      "evidenceSha256": "6e059c4da6de65f67b4997a55d1f97952e2bb49109c85216a7abd02ff88d6e0b",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -32357,7 +32543,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 677
             }
           ],
           "reversePaths": [
@@ -32382,7 +32568,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
+      "evidenceSha256": "360c4761210f1aa7bf9e1cbeb9bac7f94b24a4ff45aa0ffcb0e45ec1428a7142",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33699,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 664
+              "line": 676
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33924,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
+      "evidenceSha256": "25a7f6d6f0a60fb6d73174fb8adf86a8c0a4dfff546ab4b3de8233ff39466d9e",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44460,7 +44646,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 539
             }
           ],
           "reversePaths": [
@@ -44539,7 +44725,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "49a45ce8ef88fd341f4e2591cc876e46bfaa8000c52b981a557929b33571bee7",
+      "evidenceSha256": "01e8af70faa5cc74af6081ca57227f849c3297dc32f055c5c2a43c442da67e95",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -47742,7 +47928,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 248
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48539,7 +48725,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d1582978c47b320c1f164535a7e6504c0eeabfa04aa5db5bb239f2f0b12218f9",
+      "evidenceSha256": "8d31dd9eb559bdb005d8bd6cdb1434af4907c3805030e6627894c7b114ff49e7",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -48718,26 +48904,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/jobs/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/jobs/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -48759,22 +48925,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/jobs/application/index.ts",
-              "packages/contexts/jobs/application/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/application/ports/index.ts",
-              "packages/contexts/jobs/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/contracts/index.ts",
-              "packages/contexts/jobs/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/domain/index.ts",
-              "packages/contexts/jobs/domain/index.ts"
-            ],
-            [
               "packages/contexts/jobs/package.json",
               "packages/contexts/jobs/package.json"
             ],
@@ -48790,10 +48940,6 @@
           "roots": [
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/jobs/README.md",
-            "packages/contexts/jobs/application/index.ts",
-            "packages/contexts/jobs/application/ports/index.ts",
-            "packages/contexts/jobs/contracts/index.ts",
-            "packages/contexts/jobs/domain/index.ts",
             "packages/contexts/jobs/package.json",
             "packages/contexts/jobs/tsconfig.json"
           ]
@@ -48831,6 +48977,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/jobs/package.json",
               "kind": "workspace-script",
@@ -48841,6 +48992,12 @@
               "from": "packages/contexts/jobs/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/jobs/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -48894,19 +49051,219 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/execute-job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/register-job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/views.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval-status.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/execution-request.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/idempotency.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/invocation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job-definition.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/payload.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/scope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 89
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
               "line": 186
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 545
+            },
+            {
+              "from": "scripts/workspace-reachability.test.mjs",
+              "kind": "reference",
+              "line": 481
             }
           ],
           "reversePaths": [
             [
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/execute-job.test.ts",
+              "packages/contexts/jobs/application/execute-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/register-job.test.ts",
+              "packages/contexts/jobs/application/register-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/views.test.ts",
+              "packages/contexts/jobs/application/views.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval-status.test.ts",
+              "packages/contexts/jobs/domain/approval-status.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval.test.ts",
+              "packages/contexts/jobs/domain/approval.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/errors.test.ts",
+              "packages/contexts/jobs/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/execution-request.test.ts",
+              "packages/contexts/jobs/domain/execution-request.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/idempotency.test.ts",
+              "packages/contexts/jobs/domain/idempotency.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/invocation.test.ts",
+              "packages/contexts/jobs/domain/invocation.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job-definition.test.ts",
+              "packages/contexts/jobs/domain/job-definition.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job.test.ts",
+              "packages/contexts/jobs/domain/job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/payload.test.ts",
+              "packages/contexts/jobs/domain/payload.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/scope.test.ts",
+              "packages/contexts/jobs/domain/scope.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/package.json",
+              "packages/contexts/jobs/package.json"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ],
+            [
+              "scripts/workspace-reachability.test.mjs",
+              "scripts/workspace-reachability.test.mjs"
             ]
           ],
           "roots": [
-            "scripts/arch/test-case-census.test.mjs"
+            "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+            "packages/contexts/jobs/application/execute-job.test.ts",
+            "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+            "packages/contexts/jobs/application/register-job.test.ts",
+            "packages/contexts/jobs/application/views.test.ts",
+            "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+            "packages/contexts/jobs/domain/approval-status.test.ts",
+            "packages/contexts/jobs/domain/approval.test.ts",
+            "packages/contexts/jobs/domain/errors.test.ts",
+            "packages/contexts/jobs/domain/execution-request.test.ts",
+            "packages/contexts/jobs/domain/idempotency.test.ts",
+            "packages/contexts/jobs/domain/invocation.test.ts",
+            "packages/contexts/jobs/domain/job-definition.test.ts",
+            "packages/contexts/jobs/domain/job.test.ts",
+            "packages/contexts/jobs/domain/payload.test.ts",
+            "packages/contexts/jobs/domain/scope.test.ts",
+            "packages/contexts/jobs/package.json",
+            "scripts/arch/max-file-lines.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/v1-ledger.test.mjs",
+            "scripts/workspace-reachability.test.mjs"
           ]
         }
       },
@@ -48987,8 +49344,8 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "7bc2358875a21b1a1107913c86c68655342515f8d40143fa3e173e8069582591",
-      "manifestSha256": "c6b1a7528aefd87c2fc85b0a93aa5b796e7ba59dcdddced0db79072b5a96e405",
+      "evidenceSha256": "4165cd490a0ef681b25dd9a8272cbf5ecab62bbe28be2b104c42169338d1b0f4",
+      "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
         "reachable": false,
@@ -51088,7 +51445,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 255
+              "line": 276
             }
           ],
           "reversePaths": [
@@ -51523,7 +51880,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f4caaf5adb015a941ee809ab050c112eae47ab70af5ade42d874dc06c1dc1d61",
+      "evidenceSha256": "daa29941c6fae0ecde88f2dcb76a7162c32606d52c4b1735c7427877f8321128",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52313,7 +52670,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 243
+              "line": 249
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52786,7 +53143,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "254d18866f26a90a57b01d209558b0501871d3728dc8789b59513818466119ed",
+      "evidenceSha256": "d36428bd8eaa519c69b3547238c06c10ca020951325765352c851c18e8b7a3b0",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54029,10 +54386,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/jobs/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/memory/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -54098,10 +54451,6 @@
               "packages/contexts/governance/application/index.ts"
             ],
             [
-              "packages/contexts/jobs/application/index.ts",
-              "packages/contexts/jobs/application/index.ts"
-            ],
-            [
               "packages/contexts/memory/application/index.ts",
               "packages/contexts/memory/application/index.ts"
             ],
@@ -54142,7 +54491,6 @@
             "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/eventing/application/index.ts",
             "packages/contexts/governance/application/index.ts",
-            "packages/contexts/jobs/application/index.ts",
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/observability/application/index.ts",
             "packages/contexts/privacy/application/index.ts",
@@ -54264,6 +54612,18 @@
               "specifier": "@platos/context-tenancy"
             },
             {
+              "file": "packages/contexts/jobs/application/dependencies.ts",
+              "from": "packages/contexts/jobs",
+              "line": 34,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/fixtures.ts",
+              "from": "packages/contexts/jobs",
+              "line": 26,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/providers/application/authorization.ts",
               "from": "packages/contexts/providers",
               "line": 49,
@@ -54306,6 +54666,14 @@
               "packages/contexts/files/application/testing/fixtures.ts"
             ],
             [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/providers",
               "packages/contexts/providers/application/authorization.ts"
             ],
@@ -54325,6 +54693,7 @@
           "roots": [
             "apps/core-api",
             "packages/contexts/files",
+            "packages/contexts/jobs",
             "packages/contexts/providers"
           ]
         },
@@ -54449,7 +54818,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 244
+              "line": 250
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55169,7 +55538,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1c694231aeca6e869afb5cbb7cb68bdd0b89685bb9c5bdcba0eb5356301e12",
+      "evidenceSha256": "e144f84e1440996d357920f78c8719ab9091d8b08c4ff0f7857d4bf56f12043b",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55566,7 +55935,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 552,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55751,7 +56120,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
+      "evidenceSha256": "1bea15d5782c236e9f79851e3514c5507ffce61bc57d95202ce39c210794715f",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -58311,10 +58680,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/jobs/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/memory/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -58388,10 +58753,6 @@
               "packages/contexts/governance/domain/index.ts"
             ],
             [
-              "packages/contexts/jobs/domain/index.ts",
-              "packages/contexts/jobs/domain/index.ts"
-            ],
-            [
               "packages/contexts/memory/domain/index.ts",
               "packages/contexts/memory/domain/index.ts"
             ],
@@ -58434,7 +58795,6 @@
             "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/eventing/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
-            "packages/contexts/jobs/domain/index.ts",
             "packages/contexts/memory/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
             "packages/contexts/privacy/domain/index.ts",
@@ -58883,6 +59243,222 @@
               "file": "packages/contexts/identity-access/domain/token.ts",
               "from": "packages/contexts/identity-access",
               "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/dependencies.ts",
+              "from": "packages/contexts/jobs",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/execute-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/jobs-contract.ts",
+              "from": "packages/contexts/jobs",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/jobs-erasure-target.ts",
+              "from": "packages/contexts/jobs",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/minting.ts",
+              "from": "packages/contexts/jobs",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/approvals-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/idempotency-store.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/job-handler-runtime.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/jobs-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/read-approvals.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/read-jobs.ts",
+              "from": "packages/contexts/jobs",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/register-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/register-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/request-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/resolve-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/resolve-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/sweep-expired-approvals.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/builders.ts",
+              "from": "packages/contexts/jobs",
+              "line": 7,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/fixtures.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts",
+              "from": "packages/contexts/jobs",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/views.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/contracts/index.ts",
+              "from": "packages/contexts/jobs",
+              "line": 3,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/approval-request.ts",
+              "from": "packages/contexts/jobs",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/errors.ts",
+              "from": "packages/contexts/jobs",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/execution-request.ts",
+              "from": "packages/contexts/jobs",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/idempotency.ts",
+              "from": "packages/contexts/jobs",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/identifiers.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/invocation.ts",
+              "from": "packages/contexts/jobs",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job-definition.ts",
+              "from": "packages/contexts/jobs",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job-key.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/payload.ts",
+              "from": "packages/contexts/jobs",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/scope.ts",
+              "from": "packages/contexts/jobs",
+              "line": 10,
               "specifier": "@platos/kernel"
             },
             {
@@ -59716,7 +60292,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 432,
               "specifier": "@platos/kernel"
             }
           ],
@@ -59952,6 +60528,142 @@
             [
               "packages/contexts/identity-access",
               "packages/contexts/identity-access/domain/token.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/execute-job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/jobs-contract.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/jobs-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/minting.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/approvals-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/idempotency-store.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/job-handler-runtime.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/jobs-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/read-approvals.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/read-jobs.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/register-job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/request-approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/resolve-approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/sweep-expired-approvals.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/builders.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/views.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/approval-request.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/execution-request.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/idempotency.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/invocation.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job-definition.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job-key.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/payload.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/scope.ts"
             ],
             [
               "packages/contexts/providers",
@@ -60362,6 +61074,7 @@
             "apps/core-api",
             "packages/contexts/files",
             "packages/contexts/identity-access",
+            "packages/contexts/jobs",
             "packages/contexts/providers",
             "packages/contexts/secrets",
             "packages/contexts/tenancy",
@@ -60450,6 +61163,56 @@
               "from": "packages/contexts/identity-access/domain/oauth.test.ts",
               "kind": "reference",
               "line": 29
+            },
+            {
+              "from": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/execute-job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/register-job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/views.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/idempotency.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/scope.test.ts",
+              "kind": "reference",
+              "line": 1
             },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
@@ -60644,7 +61407,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 227
+              "line": 233
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60731,6 +61494,46 @@
             [
               "packages/contexts/identity-access/domain/oauth.test.ts",
               "packages/contexts/identity-access/domain/oauth.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/execute-job.test.ts",
+              "packages/contexts/jobs/application/execute-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/register-job.test.ts",
+              "packages/contexts/jobs/application/register-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/views.test.ts",
+              "packages/contexts/jobs/application/views.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval.test.ts",
+              "packages/contexts/jobs/domain/approval.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/idempotency.test.ts",
+              "packages/contexts/jobs/domain/idempotency.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job.test.ts",
+              "packages/contexts/jobs/domain/job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/scope.test.ts",
+              "packages/contexts/jobs/domain/scope.test.ts"
             ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
@@ -60922,6 +61725,16 @@
             "packages/contexts/identity-access/domain/access-key.test.ts",
             "packages/contexts/identity-access/domain/authorization-scope.test.ts",
             "packages/contexts/identity-access/domain/oauth.test.ts",
+            "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+            "packages/contexts/jobs/application/execute-job.test.ts",
+            "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+            "packages/contexts/jobs/application/register-job.test.ts",
+            "packages/contexts/jobs/application/views.test.ts",
+            "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+            "packages/contexts/jobs/domain/approval.test.ts",
+            "packages/contexts/jobs/domain/idempotency.test.ts",
+            "packages/contexts/jobs/domain/job.test.ts",
+            "packages/contexts/jobs/domain/scope.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/rate-card.test.ts",
             "packages/contexts/providers/application/resolve-provider-credential.test.ts",
@@ -61707,7 +62520,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "421b333636f20402a656e12326244c020c60f25ce34c2a0b64c7b61bfb87117f",
+      "evidenceSha256": "0533a0597c8e2a6bdb060d61099898decbdc8bcdd72e63e33acc8004d9094bdf",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
