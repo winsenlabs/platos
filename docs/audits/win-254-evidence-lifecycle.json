@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "8b0dea419166eb2b3639332a337a8d29cd03527c29d956053e41775288002389",
+      "sha256": "64a6d67f1126a1e510869352423b62ac6c1599fe7bea6a3a04da1a32cdc02c93",
       "binds": "current-repository-truth"
     },
     {
