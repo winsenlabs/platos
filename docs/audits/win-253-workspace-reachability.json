@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
+  "evidenceSha256": "c886a0f2241773f7f6567340a3d8aa97f54afdb3237f89b4bfa1f35110df7707",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 165,
+        "sha256": "651b8b4e988709dced3858151fdb36b7b74ef8a0f4814a908bb322afa7381cbc"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 165,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
+    "aggregateSha256": "fa1e4e79c3112ee23c7906cec2e6c0dbbfe749a8d4145ef73f7e2f2f67b5ea4a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11176,24 +11176,276 @@
         "sha256": "65b222c809f3bd13aa7febec78b5f9ac3c3da03e65aceb83eeec4d2e04dcad9d"
       },
       {
+        "path": "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+        "sha256": "616de618a7b7409fdb35e23ddf7a1780fe0c1660f62f3d73c94249e318156a85"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+        "sha256": "1cc82bcbda7404d6d99ba60d20a5f7ba6939010a3770c0df125adb9b9afab781"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/authorization.ts",
+        "sha256": "248e59d2a67e147107430dad68510e77fea3a7e0c335873338e618969ad044b5"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+        "sha256": "5ac76a292d5d858c40e22bcabc5bd3c548b74934e735599763751cc37d9660b9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/configure-budget.ts",
+        "sha256": "d15cab737ac1e9e5d162946f2f9b2769b9cf39b0dfeea97e438b9c847d141529"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/consumption.test.ts",
+        "sha256": "688a5a5f739aff2e7ec2ef08e604c12df5e408e155058a3008c666452839f4fd"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+        "sha256": "01d5d6b3c06cb5f655bb876f51e2a9c1ad47bab55ccf93b49cd2ac033a66d524"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/deliver-crossing.ts",
+        "sha256": "5e4b068de596e445b0f9a46d583d6b0a38de1ac3dfea726786b97426adac266c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/dependencies.ts",
+        "sha256": "3382947e5b5f08bc8a82ed8f7c4405654c1202f5f4ffdb92e302b55e961bab43"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+        "sha256": "259a9f7316a6503f86a9c3e83144d84d14cb404a3828bd5af4a49cf93839f582"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/detect-crossings.ts",
+        "sha256": "14d7f687c591c32a3359cbec5fa210567eedf7ed9c24142c34ab28d2d681d702"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/evaluate-budgets.ts",
+        "sha256": "64fc4c9a04a559c09a5f937ebed74c0a9eded14f21e7b4bf613f21358f84b14e"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+        "sha256": "4dd14f34e309ee4985df206fbe80a6be3c5f7cbd6daf2f75775f648255063c5c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+        "sha256": "6cef631cedbcf13a2e69666c096b01d04ad3cffef7f06d55c012cf9a6bc4da38"
+      },
+      {
         "path": "packages/contexts/cost-monitoring/application/index.ts",
-        "sha256": "f7de1c3e38c9b96d31fcca5cda7b456f256ece2bae9a2cdfe744962a90f7753d"
+        "sha256": "6c5440ab1ccec5f7c687ae8d85c8d7a03060d940c29c06680159b459bc651283"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/manage-alert-channels.ts",
+        "sha256": "913be6b6347f0fd8481104198334bcf2b912406087ea115d0ed3a11aac60ba90"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/notification-target.ts",
+        "sha256": "31288b514e38b09421b9641b3f27d494081129b3bbdb74ae05c4f353d11be046"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts",
+        "sha256": "22eea184eccbcd0686012221c97df646dc66650be5a08642583cf82bd2dfb870"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/budget-repository.ts",
+        "sha256": "e75a29a904f1927e567f9019430443dd054e326ef9b39773a2b4c321941fc57d"
       },
       {
         "path": "packages/contexts/cost-monitoring/application/ports/index.ts",
-        "sha256": "2109ae9bbee7f7380e07d84e65332d68ad48e6bf2ebd9d99396519eae98dd4c4"
+        "sha256": "adf927ca6c878568c4cbcedc5e123a2d024a1976451b816be767f3c4d629b1bf"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/notifier.ts",
+        "sha256": "e890a2668c76cbaa473065eb9b7a4bc8fdc827136958b3326ae6b5cf9fbc1491"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts",
+        "sha256": "92fb8eb0f40cd41dbf02c39f4f21e762744a2afe98822e15c9c2f2a333244e51"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/probe-alert-channel.ts",
+        "sha256": "7f217d4dda5a7738b0f092513d484e23300edab99d3ddd218aa6d8430816431f"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+        "sha256": "de25d26ce7c5a3fd552f65abd97db5eca8d3f3524972a36c0380c4f3f5ba5657"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-budgets.ts",
+        "sha256": "878c18380dd1a2a364ee6b52518068099a20cc3e354260ef5907e4baf01acd0a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-spend.ts",
+        "sha256": "fb2424398c93ea9bae609543f04c4fd92647c5c37f292932816b3adc202b81d7"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts",
+        "sha256": "a57e122ec1b2647cf1a993b5a27d53075466071947a3454d1bae57d17f41e7c6"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/record-spend.ts",
+        "sha256": "886b879bf074c8e87963ed9d9909e14b5a89c5e59d802a1d3b047421fb78061a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/summarise-consumption.ts",
+        "sha256": "57fa5942a6923a08d8ce947ce9ae4645a6102fe72bfd5e47f4f8d6d1fc3be076"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+        "sha256": "4979ace3d0bc757dbed13fb317f4ae71f95f7ab316bebfef33906176e0eb1fa1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts",
+        "sha256": "b52be0d6019479c70e76d0091dcafd241c508583ad518a7ddd6e834926a52a19"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts",
+        "sha256": "632db592521ff63a6caeecd5b46ed05ce9acaf881c9128f1e9c06b5d79d322e1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts",
+        "sha256": "d917d7a2eaa1bc9ea548ec349b217fbf9972f1c8e686c2e47e484bb5d1fa5f8a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+        "sha256": "4c637a2e2dc3eb4d62b478e47162cf4a48d59c7d0e01f2bc3d38bce68161ac85"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts",
+        "sha256": "b94313dbba0d7bd85fd9c9119b61e864e70d61015e8fab3dce8665a50e2f18b2"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/index.ts",
+        "sha256": "b67c83e3468137bcb141dba91a2ab47e1e1c36f426b560489523ae44bd5282db"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/views.ts",
+        "sha256": "9dce85169f0557bb9892228009df28bea63aa3e3db63983b808bc6061e25163c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/contracts/index.test.ts",
+        "sha256": "1ef4ef57a98dc2d654a32caeea3df26f9c5e984a1b8af57a2f902e5291d386cd"
       },
       {
         "path": "packages/contexts/cost-monitoring/contracts/index.ts",
-        "sha256": "9794b69fa0c7dfb7c1865cf18bd16df76e4d4598116f129c2d2b3a463d6f127a"
+        "sha256": "76b4a888695945323f0e8c164e06944a9cc0facfb896845a1a15c3eda1018f6c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+        "sha256": "7020c0ed3acd1180bba67bdecfad1d8d71f82379bfea59e9db7337b6faaf341b"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-channel.ts",
+        "sha256": "11bcb94d1815243fa720a94b27a18001c82f4b4ff811e06619cc22d09ff0d8ae"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+        "sha256": "821bf867421c29f78998be48720b3a1215629452633abd1766fa7e14a1988cb0"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-delivery.ts",
+        "sha256": "942480262358b357c0654f23942692619a57694e89602264f3d24922524405c9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+        "sha256": "760153bae21cea790d9198e9ed8f95bde14b5c7567799997583926a461f7992f"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-message.ts",
+        "sha256": "4c14deb1393beace52cbf63b9acdcd19eecee65e3c20489e625924257aab38f1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-topic.ts",
+        "sha256": "9f3125c2526c2c9475076a97a962e5447f0da3866442338ac9069940f5d66994"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+        "sha256": "d7b0b5749cdf114cab794015603302c90616441d31fc9eee39f212ce8541e853"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-scope.ts",
+        "sha256": "765b222ce857c101cfee47f6566f3520cee5e118bbd6ed854de2c8b7a5b18d0a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+        "sha256": "b9b2135951cf59652ad692705de2600213b948e3bb1b0fc3a93de2fdf5de7758"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-status.ts",
+        "sha256": "7427a743f50887e8d74c448da5e1345b25c3478253b1171c75b94313c9c1b39c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+        "sha256": "86264d78c558e49bb89db5232ea08a37fb5f82fda4b4c48aaf1de0135e9a1410"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget.ts",
+        "sha256": "4736000f8b153d02190144f2847660e2ec7aac338a2b33379a755315d83bbf55"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+        "sha256": "e1f4e6cbbc863fa8eb27d8c76e89ddcb436902e429adb2982ee670ee5f3aee53"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/consumption.ts",
+        "sha256": "289468fa3412bf83f074316fdbf5585d67c678804fb1b493b29537c89e0d99f4"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/errors.test.ts",
+        "sha256": "f798103d605dcfd2fd107429d1f2ffb05ad3c3997ffc8928bdee4d5e830d9cd3"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/errors.ts",
+        "sha256": "a233d76f930c700a58aeb48611d8afff11de4e1a5318a9ee68441082dadf019e"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+        "sha256": "1fdc628fdc45806b59f01398b3be43c07d99b4da792e75b70e4e25bdd6882544"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/guard.ts",
+        "sha256": "234c16691a1672ded6c91a794fa79e50484327d75cb05e1bd66f9ef2752c3168"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/identifiers.ts",
+        "sha256": "518602643233a899ef99845b4789baf5fdfda389ebde929bdddf5c8dfc6bffca"
       },
       {
         "path": "packages/contexts/cost-monitoring/domain/index.ts",
-        "sha256": "072d0a1ce1d72240b8c79110133843c704318e1828b3a74c9e68cdaa99282939"
+        "sha256": "41518fd760d19937763ab71e9960538d24644ffe5fec5577b45560481c4b1f1c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/policy.ts",
+        "sha256": "9eb20689ff1479e86b5764f71933d01ddf2d21a73fe05584e25ac1f9787ce435"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+        "sha256": "265ac9fa0e630aed83ae5e02602ba8fb8003ac8c571059216c5b364885f333fd"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/spend.ts",
+        "sha256": "c8b65e793075d8b6e7990c84e82c872edc41fae96d1869ed96bd3135cd7a7822"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+        "sha256": "5ad16639e49cb59af8f1376f75faf95c92a1e25c3a2039d275f9f82b10d93072"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/threshold.ts",
+        "sha256": "46750492de675ba83d542f0d864118f0c76c59cad70d585fa3e5507b0878935d"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/window.test.ts",
+        "sha256": "4fb4977aa2a2140a47c9a5f9c15aa269dbc163c3e66603e07d91cf1ee673dbe9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/window.ts",
+        "sha256": "c6cadb3909caa4dab436253c7495a36ec7502d60341f460ed59887441a82cf3d"
       },
       {
         "path": "packages/contexts/cost-monitoring/package.json",
-        "sha256": "cbc0694f65e396c0dd335d2322c8a6d739ed22d58a10fae2ae5bd1ddf2259b48"
+        "sha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6"
       },
       {
         "path": "packages/contexts/cost-monitoring/tsconfig.json",
@@ -14649,7 +14901,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "9d12690a9e5c95115be2c1a839f0a8c2b17715223669f4b92b1d52de376ae40a"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14681,7 +14933,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "24b59c8052eee09daf9b569dcfd4d0b2f0c974e407a5b080261bf2b1e5902ef1"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14701,7 +14953,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "6e0143242c6b69d06fe288af7268358b0194f059939a9a90cced46f0cd779384"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14717,11 +14969,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
+        "sha256": "8d043e8ec973e4d9a074dd7c7d7a5c17250249ea70573596ff3be6e6deb316ec"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
+        "sha256": "4f9c6735cad513e2e699316ea33093cbfbf3f34e0726532770f58228abd1967c"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14953,7 +15205,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
+        "sha256": "40a2ce743e82bdf54d106950c53f2028a32c116c0792f5bc9751beb1cddff7a4"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15061,7 +15313,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f754056ca550348ee1b0d8f16a37828a5c7df867a4ba306307173d64dd69b770"
+        "sha256": "f2531e51978f676ad8a402ca302665fe139f9ae27d7250611963ae94fb616a6c"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -16136,7 +16388,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 45
+      "testsFixtures": 46
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -20089,14 +20341,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/eventing/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -20199,14 +20443,6 @@
               "packages/contexts/conversations/contracts/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "packages/contexts/cost-monitoring/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/contracts/index.ts",
-              "packages/contexts/cost-monitoring/contracts/index.ts"
-            ],
-            [
               "packages/contexts/eventing/application/ports/index.ts",
               "packages/contexts/eventing/application/ports/index.ts"
             ],
@@ -20281,8 +20517,6 @@
             "packages/contexts/channels/contracts/index.ts",
             "packages/contexts/conversations/application/ports/index.ts",
             "packages/contexts/conversations/contracts/index.ts",
-            "packages/contexts/cost-monitoring/application/ports/index.ts",
-            "packages/contexts/cost-monitoring/contracts/index.ts",
             "packages/contexts/eventing/application/ports/index.ts",
             "packages/contexts/eventing/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
@@ -20531,7 +20765,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 478
+              "line": 479
             }
           ],
           "reversePaths": [
@@ -20663,7 +20897,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "3a42da7939487eef5b73a2b85aeb2d89dab184af08cad947b1c612e118751be9",
+      "evidenceSha256": "cd5a6171b2d3b4f0879b280a4c0535dff16e24650ced3a4b7e36b37a3b3828ef",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -21001,7 +21235,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 480
+              "line": 481
             }
           ],
           "reversePaths": [
@@ -21088,7 +21322,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "cef3c9c72d1cf78d2904a453e4060daec99aec813aaed2c2ab41646c7008004b",
+      "evidenceSha256": "f0c321892d7940de84f786af9b655ff0f876a8a90ca15d108f4f38f94e43538d",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -32357,7 +32591,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 686
             }
           ],
           "reversePaths": [
@@ -32382,7 +32616,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
+      "evidenceSha256": "6386d48bc7481407fef5668598687a860b7ab6d7c169ef622649cee005c76bcc",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33747,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 664
+              "line": 685
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33972,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
+      "evidenceSha256": "b22a5ced27ec1c52e0cd57a2d6cd0a329dd0a8a3117315429691e74acbd0d88c",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44460,7 +44694,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 533
             }
           ],
           "reversePaths": [
@@ -44539,7 +44773,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "49a45ce8ef88fd341f4e2591cc876e46bfaa8000c52b981a557929b33571bee7",
+      "evidenceSha256": "71b9f778a29a8ddc71aa3cd6b8e93fb83ea80f6525272dafe00342550030efb3",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -44770,26 +45004,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/cost-monitoring/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -44819,22 +45033,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "packages/contexts/cost-monitoring/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/contracts/index.ts",
-              "packages/contexts/cost-monitoring/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/domain/index.ts",
-              "packages/contexts/cost-monitoring/domain/index.ts"
-            ],
-            [
               "packages/contexts/cost-monitoring/package.json",
               "packages/contexts/cost-monitoring/package.json"
             ],
@@ -44852,10 +45050,6 @@
             "packages/adapters/notifier-webhook/src/adapter.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/README.md",
-            "packages/contexts/cost-monitoring/application/index.ts",
-            "packages/contexts/cost-monitoring/application/ports/index.ts",
-            "packages/contexts/cost-monitoring/contracts/index.ts",
-            "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/cost-monitoring/package.json",
             "packages/contexts/cost-monitoring/tsconfig.json"
           ]
@@ -44893,6 +45087,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/cost-monitoring/package.json",
               "kind": "workspace-script",
@@ -44903,6 +45102,12 @@
               "from": "packages/contexts/cost-monitoring/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/cost-monitoring/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -44963,10 +45168,243 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/consumption.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/window.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 275
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+              "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "packages/contexts/cost-monitoring/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+              "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/consumption.test.ts",
+              "packages/contexts/cost-monitoring/application/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+              "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+              "packages/contexts/cost-monitoring/application/detect-crossings.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+              "packages/contexts/cost-monitoring/application/guard-spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+              "packages/contexts/cost-monitoring/application/read-budgets.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/contracts/index.test.ts",
+              "packages/contexts/cost-monitoring/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-message.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-scope.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/errors.test.ts",
+              "packages/contexts/cost-monitoring/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "packages/contexts/cost-monitoring/domain/guard.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "packages/contexts/cost-monitoring/domain/spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/window.test.ts",
+              "packages/contexts/cost-monitoring/domain/window.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/package.json",
+              "packages/contexts/cost-monitoring/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+            "packages/contexts/cost-monitoring/application/authorization.test.ts",
+            "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+            "packages/contexts/cost-monitoring/application/consumption.test.ts",
+            "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+            "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+            "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+            "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+            "packages/contexts/cost-monitoring/contracts/index.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget.test.ts",
+            "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+            "packages/contexts/cost-monitoring/domain/errors.test.ts",
+            "packages/contexts/cost-monitoring/domain/guard.test.ts",
+            "packages/contexts/cost-monitoring/domain/spend.test.ts",
+            "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+            "packages/contexts/cost-monitoring/domain/window.test.ts",
+            "packages/contexts/cost-monitoring/package.json",
+            "scripts/arch/test-case-census.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -45090,8 +45528,8 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "940dcbc88960ea32d69d28b187f7e573b5e396e969b4d982f14e77982c6986e8",
-      "manifestSha256": "cbc0694f65e396c0dd335d2322c8a6d739ed22d58a10fae2ae5bd1ddf2259b48",
+      "evidenceSha256": "9d38428b534d5296693a88cf745065cd8a3c764334a8e4f41b95c75b42af4cb2",
+      "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
         "reachable": false,
@@ -47742,7 +48180,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 244
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48539,7 +48977,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d1582978c47b320c1f164535a7e6504c0eeabfa04aa5db5bb239f2f0b12218f9",
+      "evidenceSha256": "5e00b98bd3da39f3d5c00a6ba3c3d1c910be31d3c1a72af9f5936fc57ef67085",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -50782,10 +51220,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/memory/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -50823,10 +51257,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
               "packages/contexts/memory/application/index.ts",
               "packages/contexts/memory/application/index.ts"
             ],
@@ -50851,7 +51281,6 @@
             "packages/adapters/model-router-providers/src/adapter.ts",
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
@@ -50956,6 +51385,30 @@
               "from": "apps/core-api",
               "line": 33,
               "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 23,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/context-providers"
             }
           ],
           "reversePaths": [
@@ -50966,10 +51419,27 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/guard-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/cost-monitoring"
           ]
         },
         "testsFixtures": {
@@ -51088,7 +51558,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 255
+              "line": 257
             }
           ],
           "reversePaths": [
@@ -51523,7 +51993,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f4caaf5adb015a941ee809ab050c112eae47ab70af5ade42d874dc06c1dc1d61",
+      "evidenceSha256": "13086ce76fe9950d32c87513730ceaaeb23a89b8d52c9171cdd725e6cd319fd0",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52313,7 +52783,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 243
+              "line": 245
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52786,7 +53256,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "254d18866f26a90a57b01d209558b0501871d3728dc8789b59513818466119ed",
+      "evidenceSha256": "e4330bc56503b46b66fbb13100c31b16dd9f7a1c2236846e486bb558fa9a4ae1",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54017,10 +54487,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/eventing/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -54086,10 +54552,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
               "packages/contexts/eventing/application/index.ts",
               "packages/contexts/eventing/application/index.ts"
             ],
@@ -54139,7 +54601,6 @@
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/eventing/application/index.ts",
             "packages/contexts/governance/application/index.ts",
             "packages/contexts/jobs/application/index.ts",
@@ -54252,6 +54713,30 @@
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/cost-monitoring/application/authorization.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 32,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 27,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/files/application/dependencies.ts",
               "from": "packages/contexts/files",
               "line": 22,
@@ -54298,6 +54783,22 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/files",
               "packages/contexts/files/application/dependencies.ts"
             ],
@@ -54324,6 +54825,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/cost-monitoring",
             "packages/contexts/files",
             "packages/contexts/providers"
           ]
@@ -54331,6 +54833,11 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "reference",
@@ -54449,7 +54956,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 244
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -54458,6 +54965,10 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "packages/contexts/cost-monitoring/application/authorization.test.ts"
+            ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
@@ -54560,6 +55071,7 @@
             ]
           ],
           "roots": [
+            "packages/contexts/cost-monitoring/application/authorization.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/tenancy/application/add-project-member.test.ts",
             "packages/contexts/tenancy/application/archive-tenant.test.ts",
@@ -55169,7 +55681,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1c694231aeca6e869afb5cbb7cb68bdd0b89685bb9c5bdcba0eb5356301e12",
+      "evidenceSha256": "3649099c42301dcc3d1674f090d32e95abae620a65fa412d770792092a795fab",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55566,7 +56078,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 552,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55751,7 +56263,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
+      "evidenceSha256": "1bea15d5782c236e9f79851e3514c5507ffce61bc57d95202ce39c210794715f",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -58299,10 +58811,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/eventing/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -58376,10 +58884,6 @@
               "packages/contexts/conversations/domain/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/domain/index.ts",
-              "packages/contexts/cost-monitoring/domain/index.ts"
-            ],
-            [
               "packages/contexts/eventing/domain/index.ts",
               "packages/contexts/eventing/domain/index.ts"
             ],
@@ -58431,7 +58935,6 @@
             "packages/contexts/agents/domain/index.ts",
             "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
-            "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/eventing/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
             "packages/contexts/jobs/domain/index.ts",
@@ -58559,6 +59062,228 @@
               "file": "apps/core-api/src/runtime/process-ports.ts",
               "from": "apps/core-api",
               "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/authorization.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/configure-budget.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/deliver-crossing.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/detect-crossings.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/evaluate-budgets.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/manage-alert-channels.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/budget-repository.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/notifier.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/probe-alert-channel.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/read-budgets.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/read-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/record-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/summarise-consumption.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/contracts/index.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-channel.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-delivery.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 42,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-message.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-topic.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/budget-status.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/budget.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/errors.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/guard.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/identifiers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/threshold.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/window.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 28,
               "specifier": "@platos/kernel"
             },
             {
@@ -59716,7 +60441,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 432,
               "specifier": "@platos/kernel"
             }
           ],
@@ -59736,6 +60461,154 @@
             [
               "apps/core-api",
               "apps/core-api/src/runtime/process-ports.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/configure-budget.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/deliver-crossing.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/detect-crossings.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/evaluate-budgets.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/guard-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/manage-alert-channels.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/budget-repository.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/notifier.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/probe-alert-channel.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/read-budgets.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/read-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/record-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/summarise-consumption.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-channel.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-message.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-topic.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/budget-status.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/budget.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/guard.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/threshold.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/window.ts"
             ],
             [
               "packages/contexts/files",
@@ -60360,6 +61233,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/cost-monitoring",
             "packages/contexts/files",
             "packages/contexts/identity-access",
             "packages/contexts/providers",
@@ -60375,6 +61249,46 @@
               "from": "apps/core-api/src/runtime/process-ports.test.ts",
               "kind": "reference",
               "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "kind": "reference",
+              "line": 2
             },
             {
               "from": "packages/contexts/files/application/artifact-revisions.test.ts",
@@ -60644,7 +61558,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 227
+              "line": 228
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60664,13 +61578,45 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 472
+              "line": 473
             }
           ],
           "reversePaths": [
             [
               "apps/core-api/src/runtime/process-ports.test.ts",
               "apps/core-api/src/runtime/process-ports.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "packages/contexts/cost-monitoring/domain/guard.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "packages/contexts/cost-monitoring/domain/spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts"
             ],
             [
               "packages/contexts/files/application/artifact-revisions.test.ts",
@@ -60907,6 +61853,14 @@
           ],
           "roots": [
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget.test.ts",
+            "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+            "packages/contexts/cost-monitoring/domain/guard.test.ts",
+            "packages/contexts/cost-monitoring/domain/spend.test.ts",
+            "packages/contexts/cost-monitoring/domain/threshold.test.ts",
             "packages/contexts/files/application/artifact-revisions.test.ts",
             "packages/contexts/files/application/bind-attachments-to-turn.test.ts",
             "packages/contexts/files/application/files-erasure-target.test.ts",
@@ -61707,7 +62661,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "421b333636f20402a656e12326244c020c60f25ce34c2a0b64c7b61bfb87117f",
+      "evidenceSha256": "fbe34826861d98b5e3d8f950e8f7b0abad82ac274819e864096ba43d8a7234b7",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
