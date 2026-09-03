@@ -548,7 +548,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // barrel with its suite. The 55 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place, exactly as the
     // providers delta was.
-    packages: 327,
+    //
+    // +1: WIN-256's unproven-guard wave adds packages/contexts/tools/contracts/
+    // operator-gate.test.ts, the suite that proves the operator gate on all
+    // fourteen published methods that have one — eleven of which had no
+    // refusal case at all, six of those eleven mutating. It is ONE file
+    // because the twenty-eight cases had to be written out rather than looped:
+    // the test-case census refuses an `it()` declared inside a loop, and
+    // folding them into the contracts barrel suite would have pushed that file
+    // past the ADR M0.3 §6 warning line. The rest of that wave — the collapsed
+    // `withOperator` guard, the extracted page clamp, the cost assertions and
+    // the NUL-to-printable composite keys — edits files that already exist and
+    // adds none. 327 + 1 = 328.
+    packages: 328,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -637,11 +649,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 55 + 24 = 401.
+    // 20 + 5 + 19 + 278 + 55 + 1 + 24 = 402.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 401);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 402);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -650,11 +662,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +401 combined delta as the totalFiles
+    // M2 integration: same +20 -> +402 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278 contracts +55
-    // tools, WIN-297 +24); this one re-derives it by summing the per-area
-    // counts independently.
-    rulesDocument.baseline.totalFiles + 401
+    // tools +1 operator-gate suite, WIN-297 +24); this one re-derives it by
+    // summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 402
   );
 });
 
