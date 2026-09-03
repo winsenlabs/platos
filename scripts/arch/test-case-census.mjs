@@ -213,8 +213,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * gone with the line.
  *
  * M2 WAVE-B INTEGRATION — THE ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
- * `eventing`, `skills`, `jobs`, `memory` and `cost-monitoring` touch DISJOINT
- * packages and each moves this same runtime total on its own axis, so the
+ * `eventing`, `skills`, `jobs`, `memory`, `cost-monitoring` and `privacy` touch
+ * DISJOINT packages and each moves this same runtime total on its own axis, so
+ * the
  * integrated number is the sum of every delta and is correct on no branch
  * alone:
  *
@@ -238,12 +239,18 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *         money-path cases the v1 rebase review forced and 352 after the seven
  *         the 2026-09-03 re-check forced, with the file count held at 21.
  *
- *   717 + 283 + 149 + 306 + 378 + 605 + 352 = 2790, and
- *   88 + 14 + 20 + 16 + 28 + 21 = 187 files.
+ *   +254  privacy (15 files) — 240 at adoption, 252 after the twelve cases the
+ *         2026-09-03 verification's surviving mutants forced and 254 after the
+ *         two the 2026-09-04 erasure-path re-check forced, with the file count
+ *         held at 15 throughout.
+ *
+ *   717 + 283 + 149 + 306 + 378 + 605 + 352 + 254 = 3044, and
+ *   88 + 14 + 20 + 16 + 28 + 21 + 15 = 202 files.
  *
  * The eventing branch pinned 1149, the skills branch pinned 1306, the jobs
- * branch pinned 1378, the memory branch pinned 1605 and the cost-monitoring
- * branch pinned 1352; each was right for its own tree and wrong for this one.
+ * branch pinned 1378, the memory branch pinned 1605, the cost-monitoring branch
+ * pinned 1352 and the privacy branch pinned 1254; each was right for its own
+ * tree and wrong for this one.
  * Picking any of them would silently drop a whole context's suite out of the
  * pinned total while the census stayed green on the branch it came from — which
  * is precisely the drift this constant exists to catch. The skills branch
@@ -476,6 +483,85 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * (109 there, 187 in this integrated tree) and turned the case count red, which
  * is the drift a file-count pin cannot see.
  *
+ *
+ * PRIVACY ADOPTION (WIN-256, ADR M0.3 §1 row 18). One row again:
+ * `packages/contexts/privacy` goes 0 -> 15 files / 0 -> 254 cases, and the
+ * INTEGRATED runtime total goes 2790 -> 3044. The privacy branch pinned
+ * 1000 -> 1254 because its lineage carried only the four earliest packages: the
+ * ROW is the same, the TOTAL it lands in is not, and that is exactly why this
+ * census is reconciled by arithmetic and never by adopting a green branch total.
+ * This is the whole of the new suite and nothing else
+ * moved: right-to-erasure orchestration over the kernel `ErasureTarget[]`, the
+ * erased-subject register that is the write barrier, the legal-hold
+ * adjudication, the two status vocabularies and their lossy projection, and the
+ * retry/lease schedule. The split is
+ *
+ *   domain/            118  alias 16, content-free 9, erasure-operation 27,
+ *                           legal-hold 12, retry-schedule 15, target-outcome 27,
+ *                           tombstone 12
+ *   application/       112  guard-subject-write 21, inventory-subject 9,
+ *                           request-erasure 28, retry-erasure 20,
+ *                           run-erasure-pass 24, seal-subject 10
+ *   application/testing 12  in-memory-privacy-repository
+ *   contracts/          12  index
+ *
+ * 118 + 112 + 12 + 12 = 254, which is the pinned row and the number vitest
+ * prints. The `domain/` subtotal read 123 when this delta was first written —
+ * an addition error in the prose, not in the pin — so the stated split did not
+ * reconcile to the number it was explaining. Corrected here; the per-file
+ * figures beside it were right all along and are unchanged.
+ *
+ * Four of those 112 are the cases the FIRST mutation control added rather than
+ * the first draft: two in `guard-subject-write` pinning that the barrier
+ * re-applies read-time expiry instead of trusting its store, and two in
+ * `request-erasure` pinning that a write landing MID-SWEEP is refused. TWELVE
+ * MORE are the cases the 2026-09-03 independent verification's five surviving
+ * mutants forced, and the file they landed in is the file that can reach the
+ * guard rather than the file that defines it — which is why no new suite
+ * appears and the file count stays 15:
+ *
+ *   request-erasure   +7  the `assertContentFree` wiring (2), an unsealed
+ *                         subject is never swept (1), a transaction that never
+ *                         opened leaves every target unknown (1), a refused
+ *                         progress write is reported (1), `retainedRecords`
+ *                         counts what a retention rule kept (2)
+ *   run-erasure-pass  +2  the OTHER catch branch — a UnitOfWork that failed for
+ *                         its own reasons carries no outcomes and must invent
+ *                         one per planned target
+ *   retry-erasure     +2  a refused progress write fails the retry and appends
+ *                         no finished event
+ *   seal-subject      +1  a store-refused seal is a failure, never a seal of 0
+ *
+ * Every one of those properties was claimed in a module header and survived its
+ * mutation until these cases existed, which is the whole reason the control is
+ * run. NO production module changed to close them: the guards were all present
+ * and correct, and nothing executable reached any of them.
+ *
+ * TWO MORE, 2026-09-04, closing the three erasure-path blockers the 2026-09-03
+ * verification left open. Both land in `retry-erasure`, so the file count is
+ * still 15 and the arithmetic is 252 + 2 = 254, never a re-baseline:
+ *
+ *   retry-erasure     +2  the SAME handle, whose rows the first pass destroyed,
+ *                         now resolving to NOBODY — the scenario the module
+ *                         header describes and the one arrangement it had no
+ *                         case for, because the only unresolved-subject case
+ *                         supplied a handle that failed the NEXT guard too and
+ *                         both guards then answered with one code (1); and the
+ *                         retry-path RE-SEAL, which was prose alone — deleting
+ *                         the `sealSubject` call left every case green (1)
+ *
+ * UNLIKE the twelve above, one production module DID change: the two guards were
+ * given distinct codes (`PRIVACY_SUBJECT_NOT_RESOLVED` and the new
+ * `PRIVACY_SUBJECT_MISMATCH`), and the refused event's label is now the returned
+ * error's own `code` rather than a string written beside it — which is what
+ * makes the mislabelled subject-mismatch refusal unrepresentable rather than
+ * merely asserted against. Four existing cases gained refusal-label assertions;
+ * gaining an assertion is not a case, so they move no number here.
+ *
+ * A package going 0 -> non-zero is exactly the transition this census exists to
+ * force a reviewer to look at, which is why the zero rows are declared.
+ *
+ * No other package moved.
  * Any further drift is a finding to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
@@ -502,7 +588,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/jobs": { files: 16, cases: 378 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 0, cases: 0 },
-  "packages/contexts/privacy": { files: 0, cases: 0 },
+  "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
@@ -518,7 +604,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 2790;
+export const EXPECTED_RUNTIME_TOTAL = 3044;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

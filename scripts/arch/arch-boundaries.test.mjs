@@ -218,7 +218,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 687. Eight adopting slices make disjoint
+    // M2 INTEGRATION DELTA — 104 -> 735. Nine adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
     //
@@ -281,17 +281,26 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               changing, and the (c) contracts-only rule is what keeps
     //               this context out of `providers/domain`, where the rate
     //               arithmetic it wanted actually lives.
+    //   687 -> 735  +48: WIN-256 makes `privacy` real (ADR M0.3 §1 row 18). The
+    //               context that consumes the kernel `ErasureTarget[]` is also
+    //               the one most able to violate the contracts-only edge rule,
+    //               and it does not — it imports `@platos/kernel` and
+    //               `@platos/context-tenancy` and nothing else. No rule needed
+    //               changing. Measured, not carried: the branch claimed +48 on
+    //               its own tree and the audit over the integrated tree prints
+    //               735, which is the same delta.
     //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
     // 397 + 44 = 441, the skills branch pinned 397 + 55 = 452, the jobs branch
     // pinned 397 + 51 = 448, the memory branch pinned 397 + 77 = 474 and the
-    // cost-monitoring branch pinned 397 + 63 = 460, each blind to the others.
-    // All eight slices are disjoint and eventing, skills, jobs, memory and
-    // cost-monitoring move this census on INDEPENDENT axes, so the integrated
-    // census is their SUM and not any pin:
-    // 397 + 44 + 55 + 51 + 77 + 63 = 687.
+    // cost-monitoring branch pinned 397 + 63 = 460 and the privacy branch pinned
+    // 397 + 48 = 445, each blind to the others.
+    // All nine slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring and privacy move this census on INDEPENDENT axes, so the
+    // integrated census is their SUM and not any pin:
+    // 397 + 44 + 55 + 51 + 77 + 63 + 48 = 735.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -299,7 +308,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 687, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 735, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

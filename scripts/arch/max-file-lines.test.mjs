@@ -75,8 +75,8 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618. WIN-256 made packages/kernel and four
-  // contexts
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666. WIN-256 made
+  // packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
   // 400/500-line budget.
@@ -114,12 +114,19 @@ test("the live selectors scan an exact nonzero source census", () => {
   // than reproducing the 571-line `job-execution.service.ts` it replaces, which
   // is the §6 corollary about named sub-use-case files doing its job.
   //
+  // +48: the same issue makes `privacy` real (ADR M0.3 §1 row 18). The erasure
+  // orchestration is split into named use-case modules rather than one service,
+  // and NONE of its 48 files reaches the 400-line warning band — measured over
+  // the integrated tree, not carried from the branch, which is why the warning
+  // list below is unchanged at three files.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
-  // 391 (328 + 63). The axes are disjoint, so the integrated census is their
-  // SUM and not any branch pin: 328 + 44 + 55 + 51 + 77 + 63 = 618.
+  // 391 (328 + 63) and privacy pinned 376 (328 + 48). The axes are disjoint, so
+  // the integrated census is their SUM and not any branch pin:
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 = 666.
   //
   // THREE FILES ARE IN THE WARNING BAND, and this comment says so rather than
   // repeating the sentence that was true before `jobs` and `memory` landed:
@@ -139,8 +146,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // describes, so all three claims are corrected here rather than carried.
   // cost-monitoring itself adds no file to this list — its own 412-line
   // alerting suite was split before adoption — but its blanket sentence was
-  // still a claim about the whole census.
-  assert.equal(result.fileCount, 618);
+  // still a claim about the whole census. The privacy branch said "every one of
+  // the 328 is inside the budget and none is inside the 400-line warning band",
+  // which was already false of the tree it was rebased onto; it is corrected
+  // here rather than carried, and privacy itself adds no file to the list.
+  assert.equal(result.fileCount, 666);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

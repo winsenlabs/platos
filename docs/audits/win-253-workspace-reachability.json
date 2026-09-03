@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "f30f14af64adedbc785af640b13bd00937a168b0452019c8fd614f12e2c57cb7",
+  "evidenceSha256": "504a4f8f645cd46e626fff845c72b242994e0266fce96eb27bc0d49d3c1805e2",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 62,
+    "explicitHeaderFileCount": 58,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 149,
-        "sha256": "b526eb9794a30e44d5c1934939e6ba5bbfa0ddb548a80ddd6dc9af7b9cf30f22"
+        "outputCount": 145,
+        "sha256": "e4b47e687e50961c1cd78bb8ca7fbc2e288d96c9dd4e5643d76b45ae9dac642f"
       }
     ],
-    "ownedOutputCount": 149,
+    "ownedOutputCount": 145,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "1707f4292868292410b90a58b6110ae2eee813c183c2ef92ef7c58dc04c6bd75",
+    "aggregateSha256": "9f349ef9c89fcd908afca7ddd6dcd8a9ded4a5c2bee9dccb2d3b02eaf2b41447",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "0e99b284919172d8ae024beea74a20163c2845067e93c6e6d087ccd31a0becaa"
+        "sha256": "bd8a85bc66c903715ea1da2c2f02a0053b71c9f51748150e5f1a0356e92b6890"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -12704,24 +12704,216 @@
         "sha256": "3e40541ac8e09555d05b4a3e18b6d90baa28d980ab01c0b44213c8383a16679e"
       },
       {
+        "path": "packages/contexts/privacy/application/dependencies.ts",
+        "sha256": "9906aa7084bd01f2576662cd86e79af78d5960d4458207b02b3ef6204c1947ee"
+      },
+      {
+        "path": "packages/contexts/privacy/application/erasure-events.ts",
+        "sha256": "0dd3ccc732c4f4885504375b791bb61c1a4a9f48c5e375b5a12d1128d93cb03c"
+      },
+      {
+        "path": "packages/contexts/privacy/application/guard-subject-write.test.ts",
+        "sha256": "3adc4973c6bbdf1dfb053a52b996d2a6cad0f5d044a2bedaa144d1b4973715aa"
+      },
+      {
+        "path": "packages/contexts/privacy/application/guard-subject-write.ts",
+        "sha256": "7a94af6183d40482302df6468873bbe6d4d63d6bb70fde20623c469fcb4cc945"
+      },
+      {
         "path": "packages/contexts/privacy/application/index.ts",
-        "sha256": "15908920ae3f98c29a868953cd8b3a8757b96cbaedee0a8b14778ab3108360ad"
+        "sha256": "4e948e6459269d3fc955113c3537df1e405f28dd2809468c7e4617c79065784e"
+      },
+      {
+        "path": "packages/contexts/privacy/application/inventory-subject.test.ts",
+        "sha256": "c20651e693c1e5f796a7b2880f12c122a80cf986ddd4252abcfe0a23a5e81278"
+      },
+      {
+        "path": "packages/contexts/privacy/application/inventory-subject.ts",
+        "sha256": "e074d8d08cf1a34ca10e03000a6551e281ef06510a730318cff93c70dbc3635f"
+      },
+      {
+        "path": "packages/contexts/privacy/application/plan-erasure.ts",
+        "sha256": "3397faae10c27304dd3b1574d0806c87a70417822f302ff5e07e3cd166687b90"
       },
       {
         "path": "packages/contexts/privacy/application/ports/index.ts",
-        "sha256": "070d6f3374ccd7a2222775b8416bab3a730f38081a11141dda229b120442fbc1"
+        "sha256": "b5b3232ff71a4c1d14127dc5847d535828b6bd2490c9937a50a0e13ee90ba5b4"
+      },
+      {
+        "path": "packages/contexts/privacy/application/ports/legal-hold-register.ts",
+        "sha256": "0357c5ae4867255821716c37cb0df73a1e0a0b6f967eb778f2a74c86924f44b8"
+      },
+      {
+        "path": "packages/contexts/privacy/application/ports/privacy-repository.ts",
+        "sha256": "3380fd6a1a1f5d77f54c4bb2be840114b85991b995427afb15a3480d79a070cb"
+      },
+      {
+        "path": "packages/contexts/privacy/application/ports/subject-directory.ts",
+        "sha256": "c6dd2ad3fe81a2eb1a02be086e834928b640d8ec747679a9ece56fbe9a0c1e21"
+      },
+      {
+        "path": "packages/contexts/privacy/application/ports/subject-hasher.ts",
+        "sha256": "c21962535b4f8c3872a2dd9c29e92c3c684bef1fbee995a18f9f07ffad9256fb"
+      },
+      {
+        "path": "packages/contexts/privacy/application/privacy-contract.ts",
+        "sha256": "009a9e2ef22f09712f48d62968bcddcdd0383aa45d2d550fbec93e69d80a317a"
+      },
+      {
+        "path": "packages/contexts/privacy/application/record-pass.ts",
+        "sha256": "d30c224c82e850087ac30a1d94c6aa94ca1cb5e7d6e44f8b49a072315b67bf2c"
+      },
+      {
+        "path": "packages/contexts/privacy/application/request-erasure.test.ts",
+        "sha256": "1241fd8b0457a039714105685db08d13052efb95171ee5a75839625756913b8b"
+      },
+      {
+        "path": "packages/contexts/privacy/application/request-erasure.ts",
+        "sha256": "78d7a02cb9324e4f9375281f69dd028c01a3450697f18d0ff3de3b78862b5d4f"
+      },
+      {
+        "path": "packages/contexts/privacy/application/resolve-subject.ts",
+        "sha256": "e82a29254fcfbe0467615b0a23bad7f2718bf2198bfb67d725ee53027894eb56"
+      },
+      {
+        "path": "packages/contexts/privacy/application/retry-erasure.test.ts",
+        "sha256": "d2e3096219f57e131ff5a43bf020cc897bcc22f0a1550e063a77e1178e04df57"
+      },
+      {
+        "path": "packages/contexts/privacy/application/retry-erasure.ts",
+        "sha256": "3a3bcda592dec1c787af70511a8d4a7f972df6805d874a514f26d7d3401ba8b4"
+      },
+      {
+        "path": "packages/contexts/privacy/application/run-erasure-pass.test.ts",
+        "sha256": "03c53072758d74d67faee36c981e8ea0fa321eb69475363eb09cb5096aeb5e10"
+      },
+      {
+        "path": "packages/contexts/privacy/application/run-erasure-pass.ts",
+        "sha256": "6992c4699a9e929f8f989f2b3c88bf88152c46c6850ef6a10489650304020e99"
+      },
+      {
+        "path": "packages/contexts/privacy/application/seal-subject.test.ts",
+        "sha256": "5d53924b6914a266ee62a8db89e403c50699b17afc978102cf4b15608b9372f0"
+      },
+      {
+        "path": "packages/contexts/privacy/application/seal-subject.ts",
+        "sha256": "903fc0e93d72955b49e8fcff8e353ba62afd65a26689ff91be3cdccc9458f54f"
+      },
+      {
+        "path": "packages/contexts/privacy/application/subject-digests.ts",
+        "sha256": "bff90bdbf9604efd932ecd407baf0eaf981c68b7f5db4b657db8554cac23ddf9"
+      },
+      {
+        "path": "packages/contexts/privacy/application/testing/fixtures.ts",
+        "sha256": "abeec043de748798500cf20a413e972c089cbaf78c4fbc5229bbfd1453b8990c"
+      },
+      {
+        "path": "packages/contexts/privacy/application/testing/in-memory-erasure-target.ts",
+        "sha256": "dbce24f6861288db5ecd45d05d05a331437123518876293cf32f1021bb91dde2"
+      },
+      {
+        "path": "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+        "sha256": "b7141044974307bcb351d8ee01602ed366f88f7fe4e949be23b2de516050f8b7"
+      },
+      {
+        "path": "packages/contexts/privacy/application/testing/in-memory-privacy-repository.ts",
+        "sha256": "80defa8011265397e3df3aaa8d11536b5b26d574c7a5383c61fbf06ab35230a6"
+      },
+      {
+        "path": "packages/contexts/privacy/application/testing/index.ts",
+        "sha256": "54c4c751a1215c9d19e5110d46707a056cc6bd1af95e532504277481307bf584"
+      },
+      {
+        "path": "packages/contexts/privacy/application/views.ts",
+        "sha256": "9588a3e69a2b10b7abbe78e1667062134ce1198f333176e5d7150a739b50fa4c"
+      },
+      {
+        "path": "packages/contexts/privacy/contracts/events.ts",
+        "sha256": "78e6dced7d84d798ab5f0583c78241f29bbb0d64ae67025a242b2005491c482c"
+      },
+      {
+        "path": "packages/contexts/privacy/contracts/index.test.ts",
+        "sha256": "b9f2442f672ada5f641bb03970cb2e979fceb7109ca9f97fdf48206b718a4805"
       },
       {
         "path": "packages/contexts/privacy/contracts/index.ts",
-        "sha256": "663ab04fa2904c2ffd3fa5ae14ed3d8c74847f05627d6b2aee5120610fcc9d78"
+        "sha256": "bdd760cc45373238a12d68ec07b8bc9e79e1b79976879d2743ad9c6297cf32a9"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/alias.test.ts",
+        "sha256": "a6a18f03edac5ae231f13f74ce9c31f22c2f424da7e9871c62a06d0f55d57ba0"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/alias.ts",
+        "sha256": "b629933c598144c2933e870ccf66234beea8c4c51f7c5b750a59447c1b7bf4e0"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/content-free.test.ts",
+        "sha256": "c51411b74d890ad0ab6329c9b2df25437c3984f83e362a15a3872ace76a92b67"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/content-free.ts",
+        "sha256": "8e4f382b3a0794af94a1dc7ee5f97d0f06ab868f24e66dec9e2b394103a45621"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/erasure-operation.test.ts",
+        "sha256": "1cd0481cbc4c6e5c015ca42f1ef49d79f4d81fa0949303dbd75fcd92a4ed188e"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/erasure-operation.ts",
+        "sha256": "b3eb1ddd6591e06d9c50153bf6d2757d6ed2fc17a1b3b846c35b172b561fc0be"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/errors.ts",
+        "sha256": "4f8d39db4c46c0b61344276c217e9fc440a7001414c02290981aa0cafba5a866"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/identifiers.ts",
+        "sha256": "12e28c43a4c2315a31986c0e074122ef06521dc8e26fa7ee62e937b7749c4d51"
       },
       {
         "path": "packages/contexts/privacy/domain/index.ts",
-        "sha256": "e7faf59d0f553f22960ce0394054468306beae373d2320792d27dc1a13e7156a"
+        "sha256": "7e06754dfffdfdb592071c15e1656a217bf9f504351b601df4d5e64f940be34c"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/legal-hold.test.ts",
+        "sha256": "2a15456ddbe7336c507ae0c7853839a1a5d05209f05033f1dcf69ff27e54720d"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/legal-hold.ts",
+        "sha256": "e52be3e9e6a17fe6fbfef6339bfa68f56b549f151f79d3a91742271ef1d045e0"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/policy.ts",
+        "sha256": "bb690323a4d6b6d164c6798c0e859d0f422224c969831205d554f9055cb7a738"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/retry-schedule.test.ts",
+        "sha256": "deb97f097bedc584d71b005a5c5a1cfdcec2798d47ba8f179fdde26635d44f54"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/retry-schedule.ts",
+        "sha256": "86e549dfd7b2330b130f7da5a0433462faabc1c6a7113074def7ba26d65e0489"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/target-outcome.test.ts",
+        "sha256": "89533d487738eb79f714a0d84439020016f256caf252a9485c99f19c0a299b00"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/target-outcome.ts",
+        "sha256": "770dbce79acbc5e6f63da858bb46e18b4aa0e1cd18b1b511977ee45936b7b764"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/tombstone.test.ts",
+        "sha256": "04d4e8a6803649efa085825635e516e78d3e1da4f0bd23184afdb6cd7e2c23b5"
+      },
+      {
+        "path": "packages/contexts/privacy/domain/tombstone.ts",
+        "sha256": "c2565891a85ed2a1abe04182d70ede00d754f8fb0b7729c4471a7c0f1f4b7a8d"
       },
       {
         "path": "packages/contexts/privacy/package.json",
-        "sha256": "8776a8574d759b876e0050c0f4eb2a709601cf58a5069bf9905cf7477dcc1b31"
+        "sha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2"
       },
       {
         "path": "packages/contexts/privacy/tsconfig.json",
@@ -15809,7 +16001,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "aea8ee787b7ef9805f914070fc7b1c10545ccbabbc184d1d784aa4494f20eb49"
+        "sha256": "00339fde927c98230fd2590948e22da7a6eed5746125542a9743055cbe015a26"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -15841,7 +16033,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "e4fc5f8206d6274a2ace11f4881fabe9a60bd5d38b7a0993866b6f4e537f5728"
+        "sha256": "b27dabcdce0b0d4c24d0ddb6884ac71e7df929efc01e15967406fc00b29eb775"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -15861,7 +16053,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "9b0b832c5cd3bffe9f29966ede08f606de940bc320973dbfb70f5472eb263fa0"
+        "sha256": "0729b6615a31acf4a787e824a1b9fa8250d01594f8807a0804b226bbf382fa28"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -15877,11 +16069,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "ee1ca6764e31c55312c18a533a83e16345c9de192e09f3f523008e00e5af22b9"
+        "sha256": "bb4f7c1ff33ab76b92b95f1552c1d937bbbda7e072d75c9886790e00a64521bd"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "d4103614333333b30bcb7467bded9af04d205a2e8aee6357f16eb4e364a61e6e"
+        "sha256": "af1082ba33488565f67db79c753a29cf2503f0f9100e7b8e428f8936d91e12f8"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -16113,7 +16305,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "8ce8ec589b8e72fa20a3fc9b573cc2239e6f4b6e41ab69cac4bf750ff07ea5c4"
+        "sha256": "4b401e18c8506525fc65ba1c965d932574e6fb4faf258da355500316c2963f77"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -16221,7 +16413,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "91d1f8e714c77b9a93d0e9fbc1d4fb802cbd900e5d326b71b3b310cc9a2b49f8"
+        "sha256": "b67f6384b8248e77b82833371807fc96b8cea9ce58e835f4899136ef0f99af97"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -21275,14 +21467,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/privacy/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/privacy/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -21345,14 +21529,6 @@
               "packages/contexts/observability/contracts/index.ts"
             ],
             [
-              "packages/contexts/privacy/application/ports/index.ts",
-              "packages/contexts/privacy/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/privacy/contracts/index.ts",
-              "packages/contexts/privacy/contracts/index.ts"
-            ],
-            [
               "packages/contexts/tools/application/ports/index.ts",
               "packages/contexts/tools/application/ports/index.ts"
             ],
@@ -21375,8 +21551,6 @@
             "packages/contexts/governance/contracts/index.ts",
             "packages/contexts/observability/application/ports/index.ts",
             "packages/contexts/observability/contracts/index.ts",
-            "packages/contexts/privacy/application/ports/index.ts",
-            "packages/contexts/privacy/contracts/index.ts",
             "packages/contexts/tools/application/ports/index.ts",
             "packages/contexts/tools/contracts/index.ts"
           ]
@@ -21564,6 +21738,11 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/privacy/contracts/index.test.ts",
+              "kind": "reference",
+              "line": 5
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 177
@@ -21648,6 +21827,10 @@
               "apps/core-api/src/runtime/process-ports.test.ts"
             ],
             [
+              "packages/contexts/privacy/contracts/index.test.ts",
+              "packages/contexts/privacy/contracts/index.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -21697,6 +21880,7 @@
             "apps/core-api/src/runtime/in-flight.test.ts",
             "apps/core-api/src/runtime/lifecycle.test.ts",
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/privacy/contracts/index.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/clean-v1.test.mjs",
             "scripts/arch/composition-root.test.mjs",
@@ -21743,7 +21927,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "995b981199988eba0d62ba68fa893b29eaffe6a62a39035a72b3bae3d32d4489",
+      "evidenceSha256": "ac4dc5c9e4bee377df5a386a8ff27eff64557f0db6a101e3553fe29011ed04be",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -33447,7 +33631,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 723
+              "line": 731
             }
           ],
           "reversePaths": [
@@ -33472,7 +33656,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5d328a80c3e6c56a2280b47a073e90e1bfff0d242f40937b6a278b1ef5fb2e81",
+      "evidenceSha256": "07e738ddfcab78d91dc06503fcc6b50b99663613523d220bd8947ea28872a28e",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -34603,7 +34787,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 722
+              "line": 730
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -34828,7 +35012,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "8dc4aab821a07f950327bf4fcecef34ebadc2c26a5980f3752bc90020e17b333",
+      "evidenceSha256": "e96db97a0d1a10d8928a87f88c82384d3dca36665af9f1f18048179c906b9b37",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -45560,7 +45744,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 575
             }
           ],
           "reversePaths": [
@@ -45639,7 +45823,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "286d61a912cbb3561cc144aca38f72984ba745d6433bdcc9b65f1f72dbf37dce",
+      "evidenceSha256": "38d875abf6c286040e6a7f939cab5d0f6a19aa65f87cfe750bda5bcc47212037",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -46149,7 +46333,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 414
+              "line": 422
             }
           ],
           "reversePaths": [
@@ -46394,7 +46578,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "b2a2a0c5c61ce2ce4069762411da4ff4b8ed13e01cf81be1e26607fb4a301c4a",
+      "evidenceSha256": "5fc2af0ac8b8b2651a35117d5cae180caf89f19fc1634c3aedf792164b5a3c47",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -46766,7 +46950,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 282
+              "line": 290
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -46920,7 +47104,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "adb3374d6a470aec0f6bcd7b4147b67c57ea568eaca22719835545ad1f17c5d8",
+      "evidenceSha256": "2a9c0fdadbd7eb2363ea1c8c1fe8ba66dde8af66a076fba41aea13c6446a0b92",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -49202,7 +49386,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 262
+              "line": 270
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -49999,7 +50183,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "7e8ce1a502d6e02df3404c5883f820c52b3e5cf2847c8ce776025b4b0402feee",
+      "evidenceSha256": "3132bd96a807176cd0d04ebf7f0024ba13c680a9eae89030e72f57144b9cede8",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -50412,7 +50596,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 127
+              "line": 134
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -50598,7 +50782,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "0b4bd1e932f05ebedd1ccb1a64c560fcf02aecda1539a8c26fb8c499daeec307",
+      "evidenceSha256": "bb4d6cb65273240ada7c7d37d409206850ca918836ff2982be4e5773b21d270c",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -51112,12 +51296,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 128
+              "line": 135
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 385
+              "line": 393
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -51390,7 +51574,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "56eca2586fea26f03d9bf95fedad18de6ceedf6942b51218dd2c9646ffc1d0b2",
+      "evidenceSha256": "a1155ec35490f223809654a43133e924dbf3faf806a4d228e68b7afc6d86ae2d",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -52011,26 +52195,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/privacy/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/privacy/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/privacy/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/privacy/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/privacy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -52048,22 +52212,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/privacy/application/index.ts",
-              "packages/contexts/privacy/application/index.ts"
-            ],
-            [
-              "packages/contexts/privacy/application/ports/index.ts",
-              "packages/contexts/privacy/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/privacy/contracts/index.ts",
-              "packages/contexts/privacy/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/privacy/domain/index.ts",
-              "packages/contexts/privacy/domain/index.ts"
-            ],
-            [
               "packages/contexts/privacy/package.json",
               "packages/contexts/privacy/package.json"
             ],
@@ -52078,10 +52226,6 @@
           ],
           "roots": [
             "packages/contexts/privacy/README.md",
-            "packages/contexts/privacy/application/index.ts",
-            "packages/contexts/privacy/application/ports/index.ts",
-            "packages/contexts/privacy/contracts/index.ts",
-            "packages/contexts/privacy/domain/index.ts",
             "packages/contexts/privacy/package.json",
             "packages/contexts/privacy/tsconfig.json"
           ]
@@ -52119,6 +52263,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/privacy/package.json",
               "kind": "workspace-script",
@@ -52129,6 +52278,12 @@
               "from": "packages/contexts/privacy/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/privacy/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -52182,19 +52337,199 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/privacy/application/guard-subject-write.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/inventory-subject.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/request-erasure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/retry-erasure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/run-erasure-pass.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/seal-subject.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/alias.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/content-free.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/erasure-operation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/legal-hold.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/retry-schedule.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/target-outcome.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/tombstone.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 108
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 458
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 583
             }
           ],
           "reversePaths": [
             [
+              "packages/contexts/privacy/application/guard-subject-write.test.ts",
+              "packages/contexts/privacy/application/guard-subject-write.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/inventory-subject.test.ts",
+              "packages/contexts/privacy/application/inventory-subject.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/request-erasure.test.ts",
+              "packages/contexts/privacy/application/request-erasure.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/retry-erasure.test.ts",
+              "packages/contexts/privacy/application/retry-erasure.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/run-erasure-pass.test.ts",
+              "packages/contexts/privacy/application/run-erasure-pass.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/seal-subject.test.ts",
+              "packages/contexts/privacy/application/seal-subject.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+              "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/contracts/index.test.ts",
+              "packages/contexts/privacy/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/alias.test.ts",
+              "packages/contexts/privacy/domain/alias.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/content-free.test.ts",
+              "packages/contexts/privacy/domain/content-free.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/erasure-operation.test.ts",
+              "packages/contexts/privacy/domain/erasure-operation.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/legal-hold.test.ts",
+              "packages/contexts/privacy/domain/legal-hold.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/retry-schedule.test.ts",
+              "packages/contexts/privacy/domain/retry-schedule.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/target-outcome.test.ts",
+              "packages/contexts/privacy/domain/target-outcome.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/tombstone.test.ts",
+              "packages/contexts/privacy/domain/tombstone.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/package.json",
+              "packages/contexts/privacy/package.json"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
-            "scripts/arch/arch-boundaries.test.mjs"
+            "packages/contexts/privacy/application/guard-subject-write.test.ts",
+            "packages/contexts/privacy/application/inventory-subject.test.ts",
+            "packages/contexts/privacy/application/request-erasure.test.ts",
+            "packages/contexts/privacy/application/retry-erasure.test.ts",
+            "packages/contexts/privacy/application/run-erasure-pass.test.ts",
+            "packages/contexts/privacy/application/seal-subject.test.ts",
+            "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+            "packages/contexts/privacy/contracts/index.test.ts",
+            "packages/contexts/privacy/domain/alias.test.ts",
+            "packages/contexts/privacy/domain/content-free.test.ts",
+            "packages/contexts/privacy/domain/erasure-operation.test.ts",
+            "packages/contexts/privacy/domain/legal-hold.test.ts",
+            "packages/contexts/privacy/domain/retry-schedule.test.ts",
+            "packages/contexts/privacy/domain/target-outcome.test.ts",
+            "packages/contexts/privacy/domain/tombstone.test.ts",
+            "packages/contexts/privacy/package.json",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/v1-ledger.test.mjs"
           ]
         }
       },
@@ -52253,8 +52588,8 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "5ae1c3145c26beb72240496ca8bdfd60c62ac1862f10992b07e0002704aeadd3",
-      "manifestSha256": "8776a8574d759b876e0050c0f4eb2a709601cf58a5069bf9905cf7477dcc1b31",
+      "evidenceSha256": "9680b5c03cde791ca8be53381ee7c1b0152af4b75cb2e1f14651e84839af0724",
+      "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
         "reachable": false,
@@ -53024,7 +53359,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 309
+              "line": 317
             }
           ],
           "reversePaths": [
@@ -53459,7 +53794,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "649b777a400280eddac48ee088c2e23af6dc93cc9f798042d67190e4a2b5e5b4",
+      "evidenceSha256": "287e149f56b4a11a19560ad5f8da59494da1be3355d9f1d2329801edb06d4742",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -54249,7 +54584,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 263
+              "line": 271
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -54722,7 +55057,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "857c6a5782cb36d23fcf17b736bec514b044ac9a16002648cc69b4f35eff980d",
+      "evidenceSha256": "1eab06de74a6285e296a1a9046a010f6c91907322d2d845bbc4ccc0892ee30a3",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -55210,7 +55545,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 333
+              "line": 341
             }
           ],
           "reversePaths": [
@@ -55452,7 +55787,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "868465c833dc83015709438ce5a2ce5a3b98ffba400f9ea06c2c293a9830b468",
+      "evidenceSha256": "48eaead0b6c3928a00e6cf55df3600bf463367d78e67f65b576dc97c2638ee93",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -56155,10 +56490,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/privacy/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tenancy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -56204,10 +56535,6 @@
               "packages/contexts/observability/application/index.ts"
             ],
             [
-              "packages/contexts/privacy/application/index.ts",
-              "packages/contexts/privacy/application/index.ts"
-            ],
-            [
               "packages/contexts/tenancy/package.json",
               "packages/contexts/tenancy/package.json"
             ],
@@ -56231,7 +56558,6 @@
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/governance/application/index.ts",
             "packages/contexts/observability/application/index.ts",
-            "packages/contexts/privacy/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
             "packages/contexts/tenancy/tsconfig.json",
@@ -56421,6 +56747,18 @@
               "specifier": "@platos/context-tenancy"
             },
             {
+              "file": "packages/contexts/privacy/application/dependencies.ts",
+              "from": "packages/contexts/privacy",
+              "line": 29,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/privacy/application/testing/fixtures.ts",
+              "from": "packages/contexts/privacy",
+              "line": 39,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/providers/application/authorization.ts",
               "from": "packages/contexts/providers",
               "line": 49,
@@ -56523,6 +56861,14 @@
               "packages/contexts/memory/application/testing/in-memory-peers.ts"
             ],
             [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/providers",
               "packages/contexts/providers/application/authorization.ts"
             ],
@@ -56554,6 +56900,7 @@
             "packages/contexts/files",
             "packages/contexts/jobs",
             "packages/contexts/memory",
+            "packages/contexts/privacy",
             "packages/contexts/providers",
             "packages/contexts/skills"
           ]
@@ -56689,7 +57036,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 264
+              "line": 272
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -57419,7 +57766,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "df5a10a0c188f014715f2b89f79744338fb7eb632b72981d3d948eab5d859ec8",
+      "evidenceSha256": "bcbf9529cd728bfc06a10f4c1acd0aa75298f7440e69d8163c3d1fa8d4543536",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -57816,7 +58163,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 556,
+              "line": 557,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -58001,7 +58348,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "74f8af755c625e1e88f0e6cb6272d9336f7b19d71ca34f4994dab3218a90fd97",
+      "evidenceSha256": "24ad05861631feff24d00e34d75e83cf0dc49b888c2aed98fe3124b9ed90bd94",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -60557,10 +60904,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/privacy/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -60614,10 +60957,6 @@
               "packages/contexts/observability/domain/index.ts"
             ],
             [
-              "packages/contexts/privacy/domain/index.ts",
-              "packages/contexts/privacy/domain/index.ts"
-            ],
-            [
               "packages/contexts/tools/domain/index.ts",
               "packages/contexts/tools/domain/index.ts"
             ],
@@ -60643,7 +60982,6 @@
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
-            "packages/contexts/privacy/domain/index.ts",
             "packages/contexts/tools/domain/index.ts",
             "packages/kernel/README.md",
             "packages/kernel/package.json",
@@ -61961,6 +62299,186 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/privacy/application/dependencies.ts",
+              "from": "packages/contexts/privacy",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/erasure-events.ts",
+              "from": "packages/contexts/privacy",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/erasure-events.ts",
+              "from": "packages/contexts/privacy",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/guard-subject-write.ts",
+              "from": "packages/contexts/privacy",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/inventory-subject.ts",
+              "from": "packages/contexts/privacy",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/plan-erasure.ts",
+              "from": "packages/contexts/privacy",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/ports/legal-hold-register.ts",
+              "from": "packages/contexts/privacy",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/ports/privacy-repository.ts",
+              "from": "packages/contexts/privacy",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/ports/subject-directory.ts",
+              "from": "packages/contexts/privacy",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/privacy-contract.ts",
+              "from": "packages/contexts/privacy",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/record-pass.ts",
+              "from": "packages/contexts/privacy",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/request-erasure.ts",
+              "from": "packages/contexts/privacy",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/resolve-subject.ts",
+              "from": "packages/contexts/privacy",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/retry-erasure.ts",
+              "from": "packages/contexts/privacy",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/run-erasure-pass.ts",
+              "from": "packages/contexts/privacy",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/seal-subject.ts",
+              "from": "packages/contexts/privacy",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/subject-digests.ts",
+              "from": "packages/contexts/privacy",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/testing/fixtures.ts",
+              "from": "packages/contexts/privacy",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/testing/fixtures.ts",
+              "from": "packages/contexts/privacy",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/testing/in-memory-erasure-target.ts",
+              "from": "packages/contexts/privacy",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/application/testing/in-memory-privacy-repository.ts",
+              "from": "packages/contexts/privacy",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/contracts/events.ts",
+              "from": "packages/contexts/privacy",
+              "line": 39,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/contracts/index.ts",
+              "from": "packages/contexts/privacy",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/alias.ts",
+              "from": "packages/contexts/privacy",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/content-free.ts",
+              "from": "packages/contexts/privacy",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/erasure-operation.ts",
+              "from": "packages/contexts/privacy",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/errors.ts",
+              "from": "packages/contexts/privacy",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/identifiers.ts",
+              "from": "packages/contexts/privacy",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/target-outcome.ts",
+              "from": "packages/contexts/privacy",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/privacy/domain/tombstone.ts",
+              "from": "packages/contexts/privacy",
+              "line": 45,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/providers/application/authorization.ts",
               "from": "packages/contexts/providers",
               "line": 40,
@@ -62965,7 +63483,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 436,
+              "line": 437,
               "specifier": "@platos/kernel"
             }
           ],
@@ -63759,6 +64277,118 @@
               "packages/contexts/memory/domain/working-set.ts"
             ],
             [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/erasure-events.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/guard-subject-write.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/inventory-subject.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/plan-erasure.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/ports/legal-hold-register.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/ports/privacy-repository.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/ports/subject-directory.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/privacy-contract.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/record-pass.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/request-erasure.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/resolve-subject.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/retry-erasure.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/run-erasure-pass.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/seal-subject.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/subject-digests.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/testing/in-memory-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/application/testing/in-memory-privacy-repository.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/contracts/events.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/alias.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/content-free.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/erasure-operation.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/target-outcome.ts"
+            ],
+            [
+              "packages/contexts/privacy",
+              "packages/contexts/privacy/domain/tombstone.ts"
+            ],
+            [
               "packages/contexts/providers",
               "packages/contexts/providers/application/authorization.ts"
             ],
@@ -64287,6 +64917,7 @@
             "packages/contexts/identity-access",
             "packages/contexts/jobs",
             "packages/contexts/memory",
+            "packages/contexts/privacy",
             "packages/contexts/providers",
             "packages/contexts/secrets",
             "packages/contexts/skills",
@@ -64618,6 +65249,56 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/privacy/application/guard-subject-write.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/request-erasure.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/retry-erasure.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/seal-subject.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+              "kind": "reference",
+              "line": 5
+            },
+            {
+              "from": "packages/contexts/privacy/contracts/index.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/privacy/domain/alias.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/erasure-operation.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/target-outcome.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/privacy/domain/tombstone.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "reference",
               "line": 1
@@ -64885,12 +65566,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 78
+              "line": 79
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 242
+              "line": 243
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -65169,6 +65850,46 @@
             [
               "packages/contexts/memory/domain/working-set.test.ts",
               "packages/contexts/memory/domain/working-set.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/guard-subject-write.test.ts",
+              "packages/contexts/privacy/application/guard-subject-write.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/request-erasure.test.ts",
+              "packages/contexts/privacy/application/request-erasure.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/retry-erasure.test.ts",
+              "packages/contexts/privacy/application/retry-erasure.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/seal-subject.test.ts",
+              "packages/contexts/privacy/application/seal-subject.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+              "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/contracts/index.test.ts",
+              "packages/contexts/privacy/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/alias.test.ts",
+              "packages/contexts/privacy/domain/alias.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/erasure-operation.test.ts",
+              "packages/contexts/privacy/domain/erasure-operation.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/target-outcome.test.ts",
+              "packages/contexts/privacy/domain/target-outcome.test.ts"
+            ],
+            [
+              "packages/contexts/privacy/domain/tombstone.test.ts",
+              "packages/contexts/privacy/domain/tombstone.test.ts"
             ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
@@ -65472,6 +66193,16 @@
             "packages/contexts/memory/domain/scope.test.ts",
             "packages/contexts/memory/domain/traversal.test.ts",
             "packages/contexts/memory/domain/working-set.test.ts",
+            "packages/contexts/privacy/application/guard-subject-write.test.ts",
+            "packages/contexts/privacy/application/request-erasure.test.ts",
+            "packages/contexts/privacy/application/retry-erasure.test.ts",
+            "packages/contexts/privacy/application/seal-subject.test.ts",
+            "packages/contexts/privacy/application/testing/in-memory-privacy-repository.test.ts",
+            "packages/contexts/privacy/contracts/index.test.ts",
+            "packages/contexts/privacy/domain/alias.test.ts",
+            "packages/contexts/privacy/domain/erasure-operation.test.ts",
+            "packages/contexts/privacy/domain/target-outcome.test.ts",
+            "packages/contexts/privacy/domain/tombstone.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/rate-card.test.ts",
             "packages/contexts/providers/application/resolve-provider-credential.test.ts",
@@ -66273,7 +67004,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "98059d7be83100a397c8eb6ce11853ef4ca75e8bf26d13f570d997ad85191183",
+      "evidenceSha256": "dd562d4a9ba45090762b9270e67ed8e07569a1bc8199bef7f8e32caa88a9e8ed",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

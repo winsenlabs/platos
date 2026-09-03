@@ -222,12 +222,13 @@ test("the census is not vacuous — it reads the real suites", () => {
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +14 for the eventing suites, +20 for the skills suites, +16 for the jobs
-  // suites, +28 for the memory suites and +21 for the cost-monitoring suites
-  // (WIN-256). The axes are disjoint and every adoption moves THIS SAME number,
-  // so it is their sum: 88 + 14 + 20 + 16 + 28 + 21 = 187. The eventing branch
-  // pinned 102, the skills branch pinned 108, the jobs branch pinned 104, the
-  // memory branch pinned 116 and the cost-monitoring branch pinned 109; each is
-  // right alone and wrong here.
+  // suites, +28 for the memory suites, +21 for the cost-monitoring suites and
+  // +15 for the privacy suites (WIN-256). The axes are disjoint and every
+  // adoption moves THIS SAME number, so it is their sum:
+  // 88 + 14 + 20 + 16 + 28 + 21 + 15 = 202. The eventing branch pinned 102, the
+  // skills branch pinned 108, the jobs branch pinned 104, the memory branch
+  // pinned 116, the cost-monitoring branch pinned 109 and the privacy branch
+  // pinned 103; each is right alone and wrong here.
   //
   // The jobs CASE total moved three times more — 1350 -> 1354, 1354 -> 1367 and
   // 1367 -> 1378 as three successive verifications closed survivors — the
@@ -236,7 +237,7 @@ test("the census is not vacuous — it reads the real suites", () => {
   // 335 -> 345 -> 352. The FILE total did not move for any of them, because
   // every case landed in a suite that already existed. That is exactly the
   // drift a file-count pin cannot see and the case pin can.
-  assert.equal(live.totalFiles, 187);
+  assert.equal(live.totalFiles, 202);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -248,16 +249,23 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  // 67 -> 88 -> 102 -> 122 -> 138 -> 166 -> 187: +21 providers, +14 the suites
+  // 67 -> 88 -> 102 -> 122 -> 138 -> 166 -> 187 -> 202: +21 providers, +14 the suites
   // `eventing` brings with it (ADR M0.3 §1 row 17), +20 the suites `skills`
   // brings, +16 the suites `jobs` brings, +28 the suites `memory` brings, +21
-  // the suites `cost-monitoring` brings. Same 187 as above, re-derived from the
-  // pinned rows rather than the tree.
-  assert.equal(files, 187);
+  // the suites `cost-monitoring` brings, +15 the suites `privacy` brings. Same
+  // 202 as above, re-derived from the pinned rows rather than the tree.
+  assert.equal(files, 202);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
-  // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case.
+  // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case, then
+  // +240 in `privacy` when WIN-256 made ADR M0.3 §1 row 18 real: 716 + 1 + 240
+  // = 957 on that branch. This comment read "+236" — the implementer's own
+  // count, carried into the commit message and wrong by 4 — while the pin
+  // beside it was already the true 240; the arithmetic is now stated so the two
+  // cannot silently disagree again. The five packages below are asserted
+  // UNMOVED, which is what makes each new context an addition rather than a
+  // re-baseline.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
   assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 231);
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
@@ -301,11 +309,11 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {
-  // The ONE row the rebase moves. `pnpm --filter @platos/context-providers exec
-  // vitest run` prints "Test Files 21 passed (21) / Tests 283 passed (283)";
-  // the AST census reproduces both with zero refusals. Every other package is
-  // held at its 3ed8f3ce value by the test above, so a suite quietly deleted
-  // elsewhere while providers landed cannot hide inside the new total.
+  // The ONE row that rebase moved. `pnpm --filter @platos/context-providers
+  // exec vitest run` prints "Test Files 21 passed (21) / Tests 283 passed
+  // (283)"; the AST census reproduces both with zero refusals. Every other
+  // package is held at its 3ed8f3ce value by the test above, so a suite quietly
+  // deleted elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
   // The runtime total is re-derived from the SEVEN slices that contribute cases,
@@ -315,7 +323,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // survivors — all with the file count held at 14. Skills is the fourth at
   // 306, jobs the fifth at 378, memory the sixth at 605 and cost-monitoring the
   // seventh at 352; each is pinned by its own test.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352 + 254);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -345,12 +353,12 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   };
   for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
   const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
-  // M2 WAVE-B: `eventing`, `jobs`, `memory` and `cost-monitoring` land in the
-  // same integration branch on INDEPENDENT axes, so this re-derivation carries
-  // their 149, 378, 605 and 352 too. Without those terms the identity would
+  // M2 WAVE-B: `eventing`, `jobs`, `memory`, `cost-monitoring` and `privacy`
+  // land in the same integration branch on INDEPENDENT axes, so this
+  // re-derivation carries their 149, 378, 605, 352 and 254 too. Without those terms the identity would
   // hold only on the skills branch alone, which is exactly the side-picking
-  // this comment exists to prevent: 1000 + 149 + 306 + 378 + 605 + 352 = 2790.
-  assert.equal(sum + 149 + 306 + 378 + 605 + 352, EXPECTED_RUNTIME_TOTAL);
+  // this comment exists to prevent: 1000 + 149 + 306 + 378 + 605 + 352 + 254 = 3044.
+  assert.equal(sum + 149 + 306 + 378 + 605 + 352 + 254, EXPECTED_RUNTIME_TOTAL);
 });
 
 test("the memory context is pinned at what vitest prints", () => {
@@ -378,13 +386,13 @@ test("the memory context is pinned at what vitest prints", () => {
   // nothing else would hide a six-case deletion inside a nine-case addition,
   // which is why the arithmetic is written out here and in the census prose.
   //
-  // M2 WAVE-B: `eventing`, `skills` and `jobs` land in the same integration
-  // branch on INDEPENDENT axes, so this re-derivation carries their 149, 306
-  // and 378 too. The memory branch pinned 717 + 283 + 605 = 1605 and was right
+  // M2 WAVE-B: `eventing`, `skills`, `jobs` and `privacy` land in the same
+  // integration branch on INDEPENDENT axes, so this re-derivation carries their
+  // 149, 306, 378 and 254 too. The memory branch pinned 717 + 283 + 605 = 1605 and was right
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352 + 254);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -406,14 +414,51 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // that reads them, and two for the "both writes or neither" rollback in
   // detect-crossings — a property that was untested AND untrue.
   //
-  // M2 WAVE-B: `eventing`, `skills`, `jobs` and `memory` land in the same
-  // integration branch on INDEPENDENT axes, so this re-derivation carries their
-  // 149, 306, 378 and 605 too. The cost-monitoring branch pinned
+  // M2 WAVE-B: `eventing`, `skills`, `jobs`, `memory` and `privacy` land in the
+  // same integration branch on INDEPENDENT axes, so this re-derivation carries
+  // their 149, 306, 378, 605 and 254 too. The cost-monitoring branch pinned
   // 717 + 283 + 352 = 1352 and was right alone; here the identity only closes
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352 + 254);
+
+test("the privacy context is pinned at what vitest prints", () => {
+  // The ONE row WIN-256's privacy slice moves. 240 -> 254, and the FILE count
+  // does not move once. That is the whole point of a case pin: every case the
+  // mutation controls forced landed in a suite that already existed, because a
+  // guard is proved from the use case that can reach it rather than from a new
+  // file next to its definition. A file-count pin sees none of this.
+  //
+  //   240  the context as built
+  //    +7  request-erasure    the content-free wiring (2), no sweep without a
+  //                           seal (1), a transaction that never opened (1),
+  //                           a refused progress write (1), retainedRecords (2)
+  //    +2  run-erasure-pass   the non-carrier catch branch
+  //    +2  retry-erasure      a refused progress write, from the retry
+  //    +1  seal-subject       a store-refused seal is not a seal of zero
+  //   ---
+  //   252  the 2026-09-03 verification's head
+  //    +2  retry-erasure      2026-09-04: the SAME handle now resolving to
+  //                           nobody (1), and the retry-path re-seal extending
+  //                           the tombstone window (1)
+  //   ---
+  //   254. The base and the two additions are written out separately, so a
+  //   deletion cannot hide inside an addition and reach the same total. UNLIKE
+  //   the twelve before them, one production module DID change for the last two:
+  //   the two guards were given distinct codes (`PRIVACY_SUBJECT_NOT_RESOLVED`
+  //   and the NEW `PRIVACY_SUBJECT_MISMATCH`), and `refuse` now takes a
+  //   DomainError and labels the audit event with that error's own `code`
+  //   rather than a string written beside it. Four existing cases gained
+  //   refusal-label assertions; gaining an assertion is not a case, so they move
+  //   no number here.
+  //
+  // M2 WAVE-B: the privacy branch pinned 717 + 283 + 254 = 1254 and was right
+  // alone; here the identity only closes with every adoption's term present.
+  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
+  assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605 + 352 + 254);
+});
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
