@@ -263,7 +263,14 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // the providers slice the runtime total is 717 + 283 + 302 = 1302; the skills
   // branch pinned 1019 because it predates the providers commit and the two
   // adoptions touch disjoint packages.
-  assert.equal(EXPECTED["packages/contexts/skills"].cases, 302);
+  //
+  // 302 -> 306 (2026-09-03, after the rebase onto 95cbacc1). Four cases closing
+  // the host-closure survivors the re-run mutation sweep found — suffix
+  // look-alikes for each of the three rewrite rules, plus the closure property
+  // over all of them. The FILE count deliberately does not move: all four went
+  // into the existing domain/import-source.test.ts, which is the drift
+  // `docs/v1-ledger-rules.json` cannot see and this can.
+  assert.equal(EXPECTED["packages/contexts/skills"].cases, 306);
   assert.equal(EXPECTED["packages/contexts/skills"].files, 20);
   // Every previously-real package is byte-for-byte where the 2026-09-02
   // verification left it: an adoption that quietly moved another context's
@@ -278,7 +285,7 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   };
   for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
   const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
-  assert.equal(sum + 302, EXPECTED_RUNTIME_TOTAL);
+  assert.equal(sum + 306, EXPECTED_RUNTIME_TOTAL);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

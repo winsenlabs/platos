@@ -29,7 +29,6 @@ import { err, ok, type EnvironmentScope, type JsonValue, type Result } from "@pl
 import {
   isEnvironmentReady,
   isInstallationEnabled,
-  isToolOfSkill,
   missingKeys,
   environmentKeysMissing,
   namespaceTool,
@@ -66,12 +65,32 @@ export interface SkillToolOutcome {
  * definition of the naming scheme (`domain/tool-namespace.ts`) is the only thing
  * that has to be right — a separate un-namespacing routine would be a second
  * definition free to drift from the first.
+ *
+ * IT USED TO OPEN WITH `if (!isToolOfSkill(...)) return null;` AND THAT LINE IS
+ * GONE. The 2026-09-03 enumerated mutation control found it survived deletion
+ * with all 302 cases green, and unlike the two survivors this wave has argued
+ * about elsewhere, this one is not a coverage gap that a test could close: the
+ * line cannot change what this function returns, for any input at all.
+ * `namespaceTool(slug, x)` always begins with that slug's prefix plus the
+ * separator, so any `toolName` the loop can match already satisfies
+ * `isToolOfSkill`, and any name that fails it fails every comparison in the
+ * loop. No test can distinguish the two versions because there is nothing to
+ * distinguish.
+ *
+ * So it went, rather than being kept as unprovable defence in depth — and it is
+ * worth saying that it was also a prefix-split shortcut sitting directly above
+ * a comment explaining why this function deliberately does not split prefixes.
+ * The property it looked like it defended, that one skill's name never resolves
+ * against another skill's manifest, is what the loop does, and it stays pinned
+ * by "REFUSES a name belonging to a different skill" in the suite beside this.
+ * `isToolOfSkill` itself is unchanged and keeps its own controls in
+ * `domain/tool-namespace.test.ts`, including the separator case that stops
+ * `platos_web` claiming `platos_web_search__go`.
  */
 export function resolveDispatchedTool(
   entry: CatalogueEntry,
   toolName: NamespacedToolName,
 ): SkillProvidedTool | null {
-  if (!isToolOfSkill(toolName, entry.identity.slug)) return null;
   for (const tool of entry.providesTools) {
     if (namespaceTool(entry.identity.slug, tool.name) === toolName) return tool;
   }

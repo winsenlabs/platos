@@ -30,6 +30,19 @@
 //   Therefore the fetched host is always either the submitted host or one of
 //   those two constants.
 //
+//   AND "EXACT `hostname` EQUALITY" IS NOW A TESTED CLAIM, NOT A READING OF THE
+//   SOURCE. It is the sentence the rest of this header leans on — it is why the
+//   submitted URL is argued not to need an address check of its own — and until
+//   2026-09-03 nothing checked it: relaxing all three `hostname !==` guards to
+//   `!hostname.endsWith(...)` left every one of this context's 302 cases green.
+//   The suite only had a PREFIX look-alike (`claude.ai.evil.test`), and a suffix
+//   match is the way a hostname check is actually got wrong. Four cases in
+//   import-source.test.ts now supply suffix look-alikes — `evil-claude.ai`,
+//   `evilgithub.com`, `notgist.github.com` — and require each to come back
+//   unrewritten, so relaxing any one rule turns exactly one of them red. The
+//   last of the four asserts the closure property itself: over every look-alike,
+//   `rewriteChangedHost` is false.
+//
 // WHAT THIS MODULE DOES NOT ENFORCE. There is no address check here, and
 // admission is not safety: `http://169.254.169.254/…`, `http://127.0.0.1/…` and
 // `http://10.0.0.5/…` are all admitted by this module and pass through the

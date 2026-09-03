@@ -90,6 +90,58 @@ describe("rewriteToRawSource", () => {
       "https://claude.ai.evil.test/skills/abc",
     );
   });
+
+  // WIN-256 verification, 2026-09-03. The case above covers the PREFIX
+  // look-alike and nothing covered the SUFFIX one, which is the direction a
+  // hostname check is actually got wrong — `endsWith("github.com")`,
+  // `endsWith(".claude.ai")` with the dot forgotten, a regex missing its `$`.
+  // Relaxing each of the three `hostname !==` guards to `!endsWith(...)` left
+  // ALL 302 cases green, so "every rule is guarded by exact hostname equality"
+  // — the sentence this module's header rests its HOST CLOSURE argument on, and
+  // which the header in turn cites as the reason the SUBMITTED url needs no
+  // address check — was prose with no mechanism behind it.
+  //
+  // Each case below supplies a host that a suffix match would admit and asserts
+  // the URL comes back UNCHANGED, so relaxing that rule turns exactly this case
+  // red. They are refusals, not happy paths: the input is the hostile one.
+  it("REFUSES to treat a SUFFIX look-alike of the skill library as the skill library", () => {
+    // `evil-claude.ai` ends with `claude.ai`. A suffix match would append the
+    // manifest filename to a path on an attacker's host.
+    expect(rewritten("https://evil-claude.ai/skills/abc")).toBe("https://evil-claude.ai/skills/abc");
+  });
+
+  it("REFUSES to treat a SUFFIX look-alike of the repository host as a blob page", () => {
+    // `evilgithub.com` ends with `github.com`. A suffix match would rewrite this
+    // to raw.githubusercontent.com — sending the fetch to a host the operator
+    // never named, off the strength of one that merely resembles the real one.
+    expect(rewritten("https://evilgithub.com/acme/repo/blob/main/a.md")).toBe(
+      "https://evilgithub.com/acme/repo/blob/main/a.md",
+    );
+  });
+
+  it("REFUSES to treat a SUFFIX look-alike of the gist host as a gist", () => {
+    expect(rewritten("https://evilgist.github.com.attacker.test/user/id")).toBe(
+      "https://evilgist.github.com.attacker.test/user/id",
+    );
+    // And the true suffix form, which a `endsWith("gist.github.com")` admits.
+    expect(rewritten("https://notgist.github.com/user/id")).toBe("https://notgist.github.com/user/id");
+  });
+
+  it("keeps HOST CLOSURE over every look-alike: the fetch stays where the operator sent it", () => {
+    // The header's closure claim, asserted directly rather than argued: for a
+    // host that is not one of the three exact literals, the rewrite never moves
+    // the request off it.
+    for (const candidate of [
+      "https://evil-claude.ai/skills/abc",
+      "https://claude.ai.evil.test/skills/abc",
+      "https://evilgithub.com/acme/repo/blob/main/a.md",
+      "https://github.com.attacker.test/acme/repo/blob/main/a.md",
+      "https://notgist.github.com/user/id",
+    ]) {
+      const submitted = admitted(candidate);
+      expect(rewriteChangedHost(submitted, rewriteToRawSource(submitted))).toBe(false);
+    }
+  });
 });
 
 describe("rewriteChangedHost", () => {
