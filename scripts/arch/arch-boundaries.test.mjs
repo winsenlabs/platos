@@ -218,7 +218,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 547. Six adopting slices make disjoint
+    // M2 INTEGRATION DELTA — 104 -> 624. Seven adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
     //
@@ -262,15 +262,23 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               the no-infra-in-core and domain-imports-only-kernel rules
     //               judged that shape for the first time here. Neither needed
     //               changing.
+    //   547 -> 624  +77: WIN-256 makes `memory` real (ADR M0.3 §1 row 8). Its
+    //               own row states the boundary this gate now polices for the
+    //               first time — extraction is initiated on a `TurnFinalized`
+    //               event and the context "never imports conversations" — so
+    //               rule (d) is judging an ABSENCE rather than an edge. Its two
+    //               permitted peers, `tenancy` and `providers`, are both
+    //               imported and both on its allow-list; `conversations`
+    //               appears nowhere in the tree. No rule needed changing.
     //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
-    // 397 + 44 = 441, the skills branch pinned 397 + 55 = 452 and the jobs
-    // branch pinned 397 + 51 = 448, each blind to the others. All six slices are
-    // disjoint and eventing, skills and jobs move this census on INDEPENDENT
-    // axes, so the integrated census is their SUM and not any pin:
-    // 397 + 44 + 55 + 51 = 547.
+    // 397 + 44 = 441, the skills branch pinned 397 + 55 = 452, the jobs branch
+    // pinned 397 + 51 = 448 and the memory branch pinned 397 + 77 = 474, each
+    // blind to the others. All seven slices are disjoint and eventing, skills,
+    // jobs and memory move this census on INDEPENDENT axes, so the integrated
+    // census is their SUM and not any pin: 397 + 44 + 55 + 51 + 77 = 624.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -278,7 +286,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 547, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 624, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

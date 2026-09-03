@@ -221,18 +221,20 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +14 for the eventing suites, +20 for the skills suites and +16 for the jobs
-  // suites (WIN-256). The axes are disjoint and every adoption moves THIS SAME
-  // number, so it is their sum: 88 + 14 + 20 + 16 = 138. The eventing branch
-  // pinned 102, the skills branch pinned 108 and the jobs branch pinned 104;
-  // each is right alone and wrong here.
+  // +14 for the eventing suites, +20 for the skills suites, +16 for the jobs
+  // suites and +28 for the memory suites (WIN-256). The axes are disjoint and
+  // every adoption moves THIS SAME number, so it is their sum:
+  // 88 + 14 + 20 + 16 + 28 = 166. The eventing branch pinned 102, the skills
+  // branch pinned 108, the jobs branch pinned 104 and the memory branch pinned
+  // 116; each is right alone and wrong here.
   //
   // The jobs CASE total moved three times more — 1350 -> 1354, 1354 -> 1367 and
   // 1367 -> 1378 as three successive verifications closed survivors — and the
-  // FILE total did not move for any of them, because every case landed in a
-  // suite that already existed. That is exactly the drift a file-count pin
-  // cannot see and the case pin can.
-  assert.equal(live.totalFiles, 138);
+  // memory CASE total moved twice more, 596 -> 602 -> 605, the second a NET of
+  // +9 and -6. The FILE total did not move for any of them, because every case
+  // landed in a suite that already existed. That is exactly the drift a
+  // file-count pin cannot see and the case pin can.
+  assert.equal(live.totalFiles, 166);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -242,13 +244,14 @@ test("the census is not vacuous — it reads the real suites", () => {
 test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252.
+  // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
+  // +28 for the memory context.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  // 67 -> 88 -> 102 -> 122 -> 138: +21 providers, +14 the suites `eventing`
-  // brings with it (ADR M0.3 §1 row 17), +20 the suites `skills` brings, +16 the
-  // suites `jobs` brings. Same 138 as above, re-derived from the pinned rows
-  // rather than the tree.
-  assert.equal(files, 138);
+  // 67 -> 88 -> 102 -> 122 -> 138 -> 166: +21 providers, +14 the suites
+  // `eventing` brings with it (ADR M0.3 §1 row 17), +20 the suites `skills`
+  // brings, +16 the suites `jobs` brings, +28 the suites `memory` brings. Same
+  // 166 as above, re-derived from the pinned rows rather than the tree.
+  assert.equal(files, 166);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -303,13 +306,14 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  // The runtime total is re-derived from the FIVE slices that contribute cases,
+  // The runtime total is re-derived from the SIX slices that contribute cases,
   // so a row moved without its delta cannot hide inside it. The eventing
   // context is the third: 142 at adoption, 147 after the 2026-09-03
   // verification's five cases, 149 after the two that close its last two
-  // survivors — all with the file count held at 14. Skills is the fourth, at
-  // 306, and jobs the fifth, at 378; each is pinned by its own test.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378);
+  // survivors — all with the file count held at 14. Skills is the fourth at
+  // 306, jobs the fifth at 378 and memory the sixth at 605; each is pinned by
+  // its own test.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -339,12 +343,46 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   };
   for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
   const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
-  // M2 WAVE-B: `eventing` and `jobs` land in the same integration branch on
-  // INDEPENDENT axes, so this re-derivation carries their 149 and 378 too.
-  // Without those terms the identity would hold only on the skills branch
-  // alone, which is exactly the side-picking this comment exists to prevent:
-  // 1000 + 149 + 306 + 378 = 1833.
-  assert.equal(sum + 149 + 306 + 378, EXPECTED_RUNTIME_TOTAL);
+  // M2 WAVE-B: `eventing`, `jobs` and `memory` land in the same integration
+  // branch on INDEPENDENT axes, so this re-derivation carries their 149, 378
+  // and 605 too. Without those terms the identity would hold only on the skills
+  // branch alone, which is exactly the side-picking this comment exists to
+  // prevent: 1000 + 149 + 306 + 378 + 605 = 2438.
+  assert.equal(sum + 149 + 306 + 378 + 605, EXPECTED_RUNTIME_TOTAL);
+});
+
+test("the memory context is pinned at what vitest prints", () => {
+  // The ONE row this issue moves. `pnpm --filter @platos/context-memory exec
+  // vitest run` prints "Test Files 28 passed (28) / Tests 605 passed (605)";
+  // the AST census reproduces both with zero refusals. Every other package is
+  // held at its earlier value by the tests above, so a suite quietly deleted
+  // elsewhere while memory landed cannot hide inside the new total.
+  //
+  // 596 -> 602 on the v1 rebase: six cases closing the two defects the review
+  // named, in two files that already existed. THE FILE COUNT DOES NOT MOVE, and
+  // that is the whole point of this pin — 28 stays 28 while the case count
+  // rises, which is exactly the drift `docs/v1-ledger-rules.json`'s file counts
+  // cannot see. Four land in application/authorization.test.ts (a command may
+  // not name an acting agent the runtime grant was not minted for) and two in
+  // application/memory-erasure-target.test.ts (the receipt reports what the
+  // deletes observed, not what the plan forecast).
+  //
+  // 602 -> 605 on the 2026-09-03 re-check, and this one is a NET: +9 and -6,
+  // with the file count STILL at 28. The +9 are the six fail-closed erasure
+  // branches pinned one at a time, the two that obtain the ErasureTarget
+  // through the published binder, and the literal value of MAX_CONTENT_LENGTH.
+  // The -6 are `requireRuntimeAuthorization` and `verifyRuntimeScope`, deleted
+  // with their tests as dead duplicates. A pin that moved by +3 and said
+  // nothing else would hide a six-case deletion inside a nine-case addition,
+  // which is why the arithmetic is written out here and in the census prose.
+  //
+  // M2 WAVE-B: `eventing`, `skills` and `jobs` land in the same integration
+  // branch on INDEPENDENT axes, so this re-derivation carries their 149, 306
+  // and 378 too. The memory branch pinned 717 + 283 + 605 = 1605 and was right
+  // alone; here the identity only closes with every adoption's term present.
+  assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
+  assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 149 + 306 + 378 + 605);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

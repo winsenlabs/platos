@@ -213,9 +213,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * gone with the line.
  *
  * M2 WAVE-B INTEGRATION — THE ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
- * `eventing`, `skills` and `jobs` touch DISJOINT packages and each moves this
- * same runtime total on its own axis, so the integrated number is the sum of
- * every delta and is correct on no branch alone:
+ * `eventing`, `skills`, `jobs` and `memory` touch DISJOINT packages and each
+ * moves this same runtime total on its own axis, so the integrated number is
+ * the sum of every delta and is correct on no branch alone:
  *
  *   717   the five slice-1-5 packages (kernel 44, identity-access 231,
  *         secrets 162, tenancy 146, files 134).
@@ -229,11 +229,16 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   +378  jobs (16 files) — 350 at adoption, then 354, 367 and 378 as three
  *         successive independent verifications forced cases into EXISTING
  *         files, with the file count at 16 throughout.
+ *   +605  memory (28 files) — 602 at adoption, 605 after the three cases the
+ *         published-erasure-target review forced, again with the file count
+ *         held at 28.
  *
- *   717 + 283 + 149 + 306 + 378 = 1833, and 88 + 14 + 20 + 16 = 138 files.
+ *   717 + 283 + 149 + 306 + 378 + 605 = 2438, and 88 + 14 + 20 + 16 + 28 = 166
+ *   files.
  *
- * The eventing branch pinned 1149, the skills branch pinned 1306 and the jobs
- * branch pinned 1378; each was right for its own tree and wrong for this one.
+ * The eventing branch pinned 1149, the skills branch pinned 1306, the jobs
+ * branch pinned 1378 and the memory branch pinned 1605; each was right for its
+ * own tree and wrong for this one.
  * Picking any of them would silently drop a whole context's suite out of the
  * pinned total while the census stayed green on the branch it came from — which
  * is precisely the drift this constant exists to catch. The skills branch
@@ -324,6 +329,88 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
+ *
+ * MEMORY ADOPTION (WIN-256, ADR M0.3 §1 row 8). One row moves:
+ *
+ *   memory 0 -> 28 files, 0 -> 602 cases; 1000 -> 1602 total. 15 domain suites,
+ *   12 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 602 is a statically exact count, and
+ *   `pnpm --filter @platos/context-memory exec vitest run` prints the same pair
+ *   — "Test Files 28 passed (28) / Tests 602 passed (602)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ *   Six of those 602 arrived with the `authorizeMutation` gate: a self-review
+ *   found archive, restore, revise, forget, forget-many and forget-entity
+ *   reaching the READ gate, which an operator's `metadata` grant passes, so a
+ *   grant that may not mutate could destroy a row. The gate and its six cases
+ *   landed together, and the mutations enumerated in that commit prove them a
+ *   control rather than a claim.
+ *
+ *   The last SIX (596 -> 602) close the two defects the v1 rebase review named,
+ *   and they add no file — 28 stays 28. Both were PROTECTIVE MECHANISMS THAT
+ *   NOTHING PROVED PROTECTED, and both were confirmed by mutating the ORIGINAL
+ *   596-case suite and watching it stay green:
+ *
+ *     +4 in application/authorization.test.ts. `subjectFor` takes the acting
+ *        agent FROM the runtime grant and ignores the command's claim, but every
+ *        existing case passed either null or the grant's own agent, so
+ *        `request.actingAgentId ?? grant.runtime.actingAgentId` was invisible.
+ *        Two cases now name a DIFFERENT agent at the unit, and two prove the
+ *        consequence end to end — a denied cross-agent READ, and a write
+ *        attributed to the grant's agent rather than the claimed one.
+ *
+ *     +2 in application/memory-erasure-target.test.ts. The receipt reports the
+ *        counts the DELETES returned, but every existing case erased a store
+ *        that had not moved since plan(), so `items: plan.items` — a forecast
+ *        wearing an observation's clothes — passed. The store now moves between
+ *        plan() and erase() in both directions.
+ *
+ *   memory 602 -> 605 (+3), 1602 -> 1605 total, and the file count STILL does
+ *   not move — 28 stays 28. This is a NET of +9 and -6, which is the arithmetic
+ *   a single number hides, so it is spelled out:
+ *
+ *     +6 in application/memory-erasure-target.test.ts (16 -> 22). Three of the
+ *        target's six fail-closed branches were decorative. The two existing
+ *        failure cases use a WHOLE-STORE outage, and the branches run in a fixed
+ *        order, so an outage only ever reaches the first of them:
+ *        `countMemoriesForSubject` on the plan path and
+ *        `deleteRelationshipsForSubject` on the erase path. Neutralising
+ *        `countEntitiesForSubject`'s refusal produced a ZERO-COUNT PLAN, and
+ *        neutralising `deleteEntitiesForSubject`'s or
+ *        `deleteMemoriesForSubject`'s produced a RECEIPT CARRYING THE PLAN'S
+ *        COUNTS — exactly what `MemoryErasureRejected`'s docblock forbids — with
+ *        all 602 green. `failErasureWith` on both in-memory doubles fails ONE
+ *        method, so all six branches are now pinned independently.
+ *
+ *     +2 in contracts/index.test.ts (14 -> 16). `createMemoryErasureTarget` had
+ *        no publication path at all: `MemoryContract` declared no
+ *        `erasureTarget()`, the barrel re-exported no erasure symbol, and
+ *        `package.json` publishes only this barrel and
+ *        `application/ports/index.js`. The composition root could not obtain it,
+ *        so `privacy`'s multi-context erasure silently omitted the sole writer
+ *        of `Memory`, `MemoryEntity` and `MemoryRelationship`. It is published
+ *        the way `files` publishes it on v1 and `jobs` in this same wave, and
+ *        both cases go through the PUBLISHED BINDER so dropping the method again
+ *        turns them red.
+ *
+ *     +1 in domain/content.test.ts (23 -> 24). `MAX_CONTENT_LENGTH`'s VALUE was
+ *        unpinned: every case derived its input from the constant, so raising
+ *        4000 to 4,000,000 stayed green. The literal is now the pin.
+ *
+ *     -6 in domain/authorization.test.ts (15 -> 9). `requireRuntimeAuthorization`
+ *        (2 cases) and `verifyRuntimeScope` (4) are DELETED, with their tests.
+ *        Both were dead: the former duplicates
+ *        `application/authorization.ts::verifyRuntime` verbatim, and the latter
+ *        has no possible caller, because `application/authorization.ts`'s own
+ *        header records that "No use case in this package takes an environment
+ *        id from a caller — the scope is derived from the grant", so there is no
+ *        caller-supplied scope for it to compare against. A stable release does
+ *        not ship a guard nothing can call beside the one that is called.
+ *
+ * Verified as a live control on the memory branch: deleting one `it()` from
+ * `packages/contexts/memory/domain/fusion.test.ts` left the file count where it
+ * was (116 there, 166 in this integrated tree) and turned the case count red,
+ * which is the drift a file-count pin cannot see.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -347,7 +434,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 16, cases: 378 },
-  "packages/contexts/memory": { files: 0, cases: 0 },
+  "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
@@ -365,7 +452,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1833;
+export const EXPECTED_RUNTIME_TOTAL = 2438;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

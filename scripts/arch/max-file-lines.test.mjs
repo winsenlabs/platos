@@ -75,7 +75,7 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478. WIN-256 made packages/kernel and four contexts
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555. WIN-256 made packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
   // 400/500-line budget.
@@ -96,6 +96,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and 13 named use cases rather than a registry service, which is the shape §6
   // exists to force.
   //
+  // +77: the same issue makes `memory` real. The budget bit once again, at 446
+  // effective lines, and the answer was the same one — the module was the
+  // knowledge-graph suite covering both the write use cases and the read ones,
+  // and it split into `knowledge-graph.test.ts` and `graph-queries.test.ts`
+  // along exactly the seam the two modules under test already had.
+  //
   // +51: the same issue makes `jobs` real. Its production source is split across
   // `execute-job.ts`, `register-job.ts` and the two approval use cases rather
   // than reproducing the 571-line `job-execution.service.ts` it replaces, which
@@ -104,20 +110,26 @@ test("the live selectors scan an exact nonzero source census", () => {
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
-  // (328 + 51) on v1. The axes are disjoint, so the integrated census is their
-  // SUM and not any branch pin: 328 + 44 + 55 + 51 = 478.
+  // (328 + 51) on v1 and memory pinned 405 (328 + 77). The axes are disjoint,
+  // so the integrated census is their SUM and not any branch pin:
+  // 328 + 44 + 55 + 51 + 77 = 555.
   //
-  // ONE FILE IS IN THE WARNING BAND, and this comment says so rather than
-  // repeating the sentence that was true before `jobs` landed:
-  // `packages/contexts/jobs/application/approval-lifecycle.test.ts` counts 465
-  // effective lines. It is a TEST module, it is below the 500-line hard error,
-  // and the gate reports it as a warning by design. The assertions below pin
+  // THREE FILES ARE IN THE WARNING BAND, and this comment says so rather than
+  // repeating the sentence that was true before `jobs` and `memory` landed:
+  //
+  //   packages/contexts/jobs/application/approval-lifecycle.test.ts   465
+  //   packages/contexts/memory/application/authorization.test.ts      448
+  //   packages/contexts/memory/contracts/index.test.ts                404
+  //
+  // All three are TEST modules, all three are below the 500-line hard error,
+  // and the gate reports them as warnings by design. The assertions below pin
   // what the gate ENFORCES — zero errors — and deliberately do not pin zero
   // warnings, because the warning band exists to be visible rather than empty.
   // The jobs branch's own note claimed its largest file was "well inside the
-  // 400-line warn threshold"; running the audit over the integrated tree shows
-  // that was not true, so the claim is corrected here rather than carried.
-  assert.equal(result.fileCount, 478);
+  // 400-line warn threshold" and the memory branch's said "none is inside the
+  // warning band"; running the audit over the integrated tree shows neither was
+  // true, so both claims are corrected here rather than carried.
+  assert.equal(result.fileCount, 555);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });
