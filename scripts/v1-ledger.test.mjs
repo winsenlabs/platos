@@ -545,12 +545,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
-<<<<<<< HEAD
     //
-    // M2 INTEGRATION DELTA — packages 1 -> 272, docs-content 9 -> 13,
-    // root-infra 10 -> 37, total +20 -> +322. Three branches add files on
-    // independent axes, so each area is the SUM of every contribution, not any
-    // one alone.
+    // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
+    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +346. Four branches add files on independent axes, so each
+    // area is the SUM of every contribution, not any one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
