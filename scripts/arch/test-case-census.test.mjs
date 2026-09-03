@@ -260,7 +260,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 
 test("the memory context is pinned at what vitest prints", () => {
   // The ONE row this issue moves. `pnpm --filter @platos/context-memory exec
-  // vitest run` prints "Test Files 28 passed (28) / Tests 602 passed (602)";
+  // vitest run` prints "Test Files 28 passed (28) / Tests 605 passed (605)";
   // the AST census reproduces both with zero refusals. Every other package is
   // held at its earlier value by the tests above, so a suite quietly deleted
   // elsewhere while memory landed cannot hide inside the new total.
@@ -273,9 +273,18 @@ test("the memory context is pinned at what vitest prints", () => {
   // not name an acting agent the runtime grant was not minted for) and two in
   // application/memory-erasure-target.test.ts (the receipt reports what the
   // deletes observed, not what the plan forecast).
+  //
+  // 602 -> 605 on the 2026-09-03 re-check, and this one is a NET: +9 and -6,
+  // with the file count STILL at 28. The +9 are the six fail-closed erasure
+  // branches pinned one at a time, the two that obtain the ErasureTarget
+  // through the published binder, and the literal value of MAX_CONTENT_LENGTH.
+  // The -6 are `requireRuntimeAuthorization` and `verifyRuntimeScope`, deleted
+  // with their tests as dead duplicates. A pin that moved by +3 and said
+  // nothing else would hide a six-case deletion inside a nine-case addition,
+  // which is why the arithmetic is written out here and in the census prose.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
-  assert.equal(EXPECTED["packages/contexts/memory"].cases, 602);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 602);
+  assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 605);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

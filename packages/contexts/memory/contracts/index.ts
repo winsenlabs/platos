@@ -38,7 +38,7 @@
 // Publishing the mint keeps the two-layer unforgeability intact — a value still
 // has to have come from a CALL, and no JSON body can be one.
 
-import type { EnvironmentId, Result } from "@platos/kernel";
+import type { EnvironmentId, ErasureTarget, Result } from "@platos/kernel";
 
 import type { MemoryMetadata } from "../domain/index.js";
 
@@ -342,6 +342,23 @@ export interface MemoryContract {
   reconcileFromTurn(
     command: useCases.ReconcileTurnCommand,
   ): Promise<Result<useCases.ReconciliationReport>>;
+
+  // ---- right to erasure ----------------------------------------------------
+  /**
+   * This context's `ErasureTarget` for the rows it is sole writer of. The
+   * composition root collects one of these per context and injects the array
+   * into `privacy` (ADR M0.3 §3).
+   *
+   * IT IS ON THE CONTRACT BECAUSE THERE IS NO OTHER DOOR. `package.json`
+   * publishes exactly two entrypoints — this barrel and
+   * `application/ports/index.js` — so a target that is not reachable from one of
+   * them is not reachable from the composition root at all. `memory` is sole
+   * writer of `Memory`, `MemoryEntity` and `MemoryRelationship`, so an
+   * unpublished target means a right-to-erasure operation silently omits the
+   * three models that hold what a subject actually said. `files` publishes it
+   * the same way on v1, and so does `jobs`.
+   */
+  erasureTarget(): ErasureTarget;
 }
 
 /** The integration events this context publishes through the kernel outbox. */
@@ -454,6 +471,8 @@ export function memoryContract(dependencies: MemoryDependencies): MemoryContract
 
     reconcileFromRating: (command) => useCases.reconcileFromRating(dependencies, command),
     reconcileFromTurn: (command) => useCases.reconcileFromTurn(dependencies, command),
+
+    erasureTarget: () => useCases.createMemoryErasureTarget(dependencies),
   };
   return Object.freeze(contract);
 }

@@ -34,6 +34,16 @@ describe("content admission", () => {
     expect(admitContentText("x".repeat(MAX_CONTENT_LENGTH + 1)).ok).toBe(false);
   });
 
+  // THE CAP'S VALUE WAS UNPINNED. Every case around this one derives its input
+  // FROM the constant, so raising 4000 to 4,000,000 kept them all green — the
+  // boundary was pinned, the number was not, and the number is the rule the
+  // source transcribes. The literal is the pin.
+  it("pins the cap at 4000 characters, the number the source applies", () => {
+    expect(MAX_CONTENT_LENGTH).toBe(4000);
+    expect(admitContentText("x".repeat(4000)).ok).toBe(true);
+    expect(admitContentText("x".repeat(4001)).ok).toBe(false);
+  });
+
   it("measures the cap AFTER trimming, so surrounding whitespace is not content", () => {
     expect(admitContentText(`  ${"x".repeat(MAX_CONTENT_LENGTH)}  `).ok).toBe(true);
   });

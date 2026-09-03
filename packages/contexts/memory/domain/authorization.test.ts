@@ -11,9 +11,7 @@ import {
   authorizeMemoryRuntime,
   isMemoryRuntimeAuthorization,
   isMintedMemoryAuthorization,
-  requireRuntimeAuthorization,
   runtimeScope,
-  verifyRuntimeScope,
 } from "./authorization.js";
 import type { ActorId, AgentId, EndUserId } from "./identifiers.js";
 
@@ -74,20 +72,6 @@ describe("unforgeability", () => {
   });
 });
 
-describe("requireRuntimeAuthorization", () => {
-  it("passes a minted grant through", () => {
-    const required = requireRuntimeAuthorization(grant());
-    expect(required.ok).toBe(true);
-  });
-
-  it("refuses anything else with a scope-mismatch code", () => {
-    const required = requireRuntimeAuthorization({});
-    expect(required.ok).toBe(false);
-    if (required.ok) throw new Error("unreachable");
-    expect(required.error.code).toBe("MEMORY_SCOPE_MISMATCH");
-  });
-});
-
 describe("the grant names its subject", () => {
   it("carries the end user and the acting agent inside the checked value", () => {
     const minted = grant();
@@ -100,41 +84,7 @@ describe("the grant names its subject", () => {
   });
 });
 
-describe("verifyRuntimeScope", () => {
-  it("accepts the scope the grant was minted for", () => {
-    expect(verifyRuntimeScope(grant(), SCOPE).ok).toBe(true);
-  });
-
-  it("compares the WHOLE ancestry, not the leaf alone", () => {
-    const reparented = environmentScope(
-      asIdentifier<OrganizationId>("org-2"),
-      ANCESTRY.projectId,
-      ANCESTRY.environmentId,
-    );
-    const verified = verifyRuntimeScope(grant(), reparented);
-    expect(verified.ok).toBe(false);
-    if (verified.ok) throw new Error("unreachable");
-    expect(verified.error.code).toBe("MEMORY_SCOPE_MISMATCH");
-  });
-
-  it("refuses a different project with the same environment id", () => {
-    const moved = environmentScope(
-      ANCESTRY.organizationId,
-      asIdentifier<ProjectId>("proj-2"),
-      ANCESTRY.environmentId,
-    );
-    expect(verifyRuntimeScope(grant(), moved).ok).toBe(false);
-  });
-
-  it("refuses a different environment", () => {
-    const other = environmentScope(
-      ANCESTRY.organizationId,
-      ANCESTRY.projectId,
-      asIdentifier<EnvironmentId>("env-2"),
-    );
-    expect(verifyRuntimeScope(grant(), other).ok).toBe(false);
-  });
-
+describe("runtimeScope", () => {
   it("resolves the grant back to a kernel scope", () => {
     expect(runtimeScope(grant())).toEqual(SCOPE);
   });

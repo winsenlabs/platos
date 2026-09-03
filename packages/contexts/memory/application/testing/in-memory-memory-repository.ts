@@ -61,6 +61,9 @@ interface StoredRow {
   embedding: readonly number[] | null;
 }
 
+/** The erasure methods a test may fail INDIVIDUALLY. See `failErasureWith`. */
+export type MemoryErasureMethod = "countMemoriesForSubject" | "deleteMemoriesForSubject";
+
 export class InMemoryMemoryRepository implements MemoryRepository {
   private readonly rows = new Map<MemoryId, StoredRow>();
   private readonly threads = new Map<ThreadId, { ownership: MemoryOwnership; endUserId: EndUserId }>();
@@ -71,6 +74,7 @@ export class InMemoryMemoryRepository implements MemoryRepository {
   readonly writes: string[] = [];
 
   private failure: string | null = null;
+  private readonly erasureFailures = new Map<MemoryErasureMethod, string>();
 
   constructor(private bindings: readonly AgentBinding[] = []) {}
 
@@ -78,6 +82,24 @@ export class InMemoryMemoryRepository implements MemoryRepository {
 
   failWith(reason: string | null): void {
     this.failure = reason;
+  }
+
+  /**
+   * Fail ONE erasure method rather than the whole store.
+   *
+   * The erasure target's fail-closed branches run in a fixed order, so a
+   * whole-store outage only ever reaches the first of them. Failing a single
+   * method is what makes each later branch reachable, and each has its own
+   * consequence: a zero-count PLAN, or a RECEIPT claiming rows that were never
+   * destroyed. `failWith` still wins, so nothing that used it changes meaning.
+   */
+  failErasureWith(method: MemoryErasureMethod, reason: string | null): void {
+    if (reason === null) this.erasureFailures.delete(method);
+    else this.erasureFailures.set(method, reason);
+  }
+
+  private erasureBlockedBy(method: MemoryErasureMethod): string | null {
+    return this.failure ?? this.erasureFailures.get(method) ?? null;
   }
 
   setBindings(bindings: readonly AgentBinding[]): void {
@@ -367,7 +389,8 @@ export class InMemoryMemoryRepository implements MemoryRepository {
   // --- erasure --------------------------------------------------------------
 
   async countMemoriesForSubject(selector: MemoryErasureSelector): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("countMemoriesForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     return ok(this.forSubject(selector).length);
   }
 
@@ -375,7 +398,8 @@ export class InMemoryMemoryRepository implements MemoryRepository {
     selector: MemoryErasureSelector,
     transaction: TransactionScope,
   ): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("deleteMemoriesForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     this.writes.push(transaction.transactionId);
     const doomed = this.forSubject(selector);
     for (const memory of doomed) this.rows.delete(memory.memoryId);

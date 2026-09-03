@@ -40,15 +40,44 @@ import type {
 } from "../ports/index.js";
 import { cosineSimilarity, deterministicEmbedding } from "./in-memory-embedding-model.js";
 
+/** The erasure methods a test may fail INDIVIDUALLY. See `failErasureWith`. */
+export type GraphErasureMethod =
+  | "countEntitiesForSubject"
+  | "countRelationshipsForSubject"
+  | "deleteRelationshipsForSubject"
+  | "deleteEntitiesForSubject";
+
 export class InMemoryKnowledgeGraphRepository implements KnowledgeGraphRepository {
   private readonly entities = new Map<MemoryEntityId, MemoryEntity>();
   private readonly edges = new Map<MemoryRelationshipId, MemoryRelationship>();
   private failure: string | null = null;
+  private readonly erasureFailures = new Map<GraphErasureMethod, string>();
 
   readonly writes: string[] = [];
 
   failWith(reason: string | null): void {
     this.failure = reason;
+  }
+
+  /**
+   * Fail ONE erasure method rather than the whole store.
+   *
+   * `failWith` is a whole-store outage and it is the right double for "the graph
+   * is unreachable". What it CANNOT do is separate the erasure target's six
+   * fail-closed branches: they run in a fixed order, so an outage only ever
+   * reaches the first of them and every later branch stays unfalsifiable behind
+   * it. Each branch has a different consequence — a zero-count PLAN, or a
+   * RECEIPT claiming rows that were not destroyed — so each has to be reachable
+   * on its own. A whole-store failure still wins over a per-method one, so no
+   * existing test changes meaning.
+   */
+  failErasureWith(method: GraphErasureMethod, reason: string | null): void {
+    if (reason === null) this.erasureFailures.delete(method);
+    else this.erasureFailures.set(method, reason);
+  }
+
+  private erasureBlockedBy(method: GraphErasureMethod): string | null {
+    return this.failure ?? this.erasureFailures.get(method) ?? null;
   }
 
   seedEntity(entity: MemoryEntity): MemoryEntity {
@@ -253,12 +282,14 @@ export class InMemoryKnowledgeGraphRepository implements KnowledgeGraphRepositor
   // --- erasure --------------------------------------------------------------
 
   async countEntitiesForSubject(selector: MemoryErasureSelector): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("countEntitiesForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     return ok(this.entitiesForSubject(selector).length);
   }
 
   async countRelationshipsForSubject(selector: MemoryErasureSelector): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("countRelationshipsForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     return ok(this.relationshipsForSubject(selector).length);
   }
 
@@ -266,7 +297,8 @@ export class InMemoryKnowledgeGraphRepository implements KnowledgeGraphRepositor
     selector: MemoryErasureSelector,
     transaction: TransactionScope,
   ): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("deleteRelationshipsForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     this.writes.push(transaction.transactionId);
     const doomed = this.relationshipsForSubject(selector);
     for (const edge of doomed) this.edges.delete(edge.relationshipId);
@@ -277,7 +309,8 @@ export class InMemoryKnowledgeGraphRepository implements KnowledgeGraphRepositor
     selector: MemoryErasureSelector,
     transaction: TransactionScope,
   ): Promise<Result<number>> {
-    if (this.failure !== null) return err(repositoryUnavailable(this.failure));
+    const blocked = this.erasureBlockedBy("deleteEntitiesForSubject");
+    if (blocked !== null) return err(repositoryUnavailable(blocked));
     this.writes.push(transaction.transactionId);
     const doomed = this.entitiesForSubject(selector);
     for (const entity of doomed) this.entities.delete(entity.entityId);

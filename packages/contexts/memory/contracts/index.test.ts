@@ -1,4 +1,4 @@
-import { asIdentifier } from "@platos/kernel";
+import { asIdentifier, type ErasureSubject, type TransactionId, type TransactionScope } from "@platos/kernel";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,7 +6,9 @@ import {
   entityFixture,
   harness,
   memoryFixture,
+  relationshipFixture,
   runtimeGrant,
+  SUBJECT_ID,
   THREAD,
   turnsFixture,
 } from "../application/testing/fixtures.js";
@@ -403,5 +405,54 @@ describe("failures cross the boundary as values", () => {
     expect(listed.ok).toBe(false);
     if (listed.ok) throw new Error("unreachable");
     expect(listed.error.code).toBe("MEMORY_REPOSITORY_UNAVAILABLE");
+  });
+});
+
+// THE ERASURE TARGET HAD NO PUBLICATION PATH. `createMemoryErasureTarget`
+// existed, was tested directly, and was reachable from nowhere: `MemoryContract`
+// declared no `erasureTarget()`, this barrel re-exported no erasure symbol, and
+// `package.json` publishes exactly two entrypoints — this one and
+// `application/ports/index.js`. The composition root could therefore not obtain
+// it, so `privacy`'s multi-context erasure silently omitted the sole writer of
+// `Memory`, `MemoryEntity` and `MemoryRelationship` — the three models that hold
+// what a subject actually said.
+//
+// These cases go THROUGH the published binder rather than through
+// `createMemoryErasureTarget`, so a binder that drops the method again goes red
+// here even though the use case's own suite would stay green. `files` on v1 and
+// `jobs` in this wave publish it the same way.
+describe("the ErasureTarget the composition root collects", () => {
+  const SUBJECT: ErasureSubject = {
+    subjectKind: "end-user",
+    subjectId: SUBJECT_ID,
+    scope: ENVIRONMENT_SCOPE,
+  };
+  const TRANSACTION: TransactionScope = { transactionId: asIdentifier<TransactionId>("txn-1") };
+
+  it("is published on the contract, named for this context", () => {
+    const { contract } = contractFor();
+    expect(contract.erasureTarget().targetName).toBe("memory");
+  });
+
+  it("plans and erases this context's three models through the published surface", async () => {
+    const { contract, context } = contractFor();
+    context.repository.seed(memoryFixture({ memoryId: asIdentifier<MemoryId>("mem-1") }));
+    context.graph.seedEntity(entityFixture({ entityId: asIdentifier<MemoryEntityId>("ent-1") }));
+    context.graph.seedRelationship(relationshipFixture());
+
+    const target = contract.erasureTarget();
+    const plan = await target.plan(SUBJECT);
+    expect(plan.items.map((item) => item.model)).toEqual([
+      "Memory",
+      "MemoryEntity",
+      "MemoryRelationship",
+    ]);
+    expect(plan.items.map((item) => item.rowCount)).toEqual([1, 1, 1]);
+
+    const receipt = await target.erase(plan, TRANSACTION);
+    expect(receipt.items.map((item) => item.rowCount)).toEqual([1, 1, 1]);
+    expect(context.repository.all()).toHaveLength(0);
+    expect(context.graph.allEntities()).toHaveLength(0);
+    expect(context.graph.allRelationships()).toHaveLength(0);
   });
 });

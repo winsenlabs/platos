@@ -34,10 +34,9 @@
 // that lets a mis-wired turn recall the wrong person's history while every
 // individual check passes, so the subject is inside the value that is checked.
 
-import { environmentScope, err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { environmentScope, type EnvironmentScope } from "@platos/kernel";
 import type { EnvironmentId, OrganizationId, ProjectId } from "@platos/kernel";
 
-import { scopeMismatch } from "./errors.js";
 import type { ActorId, AgentId, EndUserId } from "./identifiers.js";
 
 declare const memoryAuthorization: unique symbol;
@@ -98,41 +97,7 @@ export function isMemoryRuntimeAuthorization(value: unknown): value is MemoryRun
   return (value as { principalType?: unknown }).principalType === "runtime";
 }
 
-/** The predicate as a `Result`, for use-case composition. */
-export function requireRuntimeAuthorization(value: unknown): Result<MemoryRuntimeAuthorization> {
-  if (!isMemoryRuntimeAuthorization(value)) {
-    return err(scopeMismatch("memory runtime authorization", "a value this context did not mint"));
-  }
-  return ok(value);
-}
-
 /** The environment a runtime grant covers, as a kernel scope. */
 export function runtimeScope(grant: MemoryRuntimeAuthorization): EnvironmentScope {
   return environmentScope(grant.organizationId, grant.projectId, grant.environmentId);
-}
-
-/**
- * Confirm a runtime grant covers the scope it is being used for.
- *
- * The grant carries its whole ancestry, so this compares the whole chain rather
- * than the leaf alone. Matching on `environmentId` only would accept a grant
- * minted for an environment that has since been re-parented, which is precisely
- * the cross-tenant read this check exists to refuse.
- */
-export function verifyRuntimeScope(
-  grant: MemoryRuntimeAuthorization,
-  scope: EnvironmentScope,
-): Result<MemoryRuntimeAuthorization> {
-  if (
-    grant.organizationId !== scope.organizationId ||
-    grant.projectId !== scope.projectId ||
-    grant.environmentId !== scope.environmentId
-  ) {
-    return err(scopeMismatch(pathOf(scope), pathOf(grant)));
-  }
-  return ok(grant);
-}
-
-function pathOf(ancestry: EnvironmentAncestry): string {
-  return `org/${ancestry.organizationId}/proj/${ancestry.projectId}/env/${ancestry.environmentId}`;
 }

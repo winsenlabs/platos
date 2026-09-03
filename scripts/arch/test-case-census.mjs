@@ -137,6 +137,48 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *        wearing an observation's clothes — passed. The store now moves between
  *        plan() and erase() in both directions.
  *
+ *   memory 602 -> 605 (+3), 1602 -> 1605 total, and the file count STILL does
+ *   not move — 28 stays 28. This is a NET of +9 and -6, which is the arithmetic
+ *   a single number hides, so it is spelled out:
+ *
+ *     +6 in application/memory-erasure-target.test.ts (16 -> 22). Three of the
+ *        target's six fail-closed branches were decorative. The two existing
+ *        failure cases use a WHOLE-STORE outage, and the branches run in a fixed
+ *        order, so an outage only ever reaches the first of them:
+ *        `countMemoriesForSubject` on the plan path and
+ *        `deleteRelationshipsForSubject` on the erase path. Neutralising
+ *        `countEntitiesForSubject`'s refusal produced a ZERO-COUNT PLAN, and
+ *        neutralising `deleteEntitiesForSubject`'s or
+ *        `deleteMemoriesForSubject`'s produced a RECEIPT CARRYING THE PLAN'S
+ *        COUNTS — exactly what `MemoryErasureRejected`'s docblock forbids — with
+ *        all 602 green. `failErasureWith` on both in-memory doubles fails ONE
+ *        method, so all six branches are now pinned independently.
+ *
+ *     +2 in contracts/index.test.ts (14 -> 16). `createMemoryErasureTarget` had
+ *        no publication path at all: `MemoryContract` declared no
+ *        `erasureTarget()`, the barrel re-exported no erasure symbol, and
+ *        `package.json` publishes only this barrel and
+ *        `application/ports/index.js`. The composition root could not obtain it,
+ *        so `privacy`'s multi-context erasure silently omitted the sole writer
+ *        of `Memory`, `MemoryEntity` and `MemoryRelationship`. It is published
+ *        the way `files` publishes it on v1 and `jobs` in this same wave, and
+ *        both cases go through the PUBLISHED BINDER so dropping the method again
+ *        turns them red.
+ *
+ *     +1 in domain/content.test.ts (23 -> 24). `MAX_CONTENT_LENGTH`'s VALUE was
+ *        unpinned: every case derived its input from the constant, so raising
+ *        4000 to 4,000,000 stayed green. The literal is now the pin.
+ *
+ *     -6 in domain/authorization.test.ts (15 -> 9). `requireRuntimeAuthorization`
+ *        (2 cases) and `verifyRuntimeScope` (4) are DELETED, with their tests.
+ *        Both were dead: the former duplicates
+ *        `application/authorization.ts::verifyRuntime` verbatim, and the latter
+ *        has no possible caller, because `application/authorization.ts`'s own
+ *        header records that "No use case in this package takes an environment
+ *        id from a caller — the scope is derived from the grant", so there is no
+ *        caller-supplied scope for it to compare against. A stable release does
+ *        not ship a guard nothing can call beside the one that is called.
+ *
  * Verified as a live control: deleting one `it()` from
  * `packages/contexts/memory/domain/fusion.test.ts` leaves the file count at 116
  * and turns the case count red, which is the drift a file-count pin cannot see.
@@ -163,7 +205,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
-  "packages/contexts/memory": { files: 28, cases: 602 },
+  "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
@@ -181,7 +223,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1602;
+export const EXPECTED_RUNTIME_TOTAL = 1605;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

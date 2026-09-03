@@ -232,6 +232,55 @@ describe("the erasure", () => {
   });
 });
 
+// THREE OF THE SIX FAIL-CLOSED BRANCHES WERE DECORATIVE.
+//
+// The two cases above reach exactly two of them: `repository.failWith` before
+// the plan reaches `countMemoriesForSubject`, and `graph.failWith` after the
+// plan reaches `deleteRelationshipsForSubject`. A whole-store outage cannot
+// reach any LATER branch, because the first failure short-circuits the rest —
+// so neutralising `countEntitiesForSubject`'s, `deleteEntitiesForSubject`'s or
+// `deleteMemoriesForSubject`'s refusal left all 602 tests green while producing
+// precisely what `MemoryErasureRejected`'s docblock forbids:
+//
+//   a count that failed  -> a plan reporting ZERO rows, so `privacy` adjudicates
+//                           an erasure against a subject who looks empty.
+//   a delete that failed -> a receipt carrying the PLAN's counts, which is "a
+//                           receipt claiming a row was destroyed when it was
+//                           not" — the one outcome the class exists to prevent.
+//
+// `failErasureWith` fails ONE method, which is what makes each branch reachable
+// on its own. All six are pinned here, in the order they run, and every one
+// asserts a REJECTION rather than a plan or a receipt.
+describe("every fail-closed branch, one at a time", () => {
+  it.each([
+    ["countMemoriesForSubject", "repository"],
+    ["countEntitiesForSubject", "graph"],
+    ["countRelationshipsForSubject", "graph"],
+  ] as const)("REJECTS the plan when %s fails, rather than reporting zero", async (method, store) => {
+    const context = harness();
+    seedAll(context);
+    if (store === "repository") context.repository.failErasureWith(method, "store down");
+    else context.graph.failErasureWith(method, "store down");
+    await expect(createMemoryErasureTarget(context.dependencies).plan(SUBJECT)).rejects.toBeInstanceOf(
+      MemoryErasureRejected,
+    );
+  });
+
+  it.each([
+    ["deleteRelationshipsForSubject", "graph"],
+    ["deleteEntitiesForSubject", "graph"],
+    ["deleteMemoriesForSubject", "repository"],
+  ] as const)("REJECTS rather than issuing a receipt when %s fails", async (method, store) => {
+    const context = harness();
+    seedAll(context);
+    const target = createMemoryErasureTarget(context.dependencies);
+    const plan = await target.plan(SUBJECT);
+    if (store === "repository") context.repository.failErasureWith(method, "store down");
+    else context.graph.failErasureWith(method, "store down");
+    await expect(target.erase(plan, TRANSACTION)).rejects.toBeInstanceOf(MemoryErasureRejected);
+  });
+});
+
 describe("selectorFor", () => {
   it("matches only an END-USER subject", () => {
     expect(selectorFor(SUBJECT)?.endUserId).toBe(SUBJECT_ID);
