@@ -529,10 +529,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
     "apps-mcp-stdio": 3,
-    // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
-    // attribution, kept out of LICENSE so every publishable package's LICENSE
-    // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
-    // added 206 files making packages/kernel and four contexts real
+    // 1 -> 207 -> 272 -> 339. WIN-252 added packages/core/NOTICE (the upstream
+    // MIT attribution, kept out of LICENSE so every publishable package's
+    // LICENSE stays byte-identical to the repository Apache-2.0 text). WIN-256
+    // then added 206 files making packages/kernel and four contexts real
     // (identity-access, secrets, tenancy, files) — domain, application, ports,
     // contracts, in-memory use cases and test builders.
     //
@@ -541,14 +541,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +67: the same issue makes `agents` real (context 5) — 16 domain modules
+    // and 14 domain suites, 16 application modules and 10 application suites,
+    // 4 ports, 4 in-memory doubles, and the contracts barrel plus its split
+    // read-model module and its suite. The 67 are likewise NET of the 4
+    // released placeholders, and two of them exist only because the ADR M0.3 §6
+    // budget bit in its warning band and the answer was to split rather than to
+    // waive.
+    packages: 339,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +346. Four branches add files on independent axes, so each
+    // packages 1 -> 339, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +413. Five branches add files on independent axes, so each
     // area is the SUM of every contribution, not any one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
@@ -597,9 +605,6 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     //   docs-content +0 — WIN-256 adds no document to that area.
     //
-    // No new ledger rule was needed by any branch: docs/audits/**, packages/**,
-    // tests/** and scripts/** already have owning rules, so only the
-    // fingerprint moves. Every added file is enumerated above and conserves
     // WIN-297 (composition root) contributes +24 (apps-core-api +19,
     // apps-mcp-stdio +3, root-infra +2), all attributed above and below.
     //
@@ -611,16 +616,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   root-infra from 15 to 17 on their own lineage, but on different files,
     //   so the integrated value is 10 + 3 + 17 + 7 + 2 = 39, not 17.
     //
+    // WIN-256 (agents context) contributes +67, ENTIRELY on the packages axis
+    // — 272 -> 339, enumerated in the packages comment above. Adoption itself
+    // adds no root-infra file: it is one line appended to the generator's
+    // ADOPTED_PROJECTS list, in a file that already existed, exactly as it was
+    // for `providers`. docs-content and both apps areas are untouched, which is
+    // why this slice composes with the other four by addition rather than by
+    // reconciliation.
+    //
     // No new ledger rule was needed by any branch beyond WIN-297's
     // apps-core-api.source.process rule, which is declared ahead of the
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // 20 + 5 + 19 + 278 + 24 + 67 = 413.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 413);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +642,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +413 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
+    // WIN-297 +24, WIN-256 agents +67); this one re-derives it by summing the
+    // per-area counts independently.
+    rulesDocument.baseline.totalFiles + 413
   );
 });
 

@@ -218,9 +218,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 397. Three adopting slices make disjoint
-    // projects real, so the census is the sum of all three, not either branch's
-    // pin:
+    // M2 INTEGRATION DELTA — 104 -> 464. Four adopting slices make disjoint
+    // projects real, so the census is the sum of all of them, not any one
+    // branch's pin:
     //
     //   104 -> 310  The 104 was the all-placeholder skeleton. WIN-256 made
     //               packages/kernel and four contexts real (identity-access,
@@ -240,10 +240,22 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               lifecycle, health, the binding table and their tests) and 2
     //               making apps/mcp-stdio a real stdio binary, minus nothing —
     //               its 9 released placeholders were replaced in place.
+    //   397 -> 464  +67: WIN-256 makes `agents` real (context 5). It is the
+    //               first adopted context with THREE peer dependencies —
+    //               `tenancy`, `providers` and `skills` — so the first time
+    //               rule (d) has had to admit an edge to a context that is
+    //               itself still a generated placeholder. It needed no change:
+    //               the DAG allow-list is about which edges exist, not about
+    //               how real their targets are, and `skills` is imported as its
+    //               published contract exactly like the other two. The 67 are
+    //               NET of the 4 generated placeholders adoption released and
+    //               this code replaced in place.
     //
-    // WIN-297 branched from WIN-256 before the providers commit and so pinned
-    // 310 + 22 = 332; WIN-256's tip pinned 375 and never saw the apps.
-    // 375 + 22 = 332 + 65 = 397.
+    // The branches pinned partial sums because each saw only its own slice:
+    // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
+    // WIN-256's providers tip pinned 375; the agents branch pinned 375 + 67 =
+    // 442 without the apps. All four slices are disjoint, so the integrated
+    // census is 397 + 67 = 442 + 22 = 464.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -251,7 +263,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 464, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

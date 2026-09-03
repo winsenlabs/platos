@@ -99,8 +99,23 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * No other package moved: the rebase touched no suite outside providers, and
- * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
- * to report, not a number to force.
+ * `files` stays at the 134 that closed MAJOR 2.
+ *
+ * WIN-256 DELTA — `agents` (ADR M0.3 §1 context 5) becomes real. One row moves:
+ *
+ *   agents 0 -> 25 files, 0 -> 513 cases; 1000 -> 1513 total. 14 domain suites,
+ *   10 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 513 is a statically exact count, and
+ *   `pnpm --filter @platos/context-agents exec vitest run` prints the same pair
+ *   — "Test Files 25 passed (25) / Tests 513 passed (513)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Two of those 25 files exist because the ADR M0.3 §6 budget bit in the 400-line
+ * warning band and the answer was to split rather than to waive; see the delta
+ * comment in `scripts/arch/max-file-lines.test.mjs`.
+ *
+ * No other package moved. Any further drift is a finding to report, not a number
+ * to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -115,7 +130,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
-  "packages/contexts/agents": { files: 0, cases: 0 },
+  "packages/contexts/agents": { files: 25, cases: 513 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
@@ -142,7 +157,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1513;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

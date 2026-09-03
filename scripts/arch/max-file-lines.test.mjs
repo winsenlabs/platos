@@ -75,17 +75,32 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328. WIN-256 made packages/kernel and four contexts real, so
-  // the ADR M0.3 §6 file-size budget now applies to real production source
-  // rather than to placeholders. Every one of the 263 is inside the 400/500-line
-  // budget.
+  // 74 -> 263 -> 328 -> 395. WIN-256 made packages/kernel and four contexts
+  // real, so the ADR M0.3 §6 file-size budget now applies to real production
+  // source rather than to placeholders. Every one of the 263 is inside the
+  // 400/500-line budget.
   //
   // +65: the same issue makes `providers` real. The budget bit once while it was
   // being written — one test module reached 441 effective lines — and the answer
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +67: the same issue makes `agents` real. The budget bit TWICE here, in the
+  // 400-line WARNING band rather than at the 500-line wall, and both were split
+  // rather than waived:
+  //
+  //   contracts/index.ts, 450 effective. The read models moved to
+  //   `contracts/views.ts` and are re-exported, so the published surface is
+  //   still one entrypoint and the barrel is the driving port alone.
+  //
+  //   application/agent-lifecycle.test.ts, 407 effective. Split into a write
+  //   suite and a read suite along the seam the budget was pointing at: what a
+  //   write PUT IN THE STORE, and what a caller can SEE.
+  //
+  // Two of the 67 files exist only because of those splits. Every one of the 395
+  // is inside the budget and none is inside the warning band.
+  assert.equal(result.fileCount, 395);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });
