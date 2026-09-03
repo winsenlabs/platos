@@ -37,7 +37,7 @@ import {
   type ExternalEntityId,
   type ToolExposure,
 } from "../domain/index.js";
-import { requireAccess, verifyOperator } from "./authorization.js";
+import { requireAccess, withOperator } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
 import type { ExposurePage, ExposurePageQuery } from "./ports/index.js";
 
@@ -66,11 +66,11 @@ export async function listTools(
   dependencies: ToolsDependencies,
   query: ReadToolsQuery,
 ): Promise<Result<readonly ToolExposure[]>> {
-  const granted = verifyOperator(dependencies, query.authorization);
-  if (!granted.ok) return err(granted.error);
-  const listed = await dependencies.repository.listExposures(granted.value.scope);
-  if (!listed.ok) return err(listed.error);
-  return ok(selectExposures(listed.value, query));
+  return withOperator(dependencies, query.authorization, async (grant) => {
+    const listed = await dependencies.repository.listExposures(grant.scope);
+    if (!listed.ok) return err(listed.error);
+    return ok(selectExposures(listed.value, query));
+  });
 }
 
 /**
@@ -109,11 +109,11 @@ export async function pageTools(
   dependencies: ToolsDependencies,
   query: PageToolsQuery,
 ): Promise<Result<ExposurePage>> {
-  const granted = verifyOperator(dependencies, query.authorization);
-  if (!granted.ok) return err(granted.error);
-  return dependencies.repository.pageExposures(
-    granted.value.scope,
-    clampExposurePage(query, dependencies.policy.acl.maximumPageSize),
+  return withOperator(dependencies, query.authorization, async (grant) =>
+    dependencies.repository.pageExposures(
+      grant.scope,
+      clampExposurePage(query, dependencies.policy.acl.maximumPageSize),
+    ),
   );
 }
 
@@ -137,38 +137,42 @@ export async function findTools(
   dependencies: ToolsDependencies,
   query: FindToolsQuery,
 ): Promise<Result<readonly ToolExposure[]>> {
-  const granted = verifyOperator(dependencies, query.authorization);
-  if (!granted.ok) return err(granted.error);
-  const listed = await dependencies.repository.listExposures(granted.value.scope);
-  if (!listed.ok) return err(listed.error);
+  return withOperator(dependencies, query.authorization, async (grant) => {
+    const listed = await dependencies.repository.listExposures(grant.scope);
+    if (!listed.ok) return err(listed.error);
 
-  const discovery = dependencies.policy.discovery;
-  const callable = selectExposures(listed.value, { ...query, callableOnly: true });
-  if (callable.length === 0) return ok([]);
+    const discovery = dependencies.policy.discovery;
+    const callable = selectExposures(listed.value, { ...query, callableOnly: true });
+    if (callable.length === 0) return ok([]);
 
-  const byToolId = new Map<string, ToolExposure>();
-  for (const exposure of callable) {
-    if (!byToolId.has(exposure.toolId)) byToolId.set(exposure.toolId, exposure);
-  }
+    const byToolId = new Map<string, ToolExposure>();
+    for (const exposure of callable) {
+      if (!byToolId.has(exposure.toolId)) byToolId.set(exposure.toolId, exposure);
+    }
 
-  const index = buildIndex(
-    [...byToolId.values()].map((exposure) => ({
-      id: exposure.toolId,
-      text: searchDocument({
-        name: exposure.toolName,
-        description: exposure.description,
-        paramSchema: exposure.paramSchema,
-      }),
-    })),
-    discovery,
-  );
+    const index = buildIndex(
+      [...byToolId.values()].map((exposure) => ({
+        id: exposure.toolId,
+        text: searchDocument({
+          name: exposure.toolName,
+          description: exposure.description,
+          paramSchema: exposure.paramSchema,
+        }),
+      })),
+      discovery,
+    );
 
-  const limit = Math.min(
-    Math.max(Math.trunc(query.limit ?? discovery.defaultSearchLimit), 1),
-    discovery.maximumSearchLimit,
-  );
-  const hits = searchIndex(index, query.query, limit);
-  return ok(hits.map((hit) => byToolId.get(hit.id)).filter((entry): entry is ToolExposure => entry !== undefined));
+    const limit = Math.min(
+      Math.max(Math.trunc(query.limit ?? discovery.defaultSearchLimit), 1),
+      discovery.maximumSearchLimit,
+    );
+    const hits = searchIndex(index, query.query, limit);
+    return ok(
+      hits
+        .map((hit) => byToolId.get(hit.id))
+        .filter((entry): entry is ToolExposure => entry !== undefined),
+    );
+  });
 }
 
 /**
@@ -193,13 +197,13 @@ export async function setToolEnabled(
   dependencies: ToolsDependencies,
   command: SetToolEnabledCommand,
 ): Promise<Result<ToolExposure>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
-  return dependencies.repository.setExposureEnabled(
-    granted.value.scope,
-    asExposureId(command.exposureId),
-    command.enabled,
-  );
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
+    return dependencies.repository.setExposureEnabled(
+      grant.scope,
+      asExposureId(command.exposureId),
+      command.enabled,
+    );
+  });
 }

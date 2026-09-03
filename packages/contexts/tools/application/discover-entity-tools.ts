@@ -35,7 +35,7 @@ import {
   type ExternalEntityId,
   type ToolName,
 } from "../domain/index.js";
-import { requireAccess, verifyOperator } from "./authorization.js";
+import { requireAccess, withOperator, type TenancyOperatorGrant } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
 import { registerTools } from "./register-tools.js";
 import { resolveDispatchTarget } from "./resolve-transport.js";
@@ -67,86 +67,94 @@ export async function discoverEntityTools(
   dependencies: ToolsDependencies,
   command: DiscoverEntityToolsCommand,
 ): Promise<Result<DiscoveryReport>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
-  const scope = granted.value.scope;
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
+    const scope = grant.scope;
 
-  const entity = await dependencies.tenancy.findEntity(command.entityId);
-  if (!entity.ok) return err(entity.error);
-  if (entity.value.projectId !== scope.projectId) return err(entityNotInScope(command.entityId));
+    const entity = await dependencies.tenancy.findEntity(command.entityId);
+    if (!entity.ok) return err(entity.error);
+    if (entity.value.projectId !== scope.projectId) return err(entityNotInScope(command.entityId));
 
-  const client = await dependencies.repository.findMcpClient(scope, command.entityId);
-  if (!client.ok) return err(client.error);
-  if (client.value === null) {
-    return ok({ registered: 0, removed: 0, error: "the entity has no MCP client configuration" });
-  }
+    const client = await dependencies.repository.findMcpClient(scope, command.entityId);
+    if (!client.ok) return err(client.error);
+    if (client.value === null) {
+      return ok({ registered: 0, removed: 0, error: "the entity has no MCP client configuration" });
+    }
 
-  // An MCP entity is dispatchable BECAUSE the client row exists, which is
-  // exactly the rule `domain/exposure.ts` states — so discovery resolves its
-  // target through the SAME function dispatch does, and no separate
-  // "is discovery possible" predicate can drift away from the dispatch one.
-  const target = await resolveDispatchTarget(dependencies, {
-    scope,
-    subject: {
+    // An MCP entity is dispatchable BECAUSE the client row exists, which is
+    // exactly the rule `domain/exposure.ts` states — so discovery resolves its
+    // target through the SAME function dispatch does, and no separate
+    // "is discovery possible" predicate can drift away from the dispatch one.
+    const target = await resolveDispatchTarget(dependencies, {
+      scope,
+      subject: {
+        entityId: command.entityId,
+        externalEntityId: command.externalEntityId,
+        connectionKind: "mcp",
+        callbackUrl: "",
+        dispatchable: true,
+        toolName: DISCOVERY_TOOL_NAME,
+      },
+      // NO END USER. A templated discovery endpoint fails closed here; see the
+      // header note on why substituting one would be worse than failing.
+      endUserId: null,
+      vaultAuthorization: command.vaultAuthorization,
+    });
+    if (!target.ok) {
+      await recordDiscoveryFailure(dependencies, grant, command, target.error.message);
+      return ok({ registered: 0, removed: 0, error: target.error.message });
+    }
+
+    const discovered = await dependencies.dispatch.discover({ target: target.value });
+    if (!discovered.ok) {
+      await recordDiscoveryFailure(dependencies, grant, command, discovered.error.message);
+      return ok({ registered: 0, removed: 0, error: discovered.error.message });
+    }
+
+    const registered = await registerTools(dependencies, {
+      authorization: command.authorization,
       entityId: command.entityId,
       externalEntityId: command.externalEntityId,
-      connectionKind: "mcp",
-      callbackUrl: "",
-      dispatchable: true,
-      toolName: DISCOVERY_TOOL_NAME,
-    },
-    // NO END USER. A templated discovery endpoint fails closed here; see the
-    // header note on why substituting one would be worse than failing.
-    endUserId: null,
-    vaultAuthorization: command.vaultAuthorization,
-  });
-  if (!target.ok) {
-    await recordDiscoveryFailure(dependencies, command, target.error.message);
-    return ok({ registered: 0, removed: 0, error: target.error.message });
-  }
+      tools: discovered.value.tools,
+      // MCP entities are reached by a session, never a callback. Writing one
+      // would make `dispatchabilityOf` report the entity live on the wire path.
+      callbackUrl: null,
+    });
+    if (!registered.ok) {
+      await recordDiscoveryFailure(dependencies, grant, command, registered.error.message);
+      return ok({ registered: 0, removed: 0, error: registered.error.message });
+    }
 
-  const discovered = await dependencies.dispatch.discover({ target: target.value });
-  if (!discovered.ok) {
-    await recordDiscoveryFailure(dependencies, command, discovered.error.message);
-    return ok({ registered: 0, removed: 0, error: discovered.error.message });
-  }
-
-  const registered = await registerTools(dependencies, {
-    authorization: command.authorization,
-    entityId: command.entityId,
-    externalEntityId: command.externalEntityId,
-    tools: discovered.value.tools,
-    // MCP entities are reached by a session, never a callback. Writing one
-    // would make `dispatchabilityOf` report the entity live on the wire path.
-    callbackUrl: null,
-  });
-  if (!registered.ok) {
-    await recordDiscoveryFailure(dependencies, command, registered.error.message);
-    return ok({ registered: 0, removed: 0, error: registered.error.message });
-  }
-
-  await recordDiscoveryFailure(dependencies, command, null);
-  return ok({
-    registered: registered.value.outcome.registered,
-    removed: registered.value.outcome.removed,
-    error: null,
+    await recordDiscoveryFailure(dependencies, grant, command, null);
+    return ok({
+      registered: registered.value.outcome.registered,
+      removed: registered.value.outcome.removed,
+      error: null,
+    });
   });
 }
 
-/** Stamp the pass onto the client row — including the successes. */
+/**
+ * Stamp the pass onto the client row — including the successes.
+ *
+ * IT TAKES THE GRANT ITS CALLER ALREADY HOLDS rather than re-verifying the
+ * authorization. The earlier form asked tenancy a second time and returned
+ * SILENTLY when the answer was no — a fifteenth copy of the guard, and the one
+ * copy whose refusal went nowhere. There is only one caller, it is inside
+ * `withOperator`, and a grant it could not have obtained without the check is
+ * the honest thing to hand down.
+ */
 async function recordDiscoveryFailure(
   dependencies: ToolsDependencies,
+  grant: TenancyOperatorGrant,
   command: DiscoverEntityToolsCommand,
   error: string | null,
 ): Promise<void> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return;
-  const client = await dependencies.repository.findMcpClient(granted.value.scope, command.entityId);
+  const client = await dependencies.repository.findMcpClient(grant.scope, command.entityId);
   if (!client.ok || client.value === null) return;
   await dependencies.repository.saveMcpClient(
-    granted.value.scope,
+    grant.scope,
     withDiscoveryOutcome(client.value, { error }, dependencies.clock.now()),
   );
 }

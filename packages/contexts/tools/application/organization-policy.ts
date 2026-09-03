@@ -28,7 +28,7 @@ import {
   type OrganizationMcpPolicyId,
   type PermissionState,
 } from "../domain/index.js";
-import { requireAccess, verifyOperator } from "./authorization.js";
+import { requireAccess, withOperator } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
 import type { OrganizationPolicyRecord } from "./ports/index.js";
 
@@ -53,45 +53,45 @@ export async function listOrganizationPolicies(
   dependencies: ToolsDependencies,
   query: ReadOrganizationPoliciesQuery,
 ): Promise<Result<readonly OrganizationPolicyRecord[]>> {
-  const granted = verifyOperator(dependencies, query.authorization);
-  if (!granted.ok) return err(granted.error);
-  return dependencies.repository.listOrganizationPolicies(granted.value.scope);
+  return withOperator(dependencies, query.authorization, async (grant) =>
+    dependencies.repository.listOrganizationPolicies(grant.scope),
+  );
 }
 
 export async function setOrganizationPolicy(
   dependencies: ToolsDependencies,
   command: SetOrganizationPolicyCommand,
 ): Promise<Result<OrganizationPolicyRecord>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
 
-  const pattern = command.pattern.trim();
-  if (pattern.length < MIN_POLICY_PATTERN_LENGTH || pattern.length > MAX_POLICY_PATTERN_LENGTH) {
-    return err(
-      policyPatternInvalid(
-        `a policy pattern must be ${MIN_POLICY_PATTERN_LENGTH}–${MAX_POLICY_PATTERN_LENGTH} characters`,
-      ),
-    );
-  }
+    const pattern = command.pattern.trim();
+    if (pattern.length < MIN_POLICY_PATTERN_LENGTH || pattern.length > MAX_POLICY_PATTERN_LENGTH) {
+      return err(
+        policyPatternInvalid(
+          `a policy pattern must be ${MIN_POLICY_PATTERN_LENGTH}–${MAX_POLICY_PATTERN_LENGTH} characters`,
+        ),
+      );
+    }
 
-  const effect = effectFromState(command.state);
-  if (effect === null) return err(policyEffectUnsupported(command.state));
+    const effect = effectFromState(command.state);
+    if (effect === null) return err(policyEffectUnsupported(command.state));
 
-  return dependencies.repository.upsertOrganizationPolicy(granted.value.scope, pattern, effect);
+    return dependencies.repository.upsertOrganizationPolicy(grant.scope, pattern, effect);
+  });
 }
 
 export async function deleteOrganizationPolicy(
   dependencies: ToolsDependencies,
   command: DeleteOrganizationPolicyCommand,
 ): Promise<Result<boolean>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
-  return dependencies.repository.deleteOrganizationPolicy(
-    granted.value.scope,
-    command.organizationMcpPolicyId,
-  );
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
+    return dependencies.repository.deleteOrganizationPolicy(
+      grant.scope,
+      command.organizationMcpPolicyId,
+    );
+  });
 }

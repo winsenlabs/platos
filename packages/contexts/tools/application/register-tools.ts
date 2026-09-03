@@ -36,7 +36,7 @@ import {
   type ToolExposure,
   type ToolId,
 } from "../domain/index.js";
-import { requireAccess, verifyOperator } from "./authorization.js";
+import { requireAccess, withOperator } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
 import type { ToolUpsert } from "./ports/index.js";
 
@@ -62,56 +62,57 @@ export async function registerTools(
   dependencies: ToolsDependencies,
   command: RegisterToolsCommand,
 ): Promise<Result<RegisteredTools>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
-  const scope = granted.value.scope;
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
+    const scope = grant.scope;
 
-  // The entity is TENANCY's, and the two identifiers a caller supplies for it
-  // must agree with each other AND with the record. The source checks both in
-  // one `findFirst`; here the check is explicit, because a caller that supplied
-  // a real entity id and somebody else's external id would otherwise register
-  // that entity's tools under this one's name in every `ToolHealth` row.
-  const entity = await dependencies.tenancy.findEntity(command.entityId);
-  if (!entity.ok) return err(entity.error);
-  if (
-    entity.value.externalId !== command.externalEntityId ||
-    entity.value.projectId !== scope.projectId
-  ) {
-    return err(entityNotInScope(command.entityId));
-  }
-
-  const declaration = admitDeclaration(command.tools, command.externalEntityId);
-  if (!declaration.ok) return err(declaration.error);
-
-  const previous = await dependencies.repository.listEntityExposures(scope, command.entityId);
-  if (!previous.ok) return err(previous.error);
-
-  return dependencies.unitOfWork.run(async () => {
-    const toolIds: ToolId[] = [];
-    for (const tool of declaration.value) {
-      const minted = await mintTool(dependencies, tool);
-      if (!minted.ok) return err(minted.error);
-      toolIds.push(minted.value);
+    // The entity is TENANCY's, and the two identifiers a caller supplies for it
+    // must agree with each other AND with the record. The source checks both in
+    // one `findFirst`; here the check is explicit, because a caller that
+    // supplied a real entity id and somebody else's external id would otherwise
+    // register that entity's tools under this one's name in every `ToolHealth`
+    // row.
+    const entity = await dependencies.tenancy.findEntity(command.entityId);
+    if (!entity.ok) return err(entity.error);
+    if (
+      entity.value.externalId !== command.externalEntityId ||
+      entity.value.projectId !== scope.projectId
+    ) {
+      return err(entityNotInScope(command.entityId));
     }
 
-    const replaced = await dependencies.repository.replaceExposures({
-      scope,
-      entityId: command.entityId,
-      callbackUrl: command.callbackUrl,
-      toolIds,
-    });
-    if (!replaced.ok) return err(replaced.error);
+    const declaration = admitDeclaration(command.tools, command.externalEntityId);
+    if (!declaration.ok) return err(declaration.error);
 
-    return ok({
-      outcome: registrationOutcome({
-        registeredToolIds: toolIds,
-        previousToolIds: new Set(previous.value.map((exposure) => exposure.toolId)),
-        previousNames: previous.value.map((exposure) => exposure.toolName),
-        declared: declaredNames(declaration.value),
-      }),
-      exposures: replaced.value,
+    const previous = await dependencies.repository.listEntityExposures(scope, command.entityId);
+    if (!previous.ok) return err(previous.error);
+
+    return dependencies.unitOfWork.run(async () => {
+      const toolIds: ToolId[] = [];
+      for (const tool of declaration.value) {
+        const minted = await mintTool(dependencies, tool);
+        if (!minted.ok) return err(minted.error);
+        toolIds.push(minted.value);
+      }
+
+      const replaced = await dependencies.repository.replaceExposures({
+        scope,
+        entityId: command.entityId,
+        callbackUrl: command.callbackUrl,
+        toolIds,
+      });
+      if (!replaced.ok) return err(replaced.error);
+
+      return ok({
+        outcome: registrationOutcome({
+          registeredToolIds: toolIds,
+          previousToolIds: new Set(previous.value.map((exposure) => exposure.toolId)),
+          previousNames: previous.value.map((exposure) => exposure.toolName),
+          declared: declaredNames(declaration.value),
+        }),
+        exposures: replaced.value,
+      });
     });
   });
 }

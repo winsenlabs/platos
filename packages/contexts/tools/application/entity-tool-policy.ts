@@ -36,7 +36,7 @@ import {
 import {
   requireAccess,
   verifyMcpCaller,
-  verifyOperator,
+  withOperator,
   type PrincipalAuthorizationView,
 } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
@@ -59,34 +59,34 @@ export async function listEntityToolPolicies(
   dependencies: ToolsDependencies,
   query: ReadEntityToolPoliciesQuery,
 ): Promise<Result<readonly EntityToolPolicy[]>> {
-  const granted = verifyOperator(dependencies, query.authorization);
-  if (!granted.ok) return err(granted.error);
-  const scope = granted.value.scope;
+  return withOperator(dependencies, query.authorization, async (grant) => {
+    const scope = grant.scope;
 
-  const exposures = await dependencies.repository.listEntityExposures(scope, query.entityId);
-  if (!exposures.ok) return err(exposures.error);
-  const policies = await dependencies.repository.listEntityToolPolicies(scope, query.entityId);
-  if (!policies.ok) return err(policies.error);
+    const exposures = await dependencies.repository.listEntityExposures(scope, query.entityId);
+    if (!exposures.ok) return err(exposures.error);
+    const policies = await dependencies.repository.listEntityToolPolicies(scope, query.entityId);
+    if (!policies.ok) return err(policies.error);
 
-  const byToolId = new Map(policies.value.map((policy) => [policy.toolId, policy]));
-  const completed = exposures.value
-    .filter((exposure) => exposure.enabled)
-    .map(
-      (exposure) =>
-        byToolId.get(exposure.toolId) ??
-        synthesizeDenial(
-          {
-            environmentId: scope.environmentId,
-            entityId: query.entityId,
-            toolId: exposure.toolId,
-            toolName: exposure.toolName,
-          },
-          dependencies.policy.acl,
-        ),
-    );
+    const byToolId = new Map(policies.value.map((policy) => [policy.toolId, policy]));
+    const completed = exposures.value
+      .filter((exposure) => exposure.enabled)
+      .map(
+        (exposure) =>
+          byToolId.get(exposure.toolId) ??
+          synthesizeDenial(
+            {
+              environmentId: scope.environmentId,
+              entityId: query.entityId,
+              toolId: exposure.toolId,
+              toolName: exposure.toolName,
+            },
+            dependencies.policy.acl,
+          ),
+      );
 
-  if (query.exposed === null || query.exposed === undefined) return ok(completed);
-  return ok(completed.filter((policy) => (policy.effect === "ALLOW") === query.exposed));
+    if (query.exposed === null || query.exposed === undefined) return ok(completed);
+    return ok(completed.filter((policy) => (policy.effect === "ALLOW") === query.exposed));
+  });
 }
 
 export interface SetEntityToolPolicyCommand {
@@ -112,55 +112,55 @@ export async function setEntityToolPolicy(
   dependencies: ToolsDependencies,
   command: SetEntityToolPolicyCommand,
 ): Promise<Result<EntityToolPolicy>> {
-  const granted = verifyOperator(dependencies, command.authorization);
-  if (!granted.ok) return err(granted.error);
-  const permitted = requireAccess(granted.value, "secret:mutate");
-  if (!permitted.ok) return err(permitted.error);
-  const scope = granted.value.scope;
+  return withOperator(dependencies, command.authorization, async (grant) => {
+    const permitted = requireAccess(grant, "secret:mutate");
+    if (!permitted.ok) return err(permitted.error);
+    const scope = grant.scope;
 
-  const exposures = await dependencies.repository.listEntityExposures(scope, command.entityId);
-  if (!exposures.ok) return err(exposures.error);
-  const exposure = exposures.value.find((candidate) => candidate.toolId === command.toolId);
-  if (exposure === undefined) return err(toolNotFound(command.toolId));
+    const exposures = await dependencies.repository.listEntityExposures(scope, command.entityId);
+    if (!exposures.ok) return err(exposures.error);
+    const exposure = exposures.value.find((candidate) => candidate.toolId === command.toolId);
+    if (exposure === undefined) return err(toolNotFound(command.toolId));
 
-  const policies = await dependencies.repository.listEntityToolPolicies(scope, command.entityId);
-  if (!policies.ok) return err(policies.error);
-  const current =
-    policies.value.find((policy) => policy.toolId === command.toolId) ??
-    synthesizeDenial(
-      {
-        environmentId: scope.environmentId,
-        entityId: command.entityId,
-        toolId: command.toolId,
-        toolName: exposure.toolName,
-      },
-      dependencies.policy.acl,
-    );
+    const policies = await dependencies.repository.listEntityToolPolicies(scope, command.entityId);
+    if (!policies.ok) return err(policies.error);
+    const current =
+      policies.value.find((policy) => policy.toolId === command.toolId) ??
+      synthesizeDenial(
+        {
+          environmentId: scope.environmentId,
+          entityId: command.entityId,
+          toolId: command.toolId,
+          toolName: exposure.toolName,
+        },
+        dependencies.policy.acl,
+      );
 
-  const scopeLabels = command.scopeLabels ?? current.scopeLabels;
-  const allowedPatIds = command.allowedPatIds ?? current.allowedPatIds;
-  const encoded = encodeLabels(scopeLabels, allowedPatIds);
+    const scopeLabels = command.scopeLabels ?? current.scopeLabels;
+    const allowedPatIds = command.allowedPatIds ?? current.allowedPatIds;
+    const encoded = encodeLabels(scopeLabels, allowedPatIds);
 
-  const next: EntityToolPolicy = {
-    ...current,
-    entityToolPolicyId:
-      current.addedAt === null
-        ? asToolsIdentifier<EntityToolPolicyId>(dependencies.ids.uuid())
-        : current.entityToolPolicyId,
-    effect: command.exposed === undefined ? current.effect : command.exposed ? "ALLOW" : "DENY",
-    minIdentityMode: command.minIdentityMode ?? current.minIdentityMode,
-    scopeLabels: encoded.filter((label) => !label.startsWith("platos:pat:")),
-    allowedPatIds,
-    addedBy: asToolsIdentifier<ActorId>(granted.value.actorUserId),
-    addedAt: current.addedAt ?? dependencies.clock.now(),
-  };
+    const next: EntityToolPolicy = {
+      ...current,
+      entityToolPolicyId:
+        current.addedAt === null
+          ? asToolsIdentifier<EntityToolPolicyId>(dependencies.ids.uuid())
+          : current.entityToolPolicyId,
+      effect: command.exposed === undefined ? current.effect : command.exposed ? "ALLOW" : "DENY",
+      minIdentityMode: command.minIdentityMode ?? current.minIdentityMode,
+      scopeLabels: encoded.filter((label) => !label.startsWith("platos:pat:")),
+      allowedPatIds,
+      addedBy: asToolsIdentifier<ActorId>(grant.actorUserId),
+      addedAt: current.addedAt ?? dependencies.clock.now(),
+    };
 
-  const saved = await dependencies.repository.upsertEntityToolPolicy(next);
-  if (!saved.ok) return err(saved.error);
+    const saved = await dependencies.repository.upsertEntityToolPolicy(next);
+    if (!saved.ok) return err(saved.error);
 
-  const resynced = await resyncAllowlist(dependencies, scope, command.entityId);
-  if (!resynced.ok) return err(resynced.error);
-  return ok(saved.value);
+    const resynced = await resyncAllowlist(dependencies, scope, command.entityId);
+    if (!resynced.ok) return err(resynced.error);
+    return ok(saved.value);
+  });
 }
 
 /**

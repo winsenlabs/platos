@@ -147,16 +147,19 @@ describe("what the views withhold", () => {
 /**
  * THE OPERATOR GATE, ON EVERY PUBLISHED METHOD THAT HAS ONE.
  *
- * `verifyOperator` guards fourteen use cases and the guard is the same two
- * hand-written lines at each: ask tenancy, refuse if the answer is no. ELEVEN
- * OF THE FOURTEEN COULD HAVE THEIR GUARD DELETED WITH THE WHOLE SUITE GREEN —
+ * The operator gate guards fourteen use cases. It used to be the same two
+ * hand-written lines at each — ask tenancy, refuse if the answer is no — and
+ * ELEVEN OF THE FOURTEEN COULD HAVE THEIR COPY DELETED WITH THE WHOLE SUITE
+ * GREEN:
  * `pageTools`, `findTools`, `setToolEnabled`, `describeMcpSurface`,
  * `configureMcpSurface`, `listEntityToolPolicies`, `setEntityToolPolicy`,
  * `listOrganizationPolicies`, `setOrganizationPolicy`,
  * `deleteOrganizationPolicy` and `discoverEntityTools`. Six of the eleven
  * MUTATE. Only `registerTools`, `readToolAudit` and `listTools` had a case that
  * noticed, which is what a guard copied fourteen times decays into: the copy is
- * cheap and the proof is not.
+ * cheap and the proof is not. The copies are gone — `withOperator` is the one
+ * place the question is asked now — and these cases are what proves each use
+ * case still goes through it.
  *
  * IT IS DRIVEN OFF `Object.keys(contract)` RATHER THAN A HAND-KEPT LIST, so the
  * classification case below goes red when a method is ADDED to the published

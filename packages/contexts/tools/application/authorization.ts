@@ -28,12 +28,11 @@
 // validated at the call carries what it says now. Revoking an entity's exposure
 // took effect on the next login before, and takes effect on the next call now.
 
-import { err, ok, resolvePath, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import type { PrincipalAuthorizationView } from "@platos/context-identity-access";
-import {
-  authorizes,
-  type EnvironmentAccess,
-  type EnvironmentOperatorAuthorization as TenancyOperatorGrant,
+import type {
+  EnvironmentAccess,
+  EnvironmentOperatorAuthorization as TenancyOperatorGrant,
 } from "@platos/context-tenancy";
 
 import { scopeMismatch } from "../domain/index.js";
@@ -49,8 +48,10 @@ export type { PrincipalAuthorizationView, TenancyOperatorGrant };
  * seam: an authorization is genuine only if tenancy's own private mint register
  * holds it, and a grant arriving as `unknown` from a transport is exactly the
  * "crossed a boundary where its type was erased" case that method exists for.
+ *
+ * IT IS MODULE-PRIVATE. See `withOperator` below for why.
  */
-export function verifyOperator(
+function verifyOperator(
   dependencies: ToolsDependencies,
   authorization: unknown,
 ): Result<TenancyOperatorGrant> {
@@ -58,24 +59,36 @@ export function verifyOperator(
 }
 
 /**
- * Verify an operator grant and confirm it authorizes the environment named.
+ * Verify an operator grant and run the use case with it. ONE GUARD, NOT FOURTEEN.
  *
- * Two questions asked separately: "did tenancy mint this?" and "for which
- * environment?", the second answered from the grant's own re-derived scope.
- * Most callers do not need this — they take the environment FROM the grant,
- * which is the shape that cannot mismatch.
+ * Every operator-authorized use case in this context used to reach its grant
+ * through the same two hand-written lines — ask tenancy, then
+ * `if (!granted.ok) return err(granted.error);` — copied to fourteen call
+ * sites. Eleven of the fourteen could have their copy deleted with the whole
+ * suite green, which is what a guard that is cheap to copy and expensive to
+ * prove decays into.
+ *
+ * THE GRANT IS NOW UNREACHABLE WITHOUT THE CHECK. `verifyOperator` is
+ * module-private and this is the only export that hands out a
+ * `TenancyOperatorGrant`, so a use case added later cannot obtain one without
+ * the refusal having already run. It cannot forget the guard; it can only
+ * decline to ask for a grant, and a use case holding no grant holds no scope to
+ * work in.
+ *
+ * `requireAccess` IS DELIBERATELY NOT FOLDED IN. "Did tenancy mint this" and
+ * "does it carry secret:mutate" are different questions and only some callers
+ * ask the second. Taking it as an argument would turn the mutating gate from a
+ * visible line at the call site into a parameter value, which is the harder
+ * thing to notice missing.
  */
-export function verifyOperatorGrant(
+export async function withOperator<Value>(
   dependencies: ToolsDependencies,
   authorization: unknown,
-  scope: EnvironmentScope,
-): Result<TenancyOperatorGrant> {
-  const verified = verifyOperator(dependencies, authorization);
-  if (!verified.ok) return err(verified.error);
-  if (!authorizes(verified.value, scope)) {
-    return err(scopeMismatch(resolvePath(scope), resolvePath(verified.value.scope)));
-  }
-  return ok(verified.value);
+  run: (grant: TenancyOperatorGrant) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  const granted = verifyOperator(dependencies, authorization);
+  if (!granted.ok) return err(granted.error);
+  return run(granted.value);
 }
 
 /** `metadata` cannot mutate. Asking for more than the grant carries fails. */
