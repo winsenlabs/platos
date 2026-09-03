@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "de5b8c34338ffa6546a9107ea813b0db68d53627e0514428c0d9c0143da2ddda",
+  "evidenceSha256": "557298c03ff57b57f06e6ce51283755eaeb16b0df69adbc70997df224d95e9c3",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6393e20e9269b56d7496f9b0db621773788c4a8eb8692320cbfcc1b17e0114de",
+    "aggregateSha256": "1b38ef30742d0d5f72a0b9375ab93361d6e4021781736113a873f959339e548d",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11837,11 +11837,11 @@
       },
       {
         "path": "packages/contexts/privacy/application/retry-erasure.test.ts",
-        "sha256": "ffb6c2efd909de7b0fa65f09b7b9c35d87027d800475916633f03cc36a4b2e91"
+        "sha256": "d2e3096219f57e131ff5a43bf020cc897bcc22f0a1550e063a77e1178e04df57"
       },
       {
         "path": "packages/contexts/privacy/application/retry-erasure.ts",
-        "sha256": "67336e34c87aaf606699ad4ff48f0db68795c75e672a9c789cdcf2f92d6d1f23"
+        "sha256": "3a3bcda592dec1c787af70511a8d4a7f972df6805d874a514f26d7d3401ba8b4"
       },
       {
         "path": "packages/contexts/privacy/application/run-erasure-pass.test.ts",
@@ -11925,7 +11925,7 @@
       },
       {
         "path": "packages/contexts/privacy/domain/errors.ts",
-        "sha256": "73ae96a2d107279a9e07185d3860345340ede1fd6f22e36e0cf26f4d7670f519"
+        "sha256": "4f8d39db4c46c0b61344276c217e9fc440a7001414c02290981aa0cafba5a866"
       },
       {
         "path": "packages/contexts/privacy/domain/identifiers.ts",
@@ -14909,11 +14909,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "3a1814ec209dc04823d99e5f24c207b7f454b4b2c7c598d4cb061a6c805f5bf3"
+        "sha256": "455eded460a93e88ec9a2561096552b2e8a648bc504f54c2b3860c29708395d8"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "2cadc47e918508ba07d947a337bb34e65422942184138dde830ed72abdfb89c0"
+        "sha256": "b60ff50a37c9e78ec997884f86de5efaa2c6b9546bf85aaa58b7052180383ccd"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -50537,7 +50537,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 285
+              "line": 292
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -50716,7 +50716,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "eca09998e69abfe073b8031e2f12a7336b7ec9dd909cdc241598a11cd92e8e4e",
+      "evidenceSha256": "70a61ba9363f72aee957277a2daf80ec191d2d60fab34338ca3f24e29700eb5c",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
