@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "103a6cdf47d7464b380a51d8d21cd842c771cca1c5a7b8b822265237724f2ee0",
+  "evidenceSha256": "f30f14af64adedbc785af640b13bd00937a168b0452019c8fd614f12e2c57cb7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 62,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "a31764d8e4177fbd6b562731054627a0fe103bf94b67f195881f1e0a9ce15778",
+    "aggregateSha256": "1707f4292868292410b90a58b6110ae2eee813c183c2ef92ef7c58dc04c6bd75",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "a41c1b6d2a88e7b51277e69e7c72912b49d9272c8f07a5a8a44af0f3e9117152"
+        "sha256": "0e99b284919172d8ae024beea74a20163c2845067e93c6e6d087ccd31a0becaa"
       },
       {
         "path": "docs/v3-openapi.yaml",
