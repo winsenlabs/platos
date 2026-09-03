@@ -462,9 +462,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 145 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 141 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 145. Adoption RELEASES placeholders, so this
+  // M2 INTEGRATION DELTA — 201 -> 141. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
   // DISJOINT projects. The integrated count is therefore the SUM of every
   // reduction, never the smallest of the branch pins:
@@ -490,31 +490,34 @@ test("generated ownership includes the generator's exact 145 outputs across 32 V
   //               releasing the same 4 barrels.
   //   149 -> 145  WIN-256 adopts `privacy` (ADR M0.3 §1 row 18), releasing the
   //               same 4 barrels.
+  //   145 -> 141  WIN-256 adopts `observability` (ADR M0.3 §1 row 16),
+  //               releasing the same 4 barrels.
   //
   // Each branch pinned only what its own lineage could see: WIN-297 branched
   // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
   // 182 - 9 = 173; WIN-256's providers tip pinned 178 and never saw the apps;
-  // the eventing, skills, jobs, memory, cost-monitoring and privacy branches
-  // EACH pinned 165, because each saw the two apps and providers but not the
-  // other contexts. 165 is therefore the pin of six different trees, and it is
-  // correct for none of them merged. None of those pins is correct here.
-  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 = 145, which is 165 - 20 read from
-  // any of the six branches alike.
+  // the eventing, skills, jobs, memory, cost-monitoring, privacy and
+  // observability branches EACH pinned 165, because each saw the two apps and
+  // providers but not the other contexts. 165 is therefore the pin of SEVEN
+  // different trees, and it is correct for none of them merged. None of those
+  // pins is correct here.
+  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 = 141, which is 165 - 24 read
+  // from any of the seven branches alike.
   //
   // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing`, `skills`, `jobs`,
-  // `memory`, `cost-monitoring` and `privacy` move the SAME constant on
-  // INDEPENDENT axes, so the reconciliation is arithmetic on every delta and not
-  // a choice between green branches. Side-picking 165 would leave the tree with
-  // twenty unaccounted released placeholders and the canary would be quietly
-  // wrong while staying green on each branch alone.
+  // `memory`, `cost-monitoring`, `privacy` and `observability` move the SAME
+  // constant on INDEPENDENT axes, so the reconciliation is arithmetic on every
+  // delta and not a choice between green branches. Side-picking 165 would leave
+  // the tree with twenty-four unaccounted released placeholders and the canary
+  // would be quietly wrong while staying green on each branch alone.
   //
   // THE DELTA IS ALWAYS EXACTLY 4 PER ADOPTION, and that is the property to
   // check rather than the total: adoption releases a project's PLACEHOLDERS and
   // never its scaffolding, so a delta of anything but 4 means a scaffolding
   // file was moved or a fifth placeholder was invented.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 48
-  // placeholders of the 18 still-unadopted projects (6 contexts x 4 +
+  // The generator now owns the same 97 SCAFFOLDING files plus the 44
+  // placeholders of the 17 still-unadopted projects (5 contexts x 4 +
   // 12 adapters x 2). The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
@@ -536,20 +539,20 @@ test("generated ownership includes the generator's exact 145 outputs across 32 V
   // regenerated to a fixpoint beside it.
   //
   // `node scripts/arch/gen-v1-skeleton.mjs --check` prints the same arithmetic
-  // from the other side: "97 scaffolding + 48 placeholder = 145 generated
-  // file(s) for 32 V1 projects and 95 project edges (14 project(s) adopted,
-  // 56 placeholder(s) released)". The two 52s in that sentence were the same
-  // number by coincidence and are not any more: 48 placeholders REMAIN owned and
-  // 56 have been RELEASED.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 145);
+  // from the other side: "97 scaffolding + 44 placeholder = 141 generated
+  // file(s) for 32 V1 projects and 95 project edges (15 project(s) adopted,
+  // 60 placeholder(s) released)". The two 52s that sentence once carried were the
+  // same number by coincidence and are not any more: 44 placeholders REMAIN owned
+  // and 60 have been RELEASED.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 141);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 145 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 145);
+  // Same 141 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 141);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

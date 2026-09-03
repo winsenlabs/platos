@@ -75,7 +75,7 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666. WIN-256 made
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666 -> 714. WIN-256 made
   // packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
@@ -124,9 +124,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
-  // 391 (328 + 63) and privacy pinned 376 (328 + 48). The axes are disjoint, so
-  // the integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 = 666.
+  // 391 (328 + 63), privacy pinned 376 (328 + 48) and observability pinned 376
+  // (328 + 48) as well. The axes are disjoint, so the integrated census is their
+  // SUM and not any branch pin: 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 = 714.
+  // Privacy and observability pinned the SAME 376 from the same base by
+  // coincidence — both are 33 source + 15 test — which is precisely why the two
+  // are summed rather than reconciled to the number they agree on.
   //
   // THREE FILES ARE IN THE WARNING BAND, and this comment says so rather than
   // repeating the sentence that was true before `jobs` and `memory` landed:
@@ -150,9 +153,45 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the 328 is inside the budget and none is inside the 400-line warning band",
   // which was already false of the tree it was rebased onto; it is corrected
   // here rather than carried, and privacy itself adds no file to the list.
-  assert.equal(result.fileCount, 666);
+  //
+  // The observability branch went further and said "`findings` is now EMPTY, not
+  // merely free of errors: every one of the 376 clears the 400-line warning band
+  // too". That is false of THIS tree for the same reason — the three files above
+  // are findings — and it is corrected here rather than carried. What IS true,
+  // and is what that branch actually earned, is that its own 453-line
+  // drain-projections suite was split into
+  // application/drain-projections.lanes.test.ts before adoption, so observability
+  // adds no file to the list either. The list is unchanged at three.
+  assert.equal(result.fileCount, 714);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
+  // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
+  // warning, so a file drifting into the 400-500 band is invisible to CI and
+  // accumulates. The observability branch pinned `findings` EMPTY, and that is
+  // what turned its 453-line drain-projections.test.ts into a split instead of a
+  // shrug. EMPTY is false of the integrated tree — `jobs` and `memory` each
+  // brought a warning-band suite with them — so the anti-drift property is kept
+  // by pinning the EXACT list rather than by deleting the assertion or by
+  // reformatting three real warnings out of existence. A fourth file drifting
+  // into the band still turns this red, which is the whole point; the three
+  // below are named, in the band, and below the 500-line hard error.
+  assert.deepEqual(result.findings, [
+    {
+      path: "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+      effectiveLines: 465,
+      severity: "warning",
+    },
+    {
+      path: "packages/contexts/memory/application/authorization.test.ts",
+      effectiveLines: 448,
+      severity: "warning",
+    },
+    {
+      path: "packages/contexts/memory/contracts/index.test.ts",
+      effectiveLines: 404,
+      severity: "warning",
+    },
+  ]);
 });
 
 test("selector drift to missing roots fails non-vacuity independently", () => {

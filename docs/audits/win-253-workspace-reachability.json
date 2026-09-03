@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "504a4f8f645cd46e626fff845c72b242994e0266fce96eb27bc0d49d3c1805e2",
+  "evidenceSha256": "4273bd22be980168346c5d97f9a900ccca211c2bbec32a1ade3ccbc44f23aaff",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 58,
+    "explicitHeaderFileCount": 54,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 145,
-        "sha256": "e4b47e687e50961c1cd78bb8ca7fbc2e288d96c9dd4e5643d76b45ae9dac642f"
+        "outputCount": 141,
+        "sha256": "0ff92162e13fced0241e07dc4d26047dca98d65861df604a6dd88b87ccbe507d"
       }
     ],
-    "ownedOutputCount": 145,
+    "ownedOutputCount": 141,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9f349ef9c89fcd908afca7ddd6dcd8a9ded4a5c2bee9dccb2d3b02eaf2b41447",
+    "aggregateSha256": "ac033aa461b7e7f65a3735627269d7c50bd818d8ad9960822977986e0cee3d49",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "bd8a85bc66c903715ea1da2c2f02a0053b71c9f51748150e5f1a0356e92b6890"
+        "sha256": "bc4b4ab08c96d3a06b98caddff788f6fbd0926eaf562df9a132130a07c79b491"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -12676,24 +12676,216 @@
         "sha256": "23470faa57ced709cb38741dbd9d873449474167b3c0f65561286823a30b7103"
       },
       {
+        "path": "packages/contexts/observability/application/dependencies.ts",
+        "sha256": "597fb3d2f579d5e8150fc9821dee2adf16fd894097c20c96af4cf90312b9be08"
+      },
+      {
+        "path": "packages/contexts/observability/application/describe-observability.test.ts",
+        "sha256": "d2548ca6782cb6fdab8d5c890045fa3c25a396254a4fd2f68575d9bff7dc6f1b"
+      },
+      {
+        "path": "packages/contexts/observability/application/describe-observability.ts",
+        "sha256": "899fda0c6e471cc039ca0c0050df699165f3a2dd2804a6be627064e7ff3f6b3a"
+      },
+      {
+        "path": "packages/contexts/observability/application/drain-projections.lanes.test.ts",
+        "sha256": "9b798d1f49ab3d8789912ff46d9f398ea614f77ef106eda8d69d1b7d8501a189"
+      },
+      {
+        "path": "packages/contexts/observability/application/drain-projections.test.ts",
+        "sha256": "2f4dd824d6a7662c5d8d4556960c5f7e549b76d5b1c1c35a76522782136fea91"
+      },
+      {
+        "path": "packages/contexts/observability/application/drain-projections.ts",
+        "sha256": "09138b208a6d816a1ef413a6a9c2ce49362fc1d95e1a261590a5e2aa1216d7d3"
+      },
+      {
         "path": "packages/contexts/observability/application/index.ts",
-        "sha256": "ce6661c7ce65262f61d69ca921802213b8deaa272b60aa3c5094e9c03e111565"
+        "sha256": "354b41ef7b7fe962079d86a571fe361153babffb0a50145c72c8a54b81671c34"
+      },
+      {
+        "path": "packages/contexts/observability/application/observability-contract.ts",
+        "sha256": "bb62c13a5b6fe6c256596a6b638cd93c7b4c943a382bd09ea01f2c4b02d30667"
+      },
+      {
+        "path": "packages/contexts/observability/application/observability-erasure-target.test.ts",
+        "sha256": "53f2264380018b25e40c47d054a7a6a7ab67063f0b22989852e2749b759f14c0"
+      },
+      {
+        "path": "packages/contexts/observability/application/observability-erasure-target.ts",
+        "sha256": "62eb25e5c91bdd666dd80a976d52c505f938684b018ee8770a571b16aaf55215"
+      },
+      {
+        "path": "packages/contexts/observability/application/ports/erased-subject-register.ts",
+        "sha256": "9750b9dbcf5b9f1448e31586b645a6150ab80c55c8b19b1307e61e3e0712fa75"
       },
       {
         "path": "packages/contexts/observability/application/ports/index.ts",
-        "sha256": "886f9afd7c45d88d2020328ce6fdc9986ab74478333a0b49386db8198944f015"
+        "sha256": "596ef6f1e5bc533bfd73841732a868a73a7479027d59da55ab3743253368b61e"
+      },
+      {
+        "path": "packages/contexts/observability/application/ports/observability-repository.ts",
+        "sha256": "2f49246dbc5b8b59d64ae5554f1cb87dd513ac6a17375415e21d84233f574a7f"
+      },
+      {
+        "path": "packages/contexts/observability/application/ports/observability-sink.ts",
+        "sha256": "1ce6f40b61c07faa224f9689e130546f96e3935c27b40ed2c66a67a09f5fa297"
+      },
+      {
+        "path": "packages/contexts/observability/application/ports/projection-outbox.ts",
+        "sha256": "35944b52eaef506653dec84b2fc41c234dfcb01e85acb26e3406884a96c68549"
+      },
+      {
+        "path": "packages/contexts/observability/application/probe-sink.ts",
+        "sha256": "6e15c81c92b178a8c02d82ad670dbb5f1bec995017b1f178c0bc09801678eb7c"
+      },
+      {
+        "path": "packages/contexts/observability/application/record-admin-action.test.ts",
+        "sha256": "7ccf49f03603b381301750885380936eef8ab963aaadfb9c0b68cf7182a347cc"
+      },
+      {
+        "path": "packages/contexts/observability/application/record-admin-action.ts",
+        "sha256": "950d05653688a543dfffaa6d3b1646e794ca9ddb5c752c7a64650f6c5953238f"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/fixtures.ts",
+        "sha256": "e5656fa5f1f5c157732fe52dc836731f14e4d4d8f485a2525f5535c002b9a861"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/in-memory-observability-repository.ts",
+        "sha256": "f5fef351b3b51f58a42f9513aacc6acb093b5358f1c1eab20d956eeb09851cb5"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/in-memory-observability-sink.ts",
+        "sha256": "ff26e96e4f4ce1441b8fbe1dec0734a77f013accf7830c877239d8757864d20f"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/in-memory-projection-outbox.ts",
+        "sha256": "a6dc835dc001198fd05eed73398ce81b194062396c6f70726f2736a80c603f0c"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/index.ts",
+        "sha256": "36821af9075871b045d75aef3677e0eacc575e43c6675ec6a0819e4369f3eea1"
+      },
+      {
+        "path": "packages/contexts/observability/application/testing/turn-fixture.ts",
+        "sha256": "7c0928e39256594d50bbabaf40859707ed3226e48f7bc8a3b32fce433b0ca473"
+      },
+      {
+        "path": "packages/contexts/observability/application/views.ts",
+        "sha256": "1b36fd9a1b7be7da83676382b08eca0252ecf69b111c6bc952166f9fb5c20bf9"
       },
       {
         "path": "packages/contexts/observability/contracts/index.ts",
-        "sha256": "6c8b67245c7db1256f60c461d950fd458e2ddb0b3dc05c94627c3c09e16fe491"
+        "sha256": "eacd9df6d29515c968ca9589f274fdb4095d5a06f5af45fe19b719b3032f5d6c"
+      },
+      {
+        "path": "packages/contexts/observability/contracts/observability-contract.test.ts",
+        "sha256": "b9d7f59d846609c78ddeb25691953a5b2793a604c5d096fcca9ebb83372c67bf"
+      },
+      {
+        "path": "packages/contexts/observability/domain/admin-audit.test.ts",
+        "sha256": "5cb926ff6bd32d1df91c54861e126c75151c6d30b0ed15fc299d3586aae9fc10"
+      },
+      {
+        "path": "packages/contexts/observability/domain/admin-audit.ts",
+        "sha256": "6a414cc507b077923a47a97f0a565c19042b15bbaa4954351d643528fc797716"
+      },
+      {
+        "path": "packages/contexts/observability/domain/attributes.test.ts",
+        "sha256": "a7c3f8f82b0de86c819bfe8a96ece0f0c7e396f5f2844b29d27dcf3ea9e47b92"
+      },
+      {
+        "path": "packages/contexts/observability/domain/attributes.ts",
+        "sha256": "0580c4dc4a51e503756b2251bc9e1762ec85da890473c9e2f5b05282d9bf7f9c"
+      },
+      {
+        "path": "packages/contexts/observability/domain/column-values.test.ts",
+        "sha256": "565157d1e2b475d085c14e935aeaa086c0f741b85ce9e1522c8805f9086bccc9"
+      },
+      {
+        "path": "packages/contexts/observability/domain/column-values.ts",
+        "sha256": "73b917993e2f99425fc7137012e2dcd9ee3cb37c4cb16991b3f734ce51cde54e"
+      },
+      {
+        "path": "packages/contexts/observability/domain/delivery.test.ts",
+        "sha256": "9192862b502ea50d2c7f627259352731c6ea896d71a09f16a24251c0c24131b3"
+      },
+      {
+        "path": "packages/contexts/observability/domain/delivery.ts",
+        "sha256": "f8bfdc50c1d04353f1bef7aaa730749cc2061237eeff0824411049859f3e8c10"
+      },
+      {
+        "path": "packages/contexts/observability/domain/envelope.test.ts",
+        "sha256": "25d5de55f9088b4f4d036815b3b857a1b7789eac63551ec6304513d0484d8ec6"
+      },
+      {
+        "path": "packages/contexts/observability/domain/envelope.ts",
+        "sha256": "e5c9faefd993de25a5a7c3bb0140c11c2fc03e192845b6646180ec1988c4ce57"
+      },
+      {
+        "path": "packages/contexts/observability/domain/errors.test.ts",
+        "sha256": "1976f1d89762dab380e0e027d79b8068a61b1b2431cb8e8d224d539c07dce891"
+      },
+      {
+        "path": "packages/contexts/observability/domain/errors.ts",
+        "sha256": "d73af84352d8d9432f93f267083867b6be09ab4fb0619d641eb598ec65f24286"
+      },
+      {
+        "path": "packages/contexts/observability/domain/identifiers.ts",
+        "sha256": "4077889ec5ef0d3a46ebaf3e37fb633980eb339799a51ff378427cd57b5191c6"
       },
       {
         "path": "packages/contexts/observability/domain/index.ts",
-        "sha256": "00875d95902c8f25efd7b65a4290ae88979bc9d622ef7d76a576518d7bf4a623"
+        "sha256": "046559605ba616aeee6ed2ba80e2686f6f55b31bd9c92d28a2f4c2d970cf2c44"
+      },
+      {
+        "path": "packages/contexts/observability/domain/json-read.ts",
+        "sha256": "4d1f0887167a5e598cf2287c435aac430fe60cd9784bb3610e800b3af28aac31"
+      },
+      {
+        "path": "packages/contexts/observability/domain/observed-work-codec.ts",
+        "sha256": "f262bbec8a66d314cb0bf894f126f407010fe344297763af6e6c14504e6795a1"
+      },
+      {
+        "path": "packages/contexts/observability/domain/observed-work.ts",
+        "sha256": "2c0146976457289b5448f92fb9802e868acbee39c13e8de8425e77091e5267fa"
+      },
+      {
+        "path": "packages/contexts/observability/domain/projection-tables.ts",
+        "sha256": "ea8c6b2145772ccaf6c0b0169f6ad6f9f4b73c23f2ce309d305a830e817fdea8"
+      },
+      {
+        "path": "packages/contexts/observability/domain/projection.test.ts",
+        "sha256": "3d6b0530f27e152683381a3c7b79d717b8940ced93e17a8ec18d1f02d7149cbd"
+      },
+      {
+        "path": "packages/contexts/observability/domain/projection.ts",
+        "sha256": "eb23fbc3278f0b53f498ba38187a37293ef957cdc489b24abefcd68370a5c3fa"
+      },
+      {
+        "path": "packages/contexts/observability/domain/sink-health.ts",
+        "sha256": "a3dc19bc45460d696cf58e06bf5f2b4706b393da042fc91ab96d550d7a2ca9d6"
+      },
+      {
+        "path": "packages/contexts/observability/domain/subject-erasure.test.ts",
+        "sha256": "d9adce8644ff8cc7561b726c62f85e8b45e10048d6a924cd9e766b7665fa72c8"
+      },
+      {
+        "path": "packages/contexts/observability/domain/subject-erasure.ts",
+        "sha256": "e13225f24cb2ba332787ca06ed9c35ba3e377d56a5c59c9717a80dc49395cbbd"
+      },
+      {
+        "path": "packages/contexts/observability/domain/token-lanes.test.ts",
+        "sha256": "b65fd7b6792d72cb744eb26a53d57a89662a433f3fec5e6bb701e141fbd4ab78"
+      },
+      {
+        "path": "packages/contexts/observability/domain/token-lanes.ts",
+        "sha256": "9d7238b7c1124eb03bdb1e607e539883f2e316e8b71ab1df241b649e57733c76"
       },
       {
         "path": "packages/contexts/observability/package.json",
-        "sha256": "c7d05f1de4a35e7b545d27507170756351fb9e4fbd9744193f2788bb7a01ebfe"
+        "sha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4"
       },
       {
         "path": "packages/contexts/observability/tsconfig.json",
@@ -16001,7 +16193,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "00339fde927c98230fd2590948e22da7a6eed5746125542a9743055cbe015a26"
+        "sha256": "9d6855ed7860879faac439fddd825a1ec9ae3710d6d42ebe678cdaa17286ca8a"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -16033,7 +16225,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b27dabcdce0b0d4c24d0ddb6884ac71e7df929efc01e15967406fc00b29eb775"
+        "sha256": "7381857bac53bea7847e5531e32509446044bbb5b3dcff1665ca23a5d7800966"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -16053,7 +16245,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "0729b6615a31acf4a787e824a1b9fa8250d01594f8807a0804b226bbf382fa28"
+        "sha256": "2963f49c4ab1b5109d7a2ad6826488655c26e50547383e1d0d46b7661e64f7d3"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -16069,11 +16261,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "bb4f7c1ff33ab76b92b95f1552c1d937bbbda7e072d75c9886790e00a64521bd"
+        "sha256": "a44a79e12d769501eeee64ba4f4a8976eccf39eaa35bc3baa42ab5679fa46b40"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "af1082ba33488565f67db79c753a29cf2503f0f9100e7b8e428f8936d91e12f8"
+        "sha256": "eab79d0e69461c5932edebb4d578861c761cd42528d9429559fd1382c03cab72"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -16305,7 +16497,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "4b401e18c8506525fc65ba1c965d932574e6fb4faf258da355500316c2963f77"
+        "sha256": "5615083708bb6ade382fd05af9c95abe69cf2fa9e4461b4162a9b4db98067e13"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -16413,7 +16605,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "b67f6384b8248e77b82833371807fc96b8cea9ce58e835f4899136ef0f99af97"
+        "sha256": "3e636677568ba996bddd9ef5aa38dc372360b503a9e05b21080f07695b888f0f"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -21459,14 +21651,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/observability/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/observability/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -21521,14 +21705,6 @@
               "packages/contexts/governance/contracts/index.ts"
             ],
             [
-              "packages/contexts/observability/application/ports/index.ts",
-              "packages/contexts/observability/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/observability/contracts/index.ts",
-              "packages/contexts/observability/contracts/index.ts"
-            ],
-            [
               "packages/contexts/tools/application/ports/index.ts",
               "packages/contexts/tools/application/ports/index.ts"
             ],
@@ -21549,8 +21725,6 @@
             "packages/contexts/conversations/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
             "packages/contexts/governance/contracts/index.ts",
-            "packages/contexts/observability/application/ports/index.ts",
-            "packages/contexts/observability/contracts/index.ts",
             "packages/contexts/tools/application/ports/index.ts",
             "packages/contexts/tools/contracts/index.ts"
           ]
@@ -21738,6 +21912,11 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "kind": "reference",
+              "line": 3
+            },
+            {
               "from": "packages/contexts/privacy/contracts/index.test.ts",
               "kind": "reference",
               "line": 5
@@ -21827,6 +22006,10 @@
               "apps/core-api/src/runtime/process-ports.test.ts"
             ],
             [
+              "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "packages/contexts/observability/contracts/observability-contract.test.ts"
+            ],
+            [
               "packages/contexts/privacy/contracts/index.test.ts",
               "packages/contexts/privacy/contracts/index.test.ts"
             ],
@@ -21880,6 +22063,7 @@
             "apps/core-api/src/runtime/in-flight.test.ts",
             "apps/core-api/src/runtime/lifecycle.test.ts",
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/observability/contracts/observability-contract.test.ts",
             "packages/contexts/privacy/contracts/index.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/clean-v1.test.mjs",
@@ -21927,7 +22111,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "ac4dc5c9e4bee377df5a386a8ff27eff64557f0db6a101e3553fe29011ed04be",
+      "evidenceSha256": "bc28bc00532c5cd6de64c0a643b2c132ca061379b50bb9894e173d71f0774bf0",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -33631,7 +33815,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 731
+              "line": 743
             }
           ],
           "reversePaths": [
@@ -33656,7 +33840,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "07e738ddfcab78d91dc06503fcc6b50b99663613523d220bd8947ea28872a28e",
+      "evidenceSha256": "b82207ca3e4a22fbdea496c3aed22c9bde66888edc82aeae6b4775ef9f8c6c3b",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -34787,7 +34971,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 730
+              "line": 742
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -35012,7 +35196,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e96db97a0d1a10d8928a87f88c82384d3dca36665af9f1f18048179c906b9b37",
+      "evidenceSha256": "0c463751fbb2921451fec595f85d8b4cde1ea3d7342aae509a80bb4a1f8cd3f2",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -45744,7 +45928,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 575
+              "line": 578
             }
           ],
           "reversePaths": [
@@ -45823,7 +46007,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "38d875abf6c286040e6a7f939cab5d0f6a19aa65f87cfe750bda5bcc47212037",
+      "evidenceSha256": "4feef0b18213b7ff551df33430e2b2250d9faf58a57c23f4bacf9bb3e22defa5",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -46333,7 +46517,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 422
+              "line": 426
             }
           ],
           "reversePaths": [
@@ -46578,7 +46762,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "5fc2af0ac8b8b2651a35117d5cae180caf89f19fc1634c3aedf792164b5a3c47",
+      "evidenceSha256": "2cc4551d57d48f7b55f177e9342275104d944cf73baa83df86a29bb176f5b2c3",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -46950,7 +47134,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 290
+              "line": 294
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47104,7 +47288,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "2a9c0fdadbd7eb2363ea1c8c1fe8ba66dde8af66a076fba41aea13c6446a0b92",
+      "evidenceSha256": "29815fba406acc373c6062e44af5c982fb54b306e1bfec3ff8fcfa26b6f1befb",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -49386,7 +49570,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 270
+              "line": 274
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50183,7 +50367,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "3132bd96a807176cd0d04ebf7f0024ba13c680a9eae89030e72f57144b9cede8",
+      "evidenceSha256": "e7499899b529a30f89f098de949371f31b3fff2dfea0f1bc0257a034259c551a",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -50596,7 +50780,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 134
+              "line": 137
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -50782,7 +50966,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "bb4d6cb65273240ada7c7d37d409206850ca918836ff2982be4e5773b21d270c",
+      "evidenceSha256": "14b521dc05c2d784afa5a6ba69b414a198fc21c6247d06d7093e92d342b6af5d",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -51296,12 +51480,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 135
+              "line": 138
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 393
+              "line": 397
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -51574,7 +51758,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "a1155ec35490f223809654a43133e924dbf3faf806a4d228e68b7afc6d86ae2d",
+      "evidenceSha256": "b79c0b38e9b848c5fed5e89650b91ca10e91c808e3d9a9e2c01d66edbbd8715f",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -51753,26 +51937,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/observability/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/observability/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/observability/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/observability/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/observability/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -51794,22 +51958,6 @@
               "packages/adapters/clickhouse-observability/src/adapter.ts"
             ],
             [
-              "packages/contexts/observability/application/index.ts",
-              "packages/contexts/observability/application/index.ts"
-            ],
-            [
-              "packages/contexts/observability/application/ports/index.ts",
-              "packages/contexts/observability/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/observability/contracts/index.ts",
-              "packages/contexts/observability/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/observability/domain/index.ts",
-              "packages/contexts/observability/domain/index.ts"
-            ],
-            [
               "packages/contexts/observability/package.json",
               "packages/contexts/observability/package.json"
             ],
@@ -51825,10 +51973,6 @@
           "roots": [
             "packages/adapters/clickhouse-observability/src/adapter.ts",
             "packages/contexts/observability/README.md",
-            "packages/contexts/observability/application/index.ts",
-            "packages/contexts/observability/application/ports/index.ts",
-            "packages/contexts/observability/contracts/index.ts",
-            "packages/contexts/observability/domain/index.ts",
             "packages/contexts/observability/package.json",
             "packages/contexts/observability/tsconfig.json"
           ]
@@ -51866,6 +52010,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/observability/package.json",
               "kind": "workspace-script",
@@ -51876,6 +52025,12 @@
               "from": "packages/contexts/observability/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/observability/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -51939,6 +52094,86 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/observability/application/describe-observability.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/application/drain-projections.lanes.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/application/drain-projections.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/application/observability-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/application/record-admin-action.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/admin-audit.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/attributes.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/column-values.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/delivery.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/envelope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/projection.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/subject-erasure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/token-lanes.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 165
@@ -51947,9 +52182,83 @@
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 145
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 496
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 590
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/observability/application/describe-observability.test.ts",
+              "packages/contexts/observability/application/describe-observability.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/drain-projections.lanes.test.ts",
+              "packages/contexts/observability/application/drain-projections.lanes.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/drain-projections.test.ts",
+              "packages/contexts/observability/application/drain-projections.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/observability-erasure-target.test.ts",
+              "packages/contexts/observability/application/observability-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/record-admin-action.test.ts",
+              "packages/contexts/observability/application/record-admin-action.test.ts"
+            ],
+            [
+              "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "packages/contexts/observability/contracts/observability-contract.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/admin-audit.test.ts",
+              "packages/contexts/observability/domain/admin-audit.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/attributes.test.ts",
+              "packages/contexts/observability/domain/attributes.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/column-values.test.ts",
+              "packages/contexts/observability/domain/column-values.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/delivery.test.ts",
+              "packages/contexts/observability/domain/delivery.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/envelope.test.ts",
+              "packages/contexts/observability/domain/envelope.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/errors.test.ts",
+              "packages/contexts/observability/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/projection.test.ts",
+              "packages/contexts/observability/domain/projection.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/subject-erasure.test.ts",
+              "packages/contexts/observability/domain/subject-erasure.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/token-lanes.test.ts",
+              "packages/contexts/observability/domain/token-lanes.test.ts"
+            ],
+            [
+              "packages/contexts/observability/package.json",
+              "packages/contexts/observability/package.json"
+            ],
             [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
@@ -51957,11 +52266,37 @@
             [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/observability/application/describe-observability.test.ts",
+            "packages/contexts/observability/application/drain-projections.lanes.test.ts",
+            "packages/contexts/observability/application/drain-projections.test.ts",
+            "packages/contexts/observability/application/observability-erasure-target.test.ts",
+            "packages/contexts/observability/application/record-admin-action.test.ts",
+            "packages/contexts/observability/contracts/observability-contract.test.ts",
+            "packages/contexts/observability/domain/admin-audit.test.ts",
+            "packages/contexts/observability/domain/attributes.test.ts",
+            "packages/contexts/observability/domain/column-values.test.ts",
+            "packages/contexts/observability/domain/delivery.test.ts",
+            "packages/contexts/observability/domain/envelope.test.ts",
+            "packages/contexts/observability/domain/errors.test.ts",
+            "packages/contexts/observability/domain/projection.test.ts",
+            "packages/contexts/observability/domain/subject-erasure.test.ts",
+            "packages/contexts/observability/domain/token-lanes.test.ts",
+            "packages/contexts/observability/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
-            "scripts/arch/sole-writer.test.mjs"
+            "scripts/arch/sole-writer.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/v1-ledger.test.mjs"
           ]
         }
       },
@@ -52042,8 +52377,8 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "818d831e1613732281a79c71cb5908c7ed3a53e05a68d1e2bf456f5526192655",
-      "manifestSha256": "c7d05f1de4a35e7b545d27507170756351fb9e4fbd9744193f2788bb7a01ebfe",
+      "evidenceSha256": "594dbc97a5ff34543d3def50efa165c60f6cd80a1460ffc521c5f85b9fbd0d15",
+      "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
         "reachable": false,
@@ -52424,7 +52759,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 458
+              "line": 464
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -52588,7 +52923,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "9680b5c03cde791ca8be53381ee7c1b0152af4b75cb2e1f14651e84839af0724",
+      "evidenceSha256": "9fd54dba088bdab9611e8b7f5bd34410865319de305b2b834e29e477868ccae1",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -53359,7 +53694,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 317
+              "line": 321
             }
           ],
           "reversePaths": [
@@ -53794,7 +54129,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "287e149f56b4a11a19560ad5f8da59494da1be3355d9f1d2329801edb06d4742",
+      "evidenceSha256": "2b05a8b931c8ab0781fcd7b699d52511489acfd133419973e3ed59a22467d6c7",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -54584,7 +54919,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 271
+              "line": 275
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55057,7 +55392,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1eab06de74a6285e296a1a9046a010f6c91907322d2d845bbc4ccc0892ee30a3",
+      "evidenceSha256": "db112dd85aac6e72e357940dc1faa84ace14b721a7758998dcc78bcd880d60e1",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -55545,7 +55880,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 341
+              "line": 345
             }
           ],
           "reversePaths": [
@@ -55787,7 +56122,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "48eaead0b6c3928a00e6cf55df3600bf463367d78e67f65b576dc97c2638ee93",
+      "evidenceSha256": "e471176e69aa694d2f969a58d11a06b29ce93b706ccba1447bf96b5619cf86af",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -56486,10 +56821,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/observability/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tenancy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -56531,10 +56862,6 @@
               "packages/contexts/governance/application/index.ts"
             ],
             [
-              "packages/contexts/observability/application/index.ts",
-              "packages/contexts/observability/application/index.ts"
-            ],
-            [
               "packages/contexts/tenancy/package.json",
               "packages/contexts/tenancy/package.json"
             ],
@@ -56557,7 +56884,6 @@
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/governance/application/index.ts",
-            "packages/contexts/observability/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
             "packages/contexts/tenancy/tsconfig.json",
@@ -56747,6 +57073,18 @@
               "specifier": "@platos/context-tenancy"
             },
             {
+              "file": "packages/contexts/observability/application/dependencies.ts",
+              "from": "packages/contexts/observability",
+              "line": 23,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/fixtures.ts",
+              "from": "packages/contexts/observability",
+              "line": 29,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/privacy/application/dependencies.ts",
               "from": "packages/contexts/privacy",
               "line": 29,
@@ -56861,6 +57199,14 @@
               "packages/contexts/memory/application/testing/in-memory-peers.ts"
             ],
             [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/privacy",
               "packages/contexts/privacy/application/dependencies.ts"
             ],
@@ -56900,6 +57246,7 @@
             "packages/contexts/files",
             "packages/contexts/jobs",
             "packages/contexts/memory",
+            "packages/contexts/observability",
             "packages/contexts/privacy",
             "packages/contexts/providers",
             "packages/contexts/skills"
@@ -57036,7 +57383,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 272
+              "line": 276
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -57766,7 +58113,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "bcbf9529cd728bfc06a10f4c1acd0aa75298f7440e69d8163c3d1fa8d4543536",
+      "evidenceSha256": "4f52d946aae433497423b04c6e47d230682f81ab33a8d8b4290474063bb2a7a6",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -58163,7 +58510,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 557,
+              "line": 558,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -58348,7 +58695,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "24ad05861631feff24d00e34d75e83cf0dc49b888c2aed98fe3124b9ed90bd94",
+      "evidenceSha256": "8dce8324fc6305485cf7ce5e165c17787a7f23784204657d5e6d6496b6afd7f7",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -60900,10 +61247,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/observability/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -60953,10 +61296,6 @@
               "packages/contexts/governance/domain/index.ts"
             ],
             [
-              "packages/contexts/observability/domain/index.ts",
-              "packages/contexts/observability/domain/index.ts"
-            ],
-            [
               "packages/contexts/tools/domain/index.ts",
               "packages/contexts/tools/domain/index.ts"
             ],
@@ -60981,7 +61320,6 @@
             "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
-            "packages/contexts/observability/domain/index.ts",
             "packages/contexts/tools/domain/index.ts",
             "packages/kernel/README.md",
             "packages/kernel/package.json",
@@ -62299,6 +62637,162 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/observability/application/dependencies.ts",
+              "from": "packages/contexts/observability",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/describe-observability.ts",
+              "from": "packages/contexts/observability",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/drain-projections.ts",
+              "from": "packages/contexts/observability",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/observability-contract.ts",
+              "from": "packages/contexts/observability",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/observability-erasure-target.ts",
+              "from": "packages/contexts/observability",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/ports/erased-subject-register.ts",
+              "from": "packages/contexts/observability",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/ports/observability-repository.ts",
+              "from": "packages/contexts/observability",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/ports/observability-sink.ts",
+              "from": "packages/contexts/observability",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/ports/projection-outbox.ts",
+              "from": "packages/contexts/observability",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/record-admin-action.ts",
+              "from": "packages/contexts/observability",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/fixtures.ts",
+              "from": "packages/contexts/observability",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/in-memory-observability-repository.ts",
+              "from": "packages/contexts/observability",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/in-memory-observability-sink.ts",
+              "from": "packages/contexts/observability",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/in-memory-projection-outbox.ts",
+              "from": "packages/contexts/observability",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/application/testing/turn-fixture.ts",
+              "from": "packages/contexts/observability",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/contracts/index.ts",
+              "from": "packages/contexts/observability",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/admin-audit.ts",
+              "from": "packages/contexts/observability",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/delivery.ts",
+              "from": "packages/contexts/observability",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/envelope.ts",
+              "from": "packages/contexts/observability",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/envelope.ts",
+              "from": "packages/contexts/observability",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/errors.ts",
+              "from": "packages/contexts/observability",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/identifiers.ts",
+              "from": "packages/contexts/observability",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/observed-work-codec.ts",
+              "from": "packages/contexts/observability",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/observed-work.ts",
+              "from": "packages/contexts/observability",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/projection.ts",
+              "from": "packages/contexts/observability",
+              "line": 52,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/observability/domain/subject-erasure.ts",
+              "from": "packages/contexts/observability",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/privacy/application/dependencies.ts",
               "from": "packages/contexts/privacy",
               "line": 28,
@@ -63483,7 +63977,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 437,
+              "line": 438,
               "specifier": "@platos/kernel"
             }
           ],
@@ -64277,6 +64771,106 @@
               "packages/contexts/memory/domain/working-set.ts"
             ],
             [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/describe-observability.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/drain-projections.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/observability-contract.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/observability-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/ports/erased-subject-register.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/ports/observability-repository.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/ports/observability-sink.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/ports/projection-outbox.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/record-admin-action.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/in-memory-observability-repository.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/in-memory-observability-sink.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/in-memory-projection-outbox.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/application/testing/turn-fixture.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/admin-audit.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/delivery.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/envelope.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/observed-work-codec.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/observed-work.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/projection.ts"
+            ],
+            [
+              "packages/contexts/observability",
+              "packages/contexts/observability/domain/subject-erasure.ts"
+            ],
+            [
               "packages/contexts/privacy",
               "packages/contexts/privacy/application/dependencies.ts"
             ],
@@ -64917,6 +65511,7 @@
             "packages/contexts/identity-access",
             "packages/contexts/jobs",
             "packages/contexts/memory",
+            "packages/contexts/observability",
             "packages/contexts/privacy",
             "packages/contexts/providers",
             "packages/contexts/secrets",
@@ -65249,6 +65844,46 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/observability/application/drain-projections.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/application/observability-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/observability/application/record-admin-action.test.ts",
+              "kind": "reference",
+              "line": 6
+            },
+            {
+              "from": "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/observability/domain/admin-audit.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/envelope.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/observability/domain/projection.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/observability/domain/subject-erasure.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/privacy/application/guard-subject-write.test.ts",
               "kind": "reference",
               "line": 1
@@ -65571,7 +66206,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 243
+              "line": 245
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -65850,6 +66485,38 @@
             [
               "packages/contexts/memory/domain/working-set.test.ts",
               "packages/contexts/memory/domain/working-set.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/drain-projections.test.ts",
+              "packages/contexts/observability/application/drain-projections.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/observability-erasure-target.test.ts",
+              "packages/contexts/observability/application/observability-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/observability/application/record-admin-action.test.ts",
+              "packages/contexts/observability/application/record-admin-action.test.ts"
+            ],
+            [
+              "packages/contexts/observability/contracts/observability-contract.test.ts",
+              "packages/contexts/observability/contracts/observability-contract.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/admin-audit.test.ts",
+              "packages/contexts/observability/domain/admin-audit.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/envelope.test.ts",
+              "packages/contexts/observability/domain/envelope.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/projection.test.ts",
+              "packages/contexts/observability/domain/projection.test.ts"
+            ],
+            [
+              "packages/contexts/observability/domain/subject-erasure.test.ts",
+              "packages/contexts/observability/domain/subject-erasure.test.ts"
             ],
             [
               "packages/contexts/privacy/application/guard-subject-write.test.ts",
@@ -66193,6 +66860,14 @@
             "packages/contexts/memory/domain/scope.test.ts",
             "packages/contexts/memory/domain/traversal.test.ts",
             "packages/contexts/memory/domain/working-set.test.ts",
+            "packages/contexts/observability/application/drain-projections.test.ts",
+            "packages/contexts/observability/application/observability-erasure-target.test.ts",
+            "packages/contexts/observability/application/record-admin-action.test.ts",
+            "packages/contexts/observability/contracts/observability-contract.test.ts",
+            "packages/contexts/observability/domain/admin-audit.test.ts",
+            "packages/contexts/observability/domain/envelope.test.ts",
+            "packages/contexts/observability/domain/projection.test.ts",
+            "packages/contexts/observability/domain/subject-erasure.test.ts",
             "packages/contexts/privacy/application/guard-subject-write.test.ts",
             "packages/contexts/privacy/application/request-erasure.test.ts",
             "packages/contexts/privacy/application/retry-erasure.test.ts",
@@ -67004,7 +67679,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "dd562d4a9ba45090762b9270e67ed8e07569a1bc8199bef7f8e32caa88a9e8ed",
+      "evidenceSha256": "0b8525291b6f94c223fe0b7969830c6c3a838a41b556c9d08caf5c7c2d887918",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

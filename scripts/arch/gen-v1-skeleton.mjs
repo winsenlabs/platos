@@ -114,6 +114,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/memory", // WIN-256 — memories, the knowledge graph, extraction, and the Cache port it owns
   "packages/contexts/cost-monitoring", // WIN-256 — budgets, the spend ledger, threshold alerting, and the Notifier port it owns
   "packages/contexts/privacy", // WIN-256 — right-to-erasure orchestration over the kernel ErasureTarget[]
+  "packages/contexts/observability", // WIN-256 — the analytical projection, the drain, and the AdminAudit trail
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];

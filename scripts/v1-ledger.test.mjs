@@ -586,15 +586,26 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // placeholders were already tracked and are EDITED, not added, so adoption
     // itself moves nothing here; only the released source tree does.
     //
+    // +48: the same issue makes `observability` real (ADR M0.3 §1 row 16) — 48
+    // net files under packages/contexts/observability, 33 source (14 domain
+    // modules plus the domain barrel, 4 ports modules plus their barrel, 7
+    // application modules plus the application barrel, the contracts barrel and
+    // 5 in-memory testing doubles) and 15 test suites (9 domain, 5 application,
+    // 1 contract). The observability branch's own tip recorded 47: the 48th is
+    // application/drain-projections.lanes.test.ts, split out because the
+    // end-to-end tool-call and usage cases took drain-projections.test.ts to 453
+    // effective lines, past the ADR M0.3 §6 400-line warning band.
+    //
     // THE ADOPTIONS ARE SUMMED, NOT SIDE-PICKED: they add DISJOINT files under
-    // six different package directories and each moves this one number, so
-    // 272 + 44 + 55 + 51 + 77 + 63 + 48 = 610. The eventing branch pinned 316,
+    // seven different package directories and each moves this one number, so
+    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 = 658. The eventing branch pinned 316,
     // the skills branch pinned 327, the jobs branch pinned 323, the memory
     // branch pinned 349, the cost-monitoring branch pinned 335 and the privacy
-    // branch pinned 320; each is right for its own tree alone. Taking any of
+    // branch pinned 320 and the observability branch pinned 320 as well; each is
+    // right for its own tree alone. Taking any of
     // them would leave whole contexts' files unaccounted while the gate stayed
     // green on the branch it came from.
-    packages: 610,
+    packages: 658,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -684,7 +695,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 684);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 732);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -693,12 +704,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +684 combined delta as the totalFiles
+    // M2 integration: same +20 -> +732 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
-    // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 684
+    // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
+    // WIN-256 observability +48); this one re-derives it by summing the per-area
+    // counts independently.
+    rulesDocument.baseline.totalFiles + 732
   );
 });
 
