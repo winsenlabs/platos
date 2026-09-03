@@ -518,17 +518,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "apps-webapp": 0,
     "apps-core-api": 0,
     "apps-mcp-stdio": 0,
-    // WIN-252 owner decision adds packages/core/NOTICE: the upstream MIT
+    // 1 -> 207 -> 272. WIN-252 added packages/core/NOTICE (the upstream MIT
     // attribution, kept out of LICENSE so every publishable package's LICENSE
-    // stays byte-identical to the repository Apache-2.0 text.
-    packages: 1,
+    // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
+    // added 206 files making packages/kernel and four contexts real
+    // (identity-access, secrets, tenancy, files) — domain, application, ports,
+    // contracts, in-memory use cases and test builders.
+    //
+    // +65: the same issue makes `providers` real (ADR M0.3 §1 context 4) —
+    // 17 domain modules and 13 domain suites, 20 application modules and 7
+    // application suites, 3 ports, 5 in-memory doubles, and the contracts
+    // barrel with its suite. The 65 are NET of the 4 generated placeholders
+    // that adoption released and this code replaced in place.
+    packages: 272,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
-    // M2 INTEGRATION DELTA — docs-content 9 -> 13, root-infra 10 -> 30,
-    // total +20 -> +44. Two branches add files on independent axes, so each
-    // area is the SUM of both contributions, not either one alone.
+    // M2 INTEGRATION DELTA — packages 1 -> 272, docs-content 9 -> 13,
+    // root-infra 10 -> 37, total +20 -> +322. Three branches add files on
+    // independent axes, so each area is the SUM of every contribution, not any
+    // one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
@@ -557,15 +567,34 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   comparators, twin-run, seeds, scenarios, the two runners, four test
     //   suites and two subjects), all classified root-infra.test.harness.
     //
-    // No new ledger rule was needed by either branch: docs/audits/**,
+    // WIN-256 (domain contracts) contributes +278 (packages +271,
+    // docs-content +0, root-infra +7):
+    //   packages 1 -> 272 — the five real contexts (secrets, files, tenancy,
+    //   identity-access, providers) plus packages/kernel: domain modules,
+    //   application suites, ports, in-memory doubles and the contracts barrel.
+    //   NET of the 4 generated placeholders that adoption released and this
+    //   code replaced in place.
+    //
+    //   root-infra +7 — five for the ADR §5.3 kernel-content assertion and its
+    //   tests and the §5.2 ownership map and sole-writer lint and its tests,
+    //   plus two for owner decision 9 (2026-09-02): the per-package test CASE
+    //   census scripts/arch/test-case-census.mjs and its control suite. Both
+    //   classify as root-infra.tooling.scripts; `scripts/*.test.mjs` is a
+    //   single-level glob and does not reach `scripts/arch/`. Adopting
+    //   `providers` adds no file: it is one line appended to the generator's
+    //   ADOPTED_PROJECTS list, in a file that already existed.
+    //
+    //   docs-content +0 — WIN-256 adds no document to that area.
+    //
+    // No new ledger rule was needed by any branch: docs/audits/**, packages/**,
     // tests/** and scripts/** already have owning rules, so only the
     // fingerprint moves. Every added file is enumerated above and conserves
     // exactly to these deltas; attributed for ledger-owner review, not forced
-    // to green.
+    // to green. 20 + 5 + 19 + 278 = 322.
     "docs-content": 13,
-    "root-infra": 30,
+    "root-infra": 37,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 44);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 322);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -574,10 +603,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +44 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19); this one re-derives it by
-    // summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 44
+    // M2 integration: same +20 -> +322 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278); this one
+    // re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 322
   );
 });
 

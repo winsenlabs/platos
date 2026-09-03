@@ -98,6 +98,14 @@ const v1ReleaseGateCommands = [
   "pnpm test:v1-project-graph",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -107,6 +115,9 @@ const v1ReleaseGateCommands = [
   // audit:sbom:nonvacuity already proves it for the licence gate.
   "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites, ordered after build:v1 because a
+  // context test resolves its peers through their built dist/ entrypoints.
+  "pnpm test:v1-packages",
 ];
 const repositoryGovernanceCommands = [
   "pnpm audit:root-manifest",
@@ -222,12 +233,31 @@ const expectedV1EvidenceCommands = [
   "pnpm test:arch-boundaries",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites. Runs AFTER build:v1 because a context
+  // test resolves its peers through their built dist/ entrypoints.
+  "pnpm test:v1-packages",
+  // WIN-256 owner decision 9 (2026-09-02): the per-package test CASE census.
+  // `test:v1-packages` above prints a case count and passes at any value, and
+  // docs/v1-ledger-rules.json pins only test FILE counts, so deleting it()
+  // blocks inside a retained file was invisible to every gate in this list.
+  // Runs immediately after the suites it pins, so the two numbers are read from
+  // the same tree in the same step.
+  "pnpm audit:test-case-census",
+  "pnpm test:test-case-census",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
@@ -2129,11 +2159,17 @@ test("committed CI and image-build policy is executable, correlated, and complet
     7,
     "relocated command selector must cover all seven commands"
   );
+  // M2 INTEGRATION DELTA — 16 -> 22. Two branches add release gates on
+  // independent axes, so the pinned count is their SUM:
+  //   +1 WIN-299 (M2.6): audit:advisory:nonvacuity.
+  //   +5 WIN-256: the two gates ADR M0.3 specifies that M1 did not build —
+  //      §5.3 kernel-content (audit + test) and §5.2 sole-writer (audit +
+  //      test) — plus test:v1-packages, which runs the V1 packages' own suites
+  //      now that packages/kernel holds real code and 44 real assertions.
   assert.equal(
     v1ReleaseGateCommands.length,
-    // WIN-299 (M2.6) delta: 16 -> 17. One addition, audit:advisory:nonvacuity.
-    17,
-    "V1 release gate selector must cover existing gates plus image/advisory contract and disposition non-vacuity verification"
+    22,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, and the ADR M0.3 kernel-content and sole-writer gates"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4271,16 +4307,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  // DELTA — 340 (the M2 base) moves to 351. Two independent contributions land
-  // on this count in the M2 integration, on axes that do not interact, so the
-  // pinned number is their sum rather than either side alone:
+  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 356. Three independent
+  // contributions land on this count, on axes that do not interact, so the
+  // pinned number is their SUM rather than any one side alone:
   //
-  //   WIN-299 (M2.6), +2, 340 -> 342. The single new command
+  //   WIN-299 (M2.6), +2. The single new command
   //   (pnpm audit:advisory:nonvacuity) is declared in two selectors —
   //   v1ReleaseGateCommands and expectedV1EvidenceCommands — and the table
   //   derives one mutation control per declared command per selector.
   //
-  //   WIN-284 (differential harness), +9, 342 -> 351, each attributable:
+  //   WIN-284 (differential harness), +9, each attributable:
   //     +1  the fourth ci.yml setup-node, generated one control per occurrence
   //         by the expectedSetupNodeCounts loop, belonging to the new
   //         differential-state-conservation job.
@@ -4290,11 +4326,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //         the seeded-divergence catalogue, and the twin-store job stopping
   //         running the store gate.
   //
-  // The count is pinned rather than derived so that a control silently
-  // disappearing is a failure rather than a smaller number nobody reads.
+  //   WIN-256 (domain contracts), +5. One fail-fast mutation control per new
+  //   V1 release gate (audit/test:kernel-content, audit/test:sole-writer,
+  //   test:v1-packages). Each asserts that appending `|| true` to that gate's
+  //   command is detected.
+  //
+  // 340 + 2 + 9 + 5 = 356. The count is pinned rather than derived so that a
+  // control silently disappearing is a failure rather than a smaller number
+  // nobody reads.
   assert.equal(
     controls.length,
-    351,
+    356,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

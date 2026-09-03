@@ -144,12 +144,19 @@ jobs:
           pnpm test:arch-boundaries
           pnpm audit:max-file-lines
           pnpm test:max-file-lines
+          pnpm audit:kernel-content
+          pnpm test:kernel-content
+          pnpm audit:sole-writer
+          pnpm test:sole-writer
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
           pnpm audit:advisory:check
           pnpm audit:advisory:nonvacuity
           pnpm build:v1
+          pnpm test:v1-packages
+          pnpm audit:test-case-census
+          pnpm test:test-case-census
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity

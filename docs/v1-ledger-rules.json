@@ -2012,37 +2012,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 3513,
+    "totalFiles": 3767,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 11,
       "apps-mcp-stdio": 4,
       "apps-webapp": 183,
-      "docs-content": 733,
+      "docs-content": 729,
       "internal-packages": 1164,
-      "packages": 638,
-      "root-infra": 266
+      "packages": 909,
+      "root-infra": 253
     },
     "kindCounts": {
       "asset": 155,
       "config": 267,
-      "doc": 606,
+      "doc": 604,
       "fixture": 1,
-      "generated": 43,
+      "generated": 41,
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1074,
-      "test": 456
+      "source": 1261,
+      "test": 527
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1595,
-      "regenerate": 38,
-      "retain": 1871,
+      "move-refactor": 1582,
+      "regenerate": 36,
+      "retain": 2140,
       "unresolved": 2
     },
-    "protectedCount": 1627,
+    "protectedCount": 1623,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2081,8 +2081,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 12,
-      "docs-content.evidence.audit-receipts": 18,
+      "docs-content.evidence.audit-notes": 10,
+      "docs-content.evidence.audit-receipts": 16,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2129,12 +2129,14 @@
       "packages.config.build": 28,
       "packages.contexts.config": 34,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 68,
+      "packages.contexts.source": 237,
+      "packages.contexts.test": 85,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,
       "packages.kernel.doc": 1,
-      "packages.kernel.source": 3,
+      "packages.kernel.source": 17,
+      "packages.kernel.test": 3,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
       "packages.python.sources": 36,
@@ -2163,12 +2165,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
-      "root-infra.test.harness": 69,
-      "root-infra.test.script-suites": 30,
+      "root-infra.test.harness": 54,
+      "root-infra.test.script-suites": 28,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 65,
+      "root-infra.tooling.scripts": 69,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "838595bd61e4bf81f346be09b0447009f575af40a9ee1113727febc837030caf"
+    "classificationSha256": "1f3d8ef39a70586927ba665372cb41692700e1590f54fa4b7cd0493d4dae4586"
   }
 }

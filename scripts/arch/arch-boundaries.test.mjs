@@ -218,7 +218,19 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    assert.equal(result.fileCount, 104, "the generated V1 source census must stay exact");
+    // 104 -> 310 -> 375. The 104 was the all-placeholder skeleton. WIN-256 made
+    // packages/kernel and four contexts real (identity-access, secrets, tenancy,
+    // files), so the gate now polices 310 files of which ~206 are hand-written
+    // production source. This is the first time these rules have judged real
+    // code, and no rule needed changing to accommodate it.
+    //
+    // +65: the same issue makes `providers` real (ADR M0.3 §1 context 4). It is
+    // the first adopted context with TWO peer dependencies, so it is the first
+    // real exercise of the (c) contracts-only and (d) DAG allow-list rules
+    // against production code rather than a fixture — it imports
+    // `@platos/context-tenancy` and `@platos/context-secrets`, both on its
+    // allow-list, and neither rule needed changing.
+    assert.equal(result.fileCount, 375, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
