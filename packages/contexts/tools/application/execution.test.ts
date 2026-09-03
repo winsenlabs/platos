@@ -18,6 +18,7 @@ import {
 } from "../domain/index.js";
 import { executeTool } from "./execute-tool.js";
 import { resolvePermission } from "./resolve-permission.js";
+import { resolveDispatchTarget, subjectOf } from "./resolve-transport.js";
 import {
   buildToolsTestContext,
   testExposure,
@@ -324,6 +325,40 @@ describe("the MCP transport and its fail-closed invariant", () => {
       path: "/a",
       _context: { endUserId: "user-9" },
     });
+  });
+});
+
+// `resolveDispatchTarget` is published from `application/index.js`, so the
+// dispatchability rule is a boundary of its own and not merely an internal step
+// of `executeTool`. Both of its in-context callers arrive already-filtered —
+// `executeTool` routes with `callableOnly: true` and discovery hard-codes a
+// dispatchable subject — so the refusal below is the ONLY thing standing
+// between a caller that did not filter and a target it can spend on the wire.
+describe("turning an exposure into a callable target", () => {
+  it("REFUSES a subject with no live transport, before reading anything", async () => {
+    const dead = testExposure(context.scope, { entityId: ENTITY, dispatchable: false });
+    const resolved = await resolveDispatchTarget(context.dependencies, {
+      scope: context.scope,
+      subject: subjectOf(dead),
+      endUserId: null,
+      vaultAuthorization: VAULT,
+    });
+    expect(!resolved.ok && resolved.error.code).toBe("TOOLS_ENTITY_NOT_DISPATCHABLE");
+    // Nothing was read and nothing was sent. A guard that refused AFTER
+    // resolving would still return an error and would still have touched the
+    // vault for a call that is not going to happen.
+    expect(context.dispatch.requests).toEqual([]);
+  });
+
+  it("resolves the SAME subject once its transport is live, so the refusal is the flag and not the shape", async () => {
+    const live = testExposure(context.scope, { entityId: ENTITY, dispatchable: true });
+    const resolved = await resolveDispatchTarget(context.dependencies, {
+      scope: context.scope,
+      subject: subjectOf(live),
+      endUserId: null,
+      vaultAuthorization: VAULT,
+    });
+    expect(resolved.ok && resolved.value.kind).toBe("wire");
   });
 });
 

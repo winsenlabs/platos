@@ -17,9 +17,12 @@ import { err, ok, type EntityId, type EnvironmentScope, type Result } from "@pla
 
 import {
   asToolsIdentifier,
+  effectiveIdentityMode,
   encodeLabels,
+  entityNotInScope,
   exposedToolNames,
   filterForCaller,
+  mcpDisabled,
   synthesizeDenial,
   toolNotFound,
   type ActorId,
@@ -30,7 +33,12 @@ import {
   type ToolExposure,
   type ToolId,
 } from "../domain/index.js";
-import { requireAccess, verifyOperator } from "./authorization.js";
+import {
+  requireAccess,
+  verifyMcpCaller,
+  verifyOperator,
+  type PrincipalAuthorizationView,
+} from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
 
 export interface ReadEntityToolPoliciesQuery {
@@ -184,28 +192,100 @@ export async function resyncAllowlist(
   return saved.ok ? ok(names) : err(saved.error);
 }
 
+export interface ListCallableForMcpCallerQuery {
+  readonly scope: EnvironmentScope;
+  readonly entityId: EntityId;
+  /**
+   * The credential the third party presented on `/mcp/entity/:id`.
+   *
+   * NULL IS A REFUSAL, NOT AN ANONYMOUS CALLER. `IdentityMode` has an
+   * `anonymous` rank and this surface does not reach it: an unauthenticated
+   * request is denied here, before any policy row is read, and a surface that
+   * genuinely wants anonymous callers would have to say so through a
+   * deliberately authenticated principal rather than through the absence of one.
+   */
+  readonly presentedToken: string | null;
+}
+
 /**
- * What one inbound caller may see — the `tools/list` answer.
+ * The caller, DERIVED from what identity-access verified — never asserted.
  *
- * Two filters, and both are needed. The POLICY filter says which tools this
- * caller's identity reaches; the EXPOSURE filter says which of them the entity
- * still offers in this environment. A policy outliving its exposure is the
- * common case — an operator exposes a tool, the backend stops declaring it,
- * and the policy row is untouched — and listing it would offer a model a tool
- * that cannot be dispatched.
+ * The earlier shape took an `McpCaller` as an ARGUMENT, which made the whole
+ * ACL below a function of what the caller claimed about itself: a request
+ * naming `mcp:pat:<someone-else>` with the labels it wished it held was
+ * indistinguishable from one that actually held them. Every field here now
+ * comes off the verified principal instead.
+ *
+ * `identityMode` is `bearer` BY CONSTRUCTION, not by choice. This use case
+ * authenticates through `authenticateBearer`, so a caller that reaches this
+ * line presented a bearer credential and is a bearer caller. A surface
+ * configured for `oidc` therefore admits none of them, which is
+ * `effectiveIdentityMode`'s floor doing exactly what it is for.
+ */
+function callerOf(principal: PrincipalAuthorizationView): McpCaller {
+  return {
+    identityMode: "bearer",
+    principalId: principal.principalId,
+    scopes: principal.permissions,
+  };
+}
+
+/**
+ * What one AUTHENTICATED inbound caller may see — the `tools/list` answer.
+ *
+ * FOUR GATES, IN THIS ORDER, AND THE ORDER IS THE FAIL-CLOSED ARGUMENT:
+ *
+ *   1. WHO. `verifyMcpCaller` asks identity-access, one way, at the moment of
+ *      the call — ADR M0.3 §3's `auth -> tool-gateway` fix. An absent, unknown,
+ *      revoked, wrong-scope or `mcp:tools`-less credential is refused here,
+ *      before this environment's policy rows have been read at all, so a
+ *      credential that is not for this scope cannot make it do work.
+ *
+ *   2. IS THE SURFACE ON. `EntityMcpConfig.enabled` is the operator kill
+ *      switch and it defaults to false. Consulted BEFORE the listing rather
+ *      than after, so switching a surface off takes effect on the next call —
+ *      not once the allowlist cache happens to be resynced.
+ *
+ *   3. WHICH TOOLS THIS CALLER'S IDENTITY REACHES. The policy rows, floored by
+ *      the surface's own identity mode. The floor is applied HERE rather than
+ *      inside `permitsCaller` because it is a property of the SURFACE and the
+ *      predicate is about one policy row; taking the weaker of the two would
+ *      let a per-tool setting downgrade the surface.
+ *
+ *   4. WHICH OF THEM THE ENTITY STILL OFFERS. A policy outliving its exposure
+ *      is the common case — an operator exposes a tool, the backend stops
+ *      declaring it, and the policy row is untouched — and listing it would
+ *      offer a model a tool that cannot be dispatched.
+ *
+ * THE ALLOWLIST CACHE IS STILL NOT READ. Gate 3 goes to the policy rows, as
+ * the header note requires; `toolAllowlist` is a denormalisation and a reader
+ * that consulted it would expose whatever the last successful sync left behind.
  */
 export async function listCallableForMcpCaller(
   dependencies: ToolsDependencies,
-  scope: EnvironmentScope,
-  entityId: EntityId,
-  caller: McpCaller,
+  query: ListCallableForMcpCallerQuery,
 ): Promise<Result<readonly ToolExposure[]>> {
-  const policies = await dependencies.repository.listEntityToolPolicies(scope, entityId);
+  const principal = await verifyMcpCaller(dependencies, query.presentedToken, query.scope);
+  if (!principal.ok) return err(principal.error);
+
+  const config = await dependencies.repository.findMcpConfig(query.scope, query.entityId);
+  if (!config.ok) return err(config.error);
+  if (config.value === null) return err(entityNotInScope(query.entityId));
+  if (!config.value.enabled) return err(mcpDisabled(query.entityId));
+
+  const policies = await dependencies.repository.listEntityToolPolicies(query.scope, query.entityId);
   if (!policies.ok) return err(policies.error);
-  const exposures = await dependencies.repository.listEntityExposures(scope, entityId);
+  const exposures = await dependencies.repository.listEntityExposures(query.scope, query.entityId);
   if (!exposures.ok) return err(exposures.error);
 
-  const permitted = new Set(filterForCaller(policies.value, caller).map((policy) => policy.toolId));
+  const surface = config.value;
+  const floored = policies.value.map((policy) => ({
+    ...policy,
+    minIdentityMode: effectiveIdentityMode(surface, policy.minIdentityMode),
+  }));
+  const permitted = new Set(
+    filterForCaller(floored, callerOf(principal.value)).map((policy) => policy.toolId),
+  );
   return ok(
     exposures.value.filter(
       (exposure) => permitted.has(exposure.toolId) && exposure.enabled && exposure.dispatchable,

@@ -1,12 +1,17 @@
-import { asIdentifier, type EntityId } from "@platos/kernel";
+import { asIdentifier, type EntityId, type PrincipalId } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   asToolsIdentifier,
+  DEFAULT_MCP_RATE_LIMIT_PER_MINUTE,
   type ExternalEntityId,
   type ToolId,
   type ToolName,
 } from "../domain/index.js";
+import {
+  MCP_TOOLS_PERMISSION,
+  type PrincipalAuthorizationView,
+} from "../application/authorization.js";
 import {
   buildToolsTestContext,
   testExposure,
@@ -134,6 +139,96 @@ describe("what the surface deliberately exposes", () => {
       vaultAuthorization: testVaultAuthorization(),
     });
     expect(executed.ok && executed.value.kind).toBe("completed");
+  });
+});
+
+// The hosted MCP surface, through the PUBLISHED contract rather than the use
+// case. A transport binds this object and nothing else, so the gate is only
+// real if it survives the binding: a binder that dropped `presentedToken` on
+// the floor would leave every refusal below passing at the use-case level and
+// failing in production.
+describe("the hosted MCP surface, as a transport binds it", () => {
+  const TOKEN = "mcp-pat-live";
+
+  async function openSurface(): Promise<void> {
+    await contract.setEntityToolPolicy({
+      authorization: context.tenancy.grant(),
+      entityId: ENTITY,
+      toolId: asToolsIdentifier<ToolId>("tool-1"),
+      exposed: true,
+      scopeLabels: [],
+    });
+    await contract.configureMcpSurface({
+      authorization: context.tenancy.grant(),
+      entityId: ENTITY,
+      enabled: true,
+    });
+    context.identityAccess.seed(TOKEN, {
+      principalId: asIdentifier<PrincipalId>("mcp:pat:pat-1"),
+      tier: "END_USER",
+      credentialId: "cred-1",
+      scope: { kind: "ENVIRONMENT", tenant: context.scope },
+      permissions: [MCP_TOOLS_PERMISSION],
+    } satisfies PrincipalAuthorizationView);
+  }
+
+  beforeEach(() => {
+    context.repository.seedMcpConfig({
+      entityId: ENTITY,
+      enabled: false,
+      identityMode: "bearer",
+      identityProviders: [],
+      branding: {},
+      toolAllowlist: [],
+      redirectUriAllowlist: [],
+      rateLimitPerMinute: DEFAULT_MCP_RATE_LIMIT_PER_MINUTE,
+      injectMcpContext: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+  });
+
+  it("answers a credential-holding caller with the tools it may see", async () => {
+    await openSurface();
+    const listed = await contract.listCallableForMcpCaller({
+      scope: context.scope,
+      entityId: ENTITY,
+      presentedToken: TOKEN,
+    });
+    expect(listed.ok && listed.value.map((tool) => tool.toolName)).toEqual(["files.upload"]);
+  });
+
+  it("REFUSES the same request with no credential", async () => {
+    await openSurface();
+    const refused = await contract.listCallableForMcpCaller({
+      scope: context.scope,
+      entityId: ENTITY,
+      presentedToken: null,
+    });
+    expect(!refused.ok && refused.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("REFUSES the same credential once an operator switches the surface off", async () => {
+    await openSurface();
+    await contract.configureMcpSurface({
+      authorization: context.tenancy.grant(),
+      entityId: ENTITY,
+      enabled: false,
+    });
+    const refused = await contract.listCallableForMcpCaller({
+      scope: context.scope,
+      entityId: ENTITY,
+      presentedToken: TOKEN,
+    });
+    expect(!refused.ok && refused.error.code).toBe("TOOLS_MCP_DISABLED");
+  });
+
+  it("offers no way to describe a caller instead of holding their credential", () => {
+    // The method takes ONE object and that object carries a token. There is no
+    // overload, no optional identity argument and no field a transport could
+    // fill in to assert who is calling — which is what makes "derived, never
+    // asserted" a property of the boundary rather than of one implementation.
+    expect(contract.listCallableForMcpCaller.length).toBe(1);
   });
 });
 

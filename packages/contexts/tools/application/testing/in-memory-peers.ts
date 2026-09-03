@@ -23,10 +23,13 @@
 
 import {
   asIdentifier,
+  contains,
+  domainError,
   environmentScope,
   err,
   ok,
   resolvePath,
+  type DomainError,
   type EntityId,
   type EnvironmentScope,
   type Result,
@@ -172,6 +175,31 @@ export class InMemoryTenancy
  * The cross-scope check is the whole reason this context calls that contract
  * at execution time (ADR M0.3 §3's `auth -> tool-gateway` fix), so a double
  * that skipped it would leave the fix untested.
+ *
+ * IT REFUSES WITH IDENTITY-ACCESS'S OWN CODES, NOT WITH A `tools` ONE. The
+ * earlier version answered every refusal with `TOOLS_REPOSITORY_UNAVAILABLE`,
+ * which is a store-is-down error for a decision the store was never asked
+ * about — so a suite could pin the wrong reason for a refusal, and the real
+ * context would answer `unauthenticated` / `forbidden` in production where the
+ * double had trained the suite to expect `unavailable`. `UNAUTHENTICATED` and
+ * `FORBIDDEN_SCOPE` are the codes identity-access's own `domain/errors.ts` mints
+ * for exactly these three refusals.
+ *
+ * THE THREE RULES ARE TRANSCRIBED, NOT APPROXIMATED. Each mirrors the line in
+ * `identity-access` that owns it:
+ *
+ *   an absent or unknown token → `unauthenticated`.
+ *   a scope the grant does not reach → `assertAuthorizes`, which is
+ *     CONTAINMENT and not equality: a GLOBAL grant reaches everything and every
+ *     other grant reaches exactly its own subtree.
+ *   a missing permission → `assertPermission`, with `*` as the one wildcard
+ *     and no prefix matching.
+ *
+ * The scope arrives as the contract's `AuthorizationScopeView` — `{ kind,
+ * tenant }` — and is read as such. The earlier version cast the whole view to
+ * a `TenantScope` and called `resolvePath` on it, which yields `org/undefined`
+ * for every credential: the cross-scope rule this class exists to enforce could
+ * only ever have compared two identical nonsense strings to each other.
  */
 export class InMemoryIdentityAccess
   implements Pick<IdentityAccessContract, "name" | "authenticateBearer">
@@ -189,25 +217,47 @@ export class InMemoryIdentityAccess
     readonly requestedScope: TenantScope | null;
     readonly requiredPermission?: string;
   }): Promise<Result<PrincipalAuthorizationView>> {
-    if (request.presentedToken === null) {
-      return err(repositoryUnavailable("unauthenticated"));
+    if (request.presentedToken === null || request.presentedToken === "") {
+      return err(unauthenticated("no-token"));
     }
     const held = this.tokens.get(request.presentedToken);
-    if (held === undefined) return err(repositoryUnavailable("unauthenticated"));
-    if (
-      request.requestedScope !== null &&
-      resolvePath(held.scope as unknown as TenantScope) !== resolvePath(request.requestedScope)
-    ) {
-      return err(repositoryUnavailable("forbidden_scope"));
+    if (held === undefined) return err(unauthenticated("no-credential"));
+
+    if (request.requestedScope !== null && !grantReaches(held, request.requestedScope)) {
+      return err(
+        forbiddenScope(`Credential is not authorized for ${resolvePath(request.requestedScope)}`),
+      );
     }
     if (
       request.requiredPermission !== undefined &&
+      !held.permissions.includes(WILDCARD_PERMISSION) &&
       !held.permissions.includes(request.requiredPermission)
     ) {
-      return err(repositoryUnavailable("forbidden_scope"));
+      return err(
+        forbiddenScope(`Credential does not carry the ${request.requiredPermission} permission`),
+      );
     }
     return ok(held);
   }
+}
+
+/** `*` grants everything; there is no prefix matching. Transcribed. */
+const WILDCARD_PERMISSION = "*";
+
+function unauthenticated(reason: string): DomainError {
+  return domainError("UNAUTHENTICATED", "unauthenticated", "Invalid operator session", {
+    details: { reason },
+  });
+}
+
+function forbiddenScope(message: string): DomainError {
+  return domainError("FORBIDDEN_SCOPE", "forbidden", message);
+}
+
+/** `authorizes` from identity-access: GLOBAL reaches everything, else subtree. */
+function grantReaches(held: PrincipalAuthorizationView, requested: TenantScope): boolean {
+  if (held.scope.kind === "GLOBAL") return true;
+  return held.scope.tenant !== null && contains(held.scope.tenant, requested);
 }
 
 /**

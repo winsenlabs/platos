@@ -36,8 +36,6 @@
 
 import type { EnvironmentScope, EntityId, Result } from "@platos/kernel";
 
-import type { McpCaller } from "../domain/index.js";
-
 // The identifier and vocabulary a caller needs to build a command. Branded
 // types, so a `toolId` cannot reach an `exposureId` parameter across the
 // boundary any more than it can inside it.
@@ -130,6 +128,7 @@ export type {
   ExecutedTool,
   FindToolsQuery,
   PageToolsQuery,
+  ListCallableForMcpCallerQuery,
   ReadEntityToolPoliciesQuery,
   ReadOrganizationPoliciesQuery,
   ReadToolAuditQuery,
@@ -208,11 +207,17 @@ export interface ToolsContract {
   setEntityToolPolicy(
     command: useCases.SetEntityToolPolicyCommand,
   ): Promise<Result<useCases.ToolPolicyView>>;
-  /** What one authenticated inbound caller may see — the `tools/list` answer. */
+  /**
+   * What one authenticated inbound caller may see — the `tools/list` answer.
+   *
+   * IT TAKES A CREDENTIAL, NOT AN IDENTITY. The caller a transport hands in is
+   * a claim; the caller this method acts on is derived from what
+   * identity-access verified about the presented token, inside the use case, at
+   * the moment of the call. A transport therefore cannot admit a third party by
+   * describing them, only by holding their credential.
+   */
   listCallableForMcpCaller(
-    scope: EnvironmentScope,
-    entityId: EntityId,
-    caller: McpCaller,
+    query: useCases.ListCallableForMcpCallerQuery,
   ): Promise<Result<readonly useCases.ToolView[]>>;
 
   // ---- tier-2 policy ------------------------------------------------------
@@ -305,10 +310,9 @@ export function toolsContract(dependencies: ToolsDependencies): ToolsContract {
       ),
     setEntityToolPolicy: async (command) =>
       map(await useCases.setEntityToolPolicy(dependencies, command), useCases.toToolPolicyView),
-    listCallableForMcpCaller: async (scope, entityId, caller) =>
-      map(
-        await useCases.listCallableForMcpCaller(dependencies, scope, entityId, caller),
-        (tools) => tools.map(useCases.toToolView),
+    listCallableForMcpCaller: async (query) =>
+      map(await useCases.listCallableForMcpCaller(dependencies, query), (tools) =>
+        tools.map(useCases.toToolView),
       ),
 
     listOrganizationPolicies: async (query) =>
