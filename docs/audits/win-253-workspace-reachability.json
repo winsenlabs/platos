@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
+  "evidenceSha256": "aba080c9cf2e72ab6edc59aaedfdc319010d8651c59ef3fee566098993e567fd",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 165,
+        "sha256": "8407b04fbc78e0bd5b7123a39380516bdd8563c789668acc10e95be0aff54af6"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 165,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
+    "aggregateSha256": "d7da1afbc2538aa136889bb0331de509629c277e55c2a1476889eb9b16f5dd65",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2573,7 +2573,7 @@
       },
       {
         "path": "apps/mcp-stdio/src/testing/in-memory-runtime.ts",
-        "sha256": "0b536c788b614ec27b3c705c79df1b02f21443a2dc15bdd9d5d9ad2d7431bbb9"
+        "sha256": "432197ca7dd9d99359e22c67b590196e45d078b8e2380116679f864eb7e7e292"
       },
       {
         "path": "apps/mcp-stdio/tsconfig.json",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "3d61ab2c20657c112d04f881258eebd4683b09d23e2872770688a6bac5a0975d"
+        "sha256": "c78d4e83db7892662c0bacb1281f5470b3304b66f699a2dfd448d7bd6fb604f9"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "2a2372d20607a52049f2ec82e6ce0693ea863fa176425313ae3b4bccf29c339e"
+        "sha256": "9a0a23765fa70a7779240a36239d58c34e6fd4e013c18ff6bdef4fa105ecf0f8"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6065,7 +6065,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "685898e45d08ae5d6b4f01a1a3e650ccad92a63413c4c5bdca36e42984c348e3"
+        "sha256": "aa8e86ef57ccbb07022c4ef57c38a9acf383fe1efc198cdeaa77f0d66c1e91c0"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -12556,24 +12556,244 @@
         "sha256": "08676dd66a2041c803c61cec39788f6108c30304c1275dc9a49b2c04d0924d64"
       },
       {
+        "path": "packages/contexts/tools/application/authorization.ts",
+        "sha256": "7173b5885836978cc30d2899a2953b976ac95000431bf27a36a4a0dcc3815be9"
+      },
+      {
+        "path": "packages/contexts/tools/application/dependencies.ts",
+        "sha256": "df55b22d3d90d6e5895bccc6f121fcf127b30c9588de690a98f57ce06cc0aa91"
+      },
+      {
+        "path": "packages/contexts/tools/application/discover-entity-tools.ts",
+        "sha256": "dee4d888ec934de1c601a3f38ae85c7cee34fb9e1a1d7cbf7638b312e6f306cf"
+      },
+      {
+        "path": "packages/contexts/tools/application/entity-tool-policy.ts",
+        "sha256": "5a6ca5f9ee5552fbcef91b9094d2309a17e6cc9e9ea775756c553a056e1d0277"
+      },
+      {
+        "path": "packages/contexts/tools/application/execute-tool.ts",
+        "sha256": "093d040ce6a46051648049cdae544b72910a888e80e8e6cdb46342cb9428a94e"
+      },
+      {
+        "path": "packages/contexts/tools/application/execution.test.ts",
+        "sha256": "d41d41aa19ca5b6e4468d1535796baf7a0275a82efdca64ec0f29e926a43c307"
+      },
+      {
         "path": "packages/contexts/tools/application/index.ts",
-        "sha256": "e349a4304dccac1b551389cdb73c8cbc471c836a1f3f8c4b1a71a066fce1a08a"
+        "sha256": "d91920d5f2f755b6729986821b178a5da78908330ffe75981a429c531b2e992d"
+      },
+      {
+        "path": "packages/contexts/tools/application/mcp-surface.test.ts",
+        "sha256": "080020ce3ea5565791be141215dceff534bcea1c431dc4c7284eaf17b5d5db2a"
+      },
+      {
+        "path": "packages/contexts/tools/application/mcp-surface.ts",
+        "sha256": "aec57b91069d044afa7a3cb77f41880c3d420bb6165294f89ca1eadc338d4f1a"
+      },
+      {
+        "path": "packages/contexts/tools/application/organization-policy.ts",
+        "sha256": "f9ca1ac3eb9dd287fef712f03ad21a7576d0248d7f0e5c7ae157c5dfe78238f2"
+      },
+      {
+        "path": "packages/contexts/tools/application/ports/content-digest.ts",
+        "sha256": "818523e420d52ee82d704d70fc1c6f0e40701ddc3347098f2dca2968db51c0a1"
       },
       {
         "path": "packages/contexts/tools/application/ports/index.ts",
-        "sha256": "1d02906535daa30b663d6f489eecab4b068cd2b19832aef3802740b9ed4be64f"
+        "sha256": "6a05983d5553e91ddeaaf27f2d4c1000bd88af79bed3fd54ffcdbf08a6ec228c"
+      },
+      {
+        "path": "packages/contexts/tools/application/ports/tool-dispatch.ts",
+        "sha256": "63b0f845771c18fd8734b7568703cdf2f824d14e27465ee8e9c9cd11f04e3b77"
+      },
+      {
+        "path": "packages/contexts/tools/application/ports/tools-repository.ts",
+        "sha256": "22bedc742935e2b045d5ee567ee553c93b37964eb1b28fbf9f577922e9a0539f"
+      },
+      {
+        "path": "packages/contexts/tools/application/read-tools.ts",
+        "sha256": "741f960a65ef68f479687b7977003de3cc8ab23b5a0f531b369f7eddef886474"
+      },
+      {
+        "path": "packages/contexts/tools/application/register-tools.ts",
+        "sha256": "340fd188d7da688dcb8e04ad47559bdea247e11bfafd735fe8a895c12d0aa4ff"
+      },
+      {
+        "path": "packages/contexts/tools/application/registry.test.ts",
+        "sha256": "c3f69843460abec239d1ba6cd15a403dc5831ea2c2bf05d2e00997a91272186a"
+      },
+      {
+        "path": "packages/contexts/tools/application/resolve-permission.ts",
+        "sha256": "1aa68217bf26961093fd300cc313e7d149f411bb11ee03bd9c4dafcde7e58dda"
+      },
+      {
+        "path": "packages/contexts/tools/application/resolve-transport.ts",
+        "sha256": "801fd1b14c73dfca1f90802a09b80699a71d7c6bbf88b0b8c1f8e10af9e6063d"
+      },
+      {
+        "path": "packages/contexts/tools/application/testing/fixtures.ts",
+        "sha256": "3b57e3c4021aa4467f97b1ae2af773580cce373bd3dea15adde277bee3f9dc3a"
+      },
+      {
+        "path": "packages/contexts/tools/application/testing/in-memory-dispatch.ts",
+        "sha256": "44365f9efae2552180d835b5d213b0ff80d49453acecaff53ce015f6889af92e"
+      },
+      {
+        "path": "packages/contexts/tools/application/testing/in-memory-peers.ts",
+        "sha256": "9f882ebb02c18f6c7958df4c52f4b5fd0ca0202e708e451b745c251125546d13"
+      },
+      {
+        "path": "packages/contexts/tools/application/testing/in-memory-tools-repository.ts",
+        "sha256": "1223dead229ade677b91d5866cc398673a6bdf3cc440a66548840eefe7d13b20"
+      },
+      {
+        "path": "packages/contexts/tools/application/testing/index.ts",
+        "sha256": "5e8ad273e49d8557b4b920a3386b9d03b3339d82a9ae54a55f8e4b845afc3387"
+      },
+      {
+        "path": "packages/contexts/tools/application/tool-policy.test.ts",
+        "sha256": "8772e3a55b0f358f0b3c5f60d050a59a8f24cd38d88689ba10c1e8959cbbf56d"
+      },
+      {
+        "path": "packages/contexts/tools/application/views.ts",
+        "sha256": "8464be95e0ad2f36ada769d86fddc3fc3cbfd9a6a646763c5fc294299f213321"
+      },
+      {
+        "path": "packages/contexts/tools/contracts/index.test.ts",
+        "sha256": "70ea3ad4406a4af5317fda5ad5a5ca49c56c7afd609a04988da61918ca218f5a"
       },
       {
         "path": "packages/contexts/tools/contracts/index.ts",
-        "sha256": "2d921cb0f491e529e8d1d6060f446425672f0ae8f2fd16101f8db7a8fa4978ba"
+        "sha256": "4214de68b872c2e3e3925e20f61afa9c6c534dd4b349571712463aa1b4adbf82"
+      },
+      {
+        "path": "packages/contexts/tools/domain/agent-policy.ts",
+        "sha256": "7b0ad35f8140d5a574a8386e30183285c6cc10891cef7c105f4312b15fd678be"
+      },
+      {
+        "path": "packages/contexts/tools/domain/audit.test.ts",
+        "sha256": "8b8563355aeff650595f005a2cd0deb517eb72983b2dadc978fe19f16f6f5755"
+      },
+      {
+        "path": "packages/contexts/tools/domain/audit.ts",
+        "sha256": "233fd431effd7e5d26f40db70cc9ca95b4e2a460f47adccd7e6d4bb3614c50e7"
+      },
+      {
+        "path": "packages/contexts/tools/domain/call.test.ts",
+        "sha256": "a1b6aa787192805c8022af1212b20756bfc6cf30e1dfd0724a41ba43cfebe629"
+      },
+      {
+        "path": "packages/contexts/tools/domain/call.ts",
+        "sha256": "c0d544be5b3c20446910e963629b2d0692b955adac710b521d0620646f282056"
+      },
+      {
+        "path": "packages/contexts/tools/domain/declaration.test.ts",
+        "sha256": "1bb06dd49805782137b47d6718b211c821302da8ef8cdf791d5f1b8f36200a69"
+      },
+      {
+        "path": "packages/contexts/tools/domain/declaration.ts",
+        "sha256": "c2bd8551c6b3b97a3e620f80c45a142ea857f55d70e02d290b60655f7c6f0c0e"
+      },
+      {
+        "path": "packages/contexts/tools/domain/discovery.test.ts",
+        "sha256": "b9271419c993cea921515713b1f3edb23749bc569de402b4e05a85a5026f0da4"
+      },
+      {
+        "path": "packages/contexts/tools/domain/discovery.ts",
+        "sha256": "ae12cf6dcb00f5903b57a893f50523f4c9057fa6be9e5211c614629395314d68"
+      },
+      {
+        "path": "packages/contexts/tools/domain/entity-policy.test.ts",
+        "sha256": "d77ec261f564b99e967f450d52a1f354595df23b5ee40642ace8572a3601de14"
+      },
+      {
+        "path": "packages/contexts/tools/domain/entity-policy.ts",
+        "sha256": "92cb827a7cbfae234012a9bbf41600051d1d9917bafb854e05d8b9b81997d773"
+      },
+      {
+        "path": "packages/contexts/tools/domain/errors.test.ts",
+        "sha256": "56950d2646f1ac35c2d22f6a8f3c55ce6925efda8080864381e9cf30bde19fae"
+      },
+      {
+        "path": "packages/contexts/tools/domain/errors.ts",
+        "sha256": "8d6a351666bdda3f7b20bea888897b90e4498a0f777349e7aecfa27569bb2857"
+      },
+      {
+        "path": "packages/contexts/tools/domain/exposure.test.ts",
+        "sha256": "302d4e4f2883af72a81a2e0914aac996fba38315bbf13f160b175cc53a97d0d4"
+      },
+      {
+        "path": "packages/contexts/tools/domain/exposure.ts",
+        "sha256": "8149babcbe2a31396dac5f4df53aaee73d4447f5f282633828939ff4f842009e"
+      },
+      {
+        "path": "packages/contexts/tools/domain/health.test.ts",
+        "sha256": "4752b463343709841719d7a50ea5669b5cf9bec5b1e7f74ded47671989671270"
+      },
+      {
+        "path": "packages/contexts/tools/domain/health.ts",
+        "sha256": "c02d0b8db9357817dd68ad7898e0d7450d57884d9626a5f4fc7fb78146e1c976"
+      },
+      {
+        "path": "packages/contexts/tools/domain/identifiers.ts",
+        "sha256": "9bceaab8fe3cfdf9aaee7591ae75c75a3be89800487f4349da6ea1c7d755d514"
       },
       {
         "path": "packages/contexts/tools/domain/index.ts",
-        "sha256": "32c05199855a06d592464ad1f77cf12827b1a2635e0155e5269f5ab8ca2b5f97"
+        "sha256": "bb76ab89690ea7458bf39ba7ca461c0a8309b7f44abd41aa4adf77e4b7570ded"
+      },
+      {
+        "path": "packages/contexts/tools/domain/mcp-client.test.ts",
+        "sha256": "3bef6e345c7225f30426c2dcec513cb73f5da991879174319145abe0e1b37312"
+      },
+      {
+        "path": "packages/contexts/tools/domain/mcp-client.ts",
+        "sha256": "b2a563e59e26ddabdd3e795cf82b3038027816bf3adbe040fa809dfaa79e45cd"
+      },
+      {
+        "path": "packages/contexts/tools/domain/mcp-config.test.ts",
+        "sha256": "ddae64a2df1ba1c01a5edfc91ff6528005fe059af82d17718a0252acadf5a651"
+      },
+      {
+        "path": "packages/contexts/tools/domain/mcp-config.ts",
+        "sha256": "052e7e801800b6f7c4659427213ff242771783ba29f6ae14239b4306bf30d136"
+      },
+      {
+        "path": "packages/contexts/tools/domain/permission.test.ts",
+        "sha256": "969990f752e2d12d3817e063d5ed4b6e36306f085153c485fe7462b22d62f84f"
+      },
+      {
+        "path": "packages/contexts/tools/domain/permission.ts",
+        "sha256": "de883a72f28a9e1f9ec0fc1a1bbcadb633016d669cf6f50ca523c9528cc6ed44"
+      },
+      {
+        "path": "packages/contexts/tools/domain/platform-baseline.ts",
+        "sha256": "729e9fd1ebebe96bbc8da7fd3614894cd20cc16b055b7b71a33e6491c7fd1f39"
+      },
+      {
+        "path": "packages/contexts/tools/domain/policy.ts",
+        "sha256": "304e04352175596422e01d251b7baf15edbbde8b35656a60304bf4a18413d19e"
+      },
+      {
+        "path": "packages/contexts/tools/domain/routing.test.ts",
+        "sha256": "58e2d87e6138c08a8e6a5c08dc8425a32a422699897e7e1148888e4497fea8eb"
+      },
+      {
+        "path": "packages/contexts/tools/domain/routing.ts",
+        "sha256": "58e997d092bffc4c1ff3df8976d4eb3d3a26013ecc1421239ba5a5d3aa5d3740"
+      },
+      {
+        "path": "packages/contexts/tools/domain/tool.test.ts",
+        "sha256": "3ebff037ccb11e5065c03ad2635e6ae85bd50ee25dcccc797f5a3e5c42e7c12a"
+      },
+      {
+        "path": "packages/contexts/tools/domain/tool.ts",
+        "sha256": "15bcfff95614323187a411452ee7b60ae6e8ebfe09e1def7ceb6a48d23aae925"
       },
       {
         "path": "packages/contexts/tools/package.json",
-        "sha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f"
+        "sha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083"
       },
       {
         "path": "packages/contexts/tools/tsconfig.json",
@@ -14649,7 +14869,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "e2b146398c146694b257c1f2ed160ced2babca4df7c181e22f85a63fded49bc6"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14681,11 +14901,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "02e73b68f773140cdc1cbeba2d94567915b156de9a424f21b0b7b776ff6e7eab"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "530b332ea8debc219ff8ccef6069a5dfa5f82d3bfc65de9d526d1abdb12bab68"
+        "sha256": "40f75149c35cac9701fc435a2e7721d05c8a2bf962db0e42b1a39c5fcd91c413"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -14701,7 +14921,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "3393d65c13db2ef771cac4378cc44d161924f40d5a95a14a8575e141d19f4394"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14717,11 +14937,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b573b4d93f4bab70c0e66f2c905464db9de34774188e214c21a5fabedea62b03"
+        "sha256": "790ba3683558c89842e0b69320bf59ab9097c197fbe5b5c6630e35d20ca80fe2"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "0143862eb38496f1121f70cdf1b544283ff8cbd0a974dd3b7471280d089698a3"
+        "sha256": "c5580b36e715a14f6555a8356d4f1c714c5b46c159c64153a07bfed08d51d7ca"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -14953,7 +15173,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
+        "sha256": "cdc948a4ae65baeb5b0adad68a27b038aae0cea6299b983280a43947e5b18e15"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15001,7 +15221,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "b650770cd840983fdbe1f9548ac58e95a61330e45f50cca31a28a4c766080c1a"
+        "sha256": "9e996572548f1cfed665073d4441a9273170f73cd8e41f7b643618f2a28f1651"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -15061,7 +15281,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f754056ca550348ee1b0d8f16a37828a5c7df867a4ba306307173d64dd69b770"
+        "sha256": "cbf98ab25c0ccdf8ed4d97f90898073278bb00d3a3b7f794eb9eeab57cc4cf93"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -20151,14 +20371,6 @@
             {
               "from": "packages/contexts/skills/contracts/index.ts",
               "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/tools/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/tools/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -20261,14 +20473,6 @@
             [
               "packages/contexts/skills/contracts/index.ts",
               "packages/contexts/skills/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/tools/application/ports/index.ts",
-              "packages/contexts/tools/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/tools/contracts/index.ts",
-              "packages/contexts/tools/contracts/index.ts"
             ]
           ],
           "roots": [
@@ -20296,9 +20500,7 @@
             "packages/contexts/privacy/application/ports/index.ts",
             "packages/contexts/privacy/contracts/index.ts",
             "packages/contexts/skills/application/ports/index.ts",
-            "packages/contexts/skills/contracts/index.ts",
-            "packages/contexts/tools/application/ports/index.ts",
-            "packages/contexts/tools/contracts/index.ts"
+            "packages/contexts/skills/contracts/index.ts"
           ]
         },
         "license": {
@@ -20663,7 +20865,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "3a42da7939487eef5b73a2b85aeb2d89dab184af08cad947b1c612e118751be9",
+      "evidenceSha256": "12ae1add3acb2e05bdedcd28e3da6bb7ce9ae7bcc509f3ac9720f22dd3566773",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -20986,7 +21188,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 82
+              "line": 86
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -21088,7 +21290,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "cef3c9c72d1cf78d2904a453e4060daec99aec813aaed2c2ab41646c7008004b",
+      "evidenceSha256": "c3380adcdbcefed26dcfd8eb1638871c9254afacca22a855a60457cb28d012e0",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -32357,7 +32559,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 687
             }
           ],
           "reversePaths": [
@@ -32382,7 +32584,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
+      "evidenceSha256": "e3e58568cf821938ec2bab9928a10757d14694198d584234b66c93f0c3835358",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33715,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 664
+              "line": 686
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33940,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
+      "evidenceSha256": "e1d84c5685e9b2cbcd4fbefd194e59bf8561633edbf90586d9a25bc2ad5f0da4",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44460,7 +44662,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 542
             }
           ],
           "reversePaths": [
@@ -44539,7 +44741,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "49a45ce8ef88fd341f4e2591cc876e46bfaa8000c52b981a557929b33571bee7",
+      "evidenceSha256": "8ad4e3d54f95124a126409e306504b38830ff44937e36ab32cb13a03ff000120",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -47461,10 +47663,6 @@
               "from": "packages/contexts/identity-access/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -47487,10 +47685,6 @@
             [
               "packages/contexts/identity-access/tsconfig.json",
               "packages/contexts/identity-access/tsconfig.json"
-            ],
-            [
-              "packages/contexts/tools/application/index.ts",
-              "packages/contexts/tools/application/index.ts"
             ]
           ],
           "roots": [
@@ -47498,8 +47692,7 @@
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/identity-access/README.md",
             "packages/contexts/identity-access/package.json",
-            "packages/contexts/identity-access/tsconfig.json",
-            "packages/contexts/tools/application/index.ts"
+            "packages/contexts/identity-access/tsconfig.json"
           ]
         },
         "license": {
@@ -47605,6 +47798,30 @@
               "from": "packages/contexts/tenancy",
               "line": 18,
               "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "packages/contexts/tools/application/authorization.ts",
+              "from": "packages/contexts/tools",
+              "line": 32,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "packages/contexts/tools/application/dependencies.ts",
+              "from": "packages/contexts/tools",
+              "line": 44,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/fixtures.ts",
+              "from": "packages/contexts/tools",
+              "line": 29,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/tools",
+              "line": 38,
+              "specifier": "@platos/context-identity-access"
             }
           ],
           "reversePaths": [
@@ -47619,11 +47836,28 @@
             [
               "packages/contexts/tenancy",
               "packages/contexts/tenancy/application/index.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
             "apps/core-api",
-            "packages/contexts/tenancy"
+            "packages/contexts/tenancy",
+            "packages/contexts/tools"
           ]
         },
         "testsFixtures": {
@@ -47732,7 +47966,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 119
+              "line": 127
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -48539,7 +48773,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d1582978c47b320c1f164535a7e6504c0eeabfa04aa5db5bb239f2f0b12218f9",
+      "evidenceSha256": "bc04cfd9f6a41ac463b4bbeb38efac3024f08a8b0a2f973bb073f88e43eff630",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -49383,6 +49617,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "scripts/arch/gen-v1-skeleton.test.mjs",
+              "kind": "reference",
+              "line": 92
+            },
+            {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 311
@@ -49390,11 +49629,16 @@
           ],
           "reversePaths": [
             [
+              "scripts/arch/gen-v1-skeleton.test.mjs",
+              "scripts/arch/gen-v1-skeleton.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ]
           ],
           "roots": [
+            "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
           ]
         }
@@ -49498,7 +49742,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "2f956b8536509f06aa36349d6dcb6a379e99e35260e9bafcc9eeee7c299545a4",
+      "evidenceSha256": "4ae6dd35175eaacc409a7edb72a8067d65816b41ec54b616e0598da1a2abc659",
       "manifestSha256": "0d9ed38f820773824925cfb0ad87651977633e0e512ca6dd1cf43548bf49e34f",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -50803,10 +51047,6 @@
               "from": "packages/contexts/providers/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -50841,10 +51081,6 @@
             [
               "packages/contexts/providers/tsconfig.json",
               "packages/contexts/providers/tsconfig.json"
-            ],
-            [
-              "packages/contexts/tools/application/index.ts",
-              "packages/contexts/tools/application/index.ts"
             ]
           ],
           "roots": [
@@ -50855,8 +51091,7 @@
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
-            "packages/contexts/providers/tsconfig.json",
-            "packages/contexts/tools/application/index.ts"
+            "packages/contexts/providers/tsconfig.json"
           ]
         },
         "license": {
@@ -50956,6 +51191,18 @@
               "from": "apps/core-api",
               "line": 33,
               "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/tools/application/dependencies.ts",
+              "from": "packages/contexts/tools",
+              "line": 45,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/fixtures.ts",
+              "from": "packages/contexts/tools",
+              "line": 30,
+              "specifier": "@platos/context-providers"
             }
           ],
           "reversePaths": [
@@ -50966,10 +51213,19 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/fixtures.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/tools"
           ]
         },
         "testsFixtures": {
@@ -51086,6 +51342,11 @@
               "script": "test"
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 266
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
               "line": 255
@@ -51181,6 +51442,10 @@
               "packages/contexts/providers/package.json"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ]
@@ -51208,6 +51473,7 @@
             "packages/contexts/providers/domain/route.test.ts",
             "packages/contexts/providers/domain/token-usage.test.ts",
             "packages/contexts/providers/package.json",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/test-case-census.test.mjs"
           ]
         }
@@ -51523,7 +51789,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f4caaf5adb015a941ee809ab050c112eae47ab70af5ade42d874dc06c1dc1d61",
+      "evidenceSha256": "19cbb92280186e484740e304a088112b1dc9c2ae6369276a76bbd50c063ce2e9",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -51987,10 +52253,6 @@
               "from": "packages/contexts/secrets/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -52009,18 +52271,13 @@
             [
               "packages/contexts/secrets/tsconfig.json",
               "packages/contexts/secrets/tsconfig.json"
-            ],
-            [
-              "packages/contexts/tools/application/index.ts",
-              "packages/contexts/tools/application/index.ts"
             ]
           ],
           "roots": [
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/secrets/README.md",
             "packages/contexts/secrets/package.json",
-            "packages/contexts/secrets/tsconfig.json",
-            "packages/contexts/tools/application/index.ts"
+            "packages/contexts/secrets/tsconfig.json"
           ]
         },
         "license": {
@@ -52162,6 +52419,42 @@
               "from": "packages/contexts/providers",
               "line": 18,
               "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/dependencies.ts",
+              "from": "packages/contexts/tools",
+              "line": 46,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/discover-entity-tools.ts",
+              "from": "packages/contexts/tools",
+              "line": 29,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/execute-tool.ts",
+              "from": "packages/contexts/tools",
+              "line": 31,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/resolve-transport.ts",
+              "from": "packages/contexts/tools",
+              "line": 28,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/fixtures.ts",
+              "from": "packages/contexts/tools",
+              "line": 31,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/tools",
+              "line": 42,
+              "specifier": "@platos/context-secrets"
             }
           ],
           "reversePaths": [
@@ -52200,11 +52493,36 @@
             [
               "packages/contexts/providers",
               "packages/contexts/providers/application/vault.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/discover-entity-tools.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/execute-tool.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/resolve-transport.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
             "apps/core-api",
-            "packages/contexts/providers"
+            "packages/contexts/providers",
+            "packages/contexts/tools"
           ]
         },
         "testsFixtures": {
@@ -52308,7 +52626,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 145
+              "line": 153
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -52786,7 +53104,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "254d18866f26a90a57b01d209558b0501871d3728dc8789b59513818466119ed",
+      "evidenceSha256": "7059749f4d38dd2e52457dfb70e5aa3806aaf95b7fcbf987afdb25b79b439bca",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54062,10 +54380,6 @@
               "from": "packages/contexts/tenancy/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -54128,10 +54442,6 @@
             [
               "packages/contexts/tenancy/tsconfig.json",
               "packages/contexts/tenancy/tsconfig.json"
-            ],
-            [
-              "packages/contexts/tools/application/index.ts",
-              "packages/contexts/tools/application/index.ts"
             ]
           ],
           "roots": [
@@ -54149,8 +54459,7 @@
             "packages/contexts/skills/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
-            "packages/contexts/tenancy/tsconfig.json",
-            "packages/contexts/tools/application/index.ts"
+            "packages/contexts/tenancy/tsconfig.json"
           ]
         },
         "license": {
@@ -54286,6 +54595,30 @@
               "from": "packages/contexts/providers",
               "line": 37,
               "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/tools/application/authorization.ts",
+              "from": "packages/contexts/tools",
+              "line": 33,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/tools/application/dependencies.ts",
+              "from": "packages/contexts/tools",
+              "line": 47,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/fixtures.ts",
+              "from": "packages/contexts/tools",
+              "line": 32,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/tools",
+              "line": 47,
+              "specifier": "@platos/context-tenancy"
             }
           ],
           "reversePaths": [
@@ -54320,12 +54653,29 @@
             [
               "packages/contexts/providers",
               "packages/contexts/providers/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
             "apps/core-api",
             "packages/contexts/files",
-            "packages/contexts/providers"
+            "packages/contexts/providers",
+            "packages/contexts/tools"
           ]
         },
         "testsFixtures": {
@@ -55169,7 +55519,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ec1c694231aeca6e869afb5cbb7cb68bdd0b89685bb9c5bdcba0eb5356301e12",
+      "evidenceSha256": "8adddc083cf066aff60818a28cb93b4adc72672eee0c028e0be7980a242ed240",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55384,26 +55734,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/tools/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/tools/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/tools/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -55425,22 +55755,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/tools/application/index.ts",
-              "packages/contexts/tools/application/index.ts"
-            ],
-            [
-              "packages/contexts/tools/application/ports/index.ts",
-              "packages/contexts/tools/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/tools/contracts/index.ts",
-              "packages/contexts/tools/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/tools/domain/index.ts",
-              "packages/contexts/tools/domain/index.ts"
-            ],
-            [
               "packages/contexts/tools/package.json",
               "packages/contexts/tools/package.json"
             ],
@@ -55456,10 +55770,6 @@
           "roots": [
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/tools/README.md",
-            "packages/contexts/tools/application/index.ts",
-            "packages/contexts/tools/application/ports/index.ts",
-            "packages/contexts/tools/contracts/index.ts",
-            "packages/contexts/tools/domain/index.ts",
             "packages/contexts/tools/package.json",
             "packages/contexts/tools/tsconfig.json"
           ]
@@ -55497,6 +55807,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/tools/package.json",
               "kind": "workspace-script",
@@ -55507,6 +55822,12 @@
               "from": "packages/contexts/tools/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/tools/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -55560,13 +55881,13 @@
             {
               "file": "apps/mcp-stdio/src/testing/in-memory-runtime.ts",
               "from": "apps/mcp-stdio",
-              "line": 14,
+              "line": 28,
               "specifier": "@platos/context-tools"
             },
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 552,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55602,6 +55923,101 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/tools/application/execution.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/mcp-surface.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/registry.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/tool-policy.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/audit.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/call.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/declaration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/discovery.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/entity-policy.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/exposure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/health.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/mcp-client.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/mcp-config.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/permission.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/routing.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/tool.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 88
@@ -55609,7 +56025,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 81
+              "line": 82
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -55617,12 +56033,98 @@
               "line": 59
             },
             {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 266
+            },
+            {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 285
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 609
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/tools/application/execution.test.ts",
+              "packages/contexts/tools/application/execution.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/mcp-surface.test.ts",
+              "packages/contexts/tools/application/mcp-surface.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/registry.test.ts",
+              "packages/contexts/tools/application/registry.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/tool-policy.test.ts",
+              "packages/contexts/tools/application/tool-policy.test.ts"
+            ],
+            [
+              "packages/contexts/tools/contracts/index.test.ts",
+              "packages/contexts/tools/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/audit.test.ts",
+              "packages/contexts/tools/domain/audit.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/call.test.ts",
+              "packages/contexts/tools/domain/call.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/declaration.test.ts",
+              "packages/contexts/tools/domain/declaration.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/discovery.test.ts",
+              "packages/contexts/tools/domain/discovery.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/entity-policy.test.ts",
+              "packages/contexts/tools/domain/entity-policy.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/errors.test.ts",
+              "packages/contexts/tools/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/exposure.test.ts",
+              "packages/contexts/tools/domain/exposure.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/health.test.ts",
+              "packages/contexts/tools/domain/health.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/mcp-client.test.ts",
+              "packages/contexts/tools/domain/mcp-client.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/mcp-config.test.ts",
+              "packages/contexts/tools/domain/mcp-config.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/permission.test.ts",
+              "packages/contexts/tools/domain/permission.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/routing.test.ts",
+              "packages/contexts/tools/domain/routing.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/tool.test.ts",
+              "packages/contexts/tools/domain/tool.test.ts"
+            ],
+            [
+              "packages/contexts/tools/package.json",
+              "packages/contexts/tools/package.json"
+            ],
             [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
@@ -55636,15 +56138,44 @@
               "scripts/arch/max-file-lines.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/tools/application/execution.test.ts",
+            "packages/contexts/tools/application/mcp-surface.test.ts",
+            "packages/contexts/tools/application/registry.test.ts",
+            "packages/contexts/tools/application/tool-policy.test.ts",
+            "packages/contexts/tools/contracts/index.test.ts",
+            "packages/contexts/tools/domain/audit.test.ts",
+            "packages/contexts/tools/domain/call.test.ts",
+            "packages/contexts/tools/domain/declaration.test.ts",
+            "packages/contexts/tools/domain/discovery.test.ts",
+            "packages/contexts/tools/domain/entity-policy.test.ts",
+            "packages/contexts/tools/domain/errors.test.ts",
+            "packages/contexts/tools/domain/exposure.test.ts",
+            "packages/contexts/tools/domain/health.test.ts",
+            "packages/contexts/tools/domain/mcp-client.test.ts",
+            "packages/contexts/tools/domain/mcp-config.test.ts",
+            "packages/contexts/tools/domain/permission.test.ts",
+            "packages/contexts/tools/domain/routing.test.ts",
+            "packages/contexts/tools/domain/tool.test.ts",
+            "packages/contexts/tools/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
-            "scripts/arch/v1-project-graph.test.mjs"
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/v1-ledger.test.mjs"
           ]
         }
       },
@@ -55751,8 +56282,8 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
-      "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
+      "evidenceSha256": "b6762d51cceba15ed5b290951a5ad3816f824f4a5c783e90e1f4913ff6e7586a",
+      "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
         "reachable": false,
@@ -58331,10 +58862,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/tools/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/kernel/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -58408,10 +58935,6 @@
               "packages/contexts/skills/domain/index.ts"
             ],
             [
-              "packages/contexts/tools/domain/index.ts",
-              "packages/contexts/tools/domain/index.ts"
-            ],
-            [
               "packages/kernel/package.json",
               "packages/kernel/package.json"
             ],
@@ -58439,7 +58962,6 @@
             "packages/contexts/observability/domain/index.ts",
             "packages/contexts/privacy/domain/index.ts",
             "packages/contexts/skills/domain/index.ts",
-            "packages/contexts/tools/domain/index.ts",
             "packages/kernel/README.md",
             "packages/kernel/package.json",
             "packages/kernel/tsconfig.json"
@@ -59714,9 +60236,195 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/tools/application/authorization.ts",
+              "from": "packages/contexts/tools",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/dependencies.ts",
+              "from": "packages/contexts/tools",
+              "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/discover-entity-tools.ts",
+              "from": "packages/contexts/tools",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/entity-tool-policy.ts",
+              "from": "packages/contexts/tools",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/execute-tool.ts",
+              "from": "packages/contexts/tools",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/mcp-surface.ts",
+              "from": "packages/contexts/tools",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/organization-policy.ts",
+              "from": "packages/contexts/tools",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/ports/tool-dispatch.ts",
+              "from": "packages/contexts/tools",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/ports/tools-repository.ts",
+              "from": "packages/contexts/tools",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/read-tools.ts",
+              "from": "packages/contexts/tools",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/register-tools.ts",
+              "from": "packages/contexts/tools",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/resolve-permission.ts",
+              "from": "packages/contexts/tools",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/resolve-transport.ts",
+              "from": "packages/contexts/tools",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/fixtures.ts",
+              "from": "packages/contexts/tools",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/in-memory-dispatch.ts",
+              "from": "packages/contexts/tools",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/tools",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/contracts/index.ts",
+              "from": "packages/contexts/tools",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/audit.ts",
+              "from": "packages/contexts/tools",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/call.ts",
+              "from": "packages/contexts/tools",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/declaration.ts",
+              "from": "packages/contexts/tools",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/entity-policy.ts",
+              "from": "packages/contexts/tools",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/errors.ts",
+              "from": "packages/contexts/tools",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/exposure.ts",
+              "from": "packages/contexts/tools",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/health.ts",
+              "from": "packages/contexts/tools",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/identifiers.ts",
+              "from": "packages/contexts/tools",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/mcp-client.ts",
+              "from": "packages/contexts/tools",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/mcp-client.ts",
+              "from": "packages/contexts/tools",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/mcp-config.ts",
+              "from": "packages/contexts/tools",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/mcp-config.ts",
+              "from": "packages/contexts/tools",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/routing.ts",
+              "from": "packages/contexts/tools",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/domain/tool.ts",
+              "from": "packages/contexts/tools",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 432,
               "specifier": "@platos/kernel"
             }
           ],
@@ -60354,6 +61062,122 @@
               "packages/contexts/tenancy/domain/scope-path.ts"
             ],
             [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/discover-entity-tools.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/entity-tool-policy.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/execute-tool.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/mcp-surface.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/organization-policy.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/ports/tool-dispatch.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/ports/tools-repository.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/read-tools.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/register-tools.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/resolve-permission.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/resolve-transport.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-dispatch.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/audit.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/call.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/declaration.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/entity-policy.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/exposure.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/health.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/mcp-client.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/mcp-config.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/routing.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/domain/tool.ts"
+            ],
+            [
               "scripts/arch/gen-v1-skeleton.mjs",
               "scripts/arch/gen-v1-skeleton.mjs"
             ]
@@ -60365,6 +61189,7 @@
             "packages/contexts/providers",
             "packages/contexts/secrets",
             "packages/contexts/tenancy",
+            "packages/contexts/tools",
             "scripts/arch/gen-v1-skeleton.mjs"
           ]
         },
@@ -60593,6 +61418,61 @@
             },
             {
               "from": "packages/contexts/tenancy/domain/session-revocation.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/execution.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/mcp-surface.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/registry.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/application/tool-policy.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/contracts/index.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/audit.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/entity-policy.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/exposure.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/health.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/mcp-config.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/domain/routing.test.ts",
               "kind": "reference",
               "line": 1
             },
@@ -60849,6 +61729,50 @@
               "packages/contexts/tenancy/domain/session-revocation.test.ts"
             ],
             [
+              "packages/contexts/tools/application/execution.test.ts",
+              "packages/contexts/tools/application/execution.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/mcp-surface.test.ts",
+              "packages/contexts/tools/application/mcp-surface.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/registry.test.ts",
+              "packages/contexts/tools/application/registry.test.ts"
+            ],
+            [
+              "packages/contexts/tools/application/tool-policy.test.ts",
+              "packages/contexts/tools/application/tool-policy.test.ts"
+            ],
+            [
+              "packages/contexts/tools/contracts/index.test.ts",
+              "packages/contexts/tools/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/audit.test.ts",
+              "packages/contexts/tools/domain/audit.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/entity-policy.test.ts",
+              "packages/contexts/tools/domain/entity-policy.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/exposure.test.ts",
+              "packages/contexts/tools/domain/exposure.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/health.test.ts",
+              "packages/contexts/tools/domain/health.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/mcp-config.test.ts",
+              "packages/contexts/tools/domain/mcp-config.test.ts"
+            ],
+            [
+              "packages/contexts/tools/domain/routing.test.ts",
+              "packages/contexts/tools/domain/routing.test.ts"
+            ],
+            [
               "packages/kernel/package.json",
               "packages/kernel/package.json"
             ],
@@ -60951,6 +61875,17 @@
             "packages/contexts/tenancy/domain/environment.test.ts",
             "packages/contexts/tenancy/domain/invitation.test.ts",
             "packages/contexts/tenancy/domain/session-revocation.test.ts",
+            "packages/contexts/tools/application/execution.test.ts",
+            "packages/contexts/tools/application/mcp-surface.test.ts",
+            "packages/contexts/tools/application/registry.test.ts",
+            "packages/contexts/tools/application/tool-policy.test.ts",
+            "packages/contexts/tools/contracts/index.test.ts",
+            "packages/contexts/tools/domain/audit.test.ts",
+            "packages/contexts/tools/domain/entity-policy.test.ts",
+            "packages/contexts/tools/domain/exposure.test.ts",
+            "packages/contexts/tools/domain/health.test.ts",
+            "packages/contexts/tools/domain/mcp-config.test.ts",
+            "packages/contexts/tools/domain/routing.test.ts",
             "packages/kernel/package.json",
             "packages/kernel/src/vo/error.test.ts",
             "packages/kernel/src/vo/money.test.ts",
@@ -61707,7 +62642,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "421b333636f20402a656e12326244c020c60f25ce34c2a0b64c7b61bfb87117f",
+      "evidenceSha256": "c78f644a6135bb887ecac878781738642ba7d0418c7dd831874798c629670bd8",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
