@@ -115,6 +115,46 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `it()` from `tools/domain/permission.test.ts` leaves the file count at 106
  * and turns the case count red, which is precisely the drift a file-count pin
  * cannot see. No other package moved.
+ *
+ * WIN-256, `tools` again — the hosted-MCP gate. The SAME row moves again, and
+ * the file count does not:
+ *
+ *   tools 299 -> 325 cases; 1299 -> 1325 total. 18 files, unchanged: every one
+ *   of the 26 added cases lands in a suite that already existed. That shape is
+ *   the point of this canary — a wave that adds only assertions is invisible to
+ *   a file-count pin, and 26 of them is exactly the size of change that would
+ *   otherwise pass unremarked.
+ *
+ *   Where the 26 went, and why each is a case rather than a comment:
+ *
+ *     +14  application/tool-policy.test.ts (10 -> 24). The hosted MCP surface
+ *          had NO authentication before this wave: `verifyMcpCaller` and
+ *          `MCP_TOOLS_PERMISSION` were deletable with the whole suite green.
+ *          Eleven of the fourteen are refusals — absent, unknown, wrong-scope
+ *          and permission-less credentials; a surface switched off; a caller
+ *          missing a scope label, an explicit un-exposure, a token allowlist it
+ *          is not on, and a bearer caller on an oidc surface — and three are
+ *          the positive controls without which a refusal test passes for the
+ *          wrong reason (parent-project containment, the caller's own token id,
+ *          and labels taken from the verified principal).
+ *     +4   application/mcp-surface.test.ts (14 -> 18). Two for the
+ *          `secret:mutate` gate on the switch that makes an entity's tools
+ *          publicly reachable, which was deletable; two for the audit window,
+ *          whose only case asked a window of an EMPTY store.
+ *     +4   contracts/index.test.ts (10 -> 14). The same gate through the
+ *          PUBLISHED contract, because a transport binds that object and a
+ *          binder that dropped the credential would leave every use-case
+ *          refusal above passing and production open.
+ *     +2   application/execution.test.ts (31 -> 33). The not-dispatchable
+ *          refusal in `resolveDispatchTarget`, with its positive control.
+ *     +2   application/tool-policy.test.ts, allowlist resync — counted in the
+ *          +14 above; named here because they are the two that need the
+ *          repository double's new by-name failure injection.
+ *
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints the same pair
+ *   — "Test Files 18 passed (18) / Tests 325 passed (325)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce. No other package moved,
+ *   and no case was deleted: 299 + 26 = 325 and 1299 + 26 = 1325.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -145,7 +185,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
-  "packages/contexts/tools": { files: 18, cases: 299 },
+  "packages/contexts/tools": { files: 18, cases: 325 },
   "packages/kernel": { files: 3, cases: 44 },
 });
 
@@ -156,7 +196,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1299;
+export const EXPECTED_RUNTIME_TOTAL = 1325;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

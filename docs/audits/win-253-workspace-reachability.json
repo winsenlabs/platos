@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "aba080c9cf2e72ab6edc59aaedfdc319010d8651c59ef3fee566098993e567fd",
+  "evidenceSha256": "d1fd182e5e6af6dc70e66491282056e40eecd8d27b342144d0770494d7cf1686",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d7da1afbc2538aa136889bb0331de509629c277e55c2a1476889eb9b16f5dd65",
+    "aggregateSha256": "41db1eda872892edd9eaf62635556f8d767a23c00b280dd2b50c475e8a5d8926",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -14937,11 +14937,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "790ba3683558c89842e0b69320bf59ab9097c197fbe5b5c6630e35d20ca80fe2"
+        "sha256": "31a42e07fecaacd4cd3d9ac599e421a8da13cc70d3828ab99bc132b3b73aef2f"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "c5580b36e715a14f6555a8356d4f1c714c5b46c159c64153a07bfed08d51d7ca"
+        "sha256": "6aa43a9379bbc3c1b56c27fb817831aa2d64aeae11c8b36df21032065f74f09b"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -56035,7 +56035,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 266
+              "line": 273
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -56282,7 +56282,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "b6762d51cceba15ed5b290951a5ad3816f824f4a5c783e90e1f4913ff6e7586a",
+      "evidenceSha256": "cb267a4202f5d3f9a4ebd810ae8ea07e8070fdb9ff770fcd1a07cceec2f924c3",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {

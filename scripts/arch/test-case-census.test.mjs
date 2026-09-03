@@ -259,13 +259,20 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 test("the tools context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's `tools` slice moves. `pnpm --filter
   // @platos/context-tools exec vitest run` prints "Test Files 18 passed (18) /
-  // Tests 299 passed (299)"; the AST census reproduces both with zero refusals.
+  // Tests 325 passed (325)"; the AST census reproduces both with zero refusals.
   // Every other package is held at its earlier value by the two tests above, so
   // a suite quietly deleted elsewhere while `tools` landed cannot hide inside
   // the new total.
+  //
+  // 299 -> 325 WITH THE FILE COUNT UNCHANGED, which is the case this canary
+  // exists for. The hosted-MCP gate wave added 26 assertions and not one file:
+  // a file-count pin would have seen nothing, and a wave that adds only
+  // refusals to suites that already exist is exactly the wave whose absence
+  // nobody notices. The arithmetic is decomposed in the census module's own
+  // delta comment, per suite.
   assert.equal(EXPECTED["packages/contexts/tools"].files, 18);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 299);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 299);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 325);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
