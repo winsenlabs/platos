@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "df5e0e6bbe52bb358fc5a9a6bf04f34618e1366d53648f75ddc813cc167cf653",
+  "evidenceSha256": "e1baf41545af89677fccc6071bd677c16947cf8ed4ff10128c0cbafca89da313",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "00e2760c20ac8a3168822581063a1bedb44724fa0cd743aded82349162cd6fca",
+    "aggregateSha256": "3fcd69c458974755de34ebd11468f34407b9cfc1e9ed372cf0aaadf4a87e8319",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11765,7 +11765,7 @@
       },
       {
         "path": "packages/contexts/memory/application/memory-erasure-target.test.ts",
-        "sha256": "5f802a1f8f8beb3c71d5968aac8fa846539710900219bdd9326bf9166768b929"
+        "sha256": "c1b6bfac4b6c9c0eba729a4e88101236ec44f5818f053f9183905704a7d563d7"
       },
       {
         "path": "packages/contexts/memory/application/memory-erasure-target.ts",
@@ -11865,11 +11865,11 @@
       },
       {
         "path": "packages/contexts/memory/application/testing/in-memory-knowledge-graph-repository.ts",
-        "sha256": "289f48c150f3e764afe663bc35010983b1a8424a474e12ce2c35c7f67f092f4d"
+        "sha256": "69c029981e942d1c7714babfa63683f9fc7455d25dba4b04b642eb31157b3abd"
       },
       {
         "path": "packages/contexts/memory/application/testing/in-memory-memory-repository.ts",
-        "sha256": "923532caf968b5cf61691a8b1af8de0d078de3a7de0f66d4bfaed3352076d828"
+        "sha256": "967c21ec82d7df677480701d2512e285a7cadc243b86a51fc71fe21121e31396"
       },
       {
         "path": "packages/contexts/memory/application/testing/in-memory-peers.ts",
@@ -11893,19 +11893,19 @@
       },
       {
         "path": "packages/contexts/memory/contracts/index.test.ts",
-        "sha256": "29060b4782fee2653ee3818ecc8ded72d733f8fe12b1ec6223621be46bbf9e93"
+        "sha256": "f31c6573793626e647fdccd7141d03a954740db4294bfeaf5f412a7fbc7d7696"
       },
       {
         "path": "packages/contexts/memory/contracts/index.ts",
-        "sha256": "99b640215e02c495ef0a0282b14cf542e8ad95352dbbf9a5dd78b31de368c791"
+        "sha256": "1a18168b0f183fa84b1fa6bc4dbc8651a7d8a3aa7ea056287fa4ef6d856a80d7"
       },
       {
         "path": "packages/contexts/memory/domain/authorization.test.ts",
-        "sha256": "ca2fe982e8e715272eccf454d101a2c8fc38c9db83eec11ee716c5fe61d2cebd"
+        "sha256": "77314724c2e0a714634aa0adcda373978f9108514613795bc7d04e4ba66e7cb7"
       },
       {
         "path": "packages/contexts/memory/domain/authorization.ts",
-        "sha256": "2ef5e47532409a2c208043a526c5317a10757288ecdcd2eb50225e807b782fef"
+        "sha256": "41531e7b5112a511eb895a173ba3fa79313818fd303c2800e882600ed09eed7f"
       },
       {
         "path": "packages/contexts/memory/domain/confidence.test.ts",
@@ -11917,7 +11917,7 @@
       },
       {
         "path": "packages/contexts/memory/domain/content.test.ts",
-        "sha256": "972709945e1bc51ba95db6d72369a6b4c5f7620ed915d84df4ab5e95ecad0494"
+        "sha256": "26da9c0ef14c8631599d88256b8b6004b109ba1755809594760b17b45e84c19d"
       },
       {
         "path": "packages/contexts/memory/domain/content.ts",
@@ -15025,11 +15025,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "0092b428c3af29523f854fc5b17b6b3492380afc0df107b75d83cae2129649ed"
+        "sha256": "aab2fb62f2811d74c85ccf44d6255424321767b038fb78bc87b63f73c03ec1dd"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "478c8c7626cd55b8af62a5a83c26f17b5e88f712b89d9d116649c4fd1e39704f"
+        "sha256": "da357233953ed21acb42fc6aa30144edd64406b399d1012c30babe829a062200"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -49791,7 +49791,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 276
+              "line": 285
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50059,7 +50059,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "61b5b1105fc0ade69b79c3bc03bcb13fbeb38c266c81dc42ff774cc4a8a1792c",
+      "evidenceSha256": "61c497a46ed40e23a245c1dac13c4663418149f2ac49dce4b468bfbaecd5c12a",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
