@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "70ee05992a8a11ac86d6da9812c9a43367cb63e7c517b851ada724f8a9f5d3e3",
+  "evidenceSha256": "d6ac38f86f8a226230a50b32a3b116558ace569d71e66b4e2649ee13ccd9677c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "31a2dc88205db7a0388f76119019b2c5ceb9e7eced4048235ebca87da8b9bf85",
+    "aggregateSha256": "5d7f678c5179953afd713b3d387056e64a8c8630f85c89740d0ad622c0b8e309",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -14953,7 +14953,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "b9e57b3c6ca69cea4dac39c7cfa6008aba22283d8be6aa646148fb9e1f669cdf"
+        "sha256": "51b597e382326809e5d974c7b646f413312b6bc1b1c6341a251ccc6687a6d181"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -32357,7 +32357,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 666
+              "line": 665
             }
           ],
           "reversePaths": [
@@ -32382,7 +32382,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b39995a959fcbfc28f1b8fdf3d686a16267fc334d39e07cc0b63399b0f128641",
+      "evidenceSha256": "5a075f5777ffde0b2228722acb6b4808fa1a3a2b7dab152559d6a229cc0045f8",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33513,7 +33513,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 665
+              "line": 664
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -33738,7 +33738,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "253e1083d42db2a5e4526e1b30e44276791366b9757842df9dcee989181c5ec8",
+      "evidenceSha256": "90623f4220e5037242b54fdd3e7f18213e3850d6be25490ebd571040bebcb5d6",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
