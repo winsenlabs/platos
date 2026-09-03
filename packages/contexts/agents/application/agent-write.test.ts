@@ -337,9 +337,9 @@ describe("removing an agent from an environment", () => {
     const seeded = seedBoundAgent(context);
     const key = { scope: context.scope, agentId: seeded.agent.agentId, threadId: "thread-1" };
     context.versionLock.seed(key, seeded.version.agentVersionId);
-    expect((await context.versionLock.read(key)).ok && (await context.versionLock.read(key)).value).toBe(
-      seeded.version.agentVersionId,
-    );
+    const seededHold = await context.versionLock.read(key);
+    if (!seededHold.ok) throw new Error("unreachable");
+    expect(seededHold.value).toBe(seeded.version.agentVersionId);
 
     const removed = await removeAgent(context.dependencies, { authorization, agentId: seeded.agent.agentId });
     expect(removed.ok).toBe(true);
