@@ -39,7 +39,7 @@ import {
 } from "../domain/index.js";
 import { requireAccess, verifyOperator } from "./authorization.js";
 import type { ToolsDependencies } from "./dependencies.js";
-import type { ExposurePage } from "./ports/index.js";
+import type { ExposurePage, ExposurePageQuery } from "./ports/index.js";
 
 export interface ReadToolsQuery {
   readonly authorization: unknown;
@@ -73,22 +73,48 @@ export async function listTools(
   return ok(selectExposures(listed.value, query));
 }
 
+/**
+ * Clamp a requested window to one the store will answer.
+ *
+ * A negative offset and a zero limit are meaningless rather than adversarial,
+ * and a limit above the policy ceiling is a caller asking for more than the
+ * surface offers. All three are corrected here, once, rather than defended
+ * against in the adapter and again in the transport — the same shape `skills`
+ * gives the identical rule in its own `clampQuery`.
+ *
+ * IT IS A NAMED FUNCTION AND ITS RESULT IS WHAT CROSSES THE PORT, so the
+ * EFFECTIVE window is observable. Inline arithmetic is only visible in the size
+ * of the page it produces, and a page is the wrong witness: a scope holding two
+ * exposures satisfies `items.length <= 200` whether the ceiling was applied or
+ * not, and `slice(-3, ...)` over two rows returns the same two rows as
+ * `slice(0, ...)`. A suite reading the clamp from the page therefore passes on
+ * a fixture that could never have failed.
+ */
+export function clampExposurePage(
+  query: PageToolsQuery,
+  maximumPageSize: number,
+): ExposurePageQuery {
+  const search = query.search?.trim();
+  return {
+    limit: Math.min(Math.max(Math.trunc(query.limit), 1), maximumPageSize),
+    offset: Math.max(Math.trunc(query.offset), 0),
+    entityId: query.entityId ?? null,
+    // An empty search is NOT a search. Passing `""` down would make every
+    // adapter decide privately whether that means "everything" or "nothing".
+    search: search === undefined || search === "" ? null : search,
+  };
+}
+
 export async function pageTools(
   dependencies: ToolsDependencies,
   query: PageToolsQuery,
 ): Promise<Result<ExposurePage>> {
   const granted = verifyOperator(dependencies, query.authorization);
   if (!granted.ok) return err(granted.error);
-
-  const search = query.search?.trim();
-  return dependencies.repository.pageExposures(granted.value.scope, {
-    limit: Math.min(Math.max(Math.trunc(query.limit), 1), dependencies.policy.acl.maximumPageSize),
-    offset: Math.max(Math.trunc(query.offset), 0),
-    entityId: query.entityId ?? null,
-    // An empty search is NOT a search. Passing `""` down would make every
-    // adapter decide privately whether that means "everything" or "nothing".
-    search: search === undefined || search === "" ? null : search,
-  });
+  return dependencies.repository.pageExposures(
+    granted.value.scope,
+    clampExposurePage(query, dependencies.policy.acl.maximumPageSize),
+  );
 }
 
 /**

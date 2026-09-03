@@ -1,10 +1,13 @@
-import { asIdentifier, type EntityId, type PrincipalId } from "@platos/kernel";
+import { asIdentifier, type EntityId, type PrincipalId, type Result } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   asToolsIdentifier,
   DEFAULT_MCP_RATE_LIMIT_PER_MINUTE,
+  type AuditEntry,
   type ExternalEntityId,
+  type OrganizationMcpPolicyId,
+  type ToolCallAuditId,
   type ToolId,
   type ToolName,
 } from "../domain/index.js";
@@ -33,6 +36,38 @@ beforeEach(() => {
   context.tenancy.seedEntity(ENTITY, EXTERNAL);
   context.repository.seedExposure(testExposure(context.scope, { entityId: ENTITY }));
 });
+
+/** One audit row, complete, so a case names only the field it is about. */
+function auditRow(id: string, overrides: Partial<AuditEntry> = {}): AuditEntry {
+  return {
+    toolCallAuditId: asToolsIdentifier<ToolCallAuditId>(id),
+    environmentId: context.scope.environmentId,
+    toolId: asToolsIdentifier<ToolId>("tool-1"),
+    toolName: UPLOAD,
+    agentId: null,
+    threadId: null,
+    endUserId: null,
+    traceId: null,
+    arguments: {},
+    result: null,
+    error: null,
+    status: "SUCCEEDED",
+    latencyMs: 10,
+    costCents: null,
+    envelope: {
+      externalEntityId: null,
+      endUserId: null,
+      actorUserId: null,
+      spanId: null,
+      parentSpanId: null,
+      source: "turn",
+      mcpPrincipalId: null,
+      mcpClientId: null,
+    },
+    createdAt: context.clock.now(),
+    ...overrides,
+  };
+}
 
 describe("the published surface", () => {
   it("names itself, and is frozen so nothing can graft behaviour onto it", () => {
@@ -63,33 +98,12 @@ describe("what the views withhold", () => {
   });
 
   it("never publishes an audit row's arguments or result", async () => {
-    context.repository.audit.push({
-      toolCallAuditId: asToolsIdentifier("audit-1"),
-      environmentId: context.scope.environmentId,
-      toolId: asToolsIdentifier<ToolId>("tool-1"),
-      toolName: UPLOAD,
-      agentId: null,
-      threadId: null,
-      endUserId: null,
-      traceId: null,
-      arguments: { secretishQuestion: "what is my password" },
-      result: { rows: ["private"] },
-      error: null,
-      status: "SUCCEEDED",
-      latencyMs: 10,
-      costCents: null,
-      envelope: {
-        externalEntityId: null,
-        endUserId: null,
-        actorUserId: null,
-        spanId: null,
-        parentSpanId: null,
-        source: "turn",
-        mcpPrincipalId: null,
-        mcpClientId: null,
-      },
-      createdAt: context.clock.now(),
-    });
+    context.repository.audit.push(
+      auditRow("audit-1", {
+        arguments: { secretishQuestion: "what is my password" },
+        result: { rows: ["private"] },
+      }),
+    );
     const listed = await contract.readToolAudit({ authorization: context.tenancy.grant() });
     const rendered = JSON.stringify(listed.ok ? listed.value : []);
     expect(rendered).not.toContain("what is my password");
@@ -97,12 +111,150 @@ describe("what the views withhold", () => {
     expect(rendered).toContain("files.upload");
   });
 
+  /**
+   * THE ROWS ARE SEEDED AND THE ITERATION IS ASSERTED, BECAUSE THE EARLIER FORM
+   * WAS VACUOUS TWICE OVER.
+   *
+   * It looped over `listed.ok ? listed.value : []` against a store this
+   * `beforeEach` leaves EMPTY, so the body never ran; and it passed on a
+   * refusal too, because a refusal also yields `[]`. Its assertion —
+   * `costCents === null || typeof costCents === "string"` — was satisfied by
+   * the LEFT disjunct in every reachable case, so a float would have been
+   * admitted by a test whose title forbids one.
+   *
+   * `typeof … !== "number"` is the claim that actually refuses a float: it is
+   * false for `1.5` and true for both a string and `null`, so it cannot be
+   * satisfied by the absence of a cost. Money here is bigint micro-cents in a
+   * `Decimal(18, 6)` column, and a float would silently lose the last places.
+   */
   it("carries a cost as a canonical decimal STRING, never a number", async () => {
+    context.repository.audit.push(auditRow("audit-priced", { costCents: "1234.567890" }));
+    context.repository.audit.push(auditRow("audit-unpriced", { costCents: null }));
+
     const listed = await contract.readToolAudit({ authorization: context.tenancy.grant() });
-    for (const entry of listed.ok ? listed.value : []) {
-      expect(entry.costCents === null || typeof entry.costCents === "string").toBe(true);
+    const entries = listed.ok ? listed.value : [];
+    expect(entries).toHaveLength(2);
+    for (const entry of entries) {
+      expect(typeof entry.costCents).not.toBe("number");
     }
+    expect(entries.map((entry) => entry.costCents).sort()).toEqual([
+      "1234.567890",
+      null,
+    ]);
   });
+});
+
+/**
+ * THE OPERATOR GATE, ON EVERY PUBLISHED METHOD THAT HAS ONE.
+ *
+ * `verifyOperator` guards fourteen use cases and the guard is the same two
+ * hand-written lines at each: ask tenancy, refuse if the answer is no. ELEVEN
+ * OF THE FOURTEEN COULD HAVE THEIR GUARD DELETED WITH THE WHOLE SUITE GREEN —
+ * `pageTools`, `findTools`, `setToolEnabled`, `describeMcpSurface`,
+ * `configureMcpSurface`, `listEntityToolPolicies`, `setEntityToolPolicy`,
+ * `listOrganizationPolicies`, `setOrganizationPolicy`,
+ * `deleteOrganizationPolicy` and `discoverEntityTools`. Six of the eleven
+ * MUTATE. Only `registerTools`, `readToolAudit` and `listTools` had a case that
+ * noticed, which is what a guard copied fourteen times decays into: the copy is
+ * cheap and the proof is not.
+ *
+ * IT IS DRIVEN OFF `Object.keys(contract)` RATHER THAN A HAND-KEPT LIST, so the
+ * classification case below goes red when a method is ADDED to the published
+ * surface and nobody says which gate it is behind. A per-method list would have
+ * exactly the failure mode this suite exists to close: it would be complete on
+ * the day it was written and silently partial thereafter.
+ *
+ * THE REFUSAL IS TESTED THROUGH THE CONTRACT, NOT THE USE CASE, because the
+ * binder is between them. A binder that dropped the caller's authorization
+ * would leave every use-case-level refusal passing and production open.
+ *
+ * EACH REFUSAL HAS ITS OWN POSITIVE CONTROL. A method that refused everything
+ * would satisfy a refusal case for the wrong reason, so each is paired with the
+ * same call under a grant tenancy DID mint, which must not fail for that
+ * reason. It may still fail for its own — a surface not configured, a policy
+ * row absent — and those are different refusals, named differently.
+ */
+describe("the operator gate, on every method that has one", () => {
+  const FORGED = Object.freeze({ access: "secret:mutate", scope: { kind: "environment" } });
+
+  const invocations: Readonly<
+    Record<string, (authorization: unknown) => Promise<Result<unknown>>>
+  > = {
+    registerTools: (authorization) =>
+      contract.registerTools({
+        authorization,
+        entityId: ENTITY,
+        externalEntityId: EXTERNAL,
+        tools: [{ name: "files.upload" }],
+        callbackUrl: null,
+      }),
+    listTools: (authorization) => contract.listTools({ authorization }),
+    pageTools: (authorization) => contract.pageTools({ authorization, limit: 10, offset: 0 }),
+    setToolEnabled: (authorization) =>
+      contract.setToolEnabled({ authorization, exposureId: "exposure-1", enabled: false }),
+    findTools: (authorization) => contract.findTools({ authorization, query: "upload" }),
+    discoverEntityTools: (authorization) =>
+      contract.discoverEntityTools({
+        authorization,
+        entityId: ENTITY,
+        externalEntityId: EXTERNAL,
+        vaultAuthorization: testVaultAuthorization(),
+      }),
+    describeMcpSurface: (authorization) =>
+      contract.describeMcpSurface({ authorization, entityId: ENTITY }),
+    configureMcpSurface: (authorization) =>
+      contract.configureMcpSurface({ authorization, entityId: ENTITY, enabled: true }),
+    listEntityToolPolicies: (authorization) =>
+      contract.listEntityToolPolicies({ authorization, entityId: ENTITY }),
+    setEntityToolPolicy: (authorization) =>
+      contract.setEntityToolPolicy({
+        authorization,
+        entityId: ENTITY,
+        toolId: asToolsIdentifier<ToolId>("tool-1"),
+        exposed: true,
+      }),
+    listOrganizationPolicies: (authorization) => contract.listOrganizationPolicies({ authorization }),
+    setOrganizationPolicy: (authorization) =>
+      contract.setOrganizationPolicy({ authorization, pattern: "gdpr.*", state: "block" }),
+    deleteOrganizationPolicy: (authorization) =>
+      contract.deleteOrganizationPolicy({
+        authorization,
+        organizationMcpPolicyId: asToolsIdentifier<OrganizationMcpPolicyId>("policy-1"),
+      }),
+    readToolAudit: (authorization) => contract.readToolAudit({ authorization }),
+  };
+
+  /**
+   * The three methods that carry no operator grant, each for a stated reason.
+   *
+   * `listCallableForMcpCaller` is the hosted MCP surface and takes a THIRD
+   * PARTY's bearer credential, verified by identity-access in
+   * `application/tool-policy.test.ts`. `executeTool` and `resolvePermission`
+   * are reached by a runtime that has already been authorized upstream and take
+   * a scope rather than a grant. Naming them here is what makes their absence
+   * from the table above a decision rather than an omission.
+   */
+  const credentialAuthorized = ["listCallableForMcpCaller", "executeTool", "resolvePermission"];
+
+  it("classifies every published method, so a new one cannot arrive unclassified", () => {
+    const published = Object.keys(contract).filter((method) => method !== "name");
+    expect([...Object.keys(invocations), ...credentialAuthorized].sort()).toEqual(published.sort());
+  });
+
+  for (const [method, invoke] of Object.entries(invocations)) {
+    it(`${method} refuses a grant tenancy did not mint`, async () => {
+      const refused = await invoke(FORGED);
+      expect(refused.ok).toBe(false);
+      expect(!refused.ok && refused.error.code).toBe("TOOLS_REPOSITORY_UNAVAILABLE");
+      expect(!refused.ok && refused.error.details.reason).toBe("authorization_not_issued");
+    });
+
+    it(`${method} admits a grant tenancy did mint`, async () => {
+      const answered = await invoke(context.tenancy.grant());
+      const reason = answered.ok ? null : answered.error.details.reason;
+      expect(reason).not.toBe("authorization_not_issued");
+    });
+  }
 });
 
 describe("what the surface deliberately exposes", () => {

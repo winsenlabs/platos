@@ -70,6 +70,26 @@ describe("a call that goes through", () => {
     expect(context.repository.audit[0]?.environmentId).toBe(context.scope.environmentId);
   });
 
+  /**
+   * THE COLUMN IS `Decimal(18, 6)` AND THE FIELD IS A STRING OR NOTHING.
+   *
+   * `finish` writes `costCents: null` on every row it mints, because no use
+   * case in this context prices a call yet — `providers` owns the only mint for
+   * a priced value. Nothing proved that, so writing a FLOAT there left the
+   * whole suite green, and a float is precisely the value that loses the last
+   * places of a six-decimal money column on the way to the store.
+   *
+   * The claim is `typeof … !== "number"`, not `=== null`: pricing a call later
+   * must not turn this case red, but pricing it with a JavaScript number must.
+   */
+  it("writes a cost that is never a number, on the row execution itself mints", async () => {
+    await execute();
+    expect(context.repository.audit).toHaveLength(1);
+    const [row] = context.repository.audit;
+    expect(row).toBeDefined();
+    expect(typeof row?.costCents).not.toBe("number");
+  });
+
   it("folds the latency into a health row that starts from nothing", async () => {
     context.dispatch.willAnswer({ kind: "succeeded", result: 1, latencyMs: 100 });
     await execute();
@@ -81,6 +101,27 @@ describe("a call that goes through", () => {
     expect(health.ok && health.value?.totalCalls).toBe(1);
     expect(health.ok && health.value?.avgLatencyMs).toBe(100);
     expect(health.ok && health.value?.failCount).toBe(0);
+  });
+
+  /**
+   * ONE TOOL, TWO ENTITIES, TWO HEALTH ROWS.
+   *
+   * `ToolHealth` is keyed by the tool AND the entity that serves it, because
+   * the same content-addressed `Tool` row is shared across every installation
+   * that declares that shape — a backend of one customer's failing would
+   * otherwise mark the tool unhealthy for everyone exposing it. Nothing proved
+   * the second half of that key was read, so a double that dropped it kept the
+   * suite green.
+   */
+  it("keeps one tool's health apart per entity, which is what the key is for", async () => {
+    context.dispatch.willAnswer({ kind: "succeeded", result: 1, latencyMs: 100 });
+    await execute();
+    const elsewhere = await context.repository.findHealth(
+      context.scope,
+      asToolsIdentifier<ToolId>("tool-1"),
+      asToolsIdentifier<ExternalEntityId>("other-backend"),
+    );
+    expect(elsewhere.ok && elsewhere.value).toBeNull();
   });
 
   it("carries an audit row even when the audit store is down, without failing the call", async () => {

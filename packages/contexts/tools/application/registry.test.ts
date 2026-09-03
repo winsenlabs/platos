@@ -10,7 +10,14 @@ import {
   type ToolId,
   type ToolName,
 } from "../domain/index.js";
-import { findTools, listTools, pageTools, setToolEnabled } from "./read-tools.js";
+import {
+  clampExposurePage,
+  findTools,
+  listTools,
+  pageTools,
+  setToolEnabled,
+  type PageToolsQuery,
+} from "./read-tools.js";
 import { registerTools } from "./register-tools.js";
 import {
   buildToolsTestContext,
@@ -172,16 +179,40 @@ describe("reading the matrix", () => {
     expect(all.ok && all.value).toHaveLength(2);
   });
 
-  it("clamps a page to the policy ceiling", async () => {
+  /**
+   * THE CLAMP IS ASSERTED AT THE PORT, NOT READ OFF THE PAGE.
+   *
+   * The earlier case passed `limit: 10_000, offset: -3` against this fixture's
+   * TWO exposures and asserted `items.length <= 200`. `2 <= 200` holds with the
+   * ceiling applied and with it removed, and `slice(-3, ...)` over two rows
+   * returns the same two rows as `slice(0, ...)` — so replacing both clamps
+   * with the caller's raw values left the suite green. What the window was
+   * NARROWED TO is the claim, and the only place it is visible is the query the
+   * repository was handed.
+   */
+  it("hands the store the clamped window, not the caller's", async () => {
     const paged = await pageTools(context.dependencies, {
       authorization: context.tenancy.grant(),
       limit: 10_000,
       offset: -3,
     });
     expect(paged.ok && paged.value.total).toBe(2);
-    expect(paged.ok && paged.value.items.length).toBeLessThanOrEqual(
-      context.dependencies.policy.acl.maximumPageSize,
-    );
+    expect(context.repository.pageQueries).toHaveLength(1);
+    expect(context.repository.pageQueries[0]).toEqual({
+      limit: context.dependencies.policy.acl.maximumPageSize,
+      offset: 0,
+      entityId: null,
+      search: null,
+    });
+  });
+
+  it("widens a limit below one and truncates a fractional window", async () => {
+    await pageTools(context.dependencies, {
+      authorization: context.tenancy.grant(),
+      limit: 0,
+      offset: 2.9,
+    });
+    expect(context.repository.pageQueries[0]).toMatchObject({ limit: 1, offset: 2 });
   });
 
   it("treats an empty search string as no search", async () => {
@@ -299,5 +330,48 @@ describe("find_tools", () => {
       query: "issue",
     });
     expect(!found.ok && found.error.code).toBe("TOOLS_REPOSITORY_UNAVAILABLE");
+  });
+});
+
+/**
+ * The rule on its own, addressed by name.
+ *
+ * The cases above prove `pageTools` APPLIES the clamp; these prove what the
+ * clamp IS, without a store in the way. Both halves are needed: a correct
+ * function nobody calls and a call site that clamps to the wrong bound fail in
+ * different places and neither test sees the other's defect.
+ */
+describe("clampExposurePage", () => {
+  const CEILING = 200;
+  const query = (overrides: Partial<PageToolsQuery>): PageToolsQuery => ({
+    authorization: null,
+    limit: 10,
+    offset: 0,
+    ...overrides,
+  });
+
+  it("lowers a limit above the ceiling to the ceiling", () => {
+    expect(clampExposurePage(query({ limit: 10_000 }), CEILING).limit).toBe(CEILING);
+  });
+
+  it("raises a limit of zero or below to one", () => {
+    expect(clampExposurePage(query({ limit: 0 }), CEILING).limit).toBe(1);
+    expect(clampExposurePage(query({ limit: -5 }), CEILING).limit).toBe(1);
+  });
+
+  it("floors a negative offset at zero", () => {
+    expect(clampExposurePage(query({ offset: -3 }), CEILING).offset).toBe(0);
+  });
+
+  it("truncates a fractional window rather than rounding it", () => {
+    expect(clampExposurePage(query({ limit: 10.7, offset: 2.9 }), CEILING)).toMatchObject({
+      limit: 10,
+      offset: 2,
+    });
+  });
+
+  it("treats a blank search as no search, and trims a real one", () => {
+    expect(clampExposurePage(query({ search: "   " }), CEILING).search).toBeNull();
+    expect(clampExposurePage(query({ search: "  files  " }), CEILING).search).toBe("files");
   });
 });
