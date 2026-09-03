@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "22245c375c7d96b3d1a578c182c9a53e779e7540721b064cb4b17942b0a953bb"
+      "sha256": "7d421a6c66c9ac7c99dc24917cfaedc0e1beff9ff8c0bd455b1e07270cfaee59"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "20ca5f9ff7dfd686c0e88d53509b885225c82d7424fb6a4f41fc927da041a4f9"
+      "sha256": "1164c1fc6144840fdb82aeb46d6f65d539b584befa825f5ac5efafb13035f148"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "936624b288eb1f58966c9d58ad1bb04b5d190cfd180eb8c0429b051f772f8eb8"
+      "sha256": "8ce8ec589b8e72fa20a3fc9b573cc2239e6f4b6e41ab69cac4bf750ff07ea5c4"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "f2beeb1dfdba7daf36d594b96fd47c136d7734986c61002c8b603a72376b1af3"
+      "sha256": "91d1f8e714c77b9a93d0e9fbc1d4fb802cbd900e5d326b71b3b310cc9a2b49f8"
     }
   ]
 }

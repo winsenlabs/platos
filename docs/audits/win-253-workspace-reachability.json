@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "da73ab5a882115ce8256f3b4266b0c076216a9e740f1ce4018d83ed8d515c135",
+  "evidenceSha256": "103a6cdf47d7464b380a51d8d21cd842c771cca1c5a7b8b822265237724f2ee0",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 74,
+    "explicitHeaderFileCount": 62,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 161,
-        "sha256": "1089c6e6f75705f2222ccec8e0d43813cd1c7a548ea48d464fd16845e2ffc03a"
+        "outputCount": 149,
+        "sha256": "b526eb9794a30e44d5c1934939e6ba5bbfa0ddb548a80ddd6dc9af7b9cf30f22"
       }
     ],
-    "ownedOutputCount": 161,
+    "ownedOutputCount": 149,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3e70ae01ae660a1c859f7d787157d9433ed04567ecbe3b135604501a1254d903",
+    "aggregateSha256": "a31764d8e4177fbd6b562731054627a0fe103bf94b67f195881f1e0a9ce15778",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11176,24 +11176,276 @@
         "sha256": "65b222c809f3bd13aa7febec78b5f9ac3c3da03e65aceb83eeec4d2e04dcad9d"
       },
       {
+        "path": "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+        "sha256": "616de618a7b7409fdb35e23ddf7a1780fe0c1660f62f3d73c94249e318156a85"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+        "sha256": "1cc82bcbda7404d6d99ba60d20a5f7ba6939010a3770c0df125adb9b9afab781"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/authorization.ts",
+        "sha256": "248e59d2a67e147107430dad68510e77fea3a7e0c335873338e618969ad044b5"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+        "sha256": "5ac76a292d5d858c40e22bcabc5bd3c548b74934e735599763751cc37d9660b9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/configure-budget.ts",
+        "sha256": "d15cab737ac1e9e5d162946f2f9b2769b9cf39b0dfeea97e438b9c847d141529"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/consumption.test.ts",
+        "sha256": "688a5a5f739aff2e7ec2ef08e604c12df5e408e155058a3008c666452839f4fd"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+        "sha256": "5ff33df03b51f720364c6efc9d2deb7a2cbbd8fb382063a158bca1099aeb2cb6"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/deliver-crossing.ts",
+        "sha256": "5e4b068de596e445b0f9a46d583d6b0a38de1ac3dfea726786b97426adac266c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/dependencies.ts",
+        "sha256": "3382947e5b5f08bc8a82ed8f7c4405654c1202f5f4ffdb92e302b55e961bab43"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+        "sha256": "42e75c7aa0584f4173d261a4fe7e3af08b2f8a2bcfbfe7849fc6cd1ca7e70034"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/detect-crossings.ts",
+        "sha256": "0d023dceecdb5839ae5c4d401c98b609e6c49494255db8309a03af2aad80f0a5"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/evaluate-budgets.ts",
+        "sha256": "64fc4c9a04a559c09a5f937ebed74c0a9eded14f21e7b4bf613f21358f84b14e"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+        "sha256": "4dd14f34e309ee4985df206fbe80a6be3c5f7cbd6daf2f75775f648255063c5c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+        "sha256": "6cef631cedbcf13a2e69666c096b01d04ad3cffef7f06d55c012cf9a6bc4da38"
+      },
+      {
         "path": "packages/contexts/cost-monitoring/application/index.ts",
-        "sha256": "f7de1c3e38c9b96d31fcca5cda7b456f256ece2bae9a2cdfe744962a90f7753d"
+        "sha256": "6c5440ab1ccec5f7c687ae8d85c8d7a03060d940c29c06680159b459bc651283"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/manage-alert-channels.ts",
+        "sha256": "913be6b6347f0fd8481104198334bcf2b912406087ea115d0ed3a11aac60ba90"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/notification-target.ts",
+        "sha256": "31288b514e38b09421b9641b3f27d494081129b3bbdb74ae05c4f353d11be046"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts",
+        "sha256": "22eea184eccbcd0686012221c97df646dc66650be5a08642583cf82bd2dfb870"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/budget-repository.ts",
+        "sha256": "e75a29a904f1927e567f9019430443dd054e326ef9b39773a2b4c321941fc57d"
       },
       {
         "path": "packages/contexts/cost-monitoring/application/ports/index.ts",
-        "sha256": "2109ae9bbee7f7380e07d84e65332d68ad48e6bf2ebd9d99396519eae98dd4c4"
+        "sha256": "adf927ca6c878568c4cbcedc5e123a2d024a1976451b816be767f3c4d629b1bf"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/notifier.ts",
+        "sha256": "e890a2668c76cbaa473065eb9b7a4bc8fdc827136958b3326ae6b5cf9fbc1491"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts",
+        "sha256": "92fb8eb0f40cd41dbf02c39f4f21e762744a2afe98822e15c9c2f2a333244e51"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/probe-alert-channel.ts",
+        "sha256": "7f217d4dda5a7738b0f092513d484e23300edab99d3ddd218aa6d8430816431f"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+        "sha256": "de25d26ce7c5a3fd552f65abd97db5eca8d3f3524972a36c0380c4f3f5ba5657"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-budgets.ts",
+        "sha256": "878c18380dd1a2a364ee6b52518068099a20cc3e354260ef5907e4baf01acd0a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/read-spend.ts",
+        "sha256": "fb2424398c93ea9bae609543f04c4fd92647c5c37f292932816b3adc202b81d7"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts",
+        "sha256": "a57e122ec1b2647cf1a993b5a27d53075466071947a3454d1bae57d17f41e7c6"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/record-spend.ts",
+        "sha256": "886b879bf074c8e87963ed9d9909e14b5a89c5e59d802a1d3b047421fb78061a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/summarise-consumption.ts",
+        "sha256": "57fa5942a6923a08d8ce947ce9ae4645a6102fe72bfd5e47f4f8d6d1fc3be076"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+        "sha256": "40b47c2e4e68a20e022c301f4ceda154af6a92c68d78b07d4f0ad19aaaf1585f"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts",
+        "sha256": "97bf6ed8927948dd4852e8c40a93952e08fc42e63229ce38f9bb82d6514f73c1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts",
+        "sha256": "632db592521ff63a6caeecd5b46ed05ce9acaf881c9128f1e9c06b5d79d322e1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts",
+        "sha256": "d917d7a2eaa1bc9ea548ec349b217fbf9972f1c8e686c2e47e484bb5d1fa5f8a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+        "sha256": "4c637a2e2dc3eb4d62b478e47162cf4a48d59c7d0e01f2bc3d38bce68161ac85"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts",
+        "sha256": "b94313dbba0d7bd85fd9c9119b61e864e70d61015e8fab3dce8665a50e2f18b2"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/testing/index.ts",
+        "sha256": "b67c83e3468137bcb141dba91a2ab47e1e1c36f426b560489523ae44bd5282db"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/application/views.ts",
+        "sha256": "9dce85169f0557bb9892228009df28bea63aa3e3db63983b808bc6061e25163c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/contracts/index.test.ts",
+        "sha256": "1ef4ef57a98dc2d654a32caeea3df26f9c5e984a1b8af57a2f902e5291d386cd"
       },
       {
         "path": "packages/contexts/cost-monitoring/contracts/index.ts",
-        "sha256": "9794b69fa0c7dfb7c1865cf18bd16df76e4d4598116f129c2d2b3a463d6f127a"
+        "sha256": "76b4a888695945323f0e8c164e06944a9cc0facfb896845a1a15c3eda1018f6c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+        "sha256": "7020c0ed3acd1180bba67bdecfad1d8d71f82379bfea59e9db7337b6faaf341b"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-channel.ts",
+        "sha256": "11bcb94d1815243fa720a94b27a18001c82f4b4ff811e06619cc22d09ff0d8ae"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+        "sha256": "821bf867421c29f78998be48720b3a1215629452633abd1766fa7e14a1988cb0"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-delivery.ts",
+        "sha256": "942480262358b357c0654f23942692619a57694e89602264f3d24922524405c9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+        "sha256": "760153bae21cea790d9198e9ed8f95bde14b5c7567799997583926a461f7992f"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-message.ts",
+        "sha256": "4c14deb1393beace52cbf63b9acdcd19eecee65e3c20489e625924257aab38f1"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/alert-topic.ts",
+        "sha256": "9f3125c2526c2c9475076a97a962e5447f0da3866442338ac9069940f5d66994"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+        "sha256": "d7b0b5749cdf114cab794015603302c90616441d31fc9eee39f212ce8541e853"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-scope.ts",
+        "sha256": "765b222ce857c101cfee47f6566f3520cee5e118bbd6ed854de2c8b7a5b18d0a"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+        "sha256": "b9b2135951cf59652ad692705de2600213b948e3bb1b0fc3a93de2fdf5de7758"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget-status.ts",
+        "sha256": "7427a743f50887e8d74c448da5e1345b25c3478253b1171c75b94313c9c1b39c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+        "sha256": "86264d78c558e49bb89db5232ea08a37fb5f82fda4b4c48aaf1de0135e9a1410"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/budget.ts",
+        "sha256": "4736000f8b153d02190144f2847660e2ec7aac338a2b33379a755315d83bbf55"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+        "sha256": "e1f4e6cbbc863fa8eb27d8c76e89ddcb436902e429adb2982ee670ee5f3aee53"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/consumption.ts",
+        "sha256": "289468fa3412bf83f074316fdbf5585d67c678804fb1b493b29537c89e0d99f4"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/errors.test.ts",
+        "sha256": "f798103d605dcfd2fd107429d1f2ffb05ad3c3997ffc8928bdee4d5e830d9cd3"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/errors.ts",
+        "sha256": "a233d76f930c700a58aeb48611d8afff11de4e1a5318a9ee68441082dadf019e"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+        "sha256": "1fdc628fdc45806b59f01398b3be43c07d99b4da792e75b70e4e25bdd6882544"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/guard.ts",
+        "sha256": "234c16691a1672ded6c91a794fa79e50484327d75cb05e1bd66f9ef2752c3168"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/identifiers.ts",
+        "sha256": "518602643233a899ef99845b4789baf5fdfda389ebde929bdddf5c8dfc6bffca"
       },
       {
         "path": "packages/contexts/cost-monitoring/domain/index.ts",
-        "sha256": "072d0a1ce1d72240b8c79110133843c704318e1828b3a74c9e68cdaa99282939"
+        "sha256": "41518fd760d19937763ab71e9960538d24644ffe5fec5577b45560481c4b1f1c"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/policy.ts",
+        "sha256": "9eb20689ff1479e86b5764f71933d01ddf2d21a73fe05584e25ac1f9787ce435"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+        "sha256": "265ac9fa0e630aed83ae5e02602ba8fb8003ac8c571059216c5b364885f333fd"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/spend.ts",
+        "sha256": "c8b65e793075d8b6e7990c84e82c872edc41fae96d1869ed96bd3135cd7a7822"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+        "sha256": "5ad16639e49cb59af8f1376f75faf95c92a1e25c3a2039d275f9f82b10d93072"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/threshold.ts",
+        "sha256": "46750492de675ba83d542f0d864118f0c76c59cad70d585fa3e5507b0878935d"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/window.test.ts",
+        "sha256": "4fb4977aa2a2140a47c9a5f9c15aa269dbc163c3e66603e07d91cf1ee673dbe9"
+      },
+      {
+        "path": "packages/contexts/cost-monitoring/domain/window.ts",
+        "sha256": "c6cadb3909caa4dab436253c7495a36ec7502d60341f460ed59887441a82cf3d"
       },
       {
         "path": "packages/contexts/cost-monitoring/package.json",
-        "sha256": "cbc0694f65e396c0dd335d2322c8a6d739ed22d58a10fae2ae5bd1ddf2259b48"
+        "sha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6"
       },
       {
         "path": "packages/contexts/cost-monitoring/tsconfig.json",
@@ -11856,24 +12108,228 @@
         "sha256": "8a080eb7abc7a50c3fc03cbd9636ccb4e7122aa8c50fc6a997c6a0cabb979674"
       },
       {
+        "path": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+        "sha256": "7be31e242cc569c1219c35d94b17e7d0ad05df68ccd8a2e4926b03563cbc6e38"
+      },
+      {
+        "path": "packages/contexts/jobs/application/dependencies.ts",
+        "sha256": "87cc817b2564c1c060d688bf116edd411d317145c199c9b97798d30a777e99f5"
+      },
+      {
+        "path": "packages/contexts/jobs/application/execute-job.test.ts",
+        "sha256": "9019f1eff1bd32ca18933290e0c3fdf875c865278c739db9621414c6c38e7055"
+      },
+      {
+        "path": "packages/contexts/jobs/application/execute-job.ts",
+        "sha256": "47dd0e70400a4b4d29f8bdefac4820c1b72769e14e5aab36d20877116e89d368"
+      },
+      {
         "path": "packages/contexts/jobs/application/index.ts",
-        "sha256": "7eff751667863b9b74a181a384c190673b9df36424643dc31d352d39316b8442"
+        "sha256": "b393e08bfbb0d8955d4dc620102399055bd15e0faa69521929c1de320852a5e0"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-contract.ts",
+        "sha256": "b4c4ca50138d5362061983637af91964a9fe7fc38c34387284a23df77da05aca"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+        "sha256": "c6343771e9e2c41900de97a9bf319bddd2f7c0e74299567ded4245c8bb5538f2"
+      },
+      {
+        "path": "packages/contexts/jobs/application/jobs-erasure-target.ts",
+        "sha256": "9eeef13aa3019b9e962e301e76af705a2349784bc049afc1af4b8b3d24856732"
+      },
+      {
+        "path": "packages/contexts/jobs/application/minting.ts",
+        "sha256": "8d95f9a0a16eba09269f797956c082b232266ce49d2578a97d1c43fa0f817a1a"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/approvals-repository.ts",
+        "sha256": "e69d4f534a4d570384c4c1ae42401725d124c925a90739ac652dda150b7382b8"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/idempotency-store.ts",
+        "sha256": "18196391dbfafcf2a3895210389b206cc16b850b792669a74052745047da5d61"
       },
       {
         "path": "packages/contexts/jobs/application/ports/index.ts",
-        "sha256": "e54748043bb9fe29a1ecb6fa78599609a9937dbf15ef9532376a54db8f010290"
+        "sha256": "6ae4ab8c74db6102d30b6bf8ff65a295c4bf30e57d9c96877e931eab823a0e3c"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/job-handler-runtime.ts",
+        "sha256": "4b770305e3735a7613b59317d1d1175c87e72daacfa9a7c6b0d9e781daeb5814"
+      },
+      {
+        "path": "packages/contexts/jobs/application/ports/jobs-repository.ts",
+        "sha256": "1fcf73c597f2c6e909fb08a2cacfcacc89b2c5fe537e753b4093e09bab23f5c5"
+      },
+      {
+        "path": "packages/contexts/jobs/application/read-approvals.ts",
+        "sha256": "6d551cfbb6f00a73e55e2e2c4d57c6c75e4cfdd6f5f728f7c110441bcece2d5b"
+      },
+      {
+        "path": "packages/contexts/jobs/application/read-jobs.ts",
+        "sha256": "b4407d35e0eab8675cfd6b69972f68a0d313dd1e668509bd6e76513bcdd79174"
+      },
+      {
+        "path": "packages/contexts/jobs/application/register-job.test.ts",
+        "sha256": "701c0ccae313dedd29b27a014c8fa54e31f8b3e5cdee03ef98e7de4ab7ac3ed7"
+      },
+      {
+        "path": "packages/contexts/jobs/application/register-job.ts",
+        "sha256": "65e3accf8d10450c35be2265bda1f89a79f5ffa28df5fc225c1a603d869c4bb9"
+      },
+      {
+        "path": "packages/contexts/jobs/application/request-approval.ts",
+        "sha256": "c6b7c3635652fdb377ee255359ffc111faa473cfe1df2d6f93c40a78888ad311"
+      },
+      {
+        "path": "packages/contexts/jobs/application/resolve-approval.ts",
+        "sha256": "1424b5ccc4b9c5a34bd567f9ab42fafb2e2b034136a3887b5d1faeea8c72e2f4"
+      },
+      {
+        "path": "packages/contexts/jobs/application/sweep-expired-approvals.ts",
+        "sha256": "db4824c80aff19e1123a4378a8d94a04bed384e21a016e185d6193b96546b627"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/builders.ts",
+        "sha256": "e3cc7367034ef891434d8214fc4130ba07645139c2181d5726bf7e8ca819c709"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/fixtures.ts",
+        "sha256": "9b9cbf8d59c240d791851a921163e207347b190488d581a6f03e2af23cdf4728"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts",
+        "sha256": "da83312c14afd51d2e338a4d515e78b335fb5dee993884f954d5763eecd2c39b"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts",
+        "sha256": "c62aee9db0bedb672acdbfb4d9998b12c9161e80d584df0f2f86470fda1e4d16"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts",
+        "sha256": "4fbcdc137c5331687c8ad208e876550e5bfcceb8c3fb9368741e5f6415a65234"
+      },
+      {
+        "path": "packages/contexts/jobs/application/testing/index.ts",
+        "sha256": "990c89e52886528a542e8325d93ee1dc6fb51dc983e8bf7165e166a690b0935a"
+      },
+      {
+        "path": "packages/contexts/jobs/application/views.test.ts",
+        "sha256": "b29b4b7a4d015635584af911b48707a52704619e3be951c0032a77ca1aa9a82e"
+      },
+      {
+        "path": "packages/contexts/jobs/application/views.ts",
+        "sha256": "a0cb19b185ff435373239dfc62e1561fb02f0603d8b1451c6628d17348b0a65d"
       },
       {
         "path": "packages/contexts/jobs/contracts/index.ts",
-        "sha256": "02d0ab767a421bfa9153826d182ed7e170cc2c00a5914c5708eb0cc847d035bf"
+        "sha256": "7adbcc0ac272ad36d67a55e2fc6ac1e20a2d27fb29fdb3782c2ff50441e20fe1"
+      },
+      {
+        "path": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+        "sha256": "982c15fc3b34c2b06e3cad29dd0f8b4697f509d6df07140d1a83a354d66d5115"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-request.ts",
+        "sha256": "409c2f0c4b9973dcab1f0cf62f301044b64dbaab9f70ee6c18e303f54664abe8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-status.test.ts",
+        "sha256": "255acab73f2640e54ce7e64c5862e9b75a1d3864f064f933b083b40c968ecebc"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval-status.ts",
+        "sha256": "74f24e56f662dcf1575238a197aea65bf0ca884c2ba17cfc6b06304f19629813"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval.test.ts",
+        "sha256": "df0da0b9928bf2a13f6f348d53f8163000629f3b39037755894e0d385de1c61b"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/approval.ts",
+        "sha256": "b3c4d9b2b7ba5372ca71efaa464858c677b2e3f93715cf741d0d695bcacaf58b"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/errors.test.ts",
+        "sha256": "8ed55bd3592e1039a488cba9c795a4a758076f87349c455ff70fedcbf25902e4"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/errors.ts",
+        "sha256": "f9e411448da6730e8ddc6f19d94141c736f378a9c28f1c9984e4e3eeb06c0bd6"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/execution-request.test.ts",
+        "sha256": "fc6c65577c1ed0f706e90e1adfdebc6ea5f7c3d9d7c8691052e2179af9535091"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/execution-request.ts",
+        "sha256": "6246740bdca046c8d208ac0ddb83e16f44f4b75533ab49b3e06e336f5ca0f15d"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/idempotency.test.ts",
+        "sha256": "3245fe76c3ece8b7df2078db9d99358dbd01d2cd872efa497591f6b08f9295a8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/idempotency.ts",
+        "sha256": "f9373003c7a001f42854f1c988d8a62aa36b617468a0ebc7b6d7f78f6db22b55"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/identifiers.ts",
+        "sha256": "74f88cea99f0afa01a313106a0f11437985a23abe222cc41c0b2a348f9529f04"
       },
       {
         "path": "packages/contexts/jobs/domain/index.ts",
-        "sha256": "86b24fb0a48a50976b1347d6bdbbc38668a895fdd47618fcfc7a23d95065b95d"
+        "sha256": "bd81f036978a231c29a3d4d024b0dbc0c9eb80ce0fe7ed95bf1340502ebed0d1"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/invocation.test.ts",
+        "sha256": "beaed7dfb0dc12c068e7bee5910e98e7359589f37966e5c1902484b6ceb2f0ea"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/invocation.ts",
+        "sha256": "115f4523abf7593954ec29e70c129caeea4123de84be0765cd42a2d4ded108b8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-definition.test.ts",
+        "sha256": "c5aff89dde54c1c1e0c1ae74d63fc6e9894696a282d59b66323d3e1c772e8cff"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-definition.ts",
+        "sha256": "d06172eb3ccd638e0e481bf797fd51bced8dad88ee76ae30480ac1eeded78e2f"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job-key.ts",
+        "sha256": "6a543eaa8c7659a544049447f58127bed7bedd3c8800428fe76822ee63afe0e3"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job.test.ts",
+        "sha256": "eb7ebd4c10db7fd83a440bd79d03a2c294c4197da73c3131aaa8f5354486207e"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/job.ts",
+        "sha256": "53c816ec34d3c5e54013bb1079cf5cb645f29f67bc4772d8c866ee5dd544dbe8"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/payload.test.ts",
+        "sha256": "337f44d9be49ae9783b51f25b2a1f881b37847ae91033cc93bed89e120ac258e"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/payload.ts",
+        "sha256": "827afcaca9282274322fa5c742ee7697ce19ac62c94f20194c0e1f2fb09d5c7f"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/scope.test.ts",
+        "sha256": "272d12bd5a4b9ca22748db2e6600df498572ec3ef43f2c5ed3324c0c4cd12715"
+      },
+      {
+        "path": "packages/contexts/jobs/domain/scope.ts",
+        "sha256": "2fbd43ea9cf70d0a64e92b01c687658609eb967fcb6a363d4d0f970a91a2cb21"
       },
       {
         "path": "packages/contexts/jobs/package.json",
-        "sha256": "c6b1a7528aefd87c2fc85b0a93aa5b796e7ba59dcdddced0db79072b5a96e405"
+        "sha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9"
       },
       {
         "path": "packages/contexts/jobs/tsconfig.json",
@@ -11884,24 +12340,332 @@
         "sha256": "4a98eda9002b4a81c7e74f56d57f408463174041e7195f8d56c24e69d03d1d53"
       },
       {
+        "path": "packages/contexts/memory/application/authorization.test.ts",
+        "sha256": "ff9bb8cbc8076e570da9e61e8afeb5033f72fcb3f8388bf76ac4742e2fd584ef"
+      },
+      {
+        "path": "packages/contexts/memory/application/authorization.ts",
+        "sha256": "abffad125354117930ba7fc3399eb2911a30a54ab9fd3915adfab01f420995e1"
+      },
+      {
+        "path": "packages/contexts/memory/application/dependencies.ts",
+        "sha256": "5d5b46e6b2c1d8f93bb7cb5eab3302b69e1d91bd5480d4054791e41ef88523b4"
+      },
+      {
+        "path": "packages/contexts/memory/application/embedding.ts",
+        "sha256": "7bd3399ccea8c06ded3a882dc6b6781a256004c41df71f41ac2875b45b22b9e3"
+      },
+      {
+        "path": "packages/contexts/memory/application/extract-from-conversation.test.ts",
+        "sha256": "05fcca58969ec4ba1592b5dc5551c4e718f874240d2f91e47984808e985f4ab8"
+      },
+      {
+        "path": "packages/contexts/memory/application/extract-from-conversation.ts",
+        "sha256": "7dffd68c8dc366bf5c7b2695afc8ae0a959072b646ce7645819cac169ea28392"
+      },
+      {
+        "path": "packages/contexts/memory/application/forget.ts",
+        "sha256": "21e5e3d9125ac024f433faaf2f93b9701fe06df8029cc6880167f922decd2bc7"
+      },
+      {
+        "path": "packages/contexts/memory/application/graph-queries.test.ts",
+        "sha256": "f396de426e7eb27b5ac4c25967881370aa2634050e7885405d792054250f0904"
+      },
+      {
+        "path": "packages/contexts/memory/application/graph-queries.ts",
+        "sha256": "9a4270a2df7938cd933a5e767e293ad44d10e9e7600f569e8bd9b3e7714a3ba0"
+      },
+      {
         "path": "packages/contexts/memory/application/index.ts",
-        "sha256": "6abb67f21a90cdb200e3247bc5d84ac6b56569487b13e324b2953c9cc8834f81"
+        "sha256": "32478622bd184b124776548c128472aec48a4fad5734b4a66a10eecbb0cc8f6d"
+      },
+      {
+        "path": "packages/contexts/memory/application/judge-pricing.ts",
+        "sha256": "5ed00756790dd499620556205fc24b1a53d534392253bae9f09c29bd7b27bcf9"
+      },
+      {
+        "path": "packages/contexts/memory/application/knowledge-graph.test.ts",
+        "sha256": "e3238e6404602e578983220de3b1cefef50dbb0b419c1703dd421c3fc11b8eb1"
+      },
+      {
+        "path": "packages/contexts/memory/application/knowledge-graph.ts",
+        "sha256": "d8d106c8fe0757dc367d56e6e6c73c1c857027675fda9c7db00149670c1b463e"
+      },
+      {
+        "path": "packages/contexts/memory/application/lifecycle.test.ts",
+        "sha256": "ef5ba65f7927f7614acd4c9f8598fe61cf7fa87d9449b7680b4937272caf54d9"
+      },
+      {
+        "path": "packages/contexts/memory/application/memory-erasure-target.test.ts",
+        "sha256": "c1b6bfac4b6c9c0eba729a4e88101236ec44f5818f053f9183905704a7d563d7"
+      },
+      {
+        "path": "packages/contexts/memory/application/memory-erasure-target.ts",
+        "sha256": "a89beb91fc1d5b43d2fb0957c595750e51bd8bb635268d04ad46d223b8c41ed0"
+      },
+      {
+        "path": "packages/contexts/memory/application/ports/cache.ts",
+        "sha256": "74480adfcbc2c3f68e87d54b0c79261dbc9c4ce7b362e5100d43524158de8409"
+      },
+      {
+        "path": "packages/contexts/memory/application/ports/content-digest.ts",
+        "sha256": "0171fdfc81a76b1e8b855a8f08ca8521d61312ac227b7a5f40e80ae7128ffd72"
+      },
+      {
+        "path": "packages/contexts/memory/application/ports/embedding-model.ts",
+        "sha256": "f017bb26eff9ee7d4e38da80305e60aedce08291dd942f5fd665af23e1fd93f2"
       },
       {
         "path": "packages/contexts/memory/application/ports/index.ts",
-        "sha256": "c073af202f2148f8e4509a7ebc01b291207638d521fb1c41860596563e7e25af"
+        "sha256": "df5fa0f531df637cbc41d0bb6613b8a410491ad0ffd9243dccaa961327a14285"
+      },
+      {
+        "path": "packages/contexts/memory/application/ports/knowledge-graph-repository.ts",
+        "sha256": "81110968f3eac69a23c66b1e43ec4b12a9c469476fb5a7d71e4a7f7a2b39e6de"
+      },
+      {
+        "path": "packages/contexts/memory/application/ports/memory-repository.ts",
+        "sha256": "235c4216d07d2ec8f2af9eafae84eba115cacf6bb2471584eb6fdebe018ddf46"
+      },
+      {
+        "path": "packages/contexts/memory/application/read-memories.ts",
+        "sha256": "94a5d1f1021b4b6b8d05757eb3909e6283d9db81a8d637c047804c92bbb1c64c"
+      },
+      {
+        "path": "packages/contexts/memory/application/recall.test.ts",
+        "sha256": "4332f1b8c31f7e8769618b55664c85a46aefdf72b1f478dfdcb1d45a0af93ed8"
+      },
+      {
+        "path": "packages/contexts/memory/application/recall.ts",
+        "sha256": "74680010f4daf30bd4dffc2166ebe3d4e2f4656915a725c6c49c29124765e2d0"
+      },
+      {
+        "path": "packages/contexts/memory/application/reconcile-feedback.test.ts",
+        "sha256": "11cb356d93a75f9b39b33190bd011fff3dd3f7be7dbc68b7cf7aa7973f533cf7"
+      },
+      {
+        "path": "packages/contexts/memory/application/reconcile-feedback.ts",
+        "sha256": "308069a6c05a98e5938cdbd4670d6290553e8628ae03d8aad0edd91284e4185d"
+      },
+      {
+        "path": "packages/contexts/memory/application/remember.test.ts",
+        "sha256": "d07fa04069bb1cc4cb9cee00dbc0e7a50fb7a0ad5bf5359b9a045326c0273e3b"
+      },
+      {
+        "path": "packages/contexts/memory/application/remember.ts",
+        "sha256": "ec0210973c39ff1b6b4795425882a1943fc74c6b681ffd7c1b4e8d0ef7cd5c50"
+      },
+      {
+        "path": "packages/contexts/memory/application/retrieve-context.test.ts",
+        "sha256": "32e27fbc9daa763a3ff254f04b062cef52eabbe56f3438d393d9057b1a9cdae8"
+      },
+      {
+        "path": "packages/contexts/memory/application/retrieve-context.ts",
+        "sha256": "575e83c8bd8ece16e59d478e7aeb933eccbc8c5b0684f201ad5ea083e12e2077"
+      },
+      {
+        "path": "packages/contexts/memory/application/revise.ts",
+        "sha256": "31efd65a0da99e7e4640b13e301b1d832b98e87ff1f8ebbca3c1d6f80374735e"
+      },
+      {
+        "path": "packages/contexts/memory/application/synthesize-profile.test.ts",
+        "sha256": "b7b019528441e6b8bdc17f2c560045bc6f97c58d35350e156af645e43624b093"
+      },
+      {
+        "path": "packages/contexts/memory/application/synthesize-profile.ts",
+        "sha256": "2d7e1787c5b14a5cd898636871437481f46240ae675c807ae9ff6e5de25fb5e6"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/counting-digest.ts",
+        "sha256": "008dc3fca0768ca79d615969137abf304d6c1c48bed9d9e41496a3ef4dcf3d77"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/fixtures.ts",
+        "sha256": "33406d4f1d47687bcb0880030117971cf341bc72ab4950d8abad69592e658782"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-cache.ts",
+        "sha256": "c1eef186722ad7cf650900d222893caac29989ee392f8e1cbef65dd0847e69f1"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-embedding-model.ts",
+        "sha256": "e69b16a98fdb724325d602031671b788f1e22c63a5e940d505cc2dc4ab10fec7"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-judge.ts",
+        "sha256": "a35da4da18a78bba854f597bee2dc5baa30d1068de09388acd325edece101c0d"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-knowledge-graph-repository.ts",
+        "sha256": "69c029981e942d1c7714babfa63683f9fc7455d25dba4b04b642eb31157b3abd"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-memory-repository.ts",
+        "sha256": "967c21ec82d7df677480701d2512e285a7cadc243b86a51fc71fe21121e31396"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/in-memory-peers.ts",
+        "sha256": "db455d5a8992797a1ff0b0f578ccd6b17a4c4848656d27946e3caa9588bde38f"
+      },
+      {
+        "path": "packages/contexts/memory/application/testing/index.ts",
+        "sha256": "fe14e1cb1a6b9a50c68a7e03eb8329aff1024a03c2cce37d30da4b5c3ca6451b"
+      },
+      {
+        "path": "packages/contexts/memory/application/views.ts",
+        "sha256": "1dcfb08c0d20ccd1063c68f327e9847410fc040ea5270a8df3341b0c0b46678c"
+      },
+      {
+        "path": "packages/contexts/memory/application/working-memory.test.ts",
+        "sha256": "213fd74cc16b330b437474c7dfe0b07ef40b8aa95cde47bfbe172812af6d4771"
+      },
+      {
+        "path": "packages/contexts/memory/application/working-memory.ts",
+        "sha256": "40f61c12512117726665c2f2c21d36bf81502234a41ce8114ae5d18df3555e26"
+      },
+      {
+        "path": "packages/contexts/memory/contracts/index.test.ts",
+        "sha256": "f31c6573793626e647fdccd7141d03a954740db4294bfeaf5f412a7fbc7d7696"
       },
       {
         "path": "packages/contexts/memory/contracts/index.ts",
-        "sha256": "ae4c7b6af5c161b4fd19e0e179c23d223ee85fd7f1633373924d8e4dc99dec59"
+        "sha256": "1a18168b0f183fa84b1fa6bc4dbc8651a7d8a3aa7ea056287fa4ef6d856a80d7"
+      },
+      {
+        "path": "packages/contexts/memory/domain/authorization.test.ts",
+        "sha256": "77314724c2e0a714634aa0adcda373978f9108514613795bc7d04e4ba66e7cb7"
+      },
+      {
+        "path": "packages/contexts/memory/domain/authorization.ts",
+        "sha256": "41531e7b5112a511eb895a173ba3fa79313818fd303c2800e882600ed09eed7f"
+      },
+      {
+        "path": "packages/contexts/memory/domain/confidence.test.ts",
+        "sha256": "038ce87e0d0e4fa00675fff8c41e481cd73f5193c3264f0238af6f5f42277d5e"
+      },
+      {
+        "path": "packages/contexts/memory/domain/confidence.ts",
+        "sha256": "21c1ba4cafca0bd8e2f0c3afb540509405ad157f5d1bc5a28c87aed3c1c1e289"
+      },
+      {
+        "path": "packages/contexts/memory/domain/content.test.ts",
+        "sha256": "26da9c0ef14c8631599d88256b8b6004b109ba1755809594760b17b45e84c19d"
+      },
+      {
+        "path": "packages/contexts/memory/domain/content.ts",
+        "sha256": "324f8d3cb955be98d68f7044bdeb2d555b4aabb935e3b1057777a5b5fb4be903"
+      },
+      {
+        "path": "packages/contexts/memory/domain/entity.test.ts",
+        "sha256": "8658931b61d4858c020d849021c81381430a8191c6c222e700c3d57e84a43c04"
+      },
+      {
+        "path": "packages/contexts/memory/domain/entity.ts",
+        "sha256": "903deec277d1fad6663669bc5fbd084891ffacd3db02946a36b3d152fd35e496"
+      },
+      {
+        "path": "packages/contexts/memory/domain/errors.test.ts",
+        "sha256": "c93a64c34444c89f66461db606c6e042cd930a3604b69a0cf8cfc312b6c587d2"
+      },
+      {
+        "path": "packages/contexts/memory/domain/errors.ts",
+        "sha256": "b58cd0857d650a42426683c07acb1ba76ee7997d224d0c938ec8aa2d5a986cf3"
+      },
+      {
+        "path": "packages/contexts/memory/domain/extraction.test.ts",
+        "sha256": "f53d7d07ab788090bb463acc6a438cff9f0891738e4efa7a8390f295ef42c975"
+      },
+      {
+        "path": "packages/contexts/memory/domain/extraction.ts",
+        "sha256": "a0dd7f9629bf5a60ebbcd8de13ae8d578ec676c69c11514948af978428579972"
+      },
+      {
+        "path": "packages/contexts/memory/domain/fusion.test.ts",
+        "sha256": "7023e4d8b818150977b40f4af565eccff0f7f6af2a627c117dee146d0e556244"
+      },
+      {
+        "path": "packages/contexts/memory/domain/fusion.ts",
+        "sha256": "57acb87906c0c7c14a892f951d2f8e8baebd787a6265ba9596874cca8afabd79"
+      },
+      {
+        "path": "packages/contexts/memory/domain/identifiers.ts",
+        "sha256": "5c8466224241f1e112a440620a2df438447bdf07e21a649be763372b15629cec"
       },
       {
         "path": "packages/contexts/memory/domain/index.ts",
-        "sha256": "37fc1b13f5dbb52dde9d826c76be1bc9b5d25f34b103daa8d154691cbcae5d9a"
+        "sha256": "7b0ea92de30eacb9100a8d706a31e98927dbf9bfe5e495d8597e3609ee9b980d"
+      },
+      {
+        "path": "packages/contexts/memory/domain/memory.test.ts",
+        "sha256": "a90619ff2b6f9b21ef0cae6bddc4c76cd53b7c3bacb01228fd8e62963461b63a"
+      },
+      {
+        "path": "packages/contexts/memory/domain/memory.ts",
+        "sha256": "75be8b11984d2b26b6ed37e030973a51815cff20e84bdfac76cb8a691203c7ee"
+      },
+      {
+        "path": "packages/contexts/memory/domain/policy.ts",
+        "sha256": "94f9af5e22bf7074b346181c169f0a55a0a07ee7a3209faf961c389ed51683b6"
+      },
+      {
+        "path": "packages/contexts/memory/domain/profile.test.ts",
+        "sha256": "604221597492e3e342e4151dba981b583a6779abe6d2079723a2be1887c3013e"
+      },
+      {
+        "path": "packages/contexts/memory/domain/profile.ts",
+        "sha256": "97d6d24abbf5399551d254c525a1f5b6350b71f9d897011ebe46b3b3f9286e83"
+      },
+      {
+        "path": "packages/contexts/memory/domain/recall.test.ts",
+        "sha256": "e953f10f2a38d8d8675ef2812664b49fd22c2b1ea1446dbd1d3bca3719d199bf"
+      },
+      {
+        "path": "packages/contexts/memory/domain/recall.ts",
+        "sha256": "907d1f1a1e28abd6fc5bddee38f151178de51bbb4ea4db76c8168d7b93b1bf1a"
+      },
+      {
+        "path": "packages/contexts/memory/domain/relationship.test.ts",
+        "sha256": "22e26b5ddbfd57766c773e45df4259b6517ff483c3b4982dffad70a06bffcee4"
+      },
+      {
+        "path": "packages/contexts/memory/domain/relationship.ts",
+        "sha256": "cbfc62ae275756d5dbdbaa1bcb220ef5723b192e73e5996670abb5a7bf7ab842"
+      },
+      {
+        "path": "packages/contexts/memory/domain/scope.test.ts",
+        "sha256": "e7971b7ba1d64f14158a2b3c473bc50d7015f9762a040b1aca7718e115bfc42d"
+      },
+      {
+        "path": "packages/contexts/memory/domain/scope.ts",
+        "sha256": "f66564d8cd553814eac9783efd31fbc8dda612578aa5ca543cd909c6de1d7a78"
+      },
+      {
+        "path": "packages/contexts/memory/domain/taxonomy.test.ts",
+        "sha256": "47ec96a197fc5fcc0b8a8592e99a9a79267064f6aee74fa4a4401ae1bc8b9137"
+      },
+      {
+        "path": "packages/contexts/memory/domain/taxonomy.ts",
+        "sha256": "05ca5dae67d027d5d78201f930ab42913f4ffb37e7352505f6e07160967767b0"
+      },
+      {
+        "path": "packages/contexts/memory/domain/traversal.test.ts",
+        "sha256": "8f7350a15cdfe760e9fc81586a9d17d16c915a0d129b9af855949b539f4d38d0"
+      },
+      {
+        "path": "packages/contexts/memory/domain/traversal.ts",
+        "sha256": "2162146c5a03c5576a5d130243bfcc5cad9b0d4621afd0477833c2a2f830ca2a"
+      },
+      {
+        "path": "packages/contexts/memory/domain/working-set.test.ts",
+        "sha256": "fc02b9ef490aa1fea299ddc3ef451d4fa24366f127e534895d386bb474614cf2"
+      },
+      {
+        "path": "packages/contexts/memory/domain/working-set.ts",
+        "sha256": "3f40aef74e016be009a084b53c254bca8e6d14c3ede7266e9e51fb88d78a4380"
       },
       {
         "path": "packages/contexts/memory/package.json",
-        "sha256": "0d9ed38f820773824925cfb0ad87651977633e0e512ca6dd1cf43548bf49e34f"
+        "sha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7"
       },
       {
         "path": "packages/contexts/memory/tsconfig.json",
@@ -15045,7 +15809,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "af1694be2b4180f3df81e72e2cb350723c3d04de0566d9c1ff184f94cc65e4dd"
+        "sha256": "aea8ee787b7ef9805f914070fc7b1c10545ccbabbc184d1d784aa4494f20eb49"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -15077,7 +15841,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "7dd15e71edac2d1d146de6f6236e5b0e92ed6259103c2beeafe6774b7867fb57"
+        "sha256": "e4fc5f8206d6274a2ace11f4881fabe9a60bd5d38b7a0993866b6f4e537f5728"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -15097,7 +15861,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "e46475328ddce89a945cd08339c8b01aa83a79ad4afe1243741750f40d388f0a"
+        "sha256": "9b0b832c5cd3bffe9f29966ede08f606de940bc320973dbfb70f5472eb263fa0"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -15113,11 +15877,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "3568c13de3d49c79e8645527f831a3b7019f10c2c0b202acf6b3b1767cfd262d"
+        "sha256": "ee1ca6764e31c55312c18a533a83e16345c9de192e09f3f523008e00e5af22b9"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "6588090fb3f7d2fe35d8057b6345149b4712e853cb895d7ac16d98e73253fb44"
+        "sha256": "d4103614333333b30bcb7467bded9af04d205a2e8aee6357f16eb4e364a61e6e"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -15349,7 +16113,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "936624b288eb1f58966c9d58ad1bb04b5d190cfd180eb8c0429b051f772f8eb8"
+        "sha256": "8ce8ec589b8e72fa20a3fc9b573cc2239e6f4b6e41ab69cac4bf750ff07ea5c4"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -15457,7 +16221,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f2beeb1dfdba7daf36d594b96fd47c136d7734986c61002c8b603a72376b1af3"
+        "sha256": "91d1f8e714c77b9a93d0e9fbc1d4fb802cbd900e5d326b71b3b310cc9a2b49f8"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -16532,7 +17296,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 47
+      "testsFixtures": 48
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -18760,7 +19524,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 90
+              "line": 91
             },
             {
               "from": "scripts/audit-licenses.test.mjs",
@@ -20118,7 +20882,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "202d28d79ecb312ca77e0399a5bb0f8efa94cf02a53f2ca7d0b845fa8da2580a",
+      "evidenceSha256": "c0428b11e3cc265850d963e25419ea9e9238ff59c9ca4f6df881b056298d519b",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -20495,35 +21259,11 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
             {
               "from": "packages/contexts/governance/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/jobs/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/jobs/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/memory/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/memory/contracts/index.ts",
               "kind": "explicit-generated-header-reference"
             },
             {
@@ -20589,36 +21329,12 @@
               "packages/contexts/conversations/contracts/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "packages/contexts/cost-monitoring/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/contracts/index.ts",
-              "packages/contexts/cost-monitoring/contracts/index.ts"
-            ],
-            [
               "packages/contexts/governance/application/ports/index.ts",
               "packages/contexts/governance/application/ports/index.ts"
             ],
             [
               "packages/contexts/governance/contracts/index.ts",
               "packages/contexts/governance/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/application/ports/index.ts",
-              "packages/contexts/jobs/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/contracts/index.ts",
-              "packages/contexts/jobs/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/memory/application/ports/index.ts",
-              "packages/contexts/memory/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/memory/contracts/index.ts",
-              "packages/contexts/memory/contracts/index.ts"
             ],
             [
               "packages/contexts/observability/application/ports/index.ts",
@@ -20655,14 +21371,8 @@
             "packages/contexts/channels/contracts/index.ts",
             "packages/contexts/conversations/application/ports/index.ts",
             "packages/contexts/conversations/contracts/index.ts",
-            "packages/contexts/cost-monitoring/application/ports/index.ts",
-            "packages/contexts/cost-monitoring/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
             "packages/contexts/governance/contracts/index.ts",
-            "packages/contexts/jobs/application/ports/index.ts",
-            "packages/contexts/jobs/contracts/index.ts",
-            "packages/contexts/memory/application/ports/index.ts",
-            "packages/contexts/memory/contracts/index.ts",
             "packages/contexts/observability/application/ports/index.ts",
             "packages/contexts/observability/contracts/index.ts",
             "packages/contexts/privacy/application/ports/index.ts",
@@ -21033,7 +21743,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "2973bc444672193c75d6c7224d0bca1b40f18d30df1368274c2fef101dc1dcb1",
+      "evidenceSha256": "995b981199988eba0d62ba68fa893b29eaffe6a62a39035a72b3bae3d32d4489",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -32737,7 +33447,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 698
+              "line": 723
             }
           ],
           "reversePaths": [
@@ -32762,7 +33472,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "c6ba106da5794822952e73049d25e85b10b8a492fa3409a008e86b12d54ea730",
+      "evidenceSha256": "5d328a80c3e6c56a2280b47a073e90e1bfff0d242f40937b6a278b1ef5fb2e81",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -33893,7 +34603,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 697
+              "line": 722
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -34118,7 +34828,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1f06ebd6b6e994b97ebb44f9f100c7b2ffdbcd55ee42a823728c1dddbe81c9b9",
+      "evidenceSha256": "8dc4aab821a07f950327bf4fcecef34ebadc2c26a5980f3752bc90020e17b333",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44850,7 +45560,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 551
+              "line": 570
             }
           ],
           "reversePaths": [
@@ -44929,7 +45639,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "83f8c56c85ba8095c64bc2172e01257689f713a8bc226bae80aea7ee824631bd",
+      "evidenceSha256": "286d61a912cbb3561cc144aca38f72984ba745d6433bdcc9b65f1f72dbf37dce",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -45160,26 +45870,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/cost-monitoring/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/cost-monitoring/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -45209,22 +45899,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/application/ports/index.ts",
-              "packages/contexts/cost-monitoring/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/contracts/index.ts",
-              "packages/contexts/cost-monitoring/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/cost-monitoring/domain/index.ts",
-              "packages/contexts/cost-monitoring/domain/index.ts"
-            ],
-            [
               "packages/contexts/cost-monitoring/package.json",
               "packages/contexts/cost-monitoring/package.json"
             ],
@@ -45242,10 +45916,6 @@
             "packages/adapters/notifier-webhook/src/adapter.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/README.md",
-            "packages/contexts/cost-monitoring/application/index.ts",
-            "packages/contexts/cost-monitoring/application/ports/index.ts",
-            "packages/contexts/cost-monitoring/contracts/index.ts",
-            "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/cost-monitoring/package.json",
             "packages/contexts/cost-monitoring/tsconfig.json"
           ]
@@ -45283,6 +45953,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/cost-monitoring/package.json",
               "kind": "workspace-script",
@@ -45293,6 +45968,12 @@
               "from": "packages/contexts/cost-monitoring/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/cost-monitoring/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -45353,10 +46034,243 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/consumption.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/window.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 414
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+              "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "packages/contexts/cost-monitoring/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+              "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/consumption.test.ts",
+              "packages/contexts/cost-monitoring/application/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+              "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+              "packages/contexts/cost-monitoring/application/detect-crossings.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+              "packages/contexts/cost-monitoring/application/guard-spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+              "packages/contexts/cost-monitoring/application/read-budgets.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/contracts/index.test.ts",
+              "packages/contexts/cost-monitoring/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-message.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-scope.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/errors.test.ts",
+              "packages/contexts/cost-monitoring/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "packages/contexts/cost-monitoring/domain/guard.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "packages/contexts/cost-monitoring/domain/spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/window.test.ts",
+              "packages/contexts/cost-monitoring/domain/window.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/package.json",
+              "packages/contexts/cost-monitoring/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/cost-monitoring/application/alert-channel-lifecycle.test.ts",
+            "packages/contexts/cost-monitoring/application/authorization.test.ts",
+            "packages/contexts/cost-monitoring/application/budget-lifecycle.test.ts",
+            "packages/contexts/cost-monitoring/application/consumption.test.ts",
+            "packages/contexts/cost-monitoring/application/deliver-crossing.test.ts",
+            "packages/contexts/cost-monitoring/application/detect-crossings.test.ts",
+            "packages/contexts/cost-monitoring/application/guard-spend.test.ts",
+            "packages/contexts/cost-monitoring/application/read-budgets.test.ts",
+            "packages/contexts/cost-monitoring/contracts/index.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-message.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-scope.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget.test.ts",
+            "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+            "packages/contexts/cost-monitoring/domain/errors.test.ts",
+            "packages/contexts/cost-monitoring/domain/guard.test.ts",
+            "packages/contexts/cost-monitoring/domain/spend.test.ts",
+            "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+            "packages/contexts/cost-monitoring/domain/window.test.ts",
+            "packages/contexts/cost-monitoring/package.json",
+            "scripts/arch/test-case-census.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -45480,8 +46394,8 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "940dcbc88960ea32d69d28b187f7e573b5e396e969b4d982f14e77982c6986e8",
-      "manifestSha256": "cbc0694f65e396c0dd335d2322c8a6d739ed22d58a10fae2ae5bd1ddf2259b48",
+      "evidenceSha256": "b2a2a0c5c61ce2ce4069762411da4ff4b8ed13e01cf81be1e26607fb4a301c4a",
+      "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
         "reachable": false,
@@ -45852,7 +46766,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 269
+              "line": 282
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -46006,7 +46920,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "4fb3d407e642204369809d5a71f230c099188b812be8dc0a12777a5ffd016dfa",
+      "evidenceSha256": "adb3374d6a470aec0f6bcd7b4147b67c57ea568eaca22719835545ad1f17c5d8",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -48288,7 +49202,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 249
+              "line": 262
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -49085,7 +49999,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "120d897b4c481118699fd5a0c70e7be0ef4ca315337b384f96b9833e18f8ab08",
+      "evidenceSha256": "7e8ce1a502d6e02df3404c5883f820c52b3e5cf2847c8ce776025b4b0402feee",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -49264,26 +50178,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/jobs/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/jobs/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/jobs/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -49305,22 +50199,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/jobs/application/index.ts",
-              "packages/contexts/jobs/application/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/application/ports/index.ts",
-              "packages/contexts/jobs/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/contracts/index.ts",
-              "packages/contexts/jobs/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/domain/index.ts",
-              "packages/contexts/jobs/domain/index.ts"
-            ],
-            [
               "packages/contexts/jobs/package.json",
               "packages/contexts/jobs/package.json"
             ],
@@ -49336,10 +50214,6 @@
           "roots": [
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/jobs/README.md",
-            "packages/contexts/jobs/application/index.ts",
-            "packages/contexts/jobs/application/ports/index.ts",
-            "packages/contexts/jobs/contracts/index.ts",
-            "packages/contexts/jobs/domain/index.ts",
             "packages/contexts/jobs/package.json",
             "packages/contexts/jobs/tsconfig.json"
           ]
@@ -49377,6 +50251,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/jobs/package.json",
               "kind": "workspace-script",
@@ -49387,6 +50266,12 @@
               "from": "packages/contexts/jobs/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/jobs/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -49440,6 +50325,96 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/execute-job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/register-job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/views.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval-status.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/execution-request.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/idempotency.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/invocation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job-definition.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/payload.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/scope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 127
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
               "line": 186
@@ -49447,11 +50422,101 @@
           ],
           "reversePaths": [
             [
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/execute-job.test.ts",
+              "packages/contexts/jobs/application/execute-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/register-job.test.ts",
+              "packages/contexts/jobs/application/register-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/views.test.ts",
+              "packages/contexts/jobs/application/views.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval-status.test.ts",
+              "packages/contexts/jobs/domain/approval-status.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval.test.ts",
+              "packages/contexts/jobs/domain/approval.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/errors.test.ts",
+              "packages/contexts/jobs/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/execution-request.test.ts",
+              "packages/contexts/jobs/domain/execution-request.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/idempotency.test.ts",
+              "packages/contexts/jobs/domain/idempotency.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/invocation.test.ts",
+              "packages/contexts/jobs/domain/invocation.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job-definition.test.ts",
+              "packages/contexts/jobs/domain/job-definition.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job.test.ts",
+              "packages/contexts/jobs/domain/job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/payload.test.ts",
+              "packages/contexts/jobs/domain/payload.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/scope.test.ts",
+              "packages/contexts/jobs/domain/scope.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/package.json",
+              "packages/contexts/jobs/package.json"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+            "packages/contexts/jobs/application/execute-job.test.ts",
+            "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+            "packages/contexts/jobs/application/register-job.test.ts",
+            "packages/contexts/jobs/application/views.test.ts",
+            "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+            "packages/contexts/jobs/domain/approval-status.test.ts",
+            "packages/contexts/jobs/domain/approval.test.ts",
+            "packages/contexts/jobs/domain/errors.test.ts",
+            "packages/contexts/jobs/domain/execution-request.test.ts",
+            "packages/contexts/jobs/domain/idempotency.test.ts",
+            "packages/contexts/jobs/domain/invocation.test.ts",
+            "packages/contexts/jobs/domain/job-definition.test.ts",
+            "packages/contexts/jobs/domain/job.test.ts",
+            "packages/contexts/jobs/domain/payload.test.ts",
+            "packages/contexts/jobs/domain/scope.test.ts",
+            "packages/contexts/jobs/package.json",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/test-case-census.test.mjs"
           ]
         }
@@ -49533,8 +50598,8 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "7bc2358875a21b1a1107913c86c68655342515f8d40143fa3e173e8069582591",
-      "manifestSha256": "c6b1a7528aefd87c2fc85b0a93aa5b796e7ba59dcdddced0db79072b5a96e405",
+      "evidenceSha256": "0b4bd1e932f05ebedd1ccb1a64c560fcf02aecda1539a8c26fb8c499daeec307",
+      "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
         "reachable": false,
@@ -49738,26 +50803,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/memory/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/memory/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/memory/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/memory/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/memory/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -49783,22 +50828,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/memory/application/index.ts",
-              "packages/contexts/memory/application/index.ts"
-            ],
-            [
-              "packages/contexts/memory/application/ports/index.ts",
-              "packages/contexts/memory/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/memory/contracts/index.ts",
-              "packages/contexts/memory/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/memory/domain/index.ts",
-              "packages/contexts/memory/domain/index.ts"
-            ],
-            [
               "packages/contexts/memory/package.json",
               "packages/contexts/memory/package.json"
             ],
@@ -49815,10 +50844,6 @@
             "packages/adapters/redis-cache/src/adapter.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/memory/README.md",
-            "packages/contexts/memory/application/index.ts",
-            "packages/contexts/memory/application/ports/index.ts",
-            "packages/contexts/memory/contracts/index.ts",
-            "packages/contexts/memory/domain/index.ts",
             "packages/contexts/memory/package.json",
             "packages/contexts/memory/tsconfig.json"
           ]
@@ -49856,6 +50881,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/memory/package.json",
               "kind": "workspace-script",
@@ -49866,6 +50896,12 @@
               "from": "packages/contexts/memory/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/memory/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -49929,6 +50965,161 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/memory/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/extract-from-conversation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/graph-queries.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/knowledge-graph.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/memory-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/recall.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/reconcile-feedback.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/remember.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/retrieve-context.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/synthesize-profile.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/working-memory.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/confidence.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/content.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/entity.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/extraction.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/fusion.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/memory.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/profile.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/recall.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/relationship.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/scope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/taxonomy.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/traversal.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/working-set.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 128
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 385
+            },
+            {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 311
@@ -49936,11 +51127,166 @@
           ],
           "reversePaths": [
             [
+              "packages/contexts/memory/application/authorization.test.ts",
+              "packages/contexts/memory/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/extract-from-conversation.test.ts",
+              "packages/contexts/memory/application/extract-from-conversation.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/graph-queries.test.ts",
+              "packages/contexts/memory/application/graph-queries.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/knowledge-graph.test.ts",
+              "packages/contexts/memory/application/knowledge-graph.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/lifecycle.test.ts",
+              "packages/contexts/memory/application/lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/memory-erasure-target.test.ts",
+              "packages/contexts/memory/application/memory-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/recall.test.ts",
+              "packages/contexts/memory/application/recall.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/reconcile-feedback.test.ts",
+              "packages/contexts/memory/application/reconcile-feedback.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/remember.test.ts",
+              "packages/contexts/memory/application/remember.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/retrieve-context.test.ts",
+              "packages/contexts/memory/application/retrieve-context.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/synthesize-profile.test.ts",
+              "packages/contexts/memory/application/synthesize-profile.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/working-memory.test.ts",
+              "packages/contexts/memory/application/working-memory.test.ts"
+            ],
+            [
+              "packages/contexts/memory/contracts/index.test.ts",
+              "packages/contexts/memory/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/authorization.test.ts",
+              "packages/contexts/memory/domain/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/confidence.test.ts",
+              "packages/contexts/memory/domain/confidence.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/content.test.ts",
+              "packages/contexts/memory/domain/content.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/entity.test.ts",
+              "packages/contexts/memory/domain/entity.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/errors.test.ts",
+              "packages/contexts/memory/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/extraction.test.ts",
+              "packages/contexts/memory/domain/extraction.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/fusion.test.ts",
+              "packages/contexts/memory/domain/fusion.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/memory.test.ts",
+              "packages/contexts/memory/domain/memory.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/profile.test.ts",
+              "packages/contexts/memory/domain/profile.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/recall.test.ts",
+              "packages/contexts/memory/domain/recall.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/relationship.test.ts",
+              "packages/contexts/memory/domain/relationship.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/scope.test.ts",
+              "packages/contexts/memory/domain/scope.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/taxonomy.test.ts",
+              "packages/contexts/memory/domain/taxonomy.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/traversal.test.ts",
+              "packages/contexts/memory/domain/traversal.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/working-set.test.ts",
+              "packages/contexts/memory/domain/working-set.test.ts"
+            ],
+            [
+              "packages/contexts/memory/package.json",
+              "packages/contexts/memory/package.json"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/memory/application/authorization.test.ts",
+            "packages/contexts/memory/application/extract-from-conversation.test.ts",
+            "packages/contexts/memory/application/graph-queries.test.ts",
+            "packages/contexts/memory/application/knowledge-graph.test.ts",
+            "packages/contexts/memory/application/lifecycle.test.ts",
+            "packages/contexts/memory/application/memory-erasure-target.test.ts",
+            "packages/contexts/memory/application/recall.test.ts",
+            "packages/contexts/memory/application/reconcile-feedback.test.ts",
+            "packages/contexts/memory/application/remember.test.ts",
+            "packages/contexts/memory/application/retrieve-context.test.ts",
+            "packages/contexts/memory/application/synthesize-profile.test.ts",
+            "packages/contexts/memory/application/working-memory.test.ts",
+            "packages/contexts/memory/contracts/index.test.ts",
+            "packages/contexts/memory/domain/authorization.test.ts",
+            "packages/contexts/memory/domain/confidence.test.ts",
+            "packages/contexts/memory/domain/content.test.ts",
+            "packages/contexts/memory/domain/entity.test.ts",
+            "packages/contexts/memory/domain/errors.test.ts",
+            "packages/contexts/memory/domain/extraction.test.ts",
+            "packages/contexts/memory/domain/fusion.test.ts",
+            "packages/contexts/memory/domain/memory.test.ts",
+            "packages/contexts/memory/domain/profile.test.ts",
+            "packages/contexts/memory/domain/recall.test.ts",
+            "packages/contexts/memory/domain/relationship.test.ts",
+            "packages/contexts/memory/domain/scope.test.ts",
+            "packages/contexts/memory/domain/taxonomy.test.ts",
+            "packages/contexts/memory/domain/traversal.test.ts",
+            "packages/contexts/memory/domain/working-set.test.ts",
+            "packages/contexts/memory/package.json",
+            "scripts/arch/max-file-lines.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs"
           ]
         }
@@ -50044,8 +51390,8 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "2f956b8536509f06aa36349d6dcb6a379e99e35260e9bafcc9eeee7c299545a4",
-      "manifestSha256": "0d9ed38f820773824925cfb0ad87651977633e0e512ca6dd1cf43548bf49e34f",
+      "evidenceSha256": "56eca2586fea26f03d9bf95fedad18de6ceedf6942b51218dd2c9646ffc1d0b2",
+      "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
         "reachable": false,
@@ -51328,14 +52674,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/memory/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/providers/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -51369,14 +52707,6 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
-              "packages/contexts/memory/application/index.ts",
-              "packages/contexts/memory/application/index.ts"
-            ],
-            [
               "packages/contexts/providers/package.json",
               "packages/contexts/providers/package.json"
             ],
@@ -51397,8 +52727,6 @@
             "packages/adapters/model-router-providers/src/adapter.ts",
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/cost-monitoring/application/index.ts",
-            "packages/contexts/memory/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
             "packages/contexts/providers/tsconfig.json",
@@ -51502,6 +52830,42 @@
               "from": "apps/core-api",
               "line": 33,
               "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 23,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/memory/application/dependencies.ts",
+              "from": "packages/contexts/memory",
+              "line": 33,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/memory",
+              "line": 33,
+              "specifier": "@platos/context-providers"
             }
           ],
           "reversePaths": [
@@ -51512,10 +52876,36 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/guard-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/cost-monitoring",
+            "packages/contexts/memory"
           ]
         },
         "testsFixtures": {
@@ -51634,7 +53024,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 279
+              "line": 309
             }
           ],
           "reversePaths": [
@@ -52069,7 +53459,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "905bbd9f5189da6d6da74a45941de6fff7e4236c97e7e7dad1d8f20319406cde",
+      "evidenceSha256": "649b777a400280eddac48ee088c2e23af6dc93cc9f798042d67190e4a2b5e5b4",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52859,7 +54249,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 250
+              "line": 263
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -53332,7 +54722,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ee5e880a03422688c1989136d8bb5612ad4c95c2deae0436c363dcb88fb528e3",
+      "evidenceSha256": "857c6a5782cb36d23fcf17b736bec514b044ac9a16002648cc69b4f35eff980d",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -53820,7 +55210,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 302
+              "line": 333
             }
           ],
           "reversePaths": [
@@ -54062,7 +55452,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "c7f2df5be3da00ab783018a9b9d1abc9726f38f2a436563ac4074b1841df5c77",
+      "evidenceSha256": "868465c833dc83015709438ce5a2ce5a3b98ffba400f9ea06c2c293a9830b468",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -54757,19 +56147,7 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/jobs/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/memory/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
             {
@@ -54818,20 +56196,8 @@
               "packages/contexts/conversations/application/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/application/index.ts",
-              "packages/contexts/cost-monitoring/application/index.ts"
-            ],
-            [
               "packages/contexts/governance/application/index.ts",
               "packages/contexts/governance/application/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/application/index.ts",
-              "packages/contexts/jobs/application/index.ts"
-            ],
-            [
-              "packages/contexts/memory/application/index.ts",
-              "packages/contexts/memory/application/index.ts"
             ],
             [
               "packages/contexts/observability/application/index.ts",
@@ -54863,10 +56229,7 @@
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/governance/application/index.ts",
-            "packages/contexts/jobs/application/index.ts",
-            "packages/contexts/memory/application/index.ts",
             "packages/contexts/observability/application/index.ts",
             "packages/contexts/privacy/application/index.ts",
             "packages/contexts/tenancy/README.md",
@@ -54974,6 +56337,30 @@
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/cost-monitoring/application/authorization.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 32,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 27,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/eventing/application/dependencies.ts",
               "from": "packages/contexts/eventing",
               "line": 23,
@@ -55001,6 +56388,36 @@
               "file": "packages/contexts/files/application/testing/fixtures.ts",
               "from": "packages/contexts/files",
               "line": 19,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/jobs/application/dependencies.ts",
+              "from": "packages/contexts/jobs",
+              "line": 34,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/fixtures.ts",
+              "from": "packages/contexts/jobs",
+              "line": 26,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/memory/application/authorization.ts",
+              "from": "packages/contexts/memory",
+              "line": 37,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/memory/application/dependencies.ts",
+              "from": "packages/contexts/memory",
+              "line": 34,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/memory",
+              "line": 28,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -55050,6 +56467,22 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/eventing",
               "packages/contexts/eventing/application/dependencies.ts"
             ],
@@ -55068,6 +56501,26 @@
             [
               "packages/contexts/files",
               "packages/contexts/files/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-peers.ts"
             ],
             [
               "packages/contexts/providers",
@@ -55096,8 +56549,11 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
+            "packages/contexts/jobs",
+            "packages/contexts/memory",
             "packages/contexts/providers",
             "packages/contexts/skills"
           ]
@@ -55105,6 +56561,16 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/memory/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "reference",
@@ -55223,7 +56689,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 251
+              "line": 264
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55232,6 +56698,14 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/cost-monitoring/application/authorization.test.ts",
+              "packages/contexts/cost-monitoring/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/authorization.test.ts",
+              "packages/contexts/memory/application/authorization.test.ts"
+            ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
@@ -55334,6 +56808,8 @@
             ]
           ],
           "roots": [
+            "packages/contexts/cost-monitoring/application/authorization.test.ts",
+            "packages/contexts/memory/application/authorization.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/tenancy/application/add-project-member.test.ts",
             "packages/contexts/tenancy/application/archive-tenant.test.ts",
@@ -55943,7 +57419,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "dcc54057e2c5120529c82c7f959f427f0e082bd81e04c142a55e4bc841bf8b61",
+      "evidenceSha256": "df5a10a0c188f014715f2b89f79744338fb7eb632b72981d3d948eab5d859ec8",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -56340,7 +57816,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 553,
+              "line": 556,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -56525,7 +58001,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "6fe1d08a80855a673bcffa1df47f007ae3fe32414138a9468f5008bb81ec3ec7",
+      "evidenceSha256": "74f8af755c625e1e88f0e6cb6272d9336f7b19d71ca34f4994dab3218a90fd97",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -59073,19 +60549,7 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/cost-monitoring/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/governance/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/jobs/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/memory/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
             {
@@ -59142,20 +60606,8 @@
               "packages/contexts/conversations/domain/index.ts"
             ],
             [
-              "packages/contexts/cost-monitoring/domain/index.ts",
-              "packages/contexts/cost-monitoring/domain/index.ts"
-            ],
-            [
               "packages/contexts/governance/domain/index.ts",
               "packages/contexts/governance/domain/index.ts"
-            ],
-            [
-              "packages/contexts/jobs/domain/index.ts",
-              "packages/contexts/jobs/domain/index.ts"
-            ],
-            [
-              "packages/contexts/memory/domain/index.ts",
-              "packages/contexts/memory/domain/index.ts"
             ],
             [
               "packages/contexts/observability/domain/index.ts",
@@ -59189,10 +60641,7 @@
             "packages/contexts/agents/domain/index.ts",
             "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
-            "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
-            "packages/contexts/jobs/domain/index.ts",
-            "packages/contexts/memory/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
             "packages/contexts/privacy/domain/index.ts",
             "packages/contexts/tools/domain/index.ts",
@@ -59315,6 +60764,228 @@
               "file": "apps/core-api/src/runtime/process-ports.ts",
               "from": "apps/core-api",
               "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/authorization.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/configure-budget.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/deliver-crossing.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/detect-crossings.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/evaluate-budgets.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/guard-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/manage-alert-channels.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/budget-repository.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/notifier.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/probe-alert-channel.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/read-budgets.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/read-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/record-spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/summarise-consumption.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/fixtures.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/contracts/index.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-channel.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-delivery.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 42,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-message.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/alert-topic.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/budget-status.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/budget.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/errors.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/guard.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/identifiers.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/spend.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/threshold.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/cost-monitoring/domain/window.ts",
+              "from": "packages/contexts/cost-monitoring",
+              "line": 28,
               "specifier": "@platos/kernel"
             },
             {
@@ -59807,6 +61478,486 @@
               "file": "packages/contexts/identity-access/domain/token.ts",
               "from": "packages/contexts/identity-access",
               "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/dependencies.ts",
+              "from": "packages/contexts/jobs",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/execute-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/jobs-contract.ts",
+              "from": "packages/contexts/jobs",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/jobs-erasure-target.ts",
+              "from": "packages/contexts/jobs",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/minting.ts",
+              "from": "packages/contexts/jobs",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/approvals-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/idempotency-store.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/job-handler-runtime.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/ports/jobs-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/read-approvals.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/read-jobs.ts",
+              "from": "packages/contexts/jobs",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/register-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/register-job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/request-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/resolve-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/resolve-approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/sweep-expired-approvals.ts",
+              "from": "packages/contexts/jobs",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/builders.ts",
+              "from": "packages/contexts/jobs",
+              "line": 7,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/fixtures.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts",
+              "from": "packages/contexts/jobs",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts",
+              "from": "packages/contexts/jobs",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/application/views.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/contracts/index.ts",
+              "from": "packages/contexts/jobs",
+              "line": 3,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/approval-request.ts",
+              "from": "packages/contexts/jobs",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/approval.ts",
+              "from": "packages/contexts/jobs",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/errors.ts",
+              "from": "packages/contexts/jobs",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/execution-request.ts",
+              "from": "packages/contexts/jobs",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/idempotency.ts",
+              "from": "packages/contexts/jobs",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/identifiers.ts",
+              "from": "packages/contexts/jobs",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/invocation.ts",
+              "from": "packages/contexts/jobs",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job-definition.ts",
+              "from": "packages/contexts/jobs",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job-key.ts",
+              "from": "packages/contexts/jobs",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/job.ts",
+              "from": "packages/contexts/jobs",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/payload.ts",
+              "from": "packages/contexts/jobs",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/jobs/domain/scope.ts",
+              "from": "packages/contexts/jobs",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/authorization.ts",
+              "from": "packages/contexts/memory",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/dependencies.ts",
+              "from": "packages/contexts/memory",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/embedding.ts",
+              "from": "packages/contexts/memory",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/extract-from-conversation.ts",
+              "from": "packages/contexts/memory",
+              "line": 39,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/forget.ts",
+              "from": "packages/contexts/memory",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/graph-queries.ts",
+              "from": "packages/contexts/memory",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/judge-pricing.ts",
+              "from": "packages/contexts/memory",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/knowledge-graph.ts",
+              "from": "packages/contexts/memory",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/memory-erasure-target.ts",
+              "from": "packages/contexts/memory",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/ports/cache.ts",
+              "from": "packages/contexts/memory",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/ports/embedding-model.ts",
+              "from": "packages/contexts/memory",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/ports/knowledge-graph-repository.ts",
+              "from": "packages/contexts/memory",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/ports/memory-repository.ts",
+              "from": "packages/contexts/memory",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/ports/memory-repository.ts",
+              "from": "packages/contexts/memory",
+              "line": 57,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/read-memories.ts",
+              "from": "packages/contexts/memory",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/recall.ts",
+              "from": "packages/contexts/memory",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/reconcile-feedback.ts",
+              "from": "packages/contexts/memory",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/reconcile-feedback.ts",
+              "from": "packages/contexts/memory",
+              "line": 39,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/remember.ts",
+              "from": "packages/contexts/memory",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/retrieve-context.ts",
+              "from": "packages/contexts/memory",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/revise.ts",
+              "from": "packages/contexts/memory",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/synthesize-profile.ts",
+              "from": "packages/contexts/memory",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/fixtures.ts",
+              "from": "packages/contexts/memory",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-cache.ts",
+              "from": "packages/contexts/memory",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-embedding-model.ts",
+              "from": "packages/contexts/memory",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-judge.ts",
+              "from": "packages/contexts/memory",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-knowledge-graph-repository.ts",
+              "from": "packages/contexts/memory",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-memory-repository.ts",
+              "from": "packages/contexts/memory",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/memory",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/application/working-memory.ts",
+              "from": "packages/contexts/memory",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/contracts/index.ts",
+              "from": "packages/contexts/memory",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/authorization.ts",
+              "from": "packages/contexts/memory",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/authorization.ts",
+              "from": "packages/contexts/memory",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/content.ts",
+              "from": "packages/contexts/memory",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/entity.ts",
+              "from": "packages/contexts/memory",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/errors.ts",
+              "from": "packages/contexts/memory",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/extraction.ts",
+              "from": "packages/contexts/memory",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/identifiers.ts",
+              "from": "packages/contexts/memory",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/memory.ts",
+              "from": "packages/contexts/memory",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/recall.ts",
+              "from": "packages/contexts/memory",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/relationship.ts",
+              "from": "packages/contexts/memory",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/scope.ts",
+              "from": "packages/contexts/memory",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/taxonomy.ts",
+              "from": "packages/contexts/memory",
+              "line": 8,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/memory/domain/working-set.ts",
+              "from": "packages/contexts/memory",
+              "line": 34,
               "specifier": "@platos/kernel"
             },
             {
@@ -60814,7 +62965,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 433,
+              "line": 436,
               "specifier": "@platos/kernel"
             }
           ],
@@ -60834,6 +62985,154 @@
             [
               "apps/core-api",
               "apps/core-api/src/runtime/process-ports.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/configure-budget.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/deliver-crossing.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/detect-crossings.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/evaluate-budgets.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/guard-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/manage-alert-channels.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/budget-cap-cache.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/budget-repository.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/notifier.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/ports/spend-ledger.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/probe-alert-channel.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/read-budgets.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/read-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/reconcile-deliveries.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/record-spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/summarise-consumption.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-budget-repository.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-cap-cache.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-notifier.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/application/testing/in-memory-spend-ledger.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-channel.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-message.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/alert-topic.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/budget-status.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/budget.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/guard.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/spend.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/threshold.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring",
+              "packages/contexts/cost-monitoring/domain/window.ts"
             ],
             [
               "packages/contexts/eventing",
@@ -61158,6 +63457,306 @@
             [
               "packages/contexts/identity-access",
               "packages/contexts/identity-access/domain/token.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/execute-job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/jobs-contract.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/jobs-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/minting.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/approvals-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/idempotency-store.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/job-handler-runtime.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/ports/jobs-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/read-approvals.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/read-jobs.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/register-job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/request-approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/resolve-approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/sweep-expired-approvals.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/builders.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-approvals-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-infrastructure.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/testing/in-memory-jobs-repository.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/application/views.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/approval-request.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/approval.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/execution-request.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/idempotency.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/invocation.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job-definition.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job-key.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/job.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/payload.ts"
+            ],
+            [
+              "packages/contexts/jobs",
+              "packages/contexts/jobs/domain/scope.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/embedding.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/extract-from-conversation.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/forget.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/graph-queries.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/judge-pricing.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/knowledge-graph.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/memory-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/ports/cache.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/ports/embedding-model.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/ports/knowledge-graph-repository.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/ports/memory-repository.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/read-memories.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/recall.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/reconcile-feedback.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/remember.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/retrieve-context.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/revise.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/synthesize-profile.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-cache.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-embedding-model.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-judge.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-knowledge-graph-repository.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-memory-repository.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/application/working-memory.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/authorization.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/content.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/entity.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/extraction.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/memory.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/recall.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/relationship.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/scope.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/taxonomy.ts"
+            ],
+            [
+              "packages/contexts/memory",
+              "packages/contexts/memory/domain/working-set.ts"
             ],
             [
               "packages/contexts/providers",
@@ -61682,9 +64281,12 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
             "packages/contexts/identity-access",
+            "packages/contexts/jobs",
+            "packages/contexts/memory",
             "packages/contexts/providers",
             "packages/contexts/secrets",
             "packages/contexts/skills",
@@ -61699,6 +64301,46 @@
               "from": "apps/core-api/src/runtime/process-ports.test.ts",
               "kind": "reference",
               "line": 1
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "kind": "reference",
+              "line": 2
             },
             {
               "from": "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
@@ -61819,6 +64461,161 @@
               "from": "packages/contexts/identity-access/domain/oauth.test.ts",
               "kind": "reference",
               "line": 29
+            },
+            {
+              "from": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/execute-job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/register-job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/application/views.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/jobs/domain/approval.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/idempotency.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/job.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/jobs/domain/scope.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/graph-queries.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/knowledge-graph.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/lifecycle.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/memory-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/memory/application/recall.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/reconcile-feedback.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/remember.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/retrieve-context.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/synthesize-profile.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/application/working-memory.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/contracts/index.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/authorization.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/memory/domain/entity.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/memory.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/profile.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/recall.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/relationship.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/scope.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/traversal.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/memory/domain/working-set.test.ts",
+              "kind": "reference",
+              "line": 1
             },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
@@ -62093,7 +64890,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 231
+              "line": 242
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -62120,6 +64917,38 @@
             [
               "apps/core-api/src/runtime/process-ports.test.ts",
               "apps/core-api/src/runtime/process-ports.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-channel.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+              "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget-status.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/budget.test.ts",
+              "packages/contexts/cost-monitoring/domain/budget.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+              "packages/contexts/cost-monitoring/domain/consumption.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/guard.test.ts",
+              "packages/contexts/cost-monitoring/domain/guard.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/spend.test.ts",
+              "packages/contexts/cost-monitoring/domain/spend.test.ts"
+            ],
+            [
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts",
+              "packages/contexts/cost-monitoring/domain/threshold.test.ts"
             ],
             [
               "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
@@ -62216,6 +65045,130 @@
             [
               "packages/contexts/identity-access/domain/oauth.test.ts",
               "packages/contexts/identity-access/domain/oauth.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+              "packages/contexts/jobs/application/approval-lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/execute-job.test.ts",
+              "packages/contexts/jobs/application/execute-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+              "packages/contexts/jobs/application/jobs-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/register-job.test.ts",
+              "packages/contexts/jobs/application/register-job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/application/views.test.ts",
+              "packages/contexts/jobs/application/views.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+              "packages/contexts/jobs/contracts/jobs-contract.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/approval.test.ts",
+              "packages/contexts/jobs/domain/approval.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/idempotency.test.ts",
+              "packages/contexts/jobs/domain/idempotency.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/job.test.ts",
+              "packages/contexts/jobs/domain/job.test.ts"
+            ],
+            [
+              "packages/contexts/jobs/domain/scope.test.ts",
+              "packages/contexts/jobs/domain/scope.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/authorization.test.ts",
+              "packages/contexts/memory/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/graph-queries.test.ts",
+              "packages/contexts/memory/application/graph-queries.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/knowledge-graph.test.ts",
+              "packages/contexts/memory/application/knowledge-graph.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/lifecycle.test.ts",
+              "packages/contexts/memory/application/lifecycle.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/memory-erasure-target.test.ts",
+              "packages/contexts/memory/application/memory-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/recall.test.ts",
+              "packages/contexts/memory/application/recall.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/reconcile-feedback.test.ts",
+              "packages/contexts/memory/application/reconcile-feedback.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/remember.test.ts",
+              "packages/contexts/memory/application/remember.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/retrieve-context.test.ts",
+              "packages/contexts/memory/application/retrieve-context.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/synthesize-profile.test.ts",
+              "packages/contexts/memory/application/synthesize-profile.test.ts"
+            ],
+            [
+              "packages/contexts/memory/application/working-memory.test.ts",
+              "packages/contexts/memory/application/working-memory.test.ts"
+            ],
+            [
+              "packages/contexts/memory/contracts/index.test.ts",
+              "packages/contexts/memory/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/authorization.test.ts",
+              "packages/contexts/memory/domain/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/entity.test.ts",
+              "packages/contexts/memory/domain/entity.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/memory.test.ts",
+              "packages/contexts/memory/domain/memory.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/profile.test.ts",
+              "packages/contexts/memory/domain/profile.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/recall.test.ts",
+              "packages/contexts/memory/domain/recall.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/relationship.test.ts",
+              "packages/contexts/memory/domain/relationship.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/scope.test.ts",
+              "packages/contexts/memory/domain/scope.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/traversal.test.ts",
+              "packages/contexts/memory/domain/traversal.test.ts"
+            ],
+            [
+              "packages/contexts/memory/domain/working-set.test.ts",
+              "packages/contexts/memory/domain/working-set.test.ts"
             ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
@@ -62456,6 +65409,14 @@
           ],
           "roots": [
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
+            "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
+            "packages/contexts/cost-monitoring/domain/budget.test.ts",
+            "packages/contexts/cost-monitoring/domain/consumption.test.ts",
+            "packages/contexts/cost-monitoring/domain/guard.test.ts",
+            "packages/contexts/cost-monitoring/domain/spend.test.ts",
+            "packages/contexts/cost-monitoring/domain/threshold.test.ts",
             "packages/contexts/eventing/application/eventing-erasure-target.test.ts",
             "packages/contexts/eventing/application/record-delivery-failure.test.ts",
             "packages/contexts/eventing/application/route-observed-event.test.ts",
@@ -62480,6 +65441,37 @@
             "packages/contexts/identity-access/domain/access-key.test.ts",
             "packages/contexts/identity-access/domain/authorization-scope.test.ts",
             "packages/contexts/identity-access/domain/oauth.test.ts",
+            "packages/contexts/jobs/application/approval-lifecycle.test.ts",
+            "packages/contexts/jobs/application/execute-job.test.ts",
+            "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
+            "packages/contexts/jobs/application/register-job.test.ts",
+            "packages/contexts/jobs/application/views.test.ts",
+            "packages/contexts/jobs/contracts/jobs-contract.test.ts",
+            "packages/contexts/jobs/domain/approval.test.ts",
+            "packages/contexts/jobs/domain/idempotency.test.ts",
+            "packages/contexts/jobs/domain/job.test.ts",
+            "packages/contexts/jobs/domain/scope.test.ts",
+            "packages/contexts/memory/application/authorization.test.ts",
+            "packages/contexts/memory/application/graph-queries.test.ts",
+            "packages/contexts/memory/application/knowledge-graph.test.ts",
+            "packages/contexts/memory/application/lifecycle.test.ts",
+            "packages/contexts/memory/application/memory-erasure-target.test.ts",
+            "packages/contexts/memory/application/recall.test.ts",
+            "packages/contexts/memory/application/reconcile-feedback.test.ts",
+            "packages/contexts/memory/application/remember.test.ts",
+            "packages/contexts/memory/application/retrieve-context.test.ts",
+            "packages/contexts/memory/application/synthesize-profile.test.ts",
+            "packages/contexts/memory/application/working-memory.test.ts",
+            "packages/contexts/memory/contracts/index.test.ts",
+            "packages/contexts/memory/domain/authorization.test.ts",
+            "packages/contexts/memory/domain/entity.test.ts",
+            "packages/contexts/memory/domain/memory.test.ts",
+            "packages/contexts/memory/domain/profile.test.ts",
+            "packages/contexts/memory/domain/recall.test.ts",
+            "packages/contexts/memory/domain/relationship.test.ts",
+            "packages/contexts/memory/domain/scope.test.ts",
+            "packages/contexts/memory/domain/traversal.test.ts",
+            "packages/contexts/memory/domain/working-set.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/rate-card.test.ts",
             "packages/contexts/providers/application/resolve-provider-credential.test.ts",
@@ -63281,7 +66273,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "e8ba9095aa11cc35855e194b94fd7e389c8d06bb14fc5dd12016aeffe45cb8dc",
+      "evidenceSha256": "98059d7be83100a397c8eb6ce11853ef4ca75e8bf26d13f570d997ad85191183",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
