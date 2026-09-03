@@ -526,8 +526,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
-    // WIN-299 (M2.6) delta: docs-content 9 -> 11, root-infra 10 -> 13, total
-    // +20 -> +25. Five additions, no removals:
+    // M2 INTEGRATION DELTA — docs-content 9 -> 13, root-infra 10 -> 30,
+    // total +20 -> +44. Two branches add files on independent axes, so each
+    // area is the SUM of both contributions, not either one alone.
+    //
+    // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
     //                 docs/audits/sbom/advisory/advisory-policy.json
     //   root-infra    scripts/lib/advisory-dispositions.mjs
@@ -536,10 +539,33 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // advisory-policy.json lands on the docs/audits/**/*.json audit-receipts
     // rule (kind "generated"), the same bucket that already carries the
     // hand-maintained licence overlay docs/audits/sbom/license-policy.json.
-    "docs-content": 11,
-    "root-infra": 13,
+    //
+    // WIN-284 (differential harness) contributes +19 (docs-content +2,
+    // root-infra +17):
+    //   docs-content +2 — the generated differential capability coverage
+    //   matrix, docs/audits/win-284-differential-coverage.{json,md}. Both
+    //   classify under the existing docs-content.evidence.audit-receipts and
+    //   .audit-notes rules and are pinned ACCEPTED in
+    //   scripts/evidence-lifecycle.mjs, because they are reconciled to the M0
+    //   censuses on every run rather than being a snapshot of what coverage
+    //   looked like on some past date.
+    //
+    //   root-infra +17 — two under scripts/ (differential-coverage.mjs and its
+    //   mutation suite, classified root-infra.tooling.scripts and
+    //   root-infra.test.script-suites) and fifteen under
+    //   tests/differential-harness/ (README, observation, normalisers,
+    //   comparators, twin-run, seeds, scenarios, the two runners, four test
+    //   suites and two subjects), all classified root-infra.test.harness.
+    //
+    // No new ledger rule was needed by either branch: docs/audits/**,
+    // tests/** and scripts/** already have owning rules, so only the
+    // fingerprint moves. Every added file is enumerated above and conserves
+    // exactly to these deltas; attributed for ledger-owner review, not forced
+    // to green.
+    "docs-content": 13,
+    "root-infra": 30,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 25);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 44);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -548,9 +574,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // WIN-299 (M2.6): same +20 -> +25 delta as the totalFiles assertion above;
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 25
+    // M2 integration: same +20 -> +44 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19); this one re-derives it by
+    // summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 44
   );
 });
 
