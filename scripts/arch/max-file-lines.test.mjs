@@ -98,7 +98,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // split it along the seam the budget was pointing at — the entity/inbound
   // policy suite out of the hosted-surface suite — rather than to raise the
   // number. That split is why the delta is 55 and not 54.
-  assert.equal(result.fileCount, 383);
+  //
+  // +1: the unproven-guard wave adds contracts/operator-gate.test.ts, and THE
+  // BUDGET DECIDED THAT SPLIT TOO. The twenty-nine gate cases were written
+  // inside contracts/index.test.ts first, which took that file to the top of
+  // the 400-line warning band — inside the budget, and one wave from the edge
+  // of it. Moving them into their own file is why this delta is 1 and not 0,
+  // and it left the contracts barrel suite comfortably below the band. Neither
+  // file is in the warning band and neither is near the 500-line failure line.
+  assert.equal(result.fileCount, 384);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

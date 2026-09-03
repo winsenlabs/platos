@@ -273,7 +273,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 452, "the generated V1 source census must stay exact");
+    //
+    //   452 -> 453  +1: WIN-256's unproven-guard wave adds
+    //               packages/contexts/tools/contracts/operator-gate.test.ts,
+    //               the suite that proves the operator gate on all fourteen
+    //               published methods that have one. It is a contracts-layer
+    //               file and rule (c) judges it: it imports this context's own
+    //               `contracts/index.js`, its `domain/index.js` and its
+    //               `application/testing/index.js`, and no peer context at all.
+    //               Every other file that wave touches already existed, so the
+    //               census moves by exactly one.
+    assert.equal(result.fileCount, 453, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
