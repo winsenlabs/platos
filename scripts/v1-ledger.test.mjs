@@ -541,7 +541,38 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    // WIN-256 CHANNELS DELTA — packages 272 -> 314, total +346 -> +388. ONE
+    // merged delta, enumerated here and nowhere else. Adopting
+    // `packages/contexts/channels` lands 42 tracked files, every one of them
+    // under that context and none anywhere else:
+    //
+    //   27 source — 10 domain modules (identifiers, errors, provider, routing,
+    //   connection, installation, event-inbox, inbound, thread-link, policy)
+    //   plus the domain barrel, 2 ports modules plus their barrel, 8
+    //   application modules plus the application barrel, the contracts barrel,
+    //   and the 4 in-memory testing doubles.
+    //   15 test — 7 domain suites (provider, routing, connection, installation,
+    //   event-inbox, inbound, thread-link), 7 application suites, and the
+    //   contract suite.
+    //
+    // The 42 are NET of the 4 generated placeholders adoption released, which
+    // this code replaced in place — the same accounting the five contexts above
+    // use. kindCounts moves source 1280 -> 1307 (+27) and test 552 -> 567 (+15),
+    // which conserve to the same 42, and ruleCounts moves
+    // packages.contexts.source 237 -> 264 and packages.contexts.test 85 -> 100.
+    //
+    // The source branch (tejas/win-256-channels-context @ 4f6532a7) recorded 41,
+    // not 42: `packages/contexts/channels/domain/connection.test.ts` is added
+    // here, because `connection.ts` — which owns the operator kill switch — was
+    // the one aggregate in the context shipping with no suite at all, and that
+    // is precisely why `assertEnabled` reached this branch with zero callers and
+    // zero cases.
+    //
+    // Adoption itself adds no file: it is one line appended to the generator's
+    // ADOPTED_PROJECTS list, in a file that already existed. No new ledger rule
+    // was needed — packages/** already owns the tree — so only the fingerprint
+    // moves.
+    packages: 314,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -616,11 +647,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // 20 + 5 + 19 + 278 + 24 = 346, and + the 42-file channels context = 388.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 388);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +660,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
+    // Same +388 combined delta as the totalFiles assertion above (WIN-299 +5,
+    // WIN-284 +19, WIN-256 +278 + the 42-file channels context, WIN-297 +24);
     // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    rulesDocument.baseline.totalFiles + 388
   );
 });
 

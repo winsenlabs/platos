@@ -101,6 +101,30 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * CHANNELS DELTA (2026-09-03), `tejas/win-256-channels-context` @ 4f6532a7
+ * rebased onto v1 @ 95cbacc1. Another 0/0 placeholder becomes real, and again
+ * exactly ONE row moves:
+ *
+ *   channels 0 -> 15 files, 0 -> 263 cases; 1000 -> 1263 total. 7 domain
+ *   suites, 7 application suites and the contracts-barrel suite. The census
+ *   REFUSED nothing in that tree, so its 263 is a statically exact count, and
+ *   `pnpm --filter @platos/context-channels exec vitest run` prints the same
+ *   pair — "Test Files 15 passed (15) / Tests 263 passed (263)".
+ *
+ * The source branch's own tip pinned channels at 14 files / 258 cases. The
+ * difference is the five cases this rebase adds, all of them refusals with a
+ * mutation control, and none of them a renumbering of anything that existed:
+ *
+ *   +2 cases in the NEW file `domain/connection.test.ts` (14 -> 15 files) —
+ *   `assertEnabled`, the operator kill switch, had zero callers AND zero cases,
+ *   so the module owning it shipped with no suite at all.
+ *   +3 cases in `contracts/channels-contract.test.ts` — the disabled-connection
+ *   refusal at the call site, its enabled control, and the revoked-installation
+ *   refusal, which is the same gate on the app half of the inbound path.
+ *
+ * Every other package is unchanged. Any further drift is a finding to report,
+ * not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -116,7 +140,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 0, cases: 0 },
-  "packages/contexts/channels": { files: 0, cases: 0 },
+  "packages/contexts/channels": { files: 15, cases: 263 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
@@ -142,7 +166,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1263;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

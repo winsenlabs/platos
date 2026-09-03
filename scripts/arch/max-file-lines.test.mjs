@@ -85,7 +85,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +42: WIN-256 makes `channels` real (27 source + 15 test files, replacing
+  // its 4 released placeholders in place). The budget did NOT bite anywhere in
+  // that tree: its largest file is contracts/channels-contract.test.ts at 280
+  // effective lines and its largest production module is
+  // application/channels-contract.ts at 224, so all 370 clear the 500-line
+  // failure threshold AND the 400-line warning band — `findings` is empty, not
+  // merely free of errors. No threshold was moved to accommodate the context.
+  assert.equal(result.fileCount, 370);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });
