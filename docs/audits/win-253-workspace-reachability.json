@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ce459d224028ef6c2a50114d93dbb556e2067e0d92ffd6e1566ba1c02a553c4e",
+  "evidenceSha256": "5bb04b74599dca3c4810d11cfe8d51410d3d1ba935374d4dce39a2742c2e720b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "7d364d285b4dcc17bd67eb22f1e3eba90e873316f9d0b522cf86ccd9c0f10b20",
+    "aggregateSha256": "61a8392ba8f03a51c0e9d964808bc9a228e59cbaaf39deaa3949f672daf67ce3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11273,7 +11273,7 @@
       },
       {
         "path": "packages/contexts/channels/domain/installation.ts",
-        "sha256": "ad8acfa93e2655626500c5a50d4ff143615c724d6c779537d747eb61ce6c4e29"
+        "sha256": "347735d2cb54f984e62b6c777c5c799c690d8418920fbc4ac607f5a7b1f3ca6d"
       },
       {
         "path": "packages/contexts/channels/domain/policy.ts",
@@ -59039,7 +59039,7 @@
             {
               "file": "packages/contexts/channels/domain/installation.ts",
               "from": "packages/contexts/channels",
-              "line": 33,
+              "line": 40,
               "specifier": "@platos/kernel"
             },
             {
@@ -62433,7 +62433,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "7b713de79523eefce81de2d1e2f26e8af24db757a11e838a4acb5095470d3cdf",
+      "evidenceSha256": "1ed82a43acf7d5c28afdce00a9ccaa320d9ce38830a8458320d683c28932e07a",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
