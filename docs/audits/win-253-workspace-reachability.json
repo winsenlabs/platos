@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d1fd182e5e6af6dc70e66491282056e40eecd8d27b342144d0770494d7cf1686",
+  "evidenceSha256": "0adc630db48157b90e0d8ea42f968193cde118d08fcb75dcd27aa6f28d2d622a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "41db1eda872892edd9eaf62635556f8d767a23c00b280dd2b50c475e8a5d8926",
+    "aggregateSha256": "35f43c65904e7cbae03a476adc1fdcb386cb9238087cc1eb01292c141b549e80",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -12557,7 +12557,7 @@
       },
       {
         "path": "packages/contexts/tools/application/authorization.ts",
-        "sha256": "7173b5885836978cc30d2899a2953b976ac95000431bf27a36a4a0dcc3815be9"
+        "sha256": "8dc816f34a3cd13fcf8c5a00730ea77da25a23e5f969278c32c81c5d4461cd90"
       },
       {
         "path": "packages/contexts/tools/application/dependencies.ts",
@@ -12565,11 +12565,11 @@
       },
       {
         "path": "packages/contexts/tools/application/discover-entity-tools.ts",
-        "sha256": "dee4d888ec934de1c601a3f38ae85c7cee34fb9e1a1d7cbf7638b312e6f306cf"
+        "sha256": "102817de34325a87c3b517653c8615b6f1f3764b2a80410e7756d11aa9bc4e41"
       },
       {
         "path": "packages/contexts/tools/application/entity-tool-policy.ts",
-        "sha256": "5a6ca5f9ee5552fbcef91b9094d2309a17e6cc9e9ea775756c553a056e1d0277"
+        "sha256": "79949f4dfc464fe31f1f039a3cf61e7b6a82cd496d7f08486f4a48212864a510"
       },
       {
         "path": "packages/contexts/tools/application/execute-tool.ts",
@@ -12577,7 +12577,7 @@
       },
       {
         "path": "packages/contexts/tools/application/execution.test.ts",
-        "sha256": "d41d41aa19ca5b6e4468d1535796baf7a0275a82efdca64ec0f29e926a43c307"
+        "sha256": "d786c4aa4ebdc5adaf2b222aa539dc0698fd5cf41345c4de2bc1f32acc11d9e7"
       },
       {
         "path": "packages/contexts/tools/application/index.ts",
@@ -12589,11 +12589,11 @@
       },
       {
         "path": "packages/contexts/tools/application/mcp-surface.ts",
-        "sha256": "aec57b91069d044afa7a3cb77f41880c3d420bb6165294f89ca1eadc338d4f1a"
+        "sha256": "1ea1152b7aa2bc36c437243e2e5b4165f1d1f871a1158d7a4e3ed42576250326"
       },
       {
         "path": "packages/contexts/tools/application/organization-policy.ts",
-        "sha256": "f9ca1ac3eb9dd287fef712f03ad21a7576d0248d7f0e5c7ae157c5dfe78238f2"
+        "sha256": "84f47252dabe68f735078c028cd31238f845ceabf4a425f530420ec25232b569"
       },
       {
         "path": "packages/contexts/tools/application/ports/content-digest.ts",
@@ -12613,15 +12613,15 @@
       },
       {
         "path": "packages/contexts/tools/application/read-tools.ts",
-        "sha256": "741f960a65ef68f479687b7977003de3cc8ab23b5a0f531b369f7eddef886474"
+        "sha256": "231ca197496a13c8f64621be0c96f36fd2c4b3bc7ce759a3f410aaf3cee947b9"
       },
       {
         "path": "packages/contexts/tools/application/register-tools.ts",
-        "sha256": "340fd188d7da688dcb8e04ad47559bdea247e11bfafd735fe8a895c12d0aa4ff"
+        "sha256": "84d9fbb9e5b5ab3c00ece3a8b183cc1e6956a5e13fad7cc61f61b8064a3e8565"
       },
       {
         "path": "packages/contexts/tools/application/registry.test.ts",
-        "sha256": "c3f69843460abec239d1ba6cd15a403dc5831ea2c2bf05d2e00997a91272186a"
+        "sha256": "ac6d49cdabaa5fa32c099451b05359927d91d902ab70b97b7b061e397e788c70"
       },
       {
         "path": "packages/contexts/tools/application/resolve-permission.ts",
@@ -12645,7 +12645,7 @@
       },
       {
         "path": "packages/contexts/tools/application/testing/in-memory-tools-repository.ts",
-        "sha256": "1223dead229ade677b91d5866cc398673a6bdf3cc440a66548840eefe7d13b20"
+        "sha256": "1faf5fad3a6d51b09c3ca30155a45c7f1e54e985ddf8bde80ed4f0de4f4f02a5"
       },
       {
         "path": "packages/contexts/tools/application/testing/index.ts",
@@ -12661,11 +12661,15 @@
       },
       {
         "path": "packages/contexts/tools/contracts/index.test.ts",
-        "sha256": "70ea3ad4406a4af5317fda5ad5a5ca49c56c7afd609a04988da61918ca218f5a"
+        "sha256": "b231ceaf6071df4acd9f21633ca6fcfd622524a1c3330f3e462ce5dfd7afae1a"
       },
       {
         "path": "packages/contexts/tools/contracts/index.ts",
         "sha256": "4214de68b872c2e3e3925e20f61afa9c6c534dd4b349571712463aa1b4adbf82"
+      },
+      {
+        "path": "packages/contexts/tools/contracts/operator-gate.test.ts",
+        "sha256": "a561ac0b69e88d5f6730c24d8af1c9408725be65cf6715b3f76cfcd6cc66f8a0"
       },
       {
         "path": "packages/contexts/tools/domain/agent-policy.ts",
@@ -14937,11 +14941,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "31a42e07fecaacd4cd3d9ac599e421a8da13cc70d3828ab99bc132b3b73aef2f"
+        "sha256": "4779e199b176124bf342d80587c9a8d6daef2e5532c6350d677dcfbaacb9cc48"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "6aa43a9379bbc3c1b56c27fb817831aa2d64aeae11c8b36df21032065f74f09b"
+        "sha256": "0cc2f7a92d9bda0139c7ba8cdff5af4fde31c781385d15ed5427eda41a156d3b"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -55948,6 +55952,11 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/tools/contracts/operator-gate.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/tools/domain/audit.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -56035,7 +56044,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 273
+              "line": 279
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -56068,6 +56077,10 @@
             [
               "packages/contexts/tools/contracts/index.test.ts",
               "packages/contexts/tools/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/tools/contracts/operator-gate.test.ts",
+              "packages/contexts/tools/contracts/operator-gate.test.ts"
             ],
             [
               "packages/contexts/tools/domain/audit.test.ts",
@@ -56156,6 +56169,7 @@
             "packages/contexts/tools/application/registry.test.ts",
             "packages/contexts/tools/application/tool-policy.test.ts",
             "packages/contexts/tools/contracts/index.test.ts",
+            "packages/contexts/tools/contracts/operator-gate.test.ts",
             "packages/contexts/tools/domain/audit.test.ts",
             "packages/contexts/tools/domain/call.test.ts",
             "packages/contexts/tools/domain/declaration.test.ts",
@@ -56282,7 +56296,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "cb267a4202f5d3f9a4ebd810ae8ea07e8070fdb9ff770fcd1a07cceec2f924c3",
+      "evidenceSha256": "473c4359979ac227fd6ed8d162868c767b73ce44c71e4e8e37498377133200dd",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -60332,6 +60346,12 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/tools/application/testing/in-memory-tools-repository.ts",
+              "from": "packages/contexts/tools",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/tools/contracts/index.ts",
               "from": "packages/contexts/tools",
               "line": 37,
@@ -61127,6 +61147,10 @@
             ],
             [
               "packages/contexts/tools",
+              "packages/contexts/tools/application/testing/in-memory-tools-repository.ts"
+            ],
+            [
+              "packages/contexts/tools",
               "packages/contexts/tools/contracts/index.ts"
             ],
             [
@@ -61447,6 +61471,11 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/tools/contracts/operator-gate.test.ts",
+              "kind": "reference",
+              "line": 39
+            },
+            {
               "from": "packages/contexts/tools/domain/audit.test.ts",
               "kind": "reference",
               "line": 1
@@ -61749,6 +61778,10 @@
               "packages/contexts/tools/contracts/index.test.ts"
             ],
             [
+              "packages/contexts/tools/contracts/operator-gate.test.ts",
+              "packages/contexts/tools/contracts/operator-gate.test.ts"
+            ],
+            [
               "packages/contexts/tools/domain/audit.test.ts",
               "packages/contexts/tools/domain/audit.test.ts"
             ],
@@ -61880,6 +61913,7 @@
             "packages/contexts/tools/application/registry.test.ts",
             "packages/contexts/tools/application/tool-policy.test.ts",
             "packages/contexts/tools/contracts/index.test.ts",
+            "packages/contexts/tools/contracts/operator-gate.test.ts",
             "packages/contexts/tools/domain/audit.test.ts",
             "packages/contexts/tools/domain/entity-policy.test.ts",
             "packages/contexts/tools/domain/exposure.test.ts",
@@ -62642,7 +62676,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "c78f644a6135bb887ecac878781738642ba7d0418c7dd831874798c629670bd8",
+      "evidenceSha256": "4ce8d366cc7cf846fafabb88e6ca745365ae6dc88d75e28cb7d0b13a306027a7",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
