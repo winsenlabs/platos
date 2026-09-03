@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "74079fcc6e0f5c97212a8acb3882a60803014c6882df261ab77adfe8244c9526",
+  "evidenceSha256": "e5d07ccb1c641b810cdce8ea30e8ebc7275d1b5ae4c476a6c62aa71c820d81c9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2f464c31580b9a1a1416517823ef8a6131eac546c70bea143197fa43b5d9de2a",
+    "aggregateSha256": "fbf70b67658dcac5f5d306313e98bc4089b22dbc9803e2b727b971396b2a4f86",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11093,19 +11093,19 @@
       },
       {
         "path": "packages/contexts/agents/application/agent-read.test.ts",
-        "sha256": "e85a85857b940392a2827e18cff9056808f7da01a40451cf822276a4273ccdf8"
+        "sha256": "8874af87374130ec263265e46730914879f1e3c784ac3ec9d986b62e56ec84fa"
       },
       {
         "path": "packages/contexts/agents/application/agent-write.test.ts",
-        "sha256": "9210d2ce93243c97aedc8a43cf186ca3c8fc9e3877b72671990561a3c740bcd6"
+        "sha256": "c52f8c5072143bc4b580df11c2ec60eac21d6e3333d4b466cdd0ade98bc84590"
       },
       {
         "path": "packages/contexts/agents/application/authorization.test.ts",
-        "sha256": "c8a97e39dc0c813ace16f564d024c415008d70f41ad548f1e1be5752dd328b86"
+        "sha256": "ea770b3b5dfc8fa38737e71a8eabaadfc1399cdbb6d1e7bb6338b8c8ed2e3117"
       },
       {
         "path": "packages/contexts/agents/application/authorization.ts",
-        "sha256": "6092e65c1c197f6f51709ac45a1fd82f154294f73710059db4ee7cb678b9dbda"
+        "sha256": "0f83dd0276d35a1874acbae3bbca7054a2af131aadf5f837ebdc02254fce057c"
       },
       {
         "path": "packages/contexts/agents/application/canary.test.ts",
@@ -11117,11 +11117,11 @@
       },
       {
         "path": "packages/contexts/agents/application/clusters.test.ts",
-        "sha256": "115ccce842e87cf2c2729518e75836c0c3dbf8cfaabd37e69e5a033da0bbb686"
+        "sha256": "47d667dede885c6a5983901d65e173da7ec3373d797ec12d4744cfe1b197014c"
       },
       {
         "path": "packages/contexts/agents/application/clusters.ts",
-        "sha256": "9ea3c6fd403a0c21aba983c084e9d9afa07ec7daf566f0100c61cb2dec779c34"
+        "sha256": "21000027619c12af96fee057424d4d74a19da97454246d0b6d509c31ec4f4b16"
       },
       {
         "path": "packages/contexts/agents/application/configuration.ts",
@@ -11181,15 +11181,15 @@
       },
       {
         "path": "packages/contexts/agents/application/postman-templates.test.ts",
-        "sha256": "2db718aa0fa5b8e11549465c37cb94513f9a6916e95b2d24b99ef209282b5af1"
+        "sha256": "c8225bff84b2140b37db0c5125bb4c3baa1030be3baddf4854e436442060d415"
       },
       {
         "path": "packages/contexts/agents/application/postman-templates.ts",
-        "sha256": "2be7bc80ae838795f24aaedb05b76e81fbd8c9fdec60914bedbd8a03884a4d5e"
+        "sha256": "8d9c53820d99c7b7286ecc3bf8c36a74b2a9e99add77218d2fc54443546cf3af"
       },
       {
         "path": "packages/contexts/agents/application/read-agents.ts",
-        "sha256": "7481360889840f631b07c023b79709ad60e4f2011b7a4e84e06a01b8764cf9d8"
+        "sha256": "c17adb9d546ed61ec51dc81a24edd21b1fc88c1a3b67e5d7e382ac601c79c4c1"
       },
       {
         "path": "packages/contexts/agents/application/resolve-route.test.ts",
@@ -11245,19 +11245,19 @@
       },
       {
         "path": "packages/contexts/agents/contracts/index.ts",
-        "sha256": "18ff16bfabf753ec8137dca45bac34322a599950ed736fbea66b1061fa85ff84"
+        "sha256": "235e752ab5680d0735efacbdc9b6c2a0d2b259893b424b75182e091abf767963"
       },
       {
         "path": "packages/contexts/agents/contracts/views.ts",
-        "sha256": "436fab38fb19b62fd16c1b1151cbc33604d644f039c5926315573f175d547634"
+        "sha256": "186bd2f16f6cfbad5360b59e4f0078860044f95ed81d5dd7f03583d61c1bf57c"
       },
       {
         "path": "packages/contexts/agents/domain/agent.test.ts",
-        "sha256": "43c7dd72cc9444dff72fd5764260fba3f280ff0fedeff279394f1dc8bb0d52f5"
+        "sha256": "884de265857abcf3651983f71dff20e680d029eacc2e45faf932e72bc5eb64a3"
       },
       {
         "path": "packages/contexts/agents/domain/agent.ts",
-        "sha256": "c77cd7dda5148ebaddc24cd49396f858ad9acafc921aefcb7a2f6ce3dff9785b"
+        "sha256": "2cb4887298fefc9bd9094f27af30f3f75aa9cb8ac6bd4a6b76139f88c45fadf6"
       },
       {
         "path": "packages/contexts/agents/domain/binding.test.ts",
@@ -14985,11 +14985,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "3827b5f48f270ea46ef7f0cf3d59e494c247e48cedc9b82679b84fdef9ff992a"
+        "sha256": "c4f0abd58e629fca09a3c72aca7b4929ce2d01bd8622e627c1095aef982be1ab"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "217d2973f5a5dfaf778903077d48473c4907e2838071d35f6b85fb4295a86b57"
+        "sha256": "49bcd9034747ae4e406cfc489c3568b4f12517519b80e64d9aa74fb4764b7b88"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -43917,7 +43917,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 274
+              "line": 277
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -44170,7 +44170,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "d3b6afa75452189b1291abcf328d0ed9fcbabf3f37e748e01a36d6bc66fdd5ab",
+      "evidenceSha256": "e42016f72ccda607e297c7609c4d9ebb1d81acf05cf61a441de678243f24f71e",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
