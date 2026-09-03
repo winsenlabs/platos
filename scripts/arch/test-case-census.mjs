@@ -104,19 +104,38 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * WIN-256 DELTA — the `memory` context (ADR M0.3 §1 context 8). One row moves:
  *
- *   memory 0 -> 28 files, 0 -> 596 cases; 1000 -> 1596 total. 15 domain suites,
+ *   memory 0 -> 28 files, 0 -> 602 cases; 1000 -> 1602 total. 15 domain suites,
  *   12 application suites and the contracts-barrel suite. The census REFUSED
- *   nothing in that tree, so its 596 is a statically exact count, and
+ *   nothing in that tree, so its 602 is a statically exact count, and
  *   `pnpm --filter @platos/context-memory exec vitest run` prints the same pair
- *   — "Test Files 28 passed (28) / Tests 596 passed (596)" — which is the
+ *   — "Test Files 28 passed (28) / Tests 602 passed (602)" — which is the
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
- *   The last SIX of those 596 arrived with the `authorizeMutation` gate: a
- *   self-review found archive, restore, revise, forget, forget-many and
- *   forget-entity reaching the READ gate, which an operator's `metadata` grant
- *   passes, so a grant that may not mutate could destroy a row. The gate and
- *   its six cases landed together, and mutation M11 below proves them a
+ *   Six of those 602 arrived with the `authorizeMutation` gate: a self-review
+ *   found archive, restore, revise, forget, forget-many and forget-entity
+ *   reaching the READ gate, which an operator's `metadata` grant passes, so a
+ *   grant that may not mutate could destroy a row. The gate and its six cases
+ *   landed together, and the mutations enumerated in that commit prove them a
  *   control rather than a claim.
+ *
+ *   The last SIX (596 -> 602) close the two defects the v1 rebase review named,
+ *   and they add no file — 28 stays 28. Both were PROTECTIVE MECHANISMS THAT
+ *   NOTHING PROVED PROTECTED, and both were confirmed by mutating the ORIGINAL
+ *   596-case suite and watching it stay green:
+ *
+ *     +4 in application/authorization.test.ts. `subjectFor` takes the acting
+ *        agent FROM the runtime grant and ignores the command's claim, but every
+ *        existing case passed either null or the grant's own agent, so
+ *        `request.actingAgentId ?? grant.runtime.actingAgentId` was invisible.
+ *        Two cases now name a DIFFERENT agent at the unit, and two prove the
+ *        consequence end to end — a denied cross-agent READ, and a write
+ *        attributed to the grant's agent rather than the claimed one.
+ *
+ *     +2 in application/memory-erasure-target.test.ts. The receipt reports the
+ *        counts the DELETES returned, but every existing case erased a store
+ *        that had not moved since plan(), so `items: plan.items` — a forecast
+ *        wearing an observation's clothes — passed. The store now moves between
+ *        plan() and erase() in both directions.
  *
  * Verified as a live control: deleting one `it()` from
  * `packages/contexts/memory/domain/fusion.test.ts` leaves the file count at 116
@@ -144,7 +163,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
-  "packages/contexts/memory": { files: 28, cases: 596 },
+  "packages/contexts/memory": { files: 28, cases: 602 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
   "packages/contexts/providers": { files: 21, cases: 283 },
@@ -162,7 +181,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1596;
+export const EXPECTED_RUNTIME_TOTAL = 1602;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -7,7 +7,7 @@ import {
 } from "@platos/kernel";
 import { describe, expect, it } from "vitest";
 
-import type { MemoryEntityId, MemoryId } from "../domain/index.js";
+import type { MemoryEntityId, MemoryId, MemoryRelationshipId } from "../domain/index.js";
 import {
   createMemoryErasureTarget,
   MEMORY_ENTITY_MODEL,
@@ -157,6 +157,68 @@ describe("the erasure", () => {
     const plan = await target.plan(SUBJECT);
     context.graph.failWith("graph down");
     await expect(target.erase(plan, TRANSACTION)).rejects.toBeInstanceOf(MemoryErasureRejected);
+  });
+
+  // THE CASE THAT SEPARATES A FORECAST FROM AN OBSERVATION.
+  //
+  // Every other case in this file erases a store that has not moved since the
+  // plan was taken, so `plan.items` and the counts the deletes returned are the
+  // SAME NUMBERS. A receipt built straight from `plan.items` is indistinguishable
+  // from one built from what the deletes reported, and the file header's whole
+  // argument for deleting relationships explicitly — "a cascade reports nothing,
+  // and a receipt that claimed a count it did not observe would be a receipt
+  // nobody can audit" — is untested.
+  //
+  // These two cases move the store BETWEEN plan() and erase(), in both
+  // directions, so the two numbers differ and only the observed one is right.
+  it("reports what the DELETES returned when rows arrived after the plan", async () => {
+    const context = harness();
+    seedAll(context);
+    const target = createMemoryErasureTarget(context.dependencies);
+
+    const plan = await target.plan(SUBJECT);
+    expect(plan.items.map((item) => item.rowCount)).toEqual([2, 1, 1]);
+
+    // The subject keeps talking while the erasure is being adjudicated: one more
+    // memory, one more entity, one more edge. A real operation is not atomic
+    // between planning and executing, which is exactly why the receipt has to be
+    // an observation.
+    context.repository.seed(memoryFixture({ memoryId: asIdentifier<MemoryId>("mem-3") }));
+    context.graph.seedEntity(entityFixture({ entityId: asIdentifier<MemoryEntityId>("ent-2") }));
+    context.graph.seedRelationship(
+      relationshipFixture({ relationshipId: asIdentifier<MemoryRelationshipId>("rel-2") }),
+    );
+
+    const receipt = await target.erase(plan, TRANSACTION);
+
+    // The FORECAST is [2, 1, 1]. The OBSERVATION is [3, 2, 2]. A receipt that
+    // handed back `plan.items` would understate a destruction by three rows.
+    expect(receipt.items.map((item) => item.rowCount)).toEqual([3, 2, 2]);
+    expect(receipt.items.map((item) => item.model)).toEqual([
+      MEMORY_MODEL,
+      MEMORY_ENTITY_MODEL,
+      MEMORY_RELATIONSHIP_MODEL,
+    ]);
+    // And the store really is empty, so the larger number is the true one.
+    expect(context.repository.all()).toHaveLength(0);
+    expect(context.graph.allEntities()).toHaveLength(0);
+    expect(context.graph.allRelationships()).toHaveLength(0);
+  });
+
+  it("reports ZEROS when the rows are already gone, never the plan's forecast", async () => {
+    // The other direction, and the worse one to get wrong: a receipt that claims
+    // rows it did not destroy. The same plan is replayed against a store the
+    // first erasure already emptied.
+    const context = harness();
+    seedAll(context);
+    const target = createMemoryErasureTarget(context.dependencies);
+
+    const plan = await target.plan(SUBJECT);
+    const first = await target.erase(plan, TRANSACTION);
+    expect(first.items.map((item) => item.rowCount)).toEqual([2, 1, 1]);
+
+    const second = await target.erase(plan, TRANSACTION);
+    expect(second.items.map((item) => item.rowCount)).toEqual([0, 0, 0]);
   });
 
   it("issues an EMPTY receipt for a subject it holds nothing for", async () => {

@@ -147,6 +147,43 @@ describe("subjectFor", () => {
     expect(subject.error.code).toBe("MEMORY_SCOPE_MISMATCH");
   });
 
+  // THE CASE EVERY OTHER ONE HERE MISSES. Above, the command's acting agent is
+  // either null or the grant's OWN agent, so `grant.runtime.actingAgentId` and
+  // `request.actingAgentId ?? grant.runtime.actingAgentId` return the SAME value
+  // and the override that reads a caller's claim is invisible. The claim has to
+  // name an agent the grant was NOT minted for before the two differ.
+  it("IGNORES a command naming a DIFFERENT acting agent than the runtime grant", () => {
+    const { dependencies } = harness();
+    const granted = verifyGrant(dependencies, runtimeGrant());
+    if (!granted.ok) throw new Error("unreachable");
+    const subject = subjectFor(granted.value, {
+      endUserId: SUBJECT_ID,
+      actingAgentId: OUTSIDE_AGENT,
+    });
+    expect(subject.ok).toBe(true);
+    if (!subject.ok) throw new Error("unreachable");
+    // The grant was minted for AGENT. The command said OUTSIDE_AGENT. The grant
+    // wins — a turn cannot promote itself to an agent its grant does not name.
+    expect(subject.value.actingAgentId).toBe(AGENT);
+    expect(subject.value.actingAgentId).not.toBe(OUTSIDE_AGENT);
+  });
+
+  it("ignores a DIFFERENT claim even when the grant names no agent at all", () => {
+    // The sweep case: `actingAgentId` null in the grant. A nullish-coalescing
+    // override is at its most permissive here, because null is exactly the
+    // value it treats as "nothing to prefer", so the claim would win outright.
+    const { dependencies } = harness();
+    const granted = verifyGrant(dependencies, runtimeGrant({ actingAgentId: null }));
+    if (!granted.ok) throw new Error("unreachable");
+    const subject = subjectFor(granted.value, {
+      endUserId: SUBJECT_ID,
+      actingAgentId: OUTSIDE_AGENT,
+    });
+    expect(subject.ok).toBe(true);
+    if (!subject.ok) throw new Error("unreachable");
+    expect(subject.value.actingAgentId).toBeNull();
+  });
+
   it("takes the subject from the COMMAND under an operator grant", () => {
     const { dependencies, tenancy } = harness();
     const granted = verifyGrant(dependencies, tenancy.grant());
@@ -387,6 +424,60 @@ describe("authorizeMutation — the gate for changing a row that already exists"
       requestedAgentIds: [],
     });
     expect(scope.ok).toBe(true);
+  });
+});
+
+// WHAT THE ACTING-AGENT OVERRIDE WOULD ACTUALLY BUY, proved end to end rather
+// than at `subjectFor` alone.
+//
+// The unit cases above pin the resolved value. These two pin the CONSEQUENCE:
+// the acting agent is the input `domain/scope.ts` decides cross-agent access
+// with, so a command that could name it would decide its own reach. Both cases
+// put AGENT and OUTSIDE_AGENT in the environment with NO cluster between them —
+// `canShareAgentScope` is false in both directions — and hold a grant minted for
+// AGENT while the command claims OUTSIDE_AGENT.
+describe("a runtime grant cannot be widened by the command it arrives with", () => {
+  it("REFUSES a read of another agent's memories claimed through actingAgentId", async () => {
+    const { dependencies, repository } = harness();
+    repository.setBindings([
+      bindingFixture({ agentId: AGENT, clusterId: null }),
+      bindingFixture({ agentId: OUTSIDE_AGENT, clusterId: null }),
+    ]);
+    const scope = await authorizeRead(dependencies, {
+      authorization: runtimeGrant(),
+      endUserId: null,
+      // The escalation: claim to BE the agent whose rows are wanted.
+      actingAgentId: OUTSIDE_AGENT,
+      requestedAgentIds: [OUTSIDE_AGENT],
+    });
+    // Honouring the claim would make acting and requested the same agent, and
+    // `canShareAgentScope` would then return true for a pairing the grant never
+    // authorised. The grant's AGENT is used instead, and that pairing is denied.
+    expect(scope.ok).toBe(false);
+    if (scope.ok) throw new Error("unreachable");
+    expect(scope.error.code).toBe("MEMORY_AGENT_SCOPE_DENIED");
+  });
+
+  it("attributes a write to the GRANT's agent, not the one the command claimed", async () => {
+    const { dependencies, repository } = harness();
+    repository.setBindings([
+      bindingFixture({ agentId: AGENT, clusterId: null }),
+      bindingFixture({ agentId: OUTSIDE_AGENT, clusterId: null }),
+    ]);
+    const scope = await authorizeWrite(dependencies, {
+      authorization: runtimeGrant(),
+      endUserId: null,
+      actingAgentId: OUTSIDE_AGENT,
+      requestedAgentId: null,
+      sourceThreadId: null,
+    });
+    expect(scope.ok).toBe(true);
+    if (!scope.ok) throw new Error("unreachable");
+    // A write is attributed to the acting agent, so honouring the claim would
+    // file this row in OUTSIDE_AGENT's memory — a write into a peer this grant
+    // has no relationship with.
+    expect(scope.value.binding.agentId).toBe(AGENT);
+    expect(scope.value.binding.agentId).not.toBe(OUTSIDE_AGENT);
   });
 });
 
