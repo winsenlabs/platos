@@ -38,6 +38,7 @@
 // naming an unreachable row is more honest than reporting nothing at all.
 
 import type {
+  DomainError,
   ErasurePlan,
   ErasurePlanItem,
   ErasureReceipt,
@@ -46,6 +47,7 @@ import type {
   TransactionScope,
 } from "@platos/kernel";
 
+import { erasurePlanForeign } from "../domain/index.js";
 import type { ChannelsDependencies } from "./dependencies.js";
 
 export const CHANNELS_ERASURE_TARGET_NAME = "channels";
@@ -65,6 +67,30 @@ export const CASCADE_NOTE = "cascades from conversations.Thread (onDelete: Casca
  * residual is visible in every plan rather than discovered during an audit.
  */
 export const INBOX_NOTE = "no subject column; keyed by [appId, eventId]";
+
+/**
+ * The refusal, carried out of a port that is not `Result`-shaped.
+ *
+ * `ErasureTarget.erase` returns a bare `ErasureReceipt`, so a refusal cannot be
+ * a value here the way it is everywhere else in this context. It is a THROW
+ * carrying the domain error, which is the shape `files` already gives the same
+ * problem on the same port — and it is the right failure mode besides: `erase`
+ * runs inside the caller's transaction, so throwing aborts a multi-context
+ * erasure rather than half-completing one.
+ */
+export class ChannelsErasureRejected extends Error {
+  readonly domainError: DomainError;
+
+  constructor(error: DomainError) {
+    super(`${error.code}: ${error.message}`);
+    this.name = "ChannelsErasureRejected";
+    this.domainError = error;
+  }
+}
+
+function refuse(error: DomainError): never {
+  throw new ChannelsErasureRejected(error);
+}
 
 function item(model: string, method: ErasurePlanItem["method"], blockedBy: string): ErasurePlanItem {
   return { model, method, rowCount: 0, blockedBy };
@@ -96,13 +122,32 @@ export function createChannelsErasureTarget(dependencies: Dependencies): Erasure
       items: planFor(),
     }),
 
-    // No rows to destroy and nothing to refuse: this target owns no
-    // subject-selectable row, so it cannot be handed a foreign plan it would
-    // act on incorrectly. It reports what it holds and destroys nothing.
-    erase: async (plan: ErasurePlan, _transaction: TransactionScope): Promise<ErasureReceipt> => ({
-      targetName: CHANNELS_ERASURE_TARGET_NAME,
-      erasedAt: dependencies.clock.now(),
-      items: plan.targetName === CHANNELS_ERASURE_TARGET_NAME ? plan.items : planFor(),
-    }),
+    /**
+     * A FOREIGN PLAN IS REFUSED, NOT QUIETLY REPLACED.
+     *
+     * The kernel's `ErasurePlan` carries a target name and items and NOTHING
+     * about whose data it describes, so a target handed a plan it did not mint
+     * cannot know what it is being asked to destroy. `erasurePlanForeign`'s own
+     * note says refusing is the only safe answer, and until WIN-256 it had ZERO
+     * producers: this method substituted `planFor()` for the foreign items and
+     * returned a receipt as if the plan had been carried out. That receipt is
+     * the artefact an auditor reads. It said "channels erased these three
+     * models" under a plan nobody reviewed, and it made a caller bug — handing
+     * target A the plan of target B — invisible at exactly the moment it
+     * matters. `CHANNELS_ERROR_CODES` published the code for a refusal this
+     * context could not emit.
+     *
+     * DESTROYING NOTHING IS NOT A REASON TO ACCEPT ANYTHING. This target owns no
+     * subject-selectable row, so the substitution was harmless to DATA; it was
+     * never harmless to the record.
+     */
+    erase: async (plan: ErasurePlan, _transaction: TransactionScope): Promise<ErasureReceipt> => {
+      if (plan.targetName !== CHANNELS_ERASURE_TARGET_NAME) refuse(erasurePlanForeign(plan.targetName));
+      return {
+        targetName: CHANNELS_ERASURE_TARGET_NAME,
+        erasedAt: dependencies.clock.now(),
+        items: plan.items,
+      };
+    },
   };
 }

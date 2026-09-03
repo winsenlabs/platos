@@ -57,6 +57,21 @@ export interface ChannelInstallation {
   readonly externalInstallationId: ExternalInstallationId;
   readonly displayName: string | null;
   readonly credentialId: CredentialId | null;
+  /**
+   * The revision of the credential row `credentialId` names.
+   *
+   * `secrets` counts a credential's `SecretRevision` up on every rotation, so
+   * this is what moves when the SAME row's material is replaced. It is a
+   * READ-TIME PROJECTION and not a column of this table — the repository joins
+   * the credential and reads its revision, which is what the ground-truth
+   * persistence layer already does — and it is carried on the value because the
+   * FENCE needs it. `expectationHolds` can only compare a claim against
+   * something the row actually holds.
+   *
+   * Zero when there is no credential. No credential has revision zero, so the
+   * placeholder cannot be mistaken for a real one.
+   */
+  readonly credentialRevision: number;
   readonly grantedScopes: readonly string[];
   readonly defaultAgentId: AgentId | null;
   readonly agentRouting: readonly ChannelRoutingRule[];
@@ -75,11 +90,19 @@ export interface ChannelInstallation {
 /**
  * What a refresh claim believes about the row it is about to change.
  *
- * All three axes are carried, not just the generation. The credential id catches
- * an installation re-imported onto a different `Credential` row, and the
- * revision catches the same row's contents being replaced underneath — neither
- * of which necessarily moves the generation, and both of which mean this
- * claim's grant is stale.
+ * ALL THREE AXES ARE CARRIED AND ALL THREE ARE COMPARED. The credential id
+ * catches an installation re-imported onto a different `Credential` row. The
+ * revision catches the SAME row's material being replaced underneath: `secrets`
+ * rotating a credential in place moves neither the id nor this context's
+ * `tokenGeneration`, so a claim holding the superseded grant would otherwise
+ * still look current. The generation catches this context's own commits.
+ *
+ * THE PARAGRAPH ABOVE USED TO BE PROSE ONLY. `ChannelInstallation` carried no
+ * revision at all, so `expectationHolds` could not read one and did not try;
+ * deleting `credentialRevision` from this interface left all 263 tests green.
+ * A comment describing a fence the code cannot build is worse than no comment,
+ * because a reader stops looking. The field the comparison needs is now on the
+ * installation and the comparison is made.
  */
 export interface RefreshExpectation {
   readonly credentialId: CredentialId;
@@ -131,6 +154,7 @@ function expectationHolds(installation: ChannelInstallation, expected: RefreshEx
   return (
     installation.credentialId !== null &&
     installation.credentialId === expected.credentialId &&
+    installation.credentialRevision === expected.credentialRevision &&
     installation.tokenGeneration === expected.tokenGeneration
   );
 }
@@ -188,20 +212,27 @@ export function holdsRefreshClaim(
  * Commit the replacement grant and release the fence.
  *
  * The generation advances HERE and nowhere else, which is what makes it a
- * reliable expectation for the next claim. `credentialId` moves too: an
- * import may land the new grant on a different credential row.
+ * reliable expectation for the next claim. `credentialId` moves too: an import
+ * may land the new grant on a different credential row.
+ *
+ * THE REVISION MOVES WITH THE ID, and it is one parameter rather than none
+ * because the two describe ONE credential row. A value carrying the new grant's
+ * id beside the old grant's revision would be a lie, and it is the lie the next
+ * claim's expectation gets built from.
  */
 export function finalizeRefresh(
   installation: ChannelInstallation,
   claimId: RefreshClaimId,
   expected: RefreshExpectation,
   credentialId: CredentialId,
+  credentialRevision: number,
 ): Result<ChannelInstallation> {
   if (!holdsRefreshClaim(installation, claimId, expected)) return err(refreshLost(installation.installationId));
   return ok(
     Object.freeze({
       ...installation,
       credentialId,
+      credentialRevision,
       tokenGeneration: installation.tokenGeneration + 1,
       refreshState: "IDLE" as const,
       refreshClaimId: null,

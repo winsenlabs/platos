@@ -102,13 +102,15 @@ describe("settleInstallationRefresh", () => {
       installationId,
       claimId,
       expected: buildExpectation(),
-      outcome: { kind: "succeeded", credentialId: credentialId("cred-2") },
+      outcome: { kind: "succeeded", credentialId: credentialId("cred-2"), credentialRevision: 2 },
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.credentialId).toBe("cred-2");
     expect(result.value.tokenGeneration).toBe(2);
+    // The revision travels with the id through the use case, not just the rule.
+    expect(result.value.credentialRevision).toBe(2);
     expect(result.value.refreshState).toBe("IDLE");
   });
 
@@ -163,7 +165,7 @@ describe("settleInstallationRefresh", () => {
       installationId,
       claimId: asIdentifier<RefreshClaimId>("someone-else"),
       expected: buildExpectation(),
-      outcome: { kind: "succeeded", credentialId: credentialId("cred-2") },
+      outcome: { kind: "succeeded", credentialId: credentialId("cred-2"), credentialRevision: 2 },
     });
 
     expect(result.ok).toBe(false);
@@ -179,14 +181,14 @@ describe("settleInstallationRefresh", () => {
       installationId,
       claimId,
       expected: buildExpectation(),
-      outcome: { kind: "succeeded", credentialId: credentialId("winner") },
+      outcome: { kind: "succeeded", credentialId: credentialId("winner"), credentialRevision: 2 },
     });
 
     const loser = await settleInstallationRefresh(context.dependencies, {
       installationId,
       claimId,
       expected: buildExpectation(),
-      outcome: { kind: "succeeded", credentialId: credentialId("stale") },
+      outcome: { kind: "succeeded", credentialId: credentialId("stale"), credentialRevision: 3 },
     });
 
     expect(loser.ok).toBe(false);

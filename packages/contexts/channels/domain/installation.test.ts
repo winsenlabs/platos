@@ -35,6 +35,7 @@ function seed(overrides: Partial<ChannelInstallation> = {}): ChannelInstallation
     externalInstallationId: asIdentifier<ExternalInstallationId>("T123"),
     displayName: "Acme",
     credentialId: credential(),
+    credentialRevision: 1,
     grantedScopes: ["chat:write"],
     defaultAgentId: null,
     agentRouting: [],
@@ -147,6 +148,32 @@ describe("beginRefresh", () => {
     expect(result.error.code).toBe("CHANNELS_REFRESH_LOST");
   });
 
+  /**
+   * THE THIRD AXIS OF THE FENCE, WHICH UNTIL WIN-256 WAS PROSE ONLY.
+   *
+   * `secrets` rotating a credential's material in place moves its revision and
+   * moves NEITHER the credential id NOR this context's `tokenGeneration`. A
+   * claim built before that rotation holds a grant that is already dead, and
+   * before the revision was carried on the installation the fence had nothing
+   * to compare it against: `RefreshExpectation.credentialRevision` was declared,
+   * never read, and deleting it left all 263 tests green.
+   */
+  it("refuses a claim whose credential was REPLACED IN PLACE, generation unmoved", () => {
+    const replaced = seed({ credentialRevision: 2 });
+    const result = beginRefresh(replaced, claimId(), expectation({ credentialRevision: 1 }), EPOCH);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("CHANNELS_REFRESH_LOST");
+  });
+
+  it("admits that same row once the expectation names the current revision", () => {
+    // The positive control. Only the revision differs between this case and the
+    // one above, so a refusal that survived here would be about the row rather
+    // than about the axis being tested.
+    const replaced = seed({ credentialRevision: 2 });
+    expect(beginRefresh(replaced, claimId(), expectation({ credentialRevision: 2 }), EPOCH).ok).toBe(true);
+  });
+
   it("refuses a row with no credential at all", () => {
     const result = beginRefresh(seed({ credentialId: null }), claimId(), expectation(), EPOCH);
     expect(result.ok).toBe(false);
@@ -171,10 +198,12 @@ describe("holdsRefreshClaim", () => {
 
 describe("finalizeRefresh", () => {
   it("commits the replacement, advances the generation and releases the fence", () => {
-    const result = finalizeRefresh(begun(), claimId(), expectation(), credential("cred-2"));
+    const result = finalizeRefresh(begun(), claimId(), expectation(), credential("cred-2"), 2);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.credentialId).toBe("cred-2");
+    // The pair moves together, so the value describes ONE credential row.
+    expect(result.value.credentialRevision).toBe(2);
     expect(result.value.tokenGeneration).toBe(2);
     expect(result.value.refreshState).toBe("IDLE");
     expect(result.value.refreshClaimId).toBeNull();
@@ -182,24 +211,39 @@ describe("finalizeRefresh", () => {
   });
 
   it("makes the losing claim's expectation stale, so it cannot also commit", () => {
-    const committed = finalizeRefresh(begun(), claimId(), expectation(), credential("cred-2"));
+    const committed = finalizeRefresh(begun(), claimId(), expectation(), credential("cred-2"), 2);
     expect(committed.ok).toBe(true);
     if (!committed.ok) return;
-    const loser = finalizeRefresh(committed.value, claimId(), expectation(), credential("cred-3"));
+    const loser = finalizeRefresh(committed.value, claimId(), expectation(), credential("cred-3"), 3);
     expect(loser.ok).toBe(false);
     if (loser.ok) return;
     expect(loser.error.code).toBe("CHANNELS_REFRESH_LOST");
   });
 
   it("refuses a claim this worker never held", () => {
-    const result = finalizeRefresh(begun(), claimId("claim-2"), expectation(), credential("cred-2"));
+    const result = finalizeRefresh(begun(), claimId("claim-2"), expectation(), credential("cred-2"), 2);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("CHANNELS_REFRESH_LOST");
   });
 
   it("refuses to commit onto an IDLE row", () => {
-    expect(finalizeRefresh(seed(), claimId(), expectation(), credential("cred-2")).ok).toBe(false);
+    expect(finalizeRefresh(seed(), claimId(), expectation(), credential("cred-2"), 2).ok).toBe(false);
+  });
+
+  /**
+   * THE REVISION AXIS, AT THE COMMIT.
+   *
+   * `beginRefresh` proves the fence sees a replaced credential before a grant is
+   * redeemed; this proves it still sees one at the moment of writing. The two
+   * are different windows and a claim can lose the row in either.
+   */
+  it("refuses to commit onto a row whose credential was replaced underneath", () => {
+    const replaced = { ...begun(), credentialRevision: 2 };
+    const result = finalizeRefresh(replaced, claimId(), expectation(), credential("cred-2"), 3);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("CHANNELS_REFRESH_LOST");
   });
 });
 
@@ -252,6 +296,14 @@ describe("releaseRefresh", () => {
 
   it("refuses a claim this worker never held", () => {
     expect(releaseRefresh(begun(), claimId("claim-2"), expectation()).ok).toBe(false);
+  });
+
+  it("refuses a release whose credential was replaced underneath", () => {
+    // Release is the path that leaves the generation UNCHANGED, so it is the one
+    // path where a stale claim would otherwise be indistinguishable from a live
+    // one on the generation axis alone.
+    const replaced = { ...begun(), credentialRevision: 2 };
+    expect(releaseRefresh(replaced, claimId(), expectation()).ok).toBe(false);
   });
 });
 

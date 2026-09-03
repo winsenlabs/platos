@@ -91,7 +91,12 @@ export async function beginInstallationRefresh(
 
 /** What happened when the caller redeemed the grant. See the header. */
 export type RedeemOutcome =
-  | { readonly kind: "succeeded"; readonly credentialId: CredentialId }
+  | {
+      readonly kind: "succeeded";
+      readonly credentialId: CredentialId;
+      /** The new credential's revision. It travels with the id; see `finalizeRefresh`. */
+      readonly credentialRevision: number;
+    }
   /** The grant was NOT consumed — the credential is still live. */
   | { readonly kind: "failed-unused" }
   /** The grant WAS consumed and its replacement is unrecoverable. */
@@ -126,7 +131,13 @@ export async function settleInstallationRefresh(
 
 function settle(installation: ChannelInstallation, command: SettleRefreshCommand): Result<ChannelInstallation> {
   if (command.outcome.kind === "succeeded") {
-    return finalizeRefresh(installation, command.claimId, command.expected, command.outcome.credentialId);
+    return finalizeRefresh(
+      installation,
+      command.claimId,
+      command.expected,
+      command.outcome.credentialId,
+      command.outcome.credentialRevision,
+    );
   }
   if (command.outcome.kind === "failed-unused") {
     return releaseRefresh(installation, command.claimId, command.expected);

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CASCADE_NOTE,
+  ChannelsErasureRejected,
   CHANNEL_APP_THREAD_MODEL,
   CHANNEL_EVENT_INBOX_MODEL,
   CHANNEL_THREAD_MODEL,
@@ -101,18 +102,40 @@ describe("the channels erasure target", () => {
     expect(context.repository.writes).toHaveLength(0);
   });
 
-  it("reports its own items when handed a plan minted by another target", async () => {
+  it("REFUSES a plan minted by another target, rather than substituting its own", async () => {
+    // The earlier behaviour returned a receipt naming this target and its own
+    // three models. It destroyed nothing — so the DATA was safe — but the
+    // receipt is the artefact an auditor reads, and it recorded work under a
+    // plan nobody reviewed while hiding the caller bug that produced it.
     const context = buildChannelsTestContext();
-    const receipt = await createChannelsErasureTarget(context.dependencies).erase(
-      { targetName: "files", items: [{ model: "Artifact", method: "delete", rowCount: 9, blockedBy: null }] },
-      { transactionId: asIdentifier("txn-1") },
-    );
+    const target = createChannelsErasureTarget(context.dependencies);
 
-    // It must never claim to have erased another context's nine rows.
-    expect(receipt.items.map((item) => item.model)).toEqual([
-      CHANNEL_THREAD_MODEL,
-      CHANNEL_APP_THREAD_MODEL,
-      CHANNEL_EVENT_INBOX_MODEL,
-    ]);
+    const rejected = await target
+      .erase(
+        { targetName: "files", items: [{ model: "Artifact", method: "delete", rowCount: 9, blockedBy: null }] },
+        { transactionId: asIdentifier("txn-1") },
+      )
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+
+    expect(rejected).toBeInstanceOf(ChannelsErasureRejected);
+    expect((rejected as ChannelsErasureRejected).domainError.code).toBe("CHANNELS_ERASURE_PLAN_FOREIGN");
+    // Named, so the refusal says WHOSE plan arrived rather than only that one did.
+    expect((rejected as ChannelsErasureRejected).domainError.details.targetName).toBe("files");
+    expect(context.repository.writes).toHaveLength(0);
+  });
+
+  it("carries out a plan it minted itself — the control for the refusal above", async () => {
+    // Without this, a target that threw at every plan would satisfy the case
+    // above for the wrong reason.
+    const context = buildChannelsTestContext();
+    const target = createChannelsErasureTarget(context.dependencies);
+    const plan = await target.plan(subject("end-user"));
+
+    const receipt = await target.erase(plan, { transactionId: asIdentifier("txn-1") });
+    expect(receipt.targetName).toBe("channels");
+    expect(receipt.items).toEqual(plan.items);
   });
 });

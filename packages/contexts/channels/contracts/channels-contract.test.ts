@@ -94,6 +94,26 @@ describe("describeApp and describeInstallation", () => {
     expect(result.value).not.toHaveProperty("credentialId");
   });
 
+  /**
+   * The same one-line check `findConnection` makes, on the app.
+   *
+   * Removing `found.scope.environmentId !== scope.environmentId` from the
+   * repository double's `findApp` left all 263 tests green, while removing the
+   * IDENTICAL line from `findConnection` turned two red — a one-sided gap in a
+   * pair of checks that exist for the same reason. A row outside the requested
+   * environment is INVISIBLE rather than forbidden: reporting it as
+   * found-but-denied would confirm its existence to a caller in another tenant.
+   */
+  it("is invisible across environments", async () => {
+    const { context, contract } = build();
+    context.repository.seedApp(buildApp({ scope: testEnvironmentScope("other") }));
+
+    const result = await contract.describeApp({ scope, appId });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("CHANNELS_APP_NOT_FOUND");
+  });
+
   it("publishes the refresh STATE but never the claim token", async () => {
     const { context, contract } = build();
     context.repository.seedInstallation(

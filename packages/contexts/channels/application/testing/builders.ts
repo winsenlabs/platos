@@ -108,6 +108,7 @@ export function buildInstallation(overrides: Partial<ChannelInstallation> = {}):
     externalInstallationId: asIdentifier<ExternalInstallationId>("T123"),
     displayName: "Acme Workspace",
     credentialId: credentialId(),
+    credentialRevision: 1,
     grantedScopes: ["chat:write"],
     defaultAgentId: null,
     agentRouting: [],
