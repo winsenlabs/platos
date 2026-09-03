@@ -110,6 +110,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/providers", // WIN-256 — provider keys, the model catalogue, rate cards, and the ModelRouter port it owns
   "packages/contexts/eventing", // WIN-256 — the outbox drain, NotificationRule, and NotificationRequested
   "packages/contexts/skills", // WIN-256 — the skill catalogue, its install pair, and the manifest parser
+  "packages/contexts/jobs", // WIN-256 — Job definitions and the AgentApproval suspension seam
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];

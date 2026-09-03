@@ -75,7 +75,7 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427. WIN-256 made packages/kernel and four contexts
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478. WIN-256 made packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
   // 400/500-line budget.
@@ -96,13 +96,28 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and 13 named use cases rather than a registry service, which is the shape §6
   // exists to force.
   //
+  // +51: the same issue makes `jobs` real. Its production source is split across
+  // `execute-job.ts`, `register-job.ts` and the two approval use cases rather
+  // than reproducing the 571-line `job-execution.service.ts` it replaces, which
+  // is the §6 corollary about named sub-use-case files doing its job.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
-  // respectively once rebased onto the providers tip. The three axes are
-  // disjoint, so the integrated census is their SUM and not either branch pin:
-  // 328 + 44 + 55 = 372 + 55 = 383 + 44 = 427. Every one of the 427 is inside
-  // the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 427);
+  // respectively once rebased onto the providers tip; jobs pinned 379
+  // (328 + 51) on v1. The axes are disjoint, so the integrated census is their
+  // SUM and not any branch pin: 328 + 44 + 55 + 51 = 478.
+  //
+  // ONE FILE IS IN THE WARNING BAND, and this comment says so rather than
+  // repeating the sentence that was true before `jobs` landed:
+  // `packages/contexts/jobs/application/approval-lifecycle.test.ts` counts 465
+  // effective lines. It is a TEST module, it is below the 500-line hard error,
+  // and the gate reports it as a warning by design. The assertions below pin
+  // what the gate ENFORCES — zero errors — and deliberately do not pin zero
+  // warnings, because the warning band exists to be visible rather than empty.
+  // The jobs branch's own note claimed its largest file was "well inside the
+  // 400-line warn threshold"; running the audit over the integrated tree shows
+  // that was not true, so the claim is corrected here rather than carried.
+  assert.equal(result.fileCount, 478);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

@@ -76,7 +76,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * DELTAS AGAINST `3ed8f3ce972289908a7d129bbb682e977405770f`, the head the
  * 2026-09-02 independent verification reproduced. It recorded 716 cases across
  * 67 files, split kernel 44, identity-access 231, secrets 162, tenancy 146,
- * files 133. This census reproduces that split exactly and carries ONE delta:
+ * files 133. This census reproduces that split exactly and carries TWO deltas:
  *
  *   files 133 -> 134 (+1), 716 -> 717 total. The storage-key separator case
  *   added to close MAJOR 2 of that verification —
@@ -212,10 +212,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * Re-run after both changes: 24 of 24 applicable mutations KILLED, SK19's anchor
  * gone with the line.
  *
- * M2 WAVE-B INTEGRATION — THE TWO ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
- * `eventing` and `skills` touch DISJOINT packages and each moves this same
- * runtime total on its own axis, so the integrated number is the sum of both
- * deltas and is correct on neither branch alone:
+ * M2 WAVE-B INTEGRATION — THE ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
+ * `eventing`, `skills` and `jobs` touch DISJOINT packages and each moves this
+ * same runtime total on its own axis, so the integrated number is the sum of
+ * every delta and is correct on no branch alone:
  *
  *   717   the five slice-1-5 packages (kernel 44, identity-access 231,
  *         secrets 162, tenancy 146, files 134).
@@ -226,14 +226,101 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   +306  skills (20 files) — 302 at adoption, 306 after the four host-closure
  *         cases the re-run mutation sweep forced, with the file count at 20.
  *
- *   717 + 283 + 149 + 306 = 1455, and 88 + 14 + 20 = 122 files.
+ *   +378  jobs (16 files) — 350 at adoption, then 354, 367 and 378 as three
+ *         successive independent verifications forced cases into EXISTING
+ *         files, with the file count at 16 throughout.
  *
- * The eventing branch pinned 1149 and the skills branch pinned 1306; each was
- * right for its own tree and wrong for this one. Picking either would silently
- * drop a whole context's suite out of the pinned total while the census stayed
- * green on the branch it came from — which is precisely the drift this constant
- * exists to catch. The skills branch pinned 1019 (717 + 302) before its rebase
- * onto the providers commit, for the same reason.
+ *   717 + 283 + 149 + 306 + 378 = 1833, and 88 + 14 + 20 + 16 = 138 files.
+ *
+ * The eventing branch pinned 1149, the skills branch pinned 1306 and the jobs
+ * branch pinned 1378; each was right for its own tree and wrong for this one.
+ * Picking any of them would silently drop a whole context's suite out of the
+ * pinned total while the census stayed green on the branch it came from — which
+ * is precisely the drift this constant exists to catch. The skills branch
+ * pinned 1019 (717 + 302) before its rebase onto the providers commit, for the
+ * same reason.
+ *
+ * JOBS ADOPTION (WIN-256, ADR M0.3 §1 row 11). `packages/contexts/jobs`
+ * becomes real, rebased onto v1 @ `95cbacc1`:
+ *
+ *   jobs 0 -> 350 across 0 -> 16 files, 1000 -> 1350 total. WIN-256 made
+ *   `packages/contexts/jobs` real: two aggregates (`Job`, `AgentApproval`), the
+ *   execution-request admission gate, the idempotent execute path, and the
+ *   approval suspend/resume seam ADR M0.3 §1 names for this context. The split
+ *   is domain 253 across 10 files and application+contracts 97 across 6.
+ *   `jobs` was pinned at 0/0 as an undeclared context, so this is the first
+ *   non-zero pin for it rather than a movement of an existing one.
+ *
+ *   jobs 350 -> 354 (+4), 1350 -> 1354 total, file count UNCHANGED at 16. The
+ *   2026-09-03 independent verification of the jobs branch found two surviving
+ *   mutants, and these four cases are exactly the ones that kill them. Both were
+ *   reproduced as controls before the cases were written, and each was watched
+ *   go red and then green again:
+ *
+ *     +3 in `application/jobs-erasure-target.test.ts` (17 -> 20). Nothing in the
+ *     suite read `ErasurePlanItem.method`, so changing `planItem`'s
+ *     `method: "delete"` to `"anonymize"` — a right-to-erasure correctness path,
+ *     where anonymising an approval whose subject lives in `comment` and
+ *     `arguments` free text is erasure theatre — left all 350 green. The three
+ *     new cases pin the method on the counted plan, on the vacuous entity plan,
+ *     and on the RECEIPT, which re-mints its items and can therefore disagree
+ *     with the plan it carried out.
+ *
+ *     +1 in `domain/payload.test.ts` (44 -> 45). The depth cap had `much deeper
+ *     refused` and `at the limit accepted` but nothing at limit+1, so
+ *     `depth > maxDepth` -> `depth > maxDepth + 1` left all 44 green. maxDepth+1
+ *     wrappers is the only nesting that separates the two predicates.
+ *
+ *   jobs 354 -> 367 (+13), 1354 -> 1367 total, file count STILL UNCHANGED at 16.
+ *   The 2026-09-03 verification of the rebased branch found SIX more survivors
+ *   and these thirteen cases kill them. Each landed in the suite that can REACH
+ *   the mechanism rather than beside the module that defines it, which is why no
+ *   new file appears — exactly the drift a file-count pin cannot see:
+ *
+ *     +7 in `contracts/jobs-contract.test.ts` (17 -> 24). Which projection
+ *     `describeJob` returns (2 — swapping it to `toJobSourceView` published the
+ *     handler source and type-checked); `markApprovalConsumed`'s not-found guard
+ *     (2, including the cross-environment id); and `mcpActionLabel`, which had
+ *     no caller anywhere and is now the contract's MCP default (3, including the
+ *     refusal when neither an action nor a tool name is supplied).
+ *
+ *     +4 in `application/approval-lifecycle.test.ts` (30 -> 34). The loser of a
+ *     concurrent decision (2 — the conditional write's refusal branch was dead,
+ *     so the loser was told `ok` AND the parked run was resumed with its
+ *     decision), and the per-row `retained` diagnostic channel (2).
+ *
+ *     +2 in `application/execute-job.test.ts` (28 -> 30). A cached failure must
+ *     replay under its OWN code; only `kind: "failed"` had ever round-tripped,
+ *     and that code is the literal the mutation hard-codes.
+ *
+ *   These are added cases in existing files, which is why `files` does not move
+ *   — precisely the drift a file-count pin cannot see and the case pin can.
+ *
+ *   jobs 367 -> 378 (+11), 1367 -> 1378 total, file count STILL UNCHANGED at 16.
+ *   The 2026-09-03 independent RE-CHECK of the rebased branch found three
+ *   substantive survivors and these eleven cases kill them. Each was reproduced
+ *   as a control first — the mutation applied, the suite watched go red, the
+ *   mutation reverted, the suite watched go green:
+ *
+ *     +6 in `contracts/jobs-contract.test.ts` (24 -> 30). The binder applied the
+ *     MCP timeout clamp to EVERY path: `genericApprovalTimeout` had zero callers
+ *     while `approvalRequestFrom` hardcoded `mcpApprovalTimeout`, so a generic
+ *     approval with no timeout got 3600 s instead of 300 s and a generic request
+ *     for 5 s was clamped UP to 60 s. Both timeout paths are now pinned THROUGH
+ *     the published binder, in both directions: hardcoding either clamp turns
+ *     three of the six red.
+ *
+ *     +3 in `application/execute-job.test.ts` (30 -> 33). Two for `settle`'s
+ *     fail-closed error-code filter, which nothing could reach — the only test
+ *     that named a non-execution failure injected it into `findJob`, which fails
+ *     at stage 1, before a reservation exists. One for `classify`'s 64 KB cap,
+ *     whose only oversize fixture was a single 70,000-character string that
+ *     `isAdmissibleJson` refuses first.
+ *
+ *     +2 in `domain/execution-request.test.ts` (29 -> 31). The same 64 KB cap at
+ *     the OTHER wired site, `admitExecutionRequest`, plus the control that the
+ *     same shape inside the cap is admitted — so the refusal is proved to come
+ *     from the cap rather than from any other limit.
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
@@ -259,7 +346,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
-  "packages/contexts/jobs": { files: 0, cases: 0 },
+  "packages/contexts/jobs": { files: 16, cases: 378 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
@@ -278,7 +365,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1455;
+export const EXPECTED_RUNTIME_TOTAL = 1833;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -462,12 +462,12 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 161 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 157 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 161. Adoption RELEASES placeholders, so this
-  // count only ever falls, and the five adopting slices release placeholders
-  // from DISJOINT projects. The integrated count is therefore the SUM of all
-  // five reductions, never the smallest of the branch pins:
+  // M2 INTEGRATION DELTA — 201 -> 157. Adoption RELEASES placeholders, so this
+  // count only ever falls, and the adopting slices release placeholders from
+  // DISJOINT projects. The integrated count is therefore the SUM of every
+  // reduction, never the smallest of the branch pins:
   //
   //   201 -> 182  WIN-256 slices 1-5 adopt 5 projects (packages/kernel and the
   //               secrets, files, tenancy and identity-access contexts),
@@ -481,24 +481,28 @@ test("generated ownership includes the generator's exact 161 outputs across 32 V
   //   169 -> 165  WIN-256 adopts `eventing` (ADR M0.3 §1 row 17), releasing the
   //               same 4 entry points every context adoption releases.
   //   165 -> 161  WIN-256 adopts `skills` (M2.1), releasing its own 4.
+  //   161 -> 157  WIN-256 adopts `jobs` (ADR M0.3 §1 row 11), releasing its own
+  //               4 — domain/index.ts, application/index.ts,
+  //               application/ports/index.ts and contracts/index.ts.
   //
   // Each branch pinned only what its own lineage could see: WIN-297 branched
   // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
   // 182 - 9 = 173; WIN-256's providers tip pinned 178 and never saw the apps;
-  // the eventing and skills branches EACH pinned 165, because each saw the two
-  // apps and providers but not the other context. 165 is therefore the pin of
-  // two different trees, and it is correct for neither of them merged. None of
-  // those pins is correct here. 201 - 19 - 4 - 9 - 4 - 4 = 161, which is
-  // 165 - 4 read from either branch alike.
+  // the eventing, skills and jobs branches EACH pinned 165, because each saw
+  // the two apps and providers but not the other contexts. 165 is therefore the
+  // pin of three different trees, and it is correct for none of them merged.
+  // None of those pins is correct here. 201 - 19 - 4 - 9 - 4 - 4 - 4 = 157,
+  // which is 165 - 8 read from any of the three branches alike.
   //
-  // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing` and `skills` move the
-  // SAME constant on INDEPENDENT axes, so the reconciliation is arithmetic on
-  // both deltas and not a choice between two green branches. Side-picking 165
-  // would leave the tree with four unaccounted released placeholders and the
-  // canary would be quietly wrong while staying green on each branch alone.
+  // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing`, `skills` and `jobs`
+  // move the SAME constant on INDEPENDENT axes, so the reconciliation is
+  // arithmetic on every delta and not a choice between green branches.
+  // Side-picking 165 would leave the tree with eight unaccounted released
+  // placeholders and the canary would be quietly wrong while staying green on
+  // each branch alone.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 64
-  // placeholders of the 22 still-unadopted projects. The scaffolding tier is
+  // The generator now owns the same 97 SCAFFOLDING files plus the 60
+  // placeholders of the 21 still-unadopted projects. The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
   // package.json, tsconfig.json and README.md. The project count is unchanged
@@ -517,15 +521,15 @@ test("generated ownership includes the generator's exact 161 outputs across 32 V
   // its own committed evidence recorded 178. Every number here moves with its
   // delta and is never forced, and `pnpm audit:workspace-reachability` is
   // regenerated to a fixpoint beside it.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 161);
+  assert.equal(report.generatedOwnership.ownedOutputCount, 157);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 161 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 161);
+  // Same 157 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 157);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
