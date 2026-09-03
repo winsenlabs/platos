@@ -2012,37 +2012,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 3767,
+    "totalFiles": 3791,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 11,
       "apps-mcp-stdio": 4,
       "apps-webapp": 183,
-      "docs-content": 729,
+      "docs-content": 733,
       "internal-packages": 1164,
       "packages": 909,
-      "root-infra": 253
+      "root-infra": 273
     },
     "kindCounts": {
       "asset": 155,
       "config": 267,
-      "doc": 604,
+      "doc": 606,
       "fixture": 1,
-      "generated": 41,
+      "generated": 43,
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1261,
-      "test": 527
+      "source": 1264,
+      "test": 544
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1582,
-      "regenerate": 36,
-      "retain": 2140,
+      "move-refactor": 1602,
+      "regenerate": 38,
+      "retain": 2142,
       "unresolved": 2
     },
-    "protectedCount": 1623,
+    "protectedCount": 1627,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2081,8 +2081,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 10,
-      "docs-content.evidence.audit-receipts": 16,
+      "docs-content.evidence.audit-notes": 12,
+      "docs-content.evidence.audit-receipts": 18,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2165,12 +2165,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
-      "root-infra.test.harness": 54,
-      "root-infra.test.script-suites": 28,
+      "root-infra.test.harness": 69,
+      "root-infra.test.script-suites": 30,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 69,
+      "root-infra.tooling.scripts": 72,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "1f3d8ef39a70586927ba665372cb41692700e1590f54fa4b7cd0493d4dae4586"
+    "classificationSha256": "553c3731fe478187e3b8d2a6c3f03c77c0010e45b704ce2ee927e41c55ffaab9"
   }
 }
