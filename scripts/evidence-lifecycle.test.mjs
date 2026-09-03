@@ -31,15 +31,30 @@ function has(errors, text) {
 
 test("committed lifecycle manifest classifies every approved evidence path exactly once", () => {
   const manifest = committed();
-  // WIN-299 (M2.6) delta: 246 -> 248 entries, ACCEPTED 221 -> 223. Exactly two
-  // additions, both under docs/audits/sbom/advisory/ and both classified
-  // ACCEPTED because they bind CURRENT repository truth rather than a snapshot:
-  // advisory-policy.json must dispose every CRITICAL/HIGH finding in the live
-  // receipt or audit:advisory:check fails, and README.md documents that
-  // contract. Their sibling osv-report.json stays POINT-IN-TIME (one dated
-  // scan), so the POINT-IN-TIME count is deliberately unchanged at 20.
-  assert.equal(manifest.entryCount, 248, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, and the WIN-299 advisory disposition register");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 223, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
+  // M2 INTEGRATION DELTA — 246 -> 250 entries, ACCEPTED 221 -> 225. Two
+  // branches each add two ACCEPTED entries on independent axes; both sides
+  // independently wrote 248/223, so the integrated count is the SUM of the two
+  // +2 contributions, not the value either branch pinned alone.
+  //
+  // WIN-299 (M2.6) +2, both under docs/audits/sbom/advisory/ and both
+  // classified ACCEPTED because they bind CURRENT repository truth rather than
+  // a snapshot: advisory-policy.json must dispose every CRITICAL/HIGH finding
+  // in the live receipt or audit:advisory:check fails, and README.md documents
+  // that contract. Their sibling osv-report.json stays POINT-IN-TIME (one
+  // dated scan).
+  //
+  // WIN-284 +2: docs/audits/win-284-differential-coverage.{json,md}, the
+  // generated differential capability coverage matrix. They are pinned in
+  // EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS rather than left to the ambiguous-root
+  // rule, which refuses to guess. ACCEPTED rather than POINT-IN-TIME because
+  // the matrix is reconciled to the four M0 censuses on every run and its
+  // covered column moves as M4-M6 land; a snapshot classification would be
+  // false about what the artifact is for.
+  //
+  // Neither branch adds a POINT-IN-TIME, SUPERSEDED-BY or DRAFT entry, so
+  // those three counts are deliberately unchanged.
+  assert.equal(manifest.entryCount, 250, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, and the WIN-284 differential coverage matrix");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 225, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 20);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

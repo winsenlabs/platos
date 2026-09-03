@@ -67,8 +67,14 @@ const expectedPnpmRunInstructions = new Map([
     ["RUN pnpm install --frozen-lockfile --prod"],
   ],
 ]);
+// DELTA — WIN-284 moves ci from 3 to 4. The fourth setup-node belongs to the new
+// `differential-state-conservation` job, which twin-runs the harness against two
+// isolated PostgreSQL databases and therefore needs a Docker daemon that the
+// typecheck job's service containers cannot provide. The count is pinned rather
+// than derived so that adding a job stays a reviewed decision: a silently
+// appearing runner is how unreviewed steps enter a pipeline.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 3],
+  ["ci", 4],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
@@ -92,6 +98,19 @@ const v1ReleaseGateCommands = [
   "pnpm test:v1-project-graph",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
+  // WIN-297: rule (j) narrowed from a package to the one file, plus the
+  // real-tree negative controls for rules (j) and (a). See the note on the same
+  // pair in expectedV1EvidenceCommands below.
+  "pnpm audit:composition-root",
+  "pnpm test:composition-root",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -101,6 +120,13 @@ const v1ReleaseGateCommands = [
   // audit:sbom:nonvacuity already proves it for the licence gate.
   "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites, ordered after build:v1 because a
+  // context test resolves its peers through their built dist/ entrypoints.
+  // WIN-297 widened the filter to apps/core-api and apps/mcp-stdio, whose
+  // executable start/stop evidence spawns the BUILT dist/main.js — which is why
+  // this must stay after build:v1 and why those two projects' turbo `test` task
+  // depends on their own `build`, not only on `^build`.
+  "pnpm test:v1-packages",
 ];
 const repositoryGovernanceCommands = [
   "pnpm audit:root-manifest",
@@ -216,17 +242,74 @@ const expectedV1EvidenceCommands = [
   "pnpm test:arch-boundaries",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
+  // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.
+  // §5.3 kernel-content keeps packages/kernel from becoming a junk drawer while
+  // it hosts DurableRuntime/SafetyEventSink/ErasureTarget; §5.2 sole-writer makes
+  // the canonical-row ownership map non-regressable.
+  "pnpm audit:kernel-content",
+  "pnpm test:kernel-content",
+  "pnpm audit:sole-writer",
+  "pnpm test:sole-writer",
+  // WIN-297: rule (j) `adapters-only-from-core` names a PACKAGE; ADR M0.3 §4
+  // says "THE composition root: the one place adapters are bound to context
+  // ports". Twelve adapter imports scattered across six transport directories
+  // satisfy the rule and not the sentence. This gate narrows rule (j) to one
+  // FILE, cross-checks the binding table against the ADR §4/§13 ownership map,
+  // and pins the single declared run-time-resolved import. Its negative controls
+  // — including the real-tree rule (j) and rule (a) controls this issue's
+  // acceptance requires — are in the test beside it.
+  "pnpm audit:composition-root",
+  "pnpm test:composition-root",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
+  // WIN-256: the V1 packages' own suites. Runs AFTER build:v1 because a context
+  // test resolves its peers through their built dist/ entrypoints — and, since
+  // WIN-297, because the two apps' executable evidence spawns dist/main.js.
+  "pnpm test:v1-packages",
+  // WIN-256 owner decision 9 (2026-09-02): the per-package test CASE census.
+  // `test:v1-packages` above prints a case count and passes at any value, and
+  // docs/v1-ledger-rules.json pins only test FILE counts, so deleting it()
+  // blocks inside a retained file was invisible to every gate in this list.
+  // Runs immediately after the suites it pins, so the two numbers are read from
+  // the same tree in the same step.
+  "pnpm audit:test-case-census",
+  "pnpm test:test-case-census",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
   "pnpm test:sbom",
+  // WIN-284 (+2). The differential capability coverage matrix. `test:` proves
+  // the matrix cannot be inflated — a claim naming a capability no census
+  // contains is a hard error, and dropping a cell moves the digest — and
+  // `audit:` proves the committed matrix is still reconciled to the four M0
+  // censuses. Both belong in the V1 evidence step because the matrix is an
+  // evidence artifact of the same class as the censuses it reads.
+  "pnpm test:differential-coverage",
+  "pnpm audit:differential-coverage",
 ];
+// WIN-284. The two coverage commands inside the V1 evidence step, listed
+// separately so each gets its own removal and concealment control below. A gate
+// added to the evidence list without a control proving it can be removed is a
+// gate nobody has watched go missing.
+const differentialCoverageCommands = ["pnpm test:differential-coverage", "pnpm audit:differential-coverage"];
+
+// WIN-284. The negative-control catalogue runs as its own step so it is legible
+// in the log as the acceptance evidence for the issue rather than buried in a
+// test summary. It is pinned here for the same reason the V1 evidence step is:
+// without a rule, the run that proves the harness detects seeded divergence
+// could be deleted from CI and every other check would stay green.
+const expectedDifferentialHarnessStepName = "WIN-284 differential harness and its negative controls";
+const expectedDifferentialHarnessCommands = [
+  "pnpm test:differential-harness",
+  "pnpm test:differential-harness:controls",
+];
+const expectedDifferentialConservationJob = "differential-state-conservation";
+const expectedDifferentialConservationCommand = "pnpm test:differential-harness:store";
+
 const expectedRepositoryGovernanceScripts = new Map([
   ["generate:root-manifest", "node scripts/root-entry-manifest.mjs --write"],
   ["audit:root-manifest", "node scripts/root-entry-manifest.mjs --check"],
@@ -1324,6 +1407,39 @@ function policyViolations(input) {
   ) {
     violations.push("V1 evidence script must contain only reviewed top-level simple commands");
   }
+  // WIN-284 — the negative-control run must stay in CI, unconditional, exact.
+  const harnessSteps = workflowSteps(ciJobs.get("typecheck")).filter(
+    (step) => step.name === expectedDifferentialHarnessStepName
+  );
+  if (harnessSteps.length !== 1)
+    violations.push("CI must contain exactly one WIN-284 differential harness step");
+  const harnessStep = harnessSteps[0] ?? {};
+  if (
+    harnessStep.if !== undefined ||
+    harnessStep["continue-on-error"] !== undefined ||
+    harnessStep.shell !== undefined
+  ) {
+    violations.push("WIN-284 harness step must be unconditional and fail-fast");
+  }
+  const reviewedHarness = reviewedTopLevelCommands(harnessStep.run);
+  if (
+    !reviewedHarness.valid ||
+    JSON.stringify(reviewedHarness.commands) !== JSON.stringify(expectedDifferentialHarnessCommands)
+  ) {
+    violations.push("WIN-284 harness script must contain only the exact reviewed command sequence");
+  }
+
+  // WIN-284 — the twin-store conservation job needs a Docker daemon, so it is a
+  // separate job. Pinned so the state-conservation half cannot quietly leave.
+  const conservationJob = ciJobs.get(expectedDifferentialConservationJob);
+  if (conservationJob === undefined) {
+    violations.push("CI must retain the WIN-284 twin-store state conservation job");
+  } else if (
+    countExact(normalizedRunCommands(conservationJob), expectedDifferentialConservationCommand) !== 1
+  ) {
+    violations.push("WIN-284 twin-store conservation job must run the store gate exactly once");
+  }
+
   const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()]
     .flatMap((job) => executableRunValues(job))
@@ -2063,11 +2179,20 @@ test("committed CI and image-build policy is executable, correlated, and complet
     7,
     "relocated command selector must cover all seven commands"
   );
+  // M2 INTEGRATION DELTA — 16 -> 24. Three branches add release gates on
+  // independent axes, so the pinned count is their SUM:
+  //   +1 WIN-299 (M2.6): audit:advisory:nonvacuity.
+  //   +5 WIN-256: the two gates ADR M0.3 specifies that M1 did not build —
+  //      §5.3 kernel-content (audit + test) and §5.2 sole-writer (audit +
+  //      test) — plus test:v1-packages, which runs the V1 packages' own suites
+  //      now that packages/kernel holds real code and 44 real assertions.
+  //   +2 WIN-297: composition-root (audit + test), which narrows rule (j) from
+  //      a package to one file and carries the real-tree negative controls for
+  //      rules (j) and (a).
   assert.equal(
     v1ReleaseGateCommands.length,
-    // WIN-299 (M2.6) delta: 16 -> 17. One addition, audit:advisory:nonvacuity.
-    17,
-    "V1 release gate selector must cover existing gates plus image/advisory contract and disposition non-vacuity verification"
+    24,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, and the composition-root gate"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -2810,6 +2935,66 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: "V1 evidence script must contain only reviewed top-level simple commands",
       mutate: (input) => wrapEvidenceCommand(input, repositoryGovernanceCommands[0], lines),
     })),
+    // WIN-284 (+8). Every checkpoint this issue adds gets a control proving it
+    // can go red. Four for the two coverage commands (removed, and hidden
+    // inside a subshell where a naive scan would still "find" the text), and
+    // four for the harness step and the conservation job.
+    ...differentialCoverageCommands.flatMap((command) => [
+      {
+        name: `removed WIN-284 coverage gate ${command}`,
+        expected: "V1 evidence script must contain only reviewed top-level simple commands",
+        mutate: (input) => mutateFixture(input, "ci", command, `echo removed # ${command}`),
+      },
+      {
+        name: `concealed WIN-284 coverage gate ${command}`,
+        expected: "V1 evidence script must contain only reviewed top-level simple commands",
+        mutate: (input) => wrapEvidenceCommand(input, command, ["(", command, ")"]),
+      },
+    ]),
+    {
+      name: "WIN-284 negative-control run cannot be deleted from CI",
+      expected: "CI must contain exactly one WIN-284 differential harness step",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${expectedDifferentialHarnessStepName}`,
+          "      - name: WIN-284 renamed away"
+        ),
+    },
+    {
+      name: "WIN-284 negative-control run cannot be made conditional",
+      expected: "WIN-284 harness step must be unconditional and fail-fast",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `      - name: ${expectedDifferentialHarnessStepName}`,
+          `      - name: ${expectedDifferentialHarnessStepName}\n        if: false`
+        ),
+    },
+    {
+      name: "WIN-284 seeded-divergence catalogue cannot be dropped from its step",
+      expected: "WIN-284 harness script must contain only the exact reviewed command sequence",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          "          pnpm test:differential-harness:controls",
+          "          echo skipped # pnpm test:differential-harness:controls"
+        ),
+    },
+    {
+      name: "WIN-284 twin-store conservation job cannot stop running the store gate",
+      expected: "WIN-284 twin-store conservation job must run the store gate exactly once",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `        run: ${expectedDifferentialConservationCommand}`,
+          "        run: echo skipped"
+        ),
+    },
     {
       name: "root package workspace graph cannot reappear",
       expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
@@ -4145,13 +4330,39 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
+  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 358. Four independent
+  // contributions land on this count, on axes that do not interact, so the
+  // pinned number is their SUM rather than any one side alone:
+  //
+  //   WIN-299 (M2.6), +2. The single new command
+  //   (pnpm audit:advisory:nonvacuity) is declared in two selectors —
+  //   v1ReleaseGateCommands and expectedV1EvidenceCommands — and the table
+  //   derives one mutation control per declared command per selector.
+  //
+  //   WIN-284 (differential harness), +9, each attributable:
+  //     +1  the fourth ci.yml setup-node, generated one control per occurrence
+  //         by the expectedSetupNodeCounts loop, belonging to the new
+  //         differential-state-conservation job.
+  //     +4  two per coverage command (removed, concealed in a subshell) for
+  //         `test:differential-coverage` and `audit:differential-coverage`.
+  //     +4  the negative-control step deleted, made conditional, stripped of
+  //         the seeded-divergence catalogue, and the twin-store job stopping
+  //         running the store gate.
+  //
+  //   WIN-256 (domain contracts), +5. One fail-fast mutation control per new
+  //   V1 release gate (audit/test:kernel-content, audit/test:sole-writer,
+  //   test:v1-packages). Each asserts that appending `|| true` to that gate's
+  //   command is detected.
+  //
+  //   WIN-297 (composition root), +2. audit/test:composition-root join the
+  //   same V1 release gate list, so each gains the same `|| true` control.
+  //
+  // 340 + 2 + 9 + 5 + 2 = 358. The count is pinned rather than derived so that
+  // a control silently disappearing is a failure rather than a smaller number
+  // nobody reads.
   assert.equal(
     controls.length,
-    // WIN-299 (M2.6) delta: 340 -> 342. The single new command
-    // (pnpm audit:advisory:nonvacuity) is declared in two selectors —
-    // v1ReleaseGateCommands and expectedV1EvidenceCommands — and the table
-    // derives one mutation control per declared command per selector.
-    342,
+    358,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

@@ -406,6 +406,23 @@
         "evidence": "ADR M0.3 s4 names main.ts and app.module.ts as the composition root of the single V1 deployable; a shell file at the package root is the container entry path named by its Dockerfile."
       },
       {
+        "id": "apps-core-api.source.process",
+        "match": [
+          "apps/core-api/src/composition/**/*.ts",
+          "apps/core-api/src/config/**/*.ts",
+          "apps/core-api/src/health/**/*.ts",
+          "apps/core-api/src/http/**/*.ts",
+          "apps/core-api/src/runtime/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "entrypoint"
+        ],
+        "evidence": "WIN-297 process and wiring seam, distinct from a transport: startup configuration and its fail-closed validation, the adapter-to-port binding table, the Nest bootstrap, liveness/readiness, correlation at the process edge, and graceful shutdown. Declared AHEAD of apps-core-api.source.transports because that rule's glob matches all of src/ while its evidence describes only ADR M0.3 s4's six transport directories; without this rule twelve process files would carry transport evidence, which is false data in a field the classification fingerprint hashes."
+      },
+      {
         "id": "apps-core-api.source.transports",
         "match": [
           "apps/core-api/src/**/*.ts",
@@ -477,6 +494,19 @@
           "entrypoint"
         ],
         "evidence": "ADR M0.3 s4 describes this app as a thin stdio binary that reuses the tools-context transport; the bin path is the one named by its package manifest."
+      },
+      {
+        "id": "apps-mcp-stdio.source.host-runtime",
+        "match": [
+          "apps/mcp-stdio/src/testing/**/*.ts"
+        ],
+        "kind": "source",
+        "owner_capability": "MCP Transport",
+        "disposition": "retain",
+        "reached_via": [
+          "dynamic-import"
+        ],
+        "evidence": "WIN-297 host-supplied tools runtime. ADR M0.3 s5.1 rule (j) names apps/core-api as the only importer of packages/adapters, so this binary cannot compose itself and receives its ToolsContract from a module named by PLATOS_MCP_STDIO_RUNTIME_MODULE. It is therefore reached by a run-time-resolved specifier and NOT by the static import graph, which is why it carries dynamic-import rather than imports."
       },
       {
         "id": "apps-mcp-stdio.source.transport",
@@ -2012,37 +2042,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 3494,
+    "totalFiles": 3815,
     "areaCounts": {
       "apps-agent": 514,
-      "apps-core-api": 11,
-      "apps-mcp-stdio": 4,
+      "apps-core-api": 30,
+      "apps-mcp-stdio": 7,
       "apps-webapp": 183,
-      "docs-content": 731,
+      "docs-content": 733,
       "internal-packages": 1164,
-      "packages": 638,
-      "root-infra": 249
+      "packages": 909,
+      "root-infra": 275
     },
     "kindCounts": {
       "asset": 155,
       "config": 267,
-      "doc": 605,
+      "doc": 606,
       "fixture": 1,
-      "generated": 42,
+      "generated": 43,
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1073,
-      "test": 440
+      "source": 1280,
+      "test": 552
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1578,
-      "regenerate": 37,
-      "retain": 1870,
+      "move-refactor": 1604,
+      "regenerate": 38,
+      "retain": 2164,
       "unresolved": 2
     },
-    "protectedCount": 1625,
+    "protectedCount": 1627,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2057,10 +2087,15 @@
       "apps-core-api.config.package": 2,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
+      "apps-core-api.source.process": 12,
       "apps-core-api.source.transports": 6,
+      "apps-core-api.test.suites": 7,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
+      "apps-mcp-stdio.source.host-runtime": 1,
+      "apps-mcp-stdio.source.transport": 1,
+      "apps-mcp-stdio.test.suites": 1,
       "apps-webapp.asset.public": 10,
       "apps-webapp.config.build": 13,
       "apps-webapp.config.dotfiles": 3,
@@ -2081,8 +2116,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 11,
-      "docs-content.evidence.audit-receipts": 17,
+      "docs-content.evidence.audit-notes": 12,
+      "docs-content.evidence.audit-receipts": 18,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2129,12 +2164,14 @@
       "packages.config.build": 28,
       "packages.contexts.config": 34,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 68,
+      "packages.contexts.source": 237,
+      "packages.contexts.test": 85,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,
       "packages.kernel.doc": 1,
-      "packages.kernel.source": 3,
+      "packages.kernel.source": 17,
+      "packages.kernel.test": 3,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
       "packages.python.sources": 36,
@@ -2163,12 +2200,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
-      "root-infra.test.harness": 54,
-      "root-infra.test.script-suites": 29,
+      "root-infra.test.harness": 69,
+      "root-infra.test.script-suites": 30,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 64,
+      "root-infra.tooling.scripts": 74,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "ed577d428076450c0161c3999e1e9228663da00089230de645545050dd99aaff"
+    "classificationSha256": "69f5de3c7295bce52935225c84145eafce1830ed92c04f35f731523a6218e412"
   }
 }

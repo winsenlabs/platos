@@ -1898,8 +1898,8 @@
     ]
   },
   "integration": {
-    "lockfileSha256": "21487f276df172fcf605ab63ad3607ad72229c684e2d13c9544f79fbfd0656d7",
-    "vocabularySha256": "ffe2931a696dbbff9c68bad41e65b1f2e6b3e170012ade35af251b020e6c6bed",
+    "lockfileSha256": "7bc836b724d0d20933050605ebdd3fad81e99f3284ac9d16dc23ea6a6108453d",
+    "vocabularySha256": "685898e45d08ae5d6b4f01a1a3e650ccad92a63413c4c5bdca36e42984c348e3",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
   }

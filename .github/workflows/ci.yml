@@ -144,16 +144,59 @@ jobs:
           pnpm test:arch-boundaries
           pnpm audit:max-file-lines
           pnpm test:max-file-lines
+          pnpm audit:kernel-content
+          pnpm test:kernel-content
+          pnpm audit:sole-writer
+          pnpm test:sole-writer
+          pnpm audit:composition-root
+          pnpm test:composition-root
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
           pnpm audit:advisory:check
           pnpm audit:advisory:nonvacuity
           pnpm build:v1
+          pnpm test:v1-packages
+          pnpm audit:test-case-census
+          pnpm test:test-case-census
           node scripts/arch/contract-map.mjs --check
           pnpm audit:sbom:check
           pnpm audit:sbom:nonvacuity
           pnpm test:sbom
+          pnpm test:differential-coverage
+          pnpm audit:differential-coverage
+
+      - name: WIN-284 differential harness and its negative controls
+        # The suites prove the comparators, the register and the engine's
+        # refusals. `test:differential-harness:controls` then runs the whole
+        # seeded-divergence catalogue end to end and exits non-zero if ANY
+        # seeded divergence goes uncaught or any vacuous run is reported as
+        # parity. Both are here rather than only in the suite because the
+        # catalogue is the acceptance evidence for this issue, and evidence
+        # should be legible as its own step in the log rather than buried
+        # inside a test summary.
+        #
+        # The catalogue's size is deliberately NOT quoted here, and it is not
+        # left unpinned either. `assertSeedCoverage` derives the required
+        # catalogue from the comparators: every divergence code that CAN be
+        # emitted alone must have a seed that emits it alone, every code that
+        # cannot must be named by a declared joint signature that has its own
+        # seed, and each seed's observed codes must match its declaration
+        # EXACTLY rather than merely include it. It then deletes each seed in
+        # turn and requires the remainder to fail, so removing any single seed
+        # turns this step red.
+        #
+        # CORRECTION, 2026-09-02. This comment previously said the size was not
+        # pinned because "assertSeedCoverage is what enforces completeness".
+        # That was false as written: the check enforced CODE coverage, so four
+        # of the then twenty-seven seeds could each be deleted with both gates
+        # staying green. Independent verification found it and the mechanism was
+        # made to match the claim rather than the claim trimmed to the
+        # mechanism — a gate whose banner in CI says more than the gate checks
+        # is the precise failure this harness exists to detect.
+        run: |
+          pnpm test:differential-harness
+          pnpm test:differential-harness:controls
 
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
@@ -249,6 +292,43 @@ jobs:
 
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
+
+  differential-state-conservation:
+    name: differential-state-conservation
+    # WIN-284. Twin-runs the harness against TWO isolated PostgreSQL databases
+    # built from the real tenancy schema by the repository's own
+    # `prisma migrate deploy`, then seeds real store-level divergences and
+    # requires each to be caught. It also requires every dimension a scenario
+    # declares to have been seen to diverge ON THAT SCENARIO, so a dimension
+    # cannot sit in the comparison contributing facts it can never fail on. It
+    # is a separate job because it needs a Docker daemon, which the typecheck
+    # job's service containers do not provide.
+    #
+    # The runner FAILS when Docker is absent rather than skipping. A skipped
+    # conservation run is indistinguishable from a passing one in a summary, and
+    # that is precisely the vacuity this issue exists to prevent.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Twin-store state conservation and seeded store divergences
+        run: pnpm test:differential-harness:store
 
   postgres-memory-evidence:
     name: postgres-memory-evidence

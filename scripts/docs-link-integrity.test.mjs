@@ -119,11 +119,21 @@ function hasCaseError(errors, fragment) {
 test("the live corpora are enumerated with exact non-vacuous counts", () => {
   const result = validateDocsLinkIntegrity(repositoryRoot, { minimums: false });
   assert.deepEqual(result.stats, {
-    // 392 -> 393: WIN-299 (M2.6) adds docs/audits/sbom/advisory/README.md,
-    // which documents the advisory disposition contract that
-    // audit:advisory:check enforces. It carries no relative links, so
-    // relativeLinks below is deliberately unchanged.
-    docsMarkdownFiles: 393,
+    // M2 INTEGRATION DELTA — 392 -> 394. Two branches each add exactly one
+    // markdown file to this corpus on independent axes; both sides
+    // independently pinned 393, so the integrated count is the SUM of the two
+    // +1 contributions, not the value either branch pinned alone:
+    //   +1 WIN-299 (M2.6) docs/audits/sbom/advisory/README.md, which documents
+    //      the advisory disposition contract that audit:advisory:check
+    //      enforces.
+    //   +1 WIN-284 docs/audits/win-284-differential-coverage.md, the generated
+    //      coverage summary. Its sibling README lives under
+    //      tests/differential-harness/ and so is outside this corpus.
+    // Neither carries relative links, so relativeLinks below is deliberately
+    // unchanged. The count is pinned rather than derived so a document
+    // appearing or vanishing is a failure someone reads, not a number that
+    // quietly follows the tree.
+    docsMarkdownFiles: 394,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,

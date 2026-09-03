@@ -10,16 +10,28 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const MANIFEST_PATH = "docs/audits/win-254-protected-paths.json";
 export const LIFECYCLE_PATH = "docs/audits/win-254-evidence-lifecycle.json";
 export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
-// WIN-299 (M2.6) delta: 781 -> 786 paths, anchor
-// 23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec ->
-// f889e5ebf27ba61f62f6e27aa42dc0ce27d5a5f6855b3c77f12c2e6bba20509f.
-// Five additions, no removals and no content substitutions:
+// M2 INTEGRATION DELTA — the anchor moves from
+// 23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec (781 paths,
+// the M2 base) to the value below (788 paths). Two branches add protected
+// paths on independent axes and neither removes any, so the integrated set is
+// the UNION of both contributions — 781 + 5 + 2 — not either branch's set.
+//
+// WIN-299 (M2.6) adds five, no removals and no content substitutions:
 //   docs/audits/sbom/advisory/README.md              (disposition contract)
 //   docs/audits/sbom/advisory/advisory-policy.json   (the disposition register)
 //   scripts/advisory-dispositions.test.mjs           (newly protected by prefix)
 //   scripts/lib/advisory-dispositions.mjs            (newly protected by prefix)
 //   scripts/verify-advisory-nonvacuity.mjs           (newly protected by prefix)
-export const EXPECTED_PATH_SET_SHA256 = "f889e5ebf27ba61f62f6e27aa42dc0ce27d5a5f6855b3c77f12c2e6bba20509f";
+//
+// WIN-284 adds two, no removals:
+//   docs/audits/win-284-differential-coverage.json
+//   docs/audits/win-284-differential-coverage.md
+// Both fall inside the existing `docs/**` selection rather than widening it.
+//
+// The anchor is re-pinned by hand rather than derived so that a protected path
+// LEAVING the set stays a hard failure — a silently shrinking protected set is
+// the failure this anchor exists to catch.
+export const EXPECTED_PATH_SET_SHA256 = "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
