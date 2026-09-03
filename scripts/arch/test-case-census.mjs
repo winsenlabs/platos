@@ -134,6 +134,27 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *        ever asserted at the uncapped 0, which the early return produces
  *        without the arithmetic running at all.
  *
+ *   cost-monitoring 345 -> 352 (+7), 1345 -> 1352 total, file count UNCHANGED at
+ *   21. The 2026-09-03 independent RE-CHECK found two survivors and these seven
+ *   cases kill them. Each mutation was reproduced as a control first: applied,
+ *   the suite watched go red, reverted, watched go green.
+ *
+ *     +5 in application/deliver-crossing.test.ts. `targetFor` had NO test
+ *        anywhere, and neither did the `target === null` check that reads it.
+ *        The one case that reached `missing_configuration` reached it through
+ *        the OTHER branch — no transport composed — so all four undeliverable
+ *        answers were unfalsifiable. Each of the three refusals is now exercised
+ *        with its transport COMPOSED, asserting both that the ledger records the
+ *        code and that the transport was never called, plus a positive control
+ *        so the four are not all passing on a `targetFor` that refuses
+ *        everything.
+ *
+ *     +2 in application/detect-crossings.test.ts. "Both writes or neither" was
+ *        not merely untested, it was UNTRUE — see the commit; a fan-out failure
+ *        RETURNED an error from inside the unit of work, which resolves, which
+ *        commits. The two cases pin the rollback and the retry it makes
+ *        possible.
+ *
  * Verified as a live control: deleting one it() from
  * cost-monitoring/domain/guard.test.ts leaves the file count at 109 and turns
  * the case count red, which is the drift a file-count pin cannot see.
@@ -156,7 +177,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/agents": { files: 0, cases: 0 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
-  "packages/contexts/cost-monitoring": { files: 21, cases: 345 },
+  "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
@@ -180,7 +201,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1345;
+export const EXPECTED_RUNTIME_TOTAL = 1352;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

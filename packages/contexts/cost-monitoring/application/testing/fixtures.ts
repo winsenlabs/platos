@@ -80,16 +80,51 @@ export class SequenceIdGenerator implements IdGenerator {
   }
 }
 
-/** Runs the work with a stable handle; no rollback semantics to simulate. */
+/**
+ * A double that honours BOTH halves of `UnitOfWork.run`'s contract: it "commits
+ * when `work` resolves and rolls back when it rejects".
+ *
+ * IT USED TO HONOUR ONLY THE FIRST HALF, and the comment above it said so — "no
+ * rollback semantics to simulate". That made "both writes or neither" — the
+ * property `detect-crossings.ts`'s header exists to state — untestable, and the
+ * untestable property turned out to be untrue: a fan-out failure RETURNED an
+ * error from inside the callback, which resolves, which commits. A double that
+ * cannot roll back cannot tell a use case that resolves-on-failure from one that
+ * rejects, so it certified the bug.
+ *
+ * Rollback is a SNAPSHOT of each participant taken when the transaction opens
+ * and restored when it aborts. The doubles hold immutable rows in maps, so a
+ * shallow copy is an exact snapshot; nothing here is a simulation of a database
+ * beyond the one guarantee the port actually makes.
+ */
+export interface TransactionalDouble {
+  /** Snapshot state so the transaction can be undone. */
+  beginTransaction(transaction: TransactionScope): void;
+  /** Keep everything written under this transaction. */
+  commitTransaction(transaction: TransactionScope): void;
+  /** Restore the snapshot: nothing written under this transaction survives. */
+  rollbackTransaction(transaction: TransactionScope): void;
+}
+
 export class ImmediateUnitOfWork implements UnitOfWork {
   private counter = 0;
   readonly transactions: TransactionScope[] = [];
+
+  constructor(private readonly participants: readonly TransactionalDouble[] = []) {}
 
   async run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
     this.counter += 1;
     const transaction: TransactionScope = { transactionId: asIdentifier(`txn-${this.counter}`) };
     this.transactions.push(transaction);
-    return work(transaction);
+    for (const participant of this.participants) participant.beginTransaction(transaction);
+    try {
+      const value = await work(transaction);
+      for (const participant of this.participants) participant.commitTransaction(transaction);
+      return value;
+    } catch (cause) {
+      for (const participant of this.participants) participant.rollbackTransaction(transaction);
+      throw cause;
+    }
   }
 }
 
@@ -104,6 +139,7 @@ export interface CostTestContext {
   readonly capCache: InMemoryBudgetCapCache;
   readonly notifiers: readonly InMemoryNotifier[];
   readonly email: InMemoryNotifier;
+  readonly slack: InMemoryNotifier;
   readonly webhook: InMemoryNotifier;
   readonly tenancy: InMemoryTenancy;
   readonly providers: InMemoryProviders;
@@ -131,7 +167,8 @@ export function buildCostTestContext(options: CostTestOptions = {}): CostTestCon
   const tenancy = new InMemoryTenancy(scope);
   const providers = new InMemoryProviders();
   const ids = new SequenceIdGenerator();
-  const unitOfWork = new ImmediateUnitOfWork();
+  // The repository is the only participant with state to roll back.
+  const unitOfWork = new ImmediateUnitOfWork([repository]);
 
   const byKind = (kind: string): InMemoryNotifier =>
     notifiers.find((notifier) => (notifier.kinds as readonly string[]).includes(kind)) ??
@@ -155,6 +192,7 @@ export function buildCostTestContext(options: CostTestOptions = {}): CostTestCon
     capCache,
     notifiers,
     email: byKind("EMAIL"),
+    slack: byKind("SLACK"),
     webhook: byKind("WEBHOOK"),
     tenancy,
     providers,

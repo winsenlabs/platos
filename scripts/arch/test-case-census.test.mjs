@@ -256,13 +256,13 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 345);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 352);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's cost-monitoring slice moves. `pnpm --filter
   // @platos/context-cost-monitoring exec vitest run` prints "Test Files 21
-  // passed (21) / Tests 345 passed (345)"; the AST census reproduces both with
+  // passed (21) / Tests 352 passed (352)"; the AST census reproduces both with
   // zero refusals. Every other package is held at its previous value by the
   // test above, so a suite quietly deleted elsewhere while this context landed
   // cannot hide inside the new total.
@@ -272,8 +272,13 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // COUNT DOES NOT MOVE, and that is the whole point of this pin — 21 stays 21
   // while the case count rises, which is exactly the drift
   // `docs/v1-ledger-rules.json`'s file counts cannot see.
+  //
+  // 345 -> 352 on the 2026-09-03 re-check, again with the file count at 21:
+  // five cases for `targetFor`'s three undeliverable answers and the call site
+  // that reads them, and two for the "both writes or neither" rollback in
+  // detect-crossings — a property that was untested AND untrue.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
-  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 345);
+  assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

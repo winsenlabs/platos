@@ -13,9 +13,19 @@
 //   ENVIRONMENT SCOPING on every read, so a cross-tenant lookup returns null here
 //   exactly as it must in the store.
 //
-// The `TransactionScope` is recorded and not honoured: there is nothing to roll
-// back in a map, and pretending otherwise would test a simulation rather than the
-// use case. What IS tested is that a mutation was handed one at all.
+// THE `TransactionScope` IS NOW HONOURED, AND ONLY TO THE EXTENT THE PORT
+// PROMISES. `UnitOfWork.run` says it "commits when `work` resolves and rolls back
+// when it rejects", and this double implements exactly that and nothing more: a
+// snapshot of its maps when a transaction opens, restored if it aborts.
+//
+// It used to record the scope and drop it, on the argument that "there is nothing
+// to roll back in a map". That argument certified a bug. `detect-crossings.ts`
+// exists to keep a crossing row and its delivery rows atomic, and it returned an
+// error `Result` from inside the callback on a fan-out failure — which RESOLVES,
+// which COMMITS — leaving exactly the stranded crossing the file was written to
+// prevent. A double that cannot roll back cannot tell the two apart, so the
+// property was unfalsifiable rather than merely untested. What is still tested is
+// that a mutation was handed a scope at all.
 
 import { err, ok, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
 
@@ -61,6 +71,9 @@ export class InMemoryBudgetRepository implements BudgetRepository {
   /** Scopes whose crossings this double can resolve an ancestry for. */
   private readonly scopes = new Map<string, EnvironmentScope>();
 
+  /** The open transaction and the state to restore if it aborts. */
+  private open: { readonly transactionId: string; readonly snapshot: Snapshot } | null = null;
+
   /**
    * Method names that should answer "unavailable" instead of answering.
    *
@@ -68,8 +81,54 @@ export class InMemoryBudgetRepository implements BudgetRepository {
    * partial stand-in silently drops every method it did not list, so a use case
    * that started calling a second one would fail for the wrong reason and the
    * test would still look like it was exercising an outage.
+   *
+   * CONSULTED BY `listBudgets`, `listPendingCrossings` and `insertDeliveries` —
+   * the three a test has needed to fail so far. Naming a method here that does
+   * not consult it is a silent no-op, so a new outage test adds the check to the
+   * method it needs at the same time it names it.
    */
   readonly failOn = new Set<keyof BudgetRepository>();
+
+  // --- TransactionalDouble --------------------------------------------------
+
+  /**
+   * Snapshot every map. A NESTED transaction joins the outer one rather than
+   * opening a second, which is what `UnitOfWork.run` promises, so a second
+   * `begin` while one is open is deliberately a no-op.
+   */
+  beginTransaction(transaction: TransactionScope): void {
+    if (this.open !== null) return;
+    this.open = {
+      transactionId: transaction.transactionId,
+      snapshot: {
+        budgets: new Map(this.budgets),
+        retiredBudgets: new Set(this.retiredBudgets),
+        crossings: new Map(this.crossings),
+        channels: new Map(this.channels),
+        deliveries: new Map(this.deliveries),
+        retries: [...this.retries],
+      },
+    };
+  }
+
+  commitTransaction(transaction: TransactionScope): void {
+    if (this.open?.transactionId !== transaction.transactionId) return;
+    this.open = null;
+  }
+
+  rollbackTransaction(transaction: TransactionScope): void {
+    if (this.open?.transactionId !== transaction.transactionId) return;
+    const { snapshot } = this.open;
+    this.open = null;
+    restore(this.budgets, snapshot.budgets);
+    this.retiredBudgets.clear();
+    for (const id of snapshot.retiredBudgets) this.retiredBudgets.add(id);
+    restore(this.crossings, snapshot.crossings);
+    restore(this.channels, snapshot.channels);
+    restore(this.deliveries, snapshot.deliveries);
+    this.retries.length = 0;
+    this.retries.push(...snapshot.retries);
+  }
 
   /** Make an environment resolvable by the installation-wide sweep. */
   knowScope(scope: EnvironmentScope): void {
@@ -265,6 +324,7 @@ export class InMemoryBudgetRepository implements BudgetRepository {
     transaction: TransactionScope,
   ): Promise<Result<number>> {
     this.transactions.push(transaction);
+    if (this.failOn.has("insertDeliveries")) return err(repositoryUnavailable("told to fail"));
     let written = 0;
     for (const delivery of deliveries) {
       // `@@unique([environmentId, idempotencyKey])` — the row already exists, so
@@ -407,4 +467,20 @@ export class InMemoryBudgetRepository implements BudgetRepository {
         budget.environmentId === scope.environmentId && !this.retiredBudgets.has(budget.budgetId),
     );
   }
+}
+
+/** Everything a rollback has to put back. */
+interface Snapshot {
+  readonly budgets: Map<string, Budget>;
+  readonly retiredBudgets: Set<string>;
+  readonly crossings: Map<string, ThresholdEvent>;
+  readonly channels: Map<string, AlertChannel>;
+  readonly deliveries: Map<string, AlertDelivery>;
+  readonly retries: readonly AlertDeliveryRetry[];
+}
+
+/** Put a map back exactly as it was — the rows themselves never mutate. */
+function restore<Value>(live: Map<string, Value>, snapshot: Map<string, Value>): void {
+  live.clear();
+  for (const [key, value] of snapshot) live.set(key, value);
 }

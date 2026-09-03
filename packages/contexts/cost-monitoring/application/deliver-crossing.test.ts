@@ -7,7 +7,9 @@ import {
   dayStamp,
   evaluateBudget,
   windowKeyFor,
+  type AlertChannel,
   type AlertChannelId,
+  type CredentialRef,
   type BudgetStatus,
   type SpendReading,
 } from "../domain/index.js";
@@ -133,6 +135,150 @@ describe("sending a crossing", () => {
     });
     expect(sent.ok).toBe(false);
     expect(context.repository.allDeliveries()[0]?.lastErrorCode).toBe("missing_configuration");
+  });
+
+  // `targetFor` HAD NO TEST ANYWHERE, and neither did the call site that reads
+  // it. The case directly above is the only one that reached
+  // `missing_configuration`, and it reaches it through the OTHER branch of
+  // `dispatch` — `notifier === null`, no transport composed — so all four of the
+  // undeliverable answers were unfalsifiable: the `target === null` check itself,
+  // and each of `targetFor`'s three refusals. Deleting any of them left all 345
+  // tests green while a channel that cannot send was handed to a transport
+  // anyway.
+  //
+  // Every case below composes the FULL set of transports, so `notifier` is never
+  // null and only the configuration can produce the refusal. Each asserts BOTH
+  // halves — the ledger records `missing_configuration`, AND the transport for
+  // that kind was never called — because the first alone survives a mutation
+  // that calls the transport and then records the error anyway.
+  //
+  // The SLACK-without-a-credential row is the one today's admission gate can
+  // still produce: `admitConfiguration` maps an empty credential to `null`
+  // (`domain/alert-channel.ts`), which is the revoked-workspace-link case the
+  // module header describes. The others guard rows that `bounded` would refuse
+  // today but that exist in the live data this context was extracted from — and
+  // a guard against migrated data is exactly the kind that never gets exercised
+  // until it is deleted.
+  async function crossingWithChannel(
+    context: ReturnType<typeof buildCostTestContext>,
+    channel: AlertChannel,
+  ) {
+    context.repository.seedBudget(testBudget(context.scope));
+    context.repository.seedChannel(channel);
+    const recorded = await detectCrossings(context.dependencies, {
+      scope: context.scope,
+      status: statusFor(context, 500),
+    });
+    if (!recorded.ok || recorded.value[0] === undefined) throw new Error("unreachable");
+    return recorded.value[0].event;
+  }
+
+  it("refuses an EMAIL channel with no address, with its transport composed", async () => {
+    const context = buildCostTestContext();
+    const event = await crossingWithChannel(
+      context,
+      testChannel(context.scope, { configuration: { kind: "EMAIL", email: "" } }),
+    );
+    const sent = await deliverCrossing(context.dependencies, {
+      scope: context.scope,
+      eventId: event.eventId,
+    });
+    expect(sent.ok).toBe(false);
+    expect(context.repository.allDeliveries()[0]?.lastErrorCode).toBe("missing_configuration");
+    expect(context.email.sends).toEqual([]);
+  });
+
+  it("refuses a SLACK channel whose credential was revoked, with its transport composed", async () => {
+    const context = buildCostTestContext();
+    const event = await crossingWithChannel(
+      context,
+      testChannel(context.scope, {
+        kind: "SLACK",
+        configuration: {
+          kind: "SLACK",
+          channelId: "C123",
+          channelName: "ops",
+          integrationId: null,
+          credential: null,
+        },
+      }),
+    );
+    const sent = await deliverCrossing(context.dependencies, {
+      scope: context.scope,
+      eventId: event.eventId,
+    });
+    expect(sent.ok).toBe(false);
+    expect(context.repository.allDeliveries()[0]?.lastErrorCode).toBe("missing_configuration");
+    expect(context.slack.sends).toEqual([]);
+  });
+
+  it("refuses a SLACK channel with no channel id, with its transport composed", async () => {
+    const context = buildCostTestContext();
+    const event = await crossingWithChannel(
+      context,
+      testChannel(context.scope, {
+        kind: "SLACK",
+        configuration: {
+          kind: "SLACK",
+          channelId: "",
+          channelName: "ops",
+          integrationId: null,
+          credential: asCostIdentifier<CredentialRef>("cred-slack"),
+        },
+      }),
+    );
+    const sent = await deliverCrossing(context.dependencies, {
+      scope: context.scope,
+      eventId: event.eventId,
+    });
+    expect(sent.ok).toBe(false);
+    expect(context.repository.allDeliveries()[0]?.lastErrorCode).toBe("missing_configuration");
+    expect(context.slack.sends).toEqual([]);
+  });
+
+  it("refuses a WEBHOOK channel with no url, with its transport composed", async () => {
+    const context = buildCostTestContext();
+    const event = await crossingWithChannel(
+      context,
+      testChannel(context.scope, {
+        kind: "WEBHOOK",
+        configuration: { kind: "WEBHOOK", url: "", credential: asCostIdentifier("cred-1") },
+      }),
+    );
+    const sent = await deliverCrossing(context.dependencies, {
+      scope: context.scope,
+      eventId: event.eventId,
+    });
+    expect(sent.ok).toBe(false);
+    expect(context.repository.allDeliveries()[0]?.lastErrorCode).toBe("missing_configuration");
+    expect(context.webhook.sends).toEqual([]);
+  });
+
+  it("still DELIVERS a SLACK channel that carries both an id and a credential", async () => {
+    // The control on the four above: if `targetFor` refused everything, they
+    // would all pass and prove nothing about which field decides.
+    const context = buildCostTestContext();
+    const event = await crossingWithChannel(
+      context,
+      testChannel(context.scope, {
+        kind: "SLACK",
+        configuration: {
+          kind: "SLACK",
+          channelId: "C123",
+          channelName: "ops",
+          integrationId: null,
+          credential: asCostIdentifier<CredentialRef>("cred-slack"),
+        },
+      }),
+    );
+    const sent = await deliverCrossing(context.dependencies, {
+      scope: context.scope,
+      eventId: event.eventId,
+    });
+    if (!sent.ok) throw new Error("unreachable");
+    expect(sent.value.delivered).toBe(1);
+    expect(context.slack.sends).toHaveLength(1);
+    expect(context.slack.sends[0]?.usedCredential).toBe(true);
   });
 
   it("records a disabled channel as such rather than sending to it", async () => {

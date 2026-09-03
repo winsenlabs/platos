@@ -10,6 +10,22 @@
 // and exactly the one this design exists to prevent, so the two writes are one
 // transaction and there is no path that writes only the first.
 //
+// A FAN-OUT FAILURE THEREFORE REJECTS, IT DOES NOT RETURN. `UnitOfWork.run`'s
+// contract is exact about this: it "commits when `work` resolves and rolls back
+// when it rejects". Returning an error `Result` from inside the callback
+// RESOLVES, so the transaction COMMITS — which is how this file previously
+// produced the one outcome its own header says it exists to prevent: the
+// crossing row committed, no delivery rows beside it, and the unique constraint
+// refusing the crossing forever after. `CrossingFanOutFailed` carries the
+// failure out by rejection so the store rolls back, and it is unwrapped
+// immediately outside the unit of work so the use case still returns a `Result`
+// and nothing throws across this context's boundary.
+//
+// The threshold-event insert does NOT need the same treatment, and the asymmetry
+// is deliberate rather than an oversight: when that insert fails nothing has been
+// written yet, so committing an empty transaction and rolling one back are the
+// same outcome. Only the SECOND write can leave the first one stranded.
+//
 // A DUPLICATE IS AN OUTCOME, NOT AN ERROR. Two evaluators racing on one crossing
 // is normal; the store's `@@unique([budgetId, windowKey, threshold])` decides
 // which one wins and the loser learns it did by receiving `null`. The source
@@ -22,7 +38,14 @@
 // sees the cap climbing rather than one alarming number with two silent
 // predecessors.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import {
+  err,
+  ok,
+  type DomainError,
+  type EnvironmentScope,
+  type Result,
+  type TransactionScope,
+} from "@platos/kernel";
 
 import {
   asCostIdentifier,
@@ -40,6 +63,21 @@ import type { CostMonitoringDependencies } from "./dependencies.js";
 export interface DetectCrossingsCommand {
   readonly scope: EnvironmentScope;
   readonly status: BudgetStatus;
+}
+
+/**
+ * The fan-out failure, carried out of the unit of work by REJECTION.
+ *
+ * A class rather than a bare `throw` of the `DomainError` so the `catch` can
+ * tell this context's own abort from a genuine exception raised beneath it —
+ * anything else is rethrown untouched rather than being reported as a fan-out
+ * failure it is not.
+ */
+class CrossingFanOutFailed extends Error {
+  constructor(readonly failure: DomainError) {
+    super(`${failure.code}: ${failure.message}`);
+    this.name = "CrossingFanOutFailed";
+  }
 }
 
 /** One crossing that was newly recorded, and how many recipients it reached. */
@@ -85,7 +123,7 @@ export async function detectCrossings(
       tasks: status.reading.tasks,
       createdAt: now,
     };
-    const written = await dependencies.unitOfWork.run(async (transaction) => {
+    const written = await runCrossing(async (transaction) => {
       const event = await dependencies.repository.insertThresholdEvent(draft, transaction);
       if (!event.ok || event.value === null) return event;
       const deliveries = recipients.map<AlertDelivery>((channel) => ({
@@ -110,9 +148,12 @@ export async function detectCrossings(
       }));
       if (deliveries.length === 0) return event;
       const fanned = await dependencies.repository.insertDeliveries(deliveries, transaction);
-      if (!fanned.ok) return err(fanned.error);
+      // REJECT, do not return. A returned error resolves the callback, and a
+      // resolved callback commits — leaving the crossing behind with nothing to
+      // send it.
+      if (!fanned.ok) throw new CrossingFanOutFailed(fanned.error);
       return event;
-    });
+    }, dependencies);
     if (!written.ok) return err(written.error);
     // `null` is the unique constraint saying this crossing already fired. Not an
     // error, and deliberately not in the answer.
@@ -120,4 +161,25 @@ export async function detectCrossings(
     recorded.push({ event: written.value, recipients: recipients.length });
   }
   return ok(recorded);
+}
+
+/**
+ * Run one crossing's writes in a transaction and turn the abort back into a
+ * `Result`.
+ *
+ * The rejection is what makes the rollback happen; this is where it stops being
+ * an exception. Anything that is not a `CrossingFanOutFailed` is rethrown, so a
+ * genuine defect beneath this layer is not silently relabelled as a fan-out
+ * failure.
+ */
+async function runCrossing(
+  work: (transaction: TransactionScope) => Promise<Result<ThresholdEvent | null>>,
+  dependencies: CostMonitoringDependencies,
+): Promise<Result<ThresholdEvent | null>> {
+  try {
+    return await dependencies.unitOfWork.run(work);
+  } catch (cause) {
+    if (cause instanceof CrossingFanOutFailed) return err(cause.failure);
+    throw cause;
+  }
 }

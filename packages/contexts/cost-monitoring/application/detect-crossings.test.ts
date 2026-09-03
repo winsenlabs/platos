@@ -150,6 +150,59 @@ describe("recording a crossing", () => {
     });
     expect(context.unitOfWork.transactions).toHaveLength(1);
   });
+
+  // COUNTING THE TRANSACTIONS IS NOT THE PROPERTY. The case above proves the two
+  // writes were handed ONE scope; it says nothing about what happens when the
+  // second write fails, which is the whole reason they share a transaction.
+  //
+  // That was not merely untested, it was UNTRUE. `UnitOfWork.run` "commits when
+  // `work` resolves and rolls back when it rejects", and a fan-out failure
+  // RETURNED an error `Result` from inside the callback — resolving it, and
+  // therefore committing the crossing with no delivery rows beside it. That is
+  // word for word the failure this module's header says it exists to prevent:
+  // "silent, durable, and exactly the one this design exists to prevent". The
+  // in-memory unit of work could not see it either, because it had no rollback
+  // to model; it does now, and it models only what the port promises.
+  it("commits NEITHER write when the fan-out fails", async () => {
+    const context = buildCostTestContext();
+    context.repository.seedBudget(testBudget(context.scope));
+    context.repository.seedChannel(testChannel(context.scope));
+    context.repository.failOn.add("insertDeliveries");
+
+    const recorded = await detectCrossings(context.dependencies, {
+      scope: context.scope,
+      status: statusFor(context, 500),
+    });
+
+    // The failure crosses as a value, not as an exception.
+    expect(recorded.ok).toBe(false);
+    if (recorded.ok) throw new Error("unreachable");
+    expect(recorded.error.code).toBe("COST_REPOSITORY_UNAVAILABLE");
+    // And NOTHING committed. A crossing here would be owed forever and unsent
+    // forever, because the unique constraint would refuse it on every retry.
+    expect(context.repository.allCrossings()).toEqual([]);
+    expect(context.repository.allDeliveries()).toEqual([]);
+  });
+
+  it("lets the retry succeed once the fan-out recovers, because nothing was stranded", async () => {
+    // The consequence of the case above, and the reason it matters: the crossing
+    // is retryable. Had the first call committed the crossing alone, this second
+    // one would meet the unique constraint, receive `null`, record nothing, and
+    // the alert would never be sent.
+    const context = buildCostTestContext();
+    context.repository.seedBudget(testBudget(context.scope));
+    context.repository.seedChannel(testChannel(context.scope));
+    const status = statusFor(context, 500);
+
+    context.repository.failOn.add("insertDeliveries");
+    await detectCrossings(context.dependencies, { scope: context.scope, status });
+    context.repository.failOn.delete("insertDeliveries");
+
+    const retried = await detectCrossings(context.dependencies, { scope: context.scope, status });
+    if (!retried.ok) throw new Error("unreachable");
+    expect(retried.value).toHaveLength(1);
+    expect(context.repository.allDeliveries()).toHaveLength(1);
+  });
 });
 
 describe("the evaluation the crossing path is fed from", () => {
