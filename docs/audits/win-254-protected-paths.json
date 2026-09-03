@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "2a2372d20607a52049f2ec82e6ce0693ea863fa176425313ae3b4bccf29c339e"
+      "sha256": "0e2ff8aff3f9a4deefae10277a567f5a870f3d058f92db4c6cf0d895bc808ba8"
     },
     {
       "path": "docs/v3-openapi.yaml",
