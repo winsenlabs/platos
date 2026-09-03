@@ -218,7 +218,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 783. Ten adopting slices make disjoint
+    // M2 INTEGRATION DELTA — 104 -> 850. Eleven adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
     //
@@ -289,18 +289,36 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               changing. Measured, not carried: the branch claimed +48 on
     //               its own tree and the audit over the integrated tree prints
     //               735, which is the same delta.
+    //   735 -> 783  +48: WIN-256 makes `observability` real (ADR M0.3 §1 row
+    //               16). This is rule (a) no-infra-in-core judged on the context
+    //               most tempted to break it: its whole job is writing to a
+    //               column store, and its domain and application layers still
+    //               import no client for one. The ClickHouse SDK lives behind
+    //               the `ObservabilitySink` port and is bound only in
+    //               `packages/adapters/clickhouse-observability`; the
+    //               whole-package grep for `@platos/adapter-*` returns nothing
+    //               and its only peer import is `@platos/context-tenancy`, which
+    //               is on its §1 allow-list. No rule was changed, weakened, or
+    //               given an exception. This row was MISSING from this ledger
+    //               when observability landed — the region auto-merged while the
+    //               assert below was reconciled — so the prose said 735 while
+    //               the gate enforced 783. Restored here rather than left to
+    //               drift.
+    //   783 -> 850  +67: WIN-256 makes `agents` real (ADR M0.3 §1 context 5).
+    //               Measured over the integrated tree, not carried.
     //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
     // 397 + 44 = 441, the skills branch pinned 397 + 55 = 452, the jobs branch
     // pinned 397 + 51 = 448, the memory branch pinned 397 + 77 = 474 and the
-    // cost-monitoring branch pinned 397 + 63 = 460 and the privacy branch pinned
-    // 397 + 48 = 445, each blind to the others.
-    // All nine slices are disjoint and eventing, skills, jobs, memory,
-    // cost-monitoring and privacy move this census on INDEPENDENT axes, so the
-    // integrated census is their SUM and not any pin:
-    // 397 + 44 + 55 + 51 + 77 + 63 + 48 = 735.
+    // cost-monitoring branch pinned 397 + 63 = 460, the privacy branch pinned
+    // 397 + 48 = 445, the observability branch pinned 397 + 48 = 445 as well and
+    // the agents branch pinned 397 + 67 = 464, each blind to the others.
+    // All eleven slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring, privacy, observability and agents move this census on
+    // INDEPENDENT axes, so the integrated census is their SUM and not any pin:
+    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 = 850.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -308,7 +326,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 783, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 850, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

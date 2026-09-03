@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4273bd22be980168346c5d97f9a900ccca211c2bbec32a1ade3ccbc44f23aaff",
+  "evidenceSha256": "f22d115c75b7c2f699ed0c244219145e93c9d5cd9b0f287f4fd0a117c7bc3091",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 54,
+    "explicitHeaderFileCount": 50,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 141,
-        "sha256": "0ff92162e13fced0241e07dc4d26047dca98d65861df604a6dd88b87ccbe507d"
+        "outputCount": 137,
+        "sha256": "90b9fa38905c1fae53a5c2ddd1e48bbc87bbffc79f8611dd5e3cba8c581b97f9"
       }
     ],
-    "ownedOutputCount": 141,
+    "ownedOutputCount": 137,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ac033aa461b7e7f65a3735627269d7c50bd818d8ad9960822977986e0cee3d49",
+    "aggregateSha256": "19f7b31bc67be365313992b942dae21a21a7bdf6f227d1630024a7de878bd999",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "bc4b4ab08c96d3a06b98caddff788f6fbd0926eaf562df9a132130a07c79b491"
+        "sha256": "b225df7a693149e4b7e20131c45d68dcdf8d13e093d2403f6973f205d1f8388e"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11092,24 +11092,292 @@
         "sha256": "7489feb404a97af255a907ed78c60e95bfd2d714d362b00457f4dd4cfb6b08d5"
       },
       {
+        "path": "packages/contexts/agents/application/agent-read.test.ts",
+        "sha256": "8874af87374130ec263265e46730914879f1e3c784ac3ec9d986b62e56ec84fa"
+      },
+      {
+        "path": "packages/contexts/agents/application/agent-write.test.ts",
+        "sha256": "c52f8c5072143bc4b580df11c2ec60eac21d6e3333d4b466cdd0ade98bc84590"
+      },
+      {
+        "path": "packages/contexts/agents/application/authorization.test.ts",
+        "sha256": "ea770b3b5dfc8fa38737e71a8eabaadfc1399cdbb6d1e7bb6338b8c8ed2e3117"
+      },
+      {
+        "path": "packages/contexts/agents/application/authorization.ts",
+        "sha256": "0f83dd0276d35a1874acbae3bbca7054a2af131aadf5f837ebdc02254fce057c"
+      },
+      {
+        "path": "packages/contexts/agents/application/canary.test.ts",
+        "sha256": "b70d8e2a79c12ad769e0683285c66ff68a247ed007700349f85ebebc40259e0e"
+      },
+      {
+        "path": "packages/contexts/agents/application/canary.ts",
+        "sha256": "e971c2d99df5570486fad3f9d47728d53e9b4fa3f46277a702575384491bfd26"
+      },
+      {
+        "path": "packages/contexts/agents/application/clusters.test.ts",
+        "sha256": "47d667dede885c6a5983901d65e173da7ec3373d797ec12d4744cfe1b197014c"
+      },
+      {
+        "path": "packages/contexts/agents/application/clusters.ts",
+        "sha256": "21000027619c12af96fee057424d4d74a19da97454246d0b6d509c31ec4f4b16"
+      },
+      {
+        "path": "packages/contexts/agents/application/configuration.ts",
+        "sha256": "535030819a05290b96f6a1590f1f1372b5eda090c5e7db815bc3b062719a23c9"
+      },
+      {
+        "path": "packages/contexts/agents/application/create-agent.ts",
+        "sha256": "7cc98a9b34f36c1a15b89c97c913f1a852c4cd9300c1dd1f621b832845e1a526"
+      },
+      {
+        "path": "packages/contexts/agents/application/delete-agent.ts",
+        "sha256": "6a95434e09f191821cd696a31f7295e8af1beb11d8d23fe7735226e3211799c1"
+      },
+      {
+        "path": "packages/contexts/agents/application/dependencies.ts",
+        "sha256": "b36118e08e10617f591f4fd31e4f9985c7ffaef03740fccf088f02736fd2f350"
+      },
+      {
         "path": "packages/contexts/agents/application/index.ts",
-        "sha256": "b68afcba5183bae7cfb912c2eefb50afbce82a5c8cdb252f19adeed460a4d7c4"
+        "sha256": "0709964cdfd58559c8ea226fa5f432420c978b0b2d1b9e141b052b8b8863c892"
+      },
+      {
+        "path": "packages/contexts/agents/application/loadout.test.ts",
+        "sha256": "36a423259039087a63ac6593d80ee652e2f04362278cc0685889ee73c7a2fdb1"
+      },
+      {
+        "path": "packages/contexts/agents/application/loadout.ts",
+        "sha256": "80936befd381ce4deaf2a5feb641a21f9b0fec029e71e0bd01ec6b13599b14aa"
+      },
+      {
+        "path": "packages/contexts/agents/application/macros.test.ts",
+        "sha256": "d8393dd7f0c36e85a9d02f3e0d08e31761d93a5adef3089d9bc11886cffd7f80"
+      },
+      {
+        "path": "packages/contexts/agents/application/macros.ts",
+        "sha256": "8f3ba9d69a0bc7b2b72a3981a75a4e97d332f62ba7671f6e6d444c3beb84850c"
+      },
+      {
+        "path": "packages/contexts/agents/application/ports/agents-repository.ts",
+        "sha256": "2e16e5f18d3929f99814dd30938ed3beb8c95dffc99e0731e5d0ea6b4c386dca"
       },
       {
         "path": "packages/contexts/agents/application/ports/index.ts",
-        "sha256": "694c9874657e997049e598debe7ba4d289680e40707f9eee7f215dfc37868d44"
+        "sha256": "03f188d4c103c820cab130ea8fd929d0a3d839fc45df6b3ea125d16a27157c7e"
+      },
+      {
+        "path": "packages/contexts/agents/application/ports/macro-recorder.ts",
+        "sha256": "5a78291e1f3afc513cf17c74e3820fc130ebe4f5e7940e497942085a8f1a0b0b"
+      },
+      {
+        "path": "packages/contexts/agents/application/ports/scaffolding-repository.ts",
+        "sha256": "81ccd25a06ddd0dfcf1db6b50f6a7d2c321c94cc5d0f033537a2f6219020b687"
+      },
+      {
+        "path": "packages/contexts/agents/application/ports/version-lock.ts",
+        "sha256": "b75410f04a013b46c0b02de3ab23d8c97688ef4db5dcf9fe2e39c48da7b356d5"
+      },
+      {
+        "path": "packages/contexts/agents/application/postman-templates.test.ts",
+        "sha256": "c8225bff84b2140b37db0c5125bb4c3baa1030be3baddf4854e436442060d415"
+      },
+      {
+        "path": "packages/contexts/agents/application/postman-templates.ts",
+        "sha256": "8d9c53820d99c7b7286ecc3bf8c36a74b2a9e99add77218d2fc54443546cf3af"
+      },
+      {
+        "path": "packages/contexts/agents/application/read-agents.ts",
+        "sha256": "c17adb9d546ed61ec51dc81a24edd21b1fc88c1a3b67e5d7e382ac601c79c4c1"
+      },
+      {
+        "path": "packages/contexts/agents/application/resolve-route.test.ts",
+        "sha256": "9350a8a5339f7175e97a99c31e159671a0a2bb9b5c1eab63b32c7d5917e31d4d"
+      },
+      {
+        "path": "packages/contexts/agents/application/resolve-route.ts",
+        "sha256": "79fb83e59bc6525c6a080a820e1018200292733b4b90fed8e663bde5ec3c2c69"
+      },
+      {
+        "path": "packages/contexts/agents/application/testing/fixtures.ts",
+        "sha256": "fd5c12d2554fb82a63a2828f2485d0c1c7dc0750200ddfbbbf611fe2406b7a71"
+      },
+      {
+        "path": "packages/contexts/agents/application/testing/in-memory-agents-repository.ts",
+        "sha256": "b555a2c3bf427be115a12deab960af5af9a6e47593b17b8c71d794b24187a5f7"
+      },
+      {
+        "path": "packages/contexts/agents/application/testing/in-memory-peers.ts",
+        "sha256": "a4dd7a8e5edb13ebe4f385f6595838315c44d96a87edc5c592d12849f4c60e7f"
+      },
+      {
+        "path": "packages/contexts/agents/application/testing/in-memory-scaffolding.ts",
+        "sha256": "0c122463117515d6a9dd7b54d0427b23484bc5f5b034bdfc9abdfe6f084aff54"
+      },
+      {
+        "path": "packages/contexts/agents/application/testing/index.ts",
+        "sha256": "0d96154ef8953c433ff5ca8ea432de418d3bad3435ed1416f2ec172bec909c59"
+      },
+      {
+        "path": "packages/contexts/agents/application/update-agent.ts",
+        "sha256": "2f7d1993a47817dbc1b62313d45a6c0f36536c87325c0041dbfcc1e4e9448172"
+      },
+      {
+        "path": "packages/contexts/agents/application/version-history.test.ts",
+        "sha256": "81a0a8fe74c0121e8b588ebdde80bfcc46ffd67cd8fe51b018f0b22e720a4cfb"
+      },
+      {
+        "path": "packages/contexts/agents/application/version-history.ts",
+        "sha256": "a24326bf9e46a1f95d18bd2ecfe171019c107acb939e98696e6a9bfb147a270a"
+      },
+      {
+        "path": "packages/contexts/agents/application/version-writer.ts",
+        "sha256": "54f08fa9995621f0b9ab0d1505ea7c2189c859f0b720ba905c83a36d5b637616"
+      },
+      {
+        "path": "packages/contexts/agents/application/views.ts",
+        "sha256": "e4020193a7ee8ed65a2589dacbaf6db422a3ecef3fa9e977bf90aecb9a3bed37"
+      },
+      {
+        "path": "packages/contexts/agents/contracts/index.test.ts",
+        "sha256": "6d8eb039b0f7af0d094264ba2443e51e66b57e15befec724328f8df049abb0c6"
       },
       {
         "path": "packages/contexts/agents/contracts/index.ts",
-        "sha256": "437b71547913be93dabff3c8b67084fae49e9f27833a5f3d7b5cdba866435eba"
+        "sha256": "235e752ab5680d0735efacbdc9b6c2a0d2b259893b424b75182e091abf767963"
+      },
+      {
+        "path": "packages/contexts/agents/contracts/views.ts",
+        "sha256": "186bd2f16f6cfbad5360b59e4f0078860044f95ed81d5dd7f03583d61c1bf57c"
+      },
+      {
+        "path": "packages/contexts/agents/domain/agent.test.ts",
+        "sha256": "884de265857abcf3651983f71dff20e680d029eacc2e45faf932e72bc5eb64a3"
+      },
+      {
+        "path": "packages/contexts/agents/domain/agent.ts",
+        "sha256": "2cb4887298fefc9bd9094f27af30f3f75aa9cb8ac6bd4a6b76139f88c45fadf6"
+      },
+      {
+        "path": "packages/contexts/agents/domain/binding.test.ts",
+        "sha256": "1230d1815b8c08c968815e81118da95826f39fd90243b9d1a902cc523b3e7076"
+      },
+      {
+        "path": "packages/contexts/agents/domain/binding.ts",
+        "sha256": "6859dfd1e2dce9eb7e63c019f30b3e20a7830a236767ff8ea3633e7f2325f94e"
+      },
+      {
+        "path": "packages/contexts/agents/domain/blocks.test.ts",
+        "sha256": "379585fec623de94b959de759a1230d8d9a28c584b43a7091046414dd65ccb91"
+      },
+      {
+        "path": "packages/contexts/agents/domain/blocks.ts",
+        "sha256": "5aff1a3e54d5887f3439ee27384d392e5e87d30f9460906eb4326555e66ceac6"
+      },
+      {
+        "path": "packages/contexts/agents/domain/cluster.test.ts",
+        "sha256": "bffda57953d7bf6c1df61bddc6056fdb6bba25d563bff8a523c65fbf625d9f9c"
+      },
+      {
+        "path": "packages/contexts/agents/domain/cluster.ts",
+        "sha256": "212f7db931d7c8d8f3078142ffe8ea4e8c4cf73c45e0b0648be4a61c0fb9568f"
+      },
+      {
+        "path": "packages/contexts/agents/domain/errors.test.ts",
+        "sha256": "3b9ec991e033bf15472d6dfe82e9a7a150a2e06605c91092704c486a1251048e"
+      },
+      {
+        "path": "packages/contexts/agents/domain/errors.ts",
+        "sha256": "acb4ed4841af1e78621dc76c50578d363d7bea31034eb1deebe24fd7a6076202"
+      },
+      {
+        "path": "packages/contexts/agents/domain/identifiers.ts",
+        "sha256": "c2b456c51f19f8d0995fc489f1464746d020be03b4bd28910d45ffafe775f185"
       },
       {
         "path": "packages/contexts/agents/domain/index.ts",
-        "sha256": "42ce114d9abc22976993c380331f91f6aa5ddab6146899931f036a2f09d07ab1"
+        "sha256": "6a20f1f17951b075a8252a2f65a45a1d1ea32a645ca766f35bccf50e2259d739"
+      },
+      {
+        "path": "packages/contexts/agents/domain/loadout.test.ts",
+        "sha256": "365520c49fa9f6c482dcb5a48be9ded4f54c6828724e26d4bde357e148433c38"
+      },
+      {
+        "path": "packages/contexts/agents/domain/loadout.ts",
+        "sha256": "9ecd0e51939608ffef096c7d993d89f33d0fdd40f4d94406fefa0944f3782351"
+      },
+      {
+        "path": "packages/contexts/agents/domain/macro.test.ts",
+        "sha256": "b6c665ab5d5c200faf1f2368edf61b946314514f9fbb4eb6186b1ee6a0557062"
+      },
+      {
+        "path": "packages/contexts/agents/domain/macro.ts",
+        "sha256": "2ab7db03d3b21475e3ed034d5f8e9359a9857c2507caa3b35083335baa251587"
+      },
+      {
+        "path": "packages/contexts/agents/domain/model-route.test.ts",
+        "sha256": "82a4e96b0dab45a36d54ff47aae93ba713fc277b8e6adf72950d9f9a41272da0"
+      },
+      {
+        "path": "packages/contexts/agents/domain/model-route.ts",
+        "sha256": "67bb2ba9eec4757686d919a9ac01d1ce8ec78d103c46ada4173813155f78be7c"
+      },
+      {
+        "path": "packages/contexts/agents/domain/policy.ts",
+        "sha256": "78b8e7ef386402209347ed8b1881ad8f1607045c9c097c09d70a68a8ec643288"
+      },
+      {
+        "path": "packages/contexts/agents/domain/postman-template.test.ts",
+        "sha256": "ab89871df47936e16c29b9d6b95367285b73632628ce95ecfad4f617553d3adc"
+      },
+      {
+        "path": "packages/contexts/agents/domain/postman-template.ts",
+        "sha256": "509a4aff6b8c2c2597a9caf6beaa4a51dd6a954743d458f0ca4b5e4db7a84c5c"
+      },
+      {
+        "path": "packages/contexts/agents/domain/slug.test.ts",
+        "sha256": "fd38d98c7a2321d879b666e5fa478684df5d5327692016213adc4d0842a7908a"
+      },
+      {
+        "path": "packages/contexts/agents/domain/slug.ts",
+        "sha256": "66e8dc995f99daa997518c6e089b6f1de2182e88aef3f7e77d10a02648fd2ba3"
+      },
+      {
+        "path": "packages/contexts/agents/domain/snapshot.test.ts",
+        "sha256": "30f15dec022090566d68f5bde6492c12e02c5901c9b889b93dbb9d99b996533b"
+      },
+      {
+        "path": "packages/contexts/agents/domain/snapshot.ts",
+        "sha256": "9bcf39f84a493ae865467e408ed6a78205ea57b9527c1d8513b2d054c15609e3"
+      },
+      {
+        "path": "packages/contexts/agents/domain/tools-config.test.ts",
+        "sha256": "5f79348c2841ccd3f6b349a016e8e12b19b93ca4716507ecdf3a2930382530fb"
+      },
+      {
+        "path": "packages/contexts/agents/domain/tools-config.ts",
+        "sha256": "34ebecb75eb41d202db7167763ed115a09f3d39e6de28806e90d4baefe417ee8"
+      },
+      {
+        "path": "packages/contexts/agents/domain/version-envelope.test.ts",
+        "sha256": "266f80289608cbd2c56365510399791b62a95382a723f26206c9a7b66c4504d4"
+      },
+      {
+        "path": "packages/contexts/agents/domain/version-envelope.ts",
+        "sha256": "1855a12d69f0d4891e92489f977dacfe49988910adc40e1bb880171b5f24bafe"
+      },
+      {
+        "path": "packages/contexts/agents/domain/version.test.ts",
+        "sha256": "98bc15868455f21b5d6a0da597ccaac3f46679d6d478b659505d95c5febfdd95"
+      },
+      {
+        "path": "packages/contexts/agents/domain/version.ts",
+        "sha256": "61895352dbeda08d1f777160d6fc7242d725d278ee186baca186fe5a5f6b218d"
       },
       {
         "path": "packages/contexts/agents/package.json",
-        "sha256": "59b0cd6327b884a5f29a551b72f392f79e87bd08169ce7dc38890fe7f2091133"
+        "sha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3"
       },
       {
         "path": "packages/contexts/agents/tsconfig.json",
@@ -16193,7 +16461,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "9d6855ed7860879faac439fddd825a1ec9ae3710d6d42ebe678cdaa17286ca8a"
+        "sha256": "88fd64a2cfd0b442e8263d037b8d409b0a6fbda0c5d77063b886fa724dcd3425"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -16225,7 +16493,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "7381857bac53bea7847e5531e32509446044bbb5b3dcff1665ca23a5d7800966"
+        "sha256": "0448092593faa793f89b978dd0bdf3d5cea0d3baff96866620e41cc016d37100"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -16245,7 +16513,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "2963f49c4ab1b5109d7a2ad6826488655c26e50547383e1d0d46b7661e64f7d3"
+        "sha256": "4abec4851f429a9a54f4fcc1d1dd1d614495dd805ed216837468570008270f84"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -16261,11 +16529,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "a44a79e12d769501eeee64ba4f4a8976eccf39eaa35bc3baa42ab5679fa46b40"
+        "sha256": "3a38d44bcc772bdfb8012c0f95a311e45a653872e07a814d6b2a30bf9c62fd4c"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "eab79d0e69461c5932edebb4d578861c761cd42528d9429559fd1382c03cab72"
+        "sha256": "52b3ba01a736602be032d6b39890e892a79223660035faaaef4e0451089188e2"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -16497,7 +16765,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "5615083708bb6ade382fd05af9c95abe69cf2fa9e4461b4162a9b4db98067e13"
+        "sha256": "06d4c360937e5ea660e171e56bde42b3fa09f7258b94042f72b7de1cf022a6f7"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -16605,7 +16873,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "3e636677568ba996bddd9ef5aa38dc372360b503a9e05b21080f07695b888f0f"
+        "sha256": "10e53e217240112975a96fc7e5d2afba1f516e05bb2241d79b8786ffd5d7ef9b"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -21619,14 +21887,6 @@
               "kind": "generator-owned-output"
             },
             {
-              "from": "packages/contexts/agents/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/agents/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/channels/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -21673,14 +21933,6 @@
               "apps/core-api/tsconfig.json"
             ],
             [
-              "packages/contexts/agents/application/ports/index.ts",
-              "packages/contexts/agents/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/agents/contracts/index.ts",
-              "packages/contexts/agents/contracts/index.ts"
-            ],
-            [
               "packages/contexts/channels/application/ports/index.ts",
               "packages/contexts/channels/application/ports/index.ts"
             ],
@@ -21717,8 +21969,6 @@
             "apps/core-api/README.md",
             "apps/core-api/package.json",
             "apps/core-api/tsconfig.json",
-            "packages/contexts/agents/application/ports/index.ts",
-            "packages/contexts/agents/contracts/index.ts",
             "packages/contexts/channels/application/ports/index.ts",
             "packages/contexts/channels/contracts/index.ts",
             "packages/contexts/conversations/application/ports/index.ts",
@@ -22111,7 +22361,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "bc28bc00532c5cd6de64c0a643b2c132ca061379b50bb9894e173d71f0774bf0",
+      "evidenceSha256": "e0047793345471ac8a4cb0dd33352fa9056bfb548b258840a3ebeb06df4c1a64",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -33815,7 +34065,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 743
+              "line": 756
             }
           ],
           "reversePaths": [
@@ -33840,7 +34090,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b82207ca3e4a22fbdea496c3aed22c9bde66888edc82aeae6b4775ef9f8c6c3b",
+      "evidenceSha256": "9bb221edc82ae359f6833be9c2d3d147dad62fa6fd8ee1d56c70941591beae19",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -34971,7 +35221,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 742
+              "line": 755
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -35196,7 +35446,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0c463751fbb2921451fec595f85d8b4cde1ea3d7342aae509a80bb4a1f8cd3f2",
+      "evidenceSha256": "02a9419415c51e892fc3c8748497664928318e5751d4dac41e56da7f1fba820c",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -44833,26 +45083,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/agents/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/agents/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/agents/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/agents/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/agents/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -44878,22 +45108,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/agents/application/index.ts",
-              "packages/contexts/agents/application/index.ts"
-            ],
-            [
-              "packages/contexts/agents/application/ports/index.ts",
-              "packages/contexts/agents/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/agents/contracts/index.ts",
-              "packages/contexts/agents/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/agents/domain/index.ts",
-              "packages/contexts/agents/domain/index.ts"
-            ],
-            [
               "packages/contexts/agents/package.json",
               "packages/contexts/agents/package.json"
             ],
@@ -44916,10 +45130,6 @@
           ],
           "roots": [
             "packages/contexts/agents/README.md",
-            "packages/contexts/agents/application/index.ts",
-            "packages/contexts/agents/application/ports/index.ts",
-            "packages/contexts/agents/contracts/index.ts",
-            "packages/contexts/agents/domain/index.ts",
             "packages/contexts/agents/package.json",
             "packages/contexts/agents/tsconfig.json",
             "packages/contexts/conversations/application/index.ts",
@@ -44969,6 +45179,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/agents/package.json",
               "kind": "workspace-script",
@@ -44979,6 +45194,12 @@
               "from": "packages/contexts/agents/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/agents/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -45032,6 +45253,141 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/agents/application/agent-read.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/agent-write.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/canary.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/clusters.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/loadout.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/macros.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/postman-templates.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/resolve-route.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/version-history.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/agent.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/binding.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/blocks.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/cluster.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/loadout.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/macro.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/model-route.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/postman-template.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/slug.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/snapshot.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/tools-config.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/version-envelope.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/version.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 542
+            },
+            {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 295
@@ -45039,11 +45395,146 @@
           ],
           "reversePaths": [
             [
+              "packages/contexts/agents/application/agent-read.test.ts",
+              "packages/contexts/agents/application/agent-read.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/agent-write.test.ts",
+              "packages/contexts/agents/application/agent-write.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/authorization.test.ts",
+              "packages/contexts/agents/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/canary.test.ts",
+              "packages/contexts/agents/application/canary.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/clusters.test.ts",
+              "packages/contexts/agents/application/clusters.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/loadout.test.ts",
+              "packages/contexts/agents/application/loadout.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/macros.test.ts",
+              "packages/contexts/agents/application/macros.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/postman-templates.test.ts",
+              "packages/contexts/agents/application/postman-templates.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/resolve-route.test.ts",
+              "packages/contexts/agents/application/resolve-route.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/version-history.test.ts",
+              "packages/contexts/agents/application/version-history.test.ts"
+            ],
+            [
+              "packages/contexts/agents/contracts/index.test.ts",
+              "packages/contexts/agents/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/agent.test.ts",
+              "packages/contexts/agents/domain/agent.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/binding.test.ts",
+              "packages/contexts/agents/domain/binding.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/blocks.test.ts",
+              "packages/contexts/agents/domain/blocks.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/cluster.test.ts",
+              "packages/contexts/agents/domain/cluster.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/errors.test.ts",
+              "packages/contexts/agents/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/loadout.test.ts",
+              "packages/contexts/agents/domain/loadout.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/macro.test.ts",
+              "packages/contexts/agents/domain/macro.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/model-route.test.ts",
+              "packages/contexts/agents/domain/model-route.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/postman-template.test.ts",
+              "packages/contexts/agents/domain/postman-template.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/slug.test.ts",
+              "packages/contexts/agents/domain/slug.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/snapshot.test.ts",
+              "packages/contexts/agents/domain/snapshot.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/tools-config.test.ts",
+              "packages/contexts/agents/domain/tools-config.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/version-envelope.test.ts",
+              "packages/contexts/agents/domain/version-envelope.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/version.test.ts",
+              "packages/contexts/agents/domain/version.test.ts"
+            ],
+            [
+              "packages/contexts/agents/package.json",
+              "packages/contexts/agents/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
             ]
           ],
           "roots": [
+            "packages/contexts/agents/application/agent-read.test.ts",
+            "packages/contexts/agents/application/agent-write.test.ts",
+            "packages/contexts/agents/application/authorization.test.ts",
+            "packages/contexts/agents/application/canary.test.ts",
+            "packages/contexts/agents/application/clusters.test.ts",
+            "packages/contexts/agents/application/loadout.test.ts",
+            "packages/contexts/agents/application/macros.test.ts",
+            "packages/contexts/agents/application/postman-templates.test.ts",
+            "packages/contexts/agents/application/resolve-route.test.ts",
+            "packages/contexts/agents/application/version-history.test.ts",
+            "packages/contexts/agents/contracts/index.test.ts",
+            "packages/contexts/agents/domain/agent.test.ts",
+            "packages/contexts/agents/domain/binding.test.ts",
+            "packages/contexts/agents/domain/blocks.test.ts",
+            "packages/contexts/agents/domain/cluster.test.ts",
+            "packages/contexts/agents/domain/errors.test.ts",
+            "packages/contexts/agents/domain/loadout.test.ts",
+            "packages/contexts/agents/domain/macro.test.ts",
+            "packages/contexts/agents/domain/model-route.test.ts",
+            "packages/contexts/agents/domain/postman-template.test.ts",
+            "packages/contexts/agents/domain/slug.test.ts",
+            "packages/contexts/agents/domain/snapshot.test.ts",
+            "packages/contexts/agents/domain/tools-config.test.ts",
+            "packages/contexts/agents/domain/version-envelope.test.ts",
+            "packages/contexts/agents/domain/version.test.ts",
+            "packages/contexts/agents/package.json",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/license-distribution.test.mjs"
           ]
         }
@@ -45147,8 +45638,8 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "6a54f71baeada47da947a2ce615db0e601654fb29f82ced34eb20efe012ae036",
-      "manifestSha256": "59b0cd6327b884a5f29a551b72f392f79e87bd08169ce7dc38890fe7f2091133",
+      "evidenceSha256": "3c80f65a6f6544d23543ec79d8a681972b9cf3f824e281791de45db414493a46",
+      "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
         "reachable": false,
@@ -45928,7 +46419,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 578
+              "line": 581
             }
           ],
           "reversePaths": [
@@ -46007,7 +46498,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "4feef0b18213b7ff551df33430e2b2250d9faf58a57c23f4bacf9bb3e22defa5",
+      "evidenceSha256": "ca4ac9c6b1dea7bf0d37380a14df028fee8f2be05a2cc699d2a669501c0f2094",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -46517,7 +47008,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 426
+              "line": 429
             }
           ],
           "reversePaths": [
@@ -46762,7 +47253,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "2cc4551d57d48f7b55f177e9342275104d944cf73baa83df86a29bb176f5b2c3",
+      "evidenceSha256": "b7ca394d129e511de51b00e0d62529cb0767c451ca784934f2fc2de318386629",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -47134,7 +47625,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 294
+              "line": 295
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47288,7 +47779,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "29815fba406acc373c6062e44af5c982fb54b306e1bfec3ff8fcfa26b6f1befb",
+      "evidenceSha256": "215729fcd0ff6b8842376aa86e14e1da7bdd99fe277ba09d690d54201582de88",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -49570,7 +50061,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 274
+              "line": 275
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50367,7 +50858,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e7499899b529a30f89f098de949371f31b3fff2dfea0f1bc0257a034259c551a",
+      "evidenceSha256": "87e54c7d0f1695e85eaef0bb291502ce34b686771d8008da5438d5c5fab51e98",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -50780,7 +51271,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 137
+              "line": 138
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -50966,7 +51457,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "14b521dc05c2d784afa5a6ba69b414a198fc21c6247d06d7093e92d342b6af5d",
+      "evidenceSha256": "0f8b694e20e52bd9eafdd45c99f29884860893e15471f8df6f7c704d16e2f031",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -51480,12 +51971,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 138
+              "line": 139
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 397
+              "line": 399
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -51758,7 +52249,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "b79c0b38e9b848c5fed5e89650b91ca10e91c808e3d9a9e2c01d66edbbd8715f",
+      "evidenceSha256": "57a53524f671a4af87a413b7d465733209db43bd5e646be00d66f10030341221",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -52186,7 +52677,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 496
+              "line": 500
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -52377,7 +52868,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "594dbc97a5ff34543d3def50efa165c60f6cd80a1460ffc521c5f85b9fbd0d15",
+      "evidenceSha256": "ce3ae13f587b02f0deb5b81c739feeaf6d60cdf126dea6dbaca40c7005951a2e",
       "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -52759,7 +53250,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 464
+              "line": 467
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -52923,7 +53414,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "9fd54dba088bdab9611e8b7f5bd34410865319de305b2b834e29e477868ccae1",
+      "evidenceSha256": "694715f347e04503afc5a32cbba73cf2731ebc1c911917fb8303c35134fc50d9",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -53336,10 +53827,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/agents/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -53369,10 +53856,6 @@
               "packages/adapters/model-router-providers/src/adapter.ts"
             ],
             [
-              "packages/contexts/agents/application/index.ts",
-              "packages/contexts/agents/application/index.ts"
-            ],
-            [
               "packages/contexts/conversations/application/index.ts",
               "packages/contexts/conversations/application/index.ts"
             ],
@@ -53395,7 +53878,6 @@
           ],
           "roots": [
             "packages/adapters/model-router-providers/src/adapter.ts",
-            "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
@@ -53502,6 +53984,24 @@
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/agents/application/dependencies.ts",
+              "from": "packages/contexts/agents",
+              "line": 46,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/fixtures.ts",
+              "from": "packages/contexts/agents",
+              "line": 25,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/agents",
+              "line": 25,
+              "specifier": "@platos/context-providers"
+            },
+            {
               "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
               "from": "packages/contexts/cost-monitoring",
               "line": 31,
@@ -53548,6 +54048,18 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/cost-monitoring",
               "packages/contexts/cost-monitoring/application/dependencies.ts"
             ],
@@ -53574,6 +54086,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/agents",
             "packages/contexts/cost-monitoring",
             "packages/contexts/memory"
           ]
@@ -53694,7 +54207,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 321
+              "line": 322
             }
           ],
           "reversePaths": [
@@ -54129,7 +54642,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "2b05a8b931c8ab0781fcd7b699d52511489acfd133419973e3ed59a22467d6c7",
+      "evidenceSha256": "111ac81a9572fb42c9d573645e8a966940447a923e023a7412e8ff81262da7cb",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -54919,7 +55432,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 275
+              "line": 276
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55392,7 +55905,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "db112dd85aac6e72e357940dc1faa84ace14b721a7758998dcc78bcd880d60e1",
+      "evidenceSha256": "65a9f57fea1b1fe9ce7f2330a9f24d2c6b732240ba9c049914dd54f1713f81ba",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -55613,10 +56126,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/agents/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -55638,10 +56147,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/agents/application/index.ts",
-              "packages/contexts/agents/application/index.ts"
-            ],
-            [
               "packages/contexts/conversations/application/index.ts",
               "packages/contexts/conversations/application/index.ts"
             ],
@@ -55659,7 +56164,6 @@
             ]
           ],
           "roots": [
-            "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/skills/README.md",
             "packages/contexts/skills/package.json",
@@ -55757,16 +56261,37 @@
               "from": "apps/core-api",
               "line": 52,
               "specifier": "@platos/context-skills"
+            },
+            {
+              "file": "packages/contexts/agents/application/dependencies.ts",
+              "from": "packages/contexts/agents",
+              "line": 47,
+              "specifier": "@platos/context-skills"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/agents",
+              "line": 26,
+              "specifier": "@platos/context-skills"
             }
           ],
           "reversePaths": [
             [
               "apps/core-api",
               "apps/core-api/src/app.module.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/agents"
           ]
         },
         "testsFixtures": {
@@ -55880,7 +56405,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 345
+              "line": 346
             }
           ],
           "reversePaths": [
@@ -56122,7 +56647,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "e471176e69aa694d2f969a58d11a06b29ce93b706ccba1447bf96b5619cf86af",
+      "evidenceSha256": "6667a3af6d59fd2bfc002890c6798971284adddc0187e1074c78f8c543bbbf8d",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -56805,10 +57330,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/agents/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/channels/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -56846,10 +57367,6 @@
               "packages/adapters/postgres-tenancy/src/adapter.ts"
             ],
             [
-              "packages/contexts/agents/application/index.ts",
-              "packages/contexts/agents/application/index.ts"
-            ],
-            [
               "packages/contexts/channels/application/index.ts",
               "packages/contexts/channels/application/index.ts"
             ],
@@ -56880,7 +57397,6 @@
           ],
           "roots": [
             "packages/adapters/postgres-tenancy/src/adapter.ts",
-            "packages/contexts/agents/application/index.ts",
             "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/governance/application/index.ts",
@@ -56987,6 +57503,30 @@
               "from": "apps/core-api",
               "line": 29,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/agents/application/authorization.ts",
+              "from": "packages/contexts/agents",
+              "line": 28,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/agents/application/dependencies.ts",
+              "from": "packages/contexts/agents",
+              "line": 48,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/fixtures.ts",
+              "from": "packages/contexts/agents",
+              "line": 26,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/agents",
+              "line": 27,
+              "specifier": "@platos/context-tenancy"
             },
             {
               "file": "packages/contexts/cost-monitoring/application/authorization.ts",
@@ -57143,6 +57683,22 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/cost-monitoring",
               "packages/contexts/cost-monitoring/application/authorization.ts"
             ],
@@ -57241,6 +57797,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/agents",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -57255,6 +57812,11 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/agents/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
             {
               "from": "packages/contexts/cost-monitoring/application/authorization.test.ts",
               "kind": "reference",
@@ -57383,7 +57945,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 276
+              "line": 277
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -57392,6 +57954,10 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/agents/application/authorization.test.ts",
+              "packages/contexts/agents/application/authorization.test.ts"
+            ],
             [
               "packages/contexts/cost-monitoring/application/authorization.test.ts",
               "packages/contexts/cost-monitoring/application/authorization.test.ts"
@@ -57502,6 +58068,7 @@
             ]
           ],
           "roots": [
+            "packages/contexts/agents/application/authorization.test.ts",
             "packages/contexts/cost-monitoring/application/authorization.test.ts",
             "packages/contexts/memory/application/authorization.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
@@ -58113,7 +58680,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "4f52d946aae433497423b04c6e47d230682f81ab33a8d8b4290474063bb2a7a6",
+      "evidenceSha256": "e5ab26a050a5439a604b16d80813f8562af2cab72de9e9290926bb8718f428fd",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -58510,7 +59077,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 558,
+              "line": 559,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -58695,7 +59262,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "8dce8324fc6305485cf7ce5e165c17787a7f23784204657d5e6d6496b6afd7f7",
+      "evidenceSha256": "86593759d9525358c54522e57254bafd0dbeeb05096fec784b2596350b9496fd",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -61231,10 +61798,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/agents/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/channels/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -61280,10 +61843,6 @@
               "packages/adapters/redis-streams/src/adapter.ts"
             ],
             [
-              "packages/contexts/agents/domain/index.ts",
-              "packages/contexts/agents/domain/index.ts"
-            ],
-            [
               "packages/contexts/channels/domain/index.ts",
               "packages/contexts/channels/domain/index.ts"
             ],
@@ -61316,7 +61875,6 @@
             "packages/adapters/durable-runtime/src/adapter.ts",
             "packages/adapters/outbox/src/adapter.ts",
             "packages/adapters/redis-streams/src/adapter.ts",
-            "packages/contexts/agents/domain/index.ts",
             "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
@@ -61440,6 +61998,240 @@
               "file": "apps/core-api/src/runtime/process-ports.ts",
               "from": "apps/core-api",
               "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/authorization.ts",
+              "from": "packages/contexts/agents",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/canary.ts",
+              "from": "packages/contexts/agents",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/clusters.ts",
+              "from": "packages/contexts/agents",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/create-agent.ts",
+              "from": "packages/contexts/agents",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/delete-agent.ts",
+              "from": "packages/contexts/agents",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/dependencies.ts",
+              "from": "packages/contexts/agents",
+              "line": 45,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/loadout.ts",
+              "from": "packages/contexts/agents",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/macros.ts",
+              "from": "packages/contexts/agents",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/agents-repository.ts",
+              "from": "packages/contexts/agents",
+              "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/macro-recorder.ts",
+              "from": "packages/contexts/agents",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/scaffolding-repository.ts",
+              "from": "packages/contexts/agents",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/version-lock.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/postman-templates.ts",
+              "from": "packages/contexts/agents",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/read-agents.ts",
+              "from": "packages/contexts/agents",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/resolve-route.ts",
+              "from": "packages/contexts/agents",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/fixtures.ts",
+              "from": "packages/contexts/agents",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-agents-repository.ts",
+              "from": "packages/contexts/agents",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/testing/in-memory-scaffolding.ts",
+              "from": "packages/contexts/agents",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/update-agent.ts",
+              "from": "packages/contexts/agents",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/version-history.ts",
+              "from": "packages/contexts/agents",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/version-writer.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/contracts/index.ts",
+              "from": "packages/contexts/agents",
+              "line": 44,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/contracts/views.ts",
+              "from": "packages/contexts/agents",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/agent.ts",
+              "from": "packages/contexts/agents",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/agent.ts",
+              "from": "packages/contexts/agents",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/binding.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/blocks.ts",
+              "from": "packages/contexts/agents",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/cluster.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/errors.ts",
+              "from": "packages/contexts/agents",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/identifiers.ts",
+              "from": "packages/contexts/agents",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/loadout.ts",
+              "from": "packages/contexts/agents",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/macro.ts",
+              "from": "packages/contexts/agents",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/model-route.ts",
+              "from": "packages/contexts/agents",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/postman-template.ts",
+              "from": "packages/contexts/agents",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/slug.ts",
+              "from": "packages/contexts/agents",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/snapshot.ts",
+              "from": "packages/contexts/agents",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/version-envelope.ts",
+              "from": "packages/contexts/agents",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/domain/version.ts",
+              "from": "packages/contexts/agents",
+              "line": 24,
               "specifier": "@platos/kernel"
             },
             {
@@ -63977,7 +64769,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 438,
+              "line": 439,
               "specifier": "@platos/kernel"
             }
           ],
@@ -63997,6 +64789,158 @@
             [
               "apps/core-api",
               "apps/core-api/src/runtime/process-ports.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/canary.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/clusters.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/create-agent.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/delete-agent.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/loadout.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/macros.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/ports/agents-repository.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/ports/macro-recorder.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/ports/scaffolding-repository.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/ports/version-lock.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/postman-templates.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/read-agents.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/resolve-route.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-agents-repository.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/testing/in-memory-scaffolding.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/update-agent.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/version-history.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/version-writer.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/contracts/views.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/agent.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/binding.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/blocks.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/cluster.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/loadout.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/macro.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/model-route.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/postman-template.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/slug.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/snapshot.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/version-envelope.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/domain/version.ts"
             ],
             [
               "packages/contexts/cost-monitoring",
@@ -65505,6 +66449,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/agents",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -65525,6 +66470,36 @@
           "reasons": [
             {
               "from": "apps/core-api/src/runtime/process-ports.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/agent.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/binding.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/cluster.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/macro.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/agents/domain/postman-template.test.ts",
               "kind": "reference",
               "line": 1
             },
@@ -66206,7 +67181,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 245
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -66233,6 +67208,30 @@
             [
               "apps/core-api/src/runtime/process-ports.test.ts",
               "apps/core-api/src/runtime/process-ports.test.ts"
+            ],
+            [
+              "packages/contexts/agents/application/authorization.test.ts",
+              "packages/contexts/agents/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/agent.test.ts",
+              "packages/contexts/agents/domain/agent.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/binding.test.ts",
+              "packages/contexts/agents/domain/binding.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/cluster.test.ts",
+              "packages/contexts/agents/domain/cluster.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/macro.test.ts",
+              "packages/contexts/agents/domain/macro.test.ts"
+            ],
+            [
+              "packages/contexts/agents/domain/postman-template.test.ts",
+              "packages/contexts/agents/domain/postman-template.test.ts"
             ],
             [
               "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
@@ -66797,6 +67796,12 @@
           ],
           "roots": [
             "apps/core-api/src/runtime/process-ports.test.ts",
+            "packages/contexts/agents/application/authorization.test.ts",
+            "packages/contexts/agents/domain/agent.test.ts",
+            "packages/contexts/agents/domain/binding.test.ts",
+            "packages/contexts/agents/domain/cluster.test.ts",
+            "packages/contexts/agents/domain/macro.test.ts",
+            "packages/contexts/agents/domain/postman-template.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
             "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
@@ -67679,7 +68684,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "0b8525291b6f94c223fe0b7969830c6c3a838a41b556c9d08caf5c7c2d887918",
+      "evidenceSha256": "edcb1d12e24cf5f123047e0b491637f618b474c3cd414ed1649a1c19db4a6f25",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

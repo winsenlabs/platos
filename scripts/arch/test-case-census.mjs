@@ -213,8 +213,8 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * gone with the line.
  *
  * M2 WAVE-B INTEGRATION — THE ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
- * `eventing`, `skills`, `jobs`, `memory`, `cost-monitoring`, `privacy` and
- * `observability` touch DISJOINT packages and each moves this same runtime total on its own axis, so
+ * `eventing`, `skills`, `jobs`, `memory`, `cost-monitoring`, `privacy`,
+ * `observability` and `agents` touch DISJOINT packages and each moves this same runtime total on its own axis, so
  * the
  * integrated number is the sum of every delta and is correct on no branch
  * alone:
@@ -251,13 +251,29 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *         same new file and moved no file count. NO production module changed
  *         for any of them.
  *
- *   717 + 283 + 149 + 306 + 378 + 605 + 352 + 254 + 288 = 3332, and
- *   88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 = 217 files.
+ *   +515  agents (25 files) — 513 at adoption, 517 after the four releaseHolds
+ *         cases the 2026-09-03 verification forced, and 515 after the
+ *         2026-09-04 blocker closure. THAT LAST MOVE IS NEGATIVE, and it is the
+ *         one worth reading twice: 517 - 3 - 1 + 2 = 515. The DELETIONS are
+ *         written separately from the ADDITION so a deletion cannot hide inside
+ *         an addition and reach the same total —
+ *           -3  domain/agent.ts::slugIsTaken, deleted WITH its only cases
+ *           -1  authorization.ts::projectOf, deleted WITH its only case
+ *           +2  the two "even the disambiguated slug is taken" guards, which
+ *               had no cases at all
+ *         domain/cluster.ts::clusterSlugIsTaken was the third unwired guard and
+ *         was WIRED rather than deleted, so its own cases are unchanged and it
+ *         is deliberately NOT a term above. The file count is 25 throughout all
+ *         three moves.
+ *
+ *   717 + 283 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 = 3847, and
+ *   88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 = 242 files.
  *
  * The eventing branch pinned 1149, the skills branch pinned 1306, the jobs
  * branch pinned 1378, the memory branch pinned 1605, the cost-monitoring branch
- * pinned 1352, the privacy branch pinned 1254 and the observability branch
- * pinned 1288; each was right for its own tree and wrong for this one.
+ * pinned 1352, the privacy branch pinned 1254, the observability branch pinned
+ * 1288 and the agents branch pinned 1515; each was right for its own tree and
+ * wrong for this one.
  * Picking any of them would silently drop a whole context's suite out of the
  * pinned total while the census stayed green on the branch it came from — which
  * is precisely the drift this constant exists to catch. The skills branch
@@ -612,6 +628,88 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   with exact values. NO production module changed.
  *
  * Every other package is unchanged.
+ * AGENTS ADOPTION (WIN-256, ADR M0.3 §1 context 5). One row moves, and the
+ * INTEGRATED runtime total ends at 3332 -> 3847. The agents branch pinned
+ * 1000 -> 1515 because its lineage carried only the four earliest packages; the
+ * ROW is the same and the TOTAL it lands in is not.
+ *
+ *   agents 0 -> 25 files, 0 -> 513 cases at adoption. 14 domain suites,
+ *   10 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 513 is a statically exact count, and
+ *   `pnpm --filter @platos/context-agents exec vitest run` prints the same pair
+ *   — "Test Files 25 passed (25) / Tests 513 passed (513)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Two of those 25 files exist because the ADR M0.3 §6 budget bit in the 400-line
+ * warning band and the answer was to split rather than to waive; see the delta
+ * comment in `scripts/arch/max-file-lines.test.mjs`.
+ *
+ * VERIFICATION DELTA (2026-09-03) — agents 513 -> 517 (+4), 1513 -> 1517 total.
+ * File count is UNCHANGED at 25, which is exactly the drift a file-count pin
+ * cannot see and this one can. The four cases all land in
+ * `application/agent-write.test.ts` and all close ONE blocker: `removeAgent` was
+ * the only one of the five `releaseHolds` call sites with no control, so its
+ * call line could be deleted with all 513 cases green — a release that had a
+ * caller but nothing asserting its effect.
+ *
+ *   1. "RELEASES every thread hold for the agent it just unbound" — seeds a
+ *      hold, unbinds, and reads the lock back EMPTY. Deleting the call site
+ *      turns it red.
+ *   2. "releases NOTHING when the unbind was refused" — the unauthorised /
+ *      invisible-agent input, asserting the holds survive.
+ *   3. "releases NOTHING when the unbind transaction FAILED after starting" —
+ *      the `if (removed.ok)` condition is a SECOND mechanism and dropping it
+ *      left cases 1 and 2 green, because a `requireBound` refusal returns before
+ *      the release line is reached at all. Reaching the guard needs a
+ *      transaction that starts and then fails, which is why
+ *      `InMemoryAgentsRepository.failNextDeleteBinding` was added.
+ *   4. "leaves a hold on a DIFFERENT agent alone" — pins that the release is
+ *      scoped to the agent it names.
+ *
+ * Cases 1 and 4 assert the EFFECT on the lock rather than that a release was
+ * recorded. The four pre-existing release assertions (updateAgent, canary,
+ * loadout, version-history) all check `versionLock.releases` length only, and a
+ * `releaseAll` that records the call and frees nothing leaves every one of them
+ * green — reported as a finding, not fixed here.
+ *
+ * BLOCKER-CLOSURE DELTA (2026-09-04) — agents 517 -> 515 (-4 +2). On the
+ * branch that read 1517 -> 1515; integrated it is 3849 -> 3847.
+ * The file count is UNCHANGED at 25. This row goes DOWN, which is the movement
+ * this census exists to make a reviewer look at, so the arithmetic is written
+ * out rather than summarised: 517 - 3 - 1 + 2 = 515.
+ *
+ *   -3  `domain/agent.test.ts`, the whole "slug uniqueness is scoped to the
+ *       project" block, deleted WITH the function it tested.
+ *       `domain/agent.ts::slugIsTaken` was a second implementation of a rule the
+ *       use case already applies, and an unwireable one: it reads `Agent[]`
+ *       filtered by project, and the only caller — `create-agent.ts` — holds
+ *       `readonly string[]` from `listProjectSlugs(projectId)`, a read the
+ *       repository port deliberately shapes that way. Its `excluding` parameter
+ *       had no possible caller either: nothing in this context renames a slug.
+ *       The rule keeps exactly one home, in the use case, over the data it has.
+ *   -1  `application/authorization.test.ts`, "reads the project off the grant's
+ *       own re-derived scope", deleted WITH `authorization.ts::projectOf` — a
+ *       one-line duplicate of `grant.scope.projectId`, which `create-agent.ts`
+ *       reads directly. Nothing else in the tree called it.
+ *   +2  the two "REFUSES when even the disambiguated slug is taken" cases, one
+ *       in `application/clusters.test.ts` and one in
+ *       `application/agent-write.test.ts`. `resolveSlug` disambiguates ONCE by
+ *       design, and both use cases carry a guard for the second collision so an
+ *       operator gets a sentence rather than a unique-index violation. Neither
+ *       guard had a case, and the trap is that the obvious one is VACUOUS: the
+ *       in-memory stores simulate the index and raise the SAME error code, so a
+ *       case asserting only the code passes with the guard deleted. Both assert
+ *       the WRITE LOG is empty, which is the only thing that separates
+ *       "refused before the write" from "refused by the store".
+ *
+ * `domain/cluster.ts::clusterSlugIsTaken` was the third of these unwired guards
+ * and is the one that was WIRED rather than deleted: `clusters.ts` holds the
+ * full `AgentCluster[]`, so the predicate fits its call site exactly, and it
+ * restores the environment comparison the inline `taken.includes(slug)` had
+ * dropped. Its own cases are unchanged, which is why they are not in the
+ * arithmetic above.
+ *
+ * No other package moved.
  * Any further drift is a finding to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
@@ -627,7 +725,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
-  "packages/contexts/agents": { files: 0, cases: 0 },
+  "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
@@ -654,7 +752,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 3332;
+export const EXPECTED_RUNTIME_TOTAL = 3847;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

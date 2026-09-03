@@ -75,7 +75,7 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666 -> 714. WIN-256 made
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666 -> 714 -> 781. WIN-256 made
   // packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
@@ -125,8 +125,9 @@ test("the live selectors scan an exact nonzero source census", () => {
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
   // 391 (328 + 63), privacy pinned 376 (328 + 48) and observability pinned 376
-  // (328 + 48) as well. The axes are disjoint, so the integrated census is their
-  // SUM and not any branch pin: 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 = 714.
+  // (328 + 48) as well, and agents pinned 395 (328 + 67). The axes are disjoint,
+  // so the integrated census is their SUM and not any branch pin:
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 = 781.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -162,7 +163,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // drain-projections suite was split into
   // application/drain-projections.lanes.test.ts before adoption, so observability
   // adds no file to the list either. The list is unchanged at three.
-  assert.equal(result.fileCount, 714);
+  //
+  // `agents` adds none either, and its branch is the one that did NOT claim
+  // otherwise: two of its 25 files exist precisely because this budget bit in the
+  // warning band and the answer was a split rather than a waiver. The list is
+  // still exactly the three named above after all three wave-b adoptions.
+  assert.equal(result.fileCount, 781);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
