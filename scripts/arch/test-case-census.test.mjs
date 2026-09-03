@@ -220,8 +220,8 @@ test("the live tree matches every pinned row exactly", () => {
 test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for providers, +18 for tools.
-  assert.equal(live.totalFiles, 106);
+  // 67 at 3ed8f3ce, +21 for providers, +19 for tools.
+  assert.equal(live.totalFiles, 107);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -231,9 +231,9 @@ test("the census is not vacuous — it reads the real suites", () => {
 test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
-  // 67 at 3ed8f3ce, +21 for providers, +18 for tools.
+  // 67 at 3ed8f3ce, +21 for providers, +19 for tools.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 106);
+  assert.equal(files, 107);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -258,21 +258,28 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
 
 test("the tools context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's `tools` slice moves. `pnpm --filter
-  // @platos/context-tools exec vitest run` prints "Test Files 18 passed (18) /
-  // Tests 325 passed (325)"; the AST census reproduces both with zero refusals.
+  // @platos/context-tools exec vitest run` prints "Test Files 19 passed (19) /
+  // Tests 362 passed (362)"; the AST census reproduces both with zero refusals.
   // Every other package is held at its earlier value by the two tests above, so
   // a suite quietly deleted elsewhere while `tools` landed cannot hide inside
   // the new total.
   //
-  // 299 -> 325 WITH THE FILE COUNT UNCHANGED, which is the case this canary
-  // exists for. The hosted-MCP gate wave added 26 assertions and not one file:
-  // a file-count pin would have seen nothing, and a wave that adds only
-  // refusals to suites that already exist is exactly the wave whose absence
-  // nobody notices. The arithmetic is decomposed in the census module's own
-  // delta comment, per suite.
-  assert.equal(EXPECTED["packages/contexts/tools"].files, 18);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 325);
+  // THREE WAVES ON ONE ROW, AND THE MIDDLE TWO MOVED NO FILE. 0 -> 299 built
+  // the context (18 files); 299 -> 325 was the hosted-MCP gate wave, 26
+  // assertions and NOT ONE FILE; 325 -> 362 is the unproven-guard wave, which
+  // adds 37 and exactly one file. A file-count pin would have seen the first
+  // and third and been blind to the second, which is the case this canary
+  // exists for. The arithmetic is decomposed per suite in the census module's
+  // own delta comment.
+  //
+  // The +37 is written out here as well as there, so a deletion cannot hide
+  // inside an addition: 29 in the new contracts/operator-gate.test.ts, 6 in
+  // application/registry.test.ts (22 -> 28), 2 in application/execution.test.ts
+  // (33 -> 35), and contracts/index.test.ts unchanged at 14.
+  assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 362);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

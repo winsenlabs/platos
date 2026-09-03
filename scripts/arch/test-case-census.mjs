@@ -155,6 +155,48 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   — "Test Files 18 passed (18) / Tests 325 passed (325)" — which is the
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce. No other package moved,
  *   and no case was deleted: 299 + 26 = 325 and 1299 + 26 = 1325.
+ *
+ * WIN-256, `tools` a third time — the unproven-guard wave. Both numbers on the
+ * row move, and the file is the point:
+ *
+ *   tools 18 -> 19 files, 325 -> 362 cases; 1325 -> 1362 total.
+ *
+ *   +29  contracts/operator-gate.test.ts, NEW (0 -> 29). The operator gate, on
+ *        every published method that has one. `verifyOperator` guarded fourteen
+ *        use cases and ELEVEN of them could have their guard deleted with all
+ *        325 green — six of the eleven MUTATE. One case classifies every method
+ *        on `Object.keys(contract)` as operator- or credential-authorized, so a
+ *        method added to the surface later cannot arrive unclassified; fourteen
+ *        refuse a grant tenancy did not mint; fourteen are the positive
+ *        controls, without which a method that refused everything would satisfy
+ *        its refusal case for the wrong reason. 1 + 14 + 14 = 29.
+ *
+ *        THE TWENTY-EIGHT ARE WRITTEN OUT RATHER THAN LOOPED, and this census
+ *        is why. A `for` over the invocation table declares the same cases in
+ *        four lines, and `declarationSiteIsCountable` REFUSES that shape —
+ *        correctly, because a census that cannot count a suite exactly cannot
+ *        canary it. The table is still the single source of the calls; only the
+ *        `it()` declarations are unrolled.
+ *
+ *   +6   application/registry.test.ts (22 -> 28). The page clamp. Its one case
+ *        asked `limit: 10_000, offset: -3` of a TWO-row fixture and asserted
+ *        `items.length <= 200`, which holds with the clamp applied and with it
+ *        removed. That case is now two — the window the port was actually
+ *        handed, and the below-one/fractional window — and five more address
+ *        the extracted `clampExposurePage` directly. 1 + 5 = 6.
+ *
+ *   +2   application/execution.test.ts (33 -> 35). The cost column on the row
+ *        execution itself mints, and the per-entity `ToolHealth` key.
+ *
+ *   contracts/index.test.ts stays at 14: the gate suite that briefly lived
+ *   there moved out whole, and the two cases it did change — the audit-row
+ *   redaction case and the cost case — were REWRITTEN, not added to.
+ *
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints "Test Files 19
+ *   passed (19) / Tests 362 passed (362)", and the census REFUSES nothing in
+ *   that tree, so 362 is a statically exact count. No other package moved and
+ *   no case was deleted: 29 + 6 + 2 = 37, 325 + 37 = 362, 18 + 1 = 19, and
+ *   1325 + 37 = 1362.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -185,7 +227,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
-  "packages/contexts/tools": { files: 18, cases: 325 },
+  "packages/contexts/tools": { files: 19, cases: 362 },
   "packages/kernel": { files: 3, cases: 44 },
 });
 
@@ -196,7 +238,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1325;
+export const EXPECTED_RUNTIME_TOTAL = 1362;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
