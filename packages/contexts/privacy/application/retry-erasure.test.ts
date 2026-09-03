@@ -283,4 +283,31 @@ describe("retryErasure", () => {
       new Date(before.getTime() + DEFAULT_PRIVACY_POLICY.retry.baseBackoffMs * 2),
     );
   });
+
+  // The retry is where swallowing a failed progress write does its damage: the
+  // pass has just re-run the destructive work, and a caller told `ok` over the
+  // PRE-pass projection sees the record it already had — same retryCount, same
+  // outcomes, same schedule — and has no reason to come back. The rows are gone
+  // and the receipt says the erasure never advanced.
+  it("REFUSES the retry when the progress write failed, rather than echoing the pre-pass record", async () => {
+    tools.eraseRejects = false;
+    context.repository.updateProgressFails = true;
+    const retried = await retry();
+    expect(retried.ok).toBe(false);
+    if (retried.ok) throw new Error("unreachable");
+    expect(retried.error.code).toBe("PRIVACY_OPERATION_STORE_UNAVAILABLE");
+  });
+
+  it("appends NO finished event for a pass whose row could not be written", async () => {
+    tools.eraseRejects = false;
+    context.outbox.appended.length = 0;
+    context.repository.updateProgressFails = true;
+    await retry();
+    // The row and the audit trail are written in the same transaction precisely
+    // so they cannot disagree; a finished event over an unwritten row would be
+    // the disagreement.
+    expect(context.outbox.names()).not.toContain(PRIVACY_EVENT_NAMES.erasureFinished);
+    // The row is exactly as the FIRST pass left it: this retry advanced nothing.
+    expect(context.repository.allOperations()[0]?.retryCount).toBe(1);
+  });
 });

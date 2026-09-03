@@ -63,6 +63,27 @@ export class InMemoryPrivacyRepository implements PrivacyRepository {
    * only way to prove the barrier does not simply trust its store.
    */
   returnsElapsedTombstones = false;
+  /**
+   * Refuse the seal write, as a store that is down or deadlocked does.
+   *
+   * The barrier is written in its OWN transaction before the destructive pass,
+   * so "the store refused the seal" is the one arrangement that separates a
+   * sealed subject from an unsealed one at the instant the targets run. Without
+   * this switch `sealSubject`'s refusal branch has no reachable caller, and a
+   * mutation reporting a refused seal as a successful seal of zero is
+   * indistinguishable from the real thing.
+   */
+  sealTombstonesFails = false;
+  /**
+   * Refuse the progress write, as a store that is down does.
+   *
+   * `operationNotFound` already reaches the same branch, but only for a row that
+   * was never inserted — which no orchestration path produces, because every
+   * caller of `updateProgress` has just read or written the row. This switch is
+   * the only way to fail the write for a row that DOES exist, which is the case
+   * the receipt-must-survive rule is about.
+   */
+  updateProgressFails = false;
 
   /** Arrange rows without going through a use case. */
   seedOperation(operation: PersistedErasureOperation): void {
@@ -125,6 +146,7 @@ export class InMemoryPrivacyRepository implements PrivacyRepository {
     progress: OperationProgressWrite,
     _transaction: TransactionScope,
   ): Promise<Result<PersistedErasureOperation>> {
+    if (this.updateProgressFails) return err(operationNotFound("store-unavailable"));
     const found = this.operations.get(operationId);
     if (found === undefined || found.organizationId !== organizationId) {
       return err(operationNotFound(operationId));
@@ -206,6 +228,7 @@ export class InMemoryPrivacyRepository implements PrivacyRepository {
     ids: readonly ErasureTombstoneId[],
     _transaction: TransactionScope,
   ): Promise<Result<{ readonly sealed: number; readonly extended: number }>> {
+    if (this.sealTombstonesFails) return err(operationNotFound("register-unavailable"));
     let sealed = 0;
     let extended = 0;
     for (const [index, draft] of drafts.entries()) {

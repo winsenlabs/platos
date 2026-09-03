@@ -112,6 +112,27 @@ describe("sealSubject", () => {
     });
     expect(context.repository.allTombstones()[0]?.policyVersion).toBe(context.dependencies.policy.version);
   });
+
+  // A seal the store REFUSED is the case the whole module exists for, and it was
+  // the one arrangement nothing reached: every other test here seals
+  // successfully, so the refusal branch had no caller and reporting a refused
+  // seal as `ok` with `sealed: 0` was indistinguishable from a real seal of an
+  // already-sealed subject. `sealed: 0` is a LEGITIMATE success — an extend
+  // reports exactly that (see "EXTENDS on a re-seal") — which is why the number
+  // cannot be the assertion and the Result must be.
+  it("REFUSES when the register would not take the seal, rather than reporting a seal of zero", async () => {
+    context.repository.sealTombstonesFails = true;
+    const sealed = await sealSubject(context.dependencies, {
+      organizationId: TEST_ORGANIZATION,
+      operationId: FIRST,
+      aliases: ALIASES,
+    });
+    expect(sealed.ok).toBe(false);
+    if (sealed.ok) throw new Error("unreachable");
+    expect(sealed.error.code).toBe("PRIVACY_OPERATION_STORE_UNAVAILABLE");
+    // And no barrier exists, which is the fact the caller must act on.
+    expect(context.repository.allTombstones()).toHaveLength(0);
+  });
 });
 
 describe("purgeExpiredTombstones", () => {

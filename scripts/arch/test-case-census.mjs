@@ -99,8 +99,8 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * THIRD DELTA — `packages/contexts/privacy` becomes real (WIN-256, ADR M0.3 §1
- * row 18), rebased onto v1 @ `95cbacc1`. 0 -> 15 files, 0 -> 253 cases;
- * 1000 -> 1253 total. This is the whole of the new suite and nothing else
+ * row 18), rebased onto v1 @ `95cbacc1`. 0 -> 15 files, 0 -> 252 cases;
+ * 1000 -> 1252 total. This is the whole of the new suite and nothing else
  * moved: right-to-erasure orchestration over the kernel `ErasureTarget[]`, the
  * erased-subject register that is the write barrier, the legal-hold
  * adjudication, the two status vocabularies and their lossy projection, and the
@@ -109,32 +109,43 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   domain/            118  alias 16, content-free 9, erasure-operation 27,
  *                           legal-hold 12, retry-schedule 15, target-outcome 27,
  *                           tombstone 12
- *   application/       111  guard-subject-write 21, inventory-subject 9,
- *                           request-erasure 24, retry-erasure 16,
- *                           run-erasure-pass 25, seal-subject 11,
- *                           erasure-events 3, record-pass 2
+ *   application/       110  guard-subject-write 21, inventory-subject 9,
+ *                           request-erasure 28, retry-erasure 18,
+ *                           run-erasure-pass 24, seal-subject 10
  *   application/testing 12  in-memory-privacy-repository
  *   contracts/          12  index
  *
- * 118 + 111 + 12 + 12 = 253, which is the pinned row and the number vitest
+ * 118 + 110 + 12 + 12 = 252, which is the pinned row and the number vitest
  * prints. The `domain/` subtotal read 123 when this delta was first written —
  * an addition error in the prose, not in the pin — so the stated split did not
  * reconcile to the number it was explaining. Corrected here; the per-file
  * figures beside it were right all along and are unchanged.
  *
- * Four of those 111 are the cases the FIRST mutation control added rather than
+ * Four of those 110 are the cases the FIRST mutation control added rather than
  * the first draft: two in `guard-subject-write` pinning that the barrier
  * re-applies read-time expiry instead of trusting its store, and two in
- * `request-erasure` pinning that a write landing MID-SWEEP is refused. THIRTEEN
+ * `request-erasure` pinning that a write landing MID-SWEEP is refused. TWELVE
  * MORE are the cases the 2026-09-03 independent verification's five surviving
- * mutants forced: erasure-events +3 (the `assertContentFree` wiring and the
- * `retainedRecords` count), seal-subject +2 (a store-refused seal must not be
- * reported as sealed), run-erasure-pass +3 (a UnitOfWork failure must surface
- * every touched target as unknown), record-pass +2 (a failed progress write
- * must not be swallowed), request-erasure +3 (the same three properties seen
- * from the use case that composes them). Every one of those properties was
- * claimed in prose and survived its mutation until these cases existed, which
- * is the whole reason the control is run.
+ * mutants forced, and the file they landed in is the file that can reach the
+ * guard rather than the file that defines it — which is why no new suite
+ * appears and the file count stays 15:
+ *
+ *   request-erasure   +7  the `assertContentFree` wiring (2), an unsealed
+ *                         subject is never swept (1), a transaction that never
+ *                         opened leaves every target unknown (1), a refused
+ *                         progress write is reported (1), `retainedRecords`
+ *                         counts what a retention rule kept (2)
+ *   run-erasure-pass  +2  the OTHER catch branch — a UnitOfWork that failed for
+ *                         its own reasons carries no outcomes and must invent
+ *                         one per planned target
+ *   retry-erasure     +2  a refused progress write fails the retry and appends
+ *                         no finished event
+ *   seal-subject      +1  a store-refused seal is a failure, never a seal of 0
+ *
+ * Every one of those properties was claimed in a module header and survived its
+ * mutation until these cases existed, which is the whole reason the control is
+ * run. NO production module changed to close them: the guards were all present
+ * and correct, and nothing executable reached any of them.
  *
  * A package going 0 -> non-zero is exactly the transition this census exists to
  * force a reviewer to look at, which is why the zero rows are declared.
@@ -166,7 +177,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
-  "packages/contexts/privacy": { files: 15, cases: 253 },
+  "packages/contexts/privacy": { files: 15, cases: 252 },
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
@@ -182,7 +193,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1253;
+export const EXPECTED_RUNTIME_TOTAL = 1252;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

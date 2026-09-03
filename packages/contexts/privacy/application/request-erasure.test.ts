@@ -267,3 +267,140 @@ describe("requestErasure", () => {
     expect(requested.value.scopes).toHaveLength(2);
   });
 });
+
+// The wiring, as opposed to the guards themselves.
+//
+// Every rule below was argued in a module header and unit-tested in isolation,
+// and every one of them could be DELETED FROM ITS CALL SITE with the 240 tests
+// above staying green — because each is only reachable through an arrangement no
+// happy path produces. "records neither the requested handle nor any alias in
+// anything durable", four screens up, is the sharpest example: it passes whether
+// or not `assertContentFree` is wired in, because on a clean run nothing leaks.
+// A guard is proved by the input it must refuse, never by the input it lets
+// through.
+describe("requestErasure — the guards, from the input each must refuse", () => {
+  // A SCREAMING_SNAKE handle, because the kernel refuses any other shape of
+  // error code (M0.4 §2) and the guard folds case before it compares. Opaque
+  // uppercase-alphanumeric user ids — ULIDs, Cognito subs, Auth0 ids — are the
+  // ordinary case, and a target that embeds one in its failure code produces a
+  // code that is both well-formed and leaky. That is the whole point: the leak
+  // arrives through a value that passed every OTHER check.
+  const LEAKY_ID = "WALLE1";
+  const LEAKY_CODE = "FILES_ROW_LOCKED_WALLE1";
+
+  let context: PrivacyTestContext;
+  let files: InMemoryErasureTarget;
+
+  beforeEach(() => {
+    files = new InMemoryErasureTarget("files");
+    context = buildPrivacyTestContext({ targets: [files] });
+    arrange(context, files);
+    context.directory.register(LEAKY_ID, {
+      subjects: [SUBJECT],
+      aliases: testAliases(LEAKY_ID, "eu-1"),
+    });
+  });
+
+  // ------------------------------------------------------------------ the guard
+  // `appendPrivacyEvent` calls `assertContentFree` on the composed payload. A
+  // target's failure CODE is composed by whichever context owns the rows, lands
+  // verbatim in `rejectedTarget`'s note, and is copied into the
+  // permanently-retained finished event — exactly the header's "the tempting
+  // thing when adding a target is to let its error message through".
+  it("REFUSES the whole operation when a target's rejection code carries the subject's handle", async () => {
+    files.eraseRejects = true;
+    files.eraseRejectionCode = LEAKY_CODE;
+    const requested = await requestErasure(
+      context.dependencies,
+      command({ externalUserId: LEAKY_ID }),
+    );
+    expect(requested.ok).toBe(false);
+    if (requested.ok) throw new Error("unreachable");
+    expect(requested.error.code).toBe("PRIVACY_RECEIPT_WOULD_LEAK_SUBJECT");
+  });
+
+  it("appends NOTHING carrying that handle, because the receipt is retained forever", async () => {
+    files.eraseRejects = true;
+    files.eraseRejectionCode = LEAKY_CODE;
+    await requestErasure(context.dependencies, command({ externalUserId: LEAKY_ID }));
+    const appended = JSON.stringify(context.outbox.appended).toLowerCase();
+    expect(appended).not.toContain(LEAKY_ID.toLowerCase());
+    expect(context.outbox.names()).not.toContain(PRIVACY_EVENT_NAMES.erasureFinished);
+  });
+
+  // ---------------------------------------------------------------- the barrier
+  // Seal-before-destroy is the module's entire reason for existing. A seal the
+  // register refused, reported as a successful seal, means the sweep runs with
+  // the barrier open — the mid-sweep window the ordering exists to close.
+  it("does NOT sweep a subject the register refused to seal", async () => {
+    context.repository.sealTombstonesFails = true;
+    const requested = await requestErasure(context.dependencies, command());
+    expect(requested.ok).toBe(false);
+    if (requested.ok) throw new Error("unreachable");
+    expect(requested.error.code).toBe("PRIVACY_OPERATION_STORE_UNAVAILABLE");
+    // The rows are still there. An unsealed sweep is a subject the next write
+    // restores, which is the failure the ordering buys protection from.
+    expect(files.remaining()).toHaveLength(1);
+    expect(files.calls.some((call) => call.startsWith("erase:"))).toBe(false);
+  });
+
+  // ------------------------------------------------------- the erasure evidence
+  it("records EVERY target as failed when the destructive transaction never opened", async () => {
+    // Run 3 is the DESTRUCTIVE transaction: 1 opens the row with its intent
+    // event, 2 seals, 3 destroys, 4 records. Failing exactly that one leaves the
+    // barrier committed and the receipt writable, which is the only arrangement
+    // in which `runErasurePass` has to invent an outcome per planned target
+    // because the pass learned nothing.
+    context.unitOfWork.openFailure = new Error("transaction pool exhausted");
+    context.unitOfWork.openFailureRuns = [3];
+
+    const requested = await requestErasure(context.dependencies, command());
+    if (!requested.ok) throw new Error("unreachable");
+    expect(requested.value.outcomes.map((outcome) => outcome.target)).toEqual(["files"]);
+    expect(requested.value.outcomes[0]?.verification).toBe("unknown");
+    expect(requested.value.status).not.toBe("completed");
+  });
+
+  it("REPORTS a progress write the store refused, rather than returning the pre-pass record", async () => {
+    context.repository.updateProgressFails = true;
+    const requested = await requestErasure(context.dependencies, command());
+    expect(requested.ok).toBe(false);
+    if (requested.ok) throw new Error("unreachable");
+    // An operation that crashes leaving no record is indistinguishable from one
+    // that was never requested; a caller told `ok` would never come back for it.
+    expect(requested.error.code).toBe("PRIVACY_OPERATION_STORE_UNAVAILABLE");
+  });
+
+  // --------------------------------------------------------- the retained count
+  // `retainedRecords` is the number an operator reads to answer "what survived".
+  // Nothing produced a non-zero one, so hard-coding it to zero — a receipt
+  // claiming a clean sweep over rows a retention rule kept — was invisible.
+  it("reports the rows a retention rule RETAINED in the finished event", async () => {
+    files.blockedModels = ["TestRow"];
+    await requestErasure(context.dependencies, command());
+    const finished = context.outbox.appended.find(
+      (event) => event.name === PRIVACY_EVENT_NAMES.erasureFinished,
+    );
+    expect((finished?.payload as { retainedRecords?: number }).retainedRecords).toBe(1);
+  });
+
+  it("sums the retained rows ACROSS targets, so one target's hold cannot hide another's", async () => {
+    const heldFiles = new InMemoryErasureTarget("files");
+    const heldTools = new InMemoryErasureTarget("tools");
+    const both = buildPrivacyTestContext({ targets: [heldFiles, heldTools] });
+    arrange(both, heldFiles);
+    heldTools.seed({
+      model: "TestRow",
+      subjectKind: "end-user",
+      subjectId: "eu-1",
+      scopePath: "org/org-1/proj/proj-1/env/env-1",
+    });
+    heldFiles.blockedModels = ["TestRow"];
+    heldTools.blockedModels = ["TestRow"];
+    await requestErasure(both.dependencies, command());
+    const finished = both.outbox.appended.find(
+      (event) => event.name === PRIVACY_EVENT_NAMES.erasureFinished,
+    );
+    expect((finished?.payload as { retainedRecords?: number }).retainedRecords).toBe(2);
+  });
+});

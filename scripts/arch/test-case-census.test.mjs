@@ -240,31 +240,51 @@ test("the pinned rows sum to the pinned runtime total", () => {
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
   // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case, then
   // +240 in `privacy` when WIN-256 made ADR M0.3 §1 row 18 real: 716 + 1 + 240
-  // = 957, which is EXPECTED_RUNTIME_TOTAL and what vitest prints. This comment
-  // read "+236" — the implementer's own count, carried into the commit message
-  // and wrong by 4 — while the pin beside it was already the true 240; the
-  // arithmetic above is now stated so the two cannot silently disagree again.
-  // The five packages below are asserted UNMOVED, which is what makes the new
-  // context an addition rather than a re-baseline.
+  // = 957 on that branch. This comment read "+236" — the implementer's own
+  // count, carried into the commit message and wrong by 4 — while the pin
+  // beside it was already the true 240; the arithmetic is now stated so the two
+  // cannot silently disagree again. The five packages below are asserted
+  // UNMOVED, which is what makes each new context an addition rather than a
+  // re-baseline.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
   assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 231);
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 146);
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240);
-  assert.equal(EXPECTED["packages/contexts/privacy"].files, 15);
 });
 
 test("the providers context rebased onto 75ee484de252 is pinned at what vitest prints", () => {
-  // The ONE row the rebase moves. `pnpm --filter @platos/context-providers exec
-  // vitest run` prints "Test Files 21 passed (21) / Tests 283 passed (283)";
-  // the AST census reproduces both with zero refusals. Every other package is
-  // held at its 3ed8f3ce value by the test above, so a suite quietly deleted
-  // elsewhere while providers landed cannot hide inside the new total.
+  // The ONE row that rebase moved. `pnpm --filter @platos/context-providers
+  // exec vitest run` prints "Test Files 21 passed (21) / Tests 283 passed
+  // (283)"; the AST census reproduces both with zero refusals. Every other
+  // package is held at its 3ed8f3ce value by the test above, so a suite quietly
+  // deleted elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283);
+});
+
+test("the privacy context rebased onto v1 @ 95cbacc1 is pinned at what vitest prints", () => {
+  // 240 -> 252, and the FILE count does not move. That is the whole point of a
+  // case pin: all twelve cases the 2026-09-03 verification forced landed in
+  // suites that already existed, because a guard is proved from the use case
+  // that can reach it rather than from a new file next to its definition. A
+  // file-count pin sees none of this.
+  //
+  //   240  the context as built
+  //    +7  request-erasure    the content-free wiring (2), no sweep without a
+  //                           seal (1), a transaction that never opened (1),
+  //                           a refused progress write (1), retainedRecords (2)
+  //    +2  run-erasure-pass   the non-carrier catch branch
+  //    +2  retry-erasure      a refused progress write, from the retry
+  //    +1  seal-subject       a store-refused seal is not a seal of zero
+  //   ---
+  //   252, which is EXPECTED_RUNTIME_TOTAL minus the 1000 the four earlier
+  //   packages contribute, and the number `pnpm --filter
+  //   @platos/context-privacy exec vitest run` prints.
+  assert.equal(EXPECTED["packages/contexts/privacy"].cases, 252);
+  assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 252);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

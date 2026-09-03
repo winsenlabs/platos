@@ -56,6 +56,26 @@ export class InMemoryErasureTarget implements ErasureTarget {
 
   planFails = false;
   eraseRejects = false;
+  /**
+   * The CODE a rejecting target refuses with.
+   *
+   * Overridable because a target's failure code is attacker- and
+   * accident-reachable content: it is composed by whichever context owns the
+   * rows, it lands verbatim in `rejectedTarget`'s note, and the note is copied
+   * into the permanently-retained finished event. A code carrying the subject's
+   * own handle is the leak `assertContentFree` exists to refuse, and there is no
+   * other seam in this package through which a real handle can reach a payload.
+   */
+  eraseRejectionCode = "TEST_TARGET_ERASE_REFUSED";
+  /**
+   * Models a hold or retention rule kept, reported as `blockedBy` on the plan.
+   *
+   * Rows a target RETAINED are the ones an erasure did not destroy, so they are
+   * the numbers an operator reading the receipt most needs. Without this the
+   * `retained` count is zero on every path and the event field that reports it
+   * is unpinned.
+   */
+  blockedModels: readonly string[] = [];
   /** Reports a receipt without removing anything. Only the re-probe sees it. */
   eraseSilently = false;
   reprobeFails = false;
@@ -117,7 +137,7 @@ export class InMemoryErasureTarget implements ErasureTarget {
         model,
         method: "delete" as const,
         rowCount,
-        blockedBy: null,
+        blockedBy: this.blockedModels.includes(model) ? "TEST_RETENTION_RULE" : null,
       })),
     };
   }
@@ -143,11 +163,15 @@ export class InMemoryErasureTarget implements ErasureTarget {
     if (!this.snapshots.has(transaction.transactionId)) {
       this.snapshots.set(transaction.transactionId, [...this.rows]);
     }
-    if (this.eraseRejects) throw new TestTargetRejected("TEST_TARGET_ERASE_REFUSED");
+    if (this.eraseRejects) throw new TestTargetRejected(this.eraseRejectionCode);
     // The plan carries no subject, exactly as the kernel type says, so a target
     // that must act on one carries its own rider. This double records the
     // subject on the call log instead and erases everything the plan counted.
-    const wanted = new Map(plan.items.map((item) => [item.model, item.rowCount]));
+    const wanted = new Map(
+      plan.items
+        .filter((item) => item.blockedBy === null)
+        .map((item) => [item.model, item.rowCount]),
+    );
     if (!this.eraseSilently) {
       const kept: TargetRow[] = [];
       for (const row of this.rows) {

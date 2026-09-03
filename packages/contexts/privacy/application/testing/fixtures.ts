@@ -103,10 +103,37 @@ export class RollbackAwareUnitOfWork implements UnitOfWork {
   readonly committed: TransactionScope[] = [];
   readonly rolledBack: TransactionScope[] = [];
   readonly onRollback: ((transaction: TransactionScope) => void)[] = [];
+  /**
+   * Fail the unit of work FOR ITS OWN REASONS, before the work is ever invoked.
+   *
+   * Distinct from a work function that rejects: no transaction was opened, so
+   * nothing ran, nothing was destroyed and nothing was probed. Every existing
+   * failure arrangement in this package goes through a target or a repository
+   * and therefore reaches `runErasurePass` as `ErasurePassRolledBack`, which
+   * carries outcomes. This is the only way to reach the OTHER catch branch —
+   * the one that has to invent outcomes because the pass learned nothing.
+   */
+  openFailure: Error | null = null;
+  /**
+   * Which runs (1-based) `openFailure` applies to. Empty means every run.
+   *
+   * A use case opens several transactions in a fixed order — open the row, seal,
+   * destroy, record — and the interesting failures are per-phase. Failing the
+   * DESTRUCTIVE one while the barrier still commits is the arrangement the
+   * evidence rules are written for, and it cannot be expressed by failing them
+   * all.
+   */
+  openFailureRuns: readonly number[] = [];
 
   async run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
     this.counter += 1;
     const transaction: TransactionScope = { transactionId: asIdentifier(`txn-${this.counter}`) };
+    if (
+      this.openFailure !== null &&
+      (this.openFailureRuns.length === 0 || this.openFailureRuns.includes(this.counter))
+    ) {
+      throw this.openFailure;
+    }
     try {
       const value = await work(transaction);
       this.committed.push(transaction);

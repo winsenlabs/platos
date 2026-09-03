@@ -220,4 +220,33 @@ describe("runErasurePass", () => {
     files.eraseRejects = true;
     await expect(runErasurePass(context.dependencies, { subjects: [SUBJECT] })).resolves.toBeDefined();
   });
+
+  // The OTHER catch branch. Every failure arrangement above reaches
+  // `runErasurePass` as `ErasurePassRolledBack`, which carries the outcomes the
+  // targets produced; a unit of work that fails for its OWN reasons — the
+  // transaction could not be opened, the commit was refused — carries nothing,
+  // so the branch has to invent an outcome per planned target. Nothing reached
+  // it, and an empty NOT-rolled-back result was indistinguishable from a pass
+  // over an empty roster.
+  it("marks EVERY planned target unknown when the unit of work itself failed", async () => {
+    context.unitOfWork.openFailure = new TestTargetRejected("TEST_TRANSACTION_NOT_OPENED");
+    const pass = await runErasurePass(context.dependencies, { subjects: [SUBJECT] });
+    expect(pass.outcomes.map((entry) => entry.target)).toEqual(["files", "tools"]);
+    expect(pass.outcomes.map((entry) => entry.verification)).toEqual(["unknown", "unknown"]);
+    expect(pass.outcomes.map((entry) => entry.note)).toEqual([
+      "target rejected (TEST_TRANSACTION_NOT_OPENED)",
+      "target rejected (TEST_TRANSACTION_NOT_OPENED)",
+    ]);
+  });
+
+  it("reports that pass as ROLLED BACK, never as a clean sweep of nothing", async () => {
+    context.unitOfWork.openFailure = new TestTargetRejected("TEST_TRANSACTION_NOT_OPENED");
+    const pass = await runErasurePass(context.dependencies, { subjects: [SUBJECT] });
+    expect(pass.rolledBack).toBe(true);
+    // Nothing was destroyed and nothing was proved. A settled target here would
+    // certify an erasure that never opened a transaction.
+    expect(pass.outcomes.some(isTargetSettled)).toBe(false);
+    expect(files.remaining()).toHaveLength(1);
+    expect(tools.remaining()).toHaveLength(1);
+  });
 });
