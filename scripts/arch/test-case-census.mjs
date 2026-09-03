@@ -213,9 +213,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * gone with the line.
  *
  * M2 WAVE-B INTEGRATION — THE ADOPTIONS ARE SUMMED, NEVER SIDE-PICKED.
- * `eventing`, `skills`, `jobs` and `memory` touch DISJOINT packages and each
- * moves this same runtime total on its own axis, so the integrated number is
- * the sum of every delta and is correct on no branch alone:
+ * `eventing`, `skills`, `jobs`, `memory` and `cost-monitoring` touch DISJOINT
+ * packages and each moves this same runtime total on its own axis, so the
+ * integrated number is the sum of every delta and is correct on no branch
+ * alone:
  *
  *   717   the five slice-1-5 packages (kernel 44, identity-access 231,
  *         secrets 162, tenancy 146, files 134).
@@ -233,12 +234,16 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *         published-erasure-target review forced, again with the file count
  *         held at 28.
  *
- *   717 + 283 + 149 + 306 + 378 + 605 = 2438, and 88 + 14 + 20 + 16 + 28 = 166
- *   files.
+ *   +352  cost-monitoring (21 files) — 335 at adoption, 345 after the ten
+ *         money-path cases the v1 rebase review forced and 352 after the seven
+ *         the 2026-09-03 re-check forced, with the file count held at 21.
+ *
+ *   717 + 283 + 149 + 306 + 378 + 605 + 352 = 2790, and
+ *   88 + 14 + 20 + 16 + 28 + 21 = 187 files.
  *
  * The eventing branch pinned 1149, the skills branch pinned 1306, the jobs
- * branch pinned 1378 and the memory branch pinned 1605; each was right for its
- * own tree and wrong for this one.
+ * branch pinned 1378, the memory branch pinned 1605 and the cost-monitoring
+ * branch pinned 1352; each was right for its own tree and wrong for this one.
  * Picking any of them would silently drop a whole context's suite out of the
  * pinned total while the census stayed green on the branch it came from — which
  * is precisely the drift this constant exists to catch. The skills branch
@@ -411,6 +416,67 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `packages/contexts/memory/domain/fusion.test.ts` left the file count where it
  * was (116 there, 166 in this integrated tree) and turned the case count red,
  * which is the drift a file-count pin cannot see.
+ *
+ * COST-MONITORING ADOPTION (WIN-256, ADR M0.3 §1 row 13). One row again:
+ *
+ *   cost-monitoring 0 -> 21 files, 0 -> 345 cases; 1000 -> 1345 total. 12
+ *   domain suites, 8 application suites and the contracts-barrel suite. The
+ *   census REFUSED nothing in that tree, so its 345 is a statically exact
+ *   count, and `pnpm --filter @platos/context-cost-monitoring exec vitest run`
+ *   prints the same pair — "Test Files 21 passed (21) / Tests 345 passed
+ *   (345)" — which is the agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ *   The last TEN (335 -> 345) close the three money-path survivors the v1
+ *   rebase review named, and they add no file — 21 stays 21. Each was found by
+ *   mutating the ORIGINAL 335-case suite and watching it stay green, and each
+ *   is a MONEY figure that was reached but never asserted at an exact value:
+ *
+ *     +3 `settlePricedSpend` (application/consumption.test.ts). The step where
+ *        a priced estimate becomes the settled truth had NO case at all. Both
+ *        rules its own comment states — a pricing failure settles nothing
+ *        rather than zero, and a ledger failure surfaces — could be deleted
+ *        with the whole suite green.
+ *
+ *     +3 `limitToMoney` (domain/spend.test.ts). It appeared throughout that
+ *        file as a way to BUILD a spend figure, never as the subject of an
+ *        assertion, and always with a whole-cent cap — where truncating,
+ *        rounding and flooring all agree. The cap is the other side of every
+ *        money comparison in this context.
+ *
+ *     +4 `firstBlocker` and `runsBasisPoints` (domain/budget-status.test.ts).
+ *        The blocker was only ever chosen among caps where `blocked` and
+ *        `breached` agree, so selecting on `breached` — naming a cap the
+ *        operator had explicitly excepted — passed. Turn utilisation was only
+ *        ever asserted at the uncapped 0, which the early return produces
+ *        without the arithmetic running at all.
+ *
+ *   cost-monitoring 345 -> 352 (+7), 1345 -> 1352 total, file count UNCHANGED at
+ *   21. The 2026-09-03 independent RE-CHECK found two survivors and these seven
+ *   cases kill them. Each mutation was reproduced as a control first: applied,
+ *   the suite watched go red, reverted, watched go green.
+ *
+ *     +5 in application/deliver-crossing.test.ts. `targetFor` had NO test
+ *        anywhere, and neither did the `target === null` check that reads it.
+ *        The one case that reached `missing_configuration` reached it through
+ *        the OTHER branch — no transport composed — so all four undeliverable
+ *        answers were unfalsifiable. Each of the three refusals is now exercised
+ *        with its transport COMPOSED, asserting both that the ledger records the
+ *        code and that the transport was never called, plus a positive control
+ *        so the four are not all passing on a `targetFor` that refuses
+ *        everything.
+ *
+ *     +2 in application/detect-crossings.test.ts. "Both writes or neither" was
+ *        not merely untested, it was UNTRUE — see the commit; a fan-out failure
+ *        RETURNED an error from inside the unit of work, which resolves, which
+ *        commits. The two cases pin the rollback and the retry it makes
+ *        possible.
+ *
+ * Verified as a live control on the cost-monitoring branch: deleting one it()
+ * from cost-monitoring/domain/guard.test.ts left the file count where it was
+ * (109 there, 187 in this integrated tree) and turned the case count red, which
+ * is the drift a file-count pin cannot see.
+ *
+ * Any further drift is a finding to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -428,7 +494,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/agents": { files: 0, cases: 0 },
   "packages/contexts/channels": { files: 0, cases: 0 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
-  "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
+  "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 14, cases: 149 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
@@ -452,7 +518,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 2438;
+export const EXPECTED_RUNTIME_TOTAL = 2790;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

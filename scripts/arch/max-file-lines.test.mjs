@@ -75,7 +75,8 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555. WIN-256 made packages/kernel and four contexts
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618. WIN-256 made packages/kernel and four
+  // contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
   // 400/500-line budget.
@@ -102,6 +103,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and it split into `knowledge-graph.test.ts` and `graph-queries.test.ts`
   // along exactly the seam the two modules under test already had.
   //
+  // +63: the same issue makes `cost-monitoring` real. The budget bit once
+  // again, at 412 effective lines in the alerting suite, and the answer was
+  // again to split along the seam it pointed at — recording a crossing is one
+  // durable decision and sending one is another, and they were only in one file
+  // because they were written in one sitting.
+  //
   // +51: the same issue makes `jobs` real. Its production source is split across
   // `execute-job.ts`, `register-job.ts` and the two approval use cases rather
   // than reproducing the 571-line `job-execution.service.ts` it replaces, which
@@ -110,9 +117,9 @@ test("the live selectors scan an exact nonzero source census", () => {
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
-  // (328 + 51) on v1 and memory pinned 405 (328 + 77). The axes are disjoint,
-  // so the integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 = 555.
+  // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
+  // 391 (328 + 63). The axes are disjoint, so the integrated census is their
+  // SUM and not any branch pin: 328 + 44 + 55 + 51 + 77 + 63 = 618.
   //
   // THREE FILES ARE IN THE WARNING BAND, and this comment says so rather than
   // repeating the sentence that was true before `jobs` and `memory` landed:
@@ -126,10 +133,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // what the gate ENFORCES — zero errors — and deliberately do not pin zero
   // warnings, because the warning band exists to be visible rather than empty.
   // The jobs branch's own note claimed its largest file was "well inside the
-  // 400-line warn threshold" and the memory branch's said "none is inside the
-  // warning band"; running the audit over the integrated tree shows neither was
-  // true, so both claims are corrected here rather than carried.
-  assert.equal(result.fileCount, 555);
+  // 400-line warn threshold", and the memory and cost-monitoring branches each
+  // said "none is inside the warning band"; running the audit over the
+  // integrated tree shows none of those sentences was true of the tree it
+  // describes, so all three claims are corrected here rather than carried.
+  // cost-monitoring itself adds no file to this list — its own 412-line
+  // alerting suite was split before adoption — but its blanket sentence was
+  // still a claim about the whole census.
+  assert.equal(result.fileCount, 618);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

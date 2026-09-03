@@ -112,6 +112,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/skills", // WIN-256 — the skill catalogue, its install pair, and the manifest parser
   "packages/contexts/jobs", // WIN-256 — Job definitions and the AgentApproval suspension seam
   "packages/contexts/memory", // WIN-256 — memories, the knowledge graph, extraction, and the Cache port it owns
+  "packages/contexts/cost-monitoring", // WIN-256 — budgets, the spend ledger, threshold alerting, and the Notifier port it owns
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
