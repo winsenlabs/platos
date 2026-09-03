@@ -10630,10 +10630,10 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/engine.io@6.6.6",
+      "bom-ref": "pkg:npm/engine.io@6.6.9",
       "name": "engine.io",
-      "version": "6.6.6",
-      "purl": "pkg:npm/engine.io@6.6.6",
+      "version": "6.6.9",
+      "purl": "pkg:npm/engine.io@6.6.9",
       "properties": [
         {
           "name": "platos:image",
@@ -10641,19 +10641,19 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "registry:version"
+          "value": "unresolved"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "53648dd30dcea63151565adcd7b13a4cc0e61f9f1797dada8b531b94d8c07705a9d3b2a4fa5966cd7d218c3a5076b0c6cf09af3ad80ce7223e99e617ea2676c4"
+          "content": "7252a4c380bb9c9db698682855c0a0e95fd6fd3c5d37220e4ebf3d93638d66ef35aaa91d74f1431742d771b0308733c3f038e48910a3cee88ee98f9f9290f8be"
         }
       ],
       "licenses": [
         {
           "license": {
-            "id": "MIT"
+            "name": "NOASSERTION"
           }
         }
       ]
@@ -15704,10 +15704,10 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/nanoid@3.3.8",
+      "bom-ref": "pkg:npm/nanoid@3.3.18",
       "name": "nanoid",
-      "version": "3.3.8",
-      "purl": "pkg:npm/nanoid@3.3.8",
+      "version": "3.3.18",
+      "purl": "pkg:npm/nanoid@3.3.18",
       "properties": [
         {
           "name": "platos:image",
@@ -15715,19 +15715,19 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "registry:version"
+          "value": "unresolved"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "58d2dfe5277ca19c4e9be4f3a6971893c8153a03fe979f31372e7c0f49db5273b1396456be570257891417b96d988e8fb2b2e5fc180a1324b89aab060a114dd3"
+          "content": "0d38383096c631691f8ba55915d36ddbf71a31b432e0ebbe3a9fe1250bc611672755fa00d5003ec7344a033c3d8c3ebe19538e798aff98872e0d276e83a17afb"
         }
       ],
       "licenses": [
         {
           "license": {
-            "id": "MIT"
+            "name": "NOASSERTION"
           }
         }
       ]
@@ -21164,10 +21164,10 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:npm/ws@8.18.3",
+      "bom-ref": "pkg:npm/ws@8.21.1",
       "name": "ws",
-      "version": "8.18.3",
-      "purl": "pkg:npm/ws@8.18.3",
+      "version": "8.21.1",
+      "purl": "pkg:npm/ws@8.21.1",
       "properties": [
         {
           "name": "platos:image",
@@ -21175,19 +21175,19 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "registry:version"
+          "value": "unresolved"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "3c4206098e6d4a552de7472ac8c5df0b35fea0e3ea374bee1aa5b36dc276c6f9e4ce4ab8ea83a9cfb7506930c175f2026f8375e3e1804540f0d97576378b6fce"
+          "content": "fb43539d6efb7c537f0e3422ea4fd2abf62f9384a06a3c3bbab5bc57e6ac8d79d1803b3d8321a475bec4ce07e10388285ec44864a136f1fcc85c11c4ce1ba25b"
         }
       ],
       "licenses": [
         {
           "license": {
-            "id": "MIT"
+            "name": "NOASSERTION"
           }
         }
       ]

@@ -525,10 +525,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
-    "docs-content": 9,
-    "root-infra": 10,
+    //
+    // WIN-299 (M2.6) delta: docs-content 9 -> 11, root-infra 10 -> 13, total
+    // +20 -> +25. Five additions, no removals:
+    //   docs-content  docs/audits/sbom/advisory/README.md
+    //                 docs/audits/sbom/advisory/advisory-policy.json
+    //   root-infra    scripts/lib/advisory-dispositions.mjs
+    //                 scripts/advisory-dispositions.test.mjs
+    //                 scripts/verify-advisory-nonvacuity.mjs
+    // advisory-policy.json lands on the docs/audits/**/*.json audit-receipts
+    // rule (kind "generated"), the same bucket that already carries the
+    // hand-maintained licence overlay docs/audits/sbom/license-policy.json.
+    "docs-content": 11,
+    "root-infra": 13,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 20);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 25);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -537,7 +548,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    rulesDocument.baseline.totalFiles + 20
+    // WIN-299 (M2.6): same +20 -> +25 delta as the totalFiles assertion above;
+    // this one re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 25
   );
 });
 

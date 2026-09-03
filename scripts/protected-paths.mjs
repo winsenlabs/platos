@@ -10,7 +10,16 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const MANIFEST_PATH = "docs/audits/win-254-protected-paths.json";
 export const LIFECYCLE_PATH = "docs/audits/win-254-evidence-lifecycle.json";
 export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
-export const EXPECTED_PATH_SET_SHA256 = "23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec";
+// WIN-299 (M2.6) delta: 781 -> 786 paths, anchor
+// 23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec ->
+// f889e5ebf27ba61f62f6e27aa42dc0ce27d5a5f6855b3c77f12c2e6bba20509f.
+// Five additions, no removals and no content substitutions:
+//   docs/audits/sbom/advisory/README.md              (disposition contract)
+//   docs/audits/sbom/advisory/advisory-policy.json   (the disposition register)
+//   scripts/advisory-dispositions.test.mjs           (newly protected by prefix)
+//   scripts/lib/advisory-dispositions.mjs            (newly protected by prefix)
+//   scripts/verify-advisory-nonvacuity.mjs           (newly protected by prefix)
+export const EXPECTED_PATH_SET_SHA256 = "f889e5ebf27ba61f62f6e27aa42dc0ce27d5a5f6855b3c77f12c2e6bba20509f";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
@@ -22,6 +31,11 @@ const EXACT_PATHS = new Set([
   "apps/webapp/public/images/platos-logotype.png",
 ]);
 const SCRIPT_PREFIXES = [
+  // WIN-299 (M2.6). The advisory disposition gate is a security control, so its
+  // implementation, its unit tests and its non-vacuity proof are tamper-evident
+  // on exactly the same terms as the licence gate's verify-sbom-nonvacuity and
+  // the lib/ closure contracts already listed below.
+  "scripts/advisory-dispositions",
   "scripts/audit-advisory",
   "scripts/audit-licenses",
   "scripts/audit-sbom",
@@ -31,10 +45,12 @@ const SCRIPT_PREFIXES = [
   "scripts/protected-paths",
   "scripts/root-entry-manifest",
   "scripts/v1-ledger",
+  "scripts/verify-advisory-nonvacuity",
   "scripts/verify-sbom-nonvacuity",
   "scripts/verify-win254",
   "scripts/vocabulary-boundary",
   "scripts/workspace-reachability",
+  "scripts/lib/advisory-dispositions",
   "scripts/lib/pnpm-closure",
   "scripts/lib/webapp-inventory-contract",
 ];

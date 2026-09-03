@@ -607,7 +607,16 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //   +2    reviewed occurrences in the licence guard itself, where the
   //         retained-attribution invariant must name the exact upstream notice
   //         strings it protects --> 19387.
-  assert.equal(manifest.exceptions.length, 19387);
+  //   +17   reviewed WIN-299 (M2.6) occurrences in the advisory disposition
+  //         register, every one of them the external durable-runtime vendor
+  //         package named by an engine.io or nanoid disposition. The engine.io
+  //         waiver turns on the exact fact that the vendor package DECLARES
+  //         socket.io 4.7.4 and never imports it, and the nanoid resolution
+  //         records that the vendor itself moved to 3.3.18 — so the dependency
+  //         has to be named verbatim or neither argument stays checkable.
+  //         Vendor vocabulary naming the external integration, not Platos
+  //         vocabulary --> 19404.
+  assert.equal(manifest.exceptions.length, 19404);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

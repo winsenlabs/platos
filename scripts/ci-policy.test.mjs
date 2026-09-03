@@ -96,6 +96,10 @@ const v1ReleaseGateCommands = [
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
+  // WIN-299 (M2.6). audit:advisory:check now fails on any un-dispositioned
+  // CRITICAL/HIGH; this proves that gate can actually fail, on the same terms
+  // audit:sbom:nonvacuity already proves it for the licence gate.
+  "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
 ];
 const repositoryGovernanceCommands = [
@@ -216,6 +220,7 @@ const expectedV1EvidenceCommands = [
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
+  "pnpm audit:advisory:nonvacuity",
   "pnpm build:v1",
   "node scripts/arch/contract-map.mjs --check",
   "pnpm audit:sbom:check",
@@ -266,8 +271,12 @@ const expectedV1PackageScripts = new Map([
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
   ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
   ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
-  ["test:advisory", "node --test scripts/audit-advisory.test.mjs"],
+  // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
+  // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
+  // already uses above.
+  ["test:advisory", "node --test scripts/audit-advisory.test.mjs scripts/advisory-dispositions.test.mjs"],
   ["audit:advisory:check", "node scripts/audit-advisory.mjs --check"],
+  ["audit:advisory:nonvacuity", "node scripts/verify-advisory-nonvacuity.mjs"],
 ]);
 const webappInventoryPackageScript = "bash scripts/audit-webapp-image-inventory.sh";
 const webappInventoryCommand = "pnpm audit:webapp-image-inventory";
@@ -2056,8 +2065,9 @@ test("committed CI and image-build policy is executable, correlated, and complet
   );
   assert.equal(
     v1ReleaseGateCommands.length,
-    16,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification"
+    // WIN-299 (M2.6) delta: 16 -> 17. One addition, audit:advisory:nonvacuity.
+    17,
+    "V1 release gate selector must cover existing gates plus image/advisory contract and disposition non-vacuity verification"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4137,7 +4147,11 @@ test("CI policy controls fail under generated semantic source mutations", async 
 
   assert.equal(
     controls.length,
-    340,
+    // WIN-299 (M2.6) delta: 340 -> 342. The single new command
+    // (pnpm audit:advisory:nonvacuity) is declared in two selectors —
+    // v1ReleaseGateCommands and expectedV1EvidenceCommands — and the table
+    // derives one mutation control per declared command per selector.
+    342,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

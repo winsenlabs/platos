@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadLockfile, computeClosure, componentsFromSnapshots, IMAGES } from './lib/pnpm-closure.mjs';
+import { assertDispositions } from './lib/advisory-dispositions.mjs';
 import {
   WEBAPP_INVENTORY_SCHEMA,
   WEBAPP_TARGET_PLATFORM,
@@ -22,6 +23,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LOCK = path.join(ROOT, 'pnpm-lock.yaml');
 const INVENTORY = path.join(ROOT, 'docs/audits/sbom/platos-webapp.image-inventory.json');
 const OUT = path.join(ROOT, 'docs/audits/sbom/advisory/osv-report.json');
+// WIN-299 (M2.6) — the disposition register checked alongside the receipt.
+const POLICY = path.join(ROOT, 'docs/audits/sbom/advisory/advisory-policy.json');
 const OSV_API = 'https://api.osv.dev';
 const RECEIPT_SCHEMA = 'platos.audit.osv-receipt/v2';
 const DEFAULT_CACHE_DIR = '/var/tmp/platos-osv-cache';
@@ -404,8 +407,18 @@ export async function runCli(argv = process.argv.slice(2)) {
     inventoryPath: path.resolve(flag(argv, '--inventory', INVENTORY)),
   };
   if (argv.includes('--check')) {
-    validateReceipt(readJson(outputPath), buildCurrentInputs(inputOptions));
+    const receipt = readJson(outputPath);
+    validateReceipt(receipt, buildCurrentInputs(inputOptions));
     console.error(`OK: ${path.relative(ROOT, outputPath)} matches the current lock and exact webapp image inventory.`);
+    // WIN-299 (M2.6) — freshness alone is not acceptance. Every CRITICAL/HIGH
+    // finding must additionally carry an owned, dated disposition.
+    const policyPath = path.resolve(flag(argv, '--policy', POLICY));
+    const summary = assertDispositions(receipt, readJson(policyPath));
+    console.error(
+      `OK: ${path.relative(ROOT, policyPath)} disposes every CRITICAL/HIGH finding ` +
+      `(${summary.gated} gated of ${summary.findings}: ${summary.waived} waived, ` +
+      `${summary.carried} carried, ${summary.resolved} recorded resolved).`,
+    );
     return;
   }
   const receipt = await refreshReceipt({

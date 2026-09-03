@@ -1,0 +1,1021 @@
+{
+  "$schema": "platos.audit.advisory-policy/v1",
+  "note": "WIN-299 (M2.6). Disposition register for docs/audits/sbom/advisory/osv-report.json. scripts/audit-advisory.mjs --check fails unless EVERY CRITICAL/HIGH finding in the receipt appears here with an owner, a written argument and an unexpired review date. Entries are added BY HAND: there is deliberately no generator in the repository, because a regenerate button would mass-absolve new advisories and that is the precise failure this gate exists to prevent. scripts/verify-advisory-nonvacuity.mjs proves all seven failure modes actually fail.",
+  "policy": "Two states, and they must never be confused. \"waived\" means somebody assessed reachability and wrote the argument down. \"carried\" means nobody has assessed it yet — it is an admission of unassessed risk, NOT a safety claim, and it is recorded so a live CRITICAL/HIGH cannot sit unowned the way GHSA-gr94-w7qr-f4j3 and GHSA-xwg4-73v4-xw9w did. An UPGRADED advisory is not a disposition: it stops appearing in the receipt, and is recorded under resolved[] where the gate verifies the finding is genuinely absent.",
+  "acceptance": "The owner named on each entry accepts the recorded state by merging the pull request that introduces or re-dates it. A disposition authored but never merged is not an acceptance.",
+  "gatedSeverities": [
+    "CRITICAL",
+    "HIGH"
+  ],
+  "resolved": [
+    {
+      "advisory": "GHSA-gr94-w7qr-f4j3",
+      "package": "engine.io",
+      "fromVersion": "6.6.6",
+      "toVersion": "6.6.9",
+      "severity": "HIGH",
+      "mechanism": "pnpm override \"engine.io@>=6.6.0 <6.6.7\": \"6.6.9\" in the root package.json, within the range the parent already declares (socket.io@4.8.3 requires engine.io ~6.6.0).",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-r635-g3xr-vw7x",
+      "package": "engine.io",
+      "fromVersion": "6.6.6",
+      "toVersion": "6.6.9",
+      "severity": "HIGH",
+      "mechanism": "pnpm override \"engine.io@>=6.6.0 <6.6.7\": \"6.6.9\" in the root package.json, within the range the parent already declares (socket.io@4.8.3 requires engine.io ~6.6.0).",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-xwg4-73v4-xw9w",
+      "package": "nanoid",
+      "fromVersion": "3.3.8",
+      "toVersion": "3.3.18",
+      "severity": "HIGH",
+      "mechanism": "pnpm override \"nanoid@>=3.0.0 <3.3.18\": \"3.3.18\" in the root package.json. Unlike the engine.io override this one does NOT sit inside a range the parent declares: @trigger.dev/core@4.5.4 pins nanoid at exactly 3.3.8. It is justified on three checkable facts instead — 3.3.18 is the same 3.3.x patch line; the vendor itself moved to nanoid 3.3.18 at @trigger.dev/core 4.5.12 and above, so upstream ships that exact pairing; and 3.3.18 was already resolved in this lockfile for other importers, so the override retargets an existing node rather than introducing one.",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-28wg-ghj8-5hjv",
+      "package": "nanoid",
+      "fromVersion": "3.3.8",
+      "toVersion": "3.3.18",
+      "severity": "HIGH",
+      "mechanism": "pnpm override \"nanoid@>=3.0.0 <3.3.18\": \"3.3.18\" in the root package.json. Unlike the engine.io override this one does NOT sit inside a range the parent declares: @trigger.dev/core@4.5.4 pins nanoid at exactly 3.3.8. It is justified on three checkable facts instead — 3.3.18 is the same 3.3.x patch line; the vendor itself moved to nanoid 3.3.18 at @trigger.dev/core 4.5.12 and above, so upstream ships that exact pairing; and 3.3.18 was already resolved in this lockfile for other importers, so the override retargets an existing node rather than introducing one.",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-2v37-7h3g-55p8",
+      "package": "nanoid",
+      "fromVersion": "3.3.8",
+      "toVersion": "3.3.18",
+      "severity": "HIGH",
+      "mechanism": "pnpm override \"nanoid@>=3.0.0 <3.3.18\": \"3.3.18\" in the root package.json. Unlike the engine.io override this one does NOT sit inside a range the parent declares: @trigger.dev/core@4.5.4 pins nanoid at exactly 3.3.8. It is justified on three checkable facts instead — 3.3.18 is the same 3.3.x patch line; the vendor itself moved to nanoid 3.3.18 at @trigger.dev/core 4.5.12 and above, so upstream ships that exact pairing; and 3.3.18 was already resolved in this lockfile for other importers, so the override retargets an existing node rather than introducing one.",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-96hv-2xvq-fx4p",
+      "package": "ws",
+      "fromVersion": "8.18.3",
+      "toVersion": "8.21.1",
+      "severity": "HIGH",
+      "mechanism": "Transitive dedupe: engine.io 6.6.9 depends on ws 8.21.1, which replaced the 8.18.3 node the previous engine.io 6.6.6 pulled in. Not directly targeted by an override — a measured side effect of the engine.io upgrade, recorded here so it is not mistaken for an unexplained disappearance.",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    },
+    {
+      "advisory": "GHSA-58qx-3vcg-4xpx",
+      "package": "ws",
+      "fromVersion": "8.18.3",
+      "toVersion": "8.21.1",
+      "severity": "MODERATE",
+      "mechanism": "Transitive dedupe: engine.io 6.6.9 depends on ws 8.21.1, which replaced the 8.18.3 node the previous engine.io 6.6.6 pulled in. Not directly targeted by an override — a measured side effect of the engine.io upgrade, recorded here so it is not mistaken for an unexplained disappearance.",
+      "issue": "WIN-299",
+      "resolvedOn": "2026-09-02"
+    }
+  ],
+  "dispositions": [
+    {
+      "advisory": "GHSA-wc8c-qw6v-h7f6",
+      "package": "@hono/node-server",
+      "version": "1.19.9",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at @hono/node-server@1.19.9; OSV reports a fix line at 1.19.10. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-9583-h5hc-x8cw",
+      "package": "@remix-run/node",
+      "version": "2.1.0",
+      "severity": "CRITICAL",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This CRITICAL is live in the webapp image at @remix-run/node@2.1.0; OSV reports a fix line at 2.17.2. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-3cgp-3xvw-98x8",
+      "package": "@remix-run/react",
+      "version": "2.1.0",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at @remix-run/react@2.1.0; OSV reports a fix line at 2.17.1. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-8v8x-cx79-35w7",
+      "package": "@remix-run/react",
+      "version": "2.1.0",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at @remix-run/react@2.1.0; OSV reports a fix line at 2.17.3. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-2w69-qvjg-hvjx",
+      "package": "@remix-run/router",
+      "version": "1.10.0",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at @remix-run/router@1.10.0; OSV reports a fix line at 1.23.2. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-2w69-qvjg-hvjx",
+      "package": "@remix-run/router",
+      "version": "1.15.3",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at @remix-run/router@1.15.3; OSV reports a fix line at 1.23.2. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-p28v-f755-9qrg",
+      "package": "@trigger.dev/core",
+      "version": "4.5.4",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at @trigger.dev/core@4.5.4; OSV reports a fix line at 4.5.6. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-3jxr-9vmj-r5cp",
+      "package": "brace-expansion",
+      "version": "2.0.1",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at brace-expansion@2.0.1; OSV reports a fix line at 5.0.7. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "version": "2.0.1",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at brace-expansion@2.0.1; OSV reports a fix line at 5.0.8. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-rgw5-rvv9-x895",
+      "package": "brace-expansion",
+      "version": "2.0.1",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at brace-expansion@2.0.1; OSV reports a fix line at 1.1.18. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-3jxr-9vmj-r5cp",
+      "package": "brace-expansion",
+      "version": "5.0.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at brace-expansion@5.0.5; OSV reports a fix line at 5.0.7. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "version": "5.0.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at brace-expansion@5.0.5; OSV reports a fix line at 5.0.8. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-rgw5-rvv9-x895",
+      "package": "brace-expansion",
+      "version": "5.0.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at brace-expansion@5.0.5; OSV reports a fix line at 1.1.18. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-ggr8-5vv4-36mx",
+      "package": "deepmerge-ts",
+      "version": "7.1.5",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at deepmerge-ts@7.1.5; OSV reports a fix line at 8.0.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-737v-mqg7-c878",
+      "package": "defu",
+      "version": "6.1.4",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at defu@6.1.4; OSV reports a fix line at 6.1.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-38f7-945m-qr2g",
+      "package": "effect",
+      "version": "3.16.12",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at effect@3.16.12; OSV reports a fix line at 3.20.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-gr94-w7qr-f4j3",
+      "package": "engine.io",
+      "version": "6.5.4",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "waived",
+      "reachability": "inert",
+      "argument": "Present but inert: this engine.io copy is reached only through socket.io@4.7.4, whose sole parent is @trigger.dev/core@4.5.4. That package DECLARES socket.io 4.7.4 but never imports it — an exhaustive scan of the published tarball finds \"socket.io-client\" as the only quoted socket.io specifier (6 occurrences) and zero require(\"socket.io\") / from \"socket.io\" / import(\"socket.io\") in any build output. The engine.io server class behind this copy is therefore never constructed, and both advisories require a running Engine.IO server instance. The gateway that actually serves traffic (apps/agent + @nestjs/platform-socket.io) resolves socket.io@4.8.3 -> engine.io@6.6.9, which is patched for both. socket.io@4.7.4 pins \"engine.io\": \"~6.5.2\", so no fixed 6.5.x exists and forcing 6.6.x under it would be a combination the vendor never tested. Second, independent barrier: the vulnerable code is BaseServer.onWebTransportSession(), which has zero callers inside engine.io, is never referenced by socket.io 4.7.4 or 4.8.3, is never called by first-party code, and needs a WebTransport session object — no webtransport/http3/quic package exists in either image closure.",
+      "durableFix": "@trigger.dev/core >= 4.5.12 drops the socket.io dependency entirely (verified against the npm registry metadata for 4.5.0-4.5.16), which removes engine.io 6.5.4 from the agent closure outright. That bump also clears GHSA-p28v-f755-9qrg on @trigger.dev/core itself. It is deliberately NOT taken here: Trigger moved its realtime transport between 4.5.11 and 4.5.12, so it needs durable-execution integration validation of its own rather than riding along in a security patch.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-299",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-r635-g3xr-vw7x",
+      "package": "engine.io",
+      "version": "6.5.4",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "waived",
+      "reachability": "inert",
+      "argument": "Present but inert: this engine.io copy is reached only through socket.io@4.7.4, whose sole parent is @trigger.dev/core@4.5.4. That package DECLARES socket.io 4.7.4 but never imports it — an exhaustive scan of the published tarball finds \"socket.io-client\" as the only quoted socket.io specifier (6 occurrences) and zero require(\"socket.io\") / from \"socket.io\" / import(\"socket.io\") in any build output. The engine.io server class behind this copy is therefore never constructed, and both advisories require a running Engine.IO server instance. The gateway that actually serves traffic (apps/agent + @nestjs/platform-socket.io) resolves socket.io@4.8.3 -> engine.io@6.6.9, which is patched for both. socket.io@4.7.4 pins \"engine.io\": \"~6.5.2\", so no fixed 6.5.x exists and forcing 6.6.x under it would be a combination the vendor never tested. Note the polling transport IS on by default, so unlike the WebTransport advisory this one has no second barrier: the whole argument rests on the module never being loaded. If @trigger.dev/core ever begins importing the socket.io server, this waiver is void and must be re-assessed immediately.",
+      "durableFix": "@trigger.dev/core >= 4.5.12 drops the socket.io dependency entirely (verified against the npm registry metadata for 4.5.0-4.5.16), which removes engine.io 6.5.4 from the agent closure outright. That bump also clears GHSA-p28v-f755-9qrg on @trigger.dev/core itself. It is deliberately NOT taken here: Trigger moved its realtime transport between 4.5.11 and 4.5.12, so it needs durable-execution integration validation of its own rather than riding along in a security patch.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-299",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-46wh-pxpv-q5gq",
+      "package": "express-rate-limit",
+      "version": "8.2.1",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at express-rate-limit@8.2.1; OSV reports a fix line at 8.2.2. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-4c8g-83qw-93j6",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 4.0.1. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-7p8r-x3mc-p8w7",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 2.4.4. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-f65p-4m7j-42xc",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 2.4.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-jqff-g426-hqxp",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 2.4.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-q3j6-qgpj-74h6",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 3.1.1. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-v2hh-gcrm-f6hx",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 2.4.3. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-v39h-62p7-jpjc",
+      "package": "fast-uri",
+      "version": "3.0.6",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-uri@3.0.6; OSV reports a fix line at 3.1.2. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-37qj-frw5-hhjh",
+      "package": "fast-xml-parser",
+      "version": "5.2.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-xml-parser@5.2.5; OSV reports a fix line at 5.3.4. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-8gc5-j5rx-235r",
+      "package": "fast-xml-parser",
+      "version": "5.2.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-xml-parser@5.2.5; OSV reports a fix line at 5.5.6. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-jmr7-xgp7-cmfj",
+      "package": "fast-xml-parser",
+      "version": "5.2.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at fast-xml-parser@5.2.5; OSV reports a fix line at 4.5.4. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-m7jm-9gc2-mpf2",
+      "package": "fast-xml-parser",
+      "version": "5.2.5",
+      "severity": "CRITICAL",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This CRITICAL is live in the agent image at fast-xml-parser@5.2.5; OSV reports a fix line at 5.3.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-hmw2-7cc7-3qxx",
+      "package": "form-data",
+      "version": "4.0.4",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at form-data@4.0.4; OSV reports a fix line at 2.5.6. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-5j98-mcp5-4vw2",
+      "package": "glob",
+      "version": "10.4.5",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at glob@10.4.5; OSV reports a fix line at 11.1.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-88fw-hqm2-52qc",
+      "package": "hono",
+      "version": "4.11.8",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at hono@4.11.8; OSV reports a fix line at 4.12.25. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-q5qw-h33p-qvwr",
+      "package": "hono",
+      "version": "4.11.8",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at hono@4.11.8; OSV reports a fix line at 4.12.4. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-mwp4-54f8-5fhr",
+      "package": "ip-address",
+      "version": "10.0.1",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at ip-address@10.0.1; OSV reports a fix line at 10.3.1. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-r5fr-rjxr-66jc",
+      "package": "lodash",
+      "version": "4.17.23",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at lodash@4.17.23; OSV reports a fix line at 4.18.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-23c5-xmqv-rm74",
+      "package": "minimatch",
+      "version": "9.0.5",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at minimatch@9.0.5; OSV reports a fix line at 10.2.3. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-3ppc-4f35-3m26",
+      "package": "minimatch",
+      "version": "9.0.5",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at minimatch@9.0.5; OSV reports a fix line at 10.2.1. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-7r86-cg39-jmmj",
+      "package": "minimatch",
+      "version": "9.0.5",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at minimatch@9.0.5; OSV reports a fix line at 10.2.3. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-72gw-mp4g-v24j",
+      "package": "multer",
+      "version": "2.1.1",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at multer@2.1.1; OSV reports a fix line at 2.2.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-37ch-88jc-xwx2",
+      "package": "path-to-regexp",
+      "version": "0.1.10",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at path-to-regexp@0.1.10; OSV reports a fix line at 0.1.13. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-rhx6-c78j-4q9w",
+      "package": "path-to-regexp",
+      "version": "0.1.10",
+      "severity": "HIGH",
+      "images": [
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the webapp image at path-to-regexp@0.1.10; OSV reports a fix line at 0.1.12. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-2m8v-j782-fhvr",
+      "package": "socket.io-parser",
+      "version": "4.2.4",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at socket.io-parser@4.2.4; OSV reports a fix line at 4.2.7. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-677m-j7p3-52f9",
+      "package": "socket.io-parser",
+      "version": "4.2.4",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at socket.io-parser@4.2.4; OSV reports a fix line at 3.3.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-5xpp-75jx-m839",
+      "package": "systeminformation",
+      "version": "5.31.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at systeminformation@5.31.5; OSV reports a fix line at 5.31.7. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-hvx9-hwr7-wjj9",
+      "package": "systeminformation",
+      "version": "5.31.5",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at systeminformation@5.31.5; OSV reports a fix line at 5.31.6. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-23hp-3jrh-7fpw",
+      "package": "tar",
+      "version": "7.5.13",
+      "severity": "CRITICAL",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This CRITICAL is live in the agent image at tar@7.5.13; OSV reports a fix line at 7.5.19. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-8x88-c5mf-7j5w",
+      "package": "tar",
+      "version": "7.5.13",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at tar@7.5.13; OSV reports a fix line at 7.5.18. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-r292-9mhp-454m",
+      "package": "tar",
+      "version": "7.5.13",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at tar@7.5.13; OSV reports a fix line at 7.5.21. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-4cwx-7wf7-3272",
+      "package": "undici",
+      "version": "7.25.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@7.25.0; OSV reports a fix line at 7.29.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-hm92-r4w5-c3mj",
+      "package": "undici",
+      "version": "7.25.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@7.25.0; OSV reports a fix line at 7.28.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-vmh5-mc38-953g",
+      "package": "undici",
+      "version": "7.25.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@7.25.0; OSV reports a fix line at 7.28.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-vxpw-j846-p89q",
+      "package": "undici",
+      "version": "7.25.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@7.25.0; OSV reports a fix line at 6.27.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-4cwx-7wf7-3272",
+      "package": "undici",
+      "version": "7.28.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@7.28.0; OSV reports a fix line at 7.29.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-4cwx-7wf7-3272",
+      "package": "undici",
+      "version": "8.7.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at undici@8.7.0; OSV reports a fix line at 7.29.0. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-3h5v-q93c-6h6q",
+      "package": "ws",
+      "version": "8.11.0",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at ws@8.11.0; OSV reports a fix line at 5.2.4. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-96hv-2xvq-fx4p",
+      "package": "ws",
+      "version": "8.11.0",
+      "severity": "HIGH",
+      "images": [
+        "agent",
+        "webapp"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent and webapp images at ws@8.11.0; OSV reports a fix line at 5.2.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    },
+    {
+      "advisory": "GHSA-96hv-2xvq-fx4p",
+      "package": "ws",
+      "version": "8.18.0",
+      "severity": "HIGH",
+      "images": [
+        "agent"
+      ],
+      "state": "carried",
+      "reachability": "unassessed",
+      "argument": "Not yet assessed for reachability. This HIGH is live in the agent image at ws@8.18.0; OSV reports a fix line at 5.2.5. Recorded as an explicit, dated admission of unassessed risk rather than left unowned. This entry makes NO claim that the vulnerable path is unreachable — it only claims that somebody is accountable for assessing it before 2026-12-02.",
+      "owner": "Tejas Parthasarathi Sudarshan",
+      "issue": "WIN-283",
+      "acceptedOn": "2026-09-02",
+      "reviewBy": "2026-12-02"
+    }
+  ]
+}
