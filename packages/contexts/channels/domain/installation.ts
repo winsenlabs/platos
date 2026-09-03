@@ -14,10 +14,17 @@
 //                        │
 //                        └────abandon─────▶ REPAIR_REQUIRED  (generation + 1)
 //
-// `begin` is a compare-and-swap: it succeeds only from IDLE, and only when the
-// credential and generation the caller EXPECTED still hold. It stamps a claim
-// id. `finalize` re-asserts state, claim id, credential and generation, so an
-// claim that lost the row writes nothing.
+// `begin` is a compare-and-swap: it succeeds only from IDLE, and only when all
+// three axes the caller EXPECTED still hold — the credential row, ITS REVISION,
+// and the generation. It stamps a claim id. `finalize` re-asserts state, claim
+// id and the same three axes, so a claim that lost the row writes nothing.
+//
+// THE REVISION IS THE AXIS THAT CATCHES A REPLACEMENT IN PLACE. `secrets`
+// rotating a credential's material moves neither the row's id nor this
+// context's generation, so without it a claim holding an already-dead grant is
+// indistinguishable from a live one. It was declared on `RefreshExpectation`
+// and never read until WIN-256; `RefreshExpectation`'s own note carries the
+// finding.
 //
 // WHY A CLAIM ID AS WELL AS A GENERATION. The generation alone cannot separate
 // two claims that both began from the same generation — only one can have
