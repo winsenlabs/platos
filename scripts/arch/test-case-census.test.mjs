@@ -265,11 +265,18 @@ test("the channels context rebased onto v1 @ 95cbacc1 is pinned at what vitest p
   // held at its earlier value by the tests above, so a suite quietly deleted
   // elsewhere while channels landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
-  assert.equal(EXPECTED["packages/contexts/channels"].cases, 263);
-  // 258 is what the source branch's tip pinned; the +5 is enumerated in the
-  // module header and is entirely new refusal cases, not a renumbering.
-  assert.equal(EXPECTED["packages/contexts/channels"].cases, 258 + 5);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 263);
+  assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
+  // 258 is what the source branch's tip pinned, +5 for the rebase and +6 for
+  // the unenforced-fence wave. BOTH deltas are entirely new refusal cases with
+  // their controls, and NEITHER moved the file count — which is why the case
+  // count is pinned beside it rather than instead of it. The +6 is written out
+  // here as well as in the module header so a deleted case cannot hide inside
+  // an added one: 4 in domain/installation.test.ts (30 -> 34), 1 in
+  // contracts/channels-contract.test.ts (18 -> 19), 1 in
+  // application/channels-erasure-target.test.ts (12 -> 13).
+  assert.equal(EXPECTED["packages/contexts/channels"].cases, 258 + 5 + 6);
+  assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 269);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

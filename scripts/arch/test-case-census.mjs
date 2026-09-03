@@ -125,6 +125,40 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * Every other package is unchanged. Any further drift is a finding to report,
  * not a number to force.
+ *
+ * CHANNELS, SECOND WAVE — the unenforced-fence wave. The SAME row moves again
+ * and the FILE COUNT DOES NOT:
+ *
+ *   channels 263 -> 269 cases, 15 files; 1263 -> 1269 total. All six added
+ *   cases land in suites that already existed, which is the shape this canary
+ *   exists for — a wave that adds only refusals is invisible to a file-count
+ *   pin.
+ *
+ *   +4  domain/installation.test.ts (30 -> 34). The refresh fence's THIRD AXIS.
+ *       `RefreshExpectation.credentialRevision` was declared and never read —
+ *       `ChannelInstallation` carried no revision to compare it against — so
+ *       deleting the field entirely COMPILED and left all 263 green. Two cases
+ *       on `beginRefresh` (a credential replaced in place with the generation
+ *       unmoved is refused, and the positive control that differs from it by
+ *       the revision ALONE), one on `finalizeRefresh` (the same fence at the
+ *       moment of writing, which is a different window), and one on
+ *       `releaseRefresh` (the one path that leaves the generation unchanged, so
+ *       the one path where the generation axis alone cannot tell a stale claim
+ *       from a live one).
+ *   +1  contracts/channels-contract.test.ts (18 -> 19). `describeApp` is
+ *       invisible across environments. Removing that one line from the
+ *       repository double's `findApp` left 263 green while removing the
+ *       IDENTICAL line from `findConnection` turned two red.
+ *   +1  application/channels-erasure-target.test.ts (12 -> 13). The
+ *       substitution case became a REFUSAL case — `erasurePlanForeign` had zero
+ *       producers while the error enumeration published its code — and the
+ *       addition is the positive control that stops a target which threw at
+ *       every plan from satisfying it.
+ *
+ *   `pnpm --filter @platos/context-channels exec vitest run` prints "Test Files
+ *   15 passed (15) / Tests 269 passed (269)", and the census REFUSES nothing in
+ *   that tree, so 269 is a statically exact count. No case was deleted and no
+ *   other package moved: 4 + 1 + 1 = 6, 263 + 6 = 269, and 1263 + 6 = 1269.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -140,7 +174,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 0, cases: 0 },
-  "packages/contexts/channels": { files: 15, cases: 263 },
+  "packages/contexts/channels": { files: 15, cases: 269 },
   "packages/contexts/conversations": { files: 0, cases: 0 },
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
@@ -166,7 +200,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1263;
+export const EXPECTED_RUNTIME_TOTAL = 1269;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
