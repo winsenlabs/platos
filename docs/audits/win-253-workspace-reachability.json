@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b14ae8da52c96584dd589c391ef1dfaa5344cc94c7a3e092ea57c62f828ea45a",
+  "evidenceSha256": "453bd993f94e066acfd40c9b7d36dc28da819cd10f539c332897fab12e25a03b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 78,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "909958758e9c980ddae2a08f86c5a0f23c756baeaa92960a4317260acb763172",
+    "aggregateSha256": "f923fc57cf3afea96f0ab28fc207a13b25be10f50deb0fe5cbeeae9e93663990",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11749,7 +11749,7 @@
       },
       {
         "path": "packages/contexts/observability/application/drain-projections.lanes.test.ts",
-        "sha256": "971bdf1dc76956b6b186f3b0aa67fef1e5280fddd5d9a3a858ec8bc4c894654c"
+        "sha256": "9b798d1f49ab3d8789912ff46d9f398ea614f77ef106eda8d69d1b7d8501a189"
       },
       {
         "path": "packages/contexts/observability/application/drain-projections.test.ts",
@@ -11829,7 +11829,7 @@
       },
       {
         "path": "packages/contexts/observability/application/testing/turn-fixture.ts",
-        "sha256": "32b09d08654e9e4e50423cc4045ff4369a617b5c3a0ae5a9b27df5d0da8a44c1"
+        "sha256": "7c0928e39256594d50bbabaf40859707ed3226e48f7bc8a3b32fce433b0ca473"
       },
       {
         "path": "packages/contexts/observability/application/views.ts",
@@ -14909,11 +14909,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "6bcadf6b0ab12e1b5cdc03617c8f670572b82554863fedaef2c1b020af2dd8ca"
+        "sha256": "aa0ad63baab06b55c6a1e3e0a290be01f56e0de06ed4ccde30f71fc0146eeaef"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "db4a68b4e3a457248733495fe054472b468b65ec78a77bf83a77be20be147fdd"
+        "sha256": "b2df446068ad47d926c36b3b947db367c2a77ee75861269eddb6a684e80a3cb2"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
