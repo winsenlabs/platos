@@ -92,15 +92,20 @@ test("stale, missing, and extra owned files each fail closed", () => {
     // the MISSING case off `apps/mcp-stdio/src/main.ts` for the same reason.
     // `memory` is adopted on THIS trunk, so the tools branch's choice arrived
     // here naming a project that no longer has the files — an auto-merge with no
-    // textual conflict and a red test. It now names `conversations`, which stays
-    // a generated placeholder through both remaining wave-b adoptions and after
-    // them. A future adoption of `conversations` must move it again, to whatever
-    // is still unadopted then; a sample that names an adopted project fails with
-    // ENOENT rather than passing quietly, which is why this is safe to move but
-    // never safe to delete.
-    ["stale", (root) => writeFileSync(join(root, "packages/contexts/conversations/domain/index.ts"), "stale\n"), "STALE   packages/contexts/conversations/domain/index.ts"],
-    ["missing", (root) => rmSync(join(root, "packages/contexts/conversations/application/index.ts")), "MISSING packages/contexts/conversations/application/index.ts"],
-    ["extra", (root) => write(root, "packages/contexts/conversations/extra.ts", "export {};\n"), "EXTRA   packages/contexts/conversations/extra.ts"],
+    // textual conflict and a red test.
+    //
+    // FOURTH MOVE, and the last one that can be made within the context tier.
+    // It named `conversations`, whose own comment predicted that "a future
+    // adoption of `conversations` must move it again, to whatever is still
+    // unadopted then" — and WIN-256 adopting the seventeenth and last context is
+    // that adoption. It failed with ENOENT rather than passing quietly, which is
+    // the behaviour that comment was relying on. NO CONTEXT IS UNADOPTED NOW, so
+    // the sample moves to the ADAPTER tier, which is entirely generated: twelve
+    // projects, two placeholders each, none of them adopted. The `extra` case
+    // keeps its file inside the same project so all three sample one place.
+    ["stale", (root) => writeFileSync(join(root, "packages/adapters/durable-runtime/src/index.ts"), "stale\n"), "STALE   packages/adapters/durable-runtime/src/index.ts"],
+    ["missing", (root) => rmSync(join(root, "packages/adapters/durable-runtime/src/adapter.ts")), "MISSING packages/adapters/durable-runtime/src/adapter.ts"],
+    ["extra", (root) => write(root, "packages/adapters/durable-runtime/src/extra.ts", "export {};\n"), "EXTRA   packages/adapters/durable-runtime/src/extra.ts"],
   ]) {
     const root = fixture();
     mutate(root);

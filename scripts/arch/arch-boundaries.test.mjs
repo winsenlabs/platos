@@ -615,8 +615,29 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     //               No rule was added, removed, weakened or reinterpreted by any
     //               of the four, and the census still only ever grows.
-    assert.equal(result.fileCount, 1091, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18);
+    //  1091 -> 1165 +74: WIN-256 adopts `conversations`, the SEVENTEENTH AND
+    //               LAST context (ADR M0.3 section 1 row 16). 78 real .ts files
+    //               stand where 4 generated placeholders stood, so the delta is
+    //               a NET — 78 - 4 = 74 — and it is written as that subtraction
+    //               rather than as a bare +74, because the four released
+    //               placeholders are the only files this slice removes and a
+    //               deletion elsewhere must not be able to hide behind them.
+    //               The `inference-sdk-only` rule is the one to watch here: this
+    //               context is the turn-execution engine, so it is the package
+    //               most tempted to import `ai` or `@ai-sdk/*` directly, and it
+    //               imports neither — the tool loop, the step budget and the
+    //               cache breakpoints all sit BEHIND `providers`' ModelRouter
+    //               port. All 1113 files satisfy every rule, the eleven edges
+    //               out of this context are legal and there are ZERO edges in,
+    //               which is the second half of row 16 and what makes this
+    //               context the DAG sink.
+    //               The conversations branch pinned 1039 -> 1113 and its own sum
+    //               ended `+ 8 + 74`, blind to the adapter and to WIN-257, both
+    //               of which landed on the integration branch after it was cut.
+    //               1113 is not the number here: the three deltas are disjoint
+    //               and SUM, 1039 + 34 + 18 + 74 = 1165.
+    assert.equal(result.fileCount, 1165, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

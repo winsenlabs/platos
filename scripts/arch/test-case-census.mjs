@@ -1110,6 +1110,67 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   `apps/core-api` gained composition cases and is outside PACKAGE_ROOTS, so it
  *   does not appear here. No other package moved. Any further drift is a finding
  *   to report, not a number to force.
+ * ---------------------------------------------------------------------------
+ * WIN-256 CONVERSATIONS (2026-09-04) — THE SEVENTEENTH AND LAST CONTEXT. The
+ * turn-execution engine becomes real and exactly ONE row moves:
+ *
+ *   conversations 0 -> 29 files, 0 -> 350 cases; 5150 -> 5500 total.
+ *
+ * Every case is NEW. Nothing was renamed, moved between files, or deleted
+ * anywhere in the workspace by this slice, so the +350 is an addition with no
+ * subtraction hiding inside it — and the enumeration below is what makes that
+ * checkable rather than asserted, because the twenty-nine parts must sum to the
+ * whole:
+ *
+ *   domain/                                     application/
+ *     attachment              12                  authorization           13
+ *     errors                  13                  compact-thread          9
+ *     postman-execution       9                   conversations-erasure-
+ *     step                    9                     target                16
+ *     step-rates              10                  execute-postman         12
+ *     step-usage              12                  fork-thread             8
+ *     structured-output       13                  manage-threads          18
+ *     sub-agent               13                  run-sub-agent           12
+ *     thread                  14                  run-turn                16
+ *     thread-compaction       11                  turn-admission          11
+ *     thread-fork             8                   turn-steps              15
+ *     tool-catalogue          13                  turn-tools              13
+ *     tool-result             12                                        ----
+ *     transcript              11                                         143
+ *     turn                    16                contracts/
+ *     turn-cost               9                   index                   13
+ *     work-status             9                                         ----
+ *                           ----                                          13
+ *                            194
+ *
+ *   194 + 143 + 13 = 350, across 17 + 11 + 1 = 29 files.
+ *
+ * `pnpm --filter @platos/context-conversations exec vitest run` prints the same
+ * pair: "Test Files 29 passed (29) / Tests 350 passed (350)".
+ *
+ * No other package moved: this slice touched no suite outside conversations.
+ * 311 + 29 = 340 files and 5150 + 350 = 5500 cases across the workspace.
+ *
+ * THE ONE NUMBER TO WATCH WHEN THIS MOVES. `run-turn.test.ts` holds 16 cases,
+ * one of which is the failure-injection case that forces the write inside the
+ * settlement transaction to refuse and asserts that NEITHER the settlement nor
+ * its outbox event survived. Its case count would not move if that assertion
+ * were weakened back to counting rollbacks, which is exactly the change a
+ * file-count pin cannot see; `mutations.json` is where that guard is held
+ * falsifiable, not here.
+ *
+ * M2 INTEGRATION MERGE. The two blocks above are each written against the same
+ * 5150-case base and neither endpoint is the number on this tree: the adapter
+ * plus WIN-257 wrote 5525, conversations wrote 5500, and the three deltas are
+ * disjoint and SUM -- 5150 + 227 + 148 + 350 = 5875 across 311 + 17 + 10 + 29 =
+ * 367 files. The per-row deltas are what conserves and every one is unchanged.
+ *
+ * THE LEDGER IDENTITY CHANGES SHAPE HERE, and it is written out rather than
+ * quietly re-spelled: with `packages/adapters` nonzero the census is no longer a
+ * contexts-plus-kernel sum, so it now closes as
+ * packages.contexts.test 349 + packages.kernel.test 3 + packages.adapters.test 15
+ * = 367. The pre-adapter form (contexts + kernel alone) would read 352 and is no
+ * longer the identity; `v1-ledger.test.mjs` carries the same restatement.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1126,7 +1187,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 15, cases: 269 },
-  "packages/contexts/conversations": { files: 0, cases: 0 },
+  "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 14, cases: 149 },
   "packages/contexts/files": { files: 15, cases: 134 },
@@ -1248,7 +1309,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5525;
+export const EXPECTED_RUNTIME_TOTAL = 5875;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

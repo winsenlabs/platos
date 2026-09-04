@@ -196,7 +196,10 @@ test("the live selectors scan an exact nonzero source census", () => {
   // +67 and pinned 478 (328 + 67 + 83) — a partial sum too, blind to the other
   // nine. The axes are disjoint, so the
   // integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 = 970.
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 74 = 1044,
+  // the last term being `conversations`, the seventeenth and final context: 78
+  // real .ts files where 4 generated placeholders stood, so 78 - 4 = 74 and the
+  // subtraction is written out rather than folded away.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -267,14 +270,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // The integrated census is the sum of four disjoint scans:
   //
   //     packages/kernel/**                20   NEWLY COVERED
-  //     packages/contexts/**             986
+  //     packages/contexts/**            1060
   //     packages/adapters/**              54   NEWLY COVERED
   //     apps/core-api/src/transports/**    6
   //                                     ----
-  //                                     1066
+  //                                     1140
   //
-  // `packages/contexts/**` is 986: 964 at adoption, +4 because the adapter branch
-  // adds two domain modules and two suites to `providers`, and +18 for WIN-257.
+  // `packages/contexts/**` is 1060: 964 at adoption, +4 because the adapter branch
+  // adds two domain modules and two suites to `providers`, +18 for WIN-257, and
+  // +74 for conversations (78 real .ts where 4 placeholders stood).
   // `packages/adapters/**`
   // is 54: the eleven still-unadopted adapters carry two declaration
   // placeholders each (22), and model-router-providers carries 32 — seventeen
@@ -283,7 +287,9 @@ test("the live selectors scan an exact nonzero source census", () => {
   // contexts; 414 is not the number here and its +4, +20 and +54 are the parts
   // that conserve.
   //
-  // WIDENING THE SELECTOR ADDED NO VIOLATION. The 74 newly covered files produce
+  // WIDENING THE SELECTOR ADDED NO VIOLATION. The 74 newly covered files (20 under
+  // `packages/kernel/**` and 54 under `packages/adapters/**` -- not to be confused
+  // with the +74 conversations contributes to `packages/contexts/**` below) produce
   // zero errors and zero warnings; the finding list below is unchanged at the
   // same four contexts files it already named. That is a measured result over
   // the integrated tree, not an inherited claim — and the selector is NOT to be
@@ -321,15 +327,21 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // None of the 18 is inside the 400-line warning band, so the finding list
   // below is unchanged.
-  assert.equal(result.fileCount, 1066);
+  // WIN-256 CONVERSATIONS, the seventeenth and last context, adds 74 more under
+  // `packages/contexts/**` (78 real .ts files where 4 generated placeholders stood),
+  // 1066 -> 1140. Its own branch pinned 1044 with a sum ending `+ 8 + 74`, blind to
+  // the adapter's +4/+20/+54 and to WIN-257's +18; 1044 is not the number here. The
+  // 7,121-line oracle service it brings is split below even the 400-line warning
+  // band, so the finding list below is unchanged by it.
+  assert.equal(result.fileCount, 1140);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74
   );
-  assert.equal(result.fileCount, 20 + 986 + 54 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 54 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

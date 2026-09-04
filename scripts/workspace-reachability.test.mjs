@@ -462,9 +462,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 123 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 119 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 123. Adoption RELEASES placeholders, so this
+  // M2 INTEGRATION DELTA — 201 -> 119. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
   // DISJOINT projects. The integrated count is therefore the SUM of every
   // reduction, never the smallest of the branch pins:
@@ -507,6 +507,15 @@ test("generated ownership includes the generator's exact 123 outputs across 32 V
   //               which is why it is the one reduction on this list that is not
   //               4.
   //
+  //   123 -> 119  WIN-256 adopts `conversations` (ADR M0.3 §1 row 16), the
+  //               SEVENTEENTH AND LAST context, releasing the same 4 barrels.
+  //               With it EVERY CONTEXT IS REAL: the 22 placeholders that
+  //               remain are the eleven still-unadopted adapters at two files
+  //               each, and no `packages/contexts/**` file is generator-owned
+  //               any more. Its own branch pinned 125 -> 121 because it was cut
+  //               before the adapter released its 2; the reductions are disjoint
+  //               and SUM, so 125 - 2 - 4 = 119 and 121 is not the number here.
+  //
   // Each branch pinned only what its own lineage could see: WIN-297 branched
   // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
   // 182 - 9 = 173; WIN-256's providers tip pinned 178 and never saw the apps;
@@ -519,14 +528,14 @@ test("generated ownership includes the generator's exact 123 outputs across 32 V
   // pinned 165 - 4 = 161 — still partial, because the eventing, skills, jobs,
   // memory, cost-monitoring, privacy, observability, tools and channels
   // reductions were all invisible to it. None of those pins is correct here.
-  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 2 = 123:
+  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 2 = 119:
   // nineteen released by slices 1-5, four by providers, nine by the two apps,
-  // four each by the ELEVEN contexts adopted since, and TWO by the first adopted
-  // adapter. That is 165 - 42 read from any of the ten branches that pinned 165,
-  // and 161 - 38 read from the governance branch that pinned 161. The model
-  // router adapter branch pinned 169 - 2 = 167, blind to all eleven context
-  // adoptions and to governance; 167 is wrong here by exactly the 44 they
-  // released between them.
+  // four each by the TWELVE contexts adopted since, and TWO by the first adopted
+  // adapter. That is 165 - 46 read from any of the ten branches that pinned 165,
+  // and 161 - 42 read from the governance branch that pinned 161. The model
+  // router adapter branch pinned 169 - 2 = 167, blind to all twelve context
+  // adoptions and to governance; the conversations branch pinned 121, blind to
+  // the adapter's 2. Each is right alone and wrong here.
   //
   // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing`, `skills`, `jobs`,
   // `memory`, `cost-monitoring`, `privacy`, `observability`, `agents`, `tools`,
@@ -547,14 +556,14 @@ test("generated ownership includes the generator's exact 123 outputs across 32 V
   // that was true of a tree in which only contexts and the two apps had ever
   // been adopted, and the first adapter adoption makes it false, so it is
   // corrected here rather than carried. Written out so a DELETION CANNOT HIDE
-  // INSIDE AN ADDITION: fifteen reductions, 78 placeholders released, 123 owned
+  // INSIDE AN ADDITION: sixteen reductions, 82 placeholders released, 119 owned
   // outputs left.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 26
-  // placeholders of the 12 still-unadopted projects (1 context x 4 +
-  // 11 adapters x 2). The ONE context still on placeholders is
-  // `conversations`, and eleven of the twelve adapters are still unadopted. The
-  // scaffolding tier is
+  // The generator now owns the same 97 SCAFFOLDING files plus the 22
+  // placeholders of the 11 still-unadopted projects, which are the eleven
+  // remaining ADAPTERS at two files each. NO CONTEXT IS STILL ON PLACEHOLDERS —
+  // that is what `conversations` being the seventeenth and last means, and it is
+  // the property to re-check here rather than the total. The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
   // package.json, tsconfig.json and README.md. The project count is unchanged
@@ -578,12 +587,17 @@ test("generated ownership includes the generator's exact 123 outputs across 32 V
   // `pnpm audit:workspace-reachability` is regenerated to a fixpoint beside it.
   //
   // `node scripts/arch/gen-v1-skeleton.mjs --check` prints the same arithmetic
-  // from the other side: "97 scaffolding + 26 placeholder = 123 generated
-  // file(s) for 32 V1 projects and 95 project edges (20 project(s) adopted,
-  // 78 placeholder(s) released)". 26 placeholders REMAIN owned and 78 have been
+  // from the other side: "97 scaffolding + 22 placeholder = 119 generated
+  // file(s) for 32 V1 projects and 95 project edges (21 project(s) adopted,
+  // 82 placeholder(s) released)". 22 placeholders REMAIN owned and 82 have been
   // RELEASED. The adapter branch quoted "97 scaffolding + 70 placeholder = 167
-  // ... 34 placeholder(s) released" from the tree it could see; neither half of
-  // that sentence is true here, and it is re-read rather than carried.
+  // ... 34 placeholder(s) released" and the conversations branch quoted
+  // "97 scaffolding + 24 placeholder = 121 ... 80 placeholder(s) released", each
+  // from the tree it could see; neither sentence is true here, and both are
+  // re-read rather than carried.
+  //
+  // THE 119 WAS READ BACK from the regenerated report and from
+  // `gen-v1-skeleton.mjs --check`, which agree; it was not computed here.
   //
   // The count falls and the PROJECT count does not: 32 is unchanged, because
   // adoption releases a project's placeholders and never its scaffolding, and
@@ -591,15 +605,15 @@ test("generated ownership includes the generator's exact 123 outputs across 32 V
   // README.md. That is exactly what lets the generator carry this adapter's five
   // vendor specifiers, which a hand edit to a byte-compared manifest could not
   // have added.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 123);
+  assert.equal(report.generatedOwnership.ownedOutputCount, 119);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 123 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 123);
+  // Same 119 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 119);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
@@ -621,17 +635,20 @@ test("an explicit generated header, not a generated-looking path, owns generated
   // stopped carrying a generated header and the assertion below inverted.
   // CORRECTION, 2026-09-04. This said "one of the 27 projects still
   // generator-owned", which was written when WIN-256 slice 5 had adopted five
-  // projects (32 - 5 = 27) and was silently false from the sixth adoption on:
-  // 19 projects are adopted here, so 13 still carry generator-owned source. The
-  // count is dropped rather than re-pinned because it rots on every adoption
-  // and nothing checks it. What the fixture actually needs is the property, and
-  // that is asserted: conversations is now the ONLY context still on
-  // generator-owned placeholders — governance was the other, and WIN-256
-  // adopted it here — so its domain/index.ts still carries the generated
-  // header, and the assertion right after this one fails the moment that stops
-  // being true.
+  // projects (32 - 5 = 27) and was silently false from the sixth adoption on.
+  // The count is dropped rather than re-pinned because it rots on every
+  // adoption and nothing checks it. What the fixture actually needs is the
+  // property, and that is asserted.
+  //
+  // SECOND CORRECTION, same day. This read `conversations` as "the ONLY context
+  // still on generator-owned placeholders", which WIN-256 has now made false:
+  // adopting it made all seventeen contexts real, and NO context carries a
+  // generated header any more. The fixture moves to an ADAPTER, which is the
+  // tier that is still entirely generator-owned — twelve projects, two files
+  // each — and the assertion right after it fails the moment that stops being
+  // true, exactly as it just did.
   const realHeader = fs
-    .readFileSync(path.join(ROOT, "packages/contexts/conversations/domain/index.ts"), "utf8")
+    .readFileSync(path.join(ROOT, "packages/adapters/durable-runtime/src/index.ts"), "utf8")
     .split("\n", 1)[0];
   assert.match(realHeader, /generated by scripts\/arch\/gen-v1-skeleton\.mjs/u,
     "the header fixture must come from a file the generator still owns");
