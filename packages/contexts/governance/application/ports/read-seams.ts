@@ -28,7 +28,14 @@
 
 import type { EnvironmentScope, Result } from "@platos/kernel";
 
-import type { AgentId, EndUserId, ThreadId, TranscriptTurn, TurnId } from "../../domain/index.js";
+import type {
+  AgentId,
+  AgentVersionId,
+  EndUserId,
+  ThreadId,
+  TranscriptTurn,
+  TurnId,
+} from "../../domain/index.js";
 
 /**
  * What a rating needs to know about the turn it is attached to.
@@ -44,6 +51,19 @@ export interface RatingTarget {
   readonly agentId: AgentId;
   /** Whose conversation this is. The rating's subject must match it. */
   readonly endUserId: EndUserId;
+  /**
+   * The version that PRODUCED the turn — `Turn.agentVersionId`, a required
+   * column on the canonical model.
+   *
+   * It comes from the turn rather than from the agent's live binding, and that
+   * is a DELIBERATE DIVERGENCE from the source, which stamps a rating with
+   * whichever version is active at the moment the thumb is pressed. Rating a
+   * week-old turn after a promotion then credits the new version with the old
+   * one's output, which silently corrupts `readVersionSatisfaction` — the one
+   * rollup a canary decision is taken on. Nullable because the reader may not be
+   * able to resolve it; a null version is an unlabelled bucket, not a wrong one.
+   */
+  readonly agentVersionId: AgentVersionId | null;
 }
 
 export interface RatingTargetReader {

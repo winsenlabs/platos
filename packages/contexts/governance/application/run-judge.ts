@@ -30,6 +30,20 @@
 // exactly, and it is the reason `Judge.ask` returns a `Result` rather than
 // rejecting: the failure is a value this use case decides what to do with.
 //
+// THE EVAL IS ATTRIBUTED TO THE VERSION THAT PRODUCED THE TRANSCRIPT, NOT TO THE
+// ONE THAT IS LIVE. The source stamps `AgentEval.agentVersionId` from the
+// agent's current binding, so judging last week's thread after a promotion files
+// the score against the new version — and `aggregateAgentEvals`, filtered by
+// version, is exactly how a canary decision reads these rows. `Turn.
+// agentVersionId` records which version actually ran, so it travels on the
+// transcript and `versionUnderTest` picks it. A conversation spanning a
+// promotion is attributed to NEITHER version; see `domain/agent-eval.ts`.
+//
+// THE LIVE VERSION IS STILL READ, FOR ONE THING ONLY: the self-evaluation gate,
+// which asks whether the judge is the model THIS AGENT RUNS. That is a question
+// about the agent as configured now, which is what an operator means by "don't
+// let it grade itself", and it is the source's own comparison.
+//
 // THE CENTRAL COST LEDGER IS NOT WRITTEN HERE. The source calls
 // `CostService.recordAuxiliaryCost` from inside this path. `Budget` and the
 // spend ledger are `cost-monitoring`'s rows (ADR M0.3 §1 row 13), which this
@@ -53,6 +67,7 @@ import {
   renderTranscript,
   requireDistinctJudge,
   transcriptNotFound,
+  versionUnderTest,
   type AgentEval,
   type AgentId,
   type AgentVersionId,
@@ -109,7 +124,7 @@ export async function runJudge(
     criterion: criterion.value,
     model: model.value,
     agentId: command.agentId,
-    agentVersionId: live.value.versionId,
+    agentVersionId: versionUnderTest(transcript.value.turns),
     threadId: command.threadId,
     turnId: command.turnId ?? null,
     transcript: transcript.value,

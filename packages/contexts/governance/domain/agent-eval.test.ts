@@ -11,10 +11,20 @@ import {
   type TranscriptTurn,
 } from "./agent-eval.js";
 import type { CriterionSnapshot } from "./criterion.js";
-import type { AgentId, EvalCriterionId, ThreadId, TurnId } from "./identifiers.js";
+import type { AgentId, AgentVersionId, EvalCriterionId, ThreadId, TurnId } from "./identifiers.js";
 
-function turn(id: string, input: string | null, output: string | null): TranscriptTurn {
-  return { turnId: asIdentifier<TurnId>(id), input, output };
+function turn(
+  id: string,
+  input: string | null,
+  output: string | null,
+  versionId: string | null = "version-6",
+): TranscriptTurn {
+  return {
+    turnId: asIdentifier<TurnId>(id),
+    input,
+    output,
+    agentVersionId: versionId === null ? null : asIdentifier<AgentVersionId>(versionId),
+  };
 }
 
 const SNAPSHOT: CriterionSnapshot = {

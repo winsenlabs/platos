@@ -65,6 +65,33 @@ export interface TranscriptTurn {
   readonly turnId: TurnId;
   readonly input: string | null;
   readonly output: string | null;
+  /**
+   * The version that PRODUCED this exchange — `Turn.agentVersionId`, which is a
+   * required column on the canonical model. It travels so an eval can be
+   * attributed to the version whose output was scored rather than to whichever
+   * version happens to be live when the judge runs. See `versionUnderTest`.
+   */
+  readonly agentVersionId: AgentVersionId | null;
+}
+
+/**
+ * Which version a transcript is evidence about.
+ *
+ * The LAST turn's version, because that is the exchange a judge scoring a whole
+ * conversation is weighing most heavily and the one a single-turn eval is about.
+ * NULL WHEN THE TURNS DISAGREE: a thread that spans a promotion is evidence
+ * about no single version, and attributing it to either end would put a mixture
+ * into a canary comparison while looking like a measurement. A null version is
+ * visible in the rollup as an unlabelled bucket; a wrong one is not visible at
+ * all.
+ */
+export function versionUnderTest(turns: readonly TranscriptTurn[]): AgentVersionId | null {
+  const last = turns.at(-1);
+  if (last === undefined) return null;
+  for (const turn of turns) {
+    if (turn.agentVersionId !== last.agentVersionId) return null;
+  }
+  return last.agentVersionId;
 }
 
 /**

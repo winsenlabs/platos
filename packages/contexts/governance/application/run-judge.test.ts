@@ -8,6 +8,7 @@ import {
   AGENT_ID,
   AGENT_MODEL,
   AGENT_VERSION_ID,
+  PRIOR_AGENT_VERSION_ID,
   THREAD_ID,
   TURN_ID,
   aCriterionDraft,
@@ -200,7 +201,7 @@ describe("the transcript gate", () => {
     // Scoring agent A's conversation and attributing it to agent B corrupts
     // every rollup taken afterwards.
     context.transcripts.seed(context.scope, asIdentifier<ThreadId>("thread-2"), asIdentifier<AgentId>("agent-2"), [
-      { turnId: asIdentifier<TurnId>("turn-9"), input: "hi", output: "hello" },
+      { turnId: asIdentifier<TurnId>("turn-9"), input: "hi", output: "hello", agentVersionId: null },
     ]);
     const scored = await judge({ threadId: asIdentifier<ThreadId>("thread-2") });
     expect(!scored.ok && scored.error.code).toBe("GOVERNANCE_TRANSCRIPT_NOT_FOUND");
@@ -237,9 +238,33 @@ describe("what a successful score writes", () => {
     expect(scored.ok && scored.value.judgePromptUsed).toContain("how do I reset it?");
   });
 
-  it("attributes the eval to the LIVE version, from `agents`", async () => {
+  it("attributes the eval to the version THAT PRODUCED the transcript", async () => {
+    // The fixture is mid-promotion: the seeded turn ran on `version-6` and the
+    // agent is live on `version-7`. An eval attributed to the live binding —
+    // the source's behaviour — files last week's output against this week's
+    // version, and `aggregateAgentEvals` filtered by version reads the mixture.
     const scored = await judge();
-    expect(scored.ok && scored.value.agentVersionId).toBe(AGENT_VERSION_ID);
+    expect(scored.ok && scored.value.agentVersionId).toBe(PRIOR_AGENT_VERSION_ID);
+    expect(scored.ok && scored.value.agentVersionId).not.toBe(AGENT_VERSION_ID);
+  });
+
+  it("attributes a conversation SPANNING a promotion to NEITHER version", async () => {
+    context.transcripts.seed(context.scope, asIdentifier<ThreadId>("thread-mixed"), AGENT_ID, [
+      {
+        turnId: asIdentifier<TurnId>("turn-old"),
+        input: "before",
+        output: "old answer",
+        agentVersionId: PRIOR_AGENT_VERSION_ID,
+      },
+      {
+        turnId: asIdentifier<TurnId>("turn-new"),
+        input: "after",
+        output: "new answer",
+        agentVersionId: AGENT_VERSION_ID,
+      },
+    ]);
+    const scored = await judge({ threadId: asIdentifier<ThreadId>("thread-mixed") });
+    expect(scored.ok && scored.value.agentVersionId).toBeNull();
   });
 
   it("FREEZES the criterion it was scored against", async () => {

@@ -14,12 +14,17 @@
 //      turns. Both branches are exercised separately in the suite by asserting
 //      that no row was written, so the shared code hides no untested path.
 //
-// THE VERSION ATTRIBUTION COMES FROM `agents`, AND ITS ABSENCE IS NOT FATAL. A
-// rating records which version was live when it was cast, so a canary dashboard
-// can plot satisfaction per version. That is `agents`' answer to give; when
-// `agents` cannot give it — the agent has been unbound since the conversation —
-// the rating is still written, with a null version. Refusing the vote because a
-// dashboard column would be empty would lose the signal to save the label.
+// THE VERSION ATTRIBUTION COMES FROM THE TURN, NOT FROM THE LIVE BINDING, AND
+// THAT IS THE ONE PLACE THIS FILE DELIBERATELY DIFFERS FROM THE SOURCE. The
+// source reads the agent's CURRENT active binding and stamps the rating with it,
+// so a thumb pressed on a week-old turn after a promotion credits the new
+// version with the old one's output. `readVersionSatisfaction` is then a canary
+// dashboard reading a mixture, and nothing on the row says so. `Turn.
+// agentVersionId` is a required column recording which version actually ran, so
+// the `RatingTargetReader` carries it and the rating is attributed to it. When
+// the reader cannot resolve one the rating is still written with a null version:
+// refusing the vote because a dashboard column would be empty would lose the
+// signal to save the label.
 //
 // THE WHOLE WRITE IS ONE TRANSACTION. The source wraps its upsert and its memory
 // reconciliation together for a stated reason — "removes the crash window
@@ -35,7 +40,6 @@ import {
   nextRevision,
   ratingTargetNotFound,
   tally,
-  type AgentVersionId,
   type MessageRating,
   type RatingTally,
   type TurnId,
@@ -86,8 +90,6 @@ export async function rateTurn(
   const target = await resolveTarget(dependencies, scope, command.turnId, actor.value.endUserId);
   if (!target.ok) return err(target.error);
 
-  const agentVersionId = await liveVersionOf(dependencies, command.authorization, target.value);
-
   return dependencies.unitOfWork.run(async (transaction) => {
     const existing = await dependencies.ratings.findForTurn(scope, command.turnId, actor.value.endUserId);
     if (!existing.ok) return err(existing.error);
@@ -96,7 +98,7 @@ export async function rateTurn(
       {
         turnId: target.value.turnId,
         agentId: target.value.agentId,
-        agentVersionId,
+        agentVersionId: target.value.agentVersionId,
         endUserId: actor.value.endUserId,
         rating: value.value,
         comment: comment.value,
@@ -156,20 +158,4 @@ async function resolveTarget(
   if (found.value === null) return err(ratingTargetNotFound(turnId));
   if (found.value.endUserId !== endUserId) return err(ratingTargetNotFound(turnId));
   return ok(found.value);
-}
-
-/**
- * Which version was live. Null when `agents` cannot say, which is not fatal.
- *
- * The failure is swallowed on purpose and the reason is above: the label is
- * worth less than the vote.
- */
-async function liveVersionOf(
-  dependencies: GovernanceDependencies,
-  authorization: unknown,
-  target: RatingTarget,
-): Promise<AgentVersionId | null> {
-  const described = await dependencies.agents.describeAgent({ authorization, agentId: target.agentId });
-  if (!described.ok) return null;
-  return described.value.currentVersionId as AgentVersionId;
 }

@@ -60,6 +60,15 @@ export function otherEnvironmentScope(): EnvironmentScope {
 
 export const AGENT_ID = asIdentifier<AgentId>("agent-1");
 export const AGENT_VERSION_ID = asIdentifier<AgentVersionId>("version-7");
+/**
+ * The version the seeded turn RAN ON — one behind the live one.
+ *
+ * The fixture is deliberately mid-promotion. An eval and a rating taken on this
+ * turn must be attributed to `version-6`; a fixture in which the turn's version
+ * equalled the agent's current version would make the two indistinguishable and
+ * the attribution rule untestable.
+ */
+export const PRIOR_AGENT_VERSION_ID = asIdentifier<AgentVersionId>("version-6");
 export const THREAD_ID = asIdentifier<ThreadId>("thread-1");
 export const TURN_ID = asIdentifier<TurnId>("turn-1");
 export const END_USER_ID = asIdentifier<EndUserId>("end-user-1");
@@ -126,16 +135,25 @@ export function buildGovernanceTestContext(options: TestContextOptions = {}): Go
       model: AGENT_MODEL,
       currentVersionId: AGENT_VERSION_ID,
       currentVersionNumber: 7,
-      priorVersions: [{ versionId: "version-6", versionNumber: 6 }],
+      priorVersions: [{ versionId: PRIOR_AGENT_VERSION_ID, versionNumber: 6 }],
     });
     ratingTargets.seed(scope, {
       turnId: TURN_ID,
       threadId: THREAD_ID,
       agentId: AGENT_ID,
       endUserId: END_USER_ID,
+      // The version that PRODUCED the seeded turn, deliberately NOT the agent's
+      // current one: a fixture where the two agree could not tell an attribution
+      // taken from the turn apart from one taken from the live binding.
+      agentVersionId: PRIOR_AGENT_VERSION_ID,
     });
     transcripts.seed(scope, THREAD_ID, AGENT_ID, [
-      { turnId: TURN_ID, input: "how do I reset it?", output: "hold the button for ten seconds" },
+      {
+        turnId: TURN_ID,
+        input: "how do I reset it?",
+        output: "hold the button for ten seconds",
+        agentVersionId: PRIOR_AGENT_VERSION_ID,
+      },
     ]);
     judge.answer('{"score": 80, "rationale": "grounded and complete", "passed": true}');
   }

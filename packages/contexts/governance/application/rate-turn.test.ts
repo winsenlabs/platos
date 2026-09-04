@@ -8,6 +8,7 @@ import {
   AGENT_VERSION_ID,
   END_USER_ID,
   OTHER_END_USER_ID,
+  PRIOR_AGENT_VERSION_ID,
   THREAD_ID,
   TURN_ID,
   buildGovernanceTestContext,
@@ -145,12 +146,22 @@ describe("the rating value and comment", () => {
 });
 
 describe("what a successful vote writes", () => {
-  it("attributes the vote to the turn's agent and the LIVE version", async () => {
+  it("attributes the vote to the turn's agent and the version THE TURN RAN ON", async () => {
+    // The fixture is mid-promotion on purpose: the seeded turn ran on
+    // `version-6` while the agent's live version is `version-7`. A rating
+    // attributed to the live binding — which is what the source does — would
+    // credit `version-7` with `version-6`'s output.
     const written = await cast();
     expect(written.ok && written.value.agentId).toBe(AGENT_ID);
-    expect(written.ok && written.value.agentVersionId).toBe(AGENT_VERSION_ID);
+    expect(written.ok && written.value.agentVersionId).toBe(PRIOR_AGENT_VERSION_ID);
+    expect(written.ok && written.value.agentVersionId).not.toBe(AGENT_VERSION_ID);
     expect(written.ok && written.value.turnId).toBe(TURN_ID);
     expect(written.ok && written.value.endUserId).toBe(END_USER_ID);
+  });
+
+  it("does NOT ask `agents` which version is live — the turn already said", async () => {
+    await cast();
+    expect(context.agents.describeCalls).toEqual([]);
   });
 
   it("starts the revision at 1", async () => {
@@ -172,6 +183,7 @@ describe("what a successful vote writes", () => {
       threadId: THREAD_ID,
       agentId: AGENT_ID,
       endUserId: OTHER_END_USER_ID,
+      agentVersionId: PRIOR_AGENT_VERSION_ID,
     });
     await cast();
     await cast({ actor: AS_OTHER_END_USER, turnId: asIdentifier<TurnId>("turn-2") });
@@ -184,10 +196,22 @@ describe("what a successful vote writes", () => {
     expect(context.unitOfWork.lastOutcome).toBe("committed");
   });
 
-  it("still writes when `agents` cannot say which version was live", async () => {
-    // The label is worth less than the vote.
-    context.agents.failEverything();
-    const written = await cast();
+  it("still writes when the reader cannot say which version ran", async () => {
+    // The label is worth less than the vote: an unlabelled bucket in the canary
+    // rollup is recoverable, a lost thumb is not.
+    context.ratingTargets.seed(context.scope, {
+      turnId: asIdentifier<TurnId>("turn-unversioned"),
+      threadId: THREAD_ID,
+      agentId: AGENT_ID,
+      endUserId: END_USER_ID,
+      agentVersionId: null,
+    });
+    const written = await rateTurn(context.dependencies, {
+      authorization: context.authorization,
+      actor: { kind: "end-user", endUserId: END_USER_ID },
+      turnId: asIdentifier<TurnId>("turn-unversioned"),
+      rating: 1,
+    });
     expect(written.ok).toBe(true);
     expect(written.ok && written.value.agentVersionId).toBeNull();
     expect(context.ratings.size()).toBe(1);
@@ -262,6 +286,7 @@ describe("readTurnRating", () => {
       threadId: THREAD_ID,
       agentId: AGENT_ID,
       endUserId: OTHER_END_USER_ID,
+      agentVersionId: PRIOR_AGENT_VERSION_ID,
     });
     await cast({ rating: 1 });
     const read = await readTurnRating(context.dependencies, {
