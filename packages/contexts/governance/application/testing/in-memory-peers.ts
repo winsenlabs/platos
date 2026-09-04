@@ -109,22 +109,40 @@ export class InMemoryAgents
     this.failing = failing;
   }
 
-  async describeAgent(query: { readonly agentId: string }): Promise<Result<AgentView>> {
+  async describeAgent(query: {
+    readonly authorization: unknown;
+    readonly agentId: string;
+  }): Promise<Result<AgentView>> {
     this.describeCalls.push(query.agentId);
     if (this.failing) return err(ledgerUnavailable("agents_double_failing"));
+    if (!this.sameEnvironment(query.authorization)) return err(ledgerUnavailable("agent_other_environment"));
     const held = this.agents.get(query.agentId);
     if (held === undefined) return err(ledgerUnavailable("agent_not_seeded"));
     return ok(this.view(held));
   }
 
-  async pageAgents(): Promise<Result<AgentPageView>> {
+  async pageAgents(query: {
+    readonly authorization: unknown;
+    readonly limit?: number | null;
+    readonly offset?: number | null;
+  }): Promise<Result<AgentPageView>> {
     if (this.failing) return err(ledgerUnavailable("agents_double_failing"));
-    const items = [...this.agents.values()].map((agent) => this.view(agent));
-    return ok({ items, total: items.length });
+    if (!this.sameEnvironment(query.authorization)) return ok({ items: [], total: 0, offset: 0, limit: 0 });
+    // The window is APPLIED, not ignored. `risk-report.ts` names one agent page
+    // for every agent on the board; a double that answered every seeded agent
+    // whatever the caller asked for would make that ceiling unfalsifiable.
+    const all = [...this.agents.values()].map((agent) => this.view(agent));
+    const offset = query.offset ?? 0;
+    const limit = query.limit ?? all.length;
+    return ok({ items: all.slice(offset, offset + limit), total: all.length, offset, limit });
   }
 
-  async pageVersions(query: { readonly agentId: string }): Promise<Result<AgentVersionPageView>> {
+  async pageVersions(query: {
+    readonly authorization: unknown;
+    readonly agentId: string;
+  }): Promise<Result<AgentVersionPageView>> {
     if (this.failing) return err(ledgerUnavailable("agents_double_failing"));
+    if (!this.sameEnvironment(query.authorization)) return err(ledgerUnavailable("agent_other_environment"));
     const held = this.agents.get(query.agentId);
     if (held === undefined) return err(ledgerUnavailable("agent_not_seeded"));
     const items = [
@@ -134,6 +152,21 @@ export class InMemoryAgents
       this.versionView(held, held.currentVersionId, held.currentVersionNumber, true),
     ];
     return ok({ items, total: items.length, nextCursor: null, offset: 0, limit: items.length });
+  }
+
+  /**
+   * Is the grant this call carries for the environment these agents live in?
+   *
+   * The real `agents` reads its rows under the grant's own scope, so an agent
+   * bound to one environment is not visible through another environment's
+   * grant. A double that answered from its map regardless would let a
+   * cross-environment read pass here and fail in production, so it reads the
+   * scope off the grant this package's tenancy double issues and compares it.
+   */
+  private sameEnvironment(authorization: unknown): boolean {
+    if (typeof authorization !== "object" || authorization === null) return false;
+    const scope = (authorization as { readonly scope?: { readonly environmentId?: unknown } }).scope;
+    return scope?.environmentId === this.scope.environmentId;
   }
 
   private view(agent: SeededAgent): AgentView {
