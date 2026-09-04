@@ -541,15 +541,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +8: WIN-256's `conversations` prerequisite (ADR M0.3 §14) puts the
+    // inference surface on the ModelRouter port. Four source modules under
+    // packages/contexts/providers -- domain/prompt.ts, domain/prompt-cache.ts,
+    // domain/generation.ts and application/run-model-generation.ts -- and the
+    // four suites beside them. Nothing was released or replaced, so this +8 is
+    // gross and net alike: 272 + 8 = 280.
+    packages: 280,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +346. Four branches add files on independent axes, so each
-    // area is the SUM of every contribution, not any one alone.
+    // packages 1 -> 272 -> 280, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +346 -> +354. Four branches add files on independent axes,
+    // so each area is the SUM of every contribution, not any one alone; WIN-256's
+    // prerequisite then adds eight more to `packages` and to nothing else.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
@@ -616,11 +624,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // 20 + 5 + 19 + 278 + 24 = 346, and 346 + 8 = 354 with the WIN-256
+    // prerequisite's eight provider files.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 354);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +638,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +346 -> +354 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24, and
+    // the WIN-256 prerequisite +8); this one re-derives it by summing the
+    // per-area counts independently.
+    rulesDocument.baseline.totalFiles + 354
   );
 });
 
