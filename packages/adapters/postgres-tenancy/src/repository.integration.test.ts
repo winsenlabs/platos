@@ -22,8 +22,11 @@ import {
   createUnitOfWork,
 } from "@platos/context-tenancy/application/index.js";
 import type {
+  EnvironmentId,
   OrganizationId,
+  OrganizationInvitationRecord,
   OrganizationMembershipId,
+  ProjectId,
   TenancyRepository,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
@@ -217,130 +220,85 @@ describe("integrity the in-memory double does NOT have", () => {
   });
 });
 
+function invitation(
+  id: string,
+  organizationId: OrganizationId,
+  email: string,
+  tokenDigest: string,
+): OrganizationInvitationRecord {
+  return {
+    id: asIdentifier(id),
+    organizationId,
+    inviterId: asIdentifier(OWNER_USER),
+    acceptedByUserId: null,
+    email: asIdentifier(email),
+    role: OrganizationRole.MEMBER,
+    tokenDigest: asIdentifier(tokenDigest),
+    expiresAt: EXPIRES,
+    acceptedAt: null,
+    revokedAt: null,
+    createdAt: AT,
+  };
+}
+
+function save(record: OrganizationInvitationRecord): Promise<void> {
+  return harness.adapter.unitOfWork.run((transaction) =>
+    harness.adapter.saveInvitation(record, transaction),
+  );
+}
+
 describe("constraints that live in the MIGRATIONS and not in the double", () => {
-  // These three exist only in `prisma/migrations`, not in schema.prisma and not
-  // in the in-memory fake. The first one was found by this suite failing: a
-  // readable placeholder digest passed every unit test in the tree and was
-  // refused by PostgreSQL the first time the fixture was applied.
+  // These four exist only in `prisma/migrations`, not in schema.prisma and not
+  // in the in-memory fake. The first was found by this suite failing: a readable
+  // placeholder digest passed every unit test in the tree and was refused by
+  // PostgreSQL the first time the fixture was applied.
 
   test("OrganizationInvitation_tokenHash_check refuses a digest that is not 64 hex characters", async () => {
     const organizationId = await harness.seedOrganization("digest-check");
     await expect(
-      harness.adapter.unitOfWork.run((transaction) =>
-        harness.adapter.saveInvitation(
-          {
-            id: asIdentifier(harness.freshId("0004")),
-            organizationId,
-            inviterId: asIdentifier(OWNER_USER),
-            acceptedByUserId: null,
-            email: asIdentifier("readable@example.test"),
-            role: OrganizationRole.MEMBER,
-            tokenDigest: asIdentifier("not-a-digest"),
-            expiresAt: EXPIRES,
-            acceptedAt: null,
-            revokedAt: null,
-            createdAt: AT,
-          },
-          transaction,
-        ),
-      ),
+      save(invitation(harness.freshId("0004"), organizationId, "readable@example.test", "not-a-digest")),
     ).rejects.toBeDefined();
   });
 
   test("OrganizationInvitation_email_normalized_check refuses an unnormalised address", async () => {
     const organizationId = await harness.seedOrganization("email-check");
     await expect(
-      harness.adapter.unitOfWork.run((transaction) =>
-        harness.adapter.saveInvitation(
-          {
-            id: asIdentifier(harness.freshId("0004")),
-            organizationId,
-            inviterId: asIdentifier(OWNER_USER),
-            acceptedByUserId: null,
-            email: asIdentifier("  Mixed.Case@Example.Test  "),
-            role: OrganizationRole.MEMBER,
-            tokenDigest: asIdentifier("b2".repeat(32)),
-            expiresAt: EXPIRES,
-            acceptedAt: null,
-            revokedAt: null,
-            createdAt: AT,
-          },
-          transaction,
-        ),
-      ),
+      save(invitation(harness.freshId("0004"), organizationId, "  Mixed.Case@Example.Test  ", "b2".repeat(32))),
     ).rejects.toBeDefined();
   });
 
   test("the PARTIAL unique index allows one live invitation per address and refuses a second", async () => {
     const organizationId = await harness.seedOrganization("one-active-per-email");
-    const email = asIdentifier("one-active@example.test");
-    const first = asIdentifier(harness.freshId("0004"));
-    await harness.adapter.unitOfWork.run((transaction) =>
-      harness.adapter.saveInvitation(
-        {
-          id: first,
-          organizationId,
-          inviterId: asIdentifier(OWNER_USER),
-          acceptedByUserId: null,
-          email,
-          role: OrganizationRole.MEMBER,
-          tokenDigest: asIdentifier("c1".repeat(32)),
-          expiresAt: EXPIRES,
-          acceptedAt: null,
-          revokedAt: null,
-          createdAt: AT,
-        },
-        transaction,
-      ),
-    );
-    const second = {
-      id: asIdentifier(harness.freshId("0004")),
-      organizationId,
-      inviterId: asIdentifier(OWNER_USER),
-      acceptedByUserId: null,
-      email,
-      role: OrganizationRole.MEMBER,
-      tokenDigest: asIdentifier("c2".repeat(32)),
-      expiresAt: EXPIRES,
-      acceptedAt: null,
-      revokedAt: null,
-      createdAt: AT,
-    };
-    await expect(
-      harness.adapter.unitOfWork.run((transaction) =>
-        harness.adapter.saveInvitation(second, transaction),
-      ),
-    ).rejects.toBeDefined();
+    const email = "one-active@example.test";
+    await save(invitation(harness.freshId("0004"), organizationId, email, "c1".repeat(32)));
+    const second = invitation(harness.freshId("0004"), organizationId, email, "c2".repeat(32));
+    await expect(save(second)).rejects.toBeDefined();
 
-    // Revoking the first one takes it out of the index's predicate, and the
-    // second row is then accepted. The index is PARTIAL, and this is what that
-    // word means at run time.
+    // Revoking the first takes it out of the index's predicate and the second is
+    // then accepted. The index is PARTIAL, and this is what that word means at
+    // run time — and why the port's `findLiveInvitations` filters as it does.
     await harness.adapter.unitOfWork.run(async (transaction) => {
-      const live = await harness.adapter.findLiveInvitations(organizationId, email);
+      const live = await harness.adapter.findLiveInvitations(organizationId, asIdentifier(email));
       expect(live).toHaveLength(1);
       await harness.adapter.saveInvitation({ ...live[0]!, revokedAt: AT }, transaction);
     });
-    await harness.adapter.unitOfWork.run((transaction) =>
-      harness.adapter.saveInvitation(second, transaction),
-    );
-    expect(await harness.adapter.findLiveInvitations(organizationId, email)).toHaveLength(1);
+    await save(second);
+    expect(await harness.adapter.findLiveInvitations(organizationId, asIdentifier(email))).toHaveLength(1);
   });
 });
 
 describe("read semantics", () => {
-  test("loadEnvironmentAncestry issues exactly ONE statement", async () => {
-    const organizationId = await harness.seedOrganization("ancestry-org");
-    const projectId = await harness.seedProject(organizationId, "ancestry-project");
-    const environmentId = asIdentifier(harness.freshId("0003"));
+  async function seedEnvironment(projectId: ProjectId, slug: string, version = 0): Promise<EnvironmentId> {
+    const id = asIdentifier<EnvironmentId>(harness.freshId("0003"));
     await harness.adapter.unitOfWork.run((transaction) =>
       harness.adapter.saveEnvironment(
         {
-          id: environmentId,
+          id,
           projectId,
-          slug: asIdentifier("ancestry-env"),
-          name: "Ancestry",
+          slug: asIdentifier(slug),
+          name: slug,
           archivedAt: null,
-          accessKeyRevocationVersion: 3,
+          accessKeyRevocationVersion: version,
           memoryFeedbackBackfillCursor: null,
           memoryFeedbackBackfillCompletedAt: null,
           createdAt: AT,
@@ -349,10 +307,54 @@ describe("read semantics", () => {
         transaction,
       ),
     );
+    return id;
+  }
+
+  test("an ancestry costs the SAME number of statements in a dense tenant as in a sparse one", async () => {
+    const sparseOrganization = await harness.seedOrganization("ancestry-sparse");
+    const sparseProject = await harness.seedProject(sparseOrganization, "ancestry-sparse-project");
+    const sparseEnvironment = await seedEnvironment(sparseProject, "ancestry-sparse-env", 3);
+
     harness.resetStatements();
-    const ancestry = await harness.adapter.loadEnvironmentAncestry(environmentId);
-    expect(ancestry?.organization.id).toBe(organizationId);
-    expect(ancestry?.environment.accessKeyRevocationVersion).toBe(3);
+    const sparse = await harness.adapter.loadEnvironmentAncestry(sparseEnvironment);
+    const sparseStatements = harness.statements().length;
+    expect(sparse?.organization.id).toBe(sparseOrganization);
+    expect(sparse?.environment.accessKeyRevocationVersion).toBe(3);
+
+    // The dense fixture: twenty sibling projects, each with two environments, so
+    // a version of this read that fetched siblings and filtered would cost a
+    // statement per row instead of a constant.
+    const denseOrganization = await harness.seedOrganization("ancestry-dense");
+    let target: EnvironmentId | null = null;
+    for (let index = 0; index < 20; index += 1) {
+      const project = await harness.seedProject(denseOrganization, `dense-project-${index}`);
+      const first = await seedEnvironment(project, `dense-env-${index}-a`, 5);
+      await seedEnvironment(project, `dense-env-${index}-b`);
+      if (index === 10) target = first;
+    }
+    expect(target).not.toBeNull();
+
+    harness.resetStatements();
+    const dense = await harness.adapter.loadEnvironmentAncestry(target as EnvironmentId);
+    const denseStatements = harness.statements().length;
+    expect(dense?.organization.id).toBe(denseOrganization);
+    expect(dense?.environment.accessKeyRevocationVersion).toBe(5);
+
+    // MEASURED, not asserted from the shape of the code: this client issues one
+    // statement per level of the include rather than a join. Three is the number,
+    // and the property that matters is that it is the SAME three either side.
+    expect(sparseStatements).toBe(3);
+    expect(denseStatements).toBe(sparseStatements);
+  });
+
+  test("a list of twenty-five projects is ONE statement, not one per row", async () => {
+    const organizationId = await harness.seedOrganization("dense-list-org");
+    for (let index = 0; index < 25; index += 1) {
+      await harness.seedProject(organizationId, `dense-list-${index}`);
+    }
+    harness.resetStatements();
+    const projects = await harness.adapter.listProjects(organizationId);
+    expect(projects).toHaveLength(25);
     expect(harness.statements().length).toBe(1);
   });
 

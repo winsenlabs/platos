@@ -2,14 +2,22 @@
 //
 // TWO PROPERTIES ARE LOAD-BEARING HERE AND ARE TESTED AS SUCH.
 //
-// ONE READ FOR AN ANCESTRY. `loadEnvironmentAncestry` is a single SELECT with
-// two joins, not three round trips. The port's own comment says the oracle
-// re-derives the whole chain from the leaf, so this is the read every
-// authorization decision in the product sits behind; issuing it three times
-// would put two extra round trips on the hot path of every request. The
-// integration suite counts the statements the client actually sends and pins the
-// number, so a later change that reaches for a lazy relation instead is a
-// failing test rather than a slow afternoon.
+// AN ANCESTRY COSTS A CONSTANT NUMBER OF STATEMENTS. `loadEnvironmentAncestry`
+// asks for the environment and its two ancestors in ONE call, with a nested
+// `include`. MEASURED, that is three statements and not one: this client's
+// default relation strategy issues a statement per level rather than a join, and
+// the integration suite reports three. Three is the honest number and it is
+// pinned as three, because the property that matters is that it does not GROW —
+// the port's comment says the oracle re-derives the whole chain from the leaf,
+// so this read sits behind every authorization decision in the product, and a
+// version that fetched siblings and then filtered would cost a statement per
+// row. The suite proves the count is identical for a one-project tenant and a
+// twenty-project one, which is what "no N+1" means; pinning "1" would have
+// been a claim about a join that is not being issued.
+//
+// A LIST IS ONE STATEMENT, whatever its length. `listProjects` and
+// `listEnvironments` hydrate no relation, so they cost one statement for
+// twenty-five rows exactly as they do for one, and the suite pins that too.
 //
 // EVERY LOOKUP USES ITS OWN COMPOUND INDEX. `findProjectBySlug` filters on
 // `@@unique([organizationId, slug])`, not on slug with an organization check
