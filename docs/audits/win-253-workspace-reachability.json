@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "381d8afa99346406f0142c96acc1433bc08c90f8bf90619df162e7e720e69e04",
+  "evidenceSha256": "f7acc6b80a94548e41a071723f87d72c0eda0954e16d58b64c7e7b8032cb839c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b2604062b843341deed4c87e061244ab14c2f8b9c623ee68bfe89318604e5a11",
+    "aggregateSha256": "c5dd9c838d39af8a72ab4066faf5b3a9e5a2244b03a6827f1aa5807319699d14",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2445,7 +2445,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.ts",
-        "sha256": "c4b7bcc92db390fdca6b156164dfea0208fb0a86969ac9e0b07160cead62fcf7"
+        "sha256": "0d1c2ea041b544a62aa47f1ec42a5513fdd00ea9be5ea06f555b86bd40720576"
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
@@ -14657,7 +14657,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c3fe7451587d62f447547568114ccbcc1608b670e2d36245440e1d8db4267bf"
+        "sha256": "f06a3cbdcb113e8bdbd0fb1bf862034679a80fc157b75c8dfebc68cc12d3cd25"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14709,7 +14709,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "18f73d2a1a59a6e037be486ff314e1f63eaffb08504d5e0b792e0fa5b7ce38bf"
+        "sha256": "2da7d675ba76fdce4664c969942d5ba507a6dd7f7d56438272c8d323397333a9"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
