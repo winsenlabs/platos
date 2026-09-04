@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "7d2a1b203a2ef1bd692b575cb8c870308300dd591b8bfe8c4a30635122dc38d7",
+  "evidenceSha256": "ed9c165dd7c5507dad8baed3982a70c888443c20a37bee3cd997ffaf2c68325d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 74,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "bb253481c7c94ef73bca193fa1304f1d95d4b87849cb7bb89b4f7c7c76bcd5eb",
+    "aggregateSha256": "ee8d7120ac4b4a4bb380f71e58adc3a7d1df48ab898f1ee9cfff2fdd144508e7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11745,7 +11745,7 @@
       },
       {
         "path": "packages/contexts/governance/application/governance-erasure-target.ts",
-        "sha256": "999d5b995ddde7a5fdf3f17e314675e12d026c6b5e6c145376bf89e58002eed2"
+        "sha256": "f700aee6edb82c1fb58eb4041e9174bb6f444383a2ecc454af99d0f0c9767a95"
       },
       {
         "path": "packages/contexts/governance/application/index.ts",
@@ -60225,7 +60225,7 @@
             {
               "file": "packages/contexts/governance/application/governance-erasure-target.ts",
               "from": "packages/contexts/governance",
-              "line": 65,
+              "line": 68,
               "specifier": "@platos/kernel"
             },
             {
@@ -64042,7 +64042,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "792328e7e2466ef1f017264d938c3e44784367225500951c9cfc89aaed71a0a5",
+      "evidenceSha256": "53d18ac0684bed912a5223f099784bca4865709fe949914fb759744d628826d5",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
