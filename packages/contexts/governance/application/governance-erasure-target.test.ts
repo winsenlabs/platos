@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import type { ErasurePlan, ErasureSubject, TransactionScope } from "@platos/kernel";
 import { asIdentifier, environmentScope, organizationScope, projectScope } from "@platos/kernel";
 
+import type { SafetyEvent } from "../domain/index.js";
 import { createGovernanceContract } from "./governance-contract.js";
 import {
   CRITERION_MODEL,
@@ -260,7 +261,7 @@ describe("erase", () => {
     await target.erase(await target.plan(operatorSubject()), TRANSACTION);
 
     expect(context.safety.size()).toBe(1);
-    const [row] = context.safety.all();
+    const row = context.safety.all()[0] as SafetyEvent;
     expect(row.principalId).toBeNull();
     expect(row.detail).toBeNull();
     expect(row.metadata).toBeNull();

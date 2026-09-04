@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 import { asIdentifier } from "@platos/kernel";
 
-import type { AgentVersionId, EvalCriterionId, GoldenSetId, ThreadId } from "../domain/index.js";
+import type { ActorId, AgentVersionId, EvalCriterionId, GoldenSetId, ThreadId } from "../domain/index.js";
+import type { EvalRunRequest } from "./ports/index.js";
 import { enqueueEvalRun, evalRunIdempotencyKey } from "./enqueue-eval-run.js";
 import { createGoldenSet } from "./golden-sets.js";
 import {
@@ -24,7 +25,7 @@ import {
 const CRITERION_A = asIdentifier<EvalCriterionId>("criterion-a");
 const CRITERION_B = asIdentifier<EvalCriterionId>("criterion-b");
 const THREAD_2 = asIdentifier<ThreadId>("thread-2");
-const OPERATOR = asIdentifier("operator-1");
+const OPERATOR = asIdentifier<ActorId>("operator-1");
 const BASELINE = asIdentifier<AgentVersionId>("version-6");
 
 async function seedSet(
@@ -88,7 +89,8 @@ describe("enqueueEvalRun", () => {
     const context = buildGovernanceTestContext();
     const goldenSetId = await seedSet(context);
     await enqueue(context, goldenSetId, { baselineVersionId: BASELINE });
-    const [request] = context.evalRuns.requests;
+    expect(context.evalRuns.requests).toHaveLength(1);
+    const request = context.evalRuns.requests[0] as EvalRunRequest;
     expect(request.scope.environmentId).toBe("env-1");
     expect(request.agentId).toBe(AGENT_ID);
     expect(request.requestedBy).toBe(OPERATOR);
@@ -197,7 +199,8 @@ describe("idempotency", () => {
 
     expect(first.ok && first.value.alreadyQueued).toBe(false);
     expect(second.ok && second.value.alreadyQueued).toBe(true);
-    expect(first.ok && second.ok && first.value.runId).toBe(second.value.runId);
+    if (!first.ok || !second.ok) throw new Error("both enqueues must succeed");
+    expect(first.value.runId).toBe(second.value.runId);
   });
 
   it("a DIFFERENT baseline is a different run", async () => {
@@ -206,7 +209,8 @@ describe("idempotency", () => {
     const plain = await enqueue(context, goldenSetId);
     const against = await enqueue(context, goldenSetId, { baselineVersionId: BASELINE });
     expect(against.ok && against.value.alreadyQueued).toBe(false);
-    expect(plain.ok && against.ok && plain.value.runId).not.toBe(against.value.runId);
+    if (!plain.ok || !against.ok) throw new Error("both enqueues must succeed");
+    expect(plain.value.runId).not.toBe(against.value.runId);
   });
 
   it("the key is built from WHAT the run is, and carries no instant", () => {
@@ -229,7 +233,8 @@ describe("idempotency", () => {
     await enqueue(context, goldenSetId);
     context.clock.advanceMilliseconds(60_000);
     await enqueue(context, goldenSetId);
-    const [first, second] = context.evalRuns.requests;
+    expect(context.evalRuns.requests).toHaveLength(2);
+    const [first, second] = context.evalRuns.requests as [EvalRunRequest, EvalRunRequest];
     expect(first.idempotencyKey).toBe(second.idempotencyKey);
   });
 });

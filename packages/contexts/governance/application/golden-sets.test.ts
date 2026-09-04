@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { asIdentifier } from "@platos/kernel";
 
-import type { EvalCriterionId, GoldenSetId, ThreadId } from "../domain/index.js";
+import type { ActorId, EvalCriterionId, GoldenSetId, ThreadId } from "../domain/index.js";
 import {
   createGoldenSet,
   describeGoldenSet,
@@ -27,7 +27,7 @@ import {
 
 const CRITERION_A = asIdentifier<EvalCriterionId>("criterion-a");
 const CRITERION_B = asIdentifier<EvalCriterionId>("criterion-b");
-const OPERATOR = asIdentifier("operator-1");
+const OPERATOR = asIdentifier<ActorId>("operator-1");
 
 function threads(count: number): readonly ThreadId[] {
   return Array.from({ length: count }, (_, index) => asIdentifier<ThreadId>(`thread-${index + 1}`));

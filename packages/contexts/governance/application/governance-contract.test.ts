@@ -7,11 +7,12 @@
 // by identity rather than by shape.
 
 import { describe, expect, it } from "vitest";
-import type { SafetyObservation } from "@platos/kernel";
+import type { PrincipalId, SafetyObservation } from "@platos/kernel";
 import { asIdentifier, environmentScope } from "@platos/kernel";
 
 import {
   GOVERNANCE_EVENT_NAMES,
+  type ActorId,
   type AgentEvalId,
   type EvalCriterionId,
   type GoldenSetId,
@@ -35,7 +36,7 @@ function build(context: GovernanceTestContext) {
 async function seedCriterion(context: GovernanceTestContext): Promise<EvalCriterionId> {
   const created = await build(context).createCriterion({
     authorization: context.authorization,
-    createdBy: asIdentifier("operator-1"),
+    createdBy: asIdentifier<ActorId>("operator-1"),
     criterion: aCriterionDraft(),
   });
   if (!created.ok) throw new Error(`criterion seed failed: ${created.error.code}`);
@@ -48,7 +49,7 @@ async function seedGoldenSet(
 ): Promise<GoldenSetId> {
   const created = await build(context).createGoldenSet({
     authorization: context.authorization,
-    createdBy: asIdentifier("operator-1"),
+    createdBy: asIdentifier<ActorId>("operator-1"),
     set: { agentId: AGENT_ID, name: "regression", threadIds: [THREAD_ID], criterionIds: [criterionId] },
   });
   if (!created.ok) throw new Error(`golden set seed failed: ${created.error.code}`);
@@ -89,7 +90,7 @@ describe("the two kernel ports", () => {
       rule: "identity.rate_limit.exceeded",
       outcome: "blocked",
       scope: environmentScope(asIdentifier("org-1"), asIdentifier("proj-1"), asIdentifier("env-1")),
-      principalId: asIdentifier("operator-1"),
+      principalId: asIdentifier<PrincipalId>("operator-1"),
       observedAt: new Date("2026-03-01T12:00:00.000Z"),
       details: {},
     };
@@ -258,7 +259,7 @@ describe("every declared method is bound to a use case", () => {
     const queued = await contract.enqueueEvalRun({
       authorization: context.authorization,
       goldenSetId,
-      requestedBy: asIdentifier("operator-1"),
+      requestedBy: asIdentifier<ActorId>("operator-1"),
     });
     expect(queued.ok && queued.value.pairs).toHaveLength(1);
 
@@ -306,7 +307,7 @@ describe("no method is bound to a stub that ignores authorization", () => {
       contract.readAgentSatisfaction({ authorization: forged }),
       contract.createCriterion({
         authorization: forged,
-        createdBy: asIdentifier("operator-1"),
+        createdBy: asIdentifier<ActorId>("operator-1"),
         criterion: aCriterionDraft(),
       }),
       contract.updateCriterion({ authorization: forged, criterionId, patch: { name: "x" } }),
@@ -325,7 +326,7 @@ describe("no method is bound to a stub that ignores authorization", () => {
       contract.aggregateAgentEvals({ authorization: forged, agentId: AGENT_ID }),
       contract.createGoldenSet({
         authorization: forged,
-        createdBy: asIdentifier("operator-1"),
+        createdBy: asIdentifier<ActorId>("operator-1"),
         set: { agentId: AGENT_ID, name: "s", threadIds: [THREAD_ID], criterionIds: [criterionId] },
       }),
       contract.updateGoldenSet({ authorization: forged, goldenSetId, patch: { name: "x" } }),
@@ -335,7 +336,7 @@ describe("no method is bound to a stub that ignores authorization", () => {
       contract.enqueueEvalRun({
         authorization: forged,
         goldenSetId,
-        requestedBy: asIdentifier("operator-1"),
+        requestedBy: asIdentifier<ActorId>("operator-1"),
       }),
       contract.reportRegression({ authorization: forged, goldenSetId, evalIds: [] }),
       contract.readRiskBoard({ authorization: forged }),
