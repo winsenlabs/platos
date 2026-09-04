@@ -152,8 +152,7 @@ async function runObjectGeneration(
           abortSignal: signal,
           ...PROMPT_SHAPE_OPTIONS,
           ...SINGLE_RETRY_LAYER,
-      ...SINGLE_RETRY_LAYER,
-      ...samplingOptions(request.sampling),
+          ...samplingOptions(request.sampling),
         });
         steps.push({
           text: JSON.stringify(result.object),

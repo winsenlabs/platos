@@ -282,8 +282,7 @@ async function* streamObjectEvents(
           abortSignal: link.signal,
           ...PROMPT_SHAPE_OPTIONS,
           ...SINGLE_RETRY_LAYER,
-      ...SINGLE_RETRY_LAYER,
-      ...samplingOptions(request.sampling),
+          ...samplingOptions(request.sampling),
         });
         // The RAW JSON text, delta by delta, exactly as the extraction source
         // forwards it. The parsed object arrives once, in `finished`.

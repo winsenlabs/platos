@@ -544,11 +544,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // +8: WIN-256's `conversations` prerequisite (ADR M0.3 §14) puts the
     // inference surface on the ModelRouter port. Four source modules under
+    // +34: WIN-256's MODEL ROUTER ADAPTER. Fifteen source modules and fifteen
+    // suites under packages/adapters/model-router-providers, the sole holder of
+    // the inference SDK, plus two domain modules and two suites under
+    // packages/contexts/providers -- the tool-input repair and the
+    // structured-output correction, both PURE and both worth money, which is the
+    // pair of properties that puts prompt-cache.ts in the domain too.
+    //
     // packages/contexts/providers -- domain/prompt.ts, domain/prompt-cache.ts,
     // domain/generation.ts and application/run-model-generation.ts -- and the
     // four suites beside them. Nothing was released or replaced, so this +8 is
     // gross and net alike: 272 + 8 = 280.
-    packages: 280,
+    packages: 314,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -626,10 +633,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // deltas; attributed for ledger-owner review, not forced to green.
     // 20 + 5 + 19 + 278 + 24 = 346, and 346 + 8 = 354 with the WIN-256
     // prerequisite's eight provider files.
+    //
+    // +34 = 388, from WIN-256's MODEL ROUTER ADAPTER, all of it under
+    // `packages` (278 + 34 = 312) and none of it anywhere else:
+    //
+    //   packages/adapters/model-router-providers/src  15 source + 15 suites
+    //     the sole holder of the inference SDK. Fifteen modules because ADR
+    //     M0.3 §6 is the reason the extraction source's turn engine is 7,121
+    //     lines, and fifteen suites because the end-to-end one reached 645
+    //     effective lines as a single file.
+    //
+    //   packages/contexts/providers/domain            2 source + 2 suites
+    //     tool-input-repair and structured-output: the two PURE pieces the
+    //     adapter would otherwise have hidden beside an SDK call, on the same
+    //     argument prompt-cache.ts already makes for itself.
+    //
+    // Every other area is unchanged. The generator adoption, the widened
+    // max-file-lines selector, the seven new error codes and the census pins
+    // are all edits to files that already existed and add none.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 354);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 388);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -638,11 +663,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 -> +354 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24, and
-    // the WIN-256 prerequisite +8); this one re-derives it by summing the
-    // per-area counts independently.
-    rulesDocument.baseline.totalFiles + 354
+    // M2 integration: same +20 -> +346 -> +354 -> +388 combined delta as the
+    // totalFiles assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278,
+    // WIN-297 +24, the WIN-256 prerequisite +8 and its model-router adapter
+    // +34); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 388
   );
 });
 
