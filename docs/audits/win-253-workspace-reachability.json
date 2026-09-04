@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "8d8f4d5d8fea154c059fba39c0c6b0944291023f00631d0d1401f0461001909c",
+  "evidenceSha256": "dcf8f32bf4fbe303e41870fde7b03dfaa10f9935e110e3ed60d74a6333184706",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f7efcb278fa20431b3ec220d272f8d9e40614713e3ba6af09e8aba8408412242",
+    "aggregateSha256": "557c05297d6f24a9aa8941667497331505ea8632c8aec9d7a03585fdaa3ed603",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -12433,11 +12433,11 @@
       },
       {
         "path": "packages/contexts/tenancy/application/operator-read-models.test.ts",
-        "sha256": "33cca96c4006e8dad8d6dbb47fff386acf096916bd312d1243b84759ac2654c4"
+        "sha256": "fcaf0de4b324425a3eb0be2fdf1c9a56d74ad380e999e7ef5d8342d6f570314e"
       },
       {
         "path": "packages/contexts/tenancy/application/operator-read-models.ts",
-        "sha256": "1a64325b61a24b2f164f99fe68de1c855bb70fbf2055e86e3a53d69363e3b0ae"
+        "sha256": "13bb355ac331752bb71a6ada96f4a50253f1bfbfc8dd139920878b573b75cc4a"
       },
       {
         "path": "packages/contexts/tenancy/application/ports/access-key-revocation.ts",
@@ -14789,11 +14789,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "97e82ba4d50521491d1dfbe66db8649737e9f1c6205100c3b76d034d905b89a1"
+        "sha256": "7f4533f790a141f0ee89a151cac9c0921ca24d69624af80653b224fe21c2d9d3"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "606661d0a2c8e07b52cdffca7e27575619af1ab75f47a532478a352694277608"
+        "sha256": "a3ff65a0b659a1235068ea3d0b5a7ad37d3d08e21cab4c82a0f66c3c57847d6f"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
