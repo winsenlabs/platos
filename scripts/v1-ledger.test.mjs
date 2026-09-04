@@ -672,7 +672,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // above it releases no placeholder and replaces nothing: this +8 is gross
     // and net alike. Its branch pinned 280 (272 + 8) on v1 and was blind to all
     // eleven adoptions; 907 + 8 = 915 here.
-    packages: 915,
+    packages: 990,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -781,12 +781,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // WIN-256 (tools context) contributes +56, WIN-256 (channels context)
     // contributes +42 and WIN-256 (governance context) contributes +84 on the
-    // same packages axis, 725 -> 781 -> 823 -> 907, for the same
+    // same packages axis, 725 -> 781 -> 823 -> 907 — and, with the
+    // prerequisite's 8 and conversations' 75, on to 990 — for the same
     // reason and with the same absence of a root-infra or docs-content file.
     // Governance's 84 is the only adoption delta that is not purely TypeScript:
     // 83 .ts files plus `mutations.json`, which the existing
     // `packages.contexts.config` rule already classifies, so no ledger rule
-    // changed for it either.
+    // changed for it either. WIN-256 (conversations context) contributes +75,
+    // the LAST of the seventeen and the second delta of that shape: 78 real .ts
+    // files replace the 4 generated placeholders adoption released, plus its own
+    // 89-entry `mutations.json` under the same config rule, so 78 - 4 + 1 = 75.
+    // On the kind axis that same 75 is 45 source (49 .ts source less the 4
+    // released placeholders, which were themselves source), 29 test and 1
+    // config. Nothing may import this context (ADR M0.3 section 1 row 16), so it
+    // touches no file outside packages/contexts/conversations and composes with
+    // every slice above by addition.
     //
     // WIN-256 (capability-matrix ownership) contributes +2, both root-infra,
     // and is a different slice of the same issue from the domain-contracts
@@ -801,11 +810,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 989 + 2, and neither branch pin (897 or 348) is correct here.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 = 991.
+    //   + 84 + 8 + 2 + 75 = 1066.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 991);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1066);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -814,15 +823,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +991 combined delta as the totalFiles
+    // M2 integration: same +20 -> +1066 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
-    // prerequisite +8, WIN-256 capability-matrix ownership +2); this one
-    // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 991
+    // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256
+    // conversations +75); this one re-derives it by summing the per-area counts
+    // independently.
+    rulesDocument.baseline.totalFiles + 1066
   );
 });
 
