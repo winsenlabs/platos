@@ -6,6 +6,9 @@ import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkAdapterOwnerCounts,
+  EXPECTED_ADAPTER_OWNERS,
+  EXPECTED_MULTI_OWNER_ADAPTERS,
   EXPECTED_ALIASES,
   EXPECTED_CONTEXT_DEPENDS_ON,
   EXPECTED_EDGE_COUNT,
@@ -42,7 +45,7 @@ function errorIncludes(result, text) {
   return result.errors.some((error) => error.includes(text));
 }
 
-test("the live graph has exact aliases, 32 projects and 95 edges in all three representations", () => {
+test("the live graph has exact aliases, 32 projects and 96 edges in all three representations", () => {
   const result = checkV1ProjectGraph(repositoryRoot);
   assert.deepEqual(result.errors, []);
   assert.equal(result.projectCount, EXPECTED_PROJECT_COUNT);
@@ -373,4 +376,61 @@ test("NodeNext consumers resolve bare roots and the explicit exported adapter-po
   } finally {
     spawnSync("pnpm", ["clean:v1"], { cwd: repositoryRoot });
   }
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15) — an adapter's owner map became a LIST, and these
+// are the refusals that widening did not take with it. The default is still
+// exactly one owner edge; every departure is named and counted.
+// ---------------------------------------------------------------------------
+
+test("the live owner map passes its own check", () => {
+  // Non-vacuity for everything below.
+  assert.deepEqual(checkAdapterOwnerCounts(), []);
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 2 });
+  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
+});
+
+test("§15 refusal: an adapter granted an owner edge it was not given fails", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("packages/adapters/redis-cache expects 2 owner edge(s); 1 is what ADR M0.3 §4/§15 grants it")
+    )
+  );
+});
+
+test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails too", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "postgres-tenancy": ["tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 2 is what ADR M0.3 §4/§15 grants it")
+    )
+  );
+});
+
+test("§15 refusal: the same owner listed twice is not two edges", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "postgres-tenancy": ["tenancy", "tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) => error.includes("packages/adapters/postgres-tenancy names the same owner more than once"))
+  );
+});
+
+test("§15 refusal: the multi-owner allow-list may not name something that is not an adapter", () => {
+  const errors = checkAdapterOwnerCounts(EXPECTED_ADAPTER_OWNERS, {
+    ...EXPECTED_MULTI_OWNER_ADAPTERS,
+    "postgres-auth": 2,
+  });
+  assert.ok(
+    errors.some((error) => error.includes("EXPECTED_MULTI_OWNER_ADAPTERS names postgres-auth, which is not an adapter"))
+  );
 });

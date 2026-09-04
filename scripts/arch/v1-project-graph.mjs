@@ -176,6 +176,39 @@ export const EXPECTED_ADAPTER_OWNERS = {
  */
 export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 2 };
 
+/**
+ * The multi-owner exception, judged over maps the caller SUPPLIES.
+ *
+ * "A value may be a list" on its own would permit any adapter any number of
+ * owner edges; this restores the one-owner default and makes each departure a
+ * named, counted line. It is injectable so `v1-project-graph.test.mjs` can hand
+ * it a mutated map and watch each refusal happen — a gate widened to permit many
+ * owners per directory has to be shown still refusing an owner it was not given.
+ */
+export function checkAdapterOwnerCounts(
+  owners = EXPECTED_ADAPTER_OWNERS,
+  multiOwner = EXPECTED_MULTI_OWNER_ADAPTERS,
+) {
+  const errors = [];
+  for (const [adapter, list] of Object.entries(owners)) {
+    const allowed = multiOwner[adapter] ?? 1;
+    if (list.length !== allowed) {
+      errors.push(
+        `packages/adapters/${adapter} expects ${list.length} owner edge(s); ${allowed} is what ADR M0.3 §4/§15 grants it`,
+      );
+    }
+    if (new Set(list).size !== list.length) {
+      errors.push(`packages/adapters/${adapter} names the same owner more than once`);
+    }
+  }
+  for (const adapter of Object.keys(multiOwner)) {
+    if (!(adapter in owners)) {
+      errors.push(`EXPECTED_MULTI_OWNER_ADAPTERS names ${adapter}, which is not an adapter`);
+    }
+  }
+  return errors;
+}
+
 function expectedProjects() {
   return [
     "packages/kernel",
@@ -378,26 +411,7 @@ export function checkV1ProjectGraph(root = repositoryRoot) {
     errors.push(`discovered project set ${describeSet(discovered)} does not equal expected ${describeSet(projects)}`);
   }
 
-  // The multi-owner exception is judged HERE rather than left implicit in the
-  // shape of EXPECTED_ADAPTER_OWNERS. "A value may be a list" on its own would
-  // permit any adapter any number of owner edges; this restores the one-owner
-  // default and makes each departure from it a named, counted line.
-  for (const [adapter, owners] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
-    const allowed = EXPECTED_MULTI_OWNER_ADAPTERS[adapter] ?? 1;
-    if (owners.length !== allowed) {
-      errors.push(
-        `packages/adapters/${adapter} expects ${owners.length} owner edge(s); ${allowed} is what ADR M0.3 §4/§15 grants it`,
-      );
-    }
-    if (new Set(owners).size !== owners.length) {
-      errors.push(`packages/adapters/${adapter} names the same owner more than once`);
-    }
-  }
-  for (const adapter of Object.keys(EXPECTED_MULTI_OWNER_ADAPTERS)) {
-    if (!(adapter in EXPECTED_ADAPTER_OWNERS)) {
-      errors.push(`EXPECTED_MULTI_OWNER_ADAPTERS names ${adapter}, which is not an adapter`);
-    }
-  }
+  errors.push(...checkAdapterOwnerCounts());
 
   let referenceEdgeCount = 0;
   let dependencyEdgeCount = 0;

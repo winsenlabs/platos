@@ -1209,28 +1209,35 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * moves again, because ADR M0.3 §15 puts both contexts' repositories in one
  * adapter directory:
  *
- *   packages/adapters/postgres-tenancy   4 -> 10 files,   56 -> 121 cases
+ *   packages/adapters/postgres-tenancy   4 -> 11 files,   56 -> 123 cases
  *
- * 371 + 6 = 377 files and 5931 + 65 = 5996 cases. The adapters term of the
- * identity moves with it: 349 + 3 + 25 = 377.
+ * 371 + 7 = 378 files and 5931 + 67 = 5998 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 26 = 378.
  *
- * WHAT THE 65 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ * WHAT THE 67 ARE, file by file, so the total cannot absorb a loss elsewhere:
  *
- *   identity-mapping.test.ts                     17  scope assembly, the five
- *                                                    row refusals and the four
- *                                                    write guards, all pure
- *   identity-conformance.integration.test.ts      3  the fake and the adapter
- *                                                    asked the SAME questions,
- *                                                    plus two cases proving the
- *                                                    fake WRONG
- *   identity-constraints.integration.test.ts     15  rules that live only in the
- *                                                    migrations
- *   identity-transaction.integration.test.ts     11  failure injection, and the
- *                                                    three scope refusals
- *   identity-statements.integration.test.ts       6  measured statement counts
- *   identity-differential.integration.test.ts    13  against PlatosAuthService
+ *   identity-mapping.test.ts                        17  scope assembly, the five
+ *                                                       row refusals and the four
+ *                                                       write guards, all pure
+ *   identity-conformance.integration.test.ts         3  the fake and the adapter
+ *                                                       asked the SAME questions,
+ *                                                       plus two cases proving the
+ *                                                       fake WRONG
+ *   identity-constraints.integration.test.ts        16  rules that live only in
+ *                                                       the migrations
+ *   identity-transaction.integration.test.ts        11  failure injection, and the
+ *                                                       three scope refusals
+ *   identity-statements.integration.test.ts          7  measured statement counts
+ *   identity-differential.integration.test.ts        4  against PlatosAuthService,
+ *                                                       the session methods
+ *   identity-differential-login.integration.test.ts  9  against PlatosAuthService,
+ *                                                       the login paths, MFA,
+ *                                                       impersonation and the one
+ *                                                       divergence
  *
- * 17 + 3 + 15 + 11 + 6 + 13 = 65. Five of the six files are integration suites
+ * 17 + 3 + 16 + 11 + 7 + 4 + 9 = 67. The differential is TWO files because the
+ * single file crossed the ADR M0.3 §6 hard limit of 500 effective lines and the
+ * budget was pointing at a real seam. Six of the seven files are integration suites
  * and do not run in `pnpm test:v1-packages` for the reason stated above; the
  * `postgres-tenancy-repository` CI job runs them, and they are counted here
  * because this census measures the suites a package SHIPS.
@@ -1250,7 +1257,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 10, cases: 121 },
+  "packages/adapters/postgres-tenancy": { files: 11, cases: 123 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1382,17 +1389,17 @@ export const EXPECTED = Object.freeze({
  * It used to read "the number `pnpm test:v1-packages` prints", and that has not
  * been true since tranche 1: the adapter's own `test` script excludes
  * `*.integration.test.ts` because the typecheck job has no Docker daemon, so
- * that command executes 25 cases FEWER than this sum at tranche 1 and 90 fewer
+ * that command executes 25 cases FEWER than this sum at tranche 1 and 92 fewer
  * here. The census deliberately counts the suites a package SHIPS rather than
  * the suites one runner happens to execute (see the note beside the
  * postgres-tenancy row), and this constant is the sum of the rows under that
- * rule. The `postgres-tenancy-repository` CI job is what makes the excluded 90
+ * rule. The `postgres-tenancy-repository` CI job is what makes the excluded 92
  * run.
  *
- * 5931 -> 5996: the 65 identity-access cases of WIN-258 tranche 2, enumerated
+ * 5931 -> 5998: the 67 identity-access cases of WIN-258 tranche 2, enumerated
  * file by file in the block beside the postgres-tenancy row.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5996;
+export const EXPECTED_RUNTIME_TOTAL = 5998;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

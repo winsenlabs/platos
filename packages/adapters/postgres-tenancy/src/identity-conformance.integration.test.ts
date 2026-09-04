@@ -46,10 +46,24 @@ afterAll(async () => {
 
 const EARLIER = new Date("2026-04-01T09:00:00.000Z");
 
-/** The two end users every run seeds, newest first once ordered. */
+/**
+ * The two end users every run seeds, newest first once ordered.
+ *
+ * The FIRST carries TWO identities and that is load-bearing, not colour: with
+ * one identity each, a store that loaded only the first identity of every user
+ * would answer exactly as a correct one does, and the mutation that does
+ * precisely that (`M-I32` in mutations-identity.json) SURVIVED the first sweep
+ * against this scenario. A person with a Slack handle and an email address is
+ * also the ordinary case an operator searches by.
+ */
 const END_USERS = [
-  { displayName: "Ada Lovelace", disabledAt: null, createdAt: AT, subject: "slack-u1" },
-  { displayName: "Grace Hopper", disabledAt: EARLIER, createdAt: EARLIER, subject: "email-u2" },
+  {
+    displayName: "Ada Lovelace",
+    disabledAt: null,
+    createdAt: AT,
+    subjects: ["slack-u1", "email-u1"],
+  },
+  { displayName: "Grace Hopper", disabledAt: EARLIER, createdAt: EARLIER, subjects: ["email-u2"] },
 ] as const;
 
 describe("the shared identity-access conformance scenario", () => {
@@ -111,7 +125,10 @@ describe("the shared identity-access conformance scenario", () => {
             displayName: endUser.displayName,
             disabledAt: endUser.disabledAt,
             createdAt: endUser.createdAt,
-            identities: [{ subject: endUser.subject, channel: `channel-${String(index)}` }],
+            identities: endUser.subjects.map((subject, position) => ({
+              subject,
+              channel: `channel-${String(index)}-${String(position)}`,
+            })),
           });
         }
       },
@@ -179,16 +196,20 @@ describe("the shared identity-access conformance scenario", () => {
             disabledAt: endUser.disabledAt,
             createdAt: endUser.createdAt,
           });
-          const identityId = asIdentifier<EndUserIdentityId>(`fake-identity-${String(index)}`);
-          fake.state.endUserIdentities.set(identityId, {
-            identityId,
-            endUserId,
-            issuer: "platos",
-            channel: `channel-${String(index)}`,
-            subject: endUser.subject,
-            verifiedAt: null,
-            disabledAt: null,
-          });
+          for (const [position, subject] of endUser.subjects.entries()) {
+            const identityId = asIdentifier<EndUserIdentityId>(
+              `fake-identity-${String(index)}-${String(position)}`,
+            );
+            fake.state.endUserIdentities.set(identityId, {
+              identityId,
+              endUserId,
+              issuer: "platos",
+              channel: `channel-${String(index)}-${String(position)}`,
+              subject,
+              verifiedAt: null,
+              disabledAt: null,
+            });
+          }
         }
       },
     });
@@ -211,6 +232,9 @@ describe("the shared identity-access conformance scenario", () => {
     expect(realObserved.familyRevoked).toBe(4);
     expect(realObserved.endUserTotal).toBe(2);
     expect(realObserved.searchBySubject).toBe(1);
+    // Ada has TWO identities and both come back, in a deterministic order.
+    const page = realObserved.endUserPage as readonly { identities: readonly unknown[] }[];
+    expect(page[0]?.identities).toHaveLength(2);
     expect(realObserved.otherTenant).toBe(0);
   }, 300_000);
 });

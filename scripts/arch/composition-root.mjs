@@ -132,10 +132,20 @@ function importedAdapters(file) {
   return names;
 }
 
-/** Read the `ADAPTER_BINDINGS` literal out of the composition-root source. */
+/**
+ * Read the `ADAPTER_BINDINGS` literal out of the composition-root source.
+ *
+ * THE TRAILING COMMA IS PART OF THE PATTERN, and it was not until WIN-258 T2.
+ * A one-line entry has none; a multi-line one that the formatter has wrapped
+ * does. The earlier pattern therefore DROPPED a wrapped entry silently, and the
+ * only reason that was not a hole is that a dropped row fails closed twice over
+ * — the binding it names is reported as omitted and the count no longer agrees.
+ * Widened here so a gate does not depend on how a formatter chose to break a
+ * line, and the first entry it had to read was the one this tranche added.
+ */
 export function parseBindingTable(source) {
   const entries = [];
-  const pattern = /\{\s*adapter:\s*"([^"]+)",\s*port:\s*"([^"]+)",\s*owner:\s*"([^"]+)"\s*\}/gu;
+  const pattern = /\{\s*adapter:\s*"([^"]+)",\s*port:\s*"([^"]+)",\s*owner:\s*"([^"]+)",?\s*\}/gu;
   let match;
   while ((match = pattern.exec(source)) !== null) {
     entries.push({ adapter: match[1], port: match[2], owner: match[3] });

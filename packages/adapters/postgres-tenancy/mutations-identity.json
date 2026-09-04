@@ -436,6 +436,12 @@
       ],
       "kills": [
         "the postgres adapter and the in-memory fake answer it identically"
+      ],
+      "note": [
+        "SURVIVED the first sweep, and the scenario was the thing at fault: every",
+        "seeded end user had exactly ONE identity, so loading only the first was",
+        "indistinguishable from loading them all. The conformance fixture now",
+        "gives one end user a Slack handle AND an email address."
       ]
     },
     {
@@ -463,15 +469,23 @@
       ]
     },
     {
-      "name": "M-I35 users: upsertByEmail creates a second row for an existing address",
+      "name": "M-I35 users: the get-or-create loses its early return",
       "file": "src/identity-users.ts",
       "from": "      const existing = await findByEmail(address);\n      if (existing !== null) return existing;",
       "to": "      const existing = null;\n      if (existing !== null) return existing;",
       "suites": [
-        "src/identity-conformance.integration.test.ts"
+        "src/identity-statements.integration.test.ts"
       ],
       "kills": [
-        "the postgres adapter and the in-memory fake answer it identically"
+        "upsertByEmail on an EXISTING address is one statement, not a failed insert"
+      ],
+      "note": [
+        "TWO DEFENCES, SEPARATED DELIBERATELY. The early return and the",
+        "unique-violation recovery each keep the ANSWER correct without the other,",
+        "so the first sweep of this ledger SURVIVED a mutation that removed one of",
+        "them. Recorded rather than papered over, and split: this entry removes the",
+        "early return and is killed by the statement COUNT, and M-I37 removes the",
+        "recovery and is killed by sixteen concurrent first logins."
       ]
     },
     {
@@ -484,6 +498,18 @@
       ],
       "kills": [
         "a second subject for the same (user, provider) is refused"
+      ]
+    },
+    {
+      "name": "M-I37 users: a concurrent first login is not recovered from",
+      "file": "src/identity-users.ts",
+      "from": "        if (!isUniqueViolation(error)) throw error;\n        const won = await findByEmail(address);\n        if (won === null) throw error;\n        return won;",
+      "to": "        throw error;",
+      "suites": [
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "two concurrent first logins for one address produce ONE account"
       ]
     }
   ]

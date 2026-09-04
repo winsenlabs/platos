@@ -4,7 +4,7 @@
 // Part one — `identity-differential.integration.test.ts` — carries the session
 // methods and the full statement of what this differential is and how a
 // comparison is made. The apparatus both suites share is in
-// `./identity-differential-shared.harness.ts`.
+// `./identity-differential-harness.ts`.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -26,8 +26,8 @@ import {
   startDifferential,
   stopDifferential,
   uuids,
-} from "./identity-differential-shared.harness.js";
-import * as shared from "./identity-differential-shared.harness.js";
+} from "./identity-differential-harness.js";
+import * as shared from "./identity-differential-harness.js";
 
 beforeAll(startDifferential, 300_000);
 afterAll(stopDifferential);
@@ -38,7 +38,7 @@ describe("issueMagicLink and consumeMagicLink", () => {
     const v1Address = "v1-magic@example.test";
     const scope = {
       level: "organization" as const,
-      organizationId: asIdentifier<OrganizationId>(tenant.organizationId),
+      organizationId: asIdentifier<OrganizationId>(shared.tenant.organizationId),
     };
 
     const oracleLink = await shared.oracle.issueMagicLink({
@@ -79,7 +79,7 @@ describe("issueMagicLink and consumeMagicLink", () => {
     const v1Address = "v1-magic-twice@example.test";
     const scope = {
       level: "organization" as const,
-      organizationId: asIdentifier<OrganizationId>(tenant.organizationId),
+      organizationId: asIdentifier<OrganizationId>(shared.tenant.organizationId),
     };
     const oracleLink = await shared.oracle.issueMagicLink({
       email: oracleAddress,
@@ -96,7 +96,7 @@ describe("issueMagicLink and consumeMagicLink", () => {
     const v1Login = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Link.value.token });
     if (!v1Login.ok) throw new Error("the V1 magic link was not consumed");
 
-    await expect(oracle.consumeMagicLink(oracleLink.token)).rejects.toThrow();
+    await expect(shared.oracle.consumeMagicLink(oracleLink.token)).rejects.toThrow();
     const replay = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Link.value.token });
     expect(replay.ok).toBe(false);
 

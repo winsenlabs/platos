@@ -169,6 +169,34 @@ describe("the identity, session and grant reads are constant", () => {
     ).toBe(1);
   }, 120_000);
 
+  test("upsertByEmail on an EXISTING address is one statement, not a failed insert", async () => {
+    // The get-or-create has TWO independent defences: the early return after the
+    // read, and the unique-violation recovery around the insert. Removing either
+    // alone leaves the ANSWER correct, because the other covers it — the first
+    // mutation sweep proved exactly that by surviving. This is the assertion
+    // that makes the early return falsifiable on its own: without it every
+    // repeat login issues an INSERT that PostgreSQL refuses and a second SELECT
+    // to recover, which is three statements where one will do, on the hottest
+    // path in the product.
+    const address = "repeat-login@example.test";
+    const first = await harness.repository.users.upsertByEmail(
+      asIdentifier(address),
+      asIdentifier<UserId>(harness.freshId("0404")),
+    );
+    const cost = await measure(() =>
+      harness.repository.users.upsertByEmail(
+        asIdentifier(address),
+        asIdentifier<UserId>(harness.freshId("0405")),
+      ),
+    );
+    expect(cost).toBe(1);
+    const again = await harness.repository.users.upsertByEmail(
+      asIdentifier(address),
+      asIdentifier<UserId>(harness.freshId("0406")),
+    );
+    expect(again.userId).toBe(first.userId);
+  }, 120_000);
+
   test("an environment-scoped grant read is a MEASURED constant, not one per level", async () => {
     await harness.seedMcpToken({
       environmentId: small.environmentId,

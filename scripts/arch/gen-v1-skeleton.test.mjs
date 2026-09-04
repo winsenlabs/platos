@@ -6,6 +6,7 @@ import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkAdapterTable,
   ADOPTED_PROJECTS,
   APPLICATION_ENTRY_PROJECTS,
   EXPECTED_PLACEHOLDER_FILE_COUNT,
@@ -64,7 +65,7 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // implements the three kernel ports that have no adapter (Clock, IdGenerator,
   // Logger), so it must be able to name them. Reasoned in full on
   // EXPECTED_EDGE_COUNT in the generator.
-  assert.match(output, /32 V1 projects and 95 project edges/u);
+  assert.match(output, /32 V1 projects and 96 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -328,5 +329,104 @@ test("every published application entry point is imported by the composition roo
     entryPointsImportedByCompositionRoot('import { x } from "@platos/context-tenancy";').size,
     0,
     "importing a context's CONTRACTS is not importing its use-case entry point",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15) — the adapter table now permits MANY ports per
+// DIRECTORY, and these are the refusals that widening did not take with it.
+//
+// The check is called with a SUPPLIED table rather than by editing the module,
+// so each refusal runs in CI on every change instead of once, by hand, in a
+// throwaway script.
+// ---------------------------------------------------------------------------
+
+const LIVE_ADAPTERS = [
+  { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy",
+    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }], note: "n" },
+  { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
+  { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
+  { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "n" },
+  { dir: "objectstore-minio", port: "ObjectStore", owner: "files", note: "n" },
+  { dir: "redis-ratelimit", port: "RateLimiter", owner: "identity-access", note: "n" },
+  { dir: "redis-cache", port: "Cache", owner: "memory", note: "n" },
+  { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
+  { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
+  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
+  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "n" },
+];
+
+test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
+  // Non-vacuity for everything below: the mutations are the ONLY reason those
+  // cases go red.
+  assert.deepEqual(checkAdapterTable(), []);
+  assert.deepEqual(checkAdapterTable(LIVE_ADAPTERS), []);
+});
+
+test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings may exceed twelve", () => {
+  const errors = checkAdapterTable([
+    ...LIVE_ADAPTERS,
+    { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  ]);
+  assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
+});
+
+test("§15 refusal: a FOURTEENTH binding fails, even though a directory may hold more than one", () => {
+  const widened = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
+      : adapter
+  );
+  const errors = checkAdapterTable(widened);
+  assert.ok(errors.some((error) => error.includes("declares 13 adapter bindings; ADAPTERS flattens to 14")));
+});
+
+test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
+  const invented = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [{ port: "IdentityAccessRepository", owner: "auth" }] }
+      : adapter
+  );
+  assert.ok(
+    checkAdapterTable(invented).some((error) =>
+      error.includes("postgres-tenancy assigns IdentityAccessRepository to unknown owner auth")
+    )
+  );
+});
+
+test("§15 refusal: a port gaining a SECOND home fails unless it is named as multi-home", () => {
+  const shared = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "redis-cache" ? { ...adapter, port: "EventBus", owner: "kernel" } : adapter
+  );
+  assert.ok(
+    checkAdapterTable(shared).some((error) => error.includes("kernel:EventBus is satisfied by"))
+  );
+  // And `Notifier`, the one port ADR M0.3 §4 gives two homes, is NOT flagged —
+  // the allow-list is what makes this a rule rather than a blanket ban.
+  assert.deepEqual(checkAdapterTable(LIVE_ADAPTERS), []);
+});
+
+test("§15 refusal: one directory declaring the same port twice fails", () => {
+  const doubled = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [{ port: "TenancyRepository", owner: "tenancy" }] }
+      : adapter
+  );
+  assert.ok(
+    checkAdapterTable(doubled).some((error) =>
+      error.includes("postgres-tenancy declares TenancyRepository more than once")
+    )
+  );
+});
+
+test("§15 refusal: the multi-home allow-list must still be earned", () => {
+  // `Notifier` with only one home left means the allow-list entry is stale, and
+  // a stale exemption is a hole. It fails in that direction too.
+  const single = LIVE_ADAPTERS.filter((adapter) => adapter.dir !== "notifier-webhook");
+  assert.ok(
+    checkAdapterTable(single).some((error) =>
+      error.includes("cost-monitoring:Notifier is declared as a multi-home port but has 1 home(s)")
+    )
   );
 });

@@ -828,52 +828,46 @@ export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_P
   return files;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+/**
+ * Everything the ADAPTERS table has to satisfy, over a table the caller SUPPLIES.
+ *
+ * Injectable so `gen-v1-skeleton.test.mjs` can hand it a mutated table and watch
+ * each refusal happen, rather than editing the module and running the CLI. A
+ * gate widened to permit many ports per directory has to be shown still refusing
+ * everything it refused before, and a refusal nobody has watched fail is not
+ * evidence.
+ */
+export function checkAdapterTable(adapters = ADAPTERS, contextNames = CONTEXT_NAMES) {
   const errors = [];
-  const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
-  const references = projectReferences();
-  const edgeCount = [...references.values()].reduce((count, dependencies) => count + dependencies.length, 0);
 
-  for (const sdk of SDK_CONTAINMENT) {
-    const match = /\^packages\/adapters\/([^/]+)\//u.exec(sdk.home);
-    if (match && !adapterDirectories.has(match[1])) {
-      errors.push(`SDK_CONTAINMENT ${sdk.id} names packages/adapters/${match[1]}/, which the skeleton does not create`);
-    }
-  }
-  if (CONTEXT_NAMES.length !== 17) errors.push(`ADR M0.3 §4 names 17 contexts; CONTEXT_DEPENDS_ON has ${CONTEXT_NAMES.length}`);
   // TWO pins, not one. Before the §15 amendment a single `ADAPTERS.length`
   // check said both "twelve directories" and "twelve bindings" at once, because
   // the two were the same number. They are no longer the same number and the
   // check is therefore split rather than loosened: a thirteenth DIRECTORY and a
   // fourteenth BINDING each fail on their own line, so widening one cannot
   // silently widen the other.
-  if (ADAPTERS.length !== EXPECTED_ADAPTER_COUNT) {
+  if (adapters.length !== EXPECTED_ADAPTER_COUNT) {
     errors.push(
-      `ADR M0.3 §4 names ${EXPECTED_ADAPTER_COUNT} concrete adapter directories; ADAPTERS has ${ADAPTERS.length}`,
+      `ADR M0.3 §4 names ${EXPECTED_ADAPTER_COUNT} concrete adapter directories; ADAPTERS has ${adapters.length}`,
     );
   }
-  const bindings = adapterBindings();
+  const bindings = adapterBindings(adapters);
   if (bindings.length !== EXPECTED_BINDING_COUNT) {
     errors.push(
       `ADR M0.3 §4/§15 declares ${EXPECTED_BINDING_COUNT} adapter bindings; ADAPTERS flattens to ${bindings.length}`,
     );
   }
-  if (projectPaths().length !== EXPECTED_PROJECT_COUNT) errors.push(`V1 project count is ${projectPaths().length}, expected ${EXPECTED_PROJECT_COUNT}`);
-  if (edgeCount !== EXPECTED_EDGE_COUNT) errors.push(`V1 project edge count is ${edgeCount}, expected ${EXPECTED_EDGE_COUNT}`);
-  for (const name of CONTEXT_NAMES) {
-    for (const dependency of CONTEXT_DEPENDS_ON[name]) {
-      if (!CONTEXT_NAMES.includes(dependency)) errors.push(`${name} depends on unknown context ${dependency}`);
-    }
-  }
+
   // Every BINDING's owner must be a real context or the kernel — the extra
   // bindings of a multi-port directory are held to exactly the check the
   // primary one always was, so a second binding cannot smuggle in an owner the
   // ADR does not name.
   for (const binding of bindings) {
-    if (binding.owner !== "kernel" && !CONTEXT_NAMES.includes(binding.owner)) {
+    if (binding.owner !== "kernel" && !contextNames.includes(binding.owner)) {
       errors.push(`${binding.adapter} assigns ${binding.port} to unknown owner ${binding.owner}`);
     }
   }
+
   // A PORT is satisfied by at most one directory, and a directory declares a
   // port at most once. Without these two, "many ports per adapter" would also
   // permit the same port claimed twice — by one directory listing it in both
@@ -903,6 +897,31 @@ export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLI
     const homes = portHomes.get(port) ?? [];
     if (homes.length < 2) {
       errors.push(`${port} is declared as a multi-home port but has ${homes.length} home(s); drop it from MULTI_HOME_PORTS`);
+    }
+  }
+  return errors;
+}
+
+export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+  const errors = [];
+  const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
+  const references = projectReferences();
+  const edgeCount = [...references.values()].reduce((count, dependencies) => count + dependencies.length, 0);
+
+  for (const sdk of SDK_CONTAINMENT) {
+    const match = /\^packages\/adapters\/([^/]+)\//u.exec(sdk.home);
+    if (match && !adapterDirectories.has(match[1])) {
+      errors.push(`SDK_CONTAINMENT ${sdk.id} names packages/adapters/${match[1]}/, which the skeleton does not create`);
+    }
+  }
+  if (CONTEXT_NAMES.length !== 17) errors.push(`ADR M0.3 §4 names 17 contexts; CONTEXT_DEPENDS_ON has ${CONTEXT_NAMES.length}`);
+  errors.push(...checkAdapterTable());
+
+  if (projectPaths().length !== EXPECTED_PROJECT_COUNT) errors.push(`V1 project count is ${projectPaths().length}, expected ${EXPECTED_PROJECT_COUNT}`);
+  if (edgeCount !== EXPECTED_EDGE_COUNT) errors.push(`V1 project edge count is ${edgeCount}, expected ${EXPECTED_EDGE_COUNT}`);
+  for (const name of CONTEXT_NAMES) {
+    for (const dependency of CONTEXT_DEPENDS_ON[name]) {
+      if (!CONTEXT_NAMES.includes(dependency)) errors.push(`${name} depends on unknown context ${dependency}`);
     }
   }
 

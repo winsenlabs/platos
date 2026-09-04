@@ -358,6 +358,27 @@ describe("the store's own refusals, on a real database", () => {
     expect(revoked).toBe(1);
   }, 60_000);
 
+  test("two concurrent first logins for one address produce ONE account", async () => {
+    // The other half of the get-or-create. The early return handles the common
+    // case — the account already exists — and this handles the case it cannot:
+    // two first logins that both read nothing and both insert. `User.email` is
+    // UNIQUE, so one of them loses with SQLSTATE 23505 and must RE-READ rather
+    // than fail, because from the caller's point of view the account it asked
+    // for now exists.
+    const address = "concurrent-first-login@example.test";
+    const results = await Promise.all(
+      Array.from({ length: 16 }, () =>
+        harness.repository.users.upsertByEmail(
+          asIdentifier(address),
+          asIdentifier<UserId>(harness.freshId("0218")),
+        ),
+      ),
+    );
+    const distinct = new Set(results.map((record) => record.userId));
+    expect(distinct.size).toBe(1);
+    expect(await harness.client.user.count({ where: { email: address } })).toBe(1);
+  }, 120_000);
+
   test("bearerCredentials.save refuses a credential with no row behind it", async () => {
     // `save` UPDATES. Every one of the four tables carries required columns the
     // port cannot supply, so a save that created a row would be minting a

@@ -36,8 +36,8 @@ import {
   snapshot,
   startDifferential,
   stopDifferential,
-} from "./identity-differential-shared.harness.js";
-import * as shared from "./identity-differential-shared.harness.js";
+} from "./identity-differential-harness.js";
+import * as shared from "./identity-differential-harness.js";
 
 beforeAll(startDifferential, 300_000);
 afterAll(stopDifferential);

@@ -143,6 +143,63 @@ test("every mutating method is enforced, and reads are exempt by design", () => 
   }
 });
 
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15). `postgres-tenancy` is now the canonical-store
+// delegate of TWO owners, and these are the refusals that widening did not take
+// with it. The delegation is granted PER OWNER, by hand, and grants exactly the
+// rows that owner owns.
+// ---------------------------------------------------------------------------
+
+test("§15: the shared directory may write BOTH owners' rows and NOTHING else", () => {
+  const permitted = fixture({
+    "packages/adapters/postgres-tenancy/src/a.ts": write("user", "create"),
+    "packages/adapters/postgres-tenancy/src/b.ts": write("organization", "create"),
+  });
+  const result = checkWriteEnforcement(permitted);
+  assert.deepEqual(result.violations, []);
+  assert.equal(result.writeCount, 2, "both writes must be SEEN, not merely un-flagged");
+
+  // A third owner's row from the same directory is still refused. "Many owners
+  // per directory" is not "any row from that directory".
+  const refused = fixture({
+    "packages/adapters/postgres-tenancy/src/c.ts": write("memory", "deleteMany"),
+  });
+  const violations = checkWriteEnforcement(refused).violations;
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].model, "Memory");
+  assert.match(violations[0].message, /memory is its sole writer/u);
+});
+
+test("§15: the delegation is per OWNER, not per adapter that happens to serve one", () => {
+  // `redis-ratelimit` is also owned by identity-access (it implements that
+  // context's `RateLimiter`). It is not a canonical store and may not write a
+  // row — which is why `CANONICAL_STORE_ADAPTERS` is written by hand rather than
+  // derived from the adapter table's owner column.
+  const root = fixture({
+    "packages/adapters/redis-ratelimit/src/x.ts": write("user", "create"),
+  });
+  const violations = checkWriteEnforcement(root).violations;
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].expected, "packages/contexts/identity-access");
+});
+
+test("§15: ownerDirectories grants exactly two directories, and only where declared", () => {
+  // The rule the two cases above rest on, stated directly. An owner with no
+  // entry has exactly ONE permitted directory — the context — which is the
+  // property that keeps the shared directory from becoming a blanket licence.
+  assert.deepEqual(ownerDirectories("tenancy"), [
+    "packages/contexts/tenancy",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.deepEqual(ownerDirectories("identity-access"), [
+    "packages/contexts/identity-access",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  for (const owner of ["memory", "cost-monitoring", "secrets", "governance", "files"]) {
+    assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
+  }
+});
+
 test("the outbox adapter is the only package that may write Event", () => {
   const bad = fixture({ "packages/contexts/observability/application/x.ts": write("event", "create") });
   assert.equal(checkWriteEnforcement(bad).violations.length, 1);
@@ -399,9 +456,39 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                                                                              total = 12
 //
 // Every one of the twelve is a row `tenancy` owns, written from `tenancy`'s
-// canonical-store adapter. The second and third assertions below say that
-// directly, so the pin cannot be satisfied by twelve mutations somewhere else.
-const LIVE_TREE_WRITE_COUNT = 12;
+// canonical-store adapter.
+//
+// WIN-258 TRANCHE 2 adds 51, all from the SAME directory, on the 23 rows
+// `identity-access` owns plus one `Environment` write that is `tenancy`'s and
+// is the reason both contexts' repositories share a directory at all (ADR M0.3
+// §15). Written out so a deletion cannot hide inside an addition:
+//
+//   src/identity-users.ts       user.create, operatorIdentity.upsert            2
+//   src/identity-sessions.ts    operatorSession.upsert + .updateMany,
+//                               magicLinkToken.create + .updateMany             4
+//   src/identity-mfa.ts         operatorMfaTotp.upsert/.deleteMany/.updateMany,
+//                               operatorMfaRecoveryCode.updateMany/.deleteMany/
+//                               .createMany                                     6
+//   src/identity-access-keys.ts accessKey.create, .update x2, .updateMany,
+//                               AND environment.update — the revocation fence,
+//                               a TENANCY row, legal only because this
+//                               directory is also tenancy's delegate           5
+//   src/identity-oauth.ts       oAuthAuthorizationCode.updateMany,
+//                               oAuthAccessToken.create + .updateMany,
+//                               oAuthRefreshToken.create + .updateMany x2       6
+//   src/identity-bearer.ts      updateMany on each of the FOUR bearer tables    4
+//   src/identity-end-users.ts   impersonationAudit.create                       1
+//   src/identity-harness.ts     five seeded rows the PORT cannot create,
+//                               as raw INSERTs                                  5
+//   src/identity-differential-harness.ts  user.create (the oracle's operator)   1
+//   the identity suites         12 constraint proofs (raw), 2 differential,
+//                               2 differential-login, 1 transaction            17
+//                                                                      total = 51
+//
+// 12 + 51 = 63. The second and third assertions below say the writes are all
+// legal and all attributable, so the pin cannot be satisfied by 63 mutations
+// somewhere else.
+const LIVE_TREE_WRITE_COUNT = 63;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -417,7 +504,7 @@ test("the live tree's writes are exactly the postgres-tenancy adapter's, on tena
 });
 
 test("the canonical-store delegation is the ONLY reason those writes are legal", () => {
-  // Deleting `postgres-tenancy` from the permitted set must make all twelve
+  // Deleting `postgres-tenancy` from the permitted set must make all sixty-three
   // illegal. A permission nothing depends on is a permission that is not doing
   // anything, and this is the case that proves it is.
   assert.deepEqual(ownerDirectories("tenancy"), [
