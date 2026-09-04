@@ -1068,6 +1068,9 @@ importers:
 
   packages/adapters/postgres-tenancy:
     dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
       '@platos/context-tenancy':
         specifier: workspace:*
         version: link:../../contexts/tenancy
