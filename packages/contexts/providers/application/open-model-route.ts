@@ -29,7 +29,7 @@ import {
 } from "../domain/index.js";
 import type { SecretsRuntimeGrant } from "./authorization.js";
 import type { ProvidersDependencies } from "./dependencies.js";
-import type { ModelSession } from "./ports/index.js";
+import type { ModelSession, ProviderCredential } from "./ports/index.js";
 import { resolveProviderCredential } from "./resolve-provider-credential.js";
 import { runtimeSettingsFor } from "./runtime-settings.js";
 
@@ -49,10 +49,24 @@ export interface OpenedModelRoute {
   readonly providerKey: ProviderKey;
 }
 
-export async function openModelRoute(
+/**
+ * The three steps above, WITHOUT binding a session.
+ *
+ * Split out so `run-model-generation.ts` can reach the same resolved route
+ * without paying for the credential read twice. The material is here rather
+ * than on `OpenedModelRoute` deliberately: this value never leaves the
+ * application layer, while `OpenedModelRoute` is what the contract publishes.
+ */
+export interface ResolvedModelRoute {
+  readonly plan: ModelRoutePlan;
+  readonly credential: ProviderCredential;
+  readonly providerKey: ProviderKey;
+}
+
+export async function resolveModelRoute(
   dependencies: ProvidersDependencies,
   command: OpenModelRouteCommand,
-): Promise<Result<OpenedModelRoute>> {
+): Promise<Result<ResolvedModelRoute>> {
   const reference = parseModelReference(command.model);
   if (!reference.ok) return err(reference.error);
   const manifest = requireManifest(dependencies.catalogue, reference.value.provider);
@@ -87,11 +101,20 @@ export async function openModelRoute(
 
   const plan = planModelRoute(dependencies.catalogue, command.model, settings.value);
   if (!plan.ok) return err(plan.error);
+  return ok({ plan: plan.value, credential: resolved.value.credential, providerKey: resolved.value.key });
+}
+
+export async function openModelRoute(
+  dependencies: ProvidersDependencies,
+  command: OpenModelRouteCommand,
+): Promise<Result<OpenedModelRoute>> {
+  const route = await resolveModelRoute(dependencies, command);
+  if (!route.ok) return err(route.error);
 
   const session = await dependencies.modelRouter.open({
-    plan: plan.value,
-    credential: resolved.value.credential,
+    plan: route.value.plan,
+    credential: route.value.credential,
   });
   if (!session.ok) return err(session.error);
-  return ok({ session: session.value, plan: plan.value, providerKey: resolved.value.key });
+  return ok({ session: session.value, plan: route.value.plan, providerKey: route.value.providerKey });
 }

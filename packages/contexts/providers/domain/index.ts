@@ -35,3 +35,11 @@ export * from "./price-card.js";
 export * from "./token-usage.js";
 export * from "./cost.js";
 export * from "./rate-card-import.js";
+// The inference vocabulary (ADR M0.3 §14) — what a turn sends to a model, where
+// its cache breakpoints go, and what comes back. Owned here rather than by
+// `conversations` because the `ModelRouter` port speaks it and this context owns
+// that port (§13), and because the placement rule in `prompt-cache.ts` is pure
+// arithmetic over a rate card's four rates.
+export * from "./prompt.js";
+export * from "./prompt-cache.js";
+export * from "./generation.js";

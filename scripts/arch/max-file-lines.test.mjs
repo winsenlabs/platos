@@ -164,6 +164,19 @@ test("the live selectors scan an exact nonzero source census", () => {
   // corrected here rather than carried, exactly as the channels and
   // observability branches' versions of it were.
   //
+  // +8: WIN-256's `conversations` prerequisite adds four source files and four
+  // suites under packages/contexts/providers for the ModelRouter inference
+  // surface. The largest of the eight is well inside the warning band — the
+  // message model, the cache placement, the generation vocabulary and the use
+  // case were written as four files rather than one for exactly the reason ADR
+  // M0.3 §6 names: a turn's orchestration split into named sub-use-case files is
+  // what stops the next 7.1k-line service. Its branch pinned 336 (328 + 8) and
+  // added "every one of the 328 is inside the budget and none is inside the
+  // 400-line warning band" — the same whole-census claim the privacy, channels,
+  // observability and governance branches each made, false of this tree for the
+  // same reason, and corrected here rather than carried. The eight themselves
+  // add NO file to the warning list below.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
@@ -175,7 +188,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // +67 and pinned 478 (328 + 67 + 83) — a partial sum too, blind to the other
   // nine. The axes are disjoint, so the
   // integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 = 962.
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 = 970.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -228,11 +241,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // it is a warning the gate is meant to show rather than one this pin should
   // hide. `channels` adds none: its largest file is 280 effective lines. The
   // list is four, and the four are named.
-  assert.equal(result.fileCount, 962);
+  assert.equal(result.fileCount, 970);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
-  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83);
+  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

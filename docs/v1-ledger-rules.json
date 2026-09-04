@@ -2042,7 +2042,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 4452,
+    "totalFiles": 4460,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 30,
@@ -2050,7 +2050,7 @@
       "apps-webapp": 183,
       "docs-content": 733,
       "internal-packages": 1164,
-      "packages": 1544,
+      "packages": 1552,
       "root-infra": 277
     },
     "kindCounts": {
@@ -2062,14 +2062,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1696,
-      "test": 772
+      "source": 1700,
+      "test": 776
     },
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1606,
       "regenerate": 38,
-      "retain": 2799,
+      "retain": 2807,
       "unresolved": 2
     },
     "protectedCount": 1627,
@@ -2164,8 +2164,8 @@
       "packages.config.build": 28,
       "packages.contexts.config": 35,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 652,
-      "packages.contexts.test": 304,
+      "packages.contexts.source": 656,
+      "packages.contexts.test": 308,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,

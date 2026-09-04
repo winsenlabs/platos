@@ -965,6 +965,48 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved: this slice touched no suite outside governance and no
  * shared script but this one and `workspace-reachability.test.mjs`.
+ *
+ * ---------------------------------------------------------------------------
+ * THE `conversations` PREREQUISITE ARRIVES NEXT, AND IT IS THE ONE WAVE-B SLICE
+ * THAT ADOPTS NO CONTEXT. It moves an ALREADY-REAL row rather than turning a
+ * zero row real, so it is the only delta in this file that does not change the
+ * generator-ownership count in `scripts/workspace-reachability.test.mjs`, which
+ * stays at 125. Its running totals below are corrected from its own branch's
+ * base (v1, 1000) to this tree's (5087) exactly as the `tools` and `governance`
+ * blocks above were.
+ * ---------------------------------------------------------------------------
+ * WIN-256 CONVERSATIONS PREREQUISITE (2026-09-04), on v1 `95cbacc13de6`. The
+ * `ModelRouter` port grows the inference surface `conversations` needs (ADR
+ * M0.3 §14), and again exactly ONE row moves:
+ *
+ *   providers 21 -> 25 files, 283 -> 346 cases; 5087 -> 5150 total. Four new
+ *   suites, and every case in them is new -- nothing was renamed, moved between
+ *   files, or deleted, so the +63 is an addition with no subtraction hiding in
+ *   it:
+ *
+ *     domain/prompt.test.ts             13 cases  the message model
+ *     domain/prompt-cache.test.ts       19 cases  breakpoint placement
+ *     domain/generation.test.ts         14 cases  budgets, tools, usage sums
+ *     application/run-model-generation.test.ts
+ *                                       17 cases  the use case, end to end
+ *                                       --------
+ *                                       63
+ *
+ *   `domain/errors.test.ts` gains no case: its SAMPLES list grew by the ten new
+ *   error codes, which is what its existing "mints every declared code and
+ *   nothing else" case asserts over. That is the shape to check for when this
+ *   number moves -- a suite whose case count is unchanged while its coverage
+ *   changed is exactly what a file-count pin cannot see.
+ *
+ *   `pnpm --filter @platos/context-providers exec vitest run` prints the same
+ *   pair: "Test Files 25 passed (25) / Tests 346 passed (346)".
+ *
+ * No other package moved. 21 + 4 = 25 files, 307 + 4 = 311 across the workspace;
+ * 283 + 63 = 346 cases, 5087 + 63 = 5150 across the workspace. Its branch read
+ * those workspace totals off v1, where providers was the only real context
+ * besides the four that closed MAJOR 2: 88 files and 1000 cases there, 307 and
+ * 5087 here. The per-row delta — 4 files and 63 cases — is the property that
+ * conserves, and it is unchanged.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -991,7 +1033,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 21, cases: 283 },
+  "packages/contexts/providers": { files: 25, cases: 346 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -1006,7 +1048,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5087;
+export const EXPECTED_RUNTIME_TOTAL = 5150;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

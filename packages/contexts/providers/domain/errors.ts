@@ -47,6 +47,21 @@ export const PROVIDERS_ERROR_CODES = [
   "PROVIDERS_PRICE_REVISION_CONFLICT",
   "PROVIDERS_TOKEN_USAGE_INVALID",
   "PROVIDERS_REPOSITORY_UNAVAILABLE",
+  // The inference surface (ADR M0.3 §14). Ten codes and not one, because each
+  // names a different thing the caller did and a caller that cannot tell them
+  // apart cannot fix any of them: a prompt with no messages is a bug in the
+  // assembler, a tool result with no matching call is a dropped assistant
+  // message, and an expired binding is a cached provider handle that aged out.
+  "PROVIDERS_PROMPT_EMPTY",
+  "PROVIDERS_PROMPT_CONTENT_EMPTY",
+  "PROVIDERS_MEDIA_TYPE_MISSING",
+  "PROVIDERS_TOOL_CALL_DUPLICATED",
+  "PROVIDERS_TOOL_RESULT_UNMATCHED",
+  "PROVIDERS_TOOL_NAME_DUPLICATED",
+  "PROVIDERS_CACHE_BUDGET_EXCEEDED",
+  "PROVIDERS_STEP_BUDGET_INVALID",
+  "PROVIDERS_MODEL_SESSION_EXPIRED",
+  "PROVIDERS_STRUCTURED_OUTPUT_INVALID",
 ] as const;
 
 export type ProvidersErrorCode = (typeof PROVIDERS_ERROR_CODES)[number];
@@ -212,4 +227,120 @@ export function repositoryUnavailable(reason: string): DomainError {
     retryAfterSeconds: 5,
     details: { reason },
   });
+}
+
+// --- the inference surface ---------------------------------------------------
+//
+// These are `invalid_input` rather than runtime refusals, and that is the point.
+// Every one of them is a defect in the request the caller assembled, detectable
+// before any material moves and before a provider is paid for a round trip that
+// was always going to be rejected. The safe-message rule above does not apply:
+// the caller here is another context inside this process, not a client.
+
+export function promptEmpty(): DomainError {
+  return domainError("PROVIDERS_PROMPT_EMPTY", "invalid_input", "a prompt must carry at least one message");
+}
+
+export function promptContentEmpty(role: string): DomainError {
+  return domainError(
+    "PROVIDERS_PROMPT_CONTENT_EMPTY",
+    "invalid_input",
+    "a message must carry at least one content part",
+    { details: { role } },
+  );
+}
+
+/**
+ * An image or file part with no media type.
+ *
+ * Named separately from every other malformed part because it is the one the
+ * source shipped: a part built without it failed the whole turn at the provider,
+ * and only images survived, by having their bytes sniffed.
+ */
+export function mediaTypeMissing(role: string, part: string): DomainError {
+  return domainError(
+    "PROVIDERS_MEDIA_TYPE_MISSING",
+    "invalid_input",
+    "an image or file part must declare its media type",
+    { details: { role, part } },
+  );
+}
+
+export function toolCallDuplicated(toolCallId: string): DomainError {
+  return domainError(
+    "PROVIDERS_TOOL_CALL_DUPLICATED",
+    "invalid_input",
+    "the same tool call id is asked for twice in one prompt",
+    { details: { toolCallId } },
+  );
+}
+
+export function toolResultUnmatched(toolCallId: string, toolName: string): DomainError {
+  return domainError(
+    "PROVIDERS_TOOL_RESULT_UNMATCHED",
+    "invalid_input",
+    "a tool result answers a call that was never asked for, or answers it twice",
+    { details: { toolCallId, toolName } },
+  );
+}
+
+export function toolNameDuplicated(toolName: string): DomainError {
+  return domainError(
+    "PROVIDERS_TOOL_NAME_DUPLICATED",
+    "invalid_input",
+    "two tool definitions in one request carry the same name",
+    { details: { toolName } },
+  );
+}
+
+/**
+ * More cache breakpoints than the plan's provider will honour.
+ *
+ * A provider that receives too many does not fail loudly — it drops the overflow
+ * in document order, which discards the NEWEST breakpoint and silently turns
+ * caching off from that step onward. Refusing here is what makes that failure
+ * visible instead of expensive.
+ */
+export function cacheBudgetExceeded(placed: number, allowed: number): DomainError {
+  return domainError(
+    "PROVIDERS_CACHE_BUDGET_EXCEEDED",
+    "invalid_input",
+    "the prompt carries more cache breakpoints than the provider will honour",
+    { details: { placed, allowed } },
+  );
+}
+
+export function stepBudgetInvalid(maxSteps: number): DomainError {
+  return domainError(
+    "PROVIDERS_STEP_BUDGET_INVALID",
+    "invalid_input",
+    "a generation must be allowed at least one step, and a whole number of them",
+    { details: { maxSteps } },
+  );
+}
+
+/**
+ * The binding aged out before it was used.
+ *
+ * `precondition_failed` and not `not_found`: the session was real and the caller
+ * did nothing wrong, so the fix is a fresh binding rather than a hunt for
+ * something that never existed or a change to configuration that is correct.
+ */
+export function modelSessionExpired(sessionId: string, expiredAt: string): DomainError {
+  return domainError(
+    "PROVIDERS_MODEL_SESSION_EXPIRED",
+    "precondition_failed",
+    "the model session has expired and must be opened again",
+    { details: { sessionId, expiredAt } },
+  );
+}
+
+/** The model produced nothing that satisfies the schema the caller asked for. */
+export function structuredOutputInvalid(reason: string, passes: number): DomainError {
+  return domainError(
+    "PROVIDERS_STRUCTURED_OUTPUT_INVALID",
+    "invalid_input",
+    "the model did not produce output matching the requested schema",
+    { details: { reason, passes } },
+  );
 }

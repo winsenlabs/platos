@@ -25,6 +25,7 @@ export * from "./discover-models.js";
 export * from "./describe-providers.js";
 export * from "./check-provider-health.js";
 export * from "./open-model-route.js";
+export * from "./run-model-generation.js";
 export * from "./price-model-usage.js";
 export * from "./ingest-rate-card.js";
 export * from "./views.js";

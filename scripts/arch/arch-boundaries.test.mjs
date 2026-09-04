@@ -172,6 +172,135 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     assert.ok(!has(check(good), "clickhouse-sdk-only"), "@clickhouse inside its adapter must pass");
   });
 
+  // The four proofs below are the non-vacuity evidence for `inference-sdk-only`
+  // (ADR M0.3 §14). They are separate `it` blocks rather than one, because the
+  // two spellings fail for different mechanical reasons — one is caught by the
+  // `from ...` pattern and the other by the call pattern in
+  // `extractSpecifiers` — and a single test that asserted both would go red
+  // without saying which half broke.
+  //
+  // `findings` asserts the whole violation record, not just the rule id. A test
+  // that only checked "some violation with this id exists" would still pass if
+  // the rule fired on the wrong file or named the wrong specifier.
+  function findings(result, id) {
+    return result.violations
+      .filter((v) => v.rule === id)
+      .map((v) => `${v.from} -> ${v.specifier}`)
+      .sort();
+  }
+
+  it("(h) inference-sdk-only: a STATIC import of the inference framework from a context fails", () => {
+    const bad = fixture({
+      "packages/contexts/conversations/application/turn.ts": `import { generateText } from "ai";\nimport { anthropic } from "@ai-sdk/anthropic";\nexport const run = () => generateText({ model: anthropic("m") });\n`,
+    });
+    assert.deepEqual(
+      findings(check(bad), "inference-sdk-only"),
+      [
+        "packages/contexts/conversations/application/turn.ts -> @ai-sdk/anthropic",
+        "packages/contexts/conversations/application/turn.ts -> ai",
+      ],
+      "both the framework and its provider binding must be reported, by file and by specifier"
+    );
+
+    const good = fixture({
+      "packages/contexts/conversations/application/turn.ts": `import type { ModelRoutePlan } from "@platos/context-providers/contracts";\nexport const run = (p: ModelRoutePlan) => p;\n`,
+    });
+    assert.deepEqual(
+      findings(check(good), "inference-sdk-only"),
+      [],
+      "asking providers for the route instead must pass"
+    );
+  });
+
+  it("(h) inference-sdk-only: a DYNAMIC import() of the inference framework fails identically", () => {
+    // The evasion this rule has to survive: the ban is on the module, not on one
+    // spelling of the import. Quoted and backtick call forms are both static
+    // specifiers and both must be caught.
+    const quoted = fixture({
+      "packages/contexts/conversations/application/turn.ts": `export const run = async () => (await import("ai")).generateText;\n`,
+    });
+    assert.deepEqual(
+      findings(check(quoted), "inference-sdk-only"),
+      ["packages/contexts/conversations/application/turn.ts -> ai"],
+      "a quoted dynamic import must fire"
+    );
+
+    const backtick = fixture({
+      "packages/contexts/conversations/application/turn.ts":
+        "export const run = async () => (await import(`@ai-sdk/openai`)).openai;\n",
+    });
+    assert.deepEqual(
+      findings(check(backtick), "inference-sdk-only"),
+      ["packages/contexts/conversations/application/turn.ts -> @ai-sdk/openai"],
+      "a backtick dynamic import must fire too"
+    );
+
+    const required = fixture({
+      "packages/contexts/conversations/application/turn.ts": `export const run = () => require("ai");\n`,
+    });
+    assert.deepEqual(
+      findings(check(required), "inference-sdk-only"),
+      ["packages/contexts/conversations/application/turn.ts -> ai"],
+      "the CommonJS call form must fire too"
+    );
+  });
+
+  it("(h) inference-sdk-only: the providers adapter is the one home, and only that adapter", () => {
+    const home = fixture({
+      "packages/adapters/model-router-providers/src/adapter.ts": `import { generateText } from "ai";\nimport { anthropic } from "@ai-sdk/anthropic";\nexport const g = () => generateText({ model: anthropic("m") });\n`,
+    });
+    assert.deepEqual(
+      findings(check(home), "inference-sdk-only"),
+      [],
+      "the sole holder of the framework must be allowed to hold it"
+    );
+
+    // A different adapter is NOT the home. Without this the rule would read as
+    // "adapters may do as they please", which is not what §5.1(h) says.
+    const neighbour = fixture({
+      "packages/adapters/redis-cache/src/cache.ts": `import { embed } from "ai";\nexport const e = embed;\n`,
+    });
+    assert.deepEqual(
+      findings(check(neighbour), "inference-sdk-only"),
+      ["packages/adapters/redis-cache/src/cache.ts -> ai"],
+      "another adapter importing the framework must fire"
+    );
+
+    const kernel = fixture({
+      "packages/kernel/src/ports.ts": `import type { LanguageModel } from "ai";\nexport type M = LanguageModel;\n`,
+    });
+    assert.deepEqual(
+      findings(check(kernel), "inference-sdk-only"),
+      ["packages/kernel/src/ports.ts -> ai"],
+      "the kernel importing the framework must fire"
+    );
+  });
+
+  it("(h) inference-sdk-only: `ai` is matched as a package, not as a two-letter prefix", () => {
+    // The bug this rule is one careless character away from: every other entry
+    // in SDK_CONTAINMENT is a prefix, and a prefix spelled `ai` condemns every
+    // package whose name merely starts with those bytes. These four are real
+    // npm package names and none of them is the inference framework.
+    const innocent = fixture({
+      "packages/contexts/conversations/application/turn.ts": `import Airtable from "airtable";\nimport aigle from "aigle";\nimport { ai } from "./ai.js";\nimport x from "@aikit/core";\nexport const t = [Airtable, aigle, ai, x];\n`,
+    });
+    assert.deepEqual(
+      findings(check(innocent), "inference-sdk-only"),
+      [],
+      "a package that merely begins with those two letters must not be condemned"
+    );
+
+    // ...while a subpath of the real package still is.
+    const subpath = fixture({
+      "packages/contexts/conversations/application/turn.ts": `import { MCPClient } from "ai/mcp-stdio";\nexport const c = MCPClient;\n`,
+    });
+    assert.deepEqual(
+      findings(check(subpath), "inference-sdk-only"),
+      ["packages/contexts/conversations/application/turn.ts -> ai/mcp-stdio"],
+      "a subpath of the framework is still the framework"
+    );
+  });
+
   it("(i) no-shared-package: no shared/common/util/misc/helpers/lib package may be imported", () => {
     const bad = fixture({
       "apps/core-api/src/main.ts": `import { deepMerge } from "@platos/shared/object";\nexport const x = deepMerge;\n`,
@@ -397,8 +526,23 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 1031, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83);
+    //  1031 -> 1039 +8: WIN-256's `conversations` prerequisite. Four source
+    //               files and four suites under packages/contexts/providers
+    //               (prompt, prompt-cache, generation, run-model-generation),
+    //               which is what puts the inference surface on the ModelRouter
+    //               port. Nothing was deleted, so the +8 is 4 + 4 with no
+    //               subtraction hidden inside it. The rule this change ADDS,
+    //               `inference-sdk-only`, judges all 1039 — not the 405 its own
+    //               branch could see — and finds nothing: the surface is built
+    //               entirely out of types this repository owns, which is the
+    //               property that makes it satisfiable at all, and the eleven
+    //               contexts adopted since that branch left v1 name no `ai` or
+    //               `@ai-sdk/*` import either. Its own mutation proofs are the
+    //               four fixtures above. This slice adopts NO context, so it is
+    //               the one wave-B delta that moves this census without moving
+    //               the generator-ownership count beside it.
+    assert.equal(result.fileCount, 1039, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

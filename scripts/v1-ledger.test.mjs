@@ -650,8 +650,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // computed places.
     //
     // THE ADOPTIONS ARE SUMMED, NOT SIDE-PICKED: they add DISJOINT files under
-    // eleven different package directories and each moves this one number, so
-    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 84 = 907. The
+    // eleven different package directories, plus eight more into a twelfth that
+    // was already real, and each moves this one number, so
+    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 84 + 8 = 915. The
     // eventing
     // branch pinned 316, the skills branch pinned 327, the jobs branch pinned
     // 323, the memory branch pinned 349, the cost-monitoring branch pinned 335
@@ -663,15 +664,25 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // any of them would leave whole
     // contexts' files unaccounted while the gate stayed green on the branch it
     // came from.
-    packages: 907,
+    // +8: WIN-256's `conversations` prerequisite (ADR M0.3 §14) puts the
+    // inference surface on the ModelRouter port. Four source modules under
+    // packages/contexts/providers — domain/prompt.ts, domain/prompt-cache.ts,
+    // domain/generation.ts and application/run-model-generation.ts — and the
+    // four suites beside them. It ADOPTS NO CONTEXT, so unlike every delta
+    // above it releases no placeholder and replaces nothing: this +8 is gross
+    // and net alike. Its branch pinned 280 (272 + 8) on v1 and was blind to all
+    // eleven adoptions; 907 + 8 = 915 here.
+    packages: 915,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 823, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +897. Fourteen branches add files on independent axes, so each
-    // area is the SUM of every contribution, not any one alone.
+    // packages 1 -> 907 -> 915, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +981. Fifteen branches add files on independent axes, so each
+    // area is the SUM of every contribution, not any one alone; WIN-256's
+    // `conversations` prerequisite adds the last eight to `packages` and to
+    // nothing else.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
@@ -787,14 +798,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // kindCounts source +1 and test +1 sum to the same 2. Its axis is disjoint
     // from every context adoption above — those move `packages` alone and this
     // one moves `root-infra` alone — so the integrated delta is the SUM,
-    // 981 + 2, and neither branch pin (897 or 348) is correct here.
+    // 989 + 2, and neither branch pin (897 or 348) is correct here.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 2 = 983.
+    //   + 84 + 8 + 2 = 991.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 983);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 991);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -803,15 +814,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +983 combined delta as the totalFiles
+    // M2 integration: same +20 -> +991 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
-    // WIN-256 channels +42, WIN-256 governance +84, WIN-256 capability-matrix
-    // ownership +2); this one
+    // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
+    // prerequisite +8, WIN-256 capability-matrix ownership +2); this one
     // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 983
+    rulesDocument.baseline.totalFiles + 991
   );
 });
 
