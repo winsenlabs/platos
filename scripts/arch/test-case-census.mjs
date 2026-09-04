@@ -101,6 +101,35 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * WIN-256 CONVERSATIONS PREREQUISITE (2026-09-04), on v1 `95cbacc13de6`. The
+ * `ModelRouter` port grows the inference surface `conversations` needs (ADR
+ * M0.3 §14), and again exactly ONE row moves:
+ *
+ *   providers 21 -> 25 files, 283 -> 346 cases; 1000 -> 1063 total. Four new
+ *   suites, and every case in them is new -- nothing was renamed, moved between
+ *   files, or deleted, so the +63 is an addition with no subtraction hiding in
+ *   it:
+ *
+ *     domain/prompt.test.ts             13 cases  the message model
+ *     domain/prompt-cache.test.ts       19 cases  breakpoint placement
+ *     domain/generation.test.ts         14 cases  budgets, tools, usage sums
+ *     application/run-model-generation.test.ts
+ *                                       17 cases  the use case, end to end
+ *                                       --------
+ *                                       63
+ *
+ *   `domain/errors.test.ts` gains no case: its SAMPLES list grew by the ten new
+ *   error codes, which is what its existing "mints every declared code and
+ *   nothing else" case asserts over. That is the shape to check for when this
+ *   number moves -- a suite whose case count is unchanged while its coverage
+ *   changed is exactly what a file-count pin cannot see.
+ *
+ *   `pnpm --filter @platos/context-providers exec vitest run` prints the same
+ *   pair: "Test Files 25 passed (25) / Tests 346 passed (346)".
+ *
+ * No other package moved. 21 + 4 = 25 files, 88 + 4 = 92 across the workspace;
+ * 283 + 63 = 346 cases, 1000 + 63 = 1063 across the workspace.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -127,7 +156,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
-  "packages/contexts/providers": { files: 21, cases: 283 },
+  "packages/contexts/providers": { files: 25, cases: 346 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -142,7 +171,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1063;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

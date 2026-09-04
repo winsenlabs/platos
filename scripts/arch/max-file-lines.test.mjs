@@ -85,7 +85,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +8: WIN-256's `conversations` prerequisite adds four source files and four
+  // suites under packages/contexts/providers for the ModelRouter inference
+  // surface. 328 + 8 = 336, and the largest of the eight is well inside the
+  // warning band -- the message model, the cache placement, the generation
+  // vocabulary and the use case were written as four files rather than one for
+  // exactly the reason ADR M0.3 §6 names: a turn's orchestration split into
+  // named sub-use-case files is what stops the next 7.1k-line service.
+  assert.equal(result.fileCount, 328 + 8);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

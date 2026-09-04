@@ -72,6 +72,59 @@ export {
 // which provider and which model actually served it.
 export type { ModelReference, ModelRoutePlan } from "../domain/index.js";
 
+// The INFERENCE vocabulary (ADR M0.3 §14). Published because `conversations`
+// composes a prompt, defines the tools, and reads the answer — and must do all
+// three without an inference framework in scope, which
+// `scripts/arch/boundary-rules.mjs` now forbids it outright.
+//
+// The cache vocabulary is published with it, and deliberately: an installation
+// whose provider raises the breakpoint limit says so by passing a policy, and a
+// caller that assembles its own prompt needs the same `withinCacheBudget` check
+// this context applies, rather than finding out from a bill.
+export type {
+  ContentPart,
+  FilePart,
+  FinishReason,
+  GenerationEvent,
+  GenerationStep,
+  ImagePart,
+  JsonSchemaDocument,
+  MessageRole,
+  ModelGeneration,
+  OutputMode,
+  Prompt,
+  PromptCachePolicy,
+  PromptMessage,
+  PromptMessageDraft,
+  ReasoningPart,
+  SamplingLimits,
+  TextPart,
+  TokenUsage,
+  ToolCallPart,
+  ToolDefinition,
+  ToolResultPart,
+} from "../domain/index.js";
+export {
+  countCacheBreakpoints,
+  countContentBlocks,
+  DEFAULT_PROMPT_CACHE_POLICY,
+  FINISH_REASONS,
+  MESSAGE_ROLES,
+  NO_SAMPLING_LIMITS,
+  prompt,
+  promptMessage,
+  TEXT_OUTPUT,
+  textPart,
+  toolCatalogue,
+  withinCacheBudget,
+} from "../domain/index.js";
+
+// NOT published, and the omission is the design: `placeCacheBreakpoints` and
+// `selectCacheBreakpoints`. Where a breakpoint goes is decided by this context
+// at the moment of the call, from the resolved route's dialect, and a caller
+// that placed its own would be placing them for a provider it has deliberately
+// not been told the identity of.
+
 // The catalogue. Published as data so a transport can render the provider
 // picker, and so an installation can compose its own list at the root.
 export type { ProviderCatalogue, ProviderManifest } from "../domain/index.js";
@@ -194,11 +247,12 @@ export type {
   RelinkProviderKeyCommand,
   ResolveModelPriceQuery,
   RotateProviderKeySecretCommand,
+  RunModelGenerationCommand,
   SetProviderAdoptionCommand,
   UpdateProviderKeyCommand,
 } from "../application/index.js";
 
-export type { ProvidersDependencies, ModelSession } from "../application/index.js";
+export type { ProvidersDependencies, ModelSession, ToolExecutor } from "../application/index.js";
 
 export interface RelinkedProviderKeyView {
   readonly key: ProviderKeyView;
@@ -209,6 +263,26 @@ export interface RelinkedProviderKeyView {
 export interface OpenedModelRouteView {
   readonly session: ModelSession;
   /** Which key paid for it. The caller records this against the turn. */
+  readonly providerKey: ProviderKeyView;
+}
+
+/**
+ * A finished generation, and the two facts a turn has to record about it.
+ *
+ * `plan` rather than a provider name because the plan is already published and
+ * already carries the reference, the dialect and the root — everything a trace
+ * needs to say where a turn went. The generation's `totalUsage` is the value
+ * `priceModelUsage` charges, cache counts and all.
+ */
+export interface ModelGenerationView {
+  readonly generation: useCases.ModelGenerationOutcome["generation"];
+  readonly plan: useCases.ModelGenerationOutcome["plan"];
+  readonly providerKey: ProviderKeyView;
+}
+
+export interface ModelStreamView {
+  readonly events: useCases.ModelStreamOutcome["events"];
+  readonly plan: useCases.ModelStreamOutcome["plan"];
   readonly providerKey: ProviderKeyView;
 }
 
@@ -265,6 +339,20 @@ export interface ProvidersContract {
    * turn out of sessions belongs to that context, which the ADR extracts last.
    */
   openModelRoute(command: useCases.OpenModelRouteCommand): Promise<Result<OpenedModelRouteView>>;
+
+  /**
+   * Run a generation, tool round trips included, and hand back what it produced.
+   *
+   * The method `conversations` builds a turn out of. It supplies the prompt, the
+   * tool definitions and a function that runs one — and gets back text, an
+   * object, the per-step trace and the usage to bill. Which provider served it,
+   * which key paid, where the cache breakpoints went and what a step costs are
+   * all decided on this side of the boundary.
+   */
+  runModelGeneration(command: useCases.RunModelGenerationCommand): Promise<Result<ModelGenerationView>>;
+
+  /** The same generation, delivered as a sequence of events. */
+  streamModelGeneration(command: useCases.RunModelGenerationCommand): Promise<Result<ModelStreamView>>;
 
   // ---- pricing (installation-global, unscoped) ---------------------------
   /** The card in force for a model at an instant. Never today's for last month. */
@@ -365,6 +453,19 @@ export function providersContract(dependencies: ProvidersDependencies): Provider
       map(await useCases.openModelRoute(dependencies, command), (opened) => ({
         session: opened.session,
         providerKey: useCases.toProviderKeyView(opened.providerKey),
+      })),
+
+    runModelGeneration: async (command) =>
+      map(await useCases.runModelGeneration(dependencies, command), (outcome) => ({
+        generation: outcome.generation,
+        plan: outcome.plan,
+        providerKey: useCases.toProviderKeyView(outcome.providerKey),
+      })),
+    streamModelGeneration: async (command) =>
+      map(await useCases.streamModelGeneration(dependencies, command), (outcome) => ({
+        events: outcome.events,
+        plan: outcome.plan,
+        providerKey: useCases.toProviderKeyView(outcome.providerKey),
       })),
 
     resolveModelPrice: async (query) =>

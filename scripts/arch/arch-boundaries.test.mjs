@@ -380,7 +380,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    //   397 -> 405  +8: WIN-256's `conversations` prerequisite. Four source
+    //               files and four suites under packages/contexts/providers
+    //               (prompt, prompt-cache, generation, run-model-generation),
+    //               which is what puts the inference surface on the ModelRouter
+    //               port. Nothing was deleted, so the +8 is 4 + 4 with no
+    //               subtraction hidden inside it. The rule this change ADDS,
+    //               `inference-sdk-only`, judges all 405 and finds nothing:
+    //               the surface is built entirely out of types this repository
+    //               owns, which is the property that makes it satisfiable at
+    //               all. Its own mutation proofs are the four fixtures above.
+    assert.equal(result.fileCount, 397 + 8, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

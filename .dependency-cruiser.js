@@ -384,6 +384,17 @@ module.exports = {
       "to": {
         "path": "node_modules/(openai|@anthropic-ai)"
       }
+    },
+    {
+      "name": "inference-sdk-only",
+      "comment": "node_modules/(ai(?:/|$)|@ai-sdk/) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/model-router-providers/"
+      },
+      "to": {
+        "path": "node_modules/(ai(?:/|$)|@ai-sdk/)"
+      }
     }
   ],
   "options": {

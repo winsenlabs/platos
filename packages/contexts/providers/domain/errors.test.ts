@@ -22,6 +22,16 @@ const SAMPLES = [
   errors.priceRevisionConflict("openai/gpt-4o", "2026-01-01T00:00:00.000Z"),
   errors.tokenUsageInvalid("negative"),
   errors.repositoryUnavailable("connection refused"),
+  errors.promptEmpty(),
+  errors.promptContentEmpty("user"),
+  errors.mediaTypeMissing("user", "image"),
+  errors.toolCallDuplicated("call-1"),
+  errors.toolResultUnmatched("call-1", "search"),
+  errors.toolNameDuplicated("search"),
+  errors.cacheBudgetExceeded(5, 4),
+  errors.stepBudgetInvalid(0),
+  errors.modelSessionExpired("session-1", "2026-01-01T00:00:00.000Z"),
+  errors.structuredOutputInvalid("no parseable object", 2),
 ];
 
 describe("the catalogue", () => {
