@@ -676,6 +676,19 @@
         "evidence": "Per-adapter suites. Declared ahead of the adapter source rule so a suite is never counted as product source."
       },
       {
+        "id": "packages.adapters.fixture",
+        "match": [
+          "packages/adapters/*/fixtures/**"
+        ],
+        "kind": "fixture",
+        "owner_capability": "Port Adapters",
+        "disposition": "retain",
+        "reached_via": [
+          "test-config"
+        ],
+        "evidence": "WIN-258. Data an adapter's suites load rather than construct. packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql seeds the User and OperatorSession rows the tenancy foreign keys require. identity-access is their sole writer, the sole-writer lint correctly refuses a User write from this package, and a fixture is not an exemption -- so the rows are seeded as SQL applied by prisma db execute, outside the source that lint judges. Declared ahead of the adapter config and source rules so a fixture is never counted as either."
+      },
+      {
         "id": "packages.adapters.config",
         "match": [
           "packages/adapters/*/*.json",
