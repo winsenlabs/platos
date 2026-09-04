@@ -17,6 +17,10 @@
 // magic link, an access key or an OAuth pair. Those use cases exist in
 // `application/` and are reachable only from the composition root's transports,
 // so "who can create a credential" has exactly one answer.
+//
+// `issueSessionCookie` IS NOT AN EXCEPTION TO THAT. It mints no credential: it
+// takes a token `issueOperatorSession` already returned and decides how a
+// browser must hold it. A caller that has no token cannot obtain one here.
 
 import type { DomainError, PrincipalId, Result, TenantScope } from "@platos/kernel";
 

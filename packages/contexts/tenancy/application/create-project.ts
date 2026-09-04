@@ -97,10 +97,12 @@ export function createCreateProject(dependencies: Dependencies): CreateProject {
     const slug = command.slug as Slug;
     const environmentSlug = command.environmentSlug as Slug;
 
-    // The three refusals below carry ONE code and differ only in `details.gate`.
-    // The oracle folds all three into a single membership query and answers 403
-    // to every one of them, so a caller cannot use this route to discover
-    // whether an organization exists or has been archived.
+    // The FOUR refusals below carry ONE code and differ only in `details.gate`.
+    // The oracle folds all four into a single membership query —
+    // `{ userId, deactivatedAt: null, organization: { slug, archivedAt: null } }`
+    // — and answers one 403 to every one of them, so a caller cannot use this
+    // route to discover whether an organization exists, whether it has been
+    // archived, or whether their own membership is still active.
     const organization = await repository.loadOrganization(command.organizationId);
     if (organization === null) return err(projectCreationForbidden("no-such-organization"));
     if (isOrganizationArchived(organization)) {
