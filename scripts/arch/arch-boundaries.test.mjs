@@ -390,7 +390,25 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               the surface is built entirely out of types this repository
     //               owns, which is the property that makes it satisfiable at
     //               all. Its own mutation proofs are the four fixtures above.
-    assert.equal(result.fileCount, 397 + 8, "the generated V1 source census must stay exact");
+    //   405 -> 439  +34: WIN-256's MODEL ROUTER ADAPTER. Fifteen source modules
+    //               and fifteen suites under packages/adapters/model-router-
+    //               providers, plus two domain modules and two suites under
+    //               packages/contexts/providers. Nothing was deleted -- the two
+    //               declaration placeholders adoption released were REPLACED in
+    //               place by real files of the same names -- so the +34 is
+    //               32 + 2 with no subtraction hidden inside it.
+    //
+    //               `inference-sdk-only` stops being a rule with nothing to
+    //               judge. It now judges a package that really does import `ai`
+    //               and four `@ai-sdk/*` bindings, and finds nothing, because
+    //               that package is its declared home. Every other one of the
+    //               439 is judged by the same rule against the same source
+    //               pattern and none of them reaches for it -- which is the
+    //               property the whole extraction turns on, and which was
+    //               previously true only because no file anywhere imported the
+    //               framework at all.
+    assert.equal(result.fileCount, 397 + 8 + 34, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 439);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

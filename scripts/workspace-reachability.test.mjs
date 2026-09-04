@@ -462,7 +462,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 169 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 167 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 169. Adoption RELEASES placeholders, so this
   // count only ever falls, and the three adopting slices release placeholders
@@ -498,15 +498,32 @@ test("generated ownership includes the generator's exact 169 outputs across 32 V
   // already red on `tejas/win-256-providers-context` at 25b231b, which asserted
   // 182 while its own committed evidence recorded 178. It is reconciled here
   // with its full delta, not forced.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 169);
+  //
+  //   169 -> 167  WIN-256 adopts `packages/adapters/model-router-providers`,
+  //               the ModelRouter implementation, releasing its 2 —
+  //               src/adapter.ts and src/index.ts. It is the FIRST adapter
+  //               adopted, and the first release from the adapters tier at all.
+  //
+  // The count falls and the PROJECT count does not: 32 is unchanged, because
+  // adoption releases a project's placeholders and never its scaffolding, and
+  // the adopted adapter still owes its generated package.json, tsconfig.json and
+  // README.md. That is exactly what lets the generator carry this adapter's five
+  // vendor specifiers, which a hand edit to a byte-compared manifest could not
+  // have added.
+  //
+  // Both halves of the canary agree independently: `gen-v1-skeleton --check`
+  // prints "97 scaffolding + 70 placeholder = 167 generated file(s) ... 34
+  // placeholder(s) released", and this report re-derives 167 from the
+  // generator's own output list.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 167);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 169 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 169);
+  // Same 167 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 167);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
