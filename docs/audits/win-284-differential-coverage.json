@@ -174,7 +174,7 @@
     {
       "id": "DELETE /api/v1/agent/eval-criteria/:criterionId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -185,7 +185,7 @@
     {
       "id": "DELETE /api/v1/agent/golden-sets/:goldenSetId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -218,7 +218,7 @@
     {
       "id": "DELETE /api/v1/agent/postman-templates/:id",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -339,7 +339,7 @@
     {
       "id": "GET /api/health",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "<platform-transport>",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -361,7 +361,7 @@
     {
       "id": "GET /api/v1/agent/activity/recent",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "observability",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -614,7 +614,7 @@
     {
       "id": "GET /api/v1/agent/connect",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "<platform-transport>",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -680,7 +680,7 @@
     {
       "id": "GET /api/v1/agent/eval-criteria",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -691,7 +691,7 @@
     {
       "id": "GET /api/v1/agent/eval-criteria/:criterionId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -724,7 +724,7 @@
     {
       "id": "GET /api/v1/agent/feature-flags",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -779,7 +779,7 @@
     {
       "id": "GET /api/v1/agent/golden-sets",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -790,7 +790,7 @@
     {
       "id": "GET /api/v1/agent/golden-sets/:goldenSetId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -801,7 +801,7 @@
     {
       "id": "GET /api/v1/agent/internal/performance-evidence/:requestId",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "observability",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1120,7 +1120,7 @@
     {
       "id": "GET /api/v1/agent/openapi.json",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "<platform-transport>",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1131,7 +1131,7 @@
     {
       "id": "GET /api/v1/agent/postman-templates",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1142,7 +1142,7 @@
     {
       "id": "GET /api/v1/agent/prompt/defaults",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1208,7 +1208,7 @@
     {
       "id": "GET /api/v1/agent/secrets/status",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "secrets",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1329,7 +1329,7 @@
     {
       "id": "GET /api/v1/agent/tool-calls",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "tools",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -1340,7 +1340,7 @@
     {
       "id": "GET /api/v1/agent/tool-calls/:toolCallId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "tools",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -1736,7 +1736,7 @@
     {
       "id": "GET /metrics",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "<platform-transport>",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1802,7 +1802,7 @@
     {
       "id": "GET /openapi",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "<platform-transport>",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1912,7 +1912,7 @@
     {
       "id": "PATCH /api/v1/agent/eval-criteria/:criterionId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1923,7 +1923,7 @@
     {
       "id": "PATCH /api/v1/agent/golden-sets/:goldenSetId",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2308,7 +2308,7 @@
     {
       "id": "POST /api/v1/agent/durable-approvals/:token/resolve",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "jobs",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2363,7 +2363,7 @@
     {
       "id": "POST /api/v1/agent/eval-criteria",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2385,7 +2385,7 @@
     {
       "id": "POST /api/v1/agent/golden-sets",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2396,7 +2396,7 @@
     {
       "id": "POST /api/v1/agent/golden-sets/:goldenSetId/run",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "governance",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2407,7 +2407,7 @@
     {
       "id": "POST /api/v1/agent/internal/budget-alert",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "cost-monitoring",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2418,7 +2418,7 @@
     {
       "id": "POST /api/v1/agent/internal/chat/reap-sessions",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2440,7 +2440,7 @@
     {
       "id": "POST /api/v1/agent/internal/compaction",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2451,7 +2451,7 @@
     {
       "id": "POST /api/v1/agent/internal/durable-turn",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2462,7 +2462,7 @@
     {
       "id": "POST /api/v1/agent/internal/employee-run",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2484,7 +2484,7 @@
     {
       "id": "POST /api/v1/agent/internal/skill-run",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "skills",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2495,7 +2495,7 @@
     {
       "id": "POST /api/v1/agent/internal/subagent-report",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2605,7 +2605,7 @@
     {
       "id": "POST /api/v1/agent/postman-templates",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2616,7 +2616,7 @@
     {
       "id": "POST /api/v1/agent/postman-templates/:id/execute",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "conversations",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -2627,7 +2627,7 @@
     {
       "id": "POST /api/v1/agent/prompt/assemble",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2638,7 +2638,7 @@
     {
       "id": "POST /api/v1/agent/prompt/preview",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -2836,7 +2836,7 @@
     {
       "id": "POST /api/v1/agent/tool-calls/:toolCallId/replay",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "tools",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -3100,7 +3100,7 @@
     {
       "id": "POST /internal/env/invalidate",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "providers",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -3111,7 +3111,7 @@
     {
       "id": "POST /internal/execute-tool",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "tools",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -3122,7 +3122,7 @@
     {
       "id": "POST /internal/subagent-turn",
       "surface": "rest",
-      "owner": "durable-runtime / internal-callbacks",
+      "owner": "conversations",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -3364,7 +3364,7 @@
     {
       "id": "PUT /api/v1/agent/postman-templates/:id",
       "surface": "rest",
-      "owner": "unassigned (review)",
+      "owner": "agents",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -4545,7 +4545,7 @@
     {
       "id": "mcp:agents.canary.promote",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4555,7 +4555,7 @@
     {
       "id": "mcp:agents.canary.set",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4565,7 +4565,7 @@
     {
       "id": "mcp:agents.census",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4575,7 +4575,7 @@
     {
       "id": "mcp:agents.clone_from",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4585,7 +4585,7 @@
     {
       "id": "mcp:agents.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4595,7 +4595,7 @@
     {
       "id": "mcp:agents.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4605,7 +4605,7 @@
     {
       "id": "mcp:agents.deploy_with_skills",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4615,7 +4615,7 @@
     {
       "id": "mcp:agents.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4625,7 +4625,7 @@
     {
       "id": "mcp:agents.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4635,7 +4635,7 @@
     {
       "id": "mcp:agents.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4645,7 +4645,7 @@
     {
       "id": "mcp:alert_channels.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4655,7 +4655,7 @@
     {
       "id": "mcp:alert_channels.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4665,7 +4665,7 @@
     {
       "id": "mcp:alert_channels.get_integration",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4675,7 +4675,7 @@
     {
       "id": "mcp:alert_channels.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4685,7 +4685,7 @@
     {
       "id": "mcp:alert_channels.test",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4695,7 +4695,7 @@
     {
       "id": "mcp:alert_channels.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4705,7 +4705,7 @@
     {
       "id": "mcp:approvals.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4715,7 +4715,7 @@
     {
       "id": "mcp:approvals.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4725,7 +4725,7 @@
     {
       "id": "mcp:approvals.resolve",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4735,7 +4735,7 @@
     {
       "id": "mcp:artifacts.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4745,7 +4745,7 @@
     {
       "id": "mcp:audit.safety_events.query",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4755,7 +4755,7 @@
     {
       "id": "mcp:budgets.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4765,7 +4765,7 @@
     {
       "id": "mcp:budgets.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4775,7 +4775,7 @@
     {
       "id": "mcp:budgets.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4785,7 +4785,7 @@
     {
       "id": "mcp:budgets.rollup_org_wide",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4795,7 +4795,7 @@
     {
       "id": "mcp:budgets.upsert",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4805,7 +4805,7 @@
     {
       "id": "mcp:channel_apps.bind_installation",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4815,7 +4815,7 @@
     {
       "id": "mcp:channel_apps.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4825,7 +4825,7 @@
     {
       "id": "mcp:channel_apps.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4835,7 +4835,7 @@
     {
       "id": "mcp:channel_apps.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4845,7 +4845,7 @@
     {
       "id": "mcp:channel_apps.import_installation",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4855,7 +4855,7 @@
     {
       "id": "mcp:channel_apps.installations_status",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4865,7 +4865,7 @@
     {
       "id": "mcp:channel_apps.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4875,7 +4875,7 @@
     {
       "id": "mcp:channel_apps.list_installations",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4885,7 +4885,7 @@
     {
       "id": "mcp:channel_apps.revoke_installation",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4895,7 +4895,7 @@
     {
       "id": "mcp:channel_apps.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4905,7 +4905,7 @@
     {
       "id": "mcp:channels.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4915,7 +4915,7 @@
     {
       "id": "mcp:channels.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4925,7 +4925,7 @@
     {
       "id": "mcp:channels.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4935,7 +4935,7 @@
     {
       "id": "mcp:channels.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4945,7 +4945,7 @@
     {
       "id": "mcp:channels.mint_from_manifest",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4955,7 +4955,7 @@
     {
       "id": "mcp:channels.rotate_webhook_secret",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4965,7 +4965,7 @@
     {
       "id": "mcp:channels.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4975,7 +4975,7 @@
     {
       "id": "mcp:clusters.add_agent",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4985,7 +4985,7 @@
     {
       "id": "mcp:clusters.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -4995,7 +4995,7 @@
     {
       "id": "mcp:clusters.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5005,7 +5005,7 @@
     {
       "id": "mcp:end_users.bind_external_id",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5015,7 +5015,7 @@
     {
       "id": "mcp:end_users.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5025,7 +5025,7 @@
     {
       "id": "mcp:end_users.link_identity",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5035,7 +5035,7 @@
     {
       "id": "mcp:end_users.unlink_identity",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5045,7 +5045,7 @@
     {
       "id": "mcp:entities.census",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5055,7 +5055,7 @@
     {
       "id": "mcp:entities.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5065,7 +5065,7 @@
     {
       "id": "mcp:entities.generate_mcp_token",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5075,7 +5075,7 @@
     {
       "id": "mcp:entities.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5085,7 +5085,7 @@
     {
       "id": "mcp:entities.get_linked_agents",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5095,7 +5095,7 @@
     {
       "id": "mcp:entities.get_mcp_config",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5105,7 +5105,7 @@
     {
       "id": "mcp:entities.get_test_credentials",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5115,7 +5115,7 @@
     {
       "id": "mcp:entities.get_tools",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5125,7 +5125,7 @@
     {
       "id": "mcp:entities.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5135,7 +5135,7 @@
     {
       "id": "mcp:entities.provision",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5145,7 +5145,7 @@
     {
       "id": "mcp:entities.refresh_discovery",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5155,7 +5155,7 @@
     {
       "id": "mcp:entities.regenerate_secret",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5165,7 +5165,7 @@
     {
       "id": "mcp:entities.register",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5175,7 +5175,7 @@
     {
       "id": "mcp:entities.set_linked_agents",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5185,7 +5185,7 @@
     {
       "id": "mcp:entities.set_mcp_enabled",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5195,7 +5195,7 @@
     {
       "id": "mcp:entities.set_mcp_inject_context",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5205,7 +5205,7 @@
     {
       "id": "mcp:entities.set_test_credentials",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5215,7 +5215,7 @@
     {
       "id": "mcp:entities.set_tool_acl",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5225,7 +5225,7 @@
     {
       "id": "mcp:entities.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5235,7 +5235,7 @@
     {
       "id": "mcp:entities.wire_test",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5245,7 +5245,7 @@
     {
       "id": "mcp:environments.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5255,7 +5255,7 @@
     {
       "id": "mcp:environments.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5265,7 +5265,7 @@
     {
       "id": "mcp:environments.delete_secret",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5275,7 +5275,7 @@
     {
       "id": "mcp:environments.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5285,7 +5285,7 @@
     {
       "id": "mcp:environments.list_secrets",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5295,7 +5295,7 @@
     {
       "id": "mcp:environments.set_secret",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5305,7 +5305,7 @@
     {
       "id": "mcp:evals.dispatch",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5315,7 +5315,7 @@
     {
       "id": "mcp:evals.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5325,7 +5325,7 @@
     {
       "id": "mcp:evals.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5335,7 +5335,7 @@
     {
       "id": "mcp:evals.regression_sweep",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5345,7 +5345,7 @@
     {
       "id": "mcp:events.recent",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5355,7 +5355,7 @@
     {
       "id": "mcp:events.subscribe",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5365,7 +5365,7 @@
     {
       "id": "mcp:gdpr.export",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5375,7 +5375,7 @@
     {
       "id": "mcp:gdpr.export_user_everywhere",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5385,7 +5385,7 @@
     {
       "id": "mcp:gdpr.import",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5395,7 +5395,7 @@
     {
       "id": "mcp:gdpr.purge",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5405,7 +5405,7 @@
     {
       "id": "mcp:health.check",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5415,7 +5415,7 @@
     {
       "id": "mcp:jobs.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5425,7 +5425,7 @@
     {
       "id": "mcp:jobs.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5435,7 +5435,7 @@
     {
       "id": "mcp:jobs.dispatch",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5445,7 +5445,7 @@
     {
       "id": "mcp:jobs.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5455,7 +5455,7 @@
     {
       "id": "mcp:jobs.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5465,7 +5465,7 @@
     {
       "id": "mcp:jobs.set_enabled",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5475,7 +5475,7 @@
     {
       "id": "mcp:jobs.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5485,7 +5485,7 @@
     {
       "id": "mcp:jobs.validate_handler",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5495,7 +5495,7 @@
     {
       "id": "mcp:kg.create_node",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5505,7 +5505,7 @@
     {
       "id": "mcp:kg.delete_node",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5515,7 +5515,7 @@
     {
       "id": "mcp:kg.discover_links",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5525,7 +5525,7 @@
     {
       "id": "mcp:kg.get_entity",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5535,7 +5535,7 @@
     {
       "id": "mcp:kg.link_nodes",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5545,7 +5545,7 @@
     {
       "id": "mcp:kg.list_entities",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5555,7 +5555,7 @@
     {
       "id": "mcp:kg.search_entities",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5565,7 +5565,7 @@
     {
       "id": "mcp:kg.update_node",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5575,7 +5575,7 @@
     {
       "id": "mcp:macros.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5585,7 +5585,7 @@
     {
       "id": "mcp:macros.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5595,7 +5595,7 @@
     {
       "id": "mcp:macros.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5605,7 +5605,7 @@
     {
       "id": "mcp:macros.record_start",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5615,7 +5615,7 @@
     {
       "id": "mcp:macros.record_stop",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5625,7 +5625,7 @@
     {
       "id": "mcp:macros.replay",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5635,7 +5635,7 @@
     {
       "id": "mcp:macros.share",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5645,7 +5645,7 @@
     {
       "id": "mcp:macros.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5655,7 +5655,7 @@
     {
       "id": "mcp:mcp.list_clients",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5665,7 +5665,7 @@
     {
       "id": "mcp:mcp.list_tokens",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5675,7 +5675,7 @@
     {
       "id": "mcp:memories.archive",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5685,7 +5685,7 @@
     {
       "id": "mcp:memories.bulk_delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5695,7 +5695,7 @@
     {
       "id": "mcp:memories.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5705,7 +5705,7 @@
     {
       "id": "mcp:memories.extract_now",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5715,7 +5715,7 @@
     {
       "id": "mcp:memories.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5725,7 +5725,7 @@
     {
       "id": "mcp:memories.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5735,7 +5735,7 @@
     {
       "id": "mcp:memories.restore",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5745,7 +5745,7 @@
     {
       "id": "mcp:memories.search",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5755,7 +5755,7 @@
     {
       "id": "mcp:memories.upsert",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5765,7 +5765,7 @@
     {
       "id": "mcp:messages.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5775,7 +5775,7 @@
     {
       "id": "mcp:messages.rate",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5785,7 +5785,7 @@
     {
       "id": "mcp:monitoring.cost.daily",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5795,7 +5795,7 @@
     {
       "id": "mcp:monitoring.cost.range",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5805,7 +5805,7 @@
     {
       "id": "mcp:notifications.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5815,7 +5815,7 @@
     {
       "id": "mcp:notifications.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5825,7 +5825,7 @@
     {
       "id": "mcp:notifications.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5835,7 +5835,7 @@
     {
       "id": "mcp:notifications.register",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5845,7 +5845,7 @@
     {
       "id": "mcp:notifications.test",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5855,7 +5855,7 @@
     {
       "id": "mcp:notifications.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5865,7 +5865,7 @@
     {
       "id": "mcp:oauth.create_client",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5875,7 +5875,7 @@
     {
       "id": "mcp:oauth.delete_client",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5885,7 +5885,7 @@
     {
       "id": "mcp:oauth.list_clients",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5895,7 +5895,7 @@
     {
       "id": "mcp:oauth.list_tokens",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5905,7 +5905,7 @@
     {
       "id": "mcp:oauth.revoke_token",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5915,7 +5915,7 @@
     {
       "id": "mcp:oauth.rotate_secret",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5925,7 +5925,7 @@
     {
       "id": "mcp:org.add_member",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5935,7 +5935,7 @@
     {
       "id": "mcp:org.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5945,7 +5945,7 @@
     {
       "id": "mcp:org.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5955,7 +5955,7 @@
     {
       "id": "mcp:org.list_members",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5965,7 +5965,7 @@
     {
       "id": "mcp:org.remove_member",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5975,7 +5975,7 @@
     {
       "id": "mcp:org.set_member_role",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5985,7 +5985,7 @@
     {
       "id": "mcp:org.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -5995,7 +5995,7 @@
     {
       "id": "mcp:platos.diff_agents",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6005,7 +6005,7 @@
     {
       "id": "mcp:platos.explain_turn",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6015,7 +6015,7 @@
     {
       "id": "mcp:platos.list_accessible_scopes",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6025,7 +6025,7 @@
     {
       "id": "mcp:platos.simulate_turn",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6035,7 +6035,7 @@
     {
       "id": "mcp:platos.whoami",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6045,7 +6045,7 @@
     {
       "id": "mcp:projects.list_all",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6055,7 +6055,7 @@
     {
       "id": "mcp:providers.add_key",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6065,7 +6065,7 @@
     {
       "id": "mcp:providers.delete_key",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6075,7 +6075,7 @@
     {
       "id": "mcp:providers.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6085,7 +6085,7 @@
     {
       "id": "mcp:providers.get_routes",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6095,7 +6095,7 @@
     {
       "id": "mcp:providers.link",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6105,7 +6105,7 @@
     {
       "id": "mcp:providers.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6115,7 +6115,7 @@
     {
       "id": "mcp:providers.list_keys",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6125,7 +6125,7 @@
     {
       "id": "mcp:providers.rotate_key",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6135,7 +6135,7 @@
     {
       "id": "mcp:providers.set_routes",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6145,7 +6145,7 @@
     {
       "id": "mcp:providers.test_credentials",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6155,7 +6155,7 @@
     {
       "id": "mcp:providers.unlink",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6165,7 +6165,7 @@
     {
       "id": "mcp:scopes.bootstrap_demo_data",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6175,7 +6175,7 @@
     {
       "id": "mcp:scopes.list_all",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6185,7 +6185,7 @@
     {
       "id": "mcp:skills.disable",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6195,7 +6195,7 @@
     {
       "id": "mcp:skills.disable_globally",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6205,7 +6205,7 @@
     {
       "id": "mcp:skills.enable",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6215,7 +6215,7 @@
     {
       "id": "mcp:skills.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6225,7 +6225,7 @@
     {
       "id": "mcp:skills.get_installed_config",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6235,7 +6235,7 @@
     {
       "id": "mcp:skills.install",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6245,7 +6245,7 @@
     {
       "id": "mcp:skills.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6255,7 +6255,7 @@
     {
       "id": "mcp:skills.uninstall",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6265,7 +6265,7 @@
     {
       "id": "mcp:skills.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6275,7 +6275,7 @@
     {
       "id": "mcp:threads.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6285,7 +6285,7 @@
     {
       "id": "mcp:threads.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6295,7 +6295,7 @@
     {
       "id": "mcp:threads.edit_and_rerun",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6305,7 +6305,7 @@
     {
       "id": "mcp:threads.fork",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6315,7 +6315,7 @@
     {
       "id": "mcp:threads.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6325,7 +6325,7 @@
     {
       "id": "mcp:threads.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6335,7 +6335,7 @@
     {
       "id": "mcp:threads.update",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6345,7 +6345,7 @@
     {
       "id": "mcp:tool_calls.cross_scope_audit",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6355,7 +6355,7 @@
     {
       "id": "mcp:tool_calls.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6365,7 +6365,7 @@
     {
       "id": "mcp:traces.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6375,7 +6375,7 @@
     {
       "id": "mcp:traces.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6385,7 +6385,7 @@
     {
       "id": "mcp:\u0074rigger.batches.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6395,7 +6395,7 @@
     {
       "id": "mcp:\u0074rigger.\u0064eployments.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6405,7 +6405,7 @@
     {
       "id": "mcp:\u0074rigger.\u0064eployments.promote",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6415,7 +6415,7 @@
     {
       "id": "mcp:\u0074rigger.queues.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6425,7 +6425,7 @@
     {
       "id": "mcp:\u0074rigger.queues.pause",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6435,7 +6435,7 @@
     {
       "id": "mcp:\u0074rigger.queues.resume",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6445,7 +6445,7 @@
     {
       "id": "mcp:\u0074rigger.runs.cancel",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6455,7 +6455,7 @@
     {
       "id": "mcp:\u0074rigger.runs.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6465,7 +6465,7 @@
     {
       "id": "mcp:\u0074rigger.runs.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6475,7 +6475,7 @@
     {
       "id": "mcp:\u0074rigger.runs.replay",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6485,7 +6485,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.activate",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6495,7 +6495,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.create",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6505,7 +6505,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.deactivate",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6515,7 +6515,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.delete",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6525,7 +6525,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.get",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6535,7 +6535,7 @@
     {
       "id": "mcp:\u0074rigger.schedules.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6545,7 +6545,7 @@
     {
       "id": "mcp:\u0074rigger.tasks.\u0074rigger",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",
@@ -6555,7 +6555,7 @@
     {
       "id": "mcp:\u0074rigger.workers.list",
       "surface": "mcp",
-      "owner": "tools (mcp-platform)",
+      "owner": "tools",
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-268",

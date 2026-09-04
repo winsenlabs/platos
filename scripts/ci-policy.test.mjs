@@ -227,6 +227,11 @@ const expectedV1EvidenceCommands = [
   "pnpm test:win253-vendored-build",
   "pnpm audit:win253-vendored-build",
   "pnpm audit:capability-matrix",
+  // WIN-256: the owner-column controls for the matrix the line above audits.
+  // Invoked directly rather than through a package.json script, because root
+  // package.json is a webapp image build input and adding a line there moves
+  // the SBOM receipt buildInputsSha256.
+  "node --test scripts/capability-matrix.test.mjs",
   "node scripts/rest-census-independent.mjs --check",
   "node --test scripts/rest-census-independent.test.mjs",
   "node scripts/webapp-bff-matrix.mjs --check",

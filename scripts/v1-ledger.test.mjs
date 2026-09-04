@@ -745,12 +745,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // contributes +42 on the same packages axis, 725 -> 781 -> 823, for the same
     // reason and with the same absence of a root-infra or docs-content file.
     //
+    // WIN-256 (capability-matrix ownership) contributes +2, both root-infra,
+    // and is a different slice of the same issue from the domain-contracts
+    // +278 above:
+    //   scripts/arch/route-ownership.mjs   root-infra.tooling.scripts, source
+    //   scripts/capability-matrix.test.mjs root-infra.test.script-suites, test
+    // Nothing is deleted on that axis, so the two additions ARE the whole
+    // delta and no removal can hide inside them: root-infra 39 -> 41, and
+    // kindCounts source +1 and test +1 sum to the same 2. Its axis is disjoint
+    // from every context adoption above — those move `packages` alone and this
+    // one moves `root-infra` alone — so the integrated delta is the SUM,
+    // 897 + 2, and neither branch pin (897 or 348) is correct here.
+    //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   = 897.
+    //   + 2 = 899.
     "docs-content": 13,
-    "root-infra": 39,
+    "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 897);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 899);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -759,14 +771,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +897 combined delta as the totalFiles
+    // M2 integration: same +20 -> +899 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
-    // WIN-256 channels +42); this one re-derives it by
-    // summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 897
+    // WIN-256 channels +42, WIN-256 capability-matrix ownership +2); this one
+    // re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 899
   );
 });
 
