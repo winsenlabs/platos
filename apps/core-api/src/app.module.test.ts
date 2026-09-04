@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { testPorts } from "@platos/context-identity-access/application/index.js";
+import type { EndUserId } from "@platos/context-identity-access/application/index.js";
 import {
   createTenancyFixture,
   seedMember,
@@ -418,5 +419,59 @@ describe("composing tenancy", () => {
     } as const;
     expect((await first.tenancy.authorizeEnvironmentOperator(request)).ok).toBe(true);
     expect((await composedTenancy().tenancy.authorizeEnvironmentOperator(request)).ok).toBe(false);
+  });
+});
+
+describe("the read models the composition root now reaches", () => {
+  it("SHOWS AN OPERATOR ONLY THE PROJECTS THEY CAN SEE, through the composed contract", async () => {
+    // `operatorVisibleProjectWhere` was an authorization rule that existed only
+    // as a Prisma fragment inside the Remix tree. Reaching the ported rule from
+    // here is what shows it is now a decision the composition root can serve.
+    const { tenancy, fixture } = composedTenancy();
+    const mine = seedTree(fixture.store, "acme");
+    const theirs = seedTree(fixture.store, "globex");
+    seedMember(fixture.store, mine, "ada", { organizationRole: OrganizationRole.ADMIN });
+    seedMember(fixture.store, theirs, "mel", { organizationRole: OrganizationRole.OWNER });
+
+    const visible = await tenancy.listVisibleProjects(asIdentifier<UserId>("ada"));
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) return;
+    expect(visible.value.map((row) => row.project.id)).toEqual([mine.project.id]);
+    expect(visible.value[0]?.through).toBe("organization-admin");
+  });
+
+  it("REFUSES TO LIST ANOTHER TENANT'S END USERS, through the composed contract", async () => {
+    const ports = testPorts();
+    for (const [id, organizationId] of [
+      ["mine", asIdentifier<OrganizationId>("org-1")],
+      ["theirs", asIdentifier<OrganizationId>("org-2")],
+    ] as const) {
+      ports.repository.state.endUsers.set(asIdentifier<EndUserId>(id), {
+        endUserId: asIdentifier<EndUserId>(id),
+        organizationId,
+        displayName: id,
+        disabledAt: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      });
+    }
+    const app = composeApplication(inputs(undefined, { identityAccess: ports }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+
+    const page = await identityAccess.listEndUsers({ scope: TENANT });
+    expect(page.ok).toBe(true);
+    if (!page.ok) return;
+    expect(page.value.users.map((user) => user.endUserId)).toEqual(["mine"]);
+    expect(page.value.total).toBe(1);
+  });
+
+  it("KEEPS A BAD PAGE SIZE A REFUSAL at the composition root too", async () => {
+    const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+    const refusal = await identityAccess.listEndUsers({ scope: TENANT, limit: 101 });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("INVALID_END_USER_FILTER");
   });
 });

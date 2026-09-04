@@ -34,6 +34,7 @@ export * from "./access-key.js";
 export * from "./authorization-scope.js";
 export * from "./bearer-token.js";
 export * from "./credential.js";
+export * from "./end-user.js";
 export * from "./errors.js";
 export * from "./magic-link.js";
 export * from "./mfa.js";

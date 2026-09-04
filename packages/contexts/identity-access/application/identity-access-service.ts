@@ -24,6 +24,7 @@ import {
   scopeKindOf,
   type AuthorizationScope,
   type BearerAuthorization,
+  type EndUserWithIdentities,
   type OperatorAuthorization,
   type PermittedRateLimitDecision,
 } from "../domain/index.js";
@@ -31,13 +32,16 @@ import type {
   AuthenticateBearerRequest,
   AuthenticateOperatorRequest,
   AuthorizationScopeView,
+  EndUserPageView,
   IdentityAccessContract,
+  ListEndUsersRequest,
   OperatorAuthorizationView,
   PrincipalAuthorizationView,
   RateLimitDecisionView,
   RateLimitRequest,
 } from "../contracts/index.js";
 import { authenticateBearerToken } from "./authenticate-bearer-token.js";
+import { listEndUsers, type EndUserPage } from "./list-end-users.js";
 import { authenticateOperator } from "./authenticate-operator.js";
 import { consumeRateLimit } from "./consume-rate-limit.js";
 import type { IdentityAccessPorts } from "./dependencies.js";
@@ -118,6 +122,40 @@ function rateLimitView(decision: PermittedRateLimitDecision): RateLimitDecisionV
 }
 
 /**
+ * Project one end user and the identities that reach them.
+ *
+ * `organizationId` and `identityId` are dropped: the first is the scope the
+ * caller already supplied, and the second addresses a row this contract
+ * publishes no operation for.
+ */
+function endUserView(row: EndUserWithIdentities) {
+  return {
+    endUserId: row.user.endUserId,
+    displayName: row.user.displayName,
+    disabledAt: row.user.disabledAt,
+    createdAt: row.user.createdAt,
+    identities: row.identities.map((identity) => ({
+      issuer: identity.issuer,
+      channel: identity.channel,
+      subject: identity.subject,
+      verifiedAt: identity.verifiedAt,
+      disabledAt: identity.disabledAt,
+    })),
+  };
+}
+
+/** Project a page, keeping the total and the window the use case computed. */
+function endUserPageView(page: EndUserPage): EndUserPageView {
+  return {
+    users: page.users.map(endUserView),
+    total: page.total,
+    limit: page.limit,
+    offset: page.offset,
+    hasMore: page.hasMore,
+  };
+}
+
+/**
  * Build the façade.
  *
  * It takes the WHOLE port bundle, unlike a use case, which takes the slice it
@@ -159,6 +197,17 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
         principalId: request.principalId,
       });
       return decision.ok ? ok(rateLimitView(decision.value)) : decision;
+    },
+
+    async listEndUsers(request: ListEndUsersRequest): Promise<Result<EndUserPageView>> {
+      const page = await listEndUsers(ports, {
+        scope: request.scope,
+        status: request.status ?? null,
+        search: request.search ?? null,
+        ...(request.limit === undefined ? {} : { limit: request.limit }),
+        ...(request.offset === undefined ? {} : { offset: request.offset }),
+      });
+      return page.ok ? ok(endUserPageView(page.value)) : page;
     },
   };
 }

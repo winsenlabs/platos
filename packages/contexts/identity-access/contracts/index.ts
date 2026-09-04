@@ -89,6 +89,62 @@ export interface AuthenticateBearerRequest {
   readonly requiredPermission?: string;
 }
 
+/**
+ * One identity that reaches an end user, as the accounts listing renders it.
+ *
+ * `identityId` is deliberately absent — the same reasoning that drops `kind`
+ * from `PrincipalAuthorizationView`. It is a storage fact, the oracle's own
+ * `select` does not return it, and a consumer that held it would be able to
+ * address a row this contract publishes no operation for.
+ */
+export interface EndUserIdentityView {
+  readonly issuer: string;
+  readonly channel: string;
+  readonly subject: string;
+  readonly verifiedAt: Date | null;
+  readonly disabledAt: Date | null;
+}
+
+/**
+ * An end user — the SECOND principal tier, and never an operator.
+ *
+ * `organizationId` is absent because it cannot be anything but the scope the
+ * caller asked under: echoing it back would invite a consumer to believe the
+ * listing decided which tenant to answer for, when the authorized scope did.
+ */
+export interface EndUserView {
+  readonly endUserId: string;
+  readonly displayName: string | null;
+  readonly disabledAt: Date | null;
+  readonly createdAt: Date;
+  readonly identities: readonly EndUserIdentityView[];
+}
+
+export interface EndUserPageView {
+  readonly users: readonly EndUserView[];
+  /** Rows matching the filters, ignoring the page window. */
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+}
+
+/**
+ * NOTE WHAT IS MISSING: an organization id.
+ *
+ * The tenant is taken from `scope`, which is the value tenancy minted by
+ * re-deriving the whole chain from a leaf. There is no field on this request a
+ * caller could use to address another tenant.
+ */
+export interface ListEndUsersRequest {
+  readonly scope: TenantScope;
+  /** `active`, `disabled`, or absent. Anything else is refused, not ignored. */
+  readonly status?: string | null;
+  readonly search?: string | null;
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
 export interface RateLimitRequest {
   readonly action: "LOGIN" | "INVITE_ACCEPT" | "MFA_VERIFY";
   readonly identifier: string;
@@ -128,6 +184,17 @@ export interface IdentityAccessContract {
    * than hidden, so a caller that must not run unlimited can refuse.
    */
   consumeRateLimit(request: RateLimitRequest): Promise<Result<RateLimitDecisionView>>;
+
+  /**
+   * List the end users of one tenant, with the total the page is a window into.
+   *
+   * This context is sole writer of `EndUser` and published no read of it, so the
+   * only listing in the product reached past every contract into the database.
+   * An over-large page, an unknown status and an over-long search term are
+   * REFUSALS rather than corrections: a silently clamped page is a caller that
+   * believes it has seen everything.
+   */
+  listEndUsers(request: ListEndUsersRequest): Promise<Result<EndUserPageView>>;
 }
 
 /**
@@ -153,6 +220,7 @@ export type IdentityAccessEventName =
 
 /** The failure codes a consumer may branch on. Stable within a major. */
 export const IDENTITY_ACCESS_ERROR_CODES = [
+  "INVALID_END_USER_FILTER",
   "UNAUTHENTICATED",
   "SESSION_EXPIRED",
   "SESSION_REVOKED",

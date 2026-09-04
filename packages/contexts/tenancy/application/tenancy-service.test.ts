@@ -194,6 +194,38 @@ describe("TenancyContract", () => {
     expect(refusal.error.code).toBe("TENANCY_PROJECT_CREATE_FORBIDDEN");
   });
 
+  it("LISTS MY ORGANIZATIONS through the contract, and nobody else's", async () => {
+    const { tree, contract } = scenario();
+    const listed = await contract.listOperatorOrganizations(OWNER);
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) throw new Error("unreachable");
+    expect(listed.value.map((row) => row.organization.id)).toEqual([tree.organization.id]);
+
+    const stranger = await contract.listOperatorOrganizations(userId("stranger"));
+    expect(stranger.ok).toBe(true);
+    if (!stranger.ok) throw new Error("unreachable");
+    expect(stranger.value).toEqual([]);
+  });
+
+  it("LISTS THE PROJECTS I CAN SEE, and says which grant made each visible", async () => {
+    // The replacement for `operatorVisibleProjectWhere`, reached through the
+    // published contract rather than through a Prisma call.
+    const { tree, contract } = scenario();
+    const visible = await contract.listVisibleProjects(OWNER);
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) throw new Error("unreachable");
+    expect(visible.value.map((row) => row.project.id)).toEqual([tree.project.id]);
+    expect(visible.value[0]?.through).toBe("organization-admin");
+  });
+
+  it("SHOWS A STRANGER NO PROJECTS AT ALL", async () => {
+    const { contract } = scenario();
+    const visible = await contract.listVisibleProjects(userId("stranger"));
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) throw new Error("unreachable");
+    expect(visible.value).toEqual([]);
+  });
+
   it("advances the access-key generation through the contract", async () => {
     const { tree, contract } = scenario();
     const advanced = await contract.revokeAccessKeyGeneration({

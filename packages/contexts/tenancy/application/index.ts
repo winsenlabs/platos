@@ -23,6 +23,7 @@ export * from "./invitations.js";
 export * from "./add-project-member.js";
 export * from "./create-organization.js";
 export * from "./create-project.js";
+export * from "./operator-read-models.js";
 export * from "./archive-tenant.js";
 export * from "./revoke-access-key-generation.js";
 export * from "./tenancy-service.js";

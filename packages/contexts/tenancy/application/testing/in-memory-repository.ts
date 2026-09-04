@@ -231,6 +231,19 @@ export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRep
       ).length;
     },
 
+    async listOrganizationMembershipsForUser(userId) {
+      // Every row, active or not: the rule that a deactivated member sees
+      // nothing belongs to the read model, and filtering here would hide its
+      // deletion from every test.
+      return store.organizationMemberships.filter((row) => row.userId === userId);
+    },
+
+    async listProjectMembershipsForMembership(organizationMembershipId) {
+      return store.projectMemberships.filter(
+        (row) => row.organizationMembershipId === organizationMembershipId,
+      );
+    },
+
     async findProjectMembership(projectId, organizationMembershipId) {
       return (
         store.projectMemberships.find(

@@ -222,8 +222,8 @@ test("the census is not vacuous — it reads the real suites", () => {
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +1 for the WIN-257 identity-access contract suite, +2 for the WIN-257
-  // tenancy creation suites.
-  assert.equal(live.totalFiles, 91);
+  // tenancy creation suites, +4 for the WIN-257 read models (two per package).
+  assert.equal(live.totalFiles, 95);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -235,17 +235,17 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +1 for the WIN-257 identity-access contract suite, +2 for the WIN-257
-  // tenancy creation suites.
+  // tenancy creation suites, +4 for the WIN-257 read models (two per package).
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 91);
+  assert.equal(files, 95);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
   // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 256, "231 at 3ed8f3ce, +25 for the WIN-257 contract suite");
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 284, "231 at 3ed8f3ce, +25 for the WIN-257 contract suite, +28 for its end-user read");
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 175, "146 at 3ed8f3ce, +29 for the WIN-257 creation suites");
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 206, "146 at 3ed8f3ce, +29 for the WIN-257 creation suites, +31 for its read models");
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
 });
@@ -258,7 +258,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29 + 59);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -267,8 +267,8 @@ test("the WIN-257 identity-access contract suite is pinned at what vitest prints
   // the AST census reproduces both with zero refusals. The file count moving is
   // what makes the delta legible, and the +25 is the part a file-count pin
   // cannot see — three EDITED suites in the same package gained no case at all.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 18);
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 256);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 20);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 284);
   assert.ok(
     listTestFiles(undefined, "packages/contexts/identity-access").includes(
       "packages/contexts/identity-access/application/identity-access-service.test.ts",
@@ -283,11 +283,25 @@ test("the WIN-257 tenancy creation suites are pinned at what vitest prints", () 
   // command prints 11, 15 and 13, and 11 + 15 + (13 - 10) = 29 is the whole
   // delta — which is how an EDITED suite gaining cases is kept visible next to
   // the two ADDED ones.
-  assert.equal(EXPECTED["packages/contexts/tenancy"].files, 18);
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 175);
+  assert.equal(EXPECTED["packages/contexts/tenancy"].files, 20);
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 206);
   const files = listTestFiles(undefined, "packages/contexts/tenancy");
   assert.ok(files.includes("packages/contexts/tenancy/application/create-organization.test.ts"));
   assert.ok(files.includes("packages/contexts/tenancy/application/create-project.test.ts"));
+});
+
+test("the WIN-257 read models are pinned at what vitest prints", () => {
+  // The TWO rows T4 moves. Filtered to each new file the package command prints
+  // 15 and 9 for identity-access and 17 and 11 for tenancy; the remaining 4 and
+  // 3 are in the two EDITED contract suites, which is how an edited suite
+  // gaining cases stays visible beside the added ones. 15+9+4 = 28 and
+  // 17+11+3 = 31, and 28 + 31 = 59.
+  const identity = listTestFiles(undefined, "packages/contexts/identity-access");
+  assert.ok(identity.includes("packages/contexts/identity-access/domain/end-user.test.ts"));
+  assert.ok(identity.includes("packages/contexts/identity-access/application/list-end-users.test.ts"));
+  const tenancy = listTestFiles(undefined, "packages/contexts/tenancy");
+  assert.ok(tenancy.includes("packages/contexts/tenancy/domain/visibility.test.ts"));
+  assert.ok(tenancy.includes("packages/contexts/tenancy/application/operator-read-models.test.ts"));
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

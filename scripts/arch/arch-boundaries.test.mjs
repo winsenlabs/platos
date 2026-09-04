@@ -267,7 +267,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               packages/contexts/tenancy/application/. No rule needed
     //               changing: each imports its own context's domain/ and the
     //               kernel, which is what rules (a) and (d) already allow.
-    assert.equal(result.fileCount, 403, "the generated V1 source census must stay exact");
+    //
+    //   403 -> 411  +8: WIN-257 T4 (M2.2) adds the missing read models, four
+    //               files per context. tenancy gains domain/visibility.ts — the
+    //               rule ported out of `operatorVisibleProjectWhere`, which
+    //               until now existed only as a Prisma where clause in
+    //               apps/webapp — plus application/operator-read-models.ts and a
+    //               suite for each. identity-access gains domain/end-user.ts and
+    //               application/list-end-users.ts with their suites. Rule (b)
+    //               `domain-purity` is what makes the first pair interesting:
+    //               the rule is now expressible with no Prisma type in scope at
+    //               all, which is why it can be a domain file.
+    assert.equal(result.fileCount, 411, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

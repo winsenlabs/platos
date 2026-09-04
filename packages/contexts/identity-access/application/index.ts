@@ -66,6 +66,17 @@ export {
   type ExchangeRefreshTokenPorts,
 } from "./exchange-oauth-refresh-token.js";
 export {
+  listEndUsers,
+  type EndUserId,
+  type EndUserIdentityId,
+  type EndUserIdentityRecord,
+  type EndUserPage,
+  type EndUserRecord,
+  type EndUserWithIdentities,
+  type ListEndUsersInput,
+  type ListEndUsersPorts,
+} from "./list-end-users.js";
+export {
   authenticateBearerToken,
   type AuthenticateBearerTokenInput,
   type AuthenticateBearerTokenPorts,

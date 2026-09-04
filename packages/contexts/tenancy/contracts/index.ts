@@ -24,6 +24,7 @@ import type {
   ProjectMembershipRecord,
   ProjectRecord,
   ProjectRole,
+  ProjectVisibility,
   UserId,
 } from "../domain/index.js";
 
@@ -43,6 +44,7 @@ export {
 export type {
   AncestryLevel,
   EmailAddress,
+  ProjectVisibility,
   EntityRecord,
   EnvironmentAccess,
   EnvironmentAncestry,
@@ -88,6 +90,27 @@ export interface TenantDescriptor {
  * tree, not a single row.
  */
 export type TenancyAggregate = TenantDescriptor;
+
+/** One row of "my organizations", with the membership that put it there. */
+export interface OperatorOrganization {
+  readonly organization: OrganizationRecord;
+  readonly membership: OrganizationMembershipRecord;
+}
+
+/**
+ * One row of "projects I can see", and WHY.
+ *
+ * `through` is published rather than kept private because the two arms of the
+ * rule are two different grants: `organization-admin` is the blanket grant an
+ * OWNER/ADMIN holds over every project in the organization, and
+ * `project-membership` is an explicit row. A consumer that could not tell them
+ * apart would have to re-derive the difference, which is the coupling this
+ * read model exists to remove.
+ */
+export interface OperatorProject {
+  readonly project: ProjectRecord;
+  readonly through: ProjectVisibility;
+}
 
 export interface ResolvedEnvironmentScope {
   readonly scope: EnvironmentScope;
@@ -240,6 +263,27 @@ export interface TenancyContract {
     organizationId: OrganizationId,
     userId: UserId,
   ): Promise<Result<OrganizationMembershipRecord>>;
+
+  /**
+   * "My organizations", in the order the dashboard lands an operator in them.
+   *
+   * Keyed by the operator alone. There is no organization id on this call, so a
+   * caller has nothing to substitute — the same property
+   * `authorizeEnvironmentOperator` gets from taking only the leaf.
+   */
+  listOperatorOrganizations(userId: UserId): Promise<Result<readonly OperatorOrganization[]>>;
+
+  /**
+   * "Projects I can see", and by which grant.
+   *
+   * This replaces `operatorVisibleProjectWhere`, an authorization rule that
+   * existed only as a `Prisma.ProjectWhereInput` in the Remix tree. The rule is
+   * ported, not the query: an organization OWNER/ADMIN sees every unarchived
+   * project in the organization, everybody else sees exactly the projects they
+   * hold a membership on, and a deactivated organization membership hides all of
+   * them without a single `ProjectMembership` row changing.
+   */
+  listVisibleProjects(userId: UserId): Promise<Result<readonly OperatorProject[]>>;
 
   /**
    * `Entity` hangs off `Project`, not `Environment` (see domain/entity.ts), so

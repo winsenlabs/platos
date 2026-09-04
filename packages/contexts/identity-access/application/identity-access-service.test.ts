@@ -37,7 +37,14 @@ import {
 import { DEFAULT_POLICIES } from "../domain/index.js";
 import { createIdentityAccessService } from "./identity-access-service.js";
 import { testPorts, type TestPorts } from "./testing.js";
-import { asIdentifier, environmentScope, projectScope, type PrincipalId } from "@platos/kernel";
+import type { EndUserId, EndUserIdentityId } from "../domain/index.js";
+import {
+  asIdentifier,
+  environmentScope,
+  organizationScope,
+  projectScope,
+  type PrincipalId,
+} from "@platos/kernel";
 
 const SESSION_TOKEN = "plt_os_raw-session-token";
 const BEARER_TOKEN = "plt_mcp_raw-token";
@@ -383,5 +390,101 @@ describe("consumeRateLimit", () => {
     expect(ports.safety.observations.map((observation) => observation.rule)).toContain(
       "identity.rate_limit.degraded",
     );
+  });
+});
+
+describe("listEndUsers — the read this context published none of", () => {
+  function seedEndUser(
+    ports: TestPorts,
+    id: string,
+    organizationId: typeof ORGANIZATION_ID,
+    overrides: { readonly displayName?: string | null; readonly disabledAt?: Date | null } = {},
+  ) {
+    const endUserId = asIdentifier<EndUserId>(id);
+    ports.repository.state.endUsers.set(endUserId, {
+      endUserId,
+      organizationId,
+      displayName: overrides.displayName === undefined ? id : overrides.displayName,
+      disabledAt: overrides.disabledAt ?? null,
+      createdAt: at(0),
+    });
+    const identityId = asIdentifier<EndUserIdentityId>(`${id}-identity`);
+    ports.repository.state.endUserIdentities.set(identityId, {
+      identityId,
+      endUserId,
+      issuer: "slack",
+      channel: "slack",
+      subject: `U-${id.toUpperCase()}`,
+      verifiedAt: null,
+      disabledAt: null,
+    });
+  }
+
+  it("projects a page through the contract, dropping the storage-only keys", async () => {
+    const ports = testPorts();
+    seedEndUser(ports, "ada", ORGANIZATION_ID);
+    const page = await createIdentityAccessService(ports).listEndUsers({
+      scope: organizationScope(ORGANIZATION_ID),
+    });
+
+    expect(page.ok).toBe(true);
+    if (!page.ok) return;
+    expect(page.value.total).toBe(1);
+    const [user] = page.value.users;
+    expect(user?.endUserId).toBe("ada");
+    // The view is flat and carries neither the tenant it was scoped by nor the
+    // identity row's own id. Extra keys are structural, so a leak would raise no
+    // type error and only this assertion would catch it.
+    expect(Object.keys(user ?? {}).sort()).toEqual([
+      "createdAt",
+      "disabledAt",
+      "displayName",
+      "endUserId",
+      "identities",
+    ]);
+    expect(Object.keys(user?.identities[0] ?? {}).sort()).toEqual([
+      "channel",
+      "disabledAt",
+      "issuer",
+      "subject",
+      "verifiedAt",
+    ]);
+  });
+
+  it("REFUSES TO SHOW ANOTHER TENANT'S END USERS THROUGH THE CONTRACT", async () => {
+    const ports = testPorts();
+    seedEndUser(ports, "mine", ORGANIZATION_ID);
+    seedEndUser(ports, "theirs", OTHER_ORGANIZATION_ID);
+    const identityAccess = createIdentityAccessService(ports);
+
+    const page = await identityAccess.listEndUsers({
+      scope: organizationScope(ORGANIZATION_ID),
+    });
+    expect(page.ok).toBe(true);
+    if (!page.ok) return;
+    expect(page.value.users.map((user) => user.endUserId)).toEqual(["mine"]);
+    expect(page.value.total).toBe(1);
+  });
+
+  it("KEEPS A BAD FILTER A FAILURE rather than an empty success", async () => {
+    // The projection layer is exactly where a refusal quietly becomes `ok` with
+    // zero rows, which a caller cannot tell from a tenant that has none.
+    const refusal = await createIdentityAccessService(testPorts()).listEndUsers({
+      scope: organizationScope(ORGANIZATION_ID),
+      status: "deleted",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("INVALID_END_USER_FILTER");
+  });
+
+  it("KEEPS AN OVER-LARGE PAGE A FAILURE, not a smaller page", async () => {
+    const refusal = await createIdentityAccessService(testPorts()).listEndUsers({
+      scope: organizationScope(ORGANIZATION_ID),
+      limit: 101,
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.category).toBe("invalid_input");
   });
 });

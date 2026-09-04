@@ -94,7 +94,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and a suite for each. Every gate in both use cases runs BEFORE the unit of
   // work opens, which is what keeps the transactional block four lines long and
   // both files inside the budget.
-  assert.equal(result.fileCount, 334);
+  //
+  // +8 -> 342: WIN-257 T4 (M2.2) adds the four read-model files and their four
+  // suites. The two domain files are predicates and comparators with no I/O, and
+  // the two application files hold the composition the routes performed, so all
+  // eight sit well inside the budget.
+  assert.equal(result.fileCount, 342);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

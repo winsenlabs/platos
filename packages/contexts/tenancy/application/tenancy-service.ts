@@ -37,6 +37,10 @@ import { createAuthorizeEnvironmentOperator } from "./authorize-environment-oper
 import { createChangeMembershipRole, createDeactivateMembership } from "./change-membership-role.js";
 import { createCreateOrganization } from "./create-organization.js";
 import { createCreateProject } from "./create-project.js";
+import {
+  createListOperatorOrganizations,
+  createListVisibleProjects,
+} from "./operator-read-models.js";
 import type { TenancyDependencies } from "./dependencies.js";
 import { createRevokeAccessKeyGeneration } from "./revoke-access-key-generation.js";
 
@@ -48,6 +52,8 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const addProjectMember = createAddProjectMember(dependencies);
   const createOrganization = createCreateOrganization(dependencies);
   const createProject = createCreateProject(dependencies);
+  const listOperatorOrganizations = createListOperatorOrganizations(dependencies);
+  const listVisibleProjects = createListVisibleProjects(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
 
   return {
@@ -98,6 +104,10 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       if (membership === null) return err(tenantNotFound("organization"));
       return ok(membership);
     },
+
+    listOperatorOrganizations: (userId: UserId) => listOperatorOrganizations(userId),
+
+    listVisibleProjects: (userId: UserId) => listVisibleProjects(userId),
 
     async listProjectEntities(projectId: ProjectId): Promise<Result<readonly EntityRecord[]>> {
       const project = await repository.loadProject(projectId);

@@ -144,7 +144,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
-  "packages/contexts/identity-access": { files: 18, cases: 256 },
+  "packages/contexts/identity-access": { files: 20, cases: 284 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
@@ -152,7 +152,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
-  "packages/contexts/tenancy": { files: 18, cases: 175 },
+  "packages/contexts/tenancy": { files: 20, cases: 206 },
   "packages/contexts/tools": { files: 0, cases: 0 },
   "packages/kernel": { files: 3, cases: 44 },
 });
@@ -182,6 +182,32 @@ export const EXPECTED = Object.freeze({
  *   and is outside PACKAGE_ROOTS, so it does not appear here.
  */
 
+/*
+ * WIN-257 TRANCHE 4 DELTA (M2.2), the missing read models. TWO packages move:
+ *
+ *   identity-access 18 -> 20 files, 256 -> 284 cases.
+ *   tenancy         18 -> 20 files, 175 -> 206 cases.
+ *   1054 -> 1113 total.
+ *
+ *   identity-access +28: `domain/end-user.test.ts` (15) covers the listing rule
+ *   and its caps, `application/list-end-users.test.ts` (9) covers the use case,
+ *   and `application/identity-access-service.test.ts` goes 25 -> 29 for the
+ *   contract-level page, its cross-tenant refusal and its two filter refusals.
+ *   15 + 9 + 4 = 28.
+ *
+ *   tenancy +31: `domain/visibility.test.ts` (17) is the rule ported out of
+ *   `operatorVisibleProjectWhere`, `application/operator-read-models.test.ts`
+ *   (11) is the two read models over it, and
+ *   `application/tenancy-service.test.ts` goes 13 -> 16 for the same reads
+ *   through the published contract. 17 + 11 + 3 = 31.
+ *
+ *   Both were checked against what `pnpm --filter <package> exec vitest run`
+ *   prints — "Test Files 20 passed (20) / Tests 284 passed (284)" for
+ *   identity-access and "20 / 206" for tenancy — and each new file against the
+ *   same command filtered to it. `apps/core-api` gained 3 more composition cases
+ *   and is outside PACKAGE_ROOTS, so it does not appear here.
+ */
+
 /**
  * The number `pnpm test:v1-packages` prints, pinned separately from the sum
  * above so the two can DISAGREE and be caught. They are computed differently —
@@ -189,7 +215,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1054;
+export const EXPECTED_RUNTIME_TOTAL = 1113;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -102,6 +102,24 @@ export interface TenancyRepository {
   /** Active OWNER count, read under the organization row lock. */
   countActiveOwners(organizationId: OrganizationId): Promise<number>;
 
+  /**
+   * EVERY organization membership a user holds, deactivated ones included.
+   *
+   * The `deactivatedAt` filter is deliberately NOT in this signature. The two
+   * operator read models are the only callers, and the rule they apply — a
+   * removed member sees nothing, whatever their `ProjectMembership` rows still
+   * say — has to be falsifiable. A store that filtered would make deleting that
+   * rule from the read model invisible to every test.
+   */
+  listOrganizationMembershipsForUser(
+    userId: UserId,
+  ): Promise<readonly OrganizationMembershipRecord[]>;
+
+  /** Every project role held THROUGH one organization membership. */
+  listProjectMembershipsForMembership(
+    organizationMembershipId: OrganizationMembershipId,
+  ): Promise<readonly ProjectMembershipRecord[]>;
+
   /** The `@@unique([projectId, organizationMembershipId])` lookup. */
   findProjectMembership(
     projectId: ProjectId,
