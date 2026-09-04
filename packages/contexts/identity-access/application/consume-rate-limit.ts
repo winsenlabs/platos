@@ -22,7 +22,7 @@ import {
   decide,
   decideOnLimiterFailure,
   type AuthRateLimitAction,
-  type RateLimitDecision,
+  type PermittedRateLimitDecision,
   type RateLimitPolicy,
   DEFAULT_POLICIES,
 } from "../domain/index.js";
@@ -53,7 +53,7 @@ const DEGRADED_RULE = "identity.rate_limit.degraded";
 export async function consumeRateLimit(
   ports: ConsumeRateLimitPorts,
   input: ConsumeRateLimitInput,
-): Promise<Result<RateLimitDecision>> {
+): Promise<Result<PermittedRateLimitDecision>> {
   const now = ports.clock.now();
   const policy: RateLimitPolicy = input.policy ?? DEFAULT_POLICIES[input.action];
   // Lower-cased and trimmed before hashing, so `Alice@Example.com ` and

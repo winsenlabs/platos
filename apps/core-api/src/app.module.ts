@@ -12,40 +12,54 @@
 // is how `app.module.test.ts` proves the mis-wire detection without binding a
 // port.
 //
-// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; four are real
-// (WIN-256) and thirteen are still declaration-only placeholders. Even the four
-// cannot be constructed here yet — see FINDING below. Modelling that as
-// `Partial<ContextContracts>` states the truth in the type instead of shipping
-// seventeen `null!` casts that would compile and then explode.
+// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; FIVE are real
+// (WIN-256: identity-access, tenancy, secrets, files, providers) and twelve are
+// still declaration-only placeholders. Of the five, TWO are composed here today
+// — identity-access and tenancy — see the note below on what an install must
+// still supply. Modelling that as `Partial<ContextContracts>` states the truth
+// in the type instead of shipping seventeen `null!` casts that would compile and
+// then explode.
 //
 // ---------------------------------------------------------------------------
-// FINDING (WIN-297, reported not absorbed): a context's construction function is
-// unreachable from the composition root.
+// THE WIN-297 FINDING, CLOSED BY WIN-257 (M2.2).
 //
-// ADR M0.3 §4 says core-api's transports "call application/ use-cases only", and
-// the real work of composing a context is `createTenancyService(...)` /
-// `createFilesContract(...)` in each context's `application/`. But every context
-// manifest — generated scaffolding — publishes exactly two subpaths:
+// WIN-297 reported that a context's construction function was unreachable from
+// here: every context manifest published `.` (contracts, types) and
+// `./application/ports/index.js` (driven ports, types) and nothing else, so
+// `createIdentityAccessService(...)` and `createTenancyService(...)` existed,
+// were tested, and could not be imported by the one place entitled to call them.
+// It declined to fix it on the grounds that an entry point nothing imports is
+// dead surface, and named WIN-257 as the issue that could prove the export.
 //
-//     "."                              -> dist/contracts/index.js   (types only)
-//     "./application/ports/index.js"   -> the driven ports          (types only)
+// `APPLICATION_ENTRY_PROJECTS` in `scripts/arch/gen-v1-skeleton.mjs` now
+// publishes `./application/index.js` for the contexts this file ACTUALLY
+// composes — two entries today, `identity-access` and `tenancy` — and
+// `selfCheck` refuses an entry that is not an adopted context. So the surface is
+// not dead: the imports below are the consumers that justify it.
 //
-// `application/index.js` is not among them, and `v1-project-graph.mjs` fails any
-// import of an unexported subpath. So the factories exist, are correct, are
-// tested — and cannot be reached from the one place entitled to call them.
-//
-// Adding the subpath is a two-line generator change. It is deliberately NOT made
-// here: publishing an entry point that nothing yet imports is dead surface, and
-// the issue that first composes a context for real (WIN-257 for identity/
-// tenancy, WIN-258 for the repositories underneath them) is the one that can
-// prove the export is right. Recorded here, and in the REVIEW READY comment, so
-// it is a decision rather than a discovery.
+// WHAT IS STILL OPEN. Both contexts are composed from a supplied PORT BUNDLE
+// rather than from an adapter. For identity-access that is forced:
+// `IdentityAccessRepository` has no adapter slot at all — the twelve declared
+// bindings give `postgres-tenancy` the tenancy repository and give
+// identity-access only `redis-ratelimit`, and there is no identity store among
+// the twelve. For tenancy the slot exists and is EMPTY: `postgres-tenancy` is
+// still a generated placeholder with no `TenancyRepository` in it, and tenancy
+// needs five more ports besides the repository (locks, a session revoker, an
+// access-key revocation counter, an invitation token issuer and an operator
+// directory) that no binding declares. So neither context can be built from
+// `adapters` today. That is reported, not absorbed — WIN-258 owns the
+// repositories — and until they exist an install supplies each bundle itself and
+// readiness stays honest about every binding that is unsatisfied.
 // ---------------------------------------------------------------------------
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
+import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
+import type { IdentityAccessPorts } from "@platos/context-identity-access/application/index.js";
 import type { TenancyContract } from "@platos/context-tenancy";
+import { createTenancyService } from "@platos/context-tenancy/application/index.js";
+import type { TenancyDependencies } from "@platos/context-tenancy/application/index.js";
 import type { SecretsContract } from "@platos/context-secrets";
 import type { ProvidersContract } from "@platos/context-providers";
 import type { AgentsContract } from "@platos/context-agents";
@@ -106,12 +120,36 @@ export interface AppModule {
   readonly inFlight: InFlightRegister;
 }
 
+/**
+ * The driven ports an install supplies for a context this root can compose.
+ *
+ * It is separate from `SuppliedAdapters` because these are not adapters: an
+ * adapter fills ONE declared binding and is validated against the twelve-slot
+ * table, whereas a context takes a whole bundle — a repository, a hasher, a
+ * minter — several of which have no declared adapter yet. Merging the two would
+ * mean either inventing binding slots that ADR M0.3 §4 does not declare, or
+ * letting `reportAdapterSupply` see keys it cannot judge.
+ */
+export interface SuppliedContextPorts {
+  readonly identityAccess?: IdentityAccessPorts;
+  /**
+   * Tenancy's bundle is `TenancyDependencies` rather than a bare repository
+   * because five of its six driven ports are not repositories: the row lock, the
+   * session revoker, the access-key revocation counter, the invitation token
+   * issuer and the operator directory. An install that supplied only a store
+   * would produce a context that cannot serialise an owner demotion, which is
+   * the one thing `changeMembershipRole` exists to guarantee.
+   */
+  readonly tenancy?: TenancyDependencies;
+}
+
 export interface CompositionInput {
   readonly configuration: CoreApiConfiguration;
   readonly clock: Clock;
   readonly ids: IdGenerator;
   readonly logger: Logger;
   readonly adapters?: SuppliedAdapters;
+  readonly ports?: SuppliedContextPorts;
   readonly inFlight?: InFlightRegister;
 }
 
@@ -135,11 +173,19 @@ export function composeApplication(input: CompositionInput): AppModule {
   const bindings = reportAdapterSupply(adapters);
   if (bindings.faults.length > 0) throw new CompositionFault(bindings.faults);
 
-  // Contexts are composed here as adapters become available. The map is empty
-  // today for the reason recorded in FINDING above, and it is built from
-  // `bindings.satisfied` rather than from `adapters` so that a context can never
-  // be constructed from a binding that failed validation.
-  const contexts: ComposedContexts = Object.freeze({});
+  // Contexts are composed here as their ports become available. A context is
+  // built ONLY from ports this call was actually handed: an absent bundle leaves
+  // the context absent rather than producing a façade over undefined stores,
+  // which would turn every authentication into a run-time crash instead of a
+  // readiness signal a caller can see before it serves anything.
+  const contexts: ComposedContexts = Object.freeze({
+    ...(input.ports?.identityAccess === undefined
+      ? {}
+      : { identityAccess: createIdentityAccessService(input.ports.identityAccess) }),
+    ...(input.ports?.tenancy === undefined
+      ? {}
+      : { tenancy: createTenancyService(input.ports.tenancy) }),
+  });
 
   return Object.freeze({
     configuration: input.configuration,

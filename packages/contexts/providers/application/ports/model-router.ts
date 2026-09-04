@@ -32,10 +32,34 @@
 //    only when the provider itself rejected the credential. Everything else is
 //    `request_failed`. Collapsing the two sends an operator to rotate a
 //    perfectly good key because a provider had an outage.
+//
+// THE INFERENCE HALF (ADR M0.3 §14). `generate` and `stream` were added for one
+// reason: `conversations` (§1 row 16) is the last context out and it cannot be
+// extracted while running a turn means importing an inference framework. It has
+// to be able to ask THIS port instead, which means this port has to cover what
+// a turn actually does — text, streaming, schema-shaped output, tool round
+// trips, and the prompt-cache placement that decides what a turn costs.
+//
+// Every type in those two signatures is one this context owns. That is not
+// tidiness: `inference-sdk-only` in scripts/arch/boundary-rules.mjs forbids the
+// framework everywhere but the one adapter, so a vendor type appearing here
+// would make the port literally unusable by the context it exists for.
 
 import type { Result } from "@platos/kernel";
 
-import type { ModelListEndpoint, ModelRoutePlan, ProbeFailure } from "../../domain/index.js";
+import type {
+  GenerationEvent,
+  ModelGeneration,
+  ModelListEndpoint,
+  ModelRoutePlan,
+  OutputMode,
+  ProbeFailure,
+  Prompt,
+  SamplingLimits,
+  ToolCallPart,
+  ToolDefinition,
+  ToolResultPart,
+} from "../../domain/index.js";
 
 /**
  * Secret material for exactly one call.
@@ -108,14 +132,111 @@ export interface ListModelsRequest {
   readonly timeoutMs: number;
 }
 
+/**
+ * Run one tool the model asked for, and answer it.
+ *
+ * A function the CALLER supplies, which is what keeps `tools` off this
+ * context's dependency list while still letting the round trips happen behind
+ * the port (see `domain/generation.ts` for that argument in full). `providers`
+ * learns a tool's name and its JSON Schema and nothing else about it.
+ *
+ * A TOOL THAT FAILED IS A RESULT, NOT AN ERROR. It comes back as a
+ * `ToolResultPart` with `failed: true`, because the model has to be told and is
+ * often able to recover on the next step. A rejected promise is a defect in the
+ * caller, not a business outcome, and will end the generation.
+ */
+export type ToolExecutor = (call: ToolCallPart) => Promise<ToolResultPart>;
+
+/**
+ * One inference request: a whole generation, not one call to a provider.
+ *
+ * The framing is deliberate. A generation runs until the model stops asking for
+ * tools or `maxSteps` is spent, and the interesting behaviour lives BETWEEN the
+ * steps — the cache breakpoints move, and the usage accumulates. Handing back
+ * one step at a time would have pushed both of those onto every caller.
+ */
+export interface ModelGenerationRequest {
+  /** Which binding. Names the route; carries no material. */
+  readonly session: ModelSession;
+  /** The material for THIS call. Supplied per call, exactly as `probe` is. */
+  readonly credential: ProviderCredential;
+  readonly prompt: Prompt;
+  /** May be empty. An empty catalogue is a generation with no round trips. */
+  readonly tools: readonly ToolDefinition[];
+  readonly executeTool: ToolExecutor;
+  readonly output: OutputMode;
+  readonly sampling: SamplingLimits;
+  /** At least one. A step budget is what bounds an open-ended tool loop. */
+  readonly maxSteps: number;
+  /**
+   * Rewrite the prompt before EVERY step, the first one included.
+   *
+   * This is where prompt-cache breakpoints are moved onto the growing message
+   * array, and it is the single most valuable line in this interface: without
+   * it every step after the first re-pays full price for the whole history.
+   *
+   * The implementation MUST call this with the prompt it is about to send,
+   * including the assistant and tool messages the previous steps added, and
+   * MUST send what comes back. It is a pure function over this system's own
+   * `Prompt`; the adapter does not need to know what it did.
+   */
+  readonly rewritePrompt: (prompt: Prompt) => Prompt;
+  /**
+   * Abandon the whole generation, including any provider stream in flight.
+   *
+   * Null means no deadline from the caller. An implementation that ignores this
+   * keeps billing after the caller has stopped listening.
+   */
+  readonly abortSignal: AbortSignal | null;
+}
+
 export interface ModelRouter {
   /**
    * Bind a plan to a credential and return a handle the turn engine can use.
    *
-   * This is the inference seam. It does not run a turn: composing a turn out of
-   * sessions belongs to `conversations`, which the ADR extracts last.
+   * The route half of the inference seam. `generate` and `stream` are the other
+   * half; composing a whole TURN out of generations — deciding what to put in
+   * the prompt, what to do with the answer, and what to persist — still belongs
+   * to `conversations`, which the ADR extracts last.
+   *
+   * AN IMPLEMENTATION MAY RETURN A HANDLE IT MINTED EARLIER, and is expected to:
+   * constructing a client per call is waste, and the running system holds one
+   * resolved model handle across a whole route's lifetime. What it may NOT do is
+   * return one whose `expiresAt` has passed. Because it may, `expiresAt` is a
+   * real answer rather than a formality, and the caller checks it — see
+   * `application/run-model-generation.ts`.
    */
   open(request: OpenModelRequest): Promise<Result<ModelSession>>;
+
+  /**
+   * Run a generation to completion and return everything it produced.
+   *
+   * Covers the whole non-streaming surface the extraction source reaches for:
+   * plain text, an object shaped by a schema, and any number of tool round
+   * trips up to the step budget. The per-step figures come back in
+   * `steps`, and `totalUsage` is derived from them, so a caller pricing a turn
+   * through `priceModelUsage` charges the same tokens the trace shows.
+   *
+   * Cache accounting is NOT flattened. `TokenUsage` carries the cache read and
+   * write counts separately because `price-card.ts` charges them at separate
+   * rates, and a surface that returned one input figure would have made a
+   * cached turn indistinguishable from an uncached one on the bill.
+   */
+  generate(request: ModelGenerationRequest): Promise<Result<ModelGeneration>>;
+
+  /**
+   * The same generation, delivered as it happens.
+   *
+   * The outer `Result` is whether the generation STARTED. Once it has, a
+   * failure arrives as a `failed` event in the sequence, because a caller that
+   * has already received tokens needs the failure in the same order as the
+   * tokens rather than as a rejection out of band.
+   *
+   * The sequence always ends in exactly one of `finished`, `aborted` or
+   * `failed`. An implementation that ends it any other way has left the caller
+   * with a turn it cannot close.
+   */
+  stream(request: ModelGenerationRequest): Promise<Result<AsyncIterable<GenerationEvent>>>;
 
   /**
    * A minimal live call that proves the credential is accepted.

@@ -23,6 +23,12 @@ import type {
   BearerCredentialKind,
   BearerCredentialRecord,
   EmailAddress,
+  EndUserId,
+  EndUserIdentityId,
+  EndUserIdentityRecord,
+  EndUserQuery,
+  EndUserRecord,
+  EndUserWithIdentities,
   FamilyRevocation,
   ImpersonationAuditEntry,
   MagicLinkTokenRecord,
@@ -39,7 +45,7 @@ import type {
   TotpCredential,
   UserId,
 } from "../domain/index.js";
-import { isActive } from "../domain/index.js";
+import { compareEndUsers, isActive, matchesEndUserQuery } from "../domain/index.js";
 import type { AccessKeyRotationPlan } from "../domain/index.js";
 import type { IdentityAccessRepository } from "./ports/index.js";
 import type { EnvironmentId } from "@platos/kernel";
@@ -60,6 +66,8 @@ export interface InMemoryState {
   readonly refreshTokens: Map<TokenHash, OAuthRefreshTokenRecord>;
   readonly authorizationCodes: Map<TokenHash, OAuthAuthorizationCodeRecord>;
   readonly bearerCredentials: Map<string, BearerCredentialRecord>;
+  readonly endUsers: Map<EndUserId, EndUserRecord>;
+  readonly endUserIdentities: Map<EndUserIdentityId, EndUserIdentityRecord>;
   readonly impersonationAudit: ImpersonationAuditEntry[];
 }
 
@@ -76,6 +84,8 @@ function emptyState(): InMemoryState {
     refreshTokens: new Map(),
     authorizationCodes: new Map(),
     bearerCredentials: new Map(),
+    endUsers: new Map(),
+    endUserIdentities: new Map(),
     impersonationAudit: [],
   };
 }
@@ -299,12 +309,42 @@ export function inMemoryIdentityAccessRepository(
       },
     },
 
+    endUsers: {
+      // The tenant clause, the two filters, the search and the ORDER are all
+      // implemented, because they are the contract a real adapter's SQL has to
+      // reproduce. Paging is applied LAST, after ordering, which is the only
+      // arrangement under which two consecutive pages do not overlap.
+      async list(query: EndUserQuery) {
+        return matching(state, query)
+          .sort((left, right) => compareEndUsers(left.user, right.user))
+          .slice(query.offset, query.offset + query.limit);
+      },
+      // The same predicate, WITHOUT the window: a total that counted only the
+      // page would make `hasMore` permanently false.
+      async count(query: EndUserQuery) {
+        return matching(state, query).length;
+      },
+    },
+
     impersonationAudit: {
       async append(entry) {
         state.impersonationAudit.push(entry);
       },
     },
   };
+}
+
+/** Every stored end user, with its identities, that satisfies `query`. */
+function matching(state: InMemoryState, query: EndUserQuery): EndUserWithIdentities[] {
+  const rows: EndUserWithIdentities[] = [];
+  for (const user of state.endUsers.values()) {
+    const identities = [...state.endUserIdentities.values()].filter(
+      (identity) => identity.endUserId === user.endUserId,
+    );
+    const row: EndUserWithIdentities = { user, identities };
+    if (matchesEndUserQuery(row, query)) rows.push(row);
+  }
+  return rows;
 }
 
 function applyRotation(state: InMemoryState, plan: AccessKeyRotationPlan): void {

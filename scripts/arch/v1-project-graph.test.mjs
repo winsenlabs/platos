@@ -69,7 +69,6 @@ test("the live graph has exact aliases, 32 projects and 95 edges in all three re
 // ---------------------------------------------------------------------------
 
 test("the composition root's declared external dependencies are exactly the reviewed set", () => {
-  assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES), ["apps/core-api"]);
   assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["apps/core-api"], {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
@@ -77,6 +76,36 @@ test("the composition root's declared external dependencies are exactly the revi
     "reflect-metadata": "^0.2.2",
     rxjs: "^7.8.1",
   });
+});
+
+test("exactly TWO projects may hold an external dependency, and they are named", () => {
+  // The list is short on purpose and its shortness is the property. A third
+  // entry appearing here is a reviewed decision to let a registry package into
+  // the V1 layout, and it has to be made by moving this line.
+  assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
+    "apps/core-api",
+    "packages/adapters/model-router-providers",
+  ]);
+});
+
+test("the inference SDK is declared in exactly ONE project, at exactly one range each", () => {
+  // ADR M0.3 §5.1 rule (h) says the SDK may only be IMPORTED in this directory;
+  // this says it may only be DECLARED here. Without the second half a context
+  // could carry `ai` in its manifest and pass the import rule by not importing
+  // it -- and the next file that did would be one review away from legal.
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/model-router-providers"], {
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
+    ai: "^7.0.28",
+    ajv: "8.18.0",
+    zod: "3.25.76",
+  });
+  const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
+    .filter(([, declared]) => Object.keys(declared).some((name) => name === "ai" || name.startsWith("@ai-sdk/")))
+    .map(([project]) => project);
+  assert.deepEqual(holders, ["packages/adapters/model-router-providers"]);
 });
 
 test("an UNDECLARED external dependency fails, wherever it is added", () => {

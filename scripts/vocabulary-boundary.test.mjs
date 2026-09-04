@@ -616,7 +616,18 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         has to be named verbatim or neither argument stays checkable.
   //         Vendor vocabulary naming the external integration, not Platos
   //         vocabulary --> 19404.
-  assert.equal(manifest.exceptions.length, 19404);
+  //   +4    reviewed WIN-256 occurrences in the `tools` context's transcribed
+  //         tier-1 platform baseline. Three are the literal MCP tool names the
+  //         external durable-runtime integration publishes and one is the noun
+  //         inside the third; they are the names a caller actually sends, so
+  //         renaming them would leave the gate matching a pattern nothing sends
+  //         and silently ungate the tool. That is the ONLY vocabulary debt the
+  //         whole context incurs: every other reserved term it would have used
+  //         was prose, and the prose was rewritten instead — which is the
+  //         disposition ADR M0.3 §12 argues for, applied to content rather than
+  //         to a path segment. Disjoint from the +17 above (different files,
+  //         different owners), so the merged count is the sum --> 19408.
+  assert.equal(manifest.exceptions.length, 19408);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

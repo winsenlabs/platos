@@ -529,10 +529,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
     "apps-mcp-stdio": 3,
-    // 1 -> 207. WIN-252 added packages/core/NOTICE (the upstream MIT
-    // attribution, kept out of LICENSE so every publishable package's LICENSE
-    // stays byte-identical to the repository Apache-2.0 text). WIN-256 then
-    // added 206 files making packages/kernel and four contexts real
+    // 1 -> 207 -> 272 -> 339. WIN-252 added packages/core/NOTICE (the upstream
+    // MIT attribution, kept out of LICENSE so every publishable package's
+    // LICENSE stays byte-identical to the repository Apache-2.0 text). WIN-256
+    // then added 206 files making packages/kernel and four contexts real
     // (identity-access, secrets, tenancy, files) — domain, application, ports,
     // contracts, in-memory use cases and test builders.
     //
@@ -541,15 +541,199 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 272,
+    //
+    // +44: the same issue makes `eventing` real (ADR M0.3 §1 row 17) — 44
+    // files under packages/contexts/eventing, 30 source and 14 test. The four
+    // generated placeholders it replaces (domain, application,
+    // application/ports and contracts barrels) were already tracked, so they
+    // change bytes without changing the count, which is why 34 source files
+    // on disk conserve to a delta of 30.
+    //
+    // +55: the same issue makes `skills` real (M2.1) — 35 source and 20 test.
+    // The source is 14 domain modules (the manifest parser and its YAML subset,
+    // the catalogue aggregate, the project/environment install pair,
+    // visibility, prompt composition, tool namespacing, environment readiness,
+    // category derivation, import-source rewriting, identifiers, errors,
+    // policy), 4 driven ports, 13 application use cases and 4 in-memory testing
+    // doubles. Its four barrels were already tracked as generator placeholders
+    // and are EDITED, not added, which is why 55 and not 59.
+    //
+    // +51: the same issue makes `jobs` real (ADR M0.3 §1 row 11) — 35 source
+    // and 16 test. domain 23 (two aggregates, the invocation acceptance table,
+    // the payload admission rules, the execution-request gate and the
+    // idempotency decision, each with its co-located suite), application 17,
+    // its ports 4, its in-memory testing doubles 6, and the contracts barrel 1.
+    // Its four generator placeholders were already tracked, so they do not
+    // appear in this delta — adoption releases a source tree, it does not add
+    // files.
+    //
+    // +77: the same issue makes `memory` real (ADR M0.3 §1 row 8) — 17 domain
+    // modules and 15 domain suites, 17 application modules and 12 application
+    // suites, 5 ports, 8 in-memory doubles and their barrel, and the contracts
+    // barrel with its suite. The 77 are likewise NET of the 4 generated
+    // placeholders adoption released and this code replaced in place.
+    //
+    // +63: the same issue makes `cost-monitoring` real (ADR M0.3 §1 row 13) —
+    // 15 domain modules and 12 domain suites, 16 application modules and 8
+    // application suites, 4 ports, 6 in-memory doubles, and the contracts
+    // barrel with its suite. The 63 are NET of the same 4 generated
+    // placeholders every adoption releases and this code replaced in place.
+    //
+    // +48: the same issue makes `privacy` real (ADR M0.3 §1 row 18) — 48 net
+    // files under packages/contexts/privacy, 33 source (10 domain modules, 4
+    // driven ports, 13 use-case and composition modules, 3 in-memory doubles, 2
+    // contracts entrypoints, 1 barrel) and 15 test suites. Its four generator
+    // placeholders were already tracked and are EDITED, not added, so adoption
+    // itself moves nothing here; only the released source tree does.
+    //
+    // +48: the same issue makes `observability` real (ADR M0.3 §1 row 16) — 48
+    // net files under packages/contexts/observability, 33 source (14 domain
+    // modules plus the domain barrel, 4 ports modules plus their barrel, 7
+    // application modules plus the application barrel, the contracts barrel and
+    // 5 in-memory testing doubles) and 15 test suites (9 domain, 5 application,
+    // 1 contract). The observability branch's own tip recorded 47: the 48th is
+    // application/drain-projections.lanes.test.ts, split out because the
+    // end-to-end tool-call and usage cases took drain-projections.test.ts to 453
+    // effective lines, past the ADR M0.3 §6 400-line warning band.
+    //
+    // +67: the same issue makes `agents` real (ADR M0.3 §1 context 5) — 16
+    // domain modules and 14 domain suites, 16 application modules and 10
+    // application suites, 4 ports, 4 in-memory doubles, and the contracts barrel
+    // plus its split read-model module and its suite. The 67 are likewise NET of
+    // the 4 released placeholders, and two of them exist only because the ADR
+    // M0.3 §6 budget bit in its warning band and the answer was to split rather
+    // than to waive.
+    //
+    //
+    // +56: the same issue makes `tools` real (ADR M0.3 §1 context 7) — 17
+    // domain modules and 13 domain suites, 12 application modules and 4
+    // application suites, 3 ports, 4 in-memory doubles, and the contracts
+    // barrel with its suite, which is 55; the 56th is
+    // contracts/operator-gate.test.ts, the suite proving the operator gate on
+    // all fourteen published methods that have one — eleven of which had no
+    // refusal case at all, six of those eleven mutating. It is ONE file because
+    // the twenty-eight cases had to be written out rather than looped: the
+    // test-case census refuses an `it()` declared inside a loop, and folding
+    // them into the contracts barrel suite would have pushed that file past the
+    // ADR M0.3 §6 warning line. The 56 are NET of the 4 generated placeholders
+    // that adoption released and this code replaced in place, exactly as every
+    // other adoption's delta is.
+    //
+    // +42: the same issue makes `channels` real (ADR M0.3 §1 row 9) — 27 source
+    // and 15 test files under packages/contexts/channels, NET of the 4 generated
+    // placeholders adoption released and this code replaced in place. Its
+    // `credentialRevision` third axis on `ChannelInstallation` is carried
+    // deliberately, not tidied away: `channel-persistence.service.ts` already
+    // enforces three axes, so deleting the field would be a silent regression.
+    //
+    // +84: the same issue makes `governance` real (ADR M0.3 §1 row 14). The tree
+    // holds 87 TypeScript files — 19 domain modules and 16 domain suites, 17
+    // application modules and 14 application suites, 9 ports, 10 in-memory
+    // doubles and testing fixtures, and 2 contracts files (the barrel and its
+    // suite) — of which FOUR are the generated placeholders adoption released
+    // and this code replaced in place, so 83 are new. The 84th is
+    // `mutations.json`, the guard ledger that names every authorization check,
+    // cap, kill switch and erasure step in the package together with the edit
+    // that would remove it. That one is the single `config` file in this delta
+    // and needed NO new ledger rule: `packages.contexts.config` already matches
+    // `packages/contexts/**/*.json`.
+    //
+    // The 84 conserves against the other two censuses rather than standing
+    // alone: 83 TypeScript files (52 source + 31 test, which is the same +83
+    // that `scripts/arch/arch-boundaries.test.mjs` counts as 948 -> 1031 and
+    // `scripts/arch/max-file-lines.test.mjs` counts as 879 -> 962) plus the one
+    // JSON. Its branch stated those two as 464 -> 547 and 395 -> 478, which were
+    // its own tree's numbers; the DELTA is what conserves and the delta is
+    // unchanged. All three are NET of the 4 generated placeholders adoption
+    // released and this code replaced in place. A deletion cannot hide inside
+    // this addition because the same 83 has to appear in three independently
+    // computed places.
+    //
+    // THE ADOPTIONS ARE SUMMED, NOT SIDE-PICKED: they add DISJOINT files under
+    // eleven different package directories, plus eight more into a twelfth that
+    // was already real, and each moves this one number, so
+    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 84 + 8 = 915. The
+    // eventing
+    // branch pinned 316, the skills branch pinned 327, the jobs branch pinned
+    // 323, the memory branch pinned 349, the cost-monitoring branch pinned 335
+    // and the privacy branch pinned 320, the observability branch pinned 320 as
+    // well, the agents branch pinned 339, the tools branch pinned 328 and the
+    // channels branch pinned 314; the governance branch, which alone branched
+    // from the agents branch rather than from v1, pinned 423 (272 + 67 + 84) and
+    // was blind to the other nine. Each is right for its own tree alone. Taking
+    // any of them would leave whole
+    // contexts' files unaccounted while the gate stayed green on the branch it
+    // came from.
+    // +8: WIN-256's `conversations` prerequisite (ADR M0.3 §14) puts the
+    // inference surface on the ModelRouter port. Four source modules under
+    // packages/contexts/providers — domain/prompt.ts, domain/prompt-cache.ts,
+    // domain/generation.ts and application/run-model-generation.ts — and the
+    // four suites beside them. It ADOPTS NO PROJECT, so unlike every delta
+    // above it releases no placeholder and replaces nothing: this +8 is gross
+    // and net alike. Its branch pinned 280 (272 + 8) on v1 and was blind to all
+    // eleven adoptions; 907 + 8 = 915 here.
+    //
+    // +34: WIN-256's MODEL ROUTER ADAPTER. Fifteen source modules and fifteen
+    // suites under packages/adapters/model-router-providers, the sole holder of
+    // the inference SDK, plus two domain modules and two suites under
+    // packages/contexts/providers — the tool-input repair and the
+    // structured-output correction, both PURE, which is the same property that
+    // puts prompt-cache.ts in the domain too.
+    //
+    // It is the FIRST delta on this axis that lands under
+    // `packages/adapters/**` rather than `packages/contexts/**`, and the first
+    // adapter adoption of any kind. Adoption releases that project's TWO
+    // declaration placeholders (src/adapter.ts and src/index.ts) and this code
+    // replaced BOTH in place under the same names, so the +34 is 32 + 2 with no
+    // subtraction hidden inside it and is net as well as gross. Its branch
+    // pinned 314 (272 + 8 + 34) on the prerequisite tip and was blind to all
+    // eleven adoptions above; 915 + 34 = 949 here, and 314 is wrong by exactly
+    // the 635 those eleven contribute.
+    //
+    // WIN-257 OPERATOR IDENTITY (M2.2) adds 18, 949 -> 967, ALL in `packages`
+    // and all under `packages/contexts/**`. T2 adds no file at all -- composing
+    // tenancy is a manifest subpath, a wiring edit and a fixture helper in files
+    // that already existed. T1 +2 (the first implementation of the published
+    // IdentityAccessContract and its refusal suite); T3 +4 (the two
+    // transactional writes whose only home was a Prisma `$transaction` in a
+    // Remix route, and a suite for each); T4 +8 (tenancy domain/visibility.ts,
+    // the authorization rule ported out of
+    // apps/webapp/app/services/projectAccess.server.ts where it existed only as
+    // a Prisma.ProjectWhereInput, plus application/operator-read-models.ts;
+    // identity-access domain/end-user.ts and application/list-end-users.ts, the
+    // read this context published none of despite being sole writer of EndUser;
+    // and a suite for each of the four); T5 +4 (identity-access
+    // domain/session-cookie.ts, the cookie exchange contract moved out of
+    // apps/webapp/app/services/auth.server.ts, and its suite, plus the two
+    // suites the ADR M0.3 section 6 line budget forced out of
+    // identity-access-service.test.ts -- a SPLIT, not new coverage). Its branch
+    // pinned packages 272 -> 290 and the combined delta 346 -> 364 on v1, blind
+    // to every adoption above; the +18 is the part that conserves and 290 is not
+    // the number here. No new ledger rule was needed.
+    //
+    // WIN-256 CONVERSATIONS, the seventeenth and last context, adds 75, ALL in
+    // `packages` and all under packages/contexts/conversations: 78 real .ts
+    // files stand where 4 generated placeholders stood and one mutations.json
+    // joins them, so 78 - 4 + 1 = 75 and the release is written into the number
+    // rather than hidden by it. Nothing may import this context, so no file
+    // outside it moves. Its branch pinned packages 990 (915 + 75) on a tree that
+    // had neither the adapter nor WIN-257; the three deltas are disjoint and SUM,
+    // 915 + 34 + 18 + 75 = 1042, and neither 967 nor 990 is the number here.
+    packages: 1042,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 272, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +346. Four branches add files on independent axes, so each
-    // area is the SUM of every contribution, not any one alone.
+    // packages 1 -> 907 -> 915 -> 949, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +991 -> +1025. Sixteen branches add files on independent
+    // axes, so each area is the SUM of every contribution, not any one alone;
+    // WIN-256's `conversations` prerequisite adds eight to `packages` and to
+    // nothing else, and its model router adapter adds the last thirty-four to
+    // `packages` and to nothing else. The running total on this line read +981
+    // while the assertions below already read +991; it was short by the
+    // prerequisite's 8 and the capability-matrix +2, and is carried through
+    // here rather than left stale.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
@@ -597,9 +781,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     //   docs-content +0 — WIN-256 adds no document to that area.
     //
-    // No new ledger rule was needed by any branch: docs/audits/**, packages/**,
-    // tests/** and scripts/** already have owning rules, so only the
-    // fingerprint moves. Every added file is enumerated above and conserves
+    // WIN-256 (tools context) contributes a further +56, all of it packages
+    // (725 -> 781), and nothing to any other area:
+    //   packages +56 — packages/contexts/tools made real, plus the
+    //   operator-gate suite the unproven-guard wave added; enumerated in the
+    //   packages comment above. NET of the 4 generated placeholders that
+    //   adoption released and this code replaced in place, exactly as the
+    //   providers delta was.
+    //
+    //   root-infra +0, docs-content +0 — adopting `tools` appends one line to
+    //   the generator's ADOPTED_PROJECTS list in a file that already exists,
+    //   and the canary reconciliations edit existing suites. The axis is
+    //   disjoint from WIN-297's apps/* and WIN-284's tests/*, so the merged
+    //   delta is the sum, not a reconciliation.
+    //
     // WIN-297 (composition root) contributes +24 (apps-core-api +19,
     // apps-mcp-stdio +3, root-infra +2), all attributed above and below.
     //
@@ -611,16 +806,84 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   root-infra from 15 to 17 on their own lineage, but on different files,
     //   so the integrated value is 10 + 3 + 17 + 7 + 2 = 39, not 17.
     //
+    // WIN-256 (agents context) contributes +67, ENTIRELY on the packages axis
+    // — 272 -> 339, enumerated in the packages comment above. Adoption itself
+    // adds no root-infra file: it is one line appended to the generator's
+    // ADOPTED_PROJECTS list, in a file that already existed, exactly as it was
+    // for `providers`. docs-content and both apps areas are untouched, which is
+    // why this slice composes with the other four by addition rather than by
+    // reconciliation.
+    //
     // No new ledger rule was needed by any branch beyond WIN-297's
     // apps-core-api.source.process rule, which is declared ahead of the
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // WIN-256 (eventing context) contributes +44, WIN-256 (skills context)
+    // contributes +55, WIN-256 (jobs context) contributes +51, WIN-256 (memory
+    // context) contributes +77 and WIN-256 (cost-monitoring context)
+    // contributes +63, all five ENTIRELY on the packages axis —
+    // 272 -> 316 -> 371 -> 422 -> 499 -> 562 -> 610 -> 658 -> 725, enumerated in the packages
+    // comment above. No adoption adds a root-infra file: each appends one line to the
+    // generator's ADOPTED_PROJECTS list and edits the census pins, all in files
+    // that already existed. docs-content and both apps areas are untouched,
+    // which is why these slices compose with the other four — and with each
+    // other — by addition rather than by reconciliation.
+    //
+    // WIN-256 (tools context) contributes +56, WIN-256 (channels context)
+    // contributes +42 and WIN-256 (governance context) contributes +84 on the
+    // same packages axis, 725 -> 781 -> 823 -> 907 — and, with the
+    // prerequisite's 8 and conversations' 75, on to 990 — for the same
+    // reason and with the same absence of a root-infra or docs-content file.
+    // Governance's 84 is the only adoption delta that is not purely TypeScript:
+    // 83 .ts files plus `mutations.json`, which the existing
+    // `packages.contexts.config` rule already classifies, so no ledger rule
+    // changed for it either. WIN-256 (conversations context) contributes +75,
+    // the LAST of the seventeen and the second delta of that shape: 78 real .ts
+    // files replace the 4 generated placeholders adoption released, plus its own
+    // 89-entry `mutations.json` under the same config rule, so 78 - 4 + 1 = 75.
+    // On the kind axis that same 75 is 45 source (49 .ts source less the 4
+    // released placeholders, which were themselves source), 29 test and 1
+    // config. Nothing may import this context (ADR M0.3 section 1 row 16), so it
+    // touches no file outside packages/contexts/conversations and composes with
+    // every slice above by addition.
+    //
+    // WIN-256 (capability-matrix ownership) contributes +2, both root-infra,
+    // and is a different slice of the same issue from the domain-contracts
+    // +278 above:
+    //   scripts/arch/route-ownership.mjs   root-infra.tooling.scripts, source
+    //   scripts/capability-matrix.test.mjs root-infra.test.script-suites, test
+    // Nothing is deleted on that axis, so the two additions ARE the whole
+    // delta and no removal can hide inside them: root-infra 39 -> 41, and
+    // kindCounts source +1 and test +1 sum to the same 2. Its axis is disjoint
+    // from every context adoption above — those move `packages` alone and this
+    // one moves `root-infra` alone — so the integrated delta is the SUM,
+    // 989 + 2, and neither branch pin (897 or 348) is correct here.
+    //
+    // WIN-256's MODEL ROUTER ADAPTER contributes +34, ALL of it on the packages
+    // axis (915 -> 949) and none of it anywhere else:
+    //
+    //   packages/adapters/model-router-providers/src  15 source + 15 suites
+    //     the sole holder of the inference SDK. Fifteen modules because ADR
+    //     M0.3 §6 is the reason the extraction source's turn engine is 7,121
+    //     lines, and fifteen suites because the end-to-end one reached 645
+    //     effective lines as a single file.
+    //
+    //   packages/contexts/providers/domain            2 source + 2 suites
+    //     tool-input-repair and structured-output: the two PURE pieces the
+    //     adapter would otherwise have hidden beside an SDK call, on the same
+    //     argument prompt-cache.ts already makes for itself.
+    //
+    // Every other area is unchanged by it. The generator adoption, the widened
+    // max-file-lines selector, the seven new error codes and the census pins
+    // are all edits to files that already existed and add none.
+    //
+    // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
+    //   + 84 + 8 + 2 + 34 + 18 + 75 = 1118.
     "docs-content": 13,
-    "root-infra": 39,
+    "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1118);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +892,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +1118 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
+    // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
+    // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
+    // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
+    // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
+    // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
+    // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
+    // +75); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1118
   );
 });
 

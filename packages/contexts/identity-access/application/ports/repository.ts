@@ -28,6 +28,8 @@ import type {
   BearerCredentialKind,
   BearerCredentialRecord,
   EmailAddress,
+  EndUserQuery,
+  EndUserWithIdentities,
   FamilyRevocation,
   ImpersonationAuditEntry,
   MagicLinkTokenRecord,
@@ -151,6 +153,21 @@ export interface BearerCredentialStore {
   save(credential: BearerCredentialRecord): Promise<void>;
 }
 
+/**
+ * The read side of `EndUser`, and the only one.
+ *
+ * It takes a VALIDATED `EndUserQuery` rather than loose parameters, so the
+ * organization on it came from an authorized scope and an implementation has no
+ * decision left to make about which tenant it is answering for. Both methods
+ * take the same query: a `total` computed under different filtering from the
+ * page it describes is a pagination control that lies.
+ */
+export interface EndUserStore {
+  list(query: EndUserQuery): Promise<readonly EndUserWithIdentities[]>;
+  /** Rows matching the query IGNORING `limit` and `offset`. */
+  count(query: EndUserQuery): Promise<number>;
+}
+
 export interface ImpersonationAuditStore {
   /** Append-only. There is no update and no delete. */
   append(entry: ImpersonationAuditEntry): Promise<void>;
@@ -165,5 +182,6 @@ export interface IdentityAccessRepository {
   readonly accessKeys: AccessKeyStore;
   readonly oauth: OAuthStore;
   readonly bearerCredentials: BearerCredentialStore;
+  readonly endUsers: EndUserStore;
   readonly impersonationAudit: ImpersonationAuditStore;
 }

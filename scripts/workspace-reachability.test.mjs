@@ -462,12 +462,12 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 169 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 119 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 169. Adoption RELEASES placeholders, so this
-  // count only ever falls, and the three adopting slices release placeholders
-  // from DISJOINT projects. The integrated count is therefore the sum of all
-  // three reductions, not the smaller of the two branch pins:
+  // M2 INTEGRATION DELTA — 201 -> 119. Adoption RELEASES placeholders, so this
+  // count only ever falls, and the adopting slices release placeholders from
+  // DISJOINT projects. The integrated count is therefore the SUM of every
+  // reduction, never the smallest of the branch pins:
   //
   //   201 -> 182  WIN-256 slices 1-5 adopt 5 projects (packages/kernel and the
   //               secrets, files, tenancy and identity-access contexts),
@@ -478,35 +478,142 @@ test("generated ownership includes the generator's exact 169 outputs across 32 V
   //   178 -> 169  WIN-297 adopts the two apps, releasing 9: apps/core-api's 8
   //               (main.ts, app.module.ts and the six transport seams) and
   //               apps/mcp-stdio's 1 (main.ts).
+  //   169 -> 165  WIN-256 adopts `eventing` (ADR M0.3 §1 row 17), releasing the
+  //               same 4 entry points every context adoption releases.
+  //   165 -> 161  WIN-256 adopts `skills` (M2.1), releasing its own 4.
+  //   161 -> 157  WIN-256 adopts `jobs` (ADR M0.3 §1 row 11), releasing its own
+  //               4 — domain/index.ts, application/index.ts,
+  //               application/ports/index.ts and contracts/index.ts.
+  //   157 -> 153  WIN-256 adopts `memory` (ADR M0.3 §1 row 8), releasing the
+  //               same 4 barrels.
+  //   153 -> 149  WIN-256 adopts `cost-monitoring` (ADR M0.3 §1 row 13),
+  //               releasing the same 4 barrels.
+  //   149 -> 145  WIN-256 adopts `privacy` (ADR M0.3 §1 row 18), releasing the
+  //               same 4 barrels.
+  //   145 -> 141  WIN-256 adopts `observability` (ADR M0.3 §1 row 16),
+  //               releasing the same 4 barrels.
+  //   141 -> 137  WIN-256 adopts `agents` (ADR M0.3 §1 context 5), releasing the
+  //               same 4 barrels.
+  //   137 -> 133  WIN-256 adopts `tools` (ADR M0.3 §1 row 6), releasing the same
+  //               4 barrels.
+  //   133 -> 129  WIN-256 adopts `channels` (ADR M0.3 §1 row 7), releasing the
+  //               same 4 barrels.
+  //   129 -> 125  WIN-256 adopts `governance` (ADR M0.3 §1 row 14), releasing
+  //               the same 4 barrels, from a project no slice above touched.
+  //   125 -> 123  WIN-256 adopts `packages/adapters/model-router-providers`,
+  //               the ModelRouter implementation, releasing its 2 —
+  //               src/adapter.ts and src/index.ts. It is the FIRST adapter
+  //               adopted, and the first release from the adapters tier at all,
+  //               which is why it is the one reduction on this list that is not
+  //               4.
   //
-  // WIN-297 branched from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so
-  // it pinned 182 - 9 = 173 and never saw the providers release; WIN-256's tip
-  // pinned 178 and never saw the apps. Neither pin is correct here. 201 - 19 -
-  // 4 - 9 = 169, which is 178 - 9 and 173 - 4 alike.
+  //   123 -> 119  WIN-256 adopts `conversations` (ADR M0.3 §1 row 16), the
+  //               SEVENTEENTH AND LAST context, releasing the same 4 barrels.
+  //               With it EVERY CONTEXT IS REAL: the 22 placeholders that
+  //               remain are the eleven still-unadopted adapters at two files
+  //               each, and no `packages/contexts/**` file is generator-owned
+  //               any more. Its own branch pinned 125 -> 121 because it was cut
+  //               before the adapter released its 2; the reductions are disjoint
+  //               and SUM, so 125 - 2 - 4 = 119 and 121 is not the number here.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 72
-  // placeholders of the 24 still-unadopted projects. The scaffolding tier is
+  // Each branch pinned only what its own lineage could see: WIN-297 branched
+  // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
+  // 182 - 9 = 173; WIN-256's providers tip pinned 178 and never saw the apps;
+  // the eventing, skills, jobs, memory, cost-monitoring, privacy, observability,
+  // agents, tools and channels branches EACH pinned 165, because each saw the
+  // two apps and providers but not the other contexts. 165 is therefore the pin
+  // of TEN different trees, and it is correct for none of them merged. The
+  // governance branch is the one exception in shape but not in kind: it branched
+  // from the agents branch at e602cb0b, so it could see agents' reduction and
+  // pinned 165 - 4 = 161 — still partial, because the eventing, skills, jobs,
+  // memory, cost-monitoring, privacy, observability, tools and channels
+  // reductions were all invisible to it. None of those pins is correct here.
+  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 2 = 119:
+  // nineteen released by slices 1-5, four by providers, nine by the two apps,
+  // four each by the TWELVE contexts adopted since, and TWO by the first adopted
+  // adapter. That is 165 - 46 read from any of the ten branches that pinned 165,
+  // and 161 - 42 read from the governance branch that pinned 161. The model
+  // router adapter branch pinned 169 - 2 = 167, blind to all twelve context
+  // adoptions and to governance; the conversations branch pinned 121, blind to
+  // the adapter's 2. Each is right alone and wrong here.
+  //
+  // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing`, `skills`, `jobs`,
+  // `memory`, `cost-monitoring`, `privacy`, `observability`, `agents`, `tools`,
+  // `channels`, `governance` and `model-router-providers` move the SAME constant
+  // on INDEPENDENT axes, so the reconciliation is arithmetic on every delta and
+  // not a choice between green branches. Side-picking 161 would leave the tree
+  // with thirty-eight unaccounted released placeholders, and side-picking the
+  // adapter branch's 167 would leave it with forty-four, and in either case the
+  // canary would be quietly wrong while staying green on each branch alone.
+  //
+  // THE DELTA IS THE ADOPTED PROJECT'S OWN PLACEHOLDER COUNT, and that is the
+  // property to check rather than the total: adoption releases a project's
+  // PLACEHOLDERS and never its scaffolding. Every context carries 4 barrels, so
+  // every context adoption above is a delta of exactly 4, and a context delta of
+  // anything else means a scaffolding file was moved or a fifth placeholder was
+  // invented. An ADAPTER carries 2, so the adapter adoption is a delta of
+  // exactly 2. Earlier revisions of this comment said the delta is always 4;
+  // that was true of a tree in which only contexts and the two apps had ever
+  // been adopted, and the first adapter adoption makes it false, so it is
+  // corrected here rather than carried. Written out so a DELETION CANNOT HIDE
+  // INSIDE AN ADDITION: sixteen reductions, 82 placeholders released, 119 owned
+  // outputs left.
+  //
+  // The generator now owns the same 97 SCAFFOLDING files plus the 22
+  // placeholders of the 11 still-unadopted projects, which are the eleven
+  // remaining ADAPTERS at two files each. NO CONTEXT IS STILL ON PLACEHOLDERS —
+  // that is what `conversations` being the seventeenth and last means, and it is
+  // the property to re-check here rather than the total. The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
   // package.json, tsconfig.json and README.md. The project count is unchanged
   // at 32 for the same reason — adoption releases a project's PLACEHOLDERS,
-  // not its scaffolding. That is what lets the generator carry apps/core-api's
-  // new @nestjs runtime dependencies and its two decorator compiler options,
-  // which scaffolding a hand edit could not have added.
+  // not its scaffolding, so an adopted project keeps three owned outputs and
+  // never leaves this set. A drop THERE would mean a project stopped being
+  // generated at all, a different event that must not be absorbed silently by
+  // this constant. It is also what lets the generator carry apps/core-api's new
+  // @nestjs runtime dependencies and its two decorator compiler options, which
+  // scaffolding a hand edit could not have added.
   //
-  // This canary is the FIRST step of the ci.yml typecheck job and it was
-  // already red on `tejas/win-256-providers-context` at 25b231b, which asserted
-  // 182 while its own committed evidence recorded 178. It is reconciled here
-  // with its full delta, not forced.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 169);
+  // THIS CANARY IS THE FIRST STEP OF THE ci.yml TYPECHECK JOB, and every
+  // adoption drops the count by that project's own placeholder count, so a
+  // branch that adopts one and does not reconcile the number here is red before
+  // any of its own code is compiled. `tejas/win-256-providers-context` at
+  // 25b231b asserted 182 while its own committed evidence recorded 178. The 123
+  // below was READ BACK from a regenerated
+  // `docs/audits/win-253-workspace-reachability.json`, not derived from the
+  // chain above; the chain is the explanation, the report is the authority, and
+  // they agree. Every number here moves with its delta and is never forced, and
+  // `pnpm audit:workspace-reachability` is regenerated to a fixpoint beside it.
+  //
+  // `node scripts/arch/gen-v1-skeleton.mjs --check` prints the same arithmetic
+  // from the other side: "97 scaffolding + 22 placeholder = 119 generated
+  // file(s) for 32 V1 projects and 95 project edges (21 project(s) adopted,
+  // 82 placeholder(s) released)". 22 placeholders REMAIN owned and 82 have been
+  // RELEASED. The adapter branch quoted "97 scaffolding + 70 placeholder = 167
+  // ... 34 placeholder(s) released" and the conversations branch quoted
+  // "97 scaffolding + 24 placeholder = 121 ... 80 placeholder(s) released", each
+  // from the tree it could see; neither sentence is true here, and both are
+  // re-read rather than carried.
+  //
+  // THE 119 WAS READ BACK from the regenerated report and from
+  // `gen-v1-skeleton.mjs --check`, which agree; it was not computed here.
+  //
+  // The count falls and the PROJECT count does not: 32 is unchanged, because
+  // adoption releases a project's placeholders and never its scaffolding, and
+  // the adopted adapter still owes its generated package.json, tsconfig.json and
+  // README.md. That is exactly what lets the generator carry this adapter's five
+  // vendor specifiers, which a hand edit to a byte-compared manifest could not
+  // have added.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 119);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 169 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 169);
+  // Same 119 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 119);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
@@ -526,10 +633,22 @@ test("an explicit generated header, not a generated-looking path, owns generated
   // packages/kernel/src/index.ts, which WIN-256 adopted out of generator
   // ownership — its first line became real source, so the fixture silently
   // stopped carrying a generated header and the assertion below inverted.
-  // conversations/ is one of the 27 projects still generator-owned; the
-  // assertion right after this one fails if the header is ever not generated.
+  // CORRECTION, 2026-09-04. This said "one of the 27 projects still
+  // generator-owned", which was written when WIN-256 slice 5 had adopted five
+  // projects (32 - 5 = 27) and was silently false from the sixth adoption on.
+  // The count is dropped rather than re-pinned because it rots on every
+  // adoption and nothing checks it. What the fixture actually needs is the
+  // property, and that is asserted.
+  //
+  // SECOND CORRECTION, same day. This read `conversations` as "the ONLY context
+  // still on generator-owned placeholders", which WIN-256 has now made false:
+  // adopting it made all seventeen contexts real, and NO context carries a
+  // generated header any more. The fixture moves to an ADAPTER, which is the
+  // tier that is still entirely generator-owned — twelve projects, two files
+  // each — and the assertion right after it fails the moment that stops being
+  // true, exactly as it just did.
   const realHeader = fs
-    .readFileSync(path.join(ROOT, "packages/contexts/conversations/domain/index.ts"), "utf8")
+    .readFileSync(path.join(ROOT, "packages/adapters/durable-runtime/src/index.ts"), "utf8")
     .split("\n", 1)[0];
   assert.match(realHeader, /generated by scripts\/arch\/gen-v1-skeleton\.mjs/u,
     "the header fixture must come from a file the generator still owns");

@@ -108,8 +108,45 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
   "packages/contexts/files", // WIN-256 — attachments + artifacts, and the ObjectStore port it owns
   "packages/contexts/providers", // WIN-256 — provider keys, the model catalogue, rate cards, and the ModelRouter port it owns
+  "packages/contexts/eventing", // WIN-256 — the outbox drain, NotificationRule, and NotificationRequested
+  "packages/contexts/skills", // WIN-256 — the skill catalogue, its install pair, and the manifest parser
+  "packages/contexts/jobs", // WIN-256 — Job definitions and the AgentApproval suspension seam
+  "packages/contexts/memory", // WIN-256 — memories, the knowledge graph, extraction, and the Cache port it owns
+  "packages/contexts/cost-monitoring", // WIN-256 — budgets, the spend ledger, threshold alerting, and the Notifier port it owns
+  "packages/contexts/privacy", // WIN-256 — right-to-erasure orchestration over the kernel ErasureTarget[]
+  "packages/contexts/observability", // WIN-256 — the analytical projection, the drain, and the AdminAudit trail
+  "packages/contexts/agents", // WIN-256 — agent definitions, immutable versions, bindings and the canary split, clusters, skill loadout, macros and saved requests
+  "packages/contexts/tools", // WIN-256 — the tool-gateway/mcp-platform merge: the registry, the four-tier gate, and the ToolDispatch port it owns
+  "packages/contexts/channels", // WIN-256 — hosted channels, the inbox lease, the refresh fence, and the ChannelAdapter port it owns
+  "packages/contexts/governance", // WIN-256 — the safety ledger and the kernel SafetyEventSink behind it, message ratings, eval criteria, judged evals and golden sets
+  "packages/contexts/conversations", // WIN-256 — the turn-execution engine: Thread, Turn, Step, PostmanExecution, and the DAG sink nothing imports
+  "packages/adapters/model-router-providers", // WIN-256 — the ModelRouter implementation and THE sole holder of the inference SDK
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
+];
+
+// ---------------------------------------------------------------------------
+// CONTEXTS THAT PUBLISH THEIR USE CASES (WIN-257). Append-only, one project path
+// per entry, each with the issue that needed it.
+//
+// A context manifest publishes two subpaths by default: `.` (its contracts) and
+// `./application/ports/index.js` (its driven ports). Both are types. The factory
+// that BUILDS the context — `createIdentityAccessService`, `createTenancyService`
+// — lives in `application/index.js`, which was not published, so the composition
+// root could name every context contract and construct none of them. WIN-297
+// recorded that as a finding and deliberately did not fix it, on the grounds
+// that publishing an entry point nothing imports is dead surface.
+//
+// So the list is not "every adopted context": it is the contexts `apps/core-api`
+// ACTUALLY composes. An entry here without a matching import in the composition
+// root is exactly the dead surface WIN-297 declined to create, and every entry
+// must be an adopted project — `selfCheck` fails otherwise, because an
+// unadopted project's source tree is generated placeholders and its
+// `application/index.ts` would be one too.
+// ---------------------------------------------------------------------------
+export const APPLICATION_ENTRY_PROJECTS = [
+  "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
+  "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption
@@ -212,27 +249,62 @@ function kernelManifest(adopted) {
   });
 }
 
-function contextManifest(name, adopted) {
+function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const dependencies = workspaceDependencies([
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
   ]);
+  const exports = {
+    ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
+    "./application/ports/index.js": {
+      types: "./dist/application/ports/index.d.ts",
+      import: "./dist/application/ports/index.js",
+    },
+  };
+  if (applicationEntries.includes(`packages/contexts/${name}`)) {
+    exports["./application/index.js"] = {
+      types: "./dist/application/index.d.ts",
+      import: "./dist/application/index.js",
+    };
+  }
   return packageManifest({
     scripts: scriptsFor(`packages/contexts/${name}`, adopted),
     name: `@platos/context-${name}`,
     description: `ADR M0.3 bounded context: ${name}.`,
     main: "./dist/contracts/index.js",
     types: "./dist/contracts/index.d.ts",
-    exports: {
-      ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
-      "./application/ports/index.js": {
-        types: "./dist/application/ports/index.d.ts",
-        import: "./dist/application/ports/index.js",
-      },
-    },
+    exports,
     dependencies,
   });
 }
+
+// The external runtime dependencies an adapter needs to BE the sole holder of
+// its vendor client (WIN-256). They are declared HERE, in the generator, for the
+// same reason apps/core-api's are: a project's manifest is SCAFFOLDING, adoption
+// releases a project's source tree and never its package.json, so the only
+// honest place to add a runtime dependency is the generator that owns the file.
+//
+// Specifiers are byte-identical to apps/agent's, so pnpm resolves them to the
+// entries already in pnpm-lock.yaml instead of opening a new resolution. An
+// adapter that forced a second copy of the inference framework into the lockfile
+// would be a supply-chain change disguised as an extraction.
+//
+// `ai` and the four `@ai-sdk/*` bindings appear HERE and nowhere else:
+// `inference-sdk-only` and `provider-sdk-only` in scripts/arch/boundary-rules.mjs
+// name this one directory as their only home, and this table is what makes that
+// permission real rather than theoretical. `ajv` is the JSON Schema validator the
+// structured-output surface needs and `zod` is the framework's own peer.
+const ADAPTER_RUNTIME_DEPENDENCIES = {
+  "model-router-providers": {
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
+    ai: "^7.0.28",
+    ajv: "8.18.0",
+    zod: "3.25.76",
+  },
+};
 
 function adapterManifest(adapter, adopted) {
   const dependency = adapter.owner === "kernel" ? "@platos/kernel" : `@platos/context-${adapter.owner}`;
@@ -242,7 +314,10 @@ function adapterManifest(adapter, adopted) {
     description: `Implements the ${adapter.owner} ${adapter.port} port.`,
     main: "./dist/index.js",
     types: "./dist/index.d.ts",
-    dependencies: workspaceDependencies([dependency]),
+    dependencies: {
+      ...workspaceDependencies([dependency]),
+      ...(ADAPTER_RUNTIME_DEPENDENCIES[adapter.dir] ?? {}),
+    },
   });
 }
 
@@ -380,7 +455,7 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton(adopted) {
+export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
@@ -420,7 +495,7 @@ export function renderSkeleton(adopted) {
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
@@ -555,7 +630,7 @@ export function renderSkeleton(adopted) {
   return files;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS) {
+export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -591,9 +666,29 @@ export function selfCheck(adopted = ADOPTED_PROJECTS) {
     seenAdoptions.add(project);
   }
 
+  // A context may publish its use cases only if it is a context AND is adopted.
+  // An unadopted project's whole source tree is generated placeholders, so its
+  // `application/index.ts` would be one too, and the export would name a file
+  // nothing wrote.
+  const seenEntries = new Set();
+  for (const project of applicationEntries) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenEntries.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    seenEntries.add(project);
+  }
+
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
-  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted));
+  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted, applicationEntries));
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
   }
