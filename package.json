@@ -97,7 +97,7 @@
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
     "test:arch-boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
-    "test:postgres-tenancy:integration": "pnpm --filter @platos/adapter-postgres-tenancy exec vitest run --config vitest.integration.config.ts",
+    "test:postgres-tenancy:integration": "pnpm --filter @platos/adapter-postgres-tenancy exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
   "audit:v1-project-graph": "node scripts/arch/v1-project-graph.mjs",
     "test:v1-project-graph": "node --test scripts/arch/v1-project-graph.test.mjs",
     "test:gen-v1-skeleton": "node --test scripts/arch/gen-v1-skeleton.test.mjs",

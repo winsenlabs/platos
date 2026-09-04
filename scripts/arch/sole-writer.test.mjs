@@ -5,6 +5,7 @@ import { after, test } from "node:test";
 
 import {
   BLANKET_OWNER,
+  CANONICAL_STORE_ADAPTERS,
   MUTATING_DELEGATE_METHODS,
   OWNER,
   RAW_SQL_METHODS,
@@ -23,6 +24,7 @@ import {
   findSqlMutations,
   findWrites,
   owningPackage,
+  ownerDirectories,
   ownerDirectory,
   readSchemaModels,
   readSchemaTables,
@@ -385,13 +387,49 @@ test("an element-access member that is not a delegate is still not a write", () 
   assert.deepEqual(result.unattributable, []);
 });
 
-test("the live tree still judges zero mutations, and the banner may claim no more", () => {
+// WIN-258 switched the write half on. The count is pinned with its arithmetic
+// written out, so a deletion cannot hide inside an addition:
+//
+//   src/tree.ts        organization.upsert, project.upsert, environment.upsert          3
+//   src/membership.ts  organizationMembership.upsert x2, projectMembership.upsert        3
+//   src/invitation.ts  organizationInvitation.upsert + .updateMany, entity.upsert,
+//                      environmentSession.upsert                                        4
+//   the integration suite  organization.delete (the cascade case),
+//                      environment.create (the expand/contract case)                    2
+//                                                                              total = 12
+//
+// Every one of the twelve is a row `tenancy` owns, written from `tenancy`'s
+// canonical-store adapter. The second and third assertions below say that
+// directly, so the pin cannot be satisfied by twelve mutations somewhere else.
+const LIVE_TREE_WRITE_COUNT = 12;
+
+test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
-  assert.equal(result.enforcement.writeCount, 0, "a V1 package now writes; the note in main() must be revisited");
+  assert.equal(
+    result.enforcement.writeCount,
+    LIVE_TREE_WRITE_COUNT,
+    "the write count moved; re-derive the arithmetic above rather than editing the number",
+  );
   assert.deepEqual(result.enforcement.violations, []);
   assert.deepEqual(result.enforcement.unattributable, []);
   assert.equal(failures(result), 0);
   assert.ok(result.enforcement.fileCount > 0, "the scan must have read something");
+});
+
+test("the canonical-store delegation is the ONLY reason those writes are legal", () => {
+  // Deleting `postgres-tenancy` from the permitted set must make all twelve
+  // illegal. A permission nothing depends on is a permission that is not doing
+  // anything, and this is the case that proves it is.
+  assert.deepEqual(ownerDirectories("tenancy"), [
+    "packages/contexts/tenancy",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.deepEqual(ownerDirectories("secrets"), ["packages/contexts/secrets"]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.tenancy, "packages/adapters/postgres-tenancy");
+  // `redis-ratelimit` is owned by identity-access and `notifier-email` by
+  // cost-monitoring; neither is a canonical store and neither may write a row.
+  assert.equal(CANONICAL_STORE_ADAPTERS["identity-access"], undefined);
+  assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], undefined);
 });
 
 // ---------------------------------------------------------------------------

@@ -271,18 +271,23 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   //     packages/kernel/**                20   NEWLY COVERED
   //     packages/contexts/**            1060
-  //     packages/adapters/**              54   NEWLY COVERED
+  //     packages/adapters/**              66
   //     apps/core-api/src/transports/**    6
   //                                     ----
-  //                                     1140
+  //                                     1152
   //
   // `packages/contexts/**` is 1060: 964 at adoption, +4 because the adapter branch
   // adds two domain modules and two suites to `providers`, +18 for WIN-257, and
   // +74 for conversations (78 real .ts where 4 placeholders stood).
   // `packages/adapters/**`
-  // is 54: the eleven still-unadopted adapters carry two declaration
-  // placeholders each (22), and model-router-providers carries 32 — seventeen
-  // source modules and fifteen suites. The adapter branch pinned
+  // is 66: the TEN still-unadopted adapters carry two declaration placeholders
+  // each (20), model-router-providers carries 32 — seventeen source modules and
+  // fifteen suites — and WIN-258's postgres-tenancy carries 14: eight source
+  // modules (the client, the unit of work, the mapping, three repository
+  // modules, the assembly and the entry point), two unit suites, the shared
+  // conformance scenario, the container harness and two integration suites. The
+  // eleventh placeholder pair became those 14, so the row moves 54 -> 66 and the
+  // ADAPTERS census below moves 22 -> 20 in the same step. The adapter branch pinned
   // 20 + 334 + 54 + 6 = 414 against a v1-based tree that had none of the eleven
   // contexts; 414 is not the number here and its +4, +20 and +54 are the parts
   // that conserve.
@@ -327,21 +332,33 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // None of the 18 is inside the 400-line warning band, so the finding list
   // below is unchanged.
+  //
+  // WIN-258 POSTGRES-TENANCY (M2.3) adds 12 NET under `packages/adapters/**`:
+  // 14 real files where the adapter's two declaration placeholders stood. Two of
+  // the fourteen were forced by this gate and are worth naming, because both are
+  // the split-rather-than-waive answer the notes above describe. The repository
+  // is three modules (tree, membership, invitation) rather than one, which would
+  // have been about 340 effective lines and inside the budget but not inside the
+  // seam; and the integration suite is two files plus a harness, because it
+  // reached 604 effective lines — over the 500 ERROR threshold — as one. Nothing
+  // the adapter adds is inside the 400-line warning band; the largest is the
+  // repository integration suite at 357, so the finding list below is unchanged.
+  //
   // WIN-256 CONVERSATIONS, the seventeenth and last context, adds 74 more under
   // `packages/contexts/**` (78 real .ts files where 4 generated placeholders stood),
   // 1066 -> 1140. Its own branch pinned 1044 with a sum ending `+ 8 + 74`, blind to
   // the adapter's +4/+20/+54 and to WIN-257's +18; 1044 is not the number here. The
   // 7,121-line oracle service it brings is split below even the 400-line warning
   // band, so the finding list below is unchanged by it.
-  assert.equal(result.fileCount, 1140);
+  assert.equal(result.fileCount, 1152);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12
   );
-  assert.equal(result.fileCount, 20 + 1060 + 54 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 66 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

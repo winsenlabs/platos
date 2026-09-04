@@ -69,6 +69,22 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // resolves them to the entries already in pnpm-lock.yaml rather than opening a
   // second resolution, so extracting a context cannot become a supply-chain
   // change. Changing a range here is a reviewed line, which is the point.
+  // WIN-258. The generated PostgreSQL client over the canonical schema.
+  //
+  // This is the same second half of ADR M0.3's cutting rule that the entry below
+  // states for the inference SDK: `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs says the ORM may only be IMPORTED here, and
+  // this line is where it may only be DECLARED here. Without it a context could
+  // put `@platos/tenancy-database` in its own manifest and pass the import rule
+  // by never importing it — and the next file that did would be one review away
+  // from legal.
+  //
+  // It is a workspace specifier because the client is generated from a schema
+  // inside this repository, so a version range would pin a copy that could
+  // disagree with the migrations the same commit ships.
+  "packages/adapters/postgres-tenancy": {
+    "@platos/tenancy-database": "workspace:*",
+  },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",

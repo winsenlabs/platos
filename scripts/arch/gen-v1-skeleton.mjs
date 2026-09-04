@@ -206,9 +206,31 @@ const ADOPTED_APP_SCRIPTS = { ...ADOPTED_SCRIPTS, start: "node dist/main.js" };
 // Projects whose adopted script set is the app set rather than the library set.
 const APP_PROJECTS = new Set(["apps/core-api", "apps/mcp-stdio"]);
 
+// Projects whose default test run must leave some of their suites out, and the
+// run that leaves them out (WIN-258).
+//
+// `packages/adapters/postgres-tenancy` ships two real-PostgreSQL suites. They
+// start a container, and `pnpm test:v1-packages` runs inside the typecheck job,
+// which has no Docker daemon — the same reason `differential-state-conservation`
+// is a job of its own. So the default run excludes them by FILENAME and a
+// dedicated root script and CI job run them.
+//
+// It is a script and not a `vitest.config.ts` because
+// `scripts/arch/v1-project-graph.mjs` requires every TypeScript file in a
+// project to sit inside that project's tsconfig `include`, and a config file at
+// the package root sits outside `src/**`. Moving it under `src/` would stop
+// vitest discovering it. The three globs are spelled out rather than relying on
+// the two defaults surviving a CLI override.
+const PROJECT_TEST_SCRIPTS = {
+  "packages/adapters/postgres-tenancy":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+};
+
 function scriptsFor(project, adopted) {
   if (!adoptedSet(adopted).has(project)) return BUILD_SCRIPTS;
-  return APP_PROJECTS.has(project) ? ADOPTED_APP_SCRIPTS : ADOPTED_SCRIPTS;
+  const base = APP_PROJECTS.has(project) ? ADOPTED_APP_SCRIPTS : ADOPTED_SCRIPTS;
+  const override = PROJECT_TEST_SCRIPTS[project];
+  return override === undefined ? base : { ...base, test: override };
 }
 
 function pascal(name) {
