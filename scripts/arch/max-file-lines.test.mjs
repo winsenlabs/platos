@@ -85,7 +85,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was to split it along the seam the budget was pointing at, into a write-path
   // suite and a read-path suite, rather than to raise the number. Every one of
   // the 328 is inside the budget and none is inside the 400-line warning band.
-  assert.equal(result.fileCount, 328);
+  //
+  // +2 -> 330: WIN-257 (M2.2) adds identity-access-service.ts and its refusal
+  // suite. Both are well inside the budget; the façade holds no rule, only the
+  // projection, which is what keeps it small.
+  assert.equal(result.fileCount, 330);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

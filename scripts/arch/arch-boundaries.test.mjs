@@ -243,7 +243,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // WIN-297 branched from WIN-256 before the providers commit and so pinned
     // 310 + 22 = 332; WIN-256's tip pinned 375 and never saw the apps.
-    // 375 + 22 = 332 + 65 = 397.
+    // 375 + 22 = 332 + 65 = 397, and WIN-257 takes that to 399.
+    //
+    //   397 -> 399  +2: WIN-257 (M2.2) adds the first implementation of the
+    //               published IdentityAccessContract and its refusal suite,
+    //               both under packages/contexts/identity-access/application/.
+    //               No rule needed changing: the façade imports its own
+    //               domain/, its own application/ and the kernel, and the
+    //               composition root reaching it through the newly published
+    //               `./application/index.js` subpath is core-api importing a
+    //               context, which rule (c) judges only between two CONTEXTS.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -251,7 +260,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 397, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 399, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
