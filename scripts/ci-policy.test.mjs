@@ -67,17 +67,19 @@ const expectedPnpmRunInstructions = new Map([
     ["RUN pnpm install --frozen-lockfile --prod"],
   ],
 ]);
-// DELTA — WIN-284 moves ci from 3 to 4. The fourth setup-node belongs to the new
-// `differential-state-conservation` job, which twin-runs the harness against two
-// isolated PostgreSQL databases and therefore needs a Docker daemon that the
-// typecheck job's service containers cannot provide. The count is pinned rather
-// than derived so that adding a job stays a reviewed decision: a silently
-// appearing runner is how unreviewed steps enter a pipeline.
-// One per JOB, so the count IS the job count of each workflow and a new job that
-// forgot to pin its Node version cannot pass. WIN-258 took ci.yml from four jobs
-// to five by adding `postgres-tenancy-repository`, which needs a Docker daemon
-// the typecheck job's service containers do not provide — the same reason
-// `differential-state-conservation` is its own job.
+// DELTA — WIN-284 moves ci from 3 to 4, and WIN-258 from 4 to 5. The count is
+// one per JOB, so it IS each workflow's job count, and a new job that forgot to
+// pin its Node version cannot pass.
+//
+// The fourth setup-node belongs to `differential-state-conservation`, which
+// twin-runs the harness against two isolated PostgreSQL databases; the fifth to
+// `postgres-tenancy-repository`, which runs the PostgreSQL TenancyRepository
+// against a real container. Both need a Docker daemon that the typecheck job's
+// service containers cannot provide, which is why each is its own job.
+//
+// The count is pinned rather than derived so that adding a job stays a reviewed
+// decision: a silently appearing runner is how unreviewed steps enter a
+// pipeline.
 const expectedSetupNodeCounts = new Map([
   ["ci", 5],
   ["buildImages", 1],
@@ -4340,7 +4342,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 358. Four independent
+  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 359. Five independent
   // contributions land on this count, on axes that do not interact, so the
   // pinned number is their SUM rather than any one side alone:
   //
@@ -4367,12 +4369,20 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   WIN-297 (composition root), +2. audit/test:composition-root join the
   //   same V1 release gate list, so each gains the same `|| true` control.
   //
-  // 340 + 2 + 9 + 5 + 2 = 358. The count is pinned rather than derived so that
-  // a control silently disappearing is a failure rather than a smaller number
-  // nobody reads.
+  //   WIN-258 (postgres tenancy repository), +1. The FIFTH ci.yml setup-node,
+  //   which belongs to the new `postgres-tenancy-repository` job — the same
+  //   shape as WIN-284's +1 above, and for the same reason: the controls are
+  //   generated one per setup-node occurrence, so a job that pins its Node
+  //   version gains a control that fails if the pin stops deriving from .nvmrc.
+  //   The job itself adds no other control: its four run steps are ordinary
+  //   pnpm commands with no `||`, no conditional and no relocated command.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 = 359. The count is pinned rather than derived so
+  // that a control silently disappearing is a failure rather than a smaller
+  // number nobody reads.
   assert.equal(
     controls.length,
-    358,
+    359,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
