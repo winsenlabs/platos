@@ -235,7 +235,7 @@ function kernelManifest(adopted) {
   });
 }
 
-function contextManifest(name, adopted) {
+function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const dependencies = workspaceDependencies([
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
@@ -247,7 +247,7 @@ function contextManifest(name, adopted) {
       import: "./dist/application/ports/index.js",
     },
   };
-  if (APPLICATION_ENTRY_PROJECTS.includes(`packages/contexts/${name}`)) {
+  if (applicationEntries.includes(`packages/contexts/${name}`)) {
     exports["./application/index.js"] = {
       types: "./dist/application/index.d.ts",
       import: "./dist/application/index.js",
@@ -410,7 +410,7 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton(adopted) {
+export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
@@ -450,7 +450,7 @@ export function renderSkeleton(adopted) {
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
@@ -585,7 +585,7 @@ export function renderSkeleton(adopted) {
   return files;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS) {
+export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -626,7 +626,7 @@ export function selfCheck(adopted = ADOPTED_PROJECTS) {
   // `application/index.ts` would be one too, and the export would name a file
   // nothing wrote.
   const seenEntries = new Set();
-  for (const project of APPLICATION_ENTRY_PROJECTS) {
+  for (const project of applicationEntries) {
     if (!project.startsWith("packages/contexts/")) {
       errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a context`);
     } else if (!knownProjects.has(project)) {
@@ -643,7 +643,7 @@ export function selfCheck(adopted = ADOPTED_PROJECTS) {
 
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
-  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted));
+  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted, applicationEntries));
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
   }

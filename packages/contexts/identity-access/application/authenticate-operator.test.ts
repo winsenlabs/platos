@@ -11,6 +11,7 @@ import {
   sessionId,
   userId,
 } from "../domain/testing.js";
+import type { TokenHash } from "../domain/index.js";
 import { authenticateOperator, revokeOperatorSession } from "./authenticate-operator.js";
 import { testPorts, type TestPorts } from "./testing.js";
 
@@ -48,8 +49,32 @@ describe("authenticating a dashboard session in memory", () => {
 });
 
 describe("negative controls", () => {
-  it("refuses an absent token without touching the store", async () => {
-    expect(await refusalCode(arrange(), null)).toBe("UNAUTHENTICATED");
+  it("refuses an absent token WITHOUT CONSULTING THE SESSION STORE", async () => {
+    // The refusal code alone does not prove the guard: hashing an absent token
+    // produces a digest that matches no row, so the fall-through refuses with
+    // the SAME `UNAUTHENTICATED` and a suite asserting only the code stays green
+    // with the guard deleted. What the guard actually buys is that no lookup is
+    // issued at all, so that is what is asserted.
+    const ports = arrange();
+    let lookups = 0;
+    const watched = {
+      ...ports,
+      repository: {
+        ...ports.repository,
+        operatorSessions: {
+          ...ports.repository.operatorSessions,
+          findByTokenHash: async (hash: TokenHash) => {
+            lookups += 1;
+            return ports.repository.operatorSessions.findByTokenHash(hash);
+          },
+        },
+      },
+    };
+    const result = await authenticateOperator(watched, { presentedToken: null });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("UNAUTHENTICATED");
+    expect(lookups).toBe(0);
   });
 
   it("refuses a token that matches no session", async () => {

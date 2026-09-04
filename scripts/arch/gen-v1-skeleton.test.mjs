@@ -182,14 +182,60 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  assert.deepEqual(selfCheck([]), [], "an empty registry is valid");
+  assert.deepEqual(selfCheck([], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"]), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"]), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-257: a context may publish its use cases only when this root composes it.
+// ---------------------------------------------------------------------------
+
+test("selfCheck rejects an application entry that is not an adopted context", () => {
+  const adopted = ["packages/contexts/identity-access"];
+
+  assert.deepEqual(
+    selfCheck(adopted, ["packages/contexts/agents"]),
+    ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
+    "an unadopted context's application/index.ts is a generated placeholder",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, ["apps/core-api"]),
+    [
+      "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
+      "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
+    ],
+    "apps/core-api is adopted but is not a context; both clauses fire",
+  );
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted]), [
+    "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
+  ]);
+});
+
+test("publishing the application entry point is what the list decides, nothing else", () => {
+  const withoutEntry = renderSkeleton(ADOPTED_PROJECTS, []);
+  const withEntry = renderSkeleton(ADOPTED_PROJECTS, ["packages/contexts/identity-access"]);
+  const manifest = "packages/contexts/identity-access/package.json";
+
+  assert.ok(!withoutEntry.get(manifest).includes("./application/index.js"));
+  assert.ok(withEntry.get(manifest).includes('"./application/index.js"'));
+  assert.equal(
+    withoutEntry.size,
+    withEntry.size,
+    "publishing a subpath adds no file; it edits one manifest",
+  );
+
+  // Every other context manifest is byte-identical either way: the list is a
+  // per-project decision and not a global flag.
+  for (const path of withEntry.keys()) {
+    if (path === manifest) continue;
+    assert.equal(withEntry.get(path), withoutEntry.get(path), `${path} must not move`);
+  }
 });
 
 test("the live adoption registry is a subset of the real projects", () => {

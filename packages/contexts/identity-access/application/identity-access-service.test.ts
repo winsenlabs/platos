@@ -141,16 +141,27 @@ describe("authenticateOperator — the projection", () => {
     expect(result.value.impersonating).toBeNull();
   });
 
-  it("carries NEITHER the token hash NOR the parent session into the view", async () => {
+  it("carries EXACTLY the seven published keys and nothing else", async () => {
+    // Asserted as an exact set, not as a list of absences. `not.toContain
+    // ("tokenHash")` reads like a leak control and is not one: the domain
+    // aggregate this projects from never carried a token hash, so no edit to
+    // this file could have turned that assertion red. An exact set does go red
+    // the moment the projection widens — by a spread, or by a field added to
+    // the aggregate and copied across without a decision.
     const result = await createIdentityAccessService(withSession()).authenticateOperator({
       presentedToken: SESSION_TOKEN,
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const keys = Object.keys(result.value);
-    expect(keys).not.toContain("tokenHash");
-    expect(keys).not.toContain("parentSessionId");
-    expect(keys).not.toContain("impersonatedUserId");
+    expect(Object.keys(result.value).sort()).toEqual([
+      "actorUserId",
+      "effectiveUserId",
+      "email",
+      "expiresAt",
+      "impersonating",
+      "mfaVerifiedAt",
+      "sessionId",
+    ]);
   });
 
   it("separates who is acting from whose permissions apply while impersonating", async () => {
@@ -301,6 +312,8 @@ describe("authenticateBearer — capability and lifecycle", () => {
   });
 
   it("projects the principal without the storage table it came from", async () => {
+    // `kind` IS on the domain authorization, so dropping it is a real decision
+    // this exact key set holds in place.
     const result = await createIdentityAccessService(withCredential()).authenticateBearer({
       presentedToken: BEARER_TOKEN,
       requestedScope: ENVIRONMENT,
@@ -311,8 +324,13 @@ describe("authenticateBearer — capability and lifecycle", () => {
     expect(result.value.tier).toBe("OPERATOR");
     expect(result.value.credentialId).toBe("mcp-token-1");
     expect(result.value.scope).toEqual({ kind: "ENVIRONMENT", tenant: ENVIRONMENT });
-    expect(Object.keys(result.value)).not.toContain("kind");
-    expect(Object.keys(result.value)).not.toContain("tokenHash");
+    expect(Object.keys(result.value).sort()).toEqual([
+      "credentialId",
+      "permissions",
+      "principalId",
+      "scope",
+      "tier",
+    ]);
   });
 });
 
