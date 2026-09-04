@@ -14,7 +14,16 @@
 // the repository's writes have to be inside, and handing a caller two objects
 // from two factories would make "which pool is this transaction on" a question
 // with more than one answer.
+//
+// AND SO DOES THE IDENTITY-ACCESS REPOSITORY, for exactly that reason widened by
+// one context (ADR M0.3 §15). `tenancy` and `identity-access` own rows in the
+// SAME PostgreSQL database, so their repositories are the same connection and
+// the same transaction. A use case that creates an organization and its first
+// owner's session is atomic across both without either context knowing the other
+// has a store — and a second adapter package would have made that two pools, two
+// transactions and a window in which one half is committed.
 
+import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   TenancyRepository,
   UnitOfWork,
@@ -22,13 +31,14 @@ import type {
 
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
+import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createMembershipRepository } from "./membership.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createTreeRepository } from "./tree.js";
 
-export interface PostgresTenancyAdapter extends TenancyRepository {
+export interface PostgresTenancyAdapter extends TenancyRepository, IdentityAccessRepository {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
   readonly unitOfWork: UnitOfWork;
@@ -60,6 +70,13 @@ export function buildPostgresTenancyAdapter(
     ...createTreeRepository(transactions),
     ...createMembershipRepository(transactions),
     ...createInvitationRepository(transactions),
+    // WIN-258 T2 (ADR M0.3 §15). The identity-access composite is SPREAD in
+    // beside tenancy's methods rather than nested under a property, because the
+    // adapter type must EXTEND both ports for `PORT_SATISFACTION` in the
+    // composition root to resolve — and `IdentityAccessRepository` is itself ten
+    // named store properties, so there is no name collision to arbitrate: its
+    // ten keys and tenancy's thirty-one are disjoint.
+    ...createIdentityAccessRepository(transactions),
   };
 }
 

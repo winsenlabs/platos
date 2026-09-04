@@ -41,3 +41,66 @@ export type { SecretHasher } from "./secret-hasher.js";
 export type { TokenMinter } from "./token-minter.js";
 export type { TotpCodeVerifier } from "./totp-code-verifier.js";
 export type { MfaSecretCipher } from "./mfa-secret-cipher.js";
+
+// --- what an implementation of the ports above needs in order to build a record
+//
+// WIN-258 T2. `packages/adapters/postgres-tenancy` implements
+// `IdentityAccessRepository` and its only edges are to this package, to
+// `@platos/context-tenancy` and to the schema package. Without the re-exports
+// below it would have to reach into `../../domain/`, which
+// `cross-context-contracts-only` exists to stop. The precedent is the identical
+// block in `@platos/context-tenancy/application/ports/index.js`, added for the
+// same reason and for the same adapter. Nothing new is published: every name
+// below is already public from `../../domain/index.js` or from `@platos/kernel`.
+
+export { asIdentifier } from "@platos/kernel";
+export type {
+  Branded,
+  EnvironmentId,
+  OrganizationId,
+  PrincipalId,
+  ProjectId,
+  TenantScope,
+} from "@platos/kernel";
+export { environmentScope, organizationScope, projectScope } from "@platos/kernel";
+
+export { GLOBAL_SCOPE, tenantAuthorizationScope } from "../../domain/index.js";
+export { OPERATOR_IDENTITY_PROVIDERS, PRINCIPAL_TIERS } from "../../domain/index.js";
+export type {
+  AccessKeyId,
+  AccessKeyRecord,
+  AccessKeyRotationPlan,
+  AuthorizationScope,
+  AuthorizationScopeKind,
+  BearerCredentialKind,
+  BearerCredentialRecord,
+  EmailAddress,
+  EndUserId,
+  EndUserIdentityId,
+  EndUserIdentityRecord,
+  EndUserQuery,
+  EndUserRecord,
+  EndUserStatusFilter,
+  EndUserWithIdentities,
+  FamilyRevocation,
+  ImpersonationAction,
+  ImpersonationAuditEntry,
+  MagicLinkTokenRecord,
+  OAuthAuthorizationCodeRecord,
+  OAuthAccessTokenRecord,
+  OAuthClientId,
+  OAuthRefreshTokenRecord,
+  OAuthTokenId,
+  OperatorIdentityProvider,
+  OperatorIdentityRecord,
+  OperatorSessionId,
+  OperatorSessionRecord,
+  OperatorUserRecord,
+  PrincipalTier,
+  RecoveryCodeRecord,
+  RotationFamilyId,
+  TokenHash,
+  TokenPairPlan,
+  TotpCredential,
+  UserId,
+} from "../../domain/index.js";

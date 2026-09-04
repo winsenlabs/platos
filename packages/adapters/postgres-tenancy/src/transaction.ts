@@ -82,6 +82,25 @@ export interface TenancyTransactions {
   writer(scope: TransactionScope): TenancyTransactionClient;
   /** The client a READ must use: the open transaction if there is one, else the pool. */
   reader(): TenancyReader;
+  /**
+   * Run `work` inside a transaction, JOINING one that is already open.
+   *
+   * WIN-258 T2. `IdentityAccessRepository`'s methods take no `TransactionScope`
+   * at all — not even its writes — because ADR M0.3 §3 forbids passing a vendor
+   * handle across a port and that context's use cases never needed to name one.
+   * Several of those methods are nonetheless MULTI-STATEMENT and have to be
+   * atomic: `saveTokenPair` writes a pair and consumes the token it replaces,
+   * `replaceRecoveryCodes` deletes a set and inserts another, `commitRotation`
+   * writes two rows under a row lock. Each one calls this.
+   *
+   * It is not a second transaction mechanism. It resolves its client through
+   * `writer()`, so an identity-access multi-statement write is held to exactly
+   * the three refusals a tenancy write is, and a use case that composes an
+   * identity-access write with a tenancy one gets ONE transaction rather than
+   * two — which is the whole reason the two contexts' repositories share a
+   * directory (ADR M0.3 §15).
+   */
+  atomic<Value>(work: (client: TenancyTransactionClient) => Promise<Value>): Promise<Value>;
 }
 
 export function createTenancyTransactions(
@@ -123,7 +142,7 @@ export function createTenancyTransactions(
     },
   };
 
-  return {
+  const transactions: TenancyTransactions = {
     unitOfWork,
 
     writer(scope: TransactionScope): TenancyTransactionClient {
@@ -155,5 +174,16 @@ export function createTenancyTransactions(
     reader(): TenancyReader {
       return ambient.getStore()?.client ?? client;
     },
+
+    async atomic<Value>(
+      work: (transactionClient: TenancyTransactionClient) => Promise<Value>,
+    ): Promise<Value> {
+      // Named through `transactions` rather than `this`, because every store in
+      // this package destructures the object it is handed and a `this`-bound
+      // method would lose its receiver on the way in.
+      return unitOfWork.run(async (scope) => work(transactions.writer(scope)));
+    },
   };
+
+  return transactions;
 }
