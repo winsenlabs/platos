@@ -444,7 +444,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * Verified as a live control on the memory branch: deleting one `it()` from
  * `packages/contexts/memory/domain/fusion.test.ts` left the file count where it
- * was (116 there, 166 in this integrated tree) and turned the case count red,
+ * was (116 there, 242 in this integrated tree) and turned the case count red,
  * which is the drift a file-count pin cannot see.
  *
  * COST-MONITORING ADOPTION (WIN-256, ADR M0.3 §1 row 13). One row again:
@@ -503,7 +503,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * Verified as a live control on the cost-monitoring branch: deleting one it()
  * from cost-monitoring/domain/guard.test.ts left the file count where it was
- * (109 there, 187 in this integrated tree) and turned the case count red, which
+ * (109 there, 242 in this integrated tree) and turned the case count red, which
  * is the drift a file-count pin cannot see.
  *
  *
@@ -629,7 +629,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * Every other package is unchanged.
  * AGENTS ADOPTION (WIN-256, ADR M0.3 §1 context 5). One row moves, and the
- * INTEGRATED runtime total ends at 3332 -> 3847. The agents branch pinned
+ * INTEGRATED runtime total goes 3332 -> 3847. The agents branch pinned
  * 1000 -> 1515 because its lineage carried only the four earliest packages; the
  * ROW is the same and the TOTAL it lands in is not.
  *
