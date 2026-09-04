@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "303dd60c24c5dc3bf5841a9cf1b5b0b5e43414a9696465cce72efd256e6dfa6f",
+  "evidenceSha256": "8f97c9ab78dc8b04ba739193dda2f08ef83b373f8584d595f3fb7e34bd6780ac",
   "generatedOwnership": {
     "explicitHeaderFileCount": 32,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6d64fa2f6e9305b9a03d6150fab63c983235c2ef5fb1df81975292083add1ed9",
+    "aggregateSha256": "b10b224234ace25b81e0f37a215a9416f5b9467becb513b7d05f4c00eaa411a3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -17805,7 +17805,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "7fc5f40e8ffac764baca6509cd1837357c762776537150a38ff9fe48d512ec07"
+        "sha256": "17d486cac4af866b4e7774c27c2670b20e41e8a202b9c75b6b428b0b87c43276"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -43208,7 +43208,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 725
+              "line": 729
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -43392,7 +43392,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "c29551b37f2614fc28e1cd50c49e38fdc56a2ad55c610bb281f4c63d5e99221c",
+      "evidenceSha256": "059ff28d56c3f3243139760ab3582f01ebdaf3cfd04d75c152b4c096f8dcb696",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -48214,7 +48214,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 801
+              "line": 805
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48458,7 +48458,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "4ef57e4a3faa348fff12f6680c9d500f4af89306c1c35783a686b60d909e1857",
+      "evidenceSha256": "c5080c00a12d941e23a480164ae13c02ea5a96e0dbacb7a947e18176e25d48ed",
       "manifestSha256": "8b353ef5a31c369c3f31d462104027d9a32a9cff44162118c5775df82df9c025",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
