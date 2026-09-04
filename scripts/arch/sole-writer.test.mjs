@@ -426,10 +426,21 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   ]);
   assert.deepEqual(ownerDirectories("secrets"), ["packages/contexts/secrets"]);
   assert.equal(CANONICAL_STORE_ADAPTERS.tenancy, "packages/adapters/postgres-tenancy");
-  // `redis-ratelimit` is owned by identity-access and `notifier-email` by
-  // cost-monitoring; neither is a canonical store and neither may write a row.
-  assert.equal(CANONICAL_STORE_ADAPTERS["identity-access"], undefined);
+  // WIN-258 T2: identity-access is delegated to the SAME directory, because one
+  // PostgreSQL database is one client is one adapter (ADR M0.3 §15).
+  assert.deepEqual(ownerDirectories("identity-access"), [
+    "packages/contexts/identity-access",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS["identity-access"], "packages/adapters/postgres-tenancy");
+  // The delegation is granted PER OWNER and never derived from the adapter
+  // table's owner column. `redis-ratelimit` is also owned by identity-access
+  // and `notifier-email` by cost-monitoring; neither is a canonical store, and
+  // an owner with no entry here still has exactly one permitted directory —
+  // which is what stops the shared directory from becoming a blanket licence.
   assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], undefined);
+  assert.deepEqual(ownerDirectories("memory"), ["packages/contexts/memory"]);
+  assert.deepEqual(ownerDirectories("cost-monitoring"), ["packages/contexts/cost-monitoring"]);
 });
 
 // ---------------------------------------------------------------------------

@@ -18,6 +18,9 @@
   "references": [
     {
       "path": "../../contexts/tenancy"
+    },
+    {
+      "path": "../../contexts/identity-access"
     }
   ]
 }

@@ -26,7 +26,17 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // (rule (f) makes the kernel a leaf, so it can never create a cycle). It does
 // not widen the context DAG, and `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
-export const EXPECTED_EDGE_COUNT = 95;
+// 95 -> 96 (WIN-258 T2, ADR M0.3 §15). `packages/adapters/postgres-tenancy`
+// gained a SECOND owner edge, to `packages/contexts/identity-access`.
+//
+// One PostgreSQL database sits behind one client, so one directory holds every
+// context's repositories over it — which is what §4's body already said the
+// directory was ("per-context repositories, owner-tagged"). That directory
+// therefore names two contexts' port types and needs two project references.
+// The edge cannot create a cycle: nothing imports an adapter except the
+// composition root, and `tenancy` already depends on `identity-access`, so
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged.
+export const EXPECTED_EDGE_COUNT = 96;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -128,20 +138,43 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 
 // Deliberately repeated here rather than imported from the generator. This is
 // the independent reviewed expectation that catches generator/map mutations.
+//
+// EACH VALUE IS A LIST OF OWNERS, IN ORDER (ADR M0.3 §15). It was a single
+// owner string until WIN-258 T2, which is the same shape as a one-element list
+// and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
+// the repositories of both contexts whose canonical rows live in the one
+// PostgreSQL database it has the client for.
+//
+// The widening is exactly "one or more", not "any". The list is still compared
+// as an EXACT, ORDERED expectation against the tsconfig references and manifest
+// dependencies the tree actually carries, so an adapter with an owner edge it
+// was not granted, and an adapter missing one it was, both still fail — and
+// `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
+// than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": "tenancy",
-  outbox: "kernel",
-  "durable-runtime": "kernel",
-  "clickhouse-observability": "observability",
-  "objectstore-minio": "files",
-  "redis-ratelimit": "identity-access",
-  "redis-cache": "memory",
-  "redis-streams": "kernel",
-  "model-router-providers": "providers",
-  "channel-slack": "channels",
-  "notifier-email": "cost-monitoring",
-  "notifier-webhook": "cost-monitoring",
+  "postgres-tenancy": ["tenancy", "identity-access"],
+  outbox: ["kernel"],
+  "durable-runtime": ["kernel"],
+  "clickhouse-observability": ["observability"],
+  "objectstore-minio": ["files"],
+  "redis-ratelimit": ["identity-access"],
+  "redis-cache": ["memory"],
+  "redis-streams": ["kernel"],
+  "model-router-providers": ["providers"],
+  "channel-slack": ["channels"],
+  "notifier-email": ["cost-monitoring"],
+  "notifier-webhook": ["cost-monitoring"],
 };
+
+/**
+ * The adapter directories entitled to more than one owner edge, and how many.
+ *
+ * Without this, "a value may be a list" would be indistinguishable from "any
+ * adapter may reach any number of contexts". This names the exception, and the
+ * check below fails BOTH ways: an unlisted directory with two owners, and a
+ * listed one that has stopped having the number recorded here.
+ */
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 2 };
 
 function expectedProjects() {
   return [
@@ -161,8 +194,11 @@ function expectedReferences() {
       ...EXPECTED_CONTEXT_DEPENDS_ON[name].map((dependency) => `packages/contexts/${dependency}`),
     ]);
   }
-  for (const [adapter, owner] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
-    graph.set(`packages/adapters/${adapter}`, [owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`]);
+  for (const [adapter, owners] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
+    graph.set(
+      `packages/adapters/${adapter}`,
+      owners.map((owner) => (owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`)),
+    );
   }
   graph.set("apps/core-api", [
     // WIN-297: the composition root names kernel ports directly. See the note on
@@ -340,6 +376,27 @@ export function checkV1ProjectGraph(root = repositoryRoot) {
   const discovered = discoverProjectPaths(root);
   if (!sameSet(discovered, projects)) {
     errors.push(`discovered project set ${describeSet(discovered)} does not equal expected ${describeSet(projects)}`);
+  }
+
+  // The multi-owner exception is judged HERE rather than left implicit in the
+  // shape of EXPECTED_ADAPTER_OWNERS. "A value may be a list" on its own would
+  // permit any adapter any number of owner edges; this restores the one-owner
+  // default and makes each departure from it a named, counted line.
+  for (const [adapter, owners] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
+    const allowed = EXPECTED_MULTI_OWNER_ADAPTERS[adapter] ?? 1;
+    if (owners.length !== allowed) {
+      errors.push(
+        `packages/adapters/${adapter} expects ${owners.length} owner edge(s); ${allowed} is what ADR M0.3 §4/§15 grants it`,
+      );
+    }
+    if (new Set(owners).size !== owners.length) {
+      errors.push(`packages/adapters/${adapter} names the same owner more than once`);
+    }
+  }
+  for (const adapter of Object.keys(EXPECTED_MULTI_OWNER_ADAPTERS)) {
+    if (!(adapter in EXPECTED_ADAPTER_OWNERS)) {
+      errors.push(`EXPECTED_MULTI_OWNER_ADAPTERS names ${adapter}, which is not an adapter`);
+    }
   }
 
   let referenceEdgeCount = 0;

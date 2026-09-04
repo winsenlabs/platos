@@ -229,6 +229,25 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // home, so the package permitted to write these rows and the package permitted
   // to hold the client are the same package by construction.
   tenancy: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T2. The PostgreSQL IdentityAccessRepository — the SAME directory,
+  // because there is one PostgreSQL database behind one client and ADR M0.3 §15
+  // makes that one adapter directory rather than one per context.
+  //
+  // TWO OWNERS RESOLVING TO ONE DIRECTORY IS NOT THE SAME AS ONE OWNER LOSING
+  // ITS BOUNDARY. Ownership here is carried by the owner TAG on the row, and
+  // `checkSoleWriter` still asks, per WRITE, whether the file's directory is one
+  // of `ownerDirectories(OWNER[model])`. A write to `Memory` from this package
+  // still fails, because `memory` has no entry in this map; what this entry
+  // grants is exactly the 23 rows `identity-access` owns.
+  //
+  // It is also what makes `AccessKeyStore` implementable at all.
+  // `Environment.accessKeyRevocationVersion` — the fence a rotation and a
+  // revoke race over — is a column on `Environment`, which `tenancy` owns. A
+  // thirteenth adapter package holding only identity-access's repositories
+  // could not have bumped it without writing a row it does not own; the shared
+  // directory can, because it is already `tenancy`'s delegate.
+  "identity-access": "packages/adapters/postgres-tenancy",
 });
 
 /**

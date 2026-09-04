@@ -25,7 +25,10 @@
 
 import type { DurableRuntime, EventBus, OutboxWriter } from "@platos/kernel";
 
-import type { RateLimiter } from "@platos/context-identity-access/application/ports/index.js";
+import type {
+  IdentityAccessRepository,
+  RateLimiter,
+} from "@platos/context-identity-access/application/ports/index.js";
 import type { TenancyRepository } from "@platos/context-tenancy/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
@@ -54,6 +57,12 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * already uses — `scripts/arch/boundary-rules.mjs`, the generator's `ADAPTERS`
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
+ *
+ * TWELVE SLOTS, THIRTEEN BINDINGS (ADR M0.3 §15). An install wires a
+ * DIRECTORY — one process-lifetime object holding one vendor client — so this
+ * table stays keyed by directory and keeps twelve entries. What a directory
+ * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
+ * per binding.
  */
 export interface AdapterInstances {
   readonly "postgres-tenancy": PostgresTenancyAdapter;
@@ -83,37 +92,54 @@ export type SuppliedAdapters = Partial<AdapterInstances>;
  * mistake would otherwise surface as a runtime type error in production.
  * `composition-root.test.mjs` mutates one entry and observes `tsc` reject it,
  * because a compile-time proof nobody has watched fail is not evidence.
+ *
+ * KEYED `<adapter>:<Port>`, ONE ENTRY PER BINDING (ADR M0.3 §15). It was keyed
+ * by directory while every directory had exactly one port, and that key can
+ * hold only one obligation per directory: under §15 a two-port directory would
+ * have had one binding proven and the other merely asserted, with the compiler
+ * unable to notice because a missing obligation is not a wrong one.
+ * `composition-root.mjs` now compares these keys against the declared bindings
+ * in BOTH directions, so an entry for a pair that was never bound is a failure
+ * rather than an extra proof.
  */
 type Satisfies<Adapter, Port> = Adapter extends Port ? true : never;
 
 interface PortSatisfaction {
-  readonly "postgres-tenancy": Satisfies<PostgresTenancyAdapter, TenancyRepository>;
-  readonly outbox: Satisfies<OutboxAdapter, OutboxWriter>;
-  readonly "durable-runtime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
-  readonly "clickhouse-observability": Satisfies<ClickhouseObservabilityAdapter, ObservabilitySink>;
-  readonly "objectstore-minio": Satisfies<ObjectstoreMinioAdapter, ObjectStore>;
-  readonly "redis-ratelimit": Satisfies<RedisRatelimitAdapter, RateLimiter>;
-  readonly "redis-cache": Satisfies<RedisCacheAdapter, Cache>;
-  readonly "redis-streams": Satisfies<RedisStreamsAdapter, EventBus>;
-  readonly "model-router-providers": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
-  readonly "channel-slack": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
-  readonly "notifier-email": Satisfies<NotifierEmailAdapter, Notifier>;
-  readonly "notifier-webhook": Satisfies<NotifierWebhookAdapter, Notifier>;
+  readonly "postgres-tenancy:TenancyRepository": Satisfies<PostgresTenancyAdapter, TenancyRepository>;
+  readonly "postgres-tenancy:IdentityAccessRepository": Satisfies<
+    PostgresTenancyAdapter,
+    IdentityAccessRepository
+  >;
+  readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
+  readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
+  readonly "clickhouse-observability:ObservabilitySink": Satisfies<
+    ClickhouseObservabilityAdapter,
+    ObservabilitySink
+  >;
+  readonly "objectstore-minio:ObjectStore": Satisfies<ObjectstoreMinioAdapter, ObjectStore>;
+  readonly "redis-ratelimit:RateLimiter": Satisfies<RedisRatelimitAdapter, RateLimiter>;
+  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter, Cache>;
+  readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
+  readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
+  readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
+  readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
+  readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
-  "postgres-tenancy": true,
-  outbox: true,
-  "durable-runtime": true,
-  "clickhouse-observability": true,
-  "objectstore-minio": true,
-  "redis-ratelimit": true,
-  "redis-cache": true,
-  "redis-streams": true,
-  "model-router-providers": true,
-  "channel-slack": true,
-  "notifier-email": true,
-  "notifier-webhook": true,
+  "postgres-tenancy:TenancyRepository": true,
+  "postgres-tenancy:IdentityAccessRepository": true,
+  "outbox:OutboxWriter": true,
+  "durable-runtime:DurableRuntime": true,
+  "clickhouse-observability:ObservabilitySink": true,
+  "objectstore-minio:ObjectStore": true,
+  "redis-ratelimit:RateLimiter": true,
+  "redis-cache:Cache": true,
+  "redis-streams:EventBus": true,
+  "model-router-providers:ModelRouter": true,
+  "channel-slack:ChannelAdapter": true,
+  "notifier-email:Notifier": true,
+  "notifier-webhook:Notifier": true,
 });
 
 /** Who owns the port an adapter implements: a context, or the kernel itself. */
@@ -134,6 +160,16 @@ export interface AdapterBinding {
  */
 export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy" }),
+  // WIN-258 T2 (ADR M0.3 §15). The SECOND binding of the same directory. It is
+  // a row here, not a thirteenth adapter package, because there is one
+  // PostgreSQL database behind one client and sixteen adapter packages would be
+  // sixteen homes for that client — which would make `tenancy-prisma-only`, the
+  // rule that pins the ORM to one directory, unwritable as a single-home rule.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "IdentityAccessRepository",
+    owner: "identity-access",
+  }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -147,6 +183,14 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "notifier-webhook", port: "Notifier", owner: "cost-monitoring" }),
 ] as const satisfies readonly AdapterBinding[]);
 
-export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze(
-  ADAPTER_BINDINGS.map((binding) => binding.adapter),
-);
+/**
+ * Every DIRECTORY that carries a binding, each once and in declaration order.
+ *
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirteen rows across
+ * twelve directories: a caller iterating this list to construct or close
+ * adapters would otherwise build `postgres-tenancy` twice and open two pools
+ * over the one database.
+ */
+export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
+  ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),
+]);

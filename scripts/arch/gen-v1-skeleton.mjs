@@ -38,8 +38,31 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
 // Adapter-facing ports belong to their contexts. Only genuinely cross-cutting
 // decoupling ports remain in the pure-leaf kernel (ADR M0.3 §13 amendment).
+//
+// AN ADAPTER DIRECTORY MAY SATISFY MORE THAN ONE PORT (ADR M0.3 §15 amendment).
+// `port`/`owner` are the PRIMARY binding — the one the directory is named after
+// and the one its README and manifest description lead with. `additional` holds
+// every further port the same directory satisfies, each with the context that
+// owns it. The pair is flattened by `adapterBindings()` below, and every gate
+// that used to read `adapter.port` now reads that flattening instead, so a
+// second binding is not a second declaration a reviewer has to remember to make.
+//
+// This is a WIDENING, not a relaxation: the flattened list is compared as a SET
+// against the composition root's own table, so an adapter that satisfies a port
+// it was not bound to and a port with no satisfying adapter both still fail —
+// see `selfCheck` below and `scripts/arch/composition-root.mjs`.
 export const ADAPTERS = [
-  { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy", note: "the tenancy-database client; per-context repositories, owner-tagged" },
+  {
+    dir: "postgres-tenancy",
+    port: "TenancyRepository",
+    owner: "tenancy",
+    // WIN-258 T2. ONE PostgreSQL database behind ONE client, so ONE directory.
+    // ADR M0.3 §4's body already spells this directory "per-context
+    // repositories, owner-tagged"; §15 records why the body wins over the
+    // header's narrower "implements ONE port".
+    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }],
+    note: "the tenancy-database client; per-context repositories, owner-tagged",
+  },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "THE single writer of the Event/outbox table" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "the durable job runtime behind one kernel port (ADR M0.3 §12)" },
   { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "the column-store observability client" },
@@ -52,6 +75,65 @@ export const ADAPTERS = [
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
 ];
+
+/**
+ * Every (adapter directory, port, owner) triple the layout declares, flattened.
+ *
+ * ONE entry per BINDING, not per directory. `postgres-tenancy` appears twice
+ * because it satisfies two ports; every other directory appears once. This is
+ * the list the composition root's table is compared against, the list the
+ * project graph derives its owner edges from, and the list `selfCheck` counts.
+ */
+export function adapterBindings(adapters = ADAPTERS) {
+  const bindings = [];
+  for (const adapter of adapters) {
+    bindings.push({ adapter: adapter.dir, port: adapter.port, owner: adapter.owner });
+    for (const extra of adapter.additional ?? []) {
+      bindings.push({ adapter: adapter.dir, port: extra.port, owner: extra.owner });
+    }
+  }
+  return bindings;
+}
+
+/** Every context (never the kernel) whose port `adapter` satisfies, in order. */
+export function adapterOwners(adapter) {
+  const owners = [adapter.owner];
+  for (const extra of adapter.additional ?? []) {
+    if (!owners.includes(extra.owner)) owners.push(extra.owner);
+  }
+  return owners;
+}
+
+/** The projects an adapter references: one per distinct owner it serves. */
+export function adapterOwnerProjects(adapter) {
+  return adapterOwners(adapter).map((owner) =>
+    owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`,
+  );
+}
+
+/** The workspace packages an adapter depends on: one per distinct owner. */
+export function adapterOwnerPackages(adapter) {
+  return adapterOwners(adapter).map((owner) =>
+    owner === "kernel" ? "@platos/kernel" : `@platos/context-${owner}`,
+  );
+}
+
+// ADR M0.3 §4 names twelve concrete adapter DIRECTORIES and, after the §15
+// amendment, thirteen BINDINGS across them. Both are pinned: a thirteenth
+// directory and a fourteenth binding are each a reviewed line rather than a
+// silent consequence of editing a table.
+export const EXPECTED_ADAPTER_COUNT = 12;
+export const EXPECTED_BINDING_COUNT = 13;
+
+/**
+ * The `owner:Port` pairs that legitimately have more than one adapter.
+ *
+ * `Notifier` is ADR M0.3 §4's own case: `notifier-email` and `notifier-webhook`
+ * are two delivery channels behind one context port, and that is the design.
+ * Every other port has exactly one home, and `selfCheck` fails both ways — an
+ * unlisted port with two homes, and a listed port that has stopped having two.
+ */
+export const MULTI_HOME_PORTS = ["cost-monitoring:Notifier"];
 
 export const TRANSPORTS = ["rest", "mcp", "ws", "webhook", "channels-ingress", "bff"];
 
@@ -72,7 +154,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // this edge cannot create a cycle, and the 17-context DAG is unchanged. The
 // independent expectation in scripts/arch/v1-project-graph.mjs carries the same
 // delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 95;
+// 95 -> 96 (WIN-258 T2, ADR M0.3 §15). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/identity-access`. The directory satisfies that context's
+// `IdentityAccessRepository` as well as tenancy's `TenancyRepository`, so it
+// names both contexts' port types and needs both project references. The edge
+// cannot create a cycle: contexts are leaves relative to adapters, and
+// `tenancy` already depends on `identity-access`, so the 17-context DAG is
+// untouched. The independent expectation in scripts/arch/v1-project-graph.mjs
+// carries the same delta and is maintained separately on purpose.
+export const EXPECTED_EDGE_COUNT = 96;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -356,17 +446,79 @@ const ADAPTER_DEV_DEPENDENCIES = {
   },
 };
 
+/** "Implements the tenancy TenancyRepository port." — or both, when there are two. */
+function describeAdapter(adapter) {
+  const phrases = adapterBindings([adapter]).map(
+    (binding) => `the ${binding.owner} ${binding.port} port`,
+  );
+  const list =
+    phrases.length === 1
+      ? phrases[0]
+      : `${phrases.slice(0, -1).join(", ")} and ${phrases[phrases.length - 1]}`;
+  return `Implements ${list}.`;
+}
+
+/**
+ * The adapter README.
+ *
+ * A directory with ONE binding reads exactly as it did before the §15
+ * amendment. A directory with TWO names both, and says which sentence of ADR
+ * M0.3 §4 it is standing on, because "an adapter implements ONE port" is the
+ * line a reader would otherwise measure it against and find it wanting.
+ */
+function adapterReadme(adapter) {
+  const bindings = adapterBindings([adapter]);
+  const title = `# @platos/adapter-${adapter.dir}\n\n`;
+  const trailer = `\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`;
+  if (bindings.length > 1) {
+    const list = bindings.map((binding) => `- the ${binding.owner} \`${binding.port}\` port`).join("\n");
+    return (
+      `${title}Implements TWO owner-supplied ports — ${adapter.note}:\n\n${list}\n\n` +
+      "ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a\n" +
+      "directory may satisfy more than one port when the ports sit behind the same\n" +
+      "client. §4's body already spells this directory \"per-context repositories,\n" +
+      "owner-tagged\"; ownership is carried by the owner tag and enforced by\n" +
+      "`CANONICAL_STORE_ADAPTERS`, not by the package boundary. It is still the sole\n" +
+      "holder of its vendor client, only `apps/core-api` may import it\n" +
+      "(`adapters-only-from-core`), and it may import no other adapter\n" +
+      "(`adapter-is-self-contained`)." +
+      trailer
+    );
+  }
+  const only = bindings[0];
+  if (only.owner === "kernel") {
+    return (
+      `${title}Implements the kernel \`${only.port}\` port — ${adapter.note}.\n\n` +
+      "ADR M0.3 §4: an adapter implements ONE port and is the sole holder of its vendor\n" +
+      "client. Only `apps/core-api` may import it (`adapters-only-from-core`), and it\n" +
+      "may import no other adapter (`adapter-is-self-contained`)." +
+      trailer
+    );
+  }
+  return (
+    `${title}Implements the ${only.owner} \`${only.port}\` port — ${adapter.note}.\n\n` +
+    "ADR M0.3 §4/§13: an adapter implements ONE owner-supplied port and is the sole\n" +
+    "holder of its vendor client. Only `apps/core-api` may import it, and it may\n" +
+    "import no other adapter." +
+    trailer
+  );
+}
+
 function adapterManifest(adapter, adopted) {
-  const dependency = adapter.owner === "kernel" ? "@platos/kernel" : `@platos/context-${adapter.owner}`;
   const isAdopted = adoptedSet(adopted).has(`packages/adapters/${adapter.dir}`);
+  // One workspace dependency per DISTINCT owner it serves. A directory that
+  // satisfies two contexts' ports needs both their type surfaces, and declaring
+  // only the primary would leave the second binding resolving through a
+  // transitive edge that nothing pins.
+  const dependencies = adapterOwnerPackages(adapter);
   return packageManifest({
     scripts: scriptsFor(`packages/adapters/${adapter.dir}`, adopted),
     name: `@platos/adapter-${adapter.dir}`,
-    description: `Implements the ${adapter.owner} ${adapter.port} port.`,
+    description: describeAdapter(adapter),
     main: "./dist/index.js",
     types: "./dist/index.d.ts",
     dependencies: {
-      ...workspaceDependencies([dependency]),
+      ...workspaceDependencies(dependencies),
       ...(ADAPTER_RUNTIME_DEPENDENCIES[adapter.dir] ?? {}),
     },
     // An unadopted adapter has no source of its own, so it has nothing to test
@@ -429,10 +581,7 @@ export function projectReferences() {
     ]);
   }
   for (const adapter of ADAPTERS) {
-    references.set(
-      `packages/adapters/${adapter.dir}`,
-      [adapter.owner === "kernel" ? "packages/kernel" : `packages/contexts/${adapter.owner}`]
-    );
+    references.set(`packages/adapters/${adapter.dir}`, adapterOwnerProjects(adapter));
   }
   references.set("apps/core-api", [
     "packages/kernel",
@@ -597,12 +746,7 @@ export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_P
       : `@platos/context-${adapter.owner}/application/ports/index.js`;
     put(`${base}/package.json`, adapterManifest(adapter, adopted));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["src/**/*.ts"], references.get(base), "src"));
-    put(
-      `${base}/README.md`,
-      adapter.owner === "kernel"
-        ? `# @platos/adapter-${adapter.dir}\n\nImplements the kernel \`${adapter.port}\` port — ${adapter.note}.\n\nADR M0.3 §4: an adapter implements ONE port and is the sole holder of its vendor\nclient. Only \`apps/core-api\` may import it (\`adapters-only-from-core\`), and it\nmay import no other adapter (\`adapter-is-self-contained\`).\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
-        : `# @platos/adapter-${adapter.dir}\n\nImplements the ${adapter.owner} \`${adapter.port}\` port — ${adapter.note}.\n\nADR M0.3 §4/§13: an adapter implements ONE owner-supplied port and is the sole\nholder of its vendor client. Only \`apps/core-api\` may import it, and it may\nimport no other adapter.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
-    );
+    put(`${base}/README.md`, adapterReadme(adapter));
     put(`${base}/src/index.ts`, `${HEADER}export type { ${Type}Adapter } from "./adapter.js";\n`);
     put(
       `${base}/src/adapter.ts`,
@@ -697,7 +841,23 @@ export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLI
     }
   }
   if (CONTEXT_NAMES.length !== 17) errors.push(`ADR M0.3 §4 names 17 contexts; CONTEXT_DEPENDS_ON has ${CONTEXT_NAMES.length}`);
-  if (ADAPTERS.length !== 12) errors.push(`ADR M0.3 §4 names 12 concrete adapters; ADAPTERS has ${ADAPTERS.length}`);
+  // TWO pins, not one. Before the §15 amendment a single `ADAPTERS.length`
+  // check said both "twelve directories" and "twelve bindings" at once, because
+  // the two were the same number. They are no longer the same number and the
+  // check is therefore split rather than loosened: a thirteenth DIRECTORY and a
+  // fourteenth BINDING each fail on their own line, so widening one cannot
+  // silently widen the other.
+  if (ADAPTERS.length !== EXPECTED_ADAPTER_COUNT) {
+    errors.push(
+      `ADR M0.3 §4 names ${EXPECTED_ADAPTER_COUNT} concrete adapter directories; ADAPTERS has ${ADAPTERS.length}`,
+    );
+  }
+  const bindings = adapterBindings();
+  if (bindings.length !== EXPECTED_BINDING_COUNT) {
+    errors.push(
+      `ADR M0.3 §4/§15 declares ${EXPECTED_BINDING_COUNT} adapter bindings; ADAPTERS flattens to ${bindings.length}`,
+    );
+  }
   if (projectPaths().length !== EXPECTED_PROJECT_COUNT) errors.push(`V1 project count is ${projectPaths().length}, expected ${EXPECTED_PROJECT_COUNT}`);
   if (edgeCount !== EXPECTED_EDGE_COUNT) errors.push(`V1 project edge count is ${edgeCount}, expected ${EXPECTED_EDGE_COUNT}`);
   for (const name of CONTEXT_NAMES) {
@@ -705,9 +865,44 @@ export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLI
       if (!CONTEXT_NAMES.includes(dependency)) errors.push(`${name} depends on unknown context ${dependency}`);
     }
   }
-  for (const adapter of ADAPTERS) {
-    if (adapter.owner !== "kernel" && !CONTEXT_NAMES.includes(adapter.owner)) {
-      errors.push(`${adapter.dir} assigns ${adapter.port} to unknown owner ${adapter.owner}`);
+  // Every BINDING's owner must be a real context or the kernel — the extra
+  // bindings of a multi-port directory are held to exactly the check the
+  // primary one always was, so a second binding cannot smuggle in an owner the
+  // ADR does not name.
+  for (const binding of bindings) {
+    if (binding.owner !== "kernel" && !CONTEXT_NAMES.includes(binding.owner)) {
+      errors.push(`${binding.adapter} assigns ${binding.port} to unknown owner ${binding.owner}`);
+    }
+  }
+  // A PORT is satisfied by at most one directory, and a directory declares a
+  // port at most once. Without these two, "many ports per adapter" would also
+  // permit the same port claimed twice — by one directory listing it in both
+  // halves of its own entry, or by two directories both claiming it — and the
+  // composition root's set comparison would then pass on an ambiguous binding.
+  //
+  // `Notifier` is the ONE port two directories legitimately satisfy
+  // (`notifier-email` and `notifier-webhook`, ADR M0.3 §4), so the uniqueness
+  // that binds is (owner, port, adapter) as a triple plus an explicit
+  // allow-list of ports with more than one home. Nothing else may be shared.
+  const seenBindings = new Set();
+  const portHomes = new Map();
+  for (const binding of bindings) {
+    const key = `${binding.adapter}:${binding.owner}:${binding.port}`;
+    if (seenBindings.has(key)) errors.push(`${binding.adapter} declares ${binding.port} more than once`);
+    seenBindings.add(key);
+    const homes = portHomes.get(`${binding.owner}:${binding.port}`) ?? [];
+    homes.push(binding.adapter);
+    portHomes.set(`${binding.owner}:${binding.port}`, homes);
+  }
+  for (const [port, homes] of portHomes) {
+    if (homes.length > 1 && !MULTI_HOME_PORTS.includes(port)) {
+      errors.push(`${port} is satisfied by ${homes.join(" and ")}; only ${MULTI_HOME_PORTS.join(", ")} may have more than one home`);
+    }
+  }
+  for (const port of MULTI_HOME_PORTS) {
+    const homes = portHomes.get(port) ?? [];
+    if (homes.length < 2) {
+      errors.push(`${port} is declared as a multi-home port but has ${homes.length} home(s); drop it from MULTI_HOME_PORTS`);
     }
   }
 

@@ -2,7 +2,7 @@
   "name": "@platos/adapter-postgres-tenancy",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the tenancy TenancyRepository port.",
+  "description": "Implements the tenancy TenancyRepository port and the identity-access IdentityAccessRepository port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@platos/context-tenancy": "workspace:*",
+    "@platos/context-identity-access": "workspace:*",
     "@platos/tenancy-database": "workspace:*"
   },
   "devDependencies": {
