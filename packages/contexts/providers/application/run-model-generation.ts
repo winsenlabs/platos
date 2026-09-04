@@ -22,10 +22,14 @@
 //      provider does not report at all: it silently drops the newest one and
 //      the turn quietly reverts to full price.
 //
-//   3. REFUSE AN EXPIRED SESSION, USING THE CLOCK PORT. Deterministic and
-//      testable at any instant, and a distinct refusal from "unknown provider"
-//      or "no key" so an operator reading the code knows the fix is to open the
-//      route again rather than to go looking at configuration.
+//   3. REFUSE AN EXPIRED BINDING, USING THE CLOCK PORT. The port lets an
+//      implementation hand back a handle it minted earlier -- and expects it to,
+//      because constructing a client per call is waste. That is exactly why
+//      `expiresAt` has to be READ by somebody: a cached handle whose provider
+//      credential has aged out would otherwise be used, and the call it made
+//      would be billed before it failed. Checked here, against the clock port,
+//      so it is deterministic at any instant, and under its own code so it is
+//      not confused with "no key" or "unknown provider".
 //
 //   4. SUPPLY THE PER-STEP CACHE PLACEMENT. `rewritePrompt` is bound HERE, from
 //      this context's own domain function and this environment's policy, so the
@@ -163,10 +167,12 @@ async function admit(
 }
 
 /**
- * A session with an expiry in the past is refused rather than sent.
+ * A binding whose expiry has passed is refused rather than used.
  *
  * `expiresAt === null` means the binding does not expire, which is not the same
- * as "expired long ago" and must not be treated as one.
+ * as "expired long ago" and must not be treated as one. The comparison is `<=`,
+ * so a handle expiring at exactly this instant is already gone: a binding is
+ * valid up to its expiry, not through it.
  */
 function requireUnexpired(session: ModelSession, now: Date): Result<ModelSession> {
   if (session.expiresAt !== null && session.expiresAt.getTime() <= now.getTime()) {

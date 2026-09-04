@@ -198,6 +198,13 @@ export interface ModelRouter {
    * half; composing a whole TURN out of generations — deciding what to put in
    * the prompt, what to do with the answer, and what to persist — still belongs
    * to `conversations`, which the ADR extracts last.
+   *
+   * AN IMPLEMENTATION MAY RETURN A HANDLE IT MINTED EARLIER, and is expected to:
+   * constructing a client per call is waste, and the running system holds one
+   * resolved model handle across a whole route's lifetime. What it may NOT do is
+   * return one whose `expiresAt` has passed. Because it may, `expiresAt` is a
+   * real answer rather than a formality, and the caller checks it — see
+   * `application/run-model-generation.ts`.
    */
   open(request: OpenModelRequest): Promise<Result<ModelSession>>;
 

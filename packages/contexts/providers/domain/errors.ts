@@ -51,7 +51,7 @@ export const PROVIDERS_ERROR_CODES = [
   // names a different thing the caller did and a caller that cannot tell them
   // apart cannot fix any of them: a prompt with no messages is a bug in the
   // assembler, a tool result with no matching call is a dropped assistant
-  // message, and an expired session is a turn that simply ran too long.
+  // message, and an expired binding is a cached provider handle that aged out.
   "PROVIDERS_PROMPT_EMPTY",
   "PROVIDERS_PROMPT_CONTENT_EMPTY",
   "PROVIDERS_MEDIA_TYPE_MISSING",
@@ -320,11 +320,11 @@ export function stepBudgetInvalid(maxSteps: number): DomainError {
 }
 
 /**
- * The handle outlived its binding.
+ * The binding aged out before it was used.
  *
- * `precondition_failed` and not `not_found`: the session was real, the caller
- * did nothing wrong, and the fix is to open the route again rather than to go
- * looking for something that never existed.
+ * `precondition_failed` and not `not_found`: the session was real and the caller
+ * did nothing wrong, so the fix is a fresh binding rather than a hunt for
+ * something that never existed or a change to configuration that is correct.
  */
 export function modelSessionExpired(sessionId: string, expiredAt: string): DomainError {
   return domainError(
