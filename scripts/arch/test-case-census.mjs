@@ -152,7 +152,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
-  "packages/contexts/tenancy": { files: 20, cases: 206 },
+  "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 0, cases: 0 },
   "packages/kernel": { files: 3, cases: 44 },
 });
@@ -238,6 +238,20 @@ export const EXPECTED = Object.freeze({
  *
  *   The running total across T1-T5: 1000 at the branch point, +25 (T1), +29
  *   (T3), +59 (T4), +34 (T5) = 1147.
+ *
+ * WIN-257 T4 FOLLOW-UP, found while re-reading the port against the oracle. The
+ * route orders BOTH halves of its landing query — `orderBy: { createdAt: "asc" }`
+ * on the membership select AND on the nested `projects` select, the latter with
+ * `take: 1`. `listVisibleProjects` ordered the memberships and left the projects
+ * in store order, so the project an operator lands in would have depended on
+ * insertion order. One case is added for the fix:
+ *
+ *   tenancy 206 -> 207 cases, files unchanged at 20; 1147 -> 1148 total.
+ *
+ *   `application/operator-read-models.test.ts` 11 -> 12, and one existing case
+ *   in the same file changed its expected order rather than gaining a case:
+ *   two projects built by `aProject` share the builder's epoch, so the id
+ *   tiebreak now decides between them deterministically.
  */
 
 /**
@@ -247,7 +261,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1147;
+export const EXPECTED_RUNTIME_TOTAL = 1148;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

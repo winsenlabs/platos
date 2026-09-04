@@ -249,7 +249,7 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
   assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 318, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie");
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 206, "146 at 3ed8f3ce, +29 for the WIN-257 creation suites, +31 for its read models");
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 207, "146 at 3ed8f3ce, +29 creation suites, +31 read models, +1 the project-order fix");
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
 });
@@ -262,7 +262,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29 + 59 + 34);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29 + 59 + 34 + 1);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -288,7 +288,7 @@ test("the WIN-257 tenancy creation suites are pinned at what vitest prints", () 
   // delta — which is how an EDITED suite gaining cases is kept visible next to
   // the two ADDED ones.
   assert.equal(EXPECTED["packages/contexts/tenancy"].files, 20);
-  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 206);
+  assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 207);
   const files = listTestFiles(undefined, "packages/contexts/tenancy");
   assert.ok(files.includes("packages/contexts/tenancy/application/create-organization.test.ts"));
   assert.ok(files.includes("packages/contexts/tenancy/application/create-project.test.ts"));

@@ -41,7 +41,12 @@ function put(
   return membership;
 }
 
-function project(fixture: TenancyFixture, id: string, organization: OrganizationRecord, overrides = {}) {
+function project(
+  fixture: TenancyFixture,
+  id: string,
+  organization: OrganizationRecord,
+  overrides: Partial<ProjectRecord> = {},
+) {
   const row = aProject(id, organization.id, overrides);
   fixture.store.projects.push(row);
   return row;
@@ -156,10 +161,29 @@ describe("listVisibleProjects — the rule that used to be a Prisma where clause
     project(fixture, "billing", acme);
     project(fixture, "retired", acme, { archivedAt: ARCHIVED_AT });
 
+    // `aProject` stamps every row with the builder's epoch, so these two share
+    // an instant and the id tiebreak decides: "billing" before "checkout". That
+    // is the point of the tiebreak — the order is the same on every run.
     const listed = await projects(ADA);
-    expect(slugsOf(listed)).toEqual(["checkout", "billing"]);
+    expect(slugsOf(listed)).toEqual(["billing", "checkout"]);
     if (!listed.ok) return;
     expect(listed.value.every((row) => row.through === "organization-admin")).toBe(true);
+  });
+
+  it("ORDERS PROJECTS BY CREATION, which is what decides where an operator LANDS", async () => {
+    // The route pairs `orderBy: { createdAt: "asc" }` with `take: 1` on the
+    // nested projects select, so the FIRST row is the project the dashboard
+    // redirects into. Returning them in store order would make that redirect
+    // depend on insertion order, which is not a decision anybody took.
+    const { fixture, projects } = scenario();
+    const acme = anOrganization("acme");
+    fixture.store.organizations.push(acme);
+    put(fixture, acme, { user: "ada", role: OrganizationRole.ADMIN });
+    project(fixture, "third", acme, { createdAt: new Date("2026-03-01T00:00:00.000Z") });
+    project(fixture, "first", acme, { createdAt: new Date("2026-01-01T00:00:00.000Z") });
+    project(fixture, "second", acme, { createdAt: new Date("2026-02-01T00:00:00.000Z") });
+
+    expect(slugsOf(await projects(ADA))).toEqual(["first", "second", "third"]);
   });
 
   it("shows a plain MEMBER only the projects they were added to", async () => {

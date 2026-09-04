@@ -30,6 +30,7 @@ import {
   type UserId,
 } from "../domain/index.js";
 
+
 import type { TenancyDependencies } from "./dependencies.js";
 
 export interface OperatorOrganization {
@@ -55,17 +56,22 @@ export type ListVisibleProjects = (
 type Dependencies = Pick<TenancyDependencies, "repository">;
 
 /**
- * Membership rows are ordered by `createdAt` ascending, then by id.
+ * Oldest first, id ascending as the tiebreak.
  *
- * The route's `orderBy: { createdAt: "asc" }` decides which organization an
- * operator lands in, so the order is part of the behaviour and not a
- * presentation choice. The id is the tiebreak, because two memberships created
- * in the same transaction share an instant and an unstable order would send the
- * same operator to a different organization on consecutive logins.
+ * BOTH LISTS ARE ORDERED, and by the same rule, because the route orders BOTH:
+ * `orderBy: { createdAt: "asc" }` on the membership query picks which
+ * organization an operator lands in, and the same clause on the nested
+ * `projects` select — with `take: 1` — picks which project inside it. Those two
+ * choices are the whole landing decision, so the order is behaviour and not a
+ * presentation detail a consumer may re-impose.
+ *
+ * The id is the tiebreak. Rows created in one transaction share an instant, and
+ * an unstable order among them would land the same operator somewhere different
+ * on consecutive logins.
  */
 function byCreation(
-  left: OrganizationMembershipRecord,
-  right: OrganizationMembershipRecord,
+  left: { readonly id: string; readonly createdAt: Date },
+  right: { readonly id: string; readonly createdAt: Date },
 ): number {
   const difference = left.createdAt.getTime() - right.createdAt.getTime();
   return difference !== 0 ? difference : left.id.localeCompare(right.id);
@@ -104,7 +110,8 @@ export function createListVisibleProjects(dependencies: Dependencies): ListVisib
       const projectMemberships = await repository.listProjectMembershipsForMembership(
         membership.id,
       );
-      for (const project of await repository.listProjects(organization.id)) {
+      const projects = [...(await repository.listProjects(organization.id))].sort(byCreation);
+      for (const project of projects) {
         const through = projectVisibility({
           project,
           organizationMembership: membership,
