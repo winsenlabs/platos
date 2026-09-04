@@ -23,6 +23,8 @@ import type {
   AddProjectMemberRequest,
   AuthorizeEnvironmentOperatorRequest,
   ChangeMembershipRoleRequest,
+  CreateOrganizationRequest,
+  CreateProjectRequest,
   MembershipMutationResult,
   ResolvedEnvironmentScope,
   RevokeAccessKeyGenerationRequest,
@@ -33,6 +35,8 @@ import type {
 import { createAddProjectMember } from "./add-project-member.js";
 import { createAuthorizeEnvironmentOperator } from "./authorize-environment-operator.js";
 import { createChangeMembershipRole, createDeactivateMembership } from "./change-membership-role.js";
+import { createCreateOrganization } from "./create-organization.js";
+import { createCreateProject } from "./create-project.js";
 import type { TenancyDependencies } from "./dependencies.js";
 import { createRevokeAccessKeyGeneration } from "./revoke-access-key-generation.js";
 
@@ -42,6 +46,8 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const changeMembershipRole = createChangeMembershipRole(dependencies);
   const deactivateMembership = createDeactivateMembership(dependencies);
   const addProjectMember = createAddProjectMember(dependencies);
+  const createOrganization = createCreateOrganization(dependencies);
+  const createProject = createCreateProject(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
 
   return {
@@ -71,6 +77,10 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       authorizeEnvironmentOperator(request),
 
     verifyAuthorization: (value: unknown) => requireAuthorization(value),
+
+    createOrganization: (request: CreateOrganizationRequest) => createOrganization(request),
+
+    createProject: (request: CreateProjectRequest) => createProject(request),
 
     changeMembershipRole: (request: ChangeMembershipRoleRequest) => changeMembershipRole(request),
 

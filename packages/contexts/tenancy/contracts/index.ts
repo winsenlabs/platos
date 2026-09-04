@@ -123,6 +123,42 @@ export interface AddProjectMemberRequest {
   readonly actorUserId: UserId;
 }
 
+export interface CreateOrganizationRequest {
+  readonly name: string;
+  readonly slug: string;
+  /** The operator who will hold the founding OWNER membership. */
+  readonly founderUserId: UserId;
+}
+
+/**
+ * Both rows an organization is born with.
+ *
+ * The membership is returned rather than left implicit because it is the point:
+ * an organization with no owner cannot be administered by anybody, and a caller
+ * that never sees the membership cannot tell the two states apart.
+ */
+export interface CreatedOrganization {
+  readonly organization: OrganizationRecord;
+  readonly founderMembership: OrganizationMembershipRecord;
+}
+
+export interface CreateProjectRequest {
+  readonly organizationId: OrganizationId;
+  /** Any ACTIVE member of the organization. Receives the ADMIN membership. */
+  readonly actorUserId: UserId;
+  readonly name: string;
+  readonly slug: string;
+  readonly environmentName: string;
+  readonly environmentSlug: string;
+}
+
+/** All three rows one `createProject` commits, or none of them. */
+export interface CreatedProject {
+  readonly project: ProjectRecord;
+  readonly environment: EnvironmentRecord;
+  readonly membership: ProjectMembershipRecord;
+}
+
 export interface RevokeAccessKeyGenerationRequest {
   readonly environmentId: EnvironmentId;
   readonly expectedGeneration?: number;
@@ -167,6 +203,28 @@ export interface TenancyContract {
    * (a job payload, a JSON round trip, an `unknown` from a transport).
    */
   verifyAuthorization(value: unknown): Result<EnvironmentOperatorAuthorization>;
+
+  /**
+   * Create an organization and its founding OWNER membership, atomically.
+   *
+   * Tenancy could archive, rename and re-role an organization and could not make
+   * one: the only creator was a Prisma nested write in the Remix route. Both
+   * rows commit together, because an organization with no owner has no path back
+   * — every membership grant needs an existing organization admin to authorize
+   * it.
+   */
+  createOrganization(request: CreateOrganizationRequest): Promise<Result<CreatedOrganization>>;
+
+  /**
+   * Create a project, its first environment and the creator's ADMIN project
+   * membership, in ONE unit of work.
+   *
+   * A project with no environment is unreachable — every route below a project
+   * is keyed by one — and a project whose creator holds no membership is lost to
+   * any creator who is not already an organization admin. The `$transaction` in
+   * the Remix route is the only place that invariant has ever lived.
+   */
+  createProject(request: CreateProjectRequest): Promise<Result<CreatedProject>>;
 
   changeMembershipRole(
     request: ChangeMembershipRoleRequest,

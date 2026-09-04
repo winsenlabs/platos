@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4010c5786e71d0a2b0fa1b991fec90ffe57b4e560bb9f1fc664e1c8e0883b4e0",
+  "evidenceSha256": "ff2fd5b831b58029671f84f47dc8cc258439945ee32fabf0cf5390896637348d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2ee47906bfb508ab158c19d20d8a93cf8aff8542ae04b9e3cf52bad009708980",
+    "aggregateSha256": "a861cae2a1fa5806b2b23eacedd7e20bad86db587817a187f8cdb5a85ff9dd04",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "8a6e710cd58a8f676b9c629fcc9186b21a2ae872d948f365c0fbb89e841270c6"
+        "sha256": "4d67b0a063bbf018af197cd1a60b4e4dc61df7c2c879737407be0b8ac38ffe98"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -12368,12 +12368,28 @@
         "sha256": "20d6ed313e69733088fee1aa42a23c33004bd50f4669cd6555cb062f3edc11f3"
       },
       {
+        "path": "packages/contexts/tenancy/application/create-organization.test.ts",
+        "sha256": "4e9009f3a477aa7e2100f632f9eb4026cad60925bd2970563d9f02f97f631ad5"
+      },
+      {
+        "path": "packages/contexts/tenancy/application/create-organization.ts",
+        "sha256": "cbd6d222ab71f9948494e32c0eab1c00f73e5e38a5275207dc3bb67656c094ef"
+      },
+      {
+        "path": "packages/contexts/tenancy/application/create-project.test.ts",
+        "sha256": "629854fc5a4812e949e80e1c52fe7fabb8c7537e62840ca4921c2a115a890f2a"
+      },
+      {
+        "path": "packages/contexts/tenancy/application/create-project.ts",
+        "sha256": "3cc4be635a8babfcb5ee18073e8f3e69b4dd331fb1884d1e662578f5f0740403"
+      },
+      {
         "path": "packages/contexts/tenancy/application/dependencies.ts",
         "sha256": "5810ccc31427981b6bb20553035e4f467fbb7bf6a570762b93aafe99dc9ab4ed"
       },
       {
         "path": "packages/contexts/tenancy/application/index.ts",
-        "sha256": "0b776b0a8c63e5331d95d90887c5d7260fef98ca939d15d5d259d161b4497c13"
+        "sha256": "4f2dad3323c3367229b4fc696f3b71bd481ea6666646a8584f16f9208697fe9f"
       },
       {
         "path": "packages/contexts/tenancy/application/invitations.test.ts",
@@ -12405,7 +12421,7 @@
       },
       {
         "path": "packages/contexts/tenancy/application/ports/repository.ts",
-        "sha256": "a09b0607b390e3ccf04bd60b8098e4d73341aa65b94e6603bb650ee40972ba95"
+        "sha256": "79e3a8baed81dea70021ba74aef162b81fe03b3f5b342a6b7e3a34b18091d404"
       },
       {
         "path": "packages/contexts/tenancy/application/ports/session-revoker.ts",
@@ -12421,23 +12437,23 @@
       },
       {
         "path": "packages/contexts/tenancy/application/tenancy-service.test.ts",
-        "sha256": "48a2376997c826699419465232a6cf7423265dbfb4613c64ee11599d859cafa2"
+        "sha256": "5969dde980dbb1653bd748b608ac0731409886dbebc75db7cea55a96f04ef6b5"
       },
       {
         "path": "packages/contexts/tenancy/application/tenancy-service.ts",
-        "sha256": "d26add46a1534d2d7372d9fcf1c85ca6c60abcfd0b3154bea11c5a4e8eb3a214"
+        "sha256": "449c6e94bfae449e7669b1d02a6f51684a417ed85474ec9a22c80657a6610586"
       },
       {
         "path": "packages/contexts/tenancy/application/testing/fakes.ts",
-        "sha256": "5a57b086f4c907a5c5b76914134679a2860cc4dfa2d349c55ad9f52a7c93a99e"
+        "sha256": "74ca99515bbe0bf7a650baeba8de619d9ad796a2dbf8d36f1e071d8a17d2edb4"
       },
       {
         "path": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
-        "sha256": "78c05ca054d20b90f43ec4dca4ee422317bf62a46704f5a91c6bd56512128512"
+        "sha256": "280d2c3101171700c242f4a4f437b2fad73880203cb7173461b769e263c63bd1"
       },
       {
         "path": "packages/contexts/tenancy/application/testing/tenant-fixture.ts",
-        "sha256": "812cbc3209713f537e38827d0a4ff324df87c3a05ace445be27a89eb6663e812"
+        "sha256": "07f579c6cf87e65aabef1ef9b665dbb7730b8f45fac7f5a8af239ce4968dca49"
       },
       {
         "path": "packages/contexts/tenancy/contracts/events.ts",
@@ -12445,7 +12461,7 @@
       },
       {
         "path": "packages/contexts/tenancy/contracts/index.ts",
-        "sha256": "36892e552388cfc836e16c8fe7c02bf31dbe0160b8d9db28fa7d7facfd967c42"
+        "sha256": "c0e53fb4fc538ca011128b01b62d441e3e2b440400923a5cd29035d4be9e15df"
       },
       {
         "path": "packages/contexts/tenancy/domain/ancestry.test.ts",
@@ -12485,7 +12501,7 @@
       },
       {
         "path": "packages/contexts/tenancy/domain/errors.ts",
-        "sha256": "102dcac53e3572bea1d266bccd2c3dd5bb6efc2c417cac6dabcd305509d39a49"
+        "sha256": "f9e3ef35f11cb78ea202f1581f04da499978ff5cb1dbfbc334e2e4cd2d8b4df1"
       },
       {
         "path": "packages/contexts/tenancy/domain/identifiers.ts",
@@ -14657,7 +14673,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "f06a3cbdcb113e8bdbd0fb1bf862034679a80fc157b75c8dfebc68cc12d3cd25"
+        "sha256": "fe58e1621e4781951dae4c76ace08e8c19a835bb38538a0474e96793f596cfbb"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -14709,7 +14725,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "2da7d675ba76fdce4664c969942d5ba507a6dd7f7d56438272c8d323397333a9"
+        "sha256": "624cffa4629b170bcd2076796ecfdb1683bcd44fdc2ddac0292b84765bf7ec9e"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -14725,11 +14741,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "fd0e9a9e6a32005f2689377b3235f8f85d5960b553a90c9e83675e47f7bedeb2"
+        "sha256": "d54ff685de9ef055c3bd9cd0ee8a4af95fe83e52671981cb71a85658448242a2"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "fafbb73095423562eda27bff3ac3ac3681505d5c1d1253bf4fa8c12859ae4418"
+        "sha256": "91d1f09763a6c37fe23c318ec39562d549bf99b051bca6f8f402570d0eef04c2"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -47656,7 +47672,7 @@
             {
               "file": "packages/contexts/tenancy/application/index.ts",
               "from": "packages/contexts/tenancy",
-              "line": 31,
+              "line": 33,
               "specifier": "@platos/context-identity-access"
             }
           ],
@@ -47805,7 +47821,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 263
+              "line": 265
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48622,7 +48638,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "7558079dbc3028df2e19d47ae70773b0022e71ac51d5df0b6c87158d382b2794",
+      "evidenceSha256": "54d192f290367e5340a56a474a4b41fd27b75217b31562d07410f5284f6eab64",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -51171,7 +51187,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 257
+              "line": 259
             }
           ],
           "reversePaths": [
@@ -51606,7 +51622,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "a3bb66142ddd15abb06eef33792517b62d7a96deb26fcedbe23816a1ba6a8ae1",
+      "evidenceSha256": "4a8c6cc4132f065217a03d9c44de2979bcfac3e328c6d311ebda64df98e07238",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52396,7 +52412,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 245
+              "line": 247
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52869,7 +52885,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e733d89d465c0d997d0075798496e61b8aea97b2cf790deab39300e3b417ee39",
+      "evidenceSha256": "32bf17df5d07031cd27ad49c63d7265068a13d40622a7b222d4115d5fea165c3",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54065,6 +54081,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/v1-ledger-rules.json",
+              "kind": "reference",
+              "line": 6
+            },
+            {
               "from": "packages/contexts/tenancy/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -54072,11 +54093,16 @@
           ],
           "reversePaths": [
             [
+              "docs/v1-ledger-rules.json",
+              "docs/v1-ledger-rules.json"
+            ],
+            [
               "packages/contexts/tenancy/README.md",
               "packages/contexts/tenancy/README.md"
             ]
           ],
           "roots": [
+            "docs/v1-ledger-rules.json",
             "packages/contexts/tenancy/README.md"
           ]
         },
@@ -54457,6 +54483,16 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/tenancy/application/create-organization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tenancy/application/create-project.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/tenancy/application/invitations.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -54554,7 +54590,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 246
+              "line": 280
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -54586,6 +54622,14 @@
             [
               "packages/contexts/tenancy/application/change-membership-role.test.ts",
               "packages/contexts/tenancy/application/change-membership-role.test.ts"
+            ],
+            [
+              "packages/contexts/tenancy/application/create-organization.test.ts",
+              "packages/contexts/tenancy/application/create-organization.test.ts"
+            ],
+            [
+              "packages/contexts/tenancy/application/create-project.test.ts",
+              "packages/contexts/tenancy/application/create-project.test.ts"
             ],
             [
               "packages/contexts/tenancy/application/invitations.test.ts",
@@ -54679,6 +54723,8 @@
             "packages/contexts/tenancy/application/archive-tenant.test.ts",
             "packages/contexts/tenancy/application/authorize-environment-operator.test.ts",
             "packages/contexts/tenancy/application/change-membership-role.test.ts",
+            "packages/contexts/tenancy/application/create-organization.test.ts",
+            "packages/contexts/tenancy/application/create-project.test.ts",
             "packages/contexts/tenancy/application/invitations.test.ts",
             "packages/contexts/tenancy/application/revoke-access-key-generation.test.ts",
             "packages/contexts/tenancy/application/tenancy-service.test.ts",
@@ -55284,7 +55330,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "fd58ae6cf8f096329a1191fc0789ccb018b893adc4ff19178fb298165853a600",
+      "evidenceSha256": "705180dabc96420b7b95f2bb02c00346e0ccf9b3388e5c491225f8cf6338c54d",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -59619,6 +59665,30 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/tenancy/application/create-organization.ts",
+              "from": "packages/contexts/tenancy",
+              "line": 27,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tenancy/application/create-organization.ts",
+              "from": "packages/contexts/tenancy",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tenancy/application/create-project.ts",
+              "from": "packages/contexts/tenancy",
+              "line": 39,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tenancy/application/create-project.ts",
+              "from": "packages/contexts/tenancy",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/tenancy/application/dependencies.ts",
               "from": "packages/contexts/tenancy",
               "line": 22,
@@ -59699,13 +59769,13 @@
             {
               "file": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
               "from": "packages/contexts/tenancy",
-              "line": 20,
+              "line": 30,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
               "from": "packages/contexts/tenancy",
-              "line": 27,
+              "line": 37,
               "specifier": "@platos/kernel"
             },
             {
@@ -60376,6 +60446,14 @@
             ],
             [
               "packages/contexts/tenancy",
+              "packages/contexts/tenancy/application/create-organization.ts"
+            ],
+            [
+              "packages/contexts/tenancy",
+              "packages/contexts/tenancy/application/create-project.ts"
+            ],
+            [
+              "packages/contexts/tenancy",
               "packages/contexts/tenancy/application/dependencies.ts"
             ],
             [
@@ -60702,6 +60780,16 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/tenancy/application/create-organization.test.ts",
+              "kind": "reference",
+              "line": 3
+            },
+            {
+              "from": "packages/contexts/tenancy/application/create-project.test.ts",
+              "kind": "reference",
+              "line": 3
+            },
+            {
               "from": "packages/contexts/tenancy/application/tenancy-service.test.ts",
               "kind": "reference",
               "line": 5
@@ -60779,7 +60867,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 228
+              "line": 229
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60968,6 +61056,14 @@
               "packages/contexts/secrets/domain/secret-version.test.ts"
             ],
             [
+              "packages/contexts/tenancy/application/create-organization.test.ts",
+              "packages/contexts/tenancy/application/create-organization.test.ts"
+            ],
+            [
+              "packages/contexts/tenancy/application/create-project.test.ts",
+              "packages/contexts/tenancy/application/create-project.test.ts"
+            ],
+            [
               "packages/contexts/tenancy/application/tenancy-service.test.ts",
               "packages/contexts/tenancy/application/tenancy-service.test.ts"
             ],
@@ -61090,6 +61186,8 @@
             "packages/contexts/secrets/domain/environment-variable.test.ts",
             "packages/contexts/secrets/domain/metadata.test.ts",
             "packages/contexts/secrets/domain/secret-version.test.ts",
+            "packages/contexts/tenancy/application/create-organization.test.ts",
+            "packages/contexts/tenancy/application/create-project.test.ts",
             "packages/contexts/tenancy/application/tenancy-service.test.ts",
             "packages/contexts/tenancy/domain/ancestry.test.ts",
             "packages/contexts/tenancy/domain/entity.test.ts",
@@ -61852,7 +61950,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "e769117e766715ad80805a8c681b245c82552152d1fe35ddb4aeffc8ad02238c",
+      "evidenceSha256": "5ce33a45ff3507b747a86966e83ea15be07b85df9e709a1d8b04d63f47b06ee5",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

@@ -11,8 +11,10 @@ import {
   entityId,
   environmentId,
   isEnvironmentOperatorAuthorization,
+  normalizeEmail,
   OrganizationRole,
   projectId,
+  ProjectRole,
   userId,
 } from "../domain/index.js";
 import type { TenancyContract } from "../contracts/index.js";
@@ -126,6 +128,70 @@ describe("TenancyContract", () => {
     expect((await contract.findOrganizationMembership(tree.organization.id, userId("nobody"))).ok).toBe(
       false,
     );
+  });
+
+  it("CREATES AN ORGANIZATION AND ITS OWNER through the contract", async () => {
+    const { fixture, contract } = scenario();
+    fixture.operators.add({
+      userId: OWNER,
+      email: normalizeEmail("owner@example.com"),
+      disabledAt: null,
+    });
+    const created = await contract.createOrganization({
+      name: "Globex",
+      slug: "globex",
+      founderUserId: OWNER,
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error("unreachable");
+    expect(created.value.founderMembership.role).toBe(OrganizationRole.OWNER);
+
+    // The new organization is immediately administrable, which is the whole
+    // point of the founding membership: the owner can be found through the
+    // contract's own read.
+    const found = await contract.findOrganizationMembership(created.value.organization.id, OWNER);
+    expect(found.ok).toBe(true);
+  });
+
+  it("CREATES A PROJECT, ITS FIRST ENVIRONMENT AND AN ADMIN MEMBERSHIP through the contract", async () => {
+    const { tree, contract } = scenario();
+    const created = await contract.createProject({
+      organizationId: tree.organization.id,
+      actorUserId: OWNER,
+      name: "Checkout",
+      slug: "checkout",
+      environmentName: "Production",
+      environmentSlug: "production",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error("unreachable");
+    expect(created.value.membership.role).toBe(ProjectRole.ADMIN);
+
+    // The environment the create returned resolves as a scope, so the project
+    // is reachable the moment it exists rather than after a second call. The
+    // path is built from IDS, not slugs — that is what every other context is
+    // keyed by — so it is asserted against the ids the create minted.
+    const resolved = await contract.resolveEnvironmentScope(created.value.environment.id);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error("unreachable");
+    expect(resolvePath(resolved.value.scope)).toBe(
+      `org/${tree.organization.id}/proj/${created.value.project.id}/env/${created.value.environment.id}`,
+    );
+  });
+
+  it("refuses a creation the caller is not entitled to, through the contract", async () => {
+    const { tree, contract } = scenario();
+    const refusal = await contract.createProject({
+      organizationId: tree.organization.id,
+      actorUserId: userId("stranger"),
+      name: "Checkout",
+      slug: "checkout",
+      environmentName: "Production",
+      environmentSlug: "production",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) throw new Error("unreachable");
+    expect(refusal.error.code).toBe("TENANCY_PROJECT_CREATE_FORBIDDEN");
   });
 
   it("advances the access-key generation through the contract", async () => {

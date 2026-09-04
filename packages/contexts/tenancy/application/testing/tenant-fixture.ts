@@ -64,7 +64,7 @@ export function createTenancyFixture(): TenancyFixture {
   const locks = createRecordingLocks(store);
   const sessionRevoker = createRecordingSessionRevoker();
   const operators = createOperatorDirectory();
-  const unitOfWork = createUnitOfWork();
+  const unitOfWork = createUnitOfWork(store);
   const dependencies: TenancyDependencies = {
     repository: createInMemoryTenancyRepository(store),
     locks,

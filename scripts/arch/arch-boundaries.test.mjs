@@ -260,7 +260,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 399, "the generated V1 source census must stay exact");
+    //
+    //   399 -> 403  +4: WIN-257 T3 (M2.2) adds the two transactional writes the
+    //               product had no home for — create-organization.ts and
+    //               create-project.ts — and a suite for each, all four under
+    //               packages/contexts/tenancy/application/. No rule needed
+    //               changing: each imports its own context's domain/ and the
+    //               kernel, which is what rules (a) and (d) already allow.
+    assert.equal(result.fileCount, 403, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

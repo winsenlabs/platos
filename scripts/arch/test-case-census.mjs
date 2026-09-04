@@ -152,10 +152,35 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/providers": { files: 21, cases: 283 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
-  "packages/contexts/tenancy": { files: 16, cases: 146 },
+  "packages/contexts/tenancy": { files: 18, cases: 175 },
   "packages/contexts/tools": { files: 0, cases: 0 },
   "packages/kernel": { files: 3, cases: 44 },
 });
+
+/*
+ * WIN-257 TRANCHE 3 DELTA (M2.2), the two missing transactional writes. One
+ * package moves:
+ *
+ *   tenancy 16 -> 18 files, 146 -> 175 cases; 1025 -> 1054 total.
+ *
+ *   The two new files are `application/create-organization.test.ts` (11 cases)
+ *   and `application/create-project.test.ts` (15 cases). `createOrganization`
+ *   gets 3 happy-path cases, 6 refusals and 2 atomicity proofs;
+ *   `createProject` gets 4 happy-path cases (including the two tenant-provenance
+ *   cases), 8 refusals and 3 atomicity proofs. One existing suite is EDITED and
+ *   gains cases: `application/tenancy-service.test.ts` 10 -> 13, the two
+ *   creations reached through the published contract plus one refusal.
+ *
+ *   11 + 15 + 3 = 29, and 146 + 29 = 175. The FILE count moving by two is what
+ *   makes the delta legible; the 29 is the part a file-count pin cannot see.
+ *   Both were checked against what
+ *   `pnpm --filter @platos/context-tenancy exec vitest run` prints —
+ *   "Test Files 18 passed (18) / Tests 175 passed (175)" — and the per-file
+ *   counts against the same command filtered to each file.
+ *
+ *   No other package moved. `apps/core-api` gained 11 composition cases in T2
+ *   and is outside PACKAGE_ROOTS, so it does not appear here.
+ */
 
 /**
  * The number `pnpm test:v1-packages` prints, pinned separately from the sum
@@ -164,7 +189,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1025;
+export const EXPECTED_RUNTIME_TOTAL = 1054;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

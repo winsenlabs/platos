@@ -16,6 +16,16 @@
 // therefore NOT enforced here, which is exactly why the domain restates it —
 // and why a use case that relies on the database for that check would pass its
 // unit tests and fail in production.
+//
+// IT DOES ENFORCE THE UNIQUE INDEXES, and that is not the same decision. A
+// missing foreign key makes a use case look MORE correct than it is, so leaving
+// it out keeps the domain's restatement honest. A missing unique index makes a
+// use case look LESS correct than it is: a creation that refuses a duplicate
+// slug would be the only thing standing between a fixture and a second row, and
+// the suite could never tell a use case that checks first from one that relies
+// on the database. So `UniqueViolation` is raised here exactly where Postgres
+// raises 23505 — and, because it is raised from inside the write, it is also how
+// a transaction is seen to roll back without any fault having to be injected.
 
 import type {
   EntityId,
@@ -73,10 +83,46 @@ export function createTenancyStore(): TenancyStore {
   };
 }
 
+/**
+ * What Postgres raises as SQLSTATE 23505.
+ *
+ * A distinct class, and deliberately NOT a `DomainError`: a use case that lets
+ * this reach a caller has skipped its own check, and the difference between the
+ * refusal it should have produced and the violation it did produce is what the
+ * suites assert on.
+ */
+export class UniqueViolation extends Error {
+  readonly index: string;
+
+  constructor(index: string) {
+    super(`unique index ${index} refused the row`);
+    this.name = "UniqueViolation";
+    this.index = index;
+  }
+}
+
 function replace<Row extends { readonly id: string }>(rows: Row[], row: Row): void {
   const index = rows.findIndex((candidate) => candidate.id === row.id);
   if (index === -1) rows.push(row);
   else rows.splice(index, 1, row);
+}
+
+/**
+ * Refuse a write that would put two rows under one index key.
+ *
+ * The row being written is excluded by id, so re-saving a row — which every
+ * archive, rename and role change does — is an UPDATE and not a collision.
+ */
+function enforceUnique<Row extends { readonly id: string }>(
+  rows: Row[],
+  row: Row,
+  index: string,
+  keyOf: (candidate: Row) => string,
+): void {
+  const key = keyOf(row);
+  if (rows.some((candidate) => candidate.id !== row.id && keyOf(candidate) === key)) {
+    throw new UniqueViolation(index);
+  }
 }
 
 export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRepository {
@@ -117,15 +163,46 @@ export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRep
       return store.environments.filter((row) => row.projectId === projectId);
     },
 
+    async findOrganizationBySlug(slug) {
+      return store.organizations.find((row) => row.slug === slug) ?? null;
+    },
+
+    async findProjectBySlug(organizationId, slug) {
+      return (
+        store.projects.find(
+          (row) => row.organizationId === organizationId && row.slug === slug,
+        ) ?? null
+      );
+    },
+
+    async findEnvironmentBySlug(projectId, slug) {
+      return (
+        store.environments.find((row) => row.projectId === projectId && row.slug === slug) ?? null
+      );
+    },
+
     async saveOrganization(row: OrganizationRecord, _transaction: TransactionScope) {
+      enforceUnique(store.organizations, row, "Organization_slug_key", (candidate) => candidate.slug);
       replace(store.organizations, row);
     },
 
     async saveProject(row: ProjectRecord, _transaction: TransactionScope) {
+      enforceUnique(
+        store.projects,
+        row,
+        "Project_organizationId_slug_key",
+        (candidate) => JSON.stringify([candidate.organizationId, candidate.slug]),
+      );
       replace(store.projects, row);
     },
 
     async saveEnvironment(row: EnvironmentRecord, _transaction: TransactionScope) {
+      enforceUnique(
+        store.environments,
+        row,
+        "Environment_projectId_slug_key",
+        (candidate) => JSON.stringify([candidate.projectId, candidate.slug]),
+      );
       replace(store.environments, row);
     },
 
@@ -165,6 +242,12 @@ export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRep
     },
 
     async saveOrganizationMembership(row: OrganizationMembershipRecord, _transaction) {
+      enforceUnique(
+        store.organizationMemberships,
+        row,
+        "OrganizationMembership_organizationId_userId_key",
+        (candidate) => JSON.stringify([candidate.organizationId, candidate.userId]),
+      );
       replace(store.organizationMemberships, row);
     },
 
@@ -192,6 +275,12 @@ export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRep
     },
 
     async saveProjectMembership(row: ProjectMembershipRecord, _transaction) {
+      enforceUnique(
+        store.projectMemberships,
+        row,
+        "ProjectMembership_projectId_organizationMembershipId_key",
+        (candidate) => JSON.stringify([candidate.projectId, candidate.organizationMembershipId]),
+      );
       replace(store.projectMemberships, row);
     },
 

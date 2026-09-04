@@ -145,9 +145,71 @@ export function slugTaken(kind: "organization" | "project" | "environment"): Dom
   });
 }
 
-export function invalidSlug(value: string): DomainError {
+/**
+ * Which gate refused a project creation.
+ *
+ * INDISTINGUISHABLE ON THE WIRE, exactly as `environmentForbidden` is, and for
+ * the same reason. The oracle resolves the organization BY SLUG inside the
+ * membership lookup — `organization: { slug, archivedAt: null }` — so a missing
+ * organization, an archived one and a caller who is not a member all fall out of
+ * one query as one 403. A caller therefore cannot use this route to learn
+ * whether an organization exists or has been archived, and that property is
+ * preserved: one `code`, one `message`, and the gate only in `details`, which
+ * kernel `vo/error.ts` documents as log-only.
+ */
+export type ProjectCreationGate =
+  | "no-such-organization"
+  | "organization-archived"
+  | "not-a-member"
+  | "membership-deactivated";
+
+export function projectCreationForbidden(gate: ProjectCreationGate): DomainError {
+  return domainError(
+    "TENANCY_PROJECT_CREATE_FORBIDDEN",
+    "forbidden",
+    "Operator is not authorized to create a project in this organization",
+    { details: { gate } },
+  );
+}
+
+/**
+ * The founder of an organization must be an operator account identity-access
+ * actually holds, and one that is not disabled.
+ *
+ * In the database this is half a foreign key: `OrganizationMembership.userId`
+ * references `User(id)`, so a founding membership for a user that does not exist
+ * cannot be inserted. The FK says nothing about `User.disabledAt`, and neither
+ * does the oracle's create route — it relies on `requireOperator` having already
+ * refused a disabled actor. Stating both here is what lets a caller that reached
+ * this use case some other way be refused rather than trusted.
+ */
+export function unknownOperator(): DomainError {
+  return domainError(
+    "TENANCY_UNKNOWN_OPERATOR",
+    "precondition_failed",
+    "No live operator account for that user",
+  );
+}
+
+/** A name that is blank once trimmed. The schema stores a bare `String`. */
+export function invalidName(
+  kind: "organization" | "project" | "environment",
+  field = "name",
+): DomainError {
+  return domainError("TENANCY_INVALID_NAME", "invalid_input", `A ${kind} needs a name`, {
+    fields: [{ field, code: "TENANCY_INVALID_NAME", message: "must not be blank" }],
+    details: { kind },
+  });
+}
+
+/**
+ * `field` names WHICH slug, because one command can carry two: creating a
+ * project names the project and its first environment in the same call, and a
+ * caller told only "slug is invalid" cannot fix the right one.
+ */
+export function invalidSlug(value: string, field = "slug"): DomainError {
   return domainError("TENANCY_INVALID_SLUG", "invalid_input", "Slug must be lower-case kebab-case", {
-    fields: [{ field: "slug", code: "TENANCY_INVALID_SLUG", message: "lower-case kebab-case, 64 characters or fewer" }],
+    fields: [{ field, code: "TENANCY_INVALID_SLUG", message: "lower-case kebab-case, 64 characters or fewer" }],
     details: { length: value.length },
   });
 }

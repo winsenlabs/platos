@@ -89,7 +89,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // +2 -> 330: WIN-257 (M2.2) adds identity-access-service.ts and its refusal
   // suite. Both are well inside the budget; the façade holds no rule, only the
   // projection, which is what keeps it small.
-  assert.equal(result.fileCount, 330);
+  //
+  // +4 -> 334: WIN-257 T3 (M2.2) adds create-organization.ts, create-project.ts
+  // and a suite for each. Every gate in both use cases runs BEFORE the unit of
+  // work opens, which is what keeps the transactional block four lines long and
+  // both files inside the budget.
+  assert.equal(result.fileCount, 334);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

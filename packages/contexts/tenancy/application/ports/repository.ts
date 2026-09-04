@@ -37,6 +37,7 @@ import type {
   OrganizationRole,
   ProjectMembershipRecord,
   ProjectRecord,
+  Slug,
   TokenDigest,
   UserId,
 } from "../../domain/index.js";
@@ -62,6 +63,20 @@ export interface TenancyRepository {
   loadOrganization(organizationId: OrganizationId): Promise<OrganizationRecord | null>;
   loadProject(projectId: ProjectId): Promise<ProjectRecord | null>;
   loadEnvironment(environmentId: EnvironmentId): Promise<EnvironmentRecord | null>;
+
+  // --- slug lookups, one per unique index ----------------------------------
+  //
+  // These exist so a creation can REFUSE legibly. They are not the enforcer:
+  // `Organization.slug` is `@unique`, `Project` is `@@unique([organizationId,
+  // slug])` and `Environment` is `@@unique([projectId, slug])`, and the index is
+  // what makes a duplicate impossible. A read before the write cannot close the
+  // window between the two, and this port does not pretend otherwise — an
+  // implementation must still surface the index violation, and the in-memory
+  // fake raises one so the transaction that hits it is seen to roll back.
+
+  findOrganizationBySlug(slug: Slug): Promise<OrganizationRecord | null>;
+  findProjectBySlug(organizationId: OrganizationId, slug: Slug): Promise<ProjectRecord | null>;
+  findEnvironmentBySlug(projectId: ProjectId, slug: Slug): Promise<EnvironmentRecord | null>;
 
   listProjects(organizationId: OrganizationId): Promise<readonly ProjectRecord[]>;
   listEnvironments(projectId: ProjectId): Promise<readonly EnvironmentRecord[]>;
