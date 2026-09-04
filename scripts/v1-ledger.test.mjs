@@ -735,7 +735,30 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // which the existing `packages.adapters.config` rule already classifies, so
     // it needed no rule of its own. 16 real files where 2 placeholders stood.
     // 1042 + 13 + 1 = 1056, and on the kind axis the extra 1 is config.
-    packages: 1056,
+    //
+    // WIN-258 TRANCHE 2 — the identity-access canonical store — adds 23 more to
+    // the SAME directory, 1056 -> 1079, and to no other area at all. ADR M0.3
+    // §15 is why: one PostgreSQL database is one client is one adapter
+    // DIRECTORY, so both contexts' repositories live in `postgres-tenancy` and
+    // there is no thirteenth adapter package to move `packages` a second way.
+    //
+    //   +15 source  identity-mapping, identity-rows, identity-guards, the seven
+    //               store modules and the identity-repository composite, the two
+    //               conformance-scenario halves, identity-harness and
+    //               identity-differential-harness
+    //   +7  test    identity-mapping.test and the six integration suites
+    //               (conformance, constraints, transaction, statements,
+    //               differential, differential-login)
+    //   +1  config  mutations-identity.json, the 37-entry guard ledger, under
+    //               the same packages.adapters.config rule as mutations.json
+    //
+    // 15 + 7 + 1 = 23. NOTHING is released this time — the directory was already
+    // adopted at tranche 1, so no placeholder is subtracted and the 23 additions
+    // ARE the whole delta. The gate widenings, the ADR §15 amendment, the
+    // composition-root binding table, the census and sole-writer pins, the CI
+    // job and the regenerated evidence are all edits to files that already
+    // existed. 1056 + 23 = 1079.
+    packages: 1079,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -895,11 +918,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // are all edits to files that already existed and add none.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132.
+    //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
+    //   = 1155.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1132);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1155);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
