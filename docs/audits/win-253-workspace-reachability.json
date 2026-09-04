@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b3bcacf0d6d21201e754931fd71d29e3aacba48f73a578279e27ed8ec47f9168",
+  "evidenceSha256": "fb9c155b5b679d99e4faef31cc3856e9cce210bd3613becf3b8daca265f958e5",
   "generatedOwnership": {
     "explicitHeaderFileCount": 74,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c49e768d1c80f316491895c6f84aef374bab1397c6a8388ebb23c64644204bbc",
+    "aggregateSha256": "222c535be251b26e49090042578414ff4ccded7ea3485d4051a8544fcab82323",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "6b4e242febcf6474831e7a6006d9a220f265c04fe79ce4e8cd9561c65936094b"
+        "sha256": "b2f2a237416fa216440675e8c146e1d12485e336eae02f03f32e0518de164b59"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11693,7 +11693,7 @@
       },
       {
         "path": "packages/contexts/governance/README.md",
-        "sha256": "ea54a90220a4f2f83f4fa7c264688b0a78635308c31861af8058d3c2c613b55d"
+        "sha256": "fbef13dc790fc04503e937a4ff1facaef0d3654aacd2158d06b48b1d7a0524e7"
       },
       {
         "path": "packages/contexts/governance/application/authorization.test.ts",
@@ -11709,7 +11709,7 @@
       },
       {
         "path": "packages/contexts/governance/application/criteria.ts",
-        "sha256": "20bc45cf32e6706ab6f8138771976fe9ef85a3c1f4dc952b1fab8215fe360aa8"
+        "sha256": "55d908c7bd60c3f2437e7e559947daaa91e17570d8a0f2c14065de1ff5c4e450"
       },
       {
         "path": "packages/contexts/governance/application/dependencies.ts",
@@ -11753,7 +11753,7 @@
       },
       {
         "path": "packages/contexts/governance/application/ports/criteria-repository.ts",
-        "sha256": "62d5d45e2230cd15efa93840434fdd9d8f3f0bd42890829e35a26748a51764c4"
+        "sha256": "f6c4b7b18322ab4db3762ed66917d7a76b779825dd4dcc17c66d36da1bbedf26"
       },
       {
         "path": "packages/contexts/governance/application/ports/eval-run-queue.ts",
@@ -11797,7 +11797,7 @@
       },
       {
         "path": "packages/contexts/governance/application/read-evals.test.ts",
-        "sha256": "e1e600d2c5aebeac4c41510804779b4a8aa6a65f37a87cfc634cadc4a4350b84"
+        "sha256": "5607382c75d41dbd5d5c99483e5a6752ad810df152b747e7f186657d26c9e293"
       },
       {
         "path": "packages/contexts/governance/application/read-evals.ts",
@@ -11857,11 +11857,15 @@
       },
       {
         "path": "packages/contexts/governance/application/testing/fixtures.ts",
-        "sha256": "2f8647231188958ad0724e5ed5e96e724887d217744f9c529767d742378ed19a"
+        "sha256": "8b6fec7ce436e35752922b023e4e10364bc4028dbc6ef71b046ce6c74896547b"
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-eval-stores.ts",
-        "sha256": "4b50433f9131c3c66879341e476b013c54b5ab14239a1b95101cfe3c85fb8f0b"
+        "sha256": "2a5431ff05a9b9f7cfa2ee86be5f8a4f5b98a04350b35247bf04021cc7a26586"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-golden-sets-repository.ts",
+        "sha256": "4e1bd1785af34314d6dab7dbd3f854d0bb56576570053dee3d3f375fe334b93d"
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-infrastructure.ts",
@@ -11885,7 +11889,7 @@
       },
       {
         "path": "packages/contexts/governance/application/testing/index.ts",
-        "sha256": "ba1aa2b0ef19e6201fcc3b435987d23bbb065979f58388b95d7db1ad30a727e5"
+        "sha256": "14e883f3a14ec5b72661f5154fdbf000fd90dd56b17e795f2abd86e4df74e069"
       },
       {
         "path": "packages/contexts/governance/application/testing/scope-match.ts",
@@ -12041,7 +12045,7 @@
       },
       {
         "path": "packages/contexts/governance/mutations.json",
-        "sha256": "2312ed67a28b20eeb8f96ce51a99f09d4078d5ef9491328f4aff7fad69ee1918"
+        "sha256": "844ead7bdf4eab92b7e3c879e783ca0f5c6370477ebcae698adff20c3b51f295"
       },
       {
         "path": "packages/contexts/governance/package.json",
@@ -15249,7 +15253,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "8826fa750399513248a2e63e269f04966867dd62ef2110808c257fce234fd8a9"
+        "sha256": "06549e9354e95a5742f057f9a3400ce2dc0fbf3ffb367891d1b42ad6fffd0f62"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -15301,7 +15305,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "ee31c974cd70f0cffe3e7daa48a97e83b690a2258044e0dbeb01e4281096cc23"
+        "sha256": "7394e30178d3895d251ba7a6ad5cfa0d8e929748de8e8f51bfb680b1efaacdec"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -15317,11 +15321,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "3e5e79deaa419d3421fc7966f6bab067c44d5b15e234ff925c7d17e101ea4f75"
+        "sha256": "e024cc0e65893e0c5699803b7e4973bafba307c00fa071d711a908f949a5fe95"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "57b5991caa003c2fcab4b3e15bef9b8ed87d000f53e62ee681d39c3a5435af5d"
+        "sha256": "77e3adbc538f4f2ae7761f95cf82398cff6bec49ca240d2018d8d297653ecec2"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -15553,7 +15557,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "92b48276bfe0647d7c0c69ac2e10502493c4eda1e83ce5fa3de65f42544cca9e"
+        "sha256": "b0b683db946e0e8c7a9e06ead031e013614af7b349c6d456065985165e3db8e1"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -47571,7 +47575,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 298
+              "line": 300
             }
           ],
           "reversePaths": [
@@ -47800,7 +47804,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "df4eacd7969311e7fcf1bd7b94dd076647fab38d0f76998db0de30b672f62d1e",
+      "evidenceSha256": "1dd06e9f7632bb10a139e2ee8c21f2736c9476dba6e516188a12e053f61246eb",
       "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -60191,7 +60195,7 @@
             {
               "file": "packages/contexts/governance/application/criteria.ts",
               "from": "packages/contexts/governance",
-              "line": 31,
+              "line": 48,
               "specifier": "@platos/kernel"
             },
             {
@@ -60335,7 +60339,13 @@
             {
               "file": "packages/contexts/governance/application/testing/in-memory-eval-stores.ts",
               "from": "packages/contexts/governance",
-              "line": 14,
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-golden-sets-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 15,
               "specifier": "@platos/kernel"
             },
             {
@@ -61824,6 +61834,10 @@
             ],
             [
               "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-golden-sets-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
               "packages/contexts/governance/application/testing/in-memory-infrastructure.ts"
             ],
             [
@@ -62545,7 +62559,7 @@
             {
               "from": "packages/contexts/governance/application/read-evals.test.ts",
               "kind": "reference",
-              "line": 10
+              "line": 16
             },
             {
               "from": "packages/contexts/governance/application/read-ratings.test.ts",
@@ -64028,7 +64042,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "423e48ca925920f6aa425712949407b93add6c288749764ef7553f1a61cbf6a8",
+      "evidenceSha256": "3697231ade00cf3291a9348772dbc31b41180acd8c5d0a264146fa00e208ae21",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
