@@ -221,8 +221,9 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +4 for the WIN-256 inference suites. 67 + 21 + 4 = 92.
-  assert.equal(live.totalFiles, 92);
+  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +12 for
+  // the adapter that implements the port. 67 + 21 + 4 + 2 + 12 = 106.
+  assert.equal(live.totalFiles, 106);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,9 +234,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +4 for the WIN-256 inference suites. 67 + 21 + 4 = 92.
+  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +12 for
+  // the adapter that implements the port. 67 + 21 + 4 + 2 + 12 = 106.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 92);
+  assert.equal(files, 106);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -249,17 +251,28 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
 });
 
 test("the providers context is pinned at what vitest prints", () => {
-  // The ONE row that has moved twice. The rebase onto 75ee484de252 made it real
-  // at 21 files / 283 cases; WIN-256's inference surface (ADR M0.3 §14) adds
-  // four suites and 63 cases and takes nothing away. `pnpm --filter
-  // @platos/context-providers exec vitest run` prints "Test Files 25 passed
-  // (25) / Tests 346 passed (346)"; the AST census reproduces both with zero
-  // refusals. Every other package is held at its 3ed8f3ce value by the test
-  // above, so a suite quietly deleted elsewhere while these landed cannot hide
-  // inside the new total.
-  assert.equal(EXPECTED["packages/contexts/providers"].files, 21 + 4);
-  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63);
+  // The ONE row that has moved three times. The rebase onto 75ee484de252 made it
+  // real at 21 files / 283 cases; WIN-256's inference surface (ADR M0.3 §14)
+  // added four suites and 63 cases; the adapter branch adds the two PURE pieces
+  // it would otherwise have hidden beside an SDK call — the tool-input repair and
+  // the structured-output correction — plus one case in `errors.test.ts` keeping
+  // the adapter's seven new codes apart from the codes they resemble. `pnpm
+  // --filter @platos/context-providers exec vitest run` prints "Test Files 27
+  // passed (27) / Tests 371 passed (371)"; the AST census reproduces both with
+  // zero refusals.
+  assert.equal(EXPECTED["packages/contexts/providers"].files, 21 + 4 + 2);
+  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63 + 25);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63 + 25 + 196);
+});
+
+test("the model-router adapter is pinned at what vitest prints", () => {
+  // The row that had never held a case. `pnpm --filter
+  // @platos/adapter-model-router-providers exec vitest run` prints "Test Files
+  // 12 passed (12) / Tests 196 passed (196)". Every other package is held at its
+  // earlier value by the tests above, so a suite quietly deleted elsewhere while
+  // these landed cannot hide inside the new total.
+  assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 12);
+  assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 196);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

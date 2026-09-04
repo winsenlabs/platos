@@ -130,12 +130,63 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved. 21 + 4 = 25 files, 88 + 4 = 92 across the workspace;
  * 283 + 63 = 346 cases, 1000 + 63 = 1063 across the workspace.
+ *
+ * WIN-256 MODEL ROUTER ADAPTER (2026-09-04), on the prerequisite branch
+ * `7f266e3b`. The `ModelRouter` port gets its one implementation, and TWO rows
+ * move -- the adapter, which had never held a case, and `providers`, which gains
+ * the two pure pieces the adapter would otherwise have hidden beside an SDK call.
+ *
+ *   packages/adapters/model-router-providers   0 -> 12 files,   0 -> 196 cases
+ *   packages/contexts/providers               25 -> 27 files, 346 -> 371 cases
+ *
+ * The adapter's 196, suite by suite:
+ *
+ *     src/adapter.test.ts          20  the factory, open, probe, listModels
+ *     src/call.test.ts             12  the joined abort, sampling, prepareStep
+ *     src/clients.test.ts          12  dialect -> client, the service account
+ *     src/failure.test.ts          13  abort vs auth refusal vs outage
+ *     src/generation.test.ts       25  end to end on the framework's own mock
+ *     src/json-value.test.ts       11  making a tool result embeddable
+ *     src/messages.test.ts         20  the prompt on the wire, and back
+ *     src/steps.test.ts             7  one step, and a call with no answer
+ *     src/structured.test.ts       14  schema compile, validate, pass loop
+ *     src/tools.test.ts            11  the tool bridge and the input repair
+ *     src/transport.test.ts        27  the retry policy, guard by guard
+ *     src/usage.test.ts            24  the provider metadata chains
+ *                                 ---
+ *                                 196
+ *
+ * The +25 in `providers`, which is TWO new suites and one case added to a third:
+ *
+ *     domain/tool-input-repair.test.ts     15  new file
+ *     domain/structured-output.test.ts      9  new file
+ *     domain/errors.test.ts             9 -> 10  the adapter's seven codes are
+ *                                              kept apart from the codes they
+ *                                              resemble
+ *                                     ---
+ *                                      25
+ *
+ *   `domain/errors.test.ts` also grows its SAMPLES list by the seven new codes
+ *   without gaining a case for them, which its existing "mints every declared
+ *   code and nothing else" case asserts over. That is the shape to check for
+ *   when this number moves: a suite whose case count is unchanged while its
+ *   coverage changed is exactly what a file-count pin cannot see.
+ *
+ * ARITHMETIC. Files: 92 + 12 + 2 = 106. Cases: 196 + 25 = 221 added, and
+ * 1063 + 221 = 1284 across the workspace. Both entry points print the same
+ * pairs: `pnpm --filter @platos/adapter-model-router-providers exec vitest run`
+ * gives "Test Files 12 passed (12) / Tests 196 passed (196)", and
+ * `pnpm --filter @platos/context-providers exec vitest run` gives
+ * "Test Files 27 passed (27) / Tests 371 passed (371)".
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
-  "packages/adapters/model-router-providers": { files: 0, cases: 0 },
+  "packages/adapters/model-router-providers": { files: 12, cases: 196 },
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
@@ -156,7 +207,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
-  "packages/contexts/providers": { files: 25, cases: 346 },
+  "packages/contexts/providers": { files: 27, cases: 371 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -171,7 +222,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1063;
+export const EXPECTED_RUNTIME_TOTAL = 1284;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
