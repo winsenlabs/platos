@@ -541,7 +541,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // application suites, 3 ports, 5 in-memory doubles, and the contracts
     // barrel with its suite. The 65 are NET of the 4 generated placeholders
     // that adoption released and this code replaced in place.
-    packages: 274,
+    packages: 290,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -630,10 +630,39 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // regenerates, the composition-root wiring, the census pins and the four
     // edited identity-access suites all live in files that already existed.
     // No new ledger rule was needed. 346 + 2 = 348.
+    //
+    // WIN-257 TRANCHES 2-5 (M2.2) contribute +16, ALL in `packages`, taking
+    // packages 274 -> 290 and the combined delta 348 -> 364. T2 adds no file at
+    // all — composing tenancy is a manifest subpath, a wiring edit and a
+    // fixture helper in files that already existed:
+    //
+    //   T3 +4 — tenancy application/create-organization.ts and
+    //   application/create-project.ts, the two transactional writes whose only
+    //   home was a Prisma `$transaction` in a Remix route, and a suite for each.
+    //
+    //   T4 +8 — tenancy domain/visibility.ts (the authorization rule ported out
+    //   of apps/webapp/app/services/projectAccess.server.ts, where it existed
+    //   only as a Prisma.ProjectWhereInput) and
+    //   application/operator-read-models.ts; identity-access domain/end-user.ts
+    //   and application/list-end-users.ts, the read this context published none
+    //   of despite being sole writer of EndUser; and a suite for each of the
+    //   four.
+    //
+    //   T5 +4 — identity-access domain/session-cookie.ts, the cookie exchange
+    //   contract moved out of apps/webapp/app/services/auth.server.ts, and its
+    //   suite; plus the two suites the ADR M0.3 §6 line budget forced out of
+    //   identity-access-service.test.ts when the facade's cookie cases took it
+    //   to 501 effective lines. Those two are a SPLIT, not new coverage.
+    //
+    // Every other file the four tranches touch already existed: the two
+    // contract surfaces, the two repository ports, the in-memory stores, the
+    // rolling-back unit-of-work fake, the two service facades, the composition
+    // root and its suite, and the census/arch/ledger pins. No new ledger rule
+    // was needed. 348 + 16 = 364.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 348);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 364);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -642,11 +671,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +348 combined delta as the totalFiles
+    // M2 integration: same +20 -> +364 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24,
-    // WIN-257 +2); this one re-derives it by summing the per-area counts
-    // independently.
-    rulesDocument.baseline.totalFiles + 348
+    // WIN-257 +2 for T1 and +16 for T3-T5); this one re-derives it by summing
+    // the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 364
   );
 });
 
