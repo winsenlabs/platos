@@ -29,6 +29,8 @@ import {
 } from "@platos/context-providers/application/ports/index.js";
 import { generateText, type LanguageModel } from "ai";
 
+import { SINGLE_RETRY_LAYER } from "./call.js";
+
 /** The prompt. Short on purpose: a probe that costs real tokens is a tax. */
 export const PROBE_PROMPT = "ping";
 
@@ -53,6 +55,11 @@ export async function probeModel(
       prompt: PROBE_PROMPT,
       maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
       abortSignal: deadline.signal,
+      // The transport already carries this installation's retry policy. Letting
+      // the framework retry as well would make a health check take three times
+      // as long as its own budget says it may, on the one call whose whole point
+      // is to answer inside that budget.
+      ...SINGLE_RETRY_LAYER,
     });
     return ok({ failure: null, model: named });
   } catch (thrown) {

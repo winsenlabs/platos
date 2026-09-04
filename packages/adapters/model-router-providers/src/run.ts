@@ -25,11 +25,17 @@ import {
 } from "@platos/context-providers/application/ports/index.js";
 import { generateObject, generateText, isStepCount, type LanguageModel } from "ai";
 
-import { linkAbort, prepareStepFor, PROMPT_SHAPE_OPTIONS, samplingOptions } from "./call.js";
+import {
+  linkAbort,
+  prepareStepFor,
+  PROMPT_SHAPE_OPTIONS,
+  samplingOptions,
+  SINGLE_RETRY_LAYER,
+} from "./call.js";
 import { failed, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
 import { toGenerationStep, type FrameworkStep } from "./steps.js";
-import { compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
+import { accountingOf, compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
 import { repairCall, toolBridge, type ToolBridge } from "./tools.js";
 
 /**
@@ -92,6 +98,7 @@ async function runTextGeneration(
       repairToolCall: repairCall,
       abortSignal: signal,
       ...PROMPT_SHAPE_OPTIONS,
+      ...SINGLE_RETRY_LAYER,
       ...samplingOptions(request.sampling),
     });
     // The caller's executor broke its contract. That ended the generation, and
@@ -144,6 +151,8 @@ async function runObjectGeneration(
           schema: validator.value.schema,
           abortSignal: signal,
           ...PROMPT_SHAPE_OPTIONS,
+          ...SINGLE_RETRY_LAYER,
+      ...SINGLE_RETRY_LAYER,
       ...samplingOptions(request.sampling),
         });
         steps.push({
@@ -157,9 +166,18 @@ async function runObjectGeneration(
         // A model that produced no parseable object is a PASS that failed, not
         // a generation that failed: the loop quotes what it did produce back and
         // asks again. An abort is the opposite, and ends the loop at once.
-        const raw = (thrown as { text?: unknown }).text;
         if (signal.aborted) return failed(thrown, signal);
-        return ok({ object: undefined, rawText: typeof raw === "string" ? raw : "" });
+        // The failed pass was still sent and still billed, so its counts are
+        // read off the failure and pushed like any other step. Without this the
+        // corrected turn under-bills by exactly the pass that went wrong.
+        const accounting = accountingOf(thrown);
+        steps.push({
+          text: accounting.text,
+          usage: accounting.usage as FrameworkStep["usage"],
+          providerMetadata: accounting.providerMetadata as FrameworkStep["providerMetadata"],
+          finishReason: accounting.finishReason,
+        });
+        return ok({ object: undefined, rawText: accounting.text });
       }
     },
   );

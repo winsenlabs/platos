@@ -66,6 +66,23 @@ export function linkAbort(caller: AbortSignal | null): LinkedAbort {
  */
 export const PROMPT_SHAPE_OPTIONS = Object.freeze({ allowSystemInMessages: true });
 
+/**
+ * ONE retry policy, not two stacked on each other.
+ *
+ * The framework retries a failed call itself, twice by default, with its own
+ * exponential wait — and it does that ON TOP OF the transport, which is already
+ * applying this installation's policy. Left alone the two multiply: a policy
+ * that says "three passes" becomes nine calls to a provider that is already
+ * struggling, waiting a schedule nobody configured, and the seam in
+ * `transport.ts` would describe a policy that is not the one in force.
+ *
+ * So the framework's layer is switched off and the transport's is the whole of
+ * it. That is what makes the retry policy configurable rather than merely
+ * present, and it is why the numbers a test asserts in `transport.test.ts` are
+ * the numbers a provider actually sees.
+ */
+export const SINGLE_RETRY_LAYER = Object.freeze({ maxRetries: 0 });
+
 /** The sampling controls, with "the provider's default" expressed as absence. */
 export function samplingOptions(sampling: SamplingLimits): {
   maxOutputTokens?: number;

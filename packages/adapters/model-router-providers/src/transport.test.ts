@@ -32,12 +32,12 @@ function recordingClock(now = 1_000_000): { clock: TransportClock; waits: number
 /** A transport that answers a scripted sequence and counts its calls. */
 function scripted(...answers: readonly (Response | Error)[]): HttpTransport & { calls: () => number } {
   let index = 0;
-  const transport = (() => {
+  const transport = ((() => {
     const answer = answers[Math.min(index, answers.length - 1)];
     index += 1;
     if (answer instanceof Error) return Promise.reject(answer);
     return Promise.resolve(answer as Response);
-  }) as HttpTransport & { calls: () => number };
+  }) as unknown) as HttpTransport & { calls: () => number };
   transport.calls = () => index;
   return transport;
 }

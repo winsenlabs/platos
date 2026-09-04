@@ -32,11 +32,17 @@ import {
 } from "@platos/context-providers/application/ports/index.js";
 import { isStepCount, streamObject, streamText, type LanguageModel, type ModelMessage } from "ai";
 
-import { linkAbort, prepareStepFor, PROMPT_SHAPE_OPTIONS, samplingOptions } from "./call.js";
+import {
+  linkAbort,
+  prepareStepFor,
+  PROMPT_SHAPE_OPTIONS,
+  samplingOptions,
+  SINGLE_RETRY_LAYER,
+} from "./call.js";
 import { isAbort, translate, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
 import { answerFor, toGenerationStep, toToolCall, type FrameworkStep } from "./steps.js";
-import { compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
+import { accountingOf, compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
 import { repairCall, toolBridge, type ToolBridge } from "./tools.js";
 
 /**
@@ -138,6 +144,7 @@ async function* streamTextEvents(
       repairToolCall: repairCall,
       abortSignal: link.signal,
       ...PROMPT_SHAPE_OPTIONS,
+      ...SINGLE_RETRY_LAYER,
       ...samplingOptions(request.sampling),
     });
 
@@ -274,6 +281,8 @@ async function* streamObjectEvents(
           schema: validator.value.schema,
           abortSignal: link.signal,
           ...PROMPT_SHAPE_OPTIONS,
+          ...SINGLE_RETRY_LAYER,
+      ...SINGLE_RETRY_LAYER,
       ...samplingOptions(request.sampling),
         });
         // The RAW JSON text, delta by delta, exactly as the extraction source
@@ -295,10 +304,16 @@ async function* streamObjectEvents(
       } catch (thrown) {
         if (isAbort(thrown, link.signal)) return err(translate(thrown, link.signal));
         // A model that produced nothing parseable is a PASS that failed, and the
-        // loop quotes back what it did produce. The raw text is kept for exactly
-        // that: it is what the correction message shows the model.
-        const carried = (thrown as { text?: unknown }).text;
-        return ok({ object: undefined, rawText: typeof carried === "string" ? carried : raw });
+        // loop quotes back what it did produce. The pass was still sent and
+        // still billed, so its counts are read off the failure and kept.
+        const accounting = accountingOf(thrown);
+        steps.push({
+          text: accounting.text === "" ? raw : accounting.text,
+          usage: accounting.usage as FrameworkStep["usage"],
+          providerMetadata: accounting.providerMetadata as FrameworkStep["providerMetadata"],
+          finishReason: accounting.finishReason,
+        });
+        return ok({ object: undefined, rawText: accounting.text === "" ? raw : accounting.text });
       }
     },
   );

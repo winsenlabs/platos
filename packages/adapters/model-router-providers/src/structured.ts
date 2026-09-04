@@ -111,6 +111,37 @@ export interface PassOutcome {
 }
 
 /**
+ * What a failed pass still charged for.
+ *
+ * A pass that produced nothing the schema accepts was still SENT, and the
+ * provider still billed the prompt. The framework reports that on the error it
+ * raises, so it is read back off it: a total assembled only from the passes that
+ * worked under-bills a corrected turn by exactly the pass that went wrong.
+ */
+export interface FailedPassAccounting {
+  readonly text: string;
+  readonly usage: unknown;
+  readonly providerMetadata: unknown;
+  readonly finishReason: string | undefined;
+}
+
+export function accountingOf(thrown: unknown): FailedPassAccounting {
+  const carried = thrown as {
+    text?: unknown;
+    usage?: unknown;
+    providerMetadata?: unknown;
+    finishReason?: unknown;
+    response?: { providerMetadata?: unknown };
+  };
+  return {
+    text: typeof carried.text === "string" ? carried.text : "",
+    usage: carried.usage,
+    providerMetadata: carried.providerMetadata ?? carried.response?.providerMetadata,
+    finishReason: typeof carried.finishReason === "string" ? carried.finishReason : "error",
+  };
+}
+
+/**
  * Run one pass. Returning an error ENDS the loop — it is a failure that another
  * pass cannot fix, such as an abort or an outage. A pass that merely produced
  * the wrong shape returns `ok` with an unparseable object and is corrected.
