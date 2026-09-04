@@ -102,7 +102,7 @@ describe("opening a route", () => {
 
   it("refuses a route that cannot be constructed", async () => {
     const opened = await adapter.open({
-      plan: routePlan("azure:deployment", { dialect: "azure-openai" }),
+      plan: routePlan("azure:gpt-4o-resource", { dialect: "azure-openai" }),
       credential: credential("key"),
     });
 

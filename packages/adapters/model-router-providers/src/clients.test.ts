@@ -65,7 +65,7 @@ describe("binding a plan to a client", () => {
 
   it("refuses an azure plan with no per-resource root", () => {
     const built = resolveModel(
-      routePlan("azure:my-deployment-name", { dialect: "azure-openai" }),
+      routePlan("azure:gpt-4o-resource", { dialect: "azure-openai" }),
       credential("azkey"),
       NEVER,
     );
