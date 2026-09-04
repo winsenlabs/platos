@@ -50,8 +50,16 @@ export interface CriterionComparison {
 export interface RegressionReport {
   readonly regressed: boolean;
   /**
-   * False when a criterion the set asked for produced no candidate sample. A
-   * report that is not complete has NOT cleared the version.
+   * False when ANY criterion in the report produced no candidate sample.
+   *
+   * The criteria compared are the union of three sources — the ones the set
+   * asked for, the ones the candidate scored, and the ones the baseline scored —
+   * so a criterion the baseline has and the set no longer names also makes a
+   * report incomplete. That is the wanted reading: the comparison is against
+   * that baseline, and a version the baseline measured on a question this run
+   * did not ask has not been cleared on it either.
+   *
+   * A report that is not complete has NOT cleared the version.
    */
   readonly complete: boolean;
   readonly baselineVersionId: AgentVersionId | null;
@@ -61,7 +69,14 @@ export interface RegressionReport {
 export interface RegressionInput {
   readonly candidate: readonly RegressionSample[];
   readonly baseline: readonly RegressionSample[];
-  /** Every criterion the run was SUPPOSED to score. Drives `no-candidate`. */
+  /**
+   * Every criterion the run was SUPPOSED to score.
+   *
+   * The reason `no-candidate` is reachable at all — the source builds its list
+   * from the candidate rows alone, so a run in which every judge call failed
+   * reports an empty list and a clean pass. It is ONE of the three sources the
+   * comparison unions, not the only one.
+   */
   readonly expectedCriterionIds: readonly EvalCriterionId[];
   readonly criterionNames: ReadonlyMap<string, string>;
   readonly baselineVersionId: AgentVersionId | null;

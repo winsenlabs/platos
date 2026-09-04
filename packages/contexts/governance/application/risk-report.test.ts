@@ -233,6 +233,66 @@ describe("merging the two sources", () => {
   });
 });
 
+describe("the agent-name ceiling", () => {
+  it("names only what ONE PAGE carries, and leaves the rest unnamed", async () => {
+    // Two agents against a one-row page. An unnamed high-risk agent is still a
+    // high-risk agent, so the row stays; only the label is missing.
+    context = buildGovernanceTestContext({
+      now: new Date("2026-03-01T12:00:00.000Z"),
+      policy: withPolicy({ evals: { maxPageSize: 1 } }),
+    });
+    context.agents.seed({
+      agentId: OTHER_AGENT,
+      name: "Billing",
+      model: "anthropic:claude-sonnet-4-6",
+      currentVersionId: "version-1",
+      currentVersionNumber: 1,
+    });
+    context.activity.seed(context.scope, {
+      agentId: OTHER_AGENT,
+      turns: 10,
+      toolErrors: 0,
+      approvalEvents: 0,
+    });
+    context.activity.seed(context.scope, {
+      agentId: AGENT_ID,
+      turns: 10,
+      toolErrors: 0,
+      approvalEvents: 0,
+    });
+    const read = await board();
+    expect(read.ok && read.value.rows).toHaveLength(2);
+    const named = read.ok ? read.value.rows.filter((row) => row.agentName !== null) : [];
+    expect(named).toHaveLength(1);
+    expect(named[0]?.agentName).toBe("Support");
+  });
+
+  it("names BOTH when the page is wide enough, so the ceiling test is not vacuous", async () => {
+    context.agents.seed({
+      agentId: OTHER_AGENT,
+      name: "Billing",
+      model: "anthropic:claude-sonnet-4-6",
+      currentVersionId: "version-1",
+      currentVersionNumber: 1,
+    });
+    context.activity.seed(context.scope, {
+      agentId: OTHER_AGENT,
+      turns: 10,
+      toolErrors: 0,
+      approvalEvents: 0,
+    });
+    context.activity.seed(context.scope, {
+      agentId: AGENT_ID,
+      turns: 10,
+      toolErrors: 0,
+      approvalEvents: 0,
+    });
+    const read = await board();
+    const named = read.ok ? read.value.rows.filter((row) => row.agentName !== null) : [];
+    expect(named).toHaveLength(2);
+  });
+});
+
 describe("degradation", () => {
   it("still produces a board when the activity reader is down, marked INCOMPLETE", async () => {
     await record();

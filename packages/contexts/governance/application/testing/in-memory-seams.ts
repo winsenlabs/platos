@@ -21,6 +21,7 @@ import { err, ok, asIdentifier, type EnvironmentScope, type Result } from "@plat
 import {
   judgeUnavailable,
   ledgerUnavailable,
+  queueUnavailable,
   type AgentId,
   type EndUserId,
   type EvalRunId,
@@ -51,6 +52,16 @@ interface SeededTurn {
 export class InMemoryRatingTargets implements RatingTargetReader {
   private readonly turns: SeededTurn[] = [];
   private failure: string | null = null;
+  /**
+   * Every turn id this double was asked for, in order.
+   *
+   * The rating path's first gate refuses an operator BEFORE resolving the turn,
+   * so an operator cannot tell a real turn id from a made-up one. Without this
+   * log that claim is unobservable — "no row was written" is equally true of a
+   * refusal that happened after the read — and the guard it describes would be
+   * one nothing could turn red.
+   */
+  readonly reads: string[] = [];
 
   failNext(reason: string): void {
     this.failure = reason;
@@ -62,6 +73,7 @@ export class InMemoryRatingTargets implements RatingTargetReader {
   }
 
   async find(scope: EnvironmentScope, turnId: TurnId): Promise<Result<RatingTarget | null>> {
+    this.reads.push(turnId);
     if (this.failure !== null) {
       const reason = this.failure;
       this.failure = null;
@@ -207,7 +219,10 @@ export class InMemoryEvalRunQueue implements EvalRunQueue {
     if (this.failure !== null) {
       const reason = this.failure;
       this.failure = null;
-      return err(ledgerUnavailable(reason));
+      // The QUEUE's code, not the ledger's: the port requires it, and a double
+      // that answered the store code would let `GOVERNANCE_QUEUE_UNAVAILABLE`
+      // stay a code nothing produces.
+      return err(queueUnavailable(reason));
     }
     const held = this.accepted.get(request.idempotencyKey);
     if (held !== undefined) {

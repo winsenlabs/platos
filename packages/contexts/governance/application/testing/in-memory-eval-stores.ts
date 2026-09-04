@@ -31,20 +31,16 @@ import { err, ok, asIdentifier, type EnvironmentScope, type Result, type Transac
 
 import {
   criterionAlreadyExists,
-  goldenSetAlreadyExists,
   ledgerUnavailable,
   type ActorId,
   type AdmittedCriterion,
   type AdmittedEval,
-  type AdmittedGoldenSet,
   type AgentEval,
   type AgentEvalId,
   type AgentId,
   type EvalAggregateInput,
   type EvalCriterion,
   type EvalCriterionId,
-  type GoldenSet,
-  type GoldenSetId,
   type RegressionSample,
 } from "../../domain/index.js";
 import type {
@@ -56,9 +52,6 @@ import type {
   EvalQuery,
   EvalSampleQuery,
   EvalsRepository,
-  GoldenSetPage,
-  GoldenSetQuery,
-  GoldenSetsRepository,
 } from "../ports/index.js";
 
 export class InMemoryCriteriaRepository implements CriteriaRepository {
@@ -258,6 +251,7 @@ export class InMemoryEvalsRepository implements EvalsRepository {
       judgeModel: admitted.judgeModel,
       judgePromptUsed: admitted.judgePromptUsed,
       rawResponse: admitted.rawResponse,
+      rawResponseTruncated: admitted.rawResponseTruncated,
       score: admitted.score,
       rationale: admitted.rationale,
       passed: admitted.passed,

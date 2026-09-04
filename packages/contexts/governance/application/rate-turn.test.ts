@@ -47,9 +47,16 @@ describe("gate 1 — the actor", () => {
 
   it("refuses the operator WITHOUT reading the turn, so ids cannot be probed", async () => {
     await cast({ actor: AS_OPERATOR, turnId: asIdentifier<TurnId>("turn-does-not-exist") });
-    // A rating-target read would have been the only way to distinguish a real
-    // turn id from a made-up one.
+    // The READ LOG, not the absence of a row: a refusal that happened AFTER the
+    // read would leave the store just as empty, so the row count cannot tell the
+    // two apart and the ordering claim would be unfalsifiable.
+    expect(context.ratingTargets.reads).toEqual([]);
     expect(context.ratings.size()).toBe(0);
+  });
+
+  it("DOES read the turn for a legitimate end user, so the log is not always empty", async () => {
+    await cast();
+    expect(context.ratingTargets.reads).toEqual([TURN_ID]);
   });
 
   it("REFUSES an operator on the WITHDRAW path too", async () => {

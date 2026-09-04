@@ -47,6 +47,24 @@ function stored(overrides: Partial<GoldenSet> = {}): GoldenSet {
   };
 }
 
+describe("the name ceiling", () => {
+  it("REFUSES a name one character over a ten-character ceiling", () => {
+    const admitted = admitGoldenSet(
+      { agentId: AGENT, name: "abcdefghijk", threadIds: threads("thread-1"), criterionIds: criteria("criterion-1") },
+      { ...POLICY, maxNameLength: 10 },
+    );
+    expect(!admitted.ok && admitted.error.code).toBe("GOVERNANCE_GOLDEN_SET_INVALID");
+  });
+
+  it("ADMITS a name of exactly the ceiling", () => {
+    const admitted = admitGoldenSet(
+      { agentId: AGENT, name: "abcdefghij", threadIds: threads("thread-1"), criterionIds: criteria("criterion-1") },
+      { ...POLICY, maxNameLength: 10 },
+    );
+    expect(admitted.ok && admitted.value.name).toBe("abcdefghij");
+  });
+});
+
 describe("admitGoldenSet", () => {
   it("admits a well-formed set and reports the judge calls a run will make", () => {
     const admitted = admitGoldenSet(draft(), POLICY);

@@ -146,6 +146,27 @@ describe("pageSafetyEvents", () => {
     });
     expect(page.ok && page.value.items).toHaveLength(1);
   });
+
+  it("SEARCHES when the term is real, so the blank case is not the only one", async () => {
+    // Without this, `search: blankToNull(...)` could be replaced by
+    // `search: null` and every case here would stay green.
+    const context = buildGovernanceTestContext();
+    await record(context, { toolName: "web_search" });
+    await record(context, { toolName: "calendar" });
+
+    const hit = await pageSafetyEvents(context.dependencies, {
+      authorization: context.authorization,
+      search: "SEARCH",
+    });
+    expect(hit.ok && hit.value.total).toBe(1);
+    expect(hit.ok && hit.value.items[0]?.toolName).toBe("web_search");
+
+    const miss = await pageSafetyEvents(context.dependencies, {
+      authorization: context.authorization,
+      search: "no-such-tool",
+    });
+    expect(miss.ok && miss.value.total).toBe(0);
+  });
 });
 
 describe("describeSafetyEvent", () => {

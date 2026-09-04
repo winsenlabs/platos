@@ -12,9 +12,10 @@
 // sink that can fail a request has inverted the control it was added to
 // provide." So:
 //
-//   * every failure path here resolves rather than rejects — a malformed
-//     observation, an unknown detector, a store that is down, and a bug in this
-//     module itself all end at the same `catch`;
+//   * every failure path here resolves rather than rejects. A malformed
+//     observation, an unknown detector and a store that is down all end at the
+//     same `drop`, inside the `try`; only a thrown defect reaches the `catch`,
+//     which routes to that same `drop`. Four different failures, one exit;
 //   * nothing is retried and nothing is awaited beyond the single append, so a
 //     slow ledger cannot become a slow rate-limit decision;
 //   * and NOTHING IS SILENT. Every drop is logged through the kernel `Logger`

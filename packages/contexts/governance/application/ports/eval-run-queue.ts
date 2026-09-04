@@ -49,5 +49,14 @@ export interface EnqueuedEvalRun {
 }
 
 export interface EvalRunQueue {
+  /**
+   * Accept one planned run, or refuse it.
+   *
+   * A refusal MUST be `GOVERNANCE_QUEUE_UNAVAILABLE`, not the ledger code. "The
+   * dispatcher would not take the work" and "a table is down" are different
+   * incidents with different people to wake, and a seam that reported both under
+   * one code would make them indistinguishable to every transport downstream —
+   * which is the same defect as two guards sharing an error.
+   */
   enqueue(request: EvalRunRequest): Promise<Result<EnqueuedEvalRun>>;
 }

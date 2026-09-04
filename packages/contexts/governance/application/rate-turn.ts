@@ -28,9 +28,16 @@
 //
 // THE WHOLE WRITE IS ONE TRANSACTION. The source wraps its upsert and its memory
 // reconciliation together for a stated reason — "removes the crash window
-// between rating persistence and authoritative aggregate application" — and that
-// property is kept: the read-back that produces the returned view happens inside
-// the same unit of work as the write that produced it.
+// between rating persistence and authoritative aggregate application" — and the
+// shape is kept: the revision read that DECIDES the write runs inside the same
+// unit of work as the write, so two concurrent votes on one turn cannot both
+// read revision 1.
+//
+// THE RETURNED VIEW IS THE WRITE'S OWN ANSWER, not a read-back. There is no
+// second read to be inside or outside the transaction, and `RatingsRepository`
+// deliberately gives `findForTurn` no `TransactionScope` while `upsert` and
+// `remove` have one: this context reads outside a transaction and writes inside
+// exactly one.
 
 import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 

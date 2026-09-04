@@ -240,10 +240,20 @@ describe("idempotency", () => {
 });
 
 describe("the queue itself", () => {
-  it("reports a queue failure rather than claiming work was accepted", async () => {
+  it("reports a queue failure under the QUEUE's code, not the store's", async () => {
+    // Two incidents, two codes: "the dispatcher would not take the work" wakes
+    // somebody different from "a table is down".
     const context = buildGovernanceTestContext();
     const goldenSetId = await seedSet(context);
     context.evalRuns.failNext("dispatcher down");
+    const queued = await enqueue(context, goldenSetId);
+    expect(!queued.ok && queued.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
+  });
+
+  it("reports a SET-read failure under the store's code, so the two are apart", async () => {
+    const context = buildGovernanceTestContext();
+    const goldenSetId = await seedSet(context);
+    context.goldenSets.failNext("store down");
     const queued = await enqueue(context, goldenSetId);
     expect(!queued.ok && queued.error.code).toBe("GOVERNANCE_LEDGER_UNAVAILABLE");
   });

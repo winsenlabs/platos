@@ -184,23 +184,55 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * WIN-256 DELTA — `governance` (ADR M0.3 §1 context 14) becomes real. One row
  * moves, and only one:
  *
- *   governance 0 -> 31 files, 0 -> 587 cases; 1515 -> 2102 total.
+ *   governance 0 -> 31 files, 0 -> 609 cases; 1515 -> 2124 total.
  *
  * The arithmetic is written out so a deletion cannot hide inside an addition:
- * 1515 + 587 = 2102, and the 587 is 0 + 586 + 1 rather than a net of two
- * movements. The +1 arrived after the first pin and is worth naming: a review of
- * `application/criteria.ts` found a docblock claiming that deleting a criterion
- * preserves the evals taken against it, which the canonical schema contradicts
- * — `AgentEval.criterion` is `onDelete: Cascade`. The claim had a test, and that
- * test passed only because the in-memory criteria store did not model the
- * cascade: a fixture certifying a live bug. The store now cascades, the false
- * test was replaced by one reaching the null-name bucket through a criteria-read
- * failure, and a SECOND case asserts the evals really do go.
+ * 1515 + 609 = 2124, and the 609 is 0 + 586 + 1 + 22 rather than a net of
+ * several movements. The file count did NOT move after the first pin, which is
+ * exactly the drift a file-count pin is blind to. Both additions came from
+ * review and both are worth naming.
+ *
+ * +1, THE FIXTURE THAT CERTIFIED A LIVE BUG. `application/criteria.ts` claimed
+ * that deleting a criterion preserves the evals taken against it. The canonical
+ * schema contradicts it — `AgentEval.criterion` is `onDelete: Cascade` — and the
+ * claim had a passing test, which passed only because the in-memory criteria
+ * store did not model the cascade. The store now cascades, the false case was
+ * replaced by one reaching the null-name bucket through a criteria-read failure
+ * (the claim that does hold), and a SECOND case asserts the evals really go.
+ *
+ * +22, GUARDS AND FILTERS NOTHING COULD TURN RED. An adversarial pass over the
+ * suites found eleven places where a mutation to production code left every case
+ * green, and each closure is a case here:
+ *
+ *   +5  the three criterion text ceilings (name, judge prompt, rubric) and the
+ *       golden-set name ceiling had no case at all, so four `policy.max*Length`
+ *       reads could be deleted silently. The rubric's ceiling ALSO answered the
+ *       judge prompt's error code, which is two guards a test cannot tell apart;
+ *       it now has `GOVERNANCE_CRITERION_RUBRIC_INVALID` of its own.
+ *   +2  `applyCriterionPatch` could return a constant `isActive: false` — every
+ *       existing assertion expected false — and every edited criterion would
+ *       silently stop being scoreable at `runJudge` gate 4.
+ *   +4  the two `agents` page ceilings were unreachable because no fixture ever
+ *       seeded more rows than the ceiling; the version and agent doubles now
+ *       APPLY their window and each ceiling has a reached case and a control.
+ *   +2  `pageCriteria`'s `activeOnly` filter and `pageSafetyEvents`' search term
+ *       could both be replaced by a constant.
+ *   +2  the rating path's "refuses the operator WITHOUT reading the turn" was
+ *       asserted by an empty store, which a refusal AFTER the read satisfies
+ *       equally; `InMemoryRatingTargets` now keeps a read log.
+ *   +2  `rawResponseTruncated` never reached the stored row, so the truncation
+ *       "says so" to nobody. It is a column now, like `detailTruncated`.
+ *   +3  a distinct dispatcher failure (`GOVERNANCE_QUEUE_UNAVAILABLE` was a code
+ *       nothing produced), a distinct store failure beside it, and the judge
+ *       body ceiling asserted with literals rather than with the constant it
+ *       tests.
+ *   +2  `readJudgeVerdict`'s under-ceiling case, and the golden-set store's own
+ *       uniqueness constraint reached directly.
  * The 31 files are 16 domain suites, 14 application suites and the
- * contracts-barrel suite. The census REFUSED nothing in that tree, so its 587 is
+ * contracts-barrel suite. The census REFUSED nothing in that tree, so its 609 is
  * a statically exact count, and
  * `pnpm --filter @platos/context-governance exec vitest run` prints the same
- * pair — "Test Files 31 passed (31) / Tests 587 passed (587)" — which is the
+ * pair — "Test Files 31 passed (31) / Tests 609 passed (609)" — which is the
  * agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
  *
  * Every one of the 14 application suites exists because a use case had no
@@ -236,7 +268,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
-  "packages/contexts/governance": { files: 31, cases: 587 },
+  "packages/contexts/governance": { files: 31, cases: 609 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
@@ -257,7 +289,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 2102;
+export const EXPECTED_RUNTIME_TOTAL = 2124;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

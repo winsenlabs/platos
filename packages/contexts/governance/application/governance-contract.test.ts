@@ -268,7 +268,14 @@ describe("every declared method is bound to a use case", () => {
       goldenSetId,
       evalIds: [],
     });
-    expect(report.ok && report.value.complete).toBe(false);
+    // `.toBe(false)` on a `report.ok && ...` expression is satisfied by a
+    // REFUSAL, so the shape is asserted first: a stub bound to nothing would
+    // answer an error and fail here rather than pass by short circuit.
+    expect(report.ok).toBe(true);
+    if (!report.ok) throw new Error(report.error.code);
+    expect(report.value.complete).toBe(false);
+    expect(report.value.perCriterion).toHaveLength(1);
+    expect(report.value.perCriterion[0]?.criterionId).toBe(criterionId);
 
     const removed = await contract.removeGoldenSet({ authorization: context.authorization, goldenSetId });
     expect(removed.ok && removed.value).toBe(true);

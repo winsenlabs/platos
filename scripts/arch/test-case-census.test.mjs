@@ -286,21 +286,22 @@ test("the agents context is pinned at what vitest prints", () => {
 test("the governance context is pinned at what vitest prints", () => {
   // The ONE row WIN-256's governance slice moves. `pnpm --filter
   // @platos/context-governance exec vitest run` prints "Test Files 31 passed
-  // (31) / Tests 587 passed (587)"; the AST census reproduces both with zero
+  // (31) / Tests 609 passed (609)"; the AST census reproduces both with zero
   // refusals. Every other package is held at its previous value by the tests
   // above, so a suite quietly deleted elsewhere while governance landed cannot
   // hide inside the new total.
   //
-  // 0 -> 587 with the file count 0 -> 31: a first adoption, so this row has
-  // little internal arithmetic to spell out — 586 at the first pin, +1 for the
-  // case that replaced a claim the schema contradicted; the reasoning is in the
-  // header of scripts/arch/test-case-census.mjs. The TOTAL does, and it is written as a sum
+  // 0 -> 609 with the file count 0 -> 31: 586 at the first pin, +1 for the case
+  // that replaced a claim the schema contradicted, +22 for guards an adversarial
+  // pass found nothing could turn red. The file count never moved through either
+  // addition, which is the drift a file-count pin cannot see; the reasoning for
+  // each addend is in the header of scripts/arch/test-case-census.mjs. The TOTAL does, and it is written as a sum
   // of every pinned row rather than as `previous + 586`, so a row that fell
   // while this one rose cannot cancel out and reach the same number.
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
-  assert.equal(EXPECTED["packages/contexts/governance"].cases, 587);
-  assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 515 + 587);
+  assert.equal(EXPECTED["packages/contexts/governance"].cases, 609);
+  assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 515 + 609);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)

@@ -8,18 +8,20 @@
 // therefore both kernel ports — `safetyEventSink()` for the enforcement layer
 // and `erasureTarget()` for `privacy` — plus this contract for the transports.
 //
-// IT CARRIES NO IMPLEMENTATION. Everything here is either a type or a frozen
-// vocabulary — the error codes, the three safety enumerations, the judge
-// providers, the shipped policy and the event names. All of them come from
-// `domain/`, which imports nothing but the kernel, so importing this module
+// IT CARRIES NO IMPLEMENTATION. Everything here is either a type or a value with
+// no behaviour — the error codes, the event names, the three safety
+// enumerations and the judge providers as frozen arrays, the shipped policy as a
+// frozen object, and `COLUMN_SCORE_SCALE_MAX` as a bare number. All of them come
+// from `domain/`, which imports nothing but the kernel, so importing this module
 // pulls in a handful of arrays and cannot drag a use case, a port or a peer
 // context's contract across a boundary with it. The implementation is
 // `createGovernanceContract` in `application/`, and it is reached only through
 // the composition root.
 //
-// The ten driven ports are NOT re-exported here. They are adapter-facing, not
-// context-facing, and they are published from `application/ports/index.js` where
-// their adapters import them (ADR M0.3 §13).
+// The ten driven port INTERFACES — spread across eight modules, because
+// `read-seams.ts` declares three — are NOT re-exported here. They are
+// adapter-facing, not context-facing, and they are published from
+// `application/ports/index.js` where their adapters import them (ADR M0.3 §13).
 //
 // THE FIVE ROWS ARE PUBLISHED AS THEMSELVES, NOT AS VIEWS. `SafetyEvent`,
 // `MessageRating`, `EvalCriterion`, `AgentEval` and `GoldenSet` are flat,

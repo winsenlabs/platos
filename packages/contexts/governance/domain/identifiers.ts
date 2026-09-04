@@ -5,7 +5,7 @@
 // GoldenSet — plus the foreign keys those rows carry and this context reads but
 // never writes.
 //
-// FOUR FOREIGN IDS ARE BRANDED HERE RATHER THAN IMPORTED. A context's `domain/`
+// FIVE FOREIGN IDS ARE BRANDED HERE RATHER THAN IMPORTED. A context's `domain/`
 // may import only its own domain and `@platos/kernel` (ADR M0.3 §2), so it
 // cannot name another context's type. Each brand below is deliberately spelled
 // with the SAME tag its owner uses, so the two are one type: an `AgentId` that

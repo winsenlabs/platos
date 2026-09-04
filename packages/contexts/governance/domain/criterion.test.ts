@@ -52,6 +52,52 @@ function stored(overrides: Partial<EvalCriterion> = {}): EvalCriterion {
   };
 }
 
+describe("the three text ceilings, each with its own code", () => {
+  it("REFUSES a name one character over the ceiling", () => {
+    // Written as literals against a ceiling of 10, never as `maxNameLength + 1`:
+    // an input derived from the constant stays green when the constant moves.
+    const admitted = admitCriterion(
+      { name: "abcdefghijk", judgePrompt: "score it" },
+      { ...POLICY, maxNameLength: 10 },
+    );
+    expect(!admitted.ok && admitted.error.code).toBe("GOVERNANCE_CRITERION_NAME_INVALID");
+  });
+
+  it("ADMITS a name of exactly the ceiling", () => {
+    const admitted = admitCriterion(
+      { name: "abcdefghij", judgePrompt: "score it" },
+      { ...POLICY, maxNameLength: 10 },
+    );
+    expect(admitted.ok && admitted.value.name).toBe("abcdefghij");
+  });
+
+  it("REFUSES a judge prompt one character over the ceiling, with a DIFFERENT code", () => {
+    const admitted = admitCriterion(
+      { name: "grounded", judgePrompt: "abcdefghijk" },
+      { ...POLICY, maxPromptLength: 10 },
+    );
+    expect(!admitted.ok && admitted.error.code).toBe("GOVERNANCE_CRITERION_PROMPT_INVALID");
+  });
+
+  it("REFUSES a rubric one character over the ceiling, with a THIRD code", () => {
+    // It used to answer the judge prompt's code. Two ceilings, one code, and no
+    // test could say which of the two it had reached.
+    const admitted = admitCriterion(
+      { name: "grounded", judgePrompt: "score it", rubric: "abcdefghijk" },
+      { ...POLICY, maxRubricLength: 10 },
+    );
+    expect(!admitted.ok && admitted.error.code).toBe("GOVERNANCE_CRITERION_RUBRIC_INVALID");
+  });
+
+  it("ADMITS a rubric of exactly the ceiling", () => {
+    const admitted = admitCriterion(
+      { name: "grounded", judgePrompt: "score it", rubric: "abcdefghij" },
+      { ...POLICY, maxRubricLength: 10 },
+    );
+    expect(admitted.ok && admitted.value.rubric).toBe("abcdefghij");
+  });
+});
+
 describe("admitCriterion", () => {
   it("admits a well-formed draft and trims the name", () => {
     const admitted = admitCriterion(draft({ name: "  grounded  " }), POLICY);
@@ -162,6 +208,20 @@ describe("applyCriterionPatch", () => {
   it("re-checks the NAME ceiling on a patch, not only on a create", () => {
     const patched = applyCriterionPatch(stored(), { name: "01234567890" }, POLICY, LATER);
     expect(!patched.ok && patched.error.code).toBe("GOVERNANCE_CRITERION_NAME_INVALID");
+  });
+
+  it("LEAVES an active criterion active when the patch does not mention it", () => {
+    // Every other `isActive` assertion in this package expects false, so
+    // `isActive: false` as a constant survived them all — and an always-inactive
+    // criterion is refused by `runJudge` gate 4, which silently stops every
+    // edited criterion being scoreable.
+    const patched = applyCriterionPatch(stored(), { name: "renamed" }, POLICY, LATER);
+    expect(patched.ok && patched.value.isActive).toBe(true);
+  });
+
+  it("REACTIVATES when the patch says so", () => {
+    const patched = applyCriterionPatch(stored({ isActive: false }), { isActive: true }, POLICY, LATER);
+    expect(patched.ok && patched.value.isActive).toBe(true);
   });
 
   it("moves `isActive` and leaves it alone when absent", () => {

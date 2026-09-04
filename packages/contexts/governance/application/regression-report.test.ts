@@ -105,8 +105,13 @@ describe("the run that produced nothing", () => {
       goldenSetId,
       evalIds: [],
     });
-    expect(report.ok && report.value.regressed).toBe(false);
-    expect(report.ok && report.value.complete).toBe(false);
+    // Asserted through `ok` first: two `.toBe(false)` checks on `ok && ...`
+    // expressions are both satisfied by a refusal, which is not what this test
+    // is about.
+    expect(report.ok).toBe(true);
+    if (!report.ok) throw new Error(report.error.code);
+    expect(report.value.regressed).toBe(false);
+    expect(report.value.complete).toBe(false);
   });
 
   it("is COMPLETE when every criterion the set asked for produced a score", async () => {

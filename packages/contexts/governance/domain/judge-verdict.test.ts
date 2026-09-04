@@ -80,9 +80,18 @@ describe("readJudgeVerdict — where the answer was found", () => {
     expect(verdict.rationale).toBe("I would rather not say.");
   });
 
-  it("keeps a bounded prefix of a very long unreadable body as the rationale", () => {
-    const verdict = readJudgeVerdict("x".repeat(UNREADABLE_RATIONALE_LENGTH + 500), criterion(), PASS_MARK);
-    expect(verdict.rationale).toHaveLength(UNREADABLE_RATIONALE_LENGTH);
+  it("cuts a very long unreadable body to EXACTLY 2,000 characters", () => {
+    // Both numbers are literals. Deriving the input from
+    // `UNREADABLE_RATIONALE_LENGTH` and asserting the same constant back would
+    // stay green for any value the constant took, including 10.
+    const verdict = readJudgeVerdict("x".repeat(2_500), criterion(), PASS_MARK);
+    expect(verdict.rationale).toHaveLength(2_000);
+    expect(UNREADABLE_RATIONALE_LENGTH).toBe(2_000);
+  });
+
+  it("leaves a body SHORTER than the ceiling whole", () => {
+    const verdict = readJudgeVerdict("x".repeat(1_999), criterion(), PASS_MARK);
+    expect(verdict.rationale).toHaveLength(1_999);
   });
 
   it("reports UNREADABLE for a JSON ARRAY, which is not a verdict", () => {

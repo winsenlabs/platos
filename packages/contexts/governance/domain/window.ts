@@ -9,10 +9,15 @@
 // clamped values are RETURNED rather than applied invisibly, so a transport can
 // render "showing 200 of 10,000 requested" if it chooses to.
 //
-// ONE THING IS REFUSED RATHER THAN CLAMPED. A negative offset is not a caller
-// asking for too much; it is a caller whose arithmetic is wrong, and clamping it
-// to zero silently serves page one to something that believes it is reading page
-// minus-three. It is `GOVERNANCE_PAGE_REQUEST_INVALID`.
+// TWO THINGS ARE REFUSED RATHER THAN CLAMPED, AND BOTH FOR THE SAME REASON.
+// A negative offset is not a caller asking for too much; it is a caller whose
+// arithmetic is wrong, and clamping it to zero silently serves page one to
+// something that believes it is reading page minus-three. A limit that is not a
+// whole number of rows at least one is the same kind of mistake — `limit: 0` and
+// `limit: 2.5` are not requests a clamp can honour without inventing an answer.
+// Both are `GOVERNANCE_PAGE_REQUEST_INVALID`, told apart by the violation's
+// `field`. What is clamped is a limit that is merely TOO WIDE, because refusing
+// that would break every existing surface.
 //
 // A WINDOW IS DERIVED FROM AN INJECTED CLOCK. Nothing here reads the wall clock,
 // which is what makes "the last 30 days" a value a test can pin to the
@@ -54,11 +59,15 @@ export interface PageRequest {
 /**
  * Clamp a requested day count into the bounds.
  *
- * A non-integer or non-finite request takes the default rather than propagating
- * `NaN` into a date, which is the failure mode the source's
+ * A NON-FINITE request takes the default rather than propagating `NaN` into a
+ * date, which is the failure mode the source's
  * `Math.min(options.sinceDays ?? 30, 365)` has: `Math.min(NaN, 365)` is `NaN`,
  * `new Date(NaN)` is an Invalid Date, and every comparison against it is false —
  * a window that silently matches nothing.
+ *
+ * A FINITE non-integer is FLOORED, not defaulted: 2.7 days is a caller asking
+ * for two days and a bit, and two days is the honest reading of it. Only a
+ * request with no numeric meaning at all falls back to the default.
  */
 export function clampDays(requested: number | null | undefined, bounds: WindowBounds): number {
   if (requested === null || requested === undefined) return bounds.defaultWindowDays;

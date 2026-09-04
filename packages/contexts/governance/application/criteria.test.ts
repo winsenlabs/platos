@@ -243,6 +243,39 @@ describe("removeCriterion and describeCriterion", () => {
   });
 });
 
+describe("pageCriteria — the active-only filter", () => {
+  it("HIDES a deactivated criterion when `activeOnly` is asked for", async () => {
+    await create({ name: "live" });
+    const off = await create({ name: "retired" });
+    const criterionId = off.ok ? off.value.evalCriterionId : ("" as EvalCriterionId);
+    await updateCriterion(context.dependencies, {
+      authorization: context.authorization,
+      criterionId,
+      patch: { isActive: false },
+    });
+
+    const filtered = await pageCriteria(context.dependencies, {
+      authorization: context.authorization,
+      activeOnly: true,
+    });
+    expect(filtered.ok && filtered.value.total).toBe(1);
+    expect(filtered.ok && filtered.value.items[0]?.name).toBe("live");
+  });
+
+  it("SHOWS it when `activeOnly` is not asked for, so the filter test is not vacuous", async () => {
+    await create({ name: "live" });
+    const off = await create({ name: "retired" });
+    const criterionId = off.ok ? off.value.evalCriterionId : ("" as EvalCriterionId);
+    await updateCriterion(context.dependencies, {
+      authorization: context.authorization,
+      criterionId,
+      patch: { isActive: false },
+    });
+    const all = await pageCriteria(context.dependencies, { authorization: context.authorization });
+    expect(all.ok && all.value.total).toBe(2);
+  });
+});
+
 describe("pageCriteria", () => {
   it("clamps an over-wide page to EXACTLY the ceiling", async () => {
     context = buildGovernanceTestContext({ policy: withPolicy({ criteria: { maxPageSize: 2 } }) });

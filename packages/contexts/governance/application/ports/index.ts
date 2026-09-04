@@ -6,11 +6,13 @@
 // context has no business holding this context's repository; its adapter has
 // nothing else.
 //
-// Five of the eight are stores — one per canonical row this context is sole
-// writer of. Three are not: `read-seams.ts` inverts the three questions whose
-// answers belong to contexts the §1 DAG does not let this one import,
-// `judge.ts` is the entire vendor surface of the eval pipeline, and
-// `eval-run-queue.ts` is the durable seam a golden-set run is handed to.
+// TEN INTERFACES IN EIGHT MODULES, and the counts differ because `read-seams.ts`
+// declares three. Five of the eight modules are stores — one per canonical row
+// this context is sole writer of. The other three are not: `read-seams.ts`
+// inverts the three questions whose answers belong to contexts the §1 DAG does
+// not let this one import, `judge.ts` is the entire vendor surface of the eval
+// pipeline, and `eval-run-queue.ts` is the durable seam a golden-set run is
+// handed to.
 
 export type {
   AgentDetectorCounts,

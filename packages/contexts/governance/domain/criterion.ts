@@ -26,6 +26,7 @@ import { err, ok, type Result } from "@platos/kernel";
 import {
   criterionNameInvalid,
   criterionPromptInvalid,
+  criterionRubricInvalid,
   criterionScaleInvalid,
 } from "./errors.js";
 import type { ActorId, AgentId, EvalCriterionId } from "./identifiers.js";
@@ -215,7 +216,7 @@ function admitRubric(value: string | null, maxLength: number): Result<string | n
   if (value.trim() === "") return ok(null);
   if (value.length > maxLength) {
     return err(
-      criterionPromptInvalid([{ field: "rubric", code: "too_long", message: `at most ${maxLength} characters` }]),
+      criterionRubricInvalid([{ field: "rubric", code: "too_long", message: `at most ${maxLength} characters` }]),
     );
   }
   return ok(value);

@@ -2,13 +2,14 @@ import { asIdentifier } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { AgentId, AgentVersionId, MessageRating, TurnId } from "../domain/index.js";
-import { readAgentSatisfaction, readVersionSatisfaction } from "./read-ratings.js";
+import { readAgentSatisfaction, readVersionSatisfaction, versionNumbers } from "./read-ratings.js";
 import {
   AGENT_ID,
   AGENT_VERSION_ID,
   END_USER_ID,
   buildGovernanceTestContext,
   otherEnvironmentScope,
+  withPolicy,
   type GovernanceTestContext,
 } from "./testing/index.js";
 
@@ -45,6 +46,50 @@ function seedVote(
     updatedAt: at,
   });
 }
+
+describe("the version-label ceiling", () => {
+  it("labels only what ONE PAGE carries, and leaves the rest unlabelled", async () => {
+    // Three versions against a two-row page. The source reads every version an
+    // agent has ever had, unbounded, on every dashboard load; here the lookup is
+    // bounded and a bucket beyond the page degrades to an unlabelled one instead.
+    const context = buildGovernanceTestContext({ policy: withPolicy({ evals: { maxPageSize: 2 } }) });
+    context.agents.seed({
+      agentId: AGENT_ID,
+      name: "Support",
+      model: "anthropic:claude-sonnet-4-6",
+      currentVersionId: "version-9",
+      currentVersionNumber: 9,
+      priorVersions: [
+        { versionId: "version-6", versionNumber: 6 },
+        { versionId: "version-7", versionNumber: 7 },
+      ],
+    });
+    const labels = await versionNumbers(context.dependencies, context.authorization, AGENT_ID);
+    expect(labels.size).toBe(2);
+    expect(labels.get("version-6")).toBe(6);
+    expect(labels.get("version-7")).toBe(7);
+    // The third fell off the page, so its bucket carries scores and no label.
+    expect(labels.has("version-9")).toBe(false);
+  });
+
+  it("labels ALL THREE when the page is wide enough, so the ceiling test is not vacuous", async () => {
+    const context = buildGovernanceTestContext({ policy: withPolicy({ evals: { maxPageSize: 50 } }) });
+    context.agents.seed({
+      agentId: AGENT_ID,
+      name: "Support",
+      model: "anthropic:claude-sonnet-4-6",
+      currentVersionId: "version-9",
+      currentVersionNumber: 9,
+      priorVersions: [
+        { versionId: "version-6", versionNumber: 6 },
+        { versionId: "version-7", versionNumber: 7 },
+      ],
+    });
+    const labels = await versionNumbers(context.dependencies, context.authorization, AGENT_ID);
+    expect(labels.size).toBe(3);
+    expect(labels.get("version-9")).toBe(9);
+  });
+});
 
 describe("readVersionSatisfaction", () => {
   it("REFUSES an unminted grant", async () => {

@@ -50,6 +50,16 @@ export interface AgentEval {
   readonly judgeModel: string;
   readonly judgePromptUsed: string;
   readonly rawResponse: string | null;
+  /**
+   * True when `rawResponse` lost its tail to the ceiling.
+   *
+   * On the ROW, not only on the admitted draft, for the reason
+   * `SafetyEvent.detailTruncated` is: a reader looking at a judge's answer has
+   * to be able to tell "the judge said this" from "the judge said this and more".
+   * A flag that stopped at the admission boundary would be a truncation nothing
+   * downstream could see.
+   */
+  readonly rawResponseTruncated: boolean;
   /** Normalised 0..100. See `judge-verdict.ts`. */
   readonly score: number;
   readonly rationale: string | null;

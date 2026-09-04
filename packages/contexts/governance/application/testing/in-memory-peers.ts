@@ -17,8 +17,10 @@
 //   live version runs, and its version page carries version numbers. The
 //   no-self-evaluation invariant is decided against THAT model, so an agents
 //   double that answered a plausible constant would make the invariant
-//   untestable. It also counts its calls, so "the rating path asks agents once"
-//   is a tested claim.
+//   untestable. It also counts its `describeAgent` calls, which is what makes
+//   "the rating path asks `agents` NOTHING" a tested claim rather than an
+//   inferred one: the version a rating is attributed to comes from the turn, so
+//   `rate-turn.test.ts` asserts the counter is empty.
 
 import { err, ok, asIdentifier, type EnvironmentScope, type Result } from "@platos/kernel";
 import type { AgentPageView, AgentVersionPageView, AgentView, AgentsContract } from "@platos/context-agents";
@@ -83,9 +85,11 @@ export interface SeededAgent {
 /**
  * An in-memory `agents`, offering the three methods this context calls.
  *
- * Every other method refuses. A use case that reached for one would fail loudly
- * here rather than quietly acquiring an edge the ADR M0.3 §1 DAG permits but
- * this context has no business taking.
+ * It is typed as a `Pick` of exactly those three, so a use case reaching for a
+ * fourth does not compile against this double — the edge is refused by the type
+ * rather than at runtime, which is earlier and louder. That is deliberate: the
+ * ADR M0.3 §1 DAG permits `governance -> agents`, and permission is not a reason
+ * to take more of the contract than the three questions this context has.
  */
 export class InMemoryAgents
   implements Pick<AgentsContract, "name" | "describeAgent" | "pageAgents" | "pageVersions">
@@ -140,18 +144,33 @@ export class InMemoryAgents
   async pageVersions(query: {
     readonly authorization: unknown;
     readonly agentId: string;
+    /** `take`, not `limit`: the real `PageVersionsQuery` spells it that way. */
+    readonly take?: number;
+    readonly offset?: number;
   }): Promise<Result<AgentVersionPageView>> {
     if (this.failing) return err(ledgerUnavailable("agents_double_failing"));
     if (!this.sameEnvironment(query.authorization)) return err(ledgerUnavailable("agent_other_environment"));
     const held = this.agents.get(query.agentId);
     if (held === undefined) return err(ledgerUnavailable("agent_not_seeded"));
-    const items = [
+    const all = [
       ...(held.priorVersions ?? []).map((prior) =>
         this.versionView(held, prior.versionId, prior.versionNumber, false),
       ),
       this.versionView(held, held.currentVersionId, held.currentVersionNumber, true),
     ];
-    return ok({ items, total: items.length, nextCursor: null, offset: 0, limit: items.length });
+    // APPLIED, like `pageAgents`. `read-ratings.ts` bounds its version-label
+    // lookup by one page and reports an unlabelled bucket beyond it; a double
+    // that answered every seeded version whatever was asked would make that
+    // degradation unreachable and the ceiling unfalsifiable.
+    const offset = query.offset ?? 0;
+    const take = query.take ?? all.length;
+    return ok({
+      items: all.slice(offset, offset + take),
+      total: all.length,
+      nextCursor: null,
+      offset,
+      limit: take,
+    });
   }
 
   /**

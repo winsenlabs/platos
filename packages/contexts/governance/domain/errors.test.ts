@@ -8,6 +8,7 @@ import {
   criterionNameInvalid,
   criterionNotFound,
   criterionPromptInvalid,
+  criterionRubricInvalid,
   criterionScaleInvalid,
   erasurePlanForeign,
   evalNotFound,
@@ -54,6 +55,7 @@ const EVERY_CONSTRUCTOR = [
   criterionInactive("criterion-1"),
   criterionNameInvalid([{ field: "name", code: "blank", message: "required" }]),
   criterionPromptInvalid([{ field: "judgePrompt", code: "blank", message: "required" }]),
+  criterionRubricInvalid([{ field: "rubric", code: "too_long", message: "too long" }]),
   criterionScaleInvalid(5, 5),
   evalNotFound("eval-1"),
   evalSelfJudged("a", "a"),
@@ -83,9 +85,19 @@ describe("the catalogue", () => {
 
   it("gives every constructor its OWN code — no two guards answer alike", () => {
     // Two adjacent checks sharing a code cannot be told apart by a test, which
-    // is how a guard comes to be unfalsifiable. Only the two DELIBERATE sharings
-    // exist in this context, and both are between two INPUTS to one constructor
-    // rather than between two constructors, so this stays exact.
+    // is how a guard comes to be unfalsifiable.
+    //
+    // THIS ASSERTION ONLY COVERS CONSTRUCTORS, AND THAT IS ITS LIMIT. Two
+    // separate GUARDS calling the same constructor are invisible here, and that
+    // is exactly how the rubric ceiling came to share
+    // `GOVERNANCE_CRITERION_PROMPT_INVALID` with the judge-prompt ceiling: two
+    // ceilings, one code, and a suite asserting only the code could not say
+    // which it had reached. The rubric now has `criterionRubricInvalid` and both
+    // ceilings have a case of their own in `criterion.test.ts`. The sharings
+    // that REMAIN are between two INPUTS to one constructor — a blank name and
+    // an over-long one both answer `criterionNameInvalid`, distinguished by the
+    // violation's `code` field, which `field violations tell the two name
+    // failures apart` pins.
     expect(new Set(EVERY_CONSTRUCTOR.map((error) => error.code)).size).toBe(EVERY_CONSTRUCTOR.length);
   });
 

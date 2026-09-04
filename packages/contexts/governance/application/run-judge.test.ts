@@ -297,11 +297,22 @@ describe("what a successful score writes", () => {
     expect(unpriced.ok && unpriced.value.costCents).toBeNull();
   });
 
-  it("truncates an enormous judge answer to the configured ceiling", async () => {
+  it("truncates an enormous judge answer to the configured ceiling, AND SAYS SO", async () => {
     context = buildGovernanceTestContext({ policy: withPolicy({ evals: { maxRawResponseLength: 12 } }) });
     context.judge.only('{"score": 40, "rationale": "and a great deal more text besides"}');
     const scored = await judge();
     expect(scored.ok && scored.value.rawResponse).toHaveLength(12);
+    // On the STORED ROW, not only on the admitted draft: a reader has to be able
+    // to tell "the judge said this" from "the judge said this and more".
+    expect(scored.ok && scored.value.rawResponseTruncated).toBe(true);
+  });
+
+  it("does NOT flag an answer that fitted", async () => {
+    context = buildGovernanceTestContext({ policy: withPolicy({ evals: { maxRawResponseLength: 4_000 } }) });
+    context.judge.only('{"score": 40}');
+    const scored = await judge();
+    expect(scored.ok && scored.value.rawResponseTruncated).toBe(false);
+    expect(scored.ok && scored.value.rawResponse).toBe('{"score": 40}');
   });
 });
 

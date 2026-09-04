@@ -559,6 +559,118 @@
       "suites": [
         "application/read-evals.test.ts"
       ]
+    },
+    {
+      "name": "M56 criterion name: the length ceiling is not enforced",
+      "file": "domain/criterion.ts",
+      "from": "  if (trimmed.length > maxLength) {\n    return err(\n      criterionNameInvalid([",
+      "to": "  if (false) {\n    return err(\n      criterionNameInvalid([",
+      "suites": [
+        "domain/criterion.test.ts"
+      ]
+    },
+    {
+      "name": "M57 judge prompt: the length ceiling is not enforced",
+      "file": "domain/criterion.ts",
+      "from": "  if (value.length > maxLength) {\n    return err(\n      criterionPromptInvalid([\n        { field: \"judgePrompt\", code: \"too_long\", message: `at most ${maxLength} characters` },\n      ]),\n    );\n  }",
+      "to": "  if (false) {\n    return err(\n      criterionPromptInvalid([\n        { field: \"judgePrompt\", code: \"too_long\", message: `at most ${maxLength} characters` },\n      ]),\n    );\n  }",
+      "suites": [
+        "domain/criterion.test.ts"
+      ]
+    },
+    {
+      "name": "M58 rubric: the length ceiling is not enforced, and shares the prompt's code again",
+      "file": "domain/criterion.ts",
+      "from": "      criterionRubricInvalid([{ field: \"rubric\", code: \"too_long\", message: `at most ${maxLength} characters` }]),",
+      "to": "      criterionPromptInvalid([{ field: \"rubric\", code: \"too_long\", message: `at most ${maxLength} characters` }]),",
+      "suites": [
+        "domain/criterion.test.ts",
+        "contracts/index.test.ts"
+      ]
+    },
+    {
+      "name": "M59 golden-set name: the length ceiling is not enforced",
+      "file": "domain/golden-set.ts",
+      "from": "  if (name.length > policy.maxNameLength) {",
+      "to": "  if (false) {",
+      "suites": [
+        "domain/golden-set.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M60 criterion patch: an edited criterion silently becomes unscoreable",
+      "file": "domain/criterion.ts",
+      "from": "    isActive: patch.isActive ?? existing.isActive,",
+      "to": "    isActive: false,",
+      "suites": [
+        "domain/criterion.test.ts",
+        "application/criteria.test.ts"
+      ]
+    },
+    {
+      "name": "M61 truncation flag: the row does not say the tail was lost",
+      "file": "application/testing/in-memory-eval-stores.ts",
+      "from": "      rawResponseTruncated: admitted.rawResponseTruncated,",
+      "to": "      rawResponseTruncated: false,",
+      "suites": [
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M62 rating probe: the ACTOR gate moves after the turn is resolved",
+      "file": "application/authorization.ts",
+      "from": "  if (actor.kind === \"operator\") return err(ratingActorForbidden());\n  const verified = verifyOperator(dependencies, authorization);\n  if (!verified.ok) return err(verified.error);\n  return ok({ grant: verified.value, endUserId: actor.endUserId });",
+      "to": "  const verified = verifyOperator(dependencies, authorization);\n  if (!verified.ok) return err(verified.error);\n  if (actor.kind === \"operator\") {\n    void dependencies.ratingTargets.find(verified.value.scope, \"probe\" as never);\n    return err(ratingActorForbidden());\n  }\n  return ok({ grant: verified.value, endUserId: actor.endUserId });",
+      "suites": [
+        "application/rate-turn.test.ts",
+        "application/authorization.test.ts"
+      ]
+    },
+    {
+      "name": "M63 version labels: the page ceiling is not applied",
+      "file": "application/read-ratings.ts",
+      "from": "    take: dependencies.policy.evals.maxPageSize,",
+      "to": "    take: undefined,",
+      "suites": [
+        "application/read-ratings.test.ts"
+      ]
+    },
+    {
+      "name": "M64 agent names: the page ceiling is not applied",
+      "file": "application/risk-report.ts",
+      "from": "    limit: dependencies.policy.evals.maxPageSize,",
+      "to": "    limit: 10_000,",
+      "suites": [
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M65 criteria page: the active-only filter is ignored",
+      "file": "application/criteria.ts",
+      "from": "    activeOnly: query.activeOnly ?? false,",
+      "to": "    activeOnly: false,",
+      "suites": [
+        "application/criteria.test.ts"
+      ]
+    },
+    {
+      "name": "M66 safety page: the search term is dropped",
+      "file": "application/read-safety.ts",
+      "from": "    search: blankToNull(query.search ?? null),",
+      "to": "    search: null,",
+      "suites": [
+        "application/read-safety.test.ts"
+      ]
+    },
+    {
+      "name": "M67 queue failure: reported under the STORE's code again",
+      "file": "application/testing/in-memory-seams.ts",
+      "from": "      return err(queueUnavailable(reason));",
+      "to": "      return err(ledgerUnavailable(reason));",
+      "suites": [
+        "application/enqueue-eval-run.test.ts"
+      ]
     }
   ]
 }

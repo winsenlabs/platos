@@ -311,14 +311,15 @@ describe("removeGoldenSet", () => {
       authorization: context.grantFor(otherEnvironmentScope()),
       goldenSetId,
     });
-    expect(elsewhere.ok && elsewhere.value).toBe(false);
+    // The whole Result, so a REFUSAL cannot masquerade as `ok(false)`.
+    expect(elsewhere).toEqual({ ok: true, value: false });
     expect(context.goldenSets.size()).toBe(1);
 
     const here = await removeGoldenSet(context.dependencies, {
       authorization: context.authorization,
       goldenSetId,
     });
-    expect(here.ok && here.value).toBe(true);
+    expect(here).toEqual({ ok: true, value: true });
     expect(context.goldenSets.size()).toBe(0);
   });
 });

@@ -42,11 +42,17 @@ describe("satisfactionByVersion", () => {
   });
 
   it("breaks a tie in version number by the busier bucket", () => {
+    // The QUIETER bucket is seen first, so the Map's insertion order is the
+    // opposite of the answer. A stable sort with the tie-break deleted would
+    // return the quieter one first, which is what makes this case reach the
+    // comparator rather than ride on insertion order.
     const rows = satisfactionByVersion(
-      [vote(AGENT_A, null, 1), vote(AGENT_A, null, 1), vote(AGENT_A, V7, 1)],
+      [vote(AGENT_A, V7, 1), vote(AGENT_A, null, 1), vote(AGENT_A, null, 1)],
       new Map([["version-7", 0]]),
     );
     expect(rows[0]?.total).toBe(2);
+    expect(rows[0]?.agentVersionId).toBeNull();
+    expect(rows[1]?.total).toBe(1);
   });
 
   it("keeps votes whose version has no label rather than dropping them", () => {

@@ -21,10 +21,20 @@
 //   * an inactive criterion, a judge model that will not parse, and a judge
 //     that is the model under test are three codes, not one "cannot run".
 //
-// The two places a code IS deliberately shared are marked at their constructor:
+// WHERE ONE CODE COVERS MORE THAN ONE DECISION IT IS SAID SO AT THE
+// CONSTRUCTOR, and there are four such places. Two are deliberate concealment:
 // a rating target that does not exist and one belonging to somebody else answer
-// identically ON PURPOSE, and a cross-scope read answers `not_found` so probing
-// cannot enumerate ids.
+// identically ON PURPOSE, and a cross-scope read answers `not_found`, both so
+// probing cannot enumerate ids. `GOVERNANCE_TRANSCRIPT_NOT_FOUND` is the same
+// idea for a thread — absent, or present and another agent's. The fourth is not
+// concealment but a shared SHAPE: `GOVERNANCE_PAGE_REQUEST_INVALID` covers a
+// negative offset and an unusable limit, and the two are separated by the
+// violation's `field`, which is what a caller reads to fix its request.
+//
+// This inventory is maintained by hand and its known limit is that
+// `errors.test.ts` can only check CONSTRUCTORS for uniqueness, not guards. Two
+// guards calling one constructor are invisible to it — which is how the rubric
+// ceiling came to share the judge prompt's code until a review found it.
 
 import { domainError, type DomainError, type FieldViolation } from "@platos/kernel";
 
@@ -46,6 +56,7 @@ export const GOVERNANCE_ERROR_CODES = [
   "GOVERNANCE_CRITERION_INACTIVE",
   "GOVERNANCE_CRITERION_NAME_INVALID",
   "GOVERNANCE_CRITERION_PROMPT_INVALID",
+  "GOVERNANCE_CRITERION_RUBRIC_INVALID",
   "GOVERNANCE_CRITERION_SCALE_INVALID",
   "GOVERNANCE_EVAL_NOT_FOUND",
   "GOVERNANCE_EVAL_SELF_JUDGED",
@@ -84,7 +95,14 @@ export function ledgerUnavailable(reason: string): DomainError {
   });
 }
 
-/** The durable seam an eval run is handed to would not take it. */
+/**
+ * The durable seam an eval run is handed to would not take it.
+ *
+ * Distinct from `ledgerUnavailable` on purpose: "the dispatcher refused the
+ * work" and "a table is down" are different incidents with different remedies,
+ * and `EvalRunQueue` requires an implementation to use this one so the two stay
+ * separable at every transport downstream.
+ */
 export function queueUnavailable(reason: string): DomainError {
   return domainError("GOVERNANCE_QUEUE_UNAVAILABLE", "unavailable", "eval run queue is unavailable", {
     retryAfterSeconds: 10,
@@ -92,7 +110,16 @@ export function queueUnavailable(reason: string): DomainError {
   });
 }
 
-/** A page a caller asked for that no clamp can rescue — a negative offset. */
+/**
+ * A page a caller asked for that no clamp can rescue.
+ *
+ * TWO decisions answer this: a negative offset, and a limit that is not a whole
+ * number of rows at least one. They share a code because they share a remedy —
+ * fix the request — and are told apart by the `field` on the violation, which is
+ * `offset` or `limit`. Both are refused rather than clamped: clamping a negative
+ * offset to zero serves page one to something that believes it is reading page
+ * minus-three.
+ */
 export function pageRequestInvalid(message: string, fields: readonly FieldViolation[] = []): DomainError {
   return domainError("GOVERNANCE_PAGE_REQUEST_INVALID", "invalid_input", message, { fields });
 }
@@ -224,6 +251,24 @@ export function criterionPromptInvalid(fields: readonly FieldViolation[]): Domai
 }
 
 /**
+ * The RUBRIC's own code, and it is separate for the reason rule 5 exists.
+ *
+ * It used to answer `GOVERNANCE_CRITERION_PROMPT_INVALID`, which made two
+ * ceilings — the judge prompt's and the rubric's — indistinguishable to a caller
+ * and, worse, to a test: a suite asserting only the code cannot tell which of
+ * the two guards it reached, so deleting either one leaves the other's case
+ * green. They are different remedies, so they are different codes.
+ *
+ * The rubric is OPTIONAL, so there is no blank violation here: a blank rubric is
+ * no rubric, and `admitRubric` answers null for it.
+ */
+export function criterionRubricInvalid(fields: readonly FieldViolation[]): DomainError {
+  return domainError("GOVERNANCE_CRITERION_RUBRIC_INVALID", "invalid_input", "criterion rubric is not usable", {
+    fields,
+  });
+}
+
+/**
  * A score scale that cannot normalise a judge's answer.
  *
  * Its own code because it is the one criterion field whose breakage is SILENT
@@ -281,7 +326,15 @@ export function judgeUnavailable(reason: string): DomainError {
   });
 }
 
-/** No conversation to score: the thread is absent from this environment. */
+/**
+ * No conversation to score.
+ *
+ * TWO decisions answer this, and the sharing is deliberate concealment in the
+ * same way `ratingTargetNotFound` is: the thread may be absent from this
+ * environment, or it may be present and belong to a DIFFERENT agent than the
+ * caller named. Distinguishing them would let an operator with a grant for one
+ * agent enumerate another's threads by id.
+ */
 export function transcriptNotFound(threadId: string): DomainError {
   return domainError("GOVERNANCE_TRANSCRIPT_NOT_FOUND", "not_found", "no conversation with that id in this scope", {
     details: { threadId },
@@ -323,9 +376,13 @@ export function goldenSetTooManyCriteria(count: number, maximum: number): Domain
 }
 
 /**
- * The product cap, and the only one of the three that a set can breach while
- * satisfying both others. A run fans out one judge call per pair, so this is the
- * cap that bounds spend rather than the two that bound a list.
+ * The product cap. A run fans out one judge call per pair, so this is the cap
+ * that bounds SPEND, where the other two bound a LIST.
+ *
+ * Each of the three is breachable on its own — under the shipped ceilings, 101
+ * threads by 1 criterion trips only the thread cap, 21 criteria by 1 thread
+ * trips only the criterion cap, and 30 by 20 trips only this one — which is why
+ * there are three codes and not one.
  */
 export function goldenSetTooManyPairs(pairs: number, maximum: number): DomainError {
   return domainError("GOVERNANCE_GOLDEN_SET_TOO_MANY_PAIRS", "invalid_input", "golden set plans too many judge calls", {

@@ -64,23 +64,37 @@ describe("the published error codes", () => {
     expect(new Set(GOVERNANCE_ERROR_CODES).size).toBe(GOVERNANCE_ERROR_CODES.length);
   });
 
-  it("publishes one code per distinguishable refusal — 32 of them", () => {
+  it("publishes one code per distinguishable refusal — 33 of them", () => {
     // Pinned as a literal so a code merged into another, which is how two guards
     // become indistinguishable, cannot pass unnoticed.
-    expect(GOVERNANCE_ERROR_CODES).toHaveLength(32);
+    expect(GOVERNANCE_ERROR_CODES).toHaveLength(33);
   });
 
   it("keeps the four golden-set refusals apart from each other", () => {
     // A set can breach exactly one of the three ceilings, and "no such agent
-    // here" is a different mistake from "no such set here".
-    const distinct = [
+    // here" is a different mistake from "no such set here". Asserted against the
+    // PUBLISHED list rather than against a local array, whose size would be a
+    // property of this test rather than of the code.
+    for (const code of [
       "GOVERNANCE_GOLDEN_SET_TOO_MANY_THREADS",
       "GOVERNANCE_GOLDEN_SET_TOO_MANY_CRITERIA",
       "GOVERNANCE_GOLDEN_SET_TOO_MANY_PAIRS",
       "GOVERNANCE_AGENT_NOT_VISIBLE",
-    ];
-    for (const code of distinct) expect(GOVERNANCE_ERROR_CODES).toContain(code);
-    expect(new Set(distinct).size).toBe(4);
+    ]) {
+      expect(GOVERNANCE_ERROR_CODES).toContain(code);
+    }
+  });
+
+  it("keeps the JUDGE PROMPT and the RUBRIC ceilings apart", () => {
+    // They shared `GOVERNANCE_CRITERION_PROMPT_INVALID` until a review found it:
+    // two ceilings answering alike is two guards a test cannot tell apart.
+    expect(GOVERNANCE_ERROR_CODES).toContain("GOVERNANCE_CRITERION_PROMPT_INVALID");
+    expect(GOVERNANCE_ERROR_CODES).toContain("GOVERNANCE_CRITERION_RUBRIC_INVALID");
+  });
+
+  it("keeps a dead DISPATCHER apart from a dead STORE", () => {
+    expect(GOVERNANCE_ERROR_CODES).toContain("GOVERNANCE_QUEUE_UNAVAILABLE");
+    expect(GOVERNANCE_ERROR_CODES).toContain("GOVERNANCE_LEDGER_UNAVAILABLE");
   });
 
   it("keeps `not found` apart from `inactive` for a criterion", () => {
