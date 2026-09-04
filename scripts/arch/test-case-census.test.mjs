@@ -263,11 +263,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   // v1 where only six rows were real. The conversations branch pinned 340 for
   // the same reason, blind to the adapter's +17 and to WIN-257's +10. Each is
   // right alone and wrong here; 357 + 10 = 367 is the number on this tree.
-  assert.equal(live.totalFiles, 367);
+  assert.equal(live.totalFiles, 371);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3);
+  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));

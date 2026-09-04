@@ -78,14 +78,31 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly TWO projects may hold an external dependency, and they are named", () => {
-  // The list is short on purpose and its shortness is the property. A third
+test("exactly THREE projects may hold an external dependency, and they are named", () => {
+  // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
+  //
+  // WIN-258 made the third: `packages/adapters/postgres-tenancy` declares the
+  // generated PostgreSQL client. It is the only V1 project entitled to, and the
+  // case below says so on the DECLARE axis exactly as the inference-SDK case
+  // does, because a boundary rule that governs imports alone leaves a manifest
+  // entry legal until the day somebody imports it.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
     "packages/adapters/model-router-providers",
+    "packages/adapters/postgres-tenancy",
   ]);
+});
+
+test("the PostgreSQL client is declared in exactly ONE project, as a workspace link", () => {
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/postgres-tenancy"], {
+    "@platos/tenancy-database": "workspace:*",
+  });
+  const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
+    .filter(([, declared]) => Object.keys(declared).some((name) => name.includes("tenancy-database")))
+    .map(([project]) => project);
+  assert.deepEqual(holders, ["packages/adapters/postgres-tenancy"]);
 });
 
 test("the inference SDK is declared in exactly ONE project, at exactly one range each", () => {

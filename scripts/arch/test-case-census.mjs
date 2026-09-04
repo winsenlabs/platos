@@ -1171,6 +1171,39 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * packages.contexts.test 349 + packages.kernel.test 3 + packages.adapters.test 15
  * = 367. The pre-adapter form (contexts + kernel alone) would read 352 and is no
  * longer the identity; `v1-ledger.test.mjs` carries the same restatement.
+ *
+ * WIN-258 POSTGRES-TENANCY (M2.3). One package moves, the second nonzero row
+ * under `packages/adapters`:
+ *
+ *   packages/adapters/postgres-tenancy   0 -> 4 files,   0 -> 56 cases
+ *
+ * 367 + 4 = 371 files and 5875 + 56 = 5931 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 19 = 371.
+ *
+ * WHAT THE 56 ARE, because two of the four files are unlike anything else this
+ * census counts:
+ *
+ *   client.test.ts                     17  the datasource URL and the driver
+ *                                          error classification, both pure
+ *   mapping.test.ts                    14  row -> record, and the three refusals
+ *                                          for a column this binary cannot read
+ *   repository.integration.test.ts     16  REAL PostgreSQL
+ *   transaction.integration.test.ts     9  REAL PostgreSQL
+ *
+ * THE 25 INTEGRATION CASES DO NOT RUN IN `pnpm test:v1-packages`. They start a
+ * container, and the typecheck job has no Docker daemon, so the package's own
+ * `test` script excludes them by filename and the `postgres-tenancy-repository`
+ * CI job runs them. They are counted here anyway, and deliberately: this census
+ * measures the suites a package SHIPS, not the suites one runner happens to
+ * execute, and a case that vanished from the tree would otherwise be invisible
+ * to the pin. `differential-coverage` and the CI job are what make sure they run.
+ *
+ * THE NUMBER TO WATCH WHEN THIS MOVES. `transaction.integration.test.ts` holds
+ * the failure-injection case that makes the SECOND write of a transaction fail
+ * against a real database and then looks for the first row. Its case count would
+ * not move if that assertion were weakened to counting rollbacks — the same
+ * blind spot `run-turn.test.ts` has above — so `mutations.json` beside the
+ * package is where that guard is held falsifiable, not here.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1181,7 +1214,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 0, cases: 0 },
+  "packages/adapters/postgres-tenancy": { files: 4, cases: 56 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1309,7 +1342,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5875;
+export const EXPECTED_RUNTIME_TOTAL = 5931;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
