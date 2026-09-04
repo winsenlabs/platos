@@ -512,5 +512,33 @@
         "two concurrent first logins for one address produce ONE account"
       ]
     }
+  ],
+  "result": [
+    "THIRTY-SEVEN ENTRIES, THIRTY-SEVEN KILLS, NONE VACUOUS, on a real PostgreSQL",
+    "container at branch head. Each kill is a NAMED case in the `kills` list of its",
+    "entry, and the driver classified nothing as vacuous because it proved every",
+    "suite set green BEFORE mutating and treats a module-load failure with no named",
+    "failing case as vacuous rather than as a kill.",
+    "",
+    "TWO ENTRIES SURVIVED THE FIRST SWEEP AND BOTH WERE FINDINGS, not noise:",
+    "",
+    "  M-I32 (loading only the first identity of every end user) survived because",
+    "  every seeded end user in the conformance scenario had exactly ONE identity,",
+    "  so `take: 1` was indistinguishable from loading them all. The FIXTURE was at",
+    "  fault; one end user now has a Slack handle and an email address, which is",
+    "  also the ordinary case an operator searches by.",
+    "",
+    "  M-I35 (removing the early return from `upsertByEmail`) survived because the",
+    "  get-or-create has TWO independent defences and either one alone keeps the",
+    "  ANSWER correct: the early return, and the unique-violation recovery around",
+    "  the insert. That is a real property of the code and it is recorded rather",
+    "  than papered over. The two halves were then separated so each is falsifiable",
+    "  on its own -- M-I35 by a statement COUNT (a repeat login must cost ONE",
+    "  statement, not a read, a refused insert and a second read) and M-I37 by",
+    "  sixteen concurrent first logins for one address, which must produce one",
+    "  account.",
+    "",
+    "The first sweep of tranche 1 reported 22 kills that were ALL vacuous. This",
+    "sweep is the reason that cannot have happened again."
   ]
 }
