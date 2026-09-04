@@ -721,10 +721,14 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // over the five terms its own tree had, not the shared thirteen-term chain the
   // tests above all re-derive. Spelling it that way is how a census stops
   // agreeing with itself, so it is re-spelled here as the same chain every other
-  // row uses.
+  // row uses -- INCLUDING the trailing 350 `conversations` adds, which this test
+  // must carry for the same reason every other row's re-derivation carries it.
+  // The merge kept this test whole from the integration side, so its chain was
+  // the one instance the +350 rewrite did not reach; `test:test-case-census`
+  // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
