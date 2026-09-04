@@ -1381,10 +1381,10 @@
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "3a32f7e5c847e2f7062e777a624df0eeec71f944b68beee7096df6013df4f39b",
+      "sha256": "4bcf914702a9a3d5f74c5eb7a85852a5e5d51c61d1fcfe7b0d6c12b3e817370e",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
-      "date": "2026-09-03"
+      "date": "2026-09-04"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "015f29e652b1496c8b218a718d06fe62b1ed614356e96ad8fe8658e47d5c6a63",
+      "sha256": "0d40f5b03083eca89cea99e864df65fa725629eadea6758514779ed8b555e46e",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "1c23303f203cd6ec9828d8cbb109366c2c0de1c0844a6363a630ca929084c315",
+      "sha256": "342dc4447e3dce641eb2e1458b0c232d2720e9c47286f1b501fbf4366290ca3a",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4dbd1b52252116b9190e9953be821315b7d4e2ff3e6cb2bb1c18d2532294b9cc",
+      "sha256": "1eb8bd7ec4afbd030a0156cfaa92cfa5760150ab62fb77132b5ba56699a9fd91",
       "binds": "current-repository-truth"
     },
     {
