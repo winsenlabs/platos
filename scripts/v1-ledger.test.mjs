@@ -619,24 +619,31 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // that adoption released and this code replaced in place, exactly as every
     // other adoption's delta is.
     //
+    // +42: the same issue makes `channels` real (ADR M0.3 §1 row 9) — 27 source
+    // and 15 test files under packages/contexts/channels, NET of the 4 generated
+    // placeholders adoption released and this code replaced in place. Its
+    // `credentialRevision` third axis on `ChannelInstallation` is carried
+    // deliberately, not tidied away: `channel-persistence.service.ts` already
+    // enforces three axes, so deleting the field would be a silent regression.
+    //
     // THE ADOPTIONS ARE SUMMED, NOT SIDE-PICKED: they add DISJOINT files under
-    // nine different package directories and each moves this one number, so
-    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 781. The eventing
+    // ten different package directories and each moves this one number, so
+    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 823. The eventing
     // branch pinned 316, the skills branch pinned 327, the jobs branch pinned
     // 323, the memory branch pinned 349, the cost-monitoring branch pinned 335
     // and the privacy branch pinned 320, the observability branch pinned 320 as
-    // well, the agents branch pinned 339 and the tools branch pinned 328; each
-    // is right for its own tree alone. Taking any of them would leave whole
+    // well, the agents branch pinned 339, the tools branch pinned 328 and the
+    // channels branch pinned 314; each is right for its own tree alone. Taking any of them would leave whole
     // contexts' files unaccounted while the gate stayed green on the branch it
     // came from.
-    packages: 781,
+    packages: 823,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 781, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +855. Thirteen branches add files on independent axes, so each
+    // packages 1 -> 823, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +897. Fourteen branches add files on independent axes, so each
     // area is the SUM of every contribution, not any one alone.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
@@ -734,15 +741,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // which is why these slices compose with the other four — and with each
     // other — by addition rather than by reconciliation.
     //
-    // WIN-256 (tools context) contributes +56 on the same packages axis,
-    // 725 -> 781, for the same reason and with the same absence of a
-    // root-infra or docs-content file.
+    // WIN-256 (tools context) contributes +56 and WIN-256 (channels context)
+    // contributes +42 on the same packages axis, 725 -> 781 -> 823, for the same
+    // reason and with the same absence of a root-infra or docs-content file.
     //
-    // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 855.
+    // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
+    //   = 897.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 855);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 897);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -751,13 +759,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +855 combined delta as the totalFiles
+    // M2 integration: same +20 -> +897 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
-    // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56); this one re-derives it by
+    // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
+    // WIN-256 channels +42); this one re-derives it by
     // summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 855
+    rulesDocument.baseline.totalFiles + 897
   );
 });
 

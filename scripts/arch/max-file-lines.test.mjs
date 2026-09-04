@@ -131,15 +131,26 @@ test("the live selectors scan an exact nonzero source census", () => {
   // took that file to the top of the warning band, and moving them out is why
   // that delta is 1 and not 0.
   //
+  // +42: the same issue makes `channels` real — 27 source and 15 test files,
+  // replacing its 4 released placeholders in place. The budget did NOT bite
+  // anywhere in that tree: its largest file is contracts/channels-contract.test.ts
+  // at 280 effective lines and its largest production module is
+  // application/channels-contract.ts at 224, so `channels` adds NO file to the
+  // warning list below and none anywhere near the 500-line failure line. Its
+  // branch went on to say `findings` was "empty, not merely free of errors",
+  // which was true of the tree it measured and is NOT true of this one — the
+  // four files named below are findings — so that half of the sentence is
+  // dropped rather than carried.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
   // 391 (328 + 63), privacy pinned 376 (328 + 48) and observability pinned 376
-  // (328 + 48) as well, agents pinned 395 (328 + 67) and tools pinned 384
-  // (328 + 56). The axes are disjoint, so the integrated census is their SUM and
-  // not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 837.
+  // (328 + 48) as well, agents pinned 395 (328 + 67), tools pinned 384
+  // (328 + 56) and channels pinned 370 (328 + 42). The axes are disjoint, so the
+  // integrated census is their SUM and not any branch pin:
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 879.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -190,8 +201,9 @@ test("the live selectors scan an exact nonzero source census", () => {
   // hosted-MCP gate wave before it, when fourteen cases were added to a suite
   // already at 10. It is inside the budget, below the 500-line hard error, and
   // it is a warning the gate is meant to show rather than one this pin should
-  // hide. The list is four, and the four are named.
-  assert.equal(result.fileCount, 837);
+  // hide. `channels` adds none: its largest file is 280 effective lines. The
+  // list is four, and the four are named.
+  assert.equal(result.fileCount, 879);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

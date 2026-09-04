@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "f9a56792d37de1702a028401d0baf0c0e4bc337d542c6bec6bbaec89d0a0a824",
+  "evidenceSha256": "9a0c96c37fd7ca665f88bc89ff15d6f59b21291d8acf296796cd06d6a58b2c08",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 46,
+    "explicitHeaderFileCount": 42,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 133,
-        "sha256": "350677b68b63aea5f85469030572c727819c2ddfc5f83171b10bafe2253ddf8c"
+        "outputCount": 129,
+        "sha256": "1c1dfe8ef90b69494648ce674c75e59dca2df16151cffc9317a5e145ac0ff33a"
       }
     ],
-    "ownedOutputCount": 133,
+    "ownedOutputCount": 129,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "07865dd0a7c3f1be6a4f5820de5842e4fec44e0d4974e3b344829065a2589154",
+    "aggregateSha256": "586afcf0d0639fa418427a682530795f6755f9f1ca700c840ed156efdfd3d4d5",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "61b90d4d3ca60bef7a0e7979e67580b85c3726cb006db8b8659e72aae8d0e097"
+        "sha256": "f71bf7af96aeb1fb2493b791f5f57ec2ea3ada4af9d264d9f38fdd71a817d497"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11388,24 +11388,192 @@
         "sha256": "20c24409e4422fef5629f0678be8c37ebf8a4bbbaee071ec7941eae838a84435"
       },
       {
+        "path": "packages/contexts/channels/application/admit-channel-event.test.ts",
+        "sha256": "37d0643d38762be2da81f0cd2d3a5408e487e9c96ac7a277301e530b006ef647"
+      },
+      {
+        "path": "packages/contexts/channels/application/admit-channel-event.ts",
+        "sha256": "264484151949cd5d865c592580a187ac9957510e465227f5fd046ae2020e0f11"
+      },
+      {
+        "path": "packages/contexts/channels/application/channels-contract.ts",
+        "sha256": "112ca046bd78bb65f3ee29469379aa14de3fe11cb404d2f6d5b9528674e937d0"
+      },
+      {
+        "path": "packages/contexts/channels/application/channels-erasure-target.test.ts",
+        "sha256": "bb40ce5408f06c477136570f9884823b76d8726fc840d2c514e8bbd18a963595"
+      },
+      {
+        "path": "packages/contexts/channels/application/channels-erasure-target.ts",
+        "sha256": "d8d19d108806f5ae2b850975b478681cff9458742070c8ba4c33521100b13d83"
+      },
+      {
+        "path": "packages/contexts/channels/application/configure-agent-routing.test.ts",
+        "sha256": "9a0456de6529d90bbfd94c9f74fa158e917279abec5e50bdeff452da36384886"
+      },
+      {
+        "path": "packages/contexts/channels/application/configure-agent-routing.ts",
+        "sha256": "3bbfc1eaebead006ba38b45a7a4b918ae1a08135daa1d0d7ad7fcc1d9c052c36"
+      },
+      {
+        "path": "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+        "sha256": "b50505d847aabcc46508e798378ff8c475f84930f5410c23aeb1267b8d776866"
+      },
+      {
+        "path": "packages/contexts/channels/application/deliver-outbound-message.ts",
+        "sha256": "a78f86898069bd60aa7f1d8f856469a3e611f1d0b3f84fd422fb8486a9502908"
+      },
+      {
+        "path": "packages/contexts/channels/application/dependencies.ts",
+        "sha256": "1e96aafd72ff3b1ea3fb48a59712349f03c798d3c08753f6272cfef4c5ccf8ef"
+      },
+      {
+        "path": "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+        "sha256": "e239e8ecd48dea3c2172c805c4e0c2049f85a340affa671ccf1db706b778af51"
+      },
+      {
+        "path": "packages/contexts/channels/application/dispatch-inbound-turn.ts",
+        "sha256": "60d4f46ccf7d5fdf12bf038ab01eab7a2187a653beeb7a074620da9b22c0efd5"
+      },
+      {
         "path": "packages/contexts/channels/application/index.ts",
-        "sha256": "d65e23ceb3ad5840ef9bc6d799de4f4eb1593fedcad091ed401d5ef2260fd3b4"
+        "sha256": "da6e88e76af1e1a1899e2d3aca0e935255e1a7b8c620a43f51ad82aba0ccbd5b"
+      },
+      {
+        "path": "packages/contexts/channels/application/ports/channel-adapter.ts",
+        "sha256": "b7e569e5aa6157ed506751e6da913155e58bb2617042f1c0654f0fdcbe0e5e50"
+      },
+      {
+        "path": "packages/contexts/channels/application/ports/channels-repository.ts",
+        "sha256": "365a5a6ec5d979fce4f871580c5db9ac082705bbb64537a847588c5dd1d37f74"
       },
       {
         "path": "packages/contexts/channels/application/ports/index.ts",
-        "sha256": "f36e2045586e495394198f752bdfe3c346c1f8241ddf3afb908b6cbf678046e1"
+        "sha256": "f0a312b99f2d1f9fe4c6065888c184cf322120b2c94fcecea1f0ec5d3d113b0b"
+      },
+      {
+        "path": "packages/contexts/channels/application/process-channel-event.test.ts",
+        "sha256": "ebf9a9455c4b78bf17f35d9a82541b0a1492d2eee83a28e50450b380ceda457e"
+      },
+      {
+        "path": "packages/contexts/channels/application/process-channel-event.ts",
+        "sha256": "bd708a5c2628dae36e87fb9a161eb3bd3c86b7efb8c07e3a063b574d2e2b141b"
+      },
+      {
+        "path": "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+        "sha256": "7fbfd8e141d663745419da8189a0dc86b848f904f0cd84ee77af826c003ea8d9"
+      },
+      {
+        "path": "packages/contexts/channels/application/rotate-installation-credential.ts",
+        "sha256": "1754fcb617e5cf37a63ae41c112b71bb1cc9141046a215bdc705d21bd1409a49"
+      },
+      {
+        "path": "packages/contexts/channels/application/testing/builders.ts",
+        "sha256": "3e9dee2d827748d8d72b5f1c8a4b0aba0e1d2d722d62e38c60d342a92faf78ae"
+      },
+      {
+        "path": "packages/contexts/channels/application/testing/fixtures.ts",
+        "sha256": "9083ac241ee81938134fb5091ef437513729733968921294883c0ab400fe0f01"
+      },
+      {
+        "path": "packages/contexts/channels/application/testing/in-memory-adapters.ts",
+        "sha256": "79f4ee55517732fe5518222f666b353a4b338850ef0160817e7434f1ba2cbb70"
+      },
+      {
+        "path": "packages/contexts/channels/application/testing/in-memory-channels-repository.ts",
+        "sha256": "263992465fea040aa3d940cee9cfee9d878cd77290cc0a75ff5b581297d1aeea"
+      },
+      {
+        "path": "packages/contexts/channels/application/testing/index.ts",
+        "sha256": "9a5c3731aec1f10109686886c94b609a20d1984455699ea8b7d468f3b3c0d249"
+      },
+      {
+        "path": "packages/contexts/channels/application/views.ts",
+        "sha256": "930b29ac9c74e4991a1f106b6f532158e994112485a37aff929caf7f33b45b4c"
+      },
+      {
+        "path": "packages/contexts/channels/contracts/channels-contract.test.ts",
+        "sha256": "bc317fdd2cbd4c72e89c88f5148a2b5ce3bc4b6310180f26fac445b142f2f175"
       },
       {
         "path": "packages/contexts/channels/contracts/index.ts",
-        "sha256": "4c9e6eee12ae4ef3b41f81109f3ba2d8fdee97c7692320f9dbeb9d5e0df0bcbb"
+        "sha256": "cd5deca407a4d2a916c89fe4762cd950b950c700d18e3aa481da4f42ade8eae2"
+      },
+      {
+        "path": "packages/contexts/channels/domain/connection.test.ts",
+        "sha256": "1ad0413e4b5bdfdb4481e14baf98cf5001216922ff91b19b5d55f63c48507d57"
+      },
+      {
+        "path": "packages/contexts/channels/domain/connection.ts",
+        "sha256": "c4fb1417ca0e71789b5b3d4f437872e1aa104411cbd277a3f3546b8c393c2350"
+      },
+      {
+        "path": "packages/contexts/channels/domain/errors.ts",
+        "sha256": "f02b0ca2d03f710e327277fce7f36a0e55b0d3335d246d92286895abbc3854c3"
+      },
+      {
+        "path": "packages/contexts/channels/domain/event-inbox.test.ts",
+        "sha256": "9cdc942cc8fd870d6a90bce05143893e105da5f776c9bb115b0731abfa567814"
+      },
+      {
+        "path": "packages/contexts/channels/domain/event-inbox.ts",
+        "sha256": "7fb854c5984d569f3a5d13bd6d81f65310aec66e91cc46c9a520c9b12f2e3cc3"
+      },
+      {
+        "path": "packages/contexts/channels/domain/identifiers.ts",
+        "sha256": "42ec3b5e59a346577874e26273f216c608fb1f379454ea365a1afa54401655b3"
+      },
+      {
+        "path": "packages/contexts/channels/domain/inbound.test.ts",
+        "sha256": "549b320f1e494d0089635f79d184e2ea8919733c0772904de0ccd067c8e40ad4"
+      },
+      {
+        "path": "packages/contexts/channels/domain/inbound.ts",
+        "sha256": "accc5ebb874aa996a5ac2f673f4edfb4709ffa8a8eec2bee1d1a1714bbe2e97c"
       },
       {
         "path": "packages/contexts/channels/domain/index.ts",
-        "sha256": "964468473156596e35e356a4f04125dad21a97f02d518df6f64dadd51e504170"
+        "sha256": "0f0ff5cb7a25ea0865ff1d0025ed5fbcb4bb124c965a732c5f847d172a6242e1"
+      },
+      {
+        "path": "packages/contexts/channels/domain/installation.test.ts",
+        "sha256": "944957fb2d1b817c6a0ad6978a2bc44cfdd5d685413aefe566158b177c6a355a"
+      },
+      {
+        "path": "packages/contexts/channels/domain/installation.ts",
+        "sha256": "347735d2cb54f984e62b6c777c5c799c690d8418920fbc4ac607f5a7b1f3ca6d"
+      },
+      {
+        "path": "packages/contexts/channels/domain/policy.ts",
+        "sha256": "b617cdfc38f0b09c8052f6bed5fc7157296200903e4001abfce8e98e7cba989c"
+      },
+      {
+        "path": "packages/contexts/channels/domain/provider.test.ts",
+        "sha256": "1f30404538e8972b8d217fd196caa8cc53d163017dd005045943bfa96ac24cb9"
+      },
+      {
+        "path": "packages/contexts/channels/domain/provider.ts",
+        "sha256": "8acfea2ae43afbe71992e00f02e4158e03a12669ceaab52154563601d10e7ba1"
+      },
+      {
+        "path": "packages/contexts/channels/domain/routing.test.ts",
+        "sha256": "f01d55d45dca608e887a7fe1f801b3d8c1f68a88e97b1cf1390e8bab6de478b4"
+      },
+      {
+        "path": "packages/contexts/channels/domain/routing.ts",
+        "sha256": "8fc3edea79f43a048acae3d5112b619460f66503a9c2ca390c3706f8efa2e1a2"
+      },
+      {
+        "path": "packages/contexts/channels/domain/thread-link.test.ts",
+        "sha256": "d884f37fa8a4a50d8f10c9663f27a2f91482bc5e40c553c2e1d8ea7295ec1d25"
+      },
+      {
+        "path": "packages/contexts/channels/domain/thread-link.ts",
+        "sha256": "fd7b18775442b4e4bc59ba6df297b16096aaaacbcff306f309285ead9857573f"
       },
       {
         "path": "packages/contexts/channels/package.json",
-        "sha256": "339804e3d6e508e054118e2f5e3029174866e466f8b46bfa306a7779b70647cb"
+        "sha256": "f730d3dae4a01c286db678b29bc1dd47a16621613359455e0370048e6826b762"
       },
       {
         "path": "packages/contexts/channels/tsconfig.json",
@@ -16685,7 +16853,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "0c6822ba183dd4d9e32f9f9b00036f708b8f815c82aa63e07034aece2eb5527d"
+        "sha256": "7fbb35befad7603224caa46a9e297b8443a23f1032354b50c52f1dc9b9f13453"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -16717,7 +16885,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "a94e07d52aaae9628278d009ed66d2ca978bdd975f1cc0a7e9f9abde65e1d3e4"
+        "sha256": "e05a84ecc428692e126bd3d918bcb66176e0013f04d651a642b73ea4305db937"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -16737,7 +16905,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "010be9d5096adf5fc58540edc18d77a52c07fde819f56055f30f2b58f15ef1ff"
+        "sha256": "ba89f6e219bc2d25cfc912dd99c54010f5c110984d66b2dd9466e47456228f9e"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -16753,11 +16921,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "e84d5293efcdc20584abc708b47f68f92d70c8ea8613763aa575f626e3d2b6a5"
+        "sha256": "f2dad59b133e8f441e78d3d7bf0dcbbbf95ee86ba02950f0e138a40c83f0525b"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "eee5e6a60d095b8d330bfb088c8362acd654dbdf70b75609a64cd3eca1af33ae"
+        "sha256": "d9918f199e6ed056231df6ed903ffb32fe7825ac537827521d15da81862b18f4"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -16989,7 +17157,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "40db42906528985f1fea4c67afbf6b9cfdad16b056e9865b92ca76bbcb275508"
+        "sha256": "6707d13b4d00e98a07bfaa8bbae8e6956bcfbc49f0f7eca23dcb70044868b9b4"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -17097,7 +17265,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "d5f12938f03271571008ecf686aacdcbe5e5ef74e60633c811c2f28cbae7d303"
+        "sha256": "3e3bd8104c640b2dba0f9ec14549950836e80ab99b0e44c5263315f657958e5f"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -18172,7 +18340,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 48
+      "testsFixtures": 49
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -20383,6 +20551,11 @@
               "line": 19
             },
             {
+              "from": "packages/contexts/channels/domain/routing.test.ts",
+              "kind": "reference",
+              "line": 85
+            },
+            {
               "from": "packages/contexts/secrets/domain/envelope.test.ts",
               "kind": "reference",
               "line": 43
@@ -21363,6 +21536,10 @@
               "internal-packages/docs/src/frontmatter.test.ts"
             ],
             [
+              "packages/contexts/channels/domain/routing.test.ts",
+              "packages/contexts/channels/domain/routing.test.ts"
+            ],
+            [
               "packages/contexts/secrets/domain/envelope.test.ts",
               "packages/contexts/secrets/domain/envelope.test.ts"
             ],
@@ -21680,6 +21857,7 @@
             "apps/agent/src/trigger-tasks/registration-manifest.test.ts",
             "apps/agent/test/setup.ts",
             "internal-packages/docs/src/frontmatter.test.ts",
+            "packages/contexts/channels/domain/routing.test.ts",
             "packages/contexts/secrets/domain/envelope.test.ts",
             "packages/platos-client/tests/generated-contracts.test.ts",
             "packages/platos-embed/tests/embed.test.ts",
@@ -21758,7 +21936,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "c0428b11e3cc265850d963e25419ea9e9238ff59c9ca4f6df881b056298d519b",
+      "evidenceSha256": "541b3b36a5d26b584867361ecd2b013e69ef39848b9a9b789adaae1c4def404a",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -22111,14 +22289,6 @@
               "kind": "generator-owned-output"
             },
             {
-              "from": "packages/contexts/channels/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/channels/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -22149,14 +22319,6 @@
               "apps/core-api/tsconfig.json"
             ],
             [
-              "packages/contexts/channels/application/ports/index.ts",
-              "packages/contexts/channels/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/channels/contracts/index.ts",
-              "packages/contexts/channels/contracts/index.ts"
-            ],
-            [
               "packages/contexts/conversations/application/ports/index.ts",
               "packages/contexts/conversations/application/ports/index.ts"
             ],
@@ -22177,8 +22339,6 @@
             "apps/core-api/README.md",
             "apps/core-api/package.json",
             "apps/core-api/tsconfig.json",
-            "packages/contexts/channels/application/ports/index.ts",
-            "packages/contexts/channels/contracts/index.ts",
             "packages/contexts/conversations/application/ports/index.ts",
             "packages/contexts/conversations/contracts/index.ts",
             "packages/contexts/governance/application/ports/index.ts",
@@ -22567,7 +22727,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "b7607476814457250099f7a7ec0d44a794d4de75c5e2c47366a69bc31ee08894",
+      "evidenceSha256": "0f4028ce3d1dae6128f2440f2aa506e73975b2427af1d5550cfd3cca27238544",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -34271,7 +34431,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 790
+              "line": 799
             }
           ],
           "reversePaths": [
@@ -34296,7 +34456,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5a2f8d262db1d782da58009f5b460e85255b4f146bc65207deb07eac86516a1f",
+      "evidenceSha256": "345eefc5b1374b0d8d77df36ede4e6b9622ee4c9f4956c6bd6dbdd42beeae72c",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -35427,7 +35587,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 789
+              "line": 798
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -35652,7 +35812,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "196dac339142b3f02cce9a640032a87858ac948562d1ec08e4265f8291c5bd0d",
+      "evidenceSha256": "50b2e8db51c34e87e66083a849aeee562851180953fda663ae4cb6d5daeedf6e",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -45591,7 +45751,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 545
+              "line": 550
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -45844,7 +46004,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "e84d759db95ddd4dc37e12009198e1ef412433e5aa12f8647f3a878945d193f6",
+      "evidenceSha256": "fc26f384a188537efced9d560a44087c16d88b1903ed45e502bd0bb17b5b4dab",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -46023,26 +46183,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/channels/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/channels/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/channels/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/channels/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/channels/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -46064,22 +46204,6 @@
               "packages/adapters/channel-slack/src/adapter.ts"
             ],
             [
-              "packages/contexts/channels/application/index.ts",
-              "packages/contexts/channels/application/index.ts"
-            ],
-            [
-              "packages/contexts/channels/application/ports/index.ts",
-              "packages/contexts/channels/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/channels/contracts/index.ts",
-              "packages/contexts/channels/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/channels/domain/index.ts",
-              "packages/contexts/channels/domain/index.ts"
-            ],
-            [
               "packages/contexts/channels/package.json",
               "packages/contexts/channels/package.json"
             ],
@@ -46095,10 +46219,6 @@
           "roots": [
             "packages/adapters/channel-slack/src/adapter.ts",
             "packages/contexts/channels/README.md",
-            "packages/contexts/channels/application/index.ts",
-            "packages/contexts/channels/application/ports/index.ts",
-            "packages/contexts/channels/contracts/index.ts",
-            "packages/contexts/channels/domain/index.ts",
             "packages/contexts/channels/package.json",
             "packages/contexts/channels/tsconfig.json"
           ]
@@ -46136,6 +46256,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/channels/package.json",
               "kind": "workspace-script",
@@ -46146,6 +46271,12 @@
               "from": "packages/contexts/channels/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/channels/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -46206,10 +46337,193 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/channels/application/admit-channel-event.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/channels-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/configure-agent-routing.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/process-channel-event.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/contracts/channels-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/connection.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/event-inbox.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/inbound.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/installation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/provider.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/routing.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/thread-link.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 614
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 623
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/channels/application/admit-channel-event.test.ts",
+              "packages/contexts/channels/application/admit-channel-event.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/channels-erasure-target.test.ts",
+              "packages/contexts/channels/application/channels-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/configure-agent-routing.test.ts",
+              "packages/contexts/channels/application/configure-agent-routing.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+              "packages/contexts/channels/application/deliver-outbound-message.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+              "packages/contexts/channels/application/dispatch-inbound-turn.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/process-channel-event.test.ts",
+              "packages/contexts/channels/application/process-channel-event.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+              "packages/contexts/channels/application/rotate-installation-credential.test.ts"
+            ],
+            [
+              "packages/contexts/channels/contracts/channels-contract.test.ts",
+              "packages/contexts/channels/contracts/channels-contract.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/connection.test.ts",
+              "packages/contexts/channels/domain/connection.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/event-inbox.test.ts",
+              "packages/contexts/channels/domain/event-inbox.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/inbound.test.ts",
+              "packages/contexts/channels/domain/inbound.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/installation.test.ts",
+              "packages/contexts/channels/domain/installation.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/provider.test.ts",
+              "packages/contexts/channels/domain/provider.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/routing.test.ts",
+              "packages/contexts/channels/domain/routing.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/thread-link.test.ts",
+              "packages/contexts/channels/domain/thread-link.test.ts"
+            ],
+            [
+              "packages/contexts/channels/package.json",
+              "packages/contexts/channels/package.json"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/channels/application/admit-channel-event.test.ts",
+            "packages/contexts/channels/application/channels-erasure-target.test.ts",
+            "packages/contexts/channels/application/configure-agent-routing.test.ts",
+            "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+            "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+            "packages/contexts/channels/application/process-channel-event.test.ts",
+            "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+            "packages/contexts/channels/contracts/channels-contract.test.ts",
+            "packages/contexts/channels/domain/connection.test.ts",
+            "packages/contexts/channels/domain/event-inbox.test.ts",
+            "packages/contexts/channels/domain/inbound.test.ts",
+            "packages/contexts/channels/domain/installation.test.ts",
+            "packages/contexts/channels/domain/provider.test.ts",
+            "packages/contexts/channels/domain/routing.test.ts",
+            "packages/contexts/channels/domain/thread-link.test.ts",
+            "packages/contexts/channels/package.json",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/v1-ledger.test.mjs"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -46289,8 +46603,8 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "49754d301c9f596de9d34e6e2ad527b26da0e76e9380c56b247f6f6b3b449551",
-      "manifestSha256": "339804e3d6e508e054118e2f5e3029174866e466f8b46bfa306a7779b70647cb",
+      "evidenceSha256": "96e29160afa7c13cbe9a14fda8557148465a4700c253a33aa814a0912d4026e5",
+      "manifestSha256": "f730d3dae4a01c286db678b29bc1dd47a16621613359455e0370048e6826b762",
       "name": "@platos/context-channels",
       "ociImageClosure": {
         "reachable": false,
@@ -46615,7 +46929,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 88
+              "line": 346
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -46714,7 +47028,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "8bade024e0b6ccbec58ef30bab0c0646123c6d86513b698884565fc31f9f51e7",
+      "evidenceSha256": "1268c4aa940d3b92403e159d8205465087cc9dad37950b3eba09cb8a95a16f1f",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -47224,7 +47538,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 432
+              "line": 437
             }
           ],
           "reversePaths": [
@@ -47469,7 +47783,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "a3fa96c6cc60d6cc9bca359a9e45f6a7d47826798832e6ee031e50dcbf059ee4",
+      "evidenceSha256": "0ff25ff0a9e3754be73563cfdce0ff1a43444163644d40fec7fceaedca2a396d",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -47841,7 +48155,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 297
+              "line": 299
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47995,7 +48309,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "fdfcf87fb0424cde5aeed6150a9bdcc27f028036f5492ace7ee6bb74e1f1873d",
+      "evidenceSha256": "e8dc7af0a845631148c8af788b84264378eccfc93568de8a0df3845a31672aeb",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -49979,10 +50293,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/channels/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/identity-access/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -50004,10 +50314,6 @@
               "packages/adapters/redis-ratelimit/src/adapter.ts"
             ],
             [
-              "packages/contexts/channels/application/index.ts",
-              "packages/contexts/channels/application/index.ts"
-            ],
-            [
               "packages/contexts/identity-access/package.json",
               "packages/contexts/identity-access/package.json"
             ],
@@ -50022,7 +50328,6 @@
           ],
           "roots": [
             "packages/adapters/redis-ratelimit/src/adapter.ts",
-            "packages/contexts/channels/application/index.ts",
             "packages/contexts/identity-access/README.md",
             "packages/contexts/identity-access/package.json",
             "packages/contexts/identity-access/tsconfig.json"
@@ -50127,6 +50432,18 @@
               "specifier": "@platos/context-identity-access/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/channels/application/dependencies.ts",
+              "from": "packages/contexts/channels",
+              "line": 31,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/fixtures.ts",
+              "from": "packages/contexts/channels",
+              "line": 39,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
               "file": "packages/contexts/tenancy/application/index.ts",
               "from": "packages/contexts/tenancy",
               "line": 18,
@@ -50167,6 +50484,14 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/tenancy",
               "packages/contexts/tenancy/application/index.ts"
             ],
@@ -50189,6 +50514,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/channels",
             "packages/contexts/tenancy",
             "packages/contexts/tools"
           ]
@@ -50309,7 +50635,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 277
+              "line": 279
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -51106,7 +51432,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "501c42ad8b76dc57ac440068d36b9262ed33b6525b0a00b2cccf4d18b6c66f28",
+      "evidenceSha256": "74c3b2c8f522295369400548ea1d3bf76454db1af2ef6d6a0025a8942f7701e7",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -51519,7 +51845,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 151
+              "line": 162
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -51705,7 +52031,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "93bb209f64c5ae80d6d65f1cee91c7e35f58bf371769a225547eb2bd3b386112",
+      "evidenceSha256": "ca69369ff89bba9a5515e9a4db9696126d4f2da8912d28f099c785f0e5233032",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -52219,12 +52545,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 152
+              "line": 163
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 402
+              "line": 407
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52497,7 +52823,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "fd333e925845dd447c294bcf04464fda592e00b1ab9a72ec42bc8c56a35a22b7",
+      "evidenceSha256": "e2ca6de602d026918aa73b858b18237fc602788b2bb3d10dba210f5406faba19",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -52925,7 +53251,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 503
+              "line": 508
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -53116,7 +53442,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "3ae9255710dfd3f052c861ed63383854f3662b35a38a29961b288b8cd59e628b",
+      "evidenceSha256": "ba0e411b585fd067509b15cccb5b3b003968c9231872970d9e6c9b81505ff3d2",
       "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -53498,7 +53824,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 470
+              "line": 475
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -53662,7 +53988,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "9ba9ad6bb46cdb564109833f04b98560ff9b648b433851da2d9a459f822152f7",
+      "evidenceSha256": "70623d21b02932e7023c14930fd3ec5d6021c038e0d3c7c31114fc38938dc511",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -54467,7 +54793,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 324
+              "line": 326
             }
           ],
           "reversePaths": [
@@ -54902,7 +55228,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "456a9221c18d1c6417188a131ffaa62b171efd03f6325c3fead928f90e45b70c",
+      "evidenceSha256": "dbdcebb88249f66ab40d7c881cf6ba2bb04b27ba56944482e588ae26aade759e",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -55744,7 +56070,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 278
+              "line": 280
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -56217,7 +56543,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "c10c7aa289e8b89aefd99782022c2e1a360abf237437d0dd80b4da555bff3ecf",
+      "evidenceSha256": "c989fe9891cc9520db2662949f391a20ffbc5874003857b8b51a3fee816ef44d",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -56707,7 +57033,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 348
+              "line": 350
             }
           ],
           "reversePaths": [
@@ -56949,7 +57275,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "5c0f6b8c59115e8cfe2b78a42acecba6fc7b2d81e1dd8fe9146fea459cf16cd7",
+      "evidenceSha256": "06323a8796d8b9691e4f7a1ad0e8b87678bafbdf3af626cb4817d6617e72dd35",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -57632,10 +57958,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/channels/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -57665,10 +57987,6 @@
               "packages/adapters/postgres-tenancy/src/adapter.ts"
             ],
             [
-              "packages/contexts/channels/application/index.ts",
-              "packages/contexts/channels/application/index.ts"
-            ],
-            [
               "packages/contexts/conversations/application/index.ts",
               "packages/contexts/conversations/application/index.ts"
             ],
@@ -57691,7 +58009,6 @@
           ],
           "roots": [
             "packages/adapters/postgres-tenancy/src/adapter.ts",
-            "packages/contexts/channels/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/governance/application/index.ts",
             "packages/contexts/tenancy/README.md",
@@ -57819,6 +58136,18 @@
               "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/agents",
               "line": 32,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/channels/application/dependencies.ts",
+              "from": "packages/contexts/channels",
+              "line": 32,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/fixtures.ts",
+              "from": "packages/contexts/channels",
+              "line": 40,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -58016,6 +58345,14 @@
               "packages/contexts/agents/application/testing/in-memory-peers.ts"
             ],
             [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/fixtures.ts"
+            ],
+            [
               "packages/contexts/cost-monitoring",
               "packages/contexts/cost-monitoring/application/authorization.ts"
             ],
@@ -58131,6 +58468,7 @@
           "roots": [
             "apps/core-api",
             "packages/contexts/agents",
+            "packages/contexts/channels",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -58279,7 +58617,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 279
+              "line": 281
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -59014,7 +59352,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "3682aedb80dd10b56f1c0b672530a3b4993453ccfc938fcdffeb903df6c77281",
+      "evidenceSha256": "dce955bef8323217e0f004b536c715d6810cd2ebc5f406a59cf3ebe024730373",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -59392,7 +59730,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 560,
+              "line": 561,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -59545,7 +59883,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 574
+              "line": 579
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -59555,7 +59893,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 690
+              "line": 697
             }
           ],
           "reversePaths": [
@@ -59797,7 +60135,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e29d594fb6b0570915e54337a85f73311f219c8328650aa25103cea4be8dfa78",
+      "evidenceSha256": "5e71ca373806a5943baf5bc9eb3ff73b1d737b8cea2b44a402dfb536e8599184",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -62333,10 +62671,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/channels/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -62374,10 +62708,6 @@
               "packages/adapters/redis-streams/src/adapter.ts"
             ],
             [
-              "packages/contexts/channels/domain/index.ts",
-              "packages/contexts/channels/domain/index.ts"
-            ],
-            [
               "packages/contexts/conversations/domain/index.ts",
               "packages/contexts/conversations/domain/index.ts"
             ],
@@ -62402,7 +62732,6 @@
             "packages/adapters/durable-runtime/src/adapter.ts",
             "packages/adapters/outbox/src/adapter.ts",
             "packages/adapters/redis-streams/src/adapter.ts",
-            "packages/contexts/channels/domain/index.ts",
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/governance/domain/index.ts",
             "packages/kernel/README.md",
@@ -62758,6 +63087,156 @@
               "file": "packages/contexts/agents/domain/version.ts",
               "from": "packages/contexts/agents",
               "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/admit-channel-event.ts",
+              "from": "packages/contexts/channels",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/channels-contract.ts",
+              "from": "packages/contexts/channels",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/channels-erasure-target.ts",
+              "from": "packages/contexts/channels",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/configure-agent-routing.ts",
+              "from": "packages/contexts/channels",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/deliver-outbound-message.ts",
+              "from": "packages/contexts/channels",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/deliver-outbound-message.ts",
+              "from": "packages/contexts/channels",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/dependencies.ts",
+              "from": "packages/contexts/channels",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/dispatch-inbound-turn.ts",
+              "from": "packages/contexts/channels",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/ports/channel-adapter.ts",
+              "from": "packages/contexts/channels",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/ports/channels-repository.ts",
+              "from": "packages/contexts/channels",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/process-channel-event.ts",
+              "from": "packages/contexts/channels",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/rotate-installation-credential.ts",
+              "from": "packages/contexts/channels",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/builders.ts",
+              "from": "packages/contexts/channels",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/fixtures.ts",
+              "from": "packages/contexts/channels",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/in-memory-adapters.ts",
+              "from": "packages/contexts/channels",
+              "line": 9,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/application/testing/in-memory-channels-repository.ts",
+              "from": "packages/contexts/channels",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/contracts/index.ts",
+              "from": "packages/contexts/channels",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/connection.ts",
+              "from": "packages/contexts/channels",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/errors.ts",
+              "from": "packages/contexts/channels",
+              "line": 16,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/event-inbox.ts",
+              "from": "packages/contexts/channels",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/identifiers.ts",
+              "from": "packages/contexts/channels",
+              "line": 11,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/installation.ts",
+              "from": "packages/contexts/channels",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/provider.ts",
+              "from": "packages/contexts/channels",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/routing.ts",
+              "from": "packages/contexts/channels",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/channels/domain/thread-link.ts",
+              "from": "packages/contexts/channels",
+              "line": 30,
               "specifier": "@platos/kernel"
             },
             {
@@ -65487,7 +65966,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 440,
+              "line": 441,
               "specifier": "@platos/kernel"
             }
           ],
@@ -65659,6 +66138,102 @@
             [
               "packages/contexts/agents",
               "packages/contexts/agents/domain/version.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/admit-channel-event.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/channels-contract.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/channels-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/configure-agent-routing.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/deliver-outbound-message.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/dispatch-inbound-turn.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/ports/channel-adapter.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/ports/channels-repository.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/process-channel-event.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/rotate-installation-credential.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/builders.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/in-memory-adapters.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/application/testing/in-memory-channels-repository.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/connection.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/event-inbox.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/installation.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/provider.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/routing.ts"
+            ],
+            [
+              "packages/contexts/channels",
+              "packages/contexts/channels/domain/thread-link.ts"
             ],
             [
               "packages/contexts/cost-monitoring",
@@ -67288,6 +67863,7 @@
           "roots": [
             "apps/core-api",
             "packages/contexts/agents",
+            "packages/contexts/channels",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -67339,6 +67915,71 @@
             },
             {
               "from": "packages/contexts/agents/domain/postman-template.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/admit-channel-event.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/channels-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/process-channel-event.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/contracts/channels-contract.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/channels/domain/connection.test.ts",
+              "kind": "reference",
+              "line": 16
+            },
+            {
+              "from": "packages/contexts/channels/domain/event-inbox.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/inbound.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/installation.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/routing.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/channels/domain/thread-link.test.ts",
               "kind": "reference",
               "line": 1
             },
@@ -68080,7 +68721,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 247
+              "line": 248
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -68131,6 +68772,58 @@
             [
               "packages/contexts/agents/domain/postman-template.test.ts",
               "packages/contexts/agents/domain/postman-template.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/admit-channel-event.test.ts",
+              "packages/contexts/channels/application/admit-channel-event.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/channels-erasure-target.test.ts",
+              "packages/contexts/channels/application/channels-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+              "packages/contexts/channels/application/deliver-outbound-message.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+              "packages/contexts/channels/application/dispatch-inbound-turn.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/process-channel-event.test.ts",
+              "packages/contexts/channels/application/process-channel-event.test.ts"
+            ],
+            [
+              "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+              "packages/contexts/channels/application/rotate-installation-credential.test.ts"
+            ],
+            [
+              "packages/contexts/channels/contracts/channels-contract.test.ts",
+              "packages/contexts/channels/contracts/channels-contract.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/connection.test.ts",
+              "packages/contexts/channels/domain/connection.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/event-inbox.test.ts",
+              "packages/contexts/channels/domain/event-inbox.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/inbound.test.ts",
+              "packages/contexts/channels/domain/inbound.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/installation.test.ts",
+              "packages/contexts/channels/domain/installation.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/routing.test.ts",
+              "packages/contexts/channels/domain/routing.test.ts"
+            ],
+            [
+              "packages/contexts/channels/domain/thread-link.test.ts",
+              "packages/contexts/channels/domain/thread-link.test.ts"
             ],
             [
               "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
@@ -68749,6 +69442,19 @@
             "packages/contexts/agents/domain/cluster.test.ts",
             "packages/contexts/agents/domain/macro.test.ts",
             "packages/contexts/agents/domain/postman-template.test.ts",
+            "packages/contexts/channels/application/admit-channel-event.test.ts",
+            "packages/contexts/channels/application/channels-erasure-target.test.ts",
+            "packages/contexts/channels/application/deliver-outbound-message.test.ts",
+            "packages/contexts/channels/application/dispatch-inbound-turn.test.ts",
+            "packages/contexts/channels/application/process-channel-event.test.ts",
+            "packages/contexts/channels/application/rotate-installation-credential.test.ts",
+            "packages/contexts/channels/contracts/channels-contract.test.ts",
+            "packages/contexts/channels/domain/connection.test.ts",
+            "packages/contexts/channels/domain/event-inbox.test.ts",
+            "packages/contexts/channels/domain/inbound.test.ts",
+            "packages/contexts/channels/domain/installation.test.ts",
+            "packages/contexts/channels/domain/routing.test.ts",
+            "packages/contexts/channels/domain/thread-link.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
             "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
@@ -69643,7 +70349,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "ed68bac9bf98c11d372f3532d9a2455e47025fc32a29d39649df07ae95244c39",
+      "evidenceSha256": "3ff005e51fed80c9ff250c665478b1fecdf82816e8c3720c9a910eff1cc14e9c",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

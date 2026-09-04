@@ -218,7 +218,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
 
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
-    // M2 INTEGRATION DELTA — 104 -> 850. Eleven adopting slices make disjoint
+    // M2 INTEGRATION DELTA — 104 -> 948. Twelve adopting slices make disjoint
     // projects real, so the census is the sum of all of them, not any one
     // branch's pin:
     //
@@ -337,6 +337,21 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               Every other file that wave touches already existed, so the
     //               census moves by exactly one.
     //
+    //   906 -> 948  +42: WIN-256 makes `channels` real (ADR M0.3 §1 row 9) — 27
+    //               source and 15 test files, replacing its 4 released
+    //               placeholders in place. What it adds to this gate's evidence
+    //               is the ADR M0.3 §3 INVERSION judged on real code: `channels`
+    //               enqueues a turn through the kernel's `DurableRuntime` port
+    //               and must never call `conversations`. The whole-package grep
+    //               for a `@platos/context-conversations` import returns
+    //               nothing, and so does the grep for `@platos/adapter-*`, so
+    //               rules (b) and (c) hold a production tree rather than a
+    //               fixture. Its only two peer imports are
+    //               `@platos/context-tenancy` and
+    //               `@platos/context-identity-access`, both on its §1
+    //               allow-list. No rule was changed, weakened, or given an
+    //               exception.
+    //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
@@ -344,12 +359,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // pinned 397 + 51 = 448, the memory branch pinned 397 + 77 = 474 and the
     // cost-monitoring branch pinned 397 + 63 = 460, the privacy branch pinned
     // 397 + 48 = 445, the observability branch pinned 397 + 48 = 445 as well,
-    // the agents branch pinned 397 + 67 = 464 and the tools branch pinned
-    // 397 + 56 = 453, each blind to the others.
-    // All twelve slices are disjoint and eventing, skills, jobs, memory,
-    // cost-monitoring, privacy, observability, agents and tools move this census
-    // on INDEPENDENT axes, so the integrated census is their SUM and not any
-    // pin: 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 906.
+    // the agents branch pinned 397 + 67 = 464, the tools branch pinned
+    // 397 + 56 = 453 and the channels branch pinned 397 + 42 = 439, each blind
+    // to the others.
+    // All thirteen slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring, privacy, observability, agents, tools and channels move
+    // this census on INDEPENDENT axes, so the integrated census is their SUM and
+    // not any pin:
+    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 948.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -357,7 +374,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 906, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 948, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
