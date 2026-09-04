@@ -116,7 +116,6 @@
     "test:install-git-hooks": "node --test scripts/install-git-hooks.test.mjs",
     "audit:contract-map": "node scripts/arch/contract-map.mjs --check",
     "audit:capability-matrix": "node scripts/capability-matrix.mjs --check",
-    "test:capability-matrix": "node --test scripts/capability-matrix.test.mjs",
     "audit:docs-link-integrity": "node scripts/docs-link-integrity.mjs",
     "test:docs-link-integrity": "node --test scripts/docs-link-integrity.test.mjs",
     "audit:design-provenance": "node scripts/design-provenance.mjs check",
