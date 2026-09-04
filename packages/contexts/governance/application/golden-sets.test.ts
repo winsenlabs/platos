@@ -100,6 +100,41 @@ describe("createGoldenSet", () => {
     expect(context.goldenSets.size()).toBe(1);
   });
 
+  it("refuses the duplicate BEFORE opening a transaction", async () => {
+    // The double enforces `@@unique([environmentId, agentId, name])` as well, so
+    // the refusal alone cannot tell the pre-check from the store. The number of
+    // transactions opened can: with the pre-check the second call opens none.
+    const context = buildGovernanceTestContext();
+    await create(context);
+    expect(context.unitOfWork.opened).toBe(1);
+    const again = await create(context);
+    expect(again.ok).toBe(false);
+    expect(context.unitOfWork.opened).toBe(1);
+  });
+
+  it("is REFUSED BY THE STORE even if the pre-check is bypassed", async () => {
+    // The pre-check is a better error message, not the guarantee: the store
+    // holds the constraint, so a lost race still cannot write a duplicate.
+    const context = buildGovernanceTestContext();
+    await create(context);
+    const direct = await context.dependencies.unitOfWork.run((transaction) =>
+      context.goldenSets.create(
+        context.scope,
+        {
+          agentId: AGENT_ID,
+          name: "regression",
+          description: null,
+          threadIds: [THREAD_ID],
+          criterionIds: [CRITERION_A],
+          pairCount: 1,
+        },
+        OPERATOR,
+        transaction,
+      ),
+    );
+    expect(!direct.ok && direct.error.code).toBe("GOVERNANCE_GOLDEN_SET_ALREADY_EXISTS");
+  });
+
   it("ALLOWS the same name under a DIFFERENT agent — the constraint is per agent", async () => {
     const context = buildGovernanceTestContext();
     context.agents.seed({

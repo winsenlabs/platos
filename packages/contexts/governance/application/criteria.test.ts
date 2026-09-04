@@ -70,6 +70,18 @@ describe("createCriterion", () => {
     expect(context.criteria.size()).toBe(1);
   });
 
+  it("refuses the duplicate BEFORE opening a transaction", async () => {
+    // The store holds the constraint too, so "was it refused?" cannot tell the
+    // pre-check apart from the store. What can is WHERE it was refused: with the
+    // pre-check nothing reaches a transaction, and a lost pre-check would show
+    // up here as a second unit of work opened and rolled back.
+    await create({ name: "grounded" });
+    expect(context.unitOfWork.opened).toBe(1);
+    const second = await create({ name: "grounded" });
+    expect(second.ok).toBe(false);
+    expect(context.unitOfWork.opened).toBe(1);
+  });
+
   it("allows the same name in a DIFFERENT environment — the constraint is per environment", async () => {
     await create({ name: "grounded" });
     const elsewhere = await createCriterion(context.dependencies, {
