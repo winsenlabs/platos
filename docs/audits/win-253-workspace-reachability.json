@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "466124e83bddc570791d08cf85875b1216b69651c3219b6beedb34598f5126c7",
+  "evidenceSha256": "622ccd8edbd44f06ce4e38d5b7d45c1fc36447659dc15a50f6a017d3fd27e106",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 38,
+    "explicitHeaderFileCount": 34,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 125,
-        "sha256": "fde1246af84532ec334af1590d191817cc8035183a166f147daa2234ebc82b70"
+        "outputCount": 121,
+        "sha256": "8c25d803d0a1f886b79f8abba318e113eb2acc294af0634e152bf9cbcc96e8d1"
       }
     ],
-    "ownedOutputCount": 125,
+    "ownedOutputCount": 121,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2d26fe44200bf8c5f095ec5930bd734537f38ea701ed0105c8ee37c073f3da7c",
+    "aggregateSha256": "65b00f79daf569e8f00514556fe0dfcccbe7ee056edc7ba86caa2cfddf99d11a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "af476496f713c9ab1ebd8b01c7181eef47ed0ae4909c203a7ab612b655b3d46f"
+        "sha256": "575688d6caa93cd23749a45e1035b82db0a3215ef65594fe2f0b7bd1b2011b37"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11584,24 +11584,324 @@
         "sha256": "683eaa1064dc8c00c383c52dcb5f40f620ead81c77ff80c4669f92c09d54d8e0"
       },
       {
+        "path": "packages/contexts/conversations/application/authorization.test.ts",
+        "sha256": "fb1256f271c757d0b2515e701a7b97667b2862cd73ddfc5dc0c1c05c3de66895"
+      },
+      {
+        "path": "packages/contexts/conversations/application/authorization.ts",
+        "sha256": "7df714e31ca17b74496004ffdfa1276d9b7563957d522a324e8dbc378a121d08"
+      },
+      {
+        "path": "packages/contexts/conversations/application/compact-thread.test.ts",
+        "sha256": "b67b50ff4893e7ed7823837ad77aad98cb0801cd241102c79172dbc582de3446"
+      },
+      {
+        "path": "packages/contexts/conversations/application/compact-thread.ts",
+        "sha256": "4fc1e2abce853abe7a3605ba4e9da16abe2edad606adf8e5925b62d4cc3a93d2"
+      },
+      {
+        "path": "packages/contexts/conversations/application/conversations-contract.ts",
+        "sha256": "e72d501adfd47ac4bde16277efd2eb505a4e5addd3345ba72cab4e39a4ef5c5e"
+      },
+      {
+        "path": "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+        "sha256": "0285d0d5379e3f32ba60b56534b8da55af53c0585948e5c17fd42cb58c1c53c7"
+      },
+      {
+        "path": "packages/contexts/conversations/application/conversations-erasure-target.ts",
+        "sha256": "d9841945e1f2d6de5faa7feaec4425ec7b4554be6c952186717e4da7fa22d00e"
+      },
+      {
+        "path": "packages/contexts/conversations/application/dependencies.ts",
+        "sha256": "599d84d43ee8b40004f1f2253fa9c6ac03e28e85a4e80ecfefb707ef76ba2b03"
+      },
+      {
+        "path": "packages/contexts/conversations/application/execute-postman.test.ts",
+        "sha256": "5d404a0f51239b0dba5234f8bd5c24d0fe7c6b305c7e672432943f83e6a120ad"
+      },
+      {
+        "path": "packages/contexts/conversations/application/execute-postman.ts",
+        "sha256": "cf14b3bcb8095c4a23be03e2ed6a0f913026634f1da4496e8747841d16135ddf"
+      },
+      {
+        "path": "packages/contexts/conversations/application/fork-thread.test.ts",
+        "sha256": "cf18949984da9008e5c7cb8434f81210affeb30a610b1ae9d6ae48bbd5b5ff0c"
+      },
+      {
+        "path": "packages/contexts/conversations/application/fork-thread.ts",
+        "sha256": "aff212600764032407b3c0a4250628bc2b16139e4103de9acab28466c7a1e882"
+      },
+      {
         "path": "packages/contexts/conversations/application/index.ts",
-        "sha256": "dea6326d08181eb58303a92dc18985b29052a5512758a8a7e4401c9271425998"
+        "sha256": "c6e6ec205a44ab3c53487481a419f92d5abcdc9fc15ed82d6727b1c3ad64fe9a"
+      },
+      {
+        "path": "packages/contexts/conversations/application/manage-threads.test.ts",
+        "sha256": "a671fdd0221344f515ba4794f21348b2b50635b1a490a70766affc06752b8dc8"
+      },
+      {
+        "path": "packages/contexts/conversations/application/manage-threads.ts",
+        "sha256": "2c1dde2cbd2d2628b38d695a588a9b73f2597c258f64cb3da68264d0e4bda49a"
+      },
+      {
+        "path": "packages/contexts/conversations/application/ports/erasure-store.ts",
+        "sha256": "255ef0e0f0e91149fdca82897390414927013123db97f2cb38e36539cb967d23"
       },
       {
         "path": "packages/contexts/conversations/application/ports/index.ts",
-        "sha256": "a71902f4f4eb59589f05995ec809cc138c0f41aca33aef23274058636afd4ead"
+        "sha256": "a5c40dc3f4d508dca5241492312570b685db30c7aad4f5a528d5a1b2056b814c"
+      },
+      {
+        "path": "packages/contexts/conversations/application/ports/postman-repository.ts",
+        "sha256": "2d5ddb725550929df0e73dee12d84648bf42a1dc47fa13a2f88981904f678457"
+      },
+      {
+        "path": "packages/contexts/conversations/application/ports/thread-repository.ts",
+        "sha256": "b742958c5201dd356f64338dc1d785e9114b1f4b34b218d2d05d4906b181b486"
+      },
+      {
+        "path": "packages/contexts/conversations/application/ports/turn-repository.ts",
+        "sha256": "7d93df13bf35f7f93ad31f251318f25a038be222e49cbeb7f87a031e8c3249c2"
+      },
+      {
+        "path": "packages/contexts/conversations/application/run-sub-agent.test.ts",
+        "sha256": "097f3c6166abf79af2b7c4cf7ebb190840d849b5aa30b0461c50a749ceb0592d"
+      },
+      {
+        "path": "packages/contexts/conversations/application/run-sub-agent.ts",
+        "sha256": "9c85a425b7de2dc36c6f49c1a746a2c0317a3dd1de32ea54adc883085b19427f"
+      },
+      {
+        "path": "packages/contexts/conversations/application/run-turn.test.ts",
+        "sha256": "55fb637572e961b577526ea5e03009d94f5856a933c745c58b9b1c21a7c42e77"
+      },
+      {
+        "path": "packages/contexts/conversations/application/run-turn.ts",
+        "sha256": "f668ea54cb098028906dd272992ee65204f3a3dbd3097fcfbcbffb65880b7dad"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/fixtures.ts",
+        "sha256": "abd1627fcd71f903d056614af0c0b09db9f080983512a8ab07d065d1a02d4d9f"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/in-memory-infrastructure.ts",
+        "sha256": "fb7887b8bbd4940918b5f0501c18a2418a9b6dfa677d41583a6643f183436d90"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/in-memory-peers.ts",
+        "sha256": "62c1ae3fa39e128475841ad6ade380268545a077eb83db713fc9e7382e9c9edd"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/in-memory-providers.ts",
+        "sha256": "b0d1f45d583b4a466cbcfd90fd4f22a7ce315d8e01086417e7e42d7ef5b22cc3"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/in-memory-stores.ts",
+        "sha256": "8116f15c4f1013b3636ee2c8163b1cb5372ed2fb138061b40a9a039e83d94884"
+      },
+      {
+        "path": "packages/contexts/conversations/application/testing/index.ts",
+        "sha256": "d589925ea564549ebf398e7f9a09b95a457407f033e0677bb366d4c5f886e1b8"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-admission.test.ts",
+        "sha256": "2e6ec8f8327aba1573d6f23dee6f04381cd95dbe4522acc915472bacb3ba92b6"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-admission.ts",
+        "sha256": "7b7923657cc227039944a0fbc57fc5dadc8d17a16ab7c1cdca301f1c119585e9"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-preparation.ts",
+        "sha256": "1aef3a93ba0740987e4f0317945d9460fd80a4fd6d564e57233564adbc771a5d"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-prompt.ts",
+        "sha256": "9a2dc6c1e968da4a227c71ec522b332417fef5abda54bb4d69210f9729964acb"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-steps.test.ts",
+        "sha256": "5fe3c4e364a1dc5d4ce2528c16d0a9fbcf3d323a9ed0102d2866dda14f98d8dc"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-steps.ts",
+        "sha256": "4096692bd5bb9e2d8480125a2b7964b34d14f5807c8e2ab63309bd10169e11bc"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-tools.test.ts",
+        "sha256": "bf11bd4eb8b8c3fdcb28cf76ca70083ae71d33c1dac57a69aafd942958e77075"
+      },
+      {
+        "path": "packages/contexts/conversations/application/turn-tools.ts",
+        "sha256": "0e0e7f9e1124216df779159d9c921c8c808a8399a77d5b606d837916458cde18"
+      },
+      {
+        "path": "packages/contexts/conversations/contracts/index.test.ts",
+        "sha256": "23c45abc431fd85e51b2f363bcb9abf2f3469cfb7d72f943bdbf77612a4cda76"
       },
       {
         "path": "packages/contexts/conversations/contracts/index.ts",
-        "sha256": "f26ac6f218a63f1f670ea2268d096ecb444f671a30d2ddef97ae3d1a7dcbccd3"
+        "sha256": "6561f565cc70120c9cc61989f856972d11f934d1f2d32700bfa815d262ea8fbb"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/attachment.test.ts",
+        "sha256": "2f5b307b954d6b6f6973bb078c8c0e9181115073295c8e8cf6a486e6319d3cc2"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/attachment.ts",
+        "sha256": "677305621186e485c0d8f67338b8cec78639f069ed358f238c3ac76734ea039d"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/errors.test.ts",
+        "sha256": "3080395865f280e5516c294642659c4c7648ae607bd166509f3c2d664ff891cb"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/errors.ts",
+        "sha256": "d7e2a4ebd8032f75bac85921a8239215ccab0fb9c7b6206fd709c1942d3733e5"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/events.ts",
+        "sha256": "20b09b693aa454cb0a2fe0768e0622b24444e3c0e14fe24c7c2774c038df56e5"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/identifiers.ts",
+        "sha256": "a65557d451c0efefdf104111e1174b2f35965df763044b1aa5a2b68699cc0ca7"
       },
       {
         "path": "packages/contexts/conversations/domain/index.ts",
-        "sha256": "cfb61204b8979186537fbfdc83e8936675db1093adb83749535d6ecf654ddf85"
+        "sha256": "bf1ba77f8060fb5a1fe51b2cc5c7512a6a36d6269c25f0d99b5a6ecf432d5775"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/policy.ts",
+        "sha256": "8b7ebd59a3af80db385e8361e6068d2ed3294f121120aad7e7bd632c3f7705a7"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/postman-execution.test.ts",
+        "sha256": "250271b5f014ec2f01e01a0834665464fa15c5ac4b3c2906e5f03c33d424266e"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/postman-execution.ts",
+        "sha256": "f447398e4010b3860250ec3e2d16b50ec62d44f3edcc4617c8e85109931f845b"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step-rates.test.ts",
+        "sha256": "c555bdd783b910b8e435446369541b9709eead8334a7d78e882f8def15112834"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step-rates.ts",
+        "sha256": "f25f00b4903c20de714f869b9a0b1323d5955e5b6d3de99e5aba902670a18fd7"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step-usage.test.ts",
+        "sha256": "68336c55f88bf3d1371473a800c6d4e7895b30f30600360731143888902f8970"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step-usage.ts",
+        "sha256": "4bb8484817fa08b6b86b5c1790b5971cdc4e6f04d5c1a63da22b1c04dfec58ad"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step.test.ts",
+        "sha256": "4b1cd6acc92ca04244e63de9e417b0645c648458584812644ecc9e730599c570"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/step.ts",
+        "sha256": "5725d7890b5f1c2217b2a726cbeb320927c245da51e54826f26ff3cf2d80125a"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/structured-output.test.ts",
+        "sha256": "307a241ac07e4fdf47d97c6e23c655dc8d0a7ccd9027135716aff418f9022ed0"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/structured-output.ts",
+        "sha256": "c3c198e2f06ce4c6c1aee2d2d5d8939868e29f9c078e68445f641685419a4af2"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/sub-agent.test.ts",
+        "sha256": "16d0998d11259af903056dcc8cd39ab40c5de21658cae4f3ed6c495379d98bf6"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/sub-agent.ts",
+        "sha256": "630ad22377f0818cc071911f8df845aecd81aa122181ee0290206572fce77302"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread-compaction.test.ts",
+        "sha256": "7cc01a3e049df4193dcb37e9605cc8421ffb3fcc42d17c9d4607b067b6dd0eb3"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread-compaction.ts",
+        "sha256": "b36a201b52f0be3125b80b38bf455bf897d8d6e14226b586c05ab7ea36d637da"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread-fork.test.ts",
+        "sha256": "df098cbfaa4ad20fb08104c2aa9e10f63da6d9a06e9a9596cdf8b0e46d726af5"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread-fork.ts",
+        "sha256": "8d7670466d433027337661c77b9361a37063729a94f83200be08b42f7a3f4872"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread.test.ts",
+        "sha256": "88ffbbda67d7e1ae62d66bf6d9dfe61a0da5d14fd07f1d45006e060075472b58"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/thread.ts",
+        "sha256": "fd9fb4e7d7367eec42a06a7353c703d58b6cf1ac936a16bdd3b64adf0f61ee0b"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/tool-catalogue.test.ts",
+        "sha256": "543eb55d07c9e675efcefc72c17b90500a4f1d704c55f28ed5df509ce23a317f"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/tool-catalogue.ts",
+        "sha256": "53742e5d26435c1c4c20c19e2b850b7f1e16cc3539ccaebf2fbc26e693ef2949"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/tool-result.test.ts",
+        "sha256": "8bf751b5dec959e6fc470dadcb36837fe1d79ed1486e0fc0b603837170ae24a5"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/tool-result.ts",
+        "sha256": "e9b208b21ee3888d9a225b86194cd003386bc11bb6c8964a0bbc6a2b905a1f8a"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/transcript.test.ts",
+        "sha256": "e123fd92b6e6e23f56c8cc4379e279816fd2681ee12b3619a2151b62ee016b4f"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/transcript.ts",
+        "sha256": "6e99b76665f0ef673ec87587e98b7c13b0831e0d763ea8b71307971fce4c1d8b"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/turn-cost.test.ts",
+        "sha256": "db57b7eb2e3c466b1877c94302e7c0a0b15a6f750d7725ffac433bdd2749cb30"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/turn-cost.ts",
+        "sha256": "53981b729c55fff69569b1e49e09431a6d162e6027e501ea63cba0d3d9524a53"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/turn.test.ts",
+        "sha256": "b0407f84105141d7cf9b20735422ad2f551f180ca56e1508032fcd610a9c64c8"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/turn.ts",
+        "sha256": "3fd3e0721bfe918fa797663f34a8cfbbbcd98c8b2c48a4533c377c120445a785"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/work-status.test.ts",
+        "sha256": "c38c06b449f008bc4737783026c0d5e1b60d50345dbb5808867848109c52d74f"
+      },
+      {
+        "path": "packages/contexts/conversations/domain/work-status.ts",
+        "sha256": "0a6f3de99d06afb634dd6fcc7cda7613451cb3a4bb82ca305fc788eef3ea5af2"
+      },
+      {
+        "path": "packages/contexts/conversations/mutations.json",
+        "sha256": "de55a956d518cc1ea9d9a467ba7748ca92c34c19533f8d4b9e2f1946f4b5a42e"
       },
       {
         "path": "packages/contexts/conversations/package.json",
-        "sha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893"
+        "sha256": "8b353ef5a31c369c3f31d462104027d9a32a9cff44162118c5775df82df9c025"
       },
       {
         "path": "packages/contexts/conversations/tsconfig.json",
@@ -17253,7 +17553,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "754725f288cfa147d11aa314420379426c5f1c18684ddbbb286fb2a568990aab"
+        "sha256": "49e78382eff0bb1e97666685ddb5a0a05c04065ff615b0d4d30fc45248c2cb29"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -17293,11 +17593,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "9e849ad63d0b269e8816cfaba16203d699d7f00820998ae6e8f3037072839cdf"
+        "sha256": "9c0197287cfbe7ed5b3cd79bf3eb549cf9cf537d0a938e4cbf572e3a5937fc18"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "1e73565ff66cc992f95286d9954375811ff4c16fb8d52f1abd44afdbbfb793d0"
+        "sha256": "dd32e128430dc4afbd64247d0433f8bd957c41004dae56cae9a4e65d4f3788f8"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -17533,7 +17833,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "aa27d080ef3ce3ab6436e5502beb29301af4f4aff9eb72ba0a39db948e0745b5"
+        "sha256": "2764d0da37ebe94a051d67d8a535b890ad4c877b8c19389e959c57470490eb38"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -22663,14 +22963,6 @@
               "from": "apps/core-api/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/conversations/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/conversations/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -22685,22 +22977,12 @@
             [
               "apps/core-api/tsconfig.json",
               "apps/core-api/tsconfig.json"
-            ],
-            [
-              "packages/contexts/conversations/application/ports/index.ts",
-              "packages/contexts/conversations/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/conversations/contracts/index.ts",
-              "packages/contexts/conversations/contracts/index.ts"
             ]
           ],
           "roots": [
             "apps/core-api/README.md",
             "apps/core-api/package.json",
-            "apps/core-api/tsconfig.json",
-            "packages/contexts/conversations/application/ports/index.ts",
-            "packages/contexts/conversations/contracts/index.ts"
+            "apps/core-api/tsconfig.json"
           ]
         },
         "license": {
@@ -23085,7 +23367,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "4c73311593b378117cfca63f5460e3abd3c833003bb9283efb48d4d699d7f194",
+      "evidenceSha256": "40cb7dc68cc2d71f21d60b3f66ecdf27dc0e677f4ce5d6f6ccc412a143dc5b3c",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -34799,7 +35081,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 855
+              "line": 865
             }
           ],
           "reversePaths": [
@@ -34824,7 +35106,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "8b4044d63b2da4ad8494ddf10017cce3406d0725c2a8c2a9598598525f08f234",
+      "evidenceSha256": "57f7436b730f5758d6a70a3d92f8805eb11a4bf78bac58cfa0a51549f63b6468",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -35955,7 +36237,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 854
+              "line": 864
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -36180,7 +36462,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9365f36b301f39155baaa6703a66631be9813cb78c9bc2ccc8080f318d910ed3",
+      "evidenceSha256": "788ef7807e7db5783a2a0ce41100ee33049cfda96948cf6fc12101a3cc9ca1d9",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -45853,10 +46135,6 @@
               "from": "packages/contexts/agents/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -45871,17 +46149,12 @@
             [
               "packages/contexts/agents/tsconfig.json",
               "packages/contexts/agents/tsconfig.json"
-            ],
-            [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
             ]
           ],
           "roots": [
             "packages/contexts/agents/README.md",
             "packages/contexts/agents/package.json",
-            "packages/contexts/agents/tsconfig.json",
-            "packages/contexts/conversations/application/index.ts"
+            "packages/contexts/agents/tsconfig.json"
           ]
         },
         "license": {
@@ -45987,6 +46260,12 @@
               "specifier": "@platos/context-agents"
             },
             {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 40,
+              "specifier": "@platos/context-agents"
+            },
+            {
               "file": "packages/contexts/governance/application/dependencies.ts",
               "from": "packages/contexts/governance",
               "line": 38,
@@ -46011,6 +46290,10 @@
               "apps/core-api/src/app.module.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
               "packages/contexts/governance",
               "packages/contexts/governance/application/dependencies.ts"
             ],
@@ -46025,6 +46308,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/conversations",
             "packages/contexts/governance"
           ]
         },
@@ -46164,7 +46448,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 571
+              "line": 576
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -46417,7 +46701,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "1c48fa680768c0cb36b66e4308c1045486aeb77c4e9cd6cce0469a53f2e22f28",
+      "evidenceSha256": "c7cb6e416c620e657acd7f70844c7531ca796cda95beea12dae72c907168a3f3",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -46835,7 +47119,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 635
+              "line": 640
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47016,7 +47300,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "188d5bc909fa38533937e579b399518fa926b9068cd9802c67c6e74325614375",
+      "evidenceSha256": "fd213586e11e8a31056384d2d5c8fea84ddcaff4c76479ba2f2fe0f925d4d77b",
       "manifestSha256": "f730d3dae4a01c286db678b29bc1dd47a16621613359455e0370048e6826b762",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -47150,6 +47434,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/v1-ledger-rules.json",
+              "kind": "reference",
+              "line": 6
+            },
+            {
               "from": "packages/contexts/conversations/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -47157,37 +47446,22 @@
           ],
           "reversePaths": [
             [
+              "docs/v1-ledger-rules.json",
+              "docs/v1-ledger-rules.json"
+            ],
+            [
               "packages/contexts/conversations/README.md",
               "packages/contexts/conversations/README.md"
             ]
           ],
           "roots": [
+            "docs/v1-ledger-rules.json",
             "packages/contexts/conversations/README.md"
           ]
         },
         "generated": {
           "reachable": true,
           "reasons": [
-            {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/conversations/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/conversations/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/conversations/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
             {
               "from": "packages/contexts/conversations/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
@@ -47206,22 +47480,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
-              "packages/contexts/conversations/application/ports/index.ts",
-              "packages/contexts/conversations/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/conversations/contracts/index.ts",
-              "packages/contexts/conversations/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/conversations/domain/index.ts",
-              "packages/contexts/conversations/domain/index.ts"
-            ],
-            [
               "packages/contexts/conversations/package.json",
               "packages/contexts/conversations/package.json"
             ],
@@ -47236,10 +47494,6 @@
           ],
           "roots": [
             "packages/contexts/conversations/README.md",
-            "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/conversations/application/ports/index.ts",
-            "packages/contexts/conversations/contracts/index.ts",
-            "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/conversations/package.json",
             "packages/contexts/conversations/tsconfig.json"
           ]
@@ -47277,6 +47531,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/conversations/package.json",
               "kind": "workspace-script",
@@ -47287,6 +47546,12 @@
               "from": "packages/contexts/conversations/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/conversations/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -47340,6 +47605,156 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/contexts/conversations/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/compact-thread.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/execute-postman.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/fork-thread.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/manage-threads.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/run-sub-agent.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/run-turn.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-admission.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-steps.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-tools.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/attachment.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/postman-execution.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/step-rates.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/step-usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/step.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/structured-output.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/sub-agent.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread-compaction.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread-fork.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/tool-catalogue.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/tool-result.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/transcript.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/turn-cost.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/turn.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/domain/work-status.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 475
@@ -47350,9 +47765,19 @@
               "line": 100
             },
             {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 697
+            },
+            {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 159
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 797
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -47362,6 +47787,126 @@
           ],
           "reversePaths": [
             [
+              "packages/contexts/conversations/application/authorization.test.ts",
+              "packages/contexts/conversations/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/compact-thread.test.ts",
+              "packages/contexts/conversations/application/compact-thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+              "packages/contexts/conversations/application/conversations-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/execute-postman.test.ts",
+              "packages/contexts/conversations/application/execute-postman.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/fork-thread.test.ts",
+              "packages/contexts/conversations/application/fork-thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/manage-threads.test.ts",
+              "packages/contexts/conversations/application/manage-threads.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/run-sub-agent.test.ts",
+              "packages/contexts/conversations/application/run-sub-agent.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/run-turn.test.ts",
+              "packages/contexts/conversations/application/run-turn.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-admission.test.ts",
+              "packages/contexts/conversations/application/turn-admission.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-steps.test.ts",
+              "packages/contexts/conversations/application/turn-steps.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-tools.test.ts",
+              "packages/contexts/conversations/application/turn-tools.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/contracts/index.test.ts",
+              "packages/contexts/conversations/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/attachment.test.ts",
+              "packages/contexts/conversations/domain/attachment.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/errors.test.ts",
+              "packages/contexts/conversations/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/postman-execution.test.ts",
+              "packages/contexts/conversations/domain/postman-execution.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/step-rates.test.ts",
+              "packages/contexts/conversations/domain/step-rates.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/step-usage.test.ts",
+              "packages/contexts/conversations/domain/step-usage.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/step.test.ts",
+              "packages/contexts/conversations/domain/step.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/structured-output.test.ts",
+              "packages/contexts/conversations/domain/structured-output.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/sub-agent.test.ts",
+              "packages/contexts/conversations/domain/sub-agent.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread-compaction.test.ts",
+              "packages/contexts/conversations/domain/thread-compaction.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread-fork.test.ts",
+              "packages/contexts/conversations/domain/thread-fork.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread.test.ts",
+              "packages/contexts/conversations/domain/thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/tool-catalogue.test.ts",
+              "packages/contexts/conversations/domain/tool-catalogue.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/tool-result.test.ts",
+              "packages/contexts/conversations/domain/tool-result.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/transcript.test.ts",
+              "packages/contexts/conversations/domain/transcript.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/turn-cost.test.ts",
+              "packages/contexts/conversations/domain/turn-cost.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/turn.test.ts",
+              "packages/contexts/conversations/domain/turn.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/work-status.test.ts",
+              "packages/contexts/conversations/domain/work-status.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/package.json",
+              "packages/contexts/conversations/package.json"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -47370,8 +47915,16 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ],
             [
               "scripts/workspace-reachability.test.mjs",
@@ -47379,9 +47932,41 @@
             ]
           ],
           "roots": [
+            "packages/contexts/conversations/application/authorization.test.ts",
+            "packages/contexts/conversations/application/compact-thread.test.ts",
+            "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+            "packages/contexts/conversations/application/execute-postman.test.ts",
+            "packages/contexts/conversations/application/fork-thread.test.ts",
+            "packages/contexts/conversations/application/manage-threads.test.ts",
+            "packages/contexts/conversations/application/run-sub-agent.test.ts",
+            "packages/contexts/conversations/application/run-turn.test.ts",
+            "packages/contexts/conversations/application/turn-admission.test.ts",
+            "packages/contexts/conversations/application/turn-steps.test.ts",
+            "packages/contexts/conversations/application/turn-tools.test.ts",
+            "packages/contexts/conversations/contracts/index.test.ts",
+            "packages/contexts/conversations/domain/attachment.test.ts",
+            "packages/contexts/conversations/domain/errors.test.ts",
+            "packages/contexts/conversations/domain/postman-execution.test.ts",
+            "packages/contexts/conversations/domain/step-rates.test.ts",
+            "packages/contexts/conversations/domain/step-usage.test.ts",
+            "packages/contexts/conversations/domain/step.test.ts",
+            "packages/contexts/conversations/domain/structured-output.test.ts",
+            "packages/contexts/conversations/domain/sub-agent.test.ts",
+            "packages/contexts/conversations/domain/thread-compaction.test.ts",
+            "packages/contexts/conversations/domain/thread-fork.test.ts",
+            "packages/contexts/conversations/domain/thread.test.ts",
+            "packages/contexts/conversations/domain/tool-catalogue.test.ts",
+            "packages/contexts/conversations/domain/tool-result.test.ts",
+            "packages/contexts/conversations/domain/transcript.test.ts",
+            "packages/contexts/conversations/domain/turn-cost.test.ts",
+            "packages/contexts/conversations/domain/turn.test.ts",
+            "packages/contexts/conversations/domain/work-status.test.ts",
+            "packages/contexts/conversations/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/v1-ledger.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
         }
@@ -47441,8 +48026,8 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "05f89929aa6aa77d2513a2f8cd447d554cbecb6d5a812e3735e4e5f171964f9e",
-      "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
+      "evidenceSha256": "17951ad78a5825697c13ae02756074f7907cf86b1ae5b5f4aa960a4a2114443d",
+      "manifestSha256": "8b353ef5a31c369c3f31d462104027d9a32a9cff44162118c5775df82df9c025",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
         "reachable": false,
@@ -47668,10 +48253,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/cost-monitoring/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -47697,10 +48278,6 @@
               "packages/adapters/notifier-webhook/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/cost-monitoring/package.json",
               "packages/contexts/cost-monitoring/package.json"
             ],
@@ -47716,7 +48293,6 @@
           "roots": [
             "packages/adapters/notifier-email/src/adapter.ts",
             "packages/adapters/notifier-webhook/src/adapter.ts",
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/README.md",
             "packages/contexts/cost-monitoring/package.json",
             "packages/contexts/cost-monitoring/tsconfig.json"
@@ -47819,6 +48395,12 @@
               "from": "apps/core-api",
               "line": 35,
               "specifier": "@platos/context-cost-monitoring/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 41,
+              "specifier": "@platos/context-cost-monitoring"
             }
           ],
           "reversePaths": [
@@ -47829,10 +48411,15 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/conversations"
           ]
         },
         "testsFixtures": {
@@ -47951,7 +48538,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 458
+              "line": 463
             }
           ],
           "reversePaths": [
@@ -48196,7 +48783,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "2d85221b6027d0b06f464bccd5c0364a60e5d1c733c68b4110297f7b8242a468",
+      "evidenceSha256": "3f5f18f6d20f106a2d6025a72b9a3b8e2f479588d927c2cf5d0425b4af9ed68b",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -48568,7 +49155,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 312
+              "line": 315
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -48722,7 +49309,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "c33559ad39aae9bcab83aeb74775e91cdf28b396e621c1b9ec32bfa3d0baf178",
+      "evidenceSha256": "033d7b26bc6b8b8cf04075113b19331e0f762607c66ba9b2cdb8aca40a68d9a4",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -48995,10 +49582,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/files/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -49020,10 +49603,6 @@
               "packages/adapters/objectstore-minio/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/files/package.json",
               "packages/contexts/files/package.json"
             ],
@@ -49038,7 +49617,6 @@
           ],
           "roots": [
             "packages/adapters/objectstore-minio/src/adapter.ts",
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/files/README.md",
             "packages/contexts/files/package.json",
             "packages/contexts/files/tsconfig.json"
@@ -49143,6 +49721,12 @@
               "specifier": "@platos/context-files/application/ports/index.js"
             },
             {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 42,
+              "specifier": "@platos/context-files"
+            },
+            {
               "file": "packages/contexts/skills/application/dependencies.ts",
               "from": "packages/contexts/skills",
               "line": 29,
@@ -49165,6 +49749,10 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
               "packages/contexts/skills",
               "packages/contexts/skills/application/dependencies.ts"
             ],
@@ -49175,6 +49763,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/conversations",
             "packages/contexts/skills"
           ]
         },
@@ -49549,7 +50138,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "02d66baf456eb52250b00158d08b33bc3fc1e1b0a494a75b9ecf5f49b7478218",
+      "evidenceSha256": "fec968586f8ed0d99ade01f8b8884bae7cfad57cf4d48f65b8ed278f07ec6391",
       "manifestSha256": "3ae6fd2ca3fccb75bada2d46933a092278e87ad0089deb376a7b97424c223a51",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -50006,7 +50595,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 661
+              "line": 666
             }
           ],
           "reversePaths": [
@@ -50235,7 +50824,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "088a77ad715e2ccbd0f9f188751225832549ffffb6d9410460c38f88a66def8f",
+      "evidenceSha256": "0f9ca3f271487090b40976908066b8b98177ab987a25525805c06d57e1ae3f3e",
       "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -51352,7 +51941,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 292
+              "line": 295
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52149,7 +52738,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "075e1c49cc6b791702f2d8fdf997817fb711befc52e37cb2a32fbab87edea462",
+      "evidenceSha256": "ca6cd7e93f310152e18a51a3a4c5489c4898cf6d48b3d5ec0937cbf5f8e3b9ba",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -52324,10 +52913,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/jobs/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -52345,10 +52930,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/jobs/package.json",
               "packages/contexts/jobs/package.json"
             ],
@@ -52362,7 +52943,6 @@
             ]
           ],
           "roots": [
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/jobs/README.md",
             "packages/contexts/jobs/package.json",
             "packages/contexts/jobs/tsconfig.json"
@@ -52459,16 +53039,27 @@
               "from": "apps/core-api",
               "line": 60,
               "specifier": "@platos/context-jobs"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 43,
+              "specifier": "@platos/context-jobs"
             }
           ],
           "reversePaths": [
             [
               "apps/core-api",
               "apps/core-api/src/app.module.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/conversations"
           ]
         },
         "testsFixtures": {
@@ -52748,7 +53339,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "23e3295c5839c7843a52b7395dbd961da3cc38fa8ca8098bd0a2a5074f852134",
+      "evidenceSha256": "9db8892680087405122d93b7b1e5550b71cae85b65c4fd6df6dcf9f930c74d9b",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -52949,10 +53540,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/memory/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -52974,10 +53561,6 @@
               "packages/adapters/redis-cache/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/memory/package.json",
               "packages/contexts/memory/package.json"
             ],
@@ -52992,7 +53575,6 @@
           ],
           "roots": [
             "packages/adapters/redis-cache/src/adapter.ts",
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/memory/README.md",
             "packages/contexts/memory/package.json",
             "packages/contexts/memory/tsconfig.json"
@@ -53095,6 +53677,12 @@
               "from": "apps/core-api",
               "line": 32,
               "specifier": "@platos/context-memory/application/ports/index.js"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 44,
+              "specifier": "@platos/context-memory"
             }
           ],
           "reversePaths": [
@@ -53105,10 +53693,15 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/conversations"
           ]
         },
         "testsFixtures": {
@@ -53267,7 +53860,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 428
+              "line": 433
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -53540,7 +54133,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "1cf000159ce10420cc12f71fa7a0ac079c0a2b28e48983a2de8ab9464f09e162",
+      "evidenceSha256": "b864e4750fa34ca79f6fdb97a1a4dd4ce90cb9014035c3566ff20780add589c2",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -53968,7 +54561,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 529
+              "line": 534
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54159,7 +54752,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "f9f4ddb4ba4ed8e7c44a490940467597583fa751adb7a3d768fce6b8feb014a1",
+      "evidenceSha256": "d15e622bd6f7d349a92c2921982fbb718a3f54025ad7e29889214ea126d45dfe",
       "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -54541,7 +55134,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 496
+              "line": 501
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54705,7 +55298,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "58ba1490065be46bdd2c13902c7e03f1362ba6802fe5c76a1bd29776529d7a6b",
+      "evidenceSha256": "5e5adbed7019c0e0c1eeae23a757d1b09f72afb14c28f3dbf0f0e062fbfbdcaa",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -55128,10 +55721,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/providers/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -55153,10 +55742,6 @@
               "packages/adapters/model-router-providers/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/providers/package.json",
               "packages/contexts/providers/package.json"
             ],
@@ -55171,7 +55756,6 @@
           ],
           "roots": [
             "packages/adapters/model-router-providers/src/adapter.ts",
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
             "packages/contexts/providers/tsconfig.json"
@@ -55294,6 +55878,42 @@
               "specifier": "@platos/context-providers"
             },
             {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 45,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-providers.ts",
+              "from": "packages/contexts/conversations",
+              "line": 30,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-prompt.ts",
+              "from": "packages/contexts/conversations",
+              "line": 41,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-prompt.ts",
+              "from": "packages/contexts/conversations",
+              "line": 42,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-steps.ts",
+              "from": "packages/contexts/conversations",
+              "line": 35,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-tools.ts",
+              "from": "packages/contexts/conversations",
+              "line": 39,
+              "specifier": "@platos/context-providers"
+            },
+            {
               "file": "packages/contexts/cost-monitoring/application/dependencies.ts",
               "from": "packages/contexts/cost-monitoring",
               "line": 31,
@@ -55358,6 +55978,26 @@
               "packages/contexts/agents/application/testing/in-memory-peers.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-providers.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-prompt.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-steps.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-tools.ts"
+            ],
+            [
               "packages/contexts/cost-monitoring",
               "packages/contexts/cost-monitoring/application/dependencies.ts"
             ],
@@ -55389,6 +56029,7 @@
           "roots": [
             "apps/core-api",
             "packages/contexts/agents",
+            "packages/contexts/conversations",
             "packages/contexts/cost-monitoring",
             "packages/contexts/memory",
             "packages/contexts/tools"
@@ -55397,6 +56038,16 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/contexts/conversations/application/turn-steps.test.ts",
+              "kind": "reference",
+              "line": 16
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-tools.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "workspace-owned-file",
@@ -55540,7 +56191,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 343
+              "line": 346
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -55549,6 +56200,14 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/contexts/conversations/application/turn-steps.test.ts",
+              "packages/contexts/conversations/application/turn-steps.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-tools.test.ts",
+              "packages/contexts/conversations/application/turn-tools.test.ts"
+            ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
@@ -55671,6 +56330,8 @@
             ]
           ],
           "roots": [
+            "packages/contexts/conversations/application/turn-steps.test.ts",
+            "packages/contexts/conversations/application/turn-tools.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/check-provider-health.test.ts",
             "packages/contexts/providers/application/describe-providers.test.ts",
@@ -56015,7 +56676,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "8618aea5441c4d9649e1c589b724046ee6bcd5964b40cc8befce752819da7290",
+      "evidenceSha256": "d1fbfa4a5c34845fbe2e087be8829450228b830a3d924f6de93f937e394003aa",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -56462,10 +57123,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/secrets/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -56483,10 +57140,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/secrets/package.json",
               "packages/contexts/secrets/package.json"
             ],
@@ -56500,7 +57153,6 @@
             ]
           ],
           "roots": [
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/secrets/README.md",
             "packages/contexts/secrets/package.json",
             "packages/contexts/secrets/tsconfig.json"
@@ -56599,6 +57251,12 @@
               "specifier": "@platos/context-secrets"
             },
             {
+              "file": "packages/contexts/conversations/application/authorization.ts",
+              "from": "packages/contexts/conversations",
+              "line": 50,
+              "specifier": "@platos/context-secrets"
+            },
+            {
               "file": "packages/contexts/providers/application/authorization.ts",
               "from": "packages/contexts/providers",
               "line": 42,
@@ -56689,6 +57347,10 @@
               "apps/core-api/src/app.module.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/authorization.ts"
+            ],
+            [
               "packages/contexts/providers",
               "packages/contexts/providers/application/authorization.ts"
             ],
@@ -56747,6 +57409,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/contexts/conversations",
             "packages/contexts/providers",
             "packages/contexts/tools"
           ]
@@ -56857,7 +57520,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 293
+              "line": 296
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -57330,7 +57993,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1c674121ee1f0d44f377f0d09465fccf3a0b0fa237381a9c3f3e11382f2262c4",
+      "evidenceSha256": "ceb3d32ce5ca49d43bcfc67e99de021c4acffd5e9319474609a06e36c25010df",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -57551,10 +58214,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/skills/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -57572,10 +58231,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/skills/package.json",
               "packages/contexts/skills/package.json"
             ],
@@ -57589,7 +58244,6 @@
             ]
           ],
           "roots": [
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/skills/README.md",
             "packages/contexts/skills/package.json",
             "packages/contexts/skills/tsconfig.json"
@@ -57692,6 +58346,12 @@
               "from": "packages/contexts/agents",
               "line": 58,
               "specifier": "@platos/context-skills"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 46,
+              "specifier": "@platos/context-skills"
             }
           ],
           "reversePaths": [
@@ -57702,11 +58362,16 @@
             [
               "packages/contexts/agents",
               "packages/contexts/agents/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
             ]
           ],
           "roots": [
             "apps/core-api",
-            "packages/contexts/agents"
+            "packages/contexts/agents",
+            "packages/contexts/conversations"
           ]
         },
         "testsFixtures": {
@@ -57820,7 +58485,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 367
+              "line": 370
             }
           ],
           "reversePaths": [
@@ -58062,7 +58727,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "2b66543b95707dafde9f15009ab607ca8e02db7742e4fc7da1bd8b4204b47c61",
+      "evidenceSha256": "4748924ae31209229fa3b6bff1ffc02e56adcf8c3b4d40bec41ac7f15dc53741",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -58745,10 +59410,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tenancy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -58770,10 +59431,6 @@
               "packages/adapters/postgres-tenancy/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/tenancy/package.json",
               "packages/contexts/tenancy/package.json"
             ],
@@ -58788,7 +59445,6 @@
           ],
           "roots": [
             "packages/adapters/postgres-tenancy/src/adapter.ts",
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/tenancy/README.md",
             "packages/contexts/tenancy/package.json",
             "packages/contexts/tenancy/tsconfig.json"
@@ -58926,6 +59582,24 @@
               "file": "packages/contexts/channels/application/testing/fixtures.ts",
               "from": "packages/contexts/channels",
               "line": 40,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/conversations/application/authorization.ts",
+              "from": "packages/contexts/conversations",
+              "line": 51,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 47,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/conversations",
+              "line": 29,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -59161,6 +59835,18 @@
               "packages/contexts/channels/application/testing/fixtures.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/cost-monitoring",
               "packages/contexts/cost-monitoring/application/authorization.ts"
             ],
@@ -59293,6 +59979,7 @@
             "apps/core-api",
             "packages/contexts/agents",
             "packages/contexts/channels",
+            "packages/contexts/conversations",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -59447,7 +60134,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 294
+              "line": 297
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60187,7 +60874,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "4ed81d4acc382164cc63c61c53905e7c7b86896bc9200694286cf08a90acfbb9",
+      "evidenceSha256": "2d251e6bdb3c2a7b14522dad974464da0b5e809fae68dad7b5f9e2674d99dcf7",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -60408,10 +61095,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/conversations/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/tools/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -60429,10 +61112,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/conversations/application/index.ts",
-              "packages/contexts/conversations/application/index.ts"
-            ],
-            [
               "packages/contexts/tools/package.json",
               "packages/contexts/tools/package.json"
             ],
@@ -60446,7 +61125,6 @@
             ]
           ],
           "roots": [
-            "packages/contexts/conversations/application/index.ts",
             "packages/contexts/tools/README.md",
             "packages/contexts/tools/package.json",
             "packages/contexts/tools/tsconfig.json"
@@ -60563,9 +61241,15 @@
               "specifier": "@platos/context-tools"
             },
             {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 48,
+              "specifier": "@platos/context-tools"
+            },
+            {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 562,
+              "line": 563,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -60587,6 +61271,10 @@
               "apps/mcp-stdio/src/testing/in-memory-runtime.ts"
             ],
             [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
               "scripts/arch/gen-v1-skeleton.mjs",
               "scripts/arch/gen-v1-skeleton.mjs"
             ]
@@ -60594,6 +61282,7 @@
           "roots": [
             "apps/core-api",
             "apps/mcp-stdio",
+            "packages/contexts/conversations",
             "scripts/arch/gen-v1-skeleton.mjs"
           ]
         },
@@ -60718,7 +61407,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 600
+              "line": 605
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -60970,7 +61659,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "21d28fb771245999859cacd36134cc3c7f6efb29d4d097ae1ef221379b71432d",
+      "evidenceSha256": "bcd3c8810b5b62c080cd878c8fb8cfd63545a9bb4853cb3c8c30110c2f759b72",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -63506,10 +64195,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/conversations/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/kernel/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -63539,10 +64224,6 @@
               "packages/adapters/redis-streams/src/adapter.ts"
             ],
             [
-              "packages/contexts/conversations/domain/index.ts",
-              "packages/contexts/conversations/domain/index.ts"
-            ],
-            [
               "packages/kernel/package.json",
               "packages/kernel/package.json"
             ],
@@ -63559,7 +64240,6 @@
             "packages/adapters/durable-runtime/src/adapter.ts",
             "packages/adapters/outbox/src/adapter.ts",
             "packages/adapters/redis-streams/src/adapter.ts",
-            "packages/contexts/conversations/domain/index.ts",
             "packages/kernel/README.md",
             "packages/kernel/package.json",
             "packages/kernel/tsconfig.json"
@@ -64063,6 +64743,252 @@
               "file": "packages/contexts/channels/domain/thread-link.ts",
               "from": "packages/contexts/channels",
               "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/authorization.ts",
+              "from": "packages/contexts/conversations",
+              "line": 48,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/authorization.ts",
+              "from": "packages/contexts/conversations",
+              "line": 49,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/compact-thread.ts",
+              "from": "packages/contexts/conversations",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/conversations-contract.ts",
+              "from": "packages/contexts/conversations",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/conversations-erasure-target.ts",
+              "from": "packages/contexts/conversations",
+              "line": 54,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/dependencies.ts",
+              "from": "packages/contexts/conversations",
+              "line": 39,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/execute-postman.ts",
+              "from": "packages/contexts/conversations",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/fork-thread.ts",
+              "from": "packages/contexts/conversations",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/manage-threads.ts",
+              "from": "packages/contexts/conversations",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/ports/erasure-store.ts",
+              "from": "packages/contexts/conversations",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/ports/postman-repository.ts",
+              "from": "packages/contexts/conversations",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/ports/thread-repository.ts",
+              "from": "packages/contexts/conversations",
+              "line": 21,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/ports/turn-repository.ts",
+              "from": "packages/contexts/conversations",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/run-sub-agent.ts",
+              "from": "packages/contexts/conversations",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/run-turn.ts",
+              "from": "packages/contexts/conversations",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/fixtures.ts",
+              "from": "packages/contexts/conversations",
+              "line": 12,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-infrastructure.ts",
+              "from": "packages/contexts/conversations",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/conversations",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-providers.ts",
+              "from": "packages/contexts/conversations",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/testing/in-memory-stores.ts",
+              "from": "packages/contexts/conversations",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-admission.ts",
+              "from": "packages/contexts/conversations",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-preparation.ts",
+              "from": "packages/contexts/conversations",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-prompt.ts",
+              "from": "packages/contexts/conversations",
+              "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-steps.ts",
+              "from": "packages/contexts/conversations",
+              "line": 36,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/application/turn-tools.ts",
+              "from": "packages/contexts/conversations",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/attachment.ts",
+              "from": "packages/contexts/conversations",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/errors.ts",
+              "from": "packages/contexts/conversations",
+              "line": 45,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/identifiers.ts",
+              "from": "packages/contexts/conversations",
+              "line": 40,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/postman-execution.ts",
+              "from": "packages/contexts/conversations",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/step-rates.ts",
+              "from": "packages/contexts/conversations",
+              "line": 38,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/step-usage.ts",
+              "from": "packages/contexts/conversations",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/step.ts",
+              "from": "packages/contexts/conversations",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/structured-output.ts",
+              "from": "packages/contexts/conversations",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/sub-agent.ts",
+              "from": "packages/contexts/conversations",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/thread-compaction.ts",
+              "from": "packages/contexts/conversations",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/thread-fork.ts",
+              "from": "packages/contexts/conversations",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/thread.ts",
+              "from": "packages/contexts/conversations",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/tool-catalogue.ts",
+              "from": "packages/contexts/conversations",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/turn-cost.ts",
+              "from": "packages/contexts/conversations",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/turn.ts",
+              "from": "packages/contexts/conversations",
+              "line": 33,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/conversations/domain/work-status.ts",
+              "from": "packages/contexts/conversations",
+              "line": 16,
               "specifier": "@platos/kernel"
             },
             {
@@ -67080,7 +68006,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 442,
+              "line": 443,
               "specifier": "@platos/kernel"
             }
           ],
@@ -67348,6 +68274,166 @@
             [
               "packages/contexts/channels",
               "packages/contexts/channels/domain/thread-link.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/compact-thread.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/conversations-contract.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/conversations-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/execute-postman.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/fork-thread.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/manage-threads.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/ports/erasure-store.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/ports/postman-repository.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/ports/thread-repository.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/ports/turn-repository.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/run-sub-agent.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/run-turn.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-infrastructure.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-providers.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/testing/in-memory-stores.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-admission.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-preparation.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-prompt.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-steps.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/application/turn-tools.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/attachment.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/postman-execution.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/step-rates.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/step-usage.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/step.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/structured-output.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/sub-agent.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/thread-compaction.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/thread-fork.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/thread.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/tool-catalogue.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/turn-cost.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/turn.ts"
+            ],
+            [
+              "packages/contexts/conversations",
+              "packages/contexts/conversations/domain/work-status.ts"
             ],
             [
               "packages/contexts/cost-monitoring",
@@ -69166,6 +70252,7 @@
             "apps/core-api",
             "packages/contexts/agents",
             "packages/contexts/channels",
+            "packages/contexts/conversations",
             "packages/contexts/cost-monitoring",
             "packages/contexts/eventing",
             "packages/contexts/files",
@@ -69285,6 +70372,111 @@
               "from": "packages/contexts/channels/domain/thread-link.test.ts",
               "kind": "reference",
               "line": 1
+            },
+            {
+              "from": "packages/contexts/conversations/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/conversations/application/compact-thread.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 20
+            },
+            {
+              "from": "packages/contexts/conversations/application/execute-postman.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/application/fork-thread.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/conversations/application/manage-threads.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/application/run-sub-agent.test.ts",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "packages/contexts/conversations/application/run-turn.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-admission.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-steps.test.ts",
+              "kind": "reference",
+              "line": 15
+            },
+            {
+              "from": "packages/contexts/conversations/application/turn-tools.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/domain/attachment.test.ts",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "packages/contexts/conversations/domain/postman-execution.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/domain/step.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/contexts/conversations/domain/sub-agent.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread-compaction.test.ts",
+              "kind": "reference",
+              "line": 8
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread-fork.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/conversations/domain/thread.test.ts",
+              "kind": "reference",
+              "line": 6
+            },
+            {
+              "from": "packages/contexts/conversations/domain/transcript.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/conversations/domain/turn-cost.test.ts",
+              "kind": "reference",
+              "line": 16
+            },
+            {
+              "from": "packages/contexts/conversations/domain/turn.test.ts",
+              "kind": "reference",
+              "line": 7
             },
             {
               "from": "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
@@ -70134,7 +71326,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 258
+              "line": 260
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -70237,6 +71429,90 @@
             [
               "packages/contexts/channels/domain/thread-link.test.ts",
               "packages/contexts/channels/domain/thread-link.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/authorization.test.ts",
+              "packages/contexts/conversations/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/compact-thread.test.ts",
+              "packages/contexts/conversations/application/compact-thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+              "packages/contexts/conversations/application/conversations-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/execute-postman.test.ts",
+              "packages/contexts/conversations/application/execute-postman.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/fork-thread.test.ts",
+              "packages/contexts/conversations/application/fork-thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/manage-threads.test.ts",
+              "packages/contexts/conversations/application/manage-threads.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/run-sub-agent.test.ts",
+              "packages/contexts/conversations/application/run-sub-agent.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/run-turn.test.ts",
+              "packages/contexts/conversations/application/run-turn.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-admission.test.ts",
+              "packages/contexts/conversations/application/turn-admission.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-steps.test.ts",
+              "packages/contexts/conversations/application/turn-steps.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/application/turn-tools.test.ts",
+              "packages/contexts/conversations/application/turn-tools.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/attachment.test.ts",
+              "packages/contexts/conversations/domain/attachment.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/postman-execution.test.ts",
+              "packages/contexts/conversations/domain/postman-execution.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/step.test.ts",
+              "packages/contexts/conversations/domain/step.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/sub-agent.test.ts",
+              "packages/contexts/conversations/domain/sub-agent.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread-compaction.test.ts",
+              "packages/contexts/conversations/domain/thread-compaction.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread-fork.test.ts",
+              "packages/contexts/conversations/domain/thread-fork.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/thread.test.ts",
+              "packages/contexts/conversations/domain/thread.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/transcript.test.ts",
+              "packages/contexts/conversations/domain/transcript.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/turn-cost.test.ts",
+              "packages/contexts/conversations/domain/turn-cost.test.ts"
+            ],
+            [
+              "packages/contexts/conversations/domain/turn.test.ts",
+              "packages/contexts/conversations/domain/turn.test.ts"
             ],
             [
               "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
@@ -70956,6 +72232,27 @@
             "packages/contexts/channels/domain/installation.test.ts",
             "packages/contexts/channels/domain/routing.test.ts",
             "packages/contexts/channels/domain/thread-link.test.ts",
+            "packages/contexts/conversations/application/authorization.test.ts",
+            "packages/contexts/conversations/application/compact-thread.test.ts",
+            "packages/contexts/conversations/application/conversations-erasure-target.test.ts",
+            "packages/contexts/conversations/application/execute-postman.test.ts",
+            "packages/contexts/conversations/application/fork-thread.test.ts",
+            "packages/contexts/conversations/application/manage-threads.test.ts",
+            "packages/contexts/conversations/application/run-sub-agent.test.ts",
+            "packages/contexts/conversations/application/run-turn.test.ts",
+            "packages/contexts/conversations/application/turn-admission.test.ts",
+            "packages/contexts/conversations/application/turn-steps.test.ts",
+            "packages/contexts/conversations/application/turn-tools.test.ts",
+            "packages/contexts/conversations/domain/attachment.test.ts",
+            "packages/contexts/conversations/domain/postman-execution.test.ts",
+            "packages/contexts/conversations/domain/step.test.ts",
+            "packages/contexts/conversations/domain/sub-agent.test.ts",
+            "packages/contexts/conversations/domain/thread-compaction.test.ts",
+            "packages/contexts/conversations/domain/thread-fork.test.ts",
+            "packages/contexts/conversations/domain/thread.test.ts",
+            "packages/contexts/conversations/domain/transcript.test.ts",
+            "packages/contexts/conversations/domain/turn-cost.test.ts",
+            "packages/contexts/conversations/domain/turn.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-channel.test.ts",
             "packages/contexts/cost-monitoring/domain/alert-delivery.test.ts",
             "packages/contexts/cost-monitoring/domain/budget-status.test.ts",
@@ -71872,7 +73169,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "4b96794c48ad19a0fac0ace86c8f60a71184c02c908174370d2838ed36745148",
+      "evidenceSha256": "11aa2ac14d2957915d3afd03c73ac6dd882e7bb7c119af77c20e63dc9097358b",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
