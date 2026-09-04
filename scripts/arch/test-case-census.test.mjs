@@ -255,14 +255,15 @@ test("the providers context is pinned at what vitest prints", () => {
   // real at 21 files / 283 cases; WIN-256's inference surface (ADR M0.3 §14)
   // added four suites and 63 cases; the adapter branch adds the two PURE pieces
   // it would otherwise have hidden beside an SDK call — the tool-input repair and
-  // the structured-output correction — plus one case in `errors.test.ts` keeping
-  // the adapter's seven new codes apart from the codes they resemble. `pnpm
-  // --filter @platos/context-providers exec vitest run` prints "Test Files 27
-  // passed (27) / Tests 371 passed (371)"; the AST census reproduces both with
-  // zero refusals.
+  // the structured-output correction — plus one case in each of three existing
+  // suites: `errors.test.ts` keeping the adapter's seven new codes apart from
+  // the codes they resemble, and the pass budget in `generation.test.ts` and
+  // `run-model-generation.test.ts`. `pnpm --filter @platos/context-providers
+  // exec vitest run` prints "Test Files 27 passed (27) / Tests 373 passed
+  // (373)"; the AST census reproduces both with zero refusals.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21 + 4 + 2);
-  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63 + 25);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63 + 25 + 196);
+  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63 + 27);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63 + 27 + 196);
 });
 
 test("the model-router adapter is pinned at what vitest prints", () => {
