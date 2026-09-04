@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0f5a6ed327b56077b1d7a0d53c7cd24a221614709927c2de4ad37e9914fc2097",
+  "evidenceSha256": "bd11da8800205111161086c56eb238b4148987d1a1c4ad0d9c660770a26fda2b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "60f55ea272e65f41b22ee19a831eb8c3339d73dbf7fed058b0df4aea6b8e3149",
+    "aggregateSha256": "cde29a2b53a5a273f850f7e6fd913951965aae6ff93929205dd02806a5a12b35",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -3901,7 +3901,7 @@
       },
       {
         "path": "docs/adr/M0.3-bounded-contexts.md",
-        "sha256": "835a556b0da5fc2a45f933461531223e8ecb1f066150fa73907276799f856d32"
+        "sha256": "788cb69f7c9881afa271b03c4808c0392a790b6375abedf9fb335d460e790d12"
       },
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
@@ -50806,6 +50806,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/adr/M0.3-bounded-contexts.md",
+              "kind": "reference",
+              "line": 402
+            },
+            {
               "from": "packages/contexts/providers/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -50813,11 +50818,16 @@
           ],
           "reversePaths": [
             [
+              "docs/adr/M0.3-bounded-contexts.md",
+              "docs/adr/M0.3-bounded-contexts.md"
+            ],
+            [
               "packages/contexts/providers/README.md",
               "packages/contexts/providers/README.md"
             ]
           ],
           "roots": [
+            "docs/adr/M0.3-bounded-contexts.md",
             "packages/contexts/providers/README.md"
           ]
         },
@@ -51648,7 +51658,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "19ae25d7a45e5aa0e2215caf307f4a7c2765e777f9b235f7523e055de0090b07",
+      "evidenceSha256": "a34c0369d96aa01cd92fd956ed153b2a7a69e51411f3a015edbe6a96d3729925",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {

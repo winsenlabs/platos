@@ -1146,7 +1146,7 @@
       "path": "docs/adr/M0.3-bounded-contexts.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "835a556b0da5fc2a45f933461531223e8ecb1f066150fa73907276799f856d32",
+      "sha256": "788cb69f7c9881afa271b03c4808c0392a790b6375abedf9fb335d460e790d12",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "2875e976c11a4617bfdbbb35cfb619b8fd0f125916bfd795e372e005cd2d755f",
+      "sha256": "1681314cbd0b39650203a9f426d613db09e5491a53c78e50fc8c43a8ec93374a",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e79b82e5b3ec59c12adf3e11b7920ff88fae7d2a05e8ae390dcf1de6c33d9b63",
+      "sha256": "bcd494bfbf5b8b4edd2a7572680f305343349f23dc6567798c01884dfbe2d1d6",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "92292c5738b7a4c99e8f45a5b4d11b98374080bb6e3d2646b38c8db1271df024",
+      "sha256": "a13616f5df4ebe0748125dc02bb8c92f942fcfef2eb48acb200f9358c38c106b",
       "binds": "current-repository-truth"
     },
     {
