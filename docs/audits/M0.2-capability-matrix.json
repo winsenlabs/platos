@@ -1309,11 +1309,11 @@
         "requiresOperator": false,
         "owner": "conversations",
         "ownerSource": "oracle-derived",
-        "canonicalWrites": [
+        "canonicalWrites": [],
+        "canonicalReads": [
           "Thread"
         ],
-        "canonicalReads": [],
-        "ownerRationale": "ConversationService.reapChatSessions closes stale Threads (conversation.service.ts).",
+        "ownerRationale": "ConversationService.reapChatSessions (conversation.service.ts:1377) reads each Thread to decide whether its external durable session may be closed, and closes it through the vendor SDK. It writes no canonical row; Thread, the row it reads and the state it acts on, is conversations under ADR §1 row 16.",
         "ownerEvidence": "agent.controller.ts:4707",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -1340,13 +1340,12 @@
         "owner": "conversations",
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
-          "Thread",
-          "Turn"
+          "Thread"
         ],
         "canonicalReads": [
-          "Memory"
+          "Turn"
         ],
-        "ownerRationale": "AgentTaskService.runCompaction rewrites thread history; Memory is a read-only input.",
+        "ownerRationale": "AgentTaskService.runCompaction delegates to compactIfNeeded (agent-task.service.ts:1537), which reads the Turn tail and writes the compaction watermark back onto Thread.",
         "ownerEvidence": "agent.controller.ts:4607",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -1362,12 +1361,13 @@
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
           "Thread",
-          "Turn"
+          "Turn",
+          "Step"
         ],
         "canonicalReads": [
           "AgentBinding"
         ],
-        "ownerRationale": "AgentTaskService.executeStreamingTurn — the turn engine itself (agent-task.service.ts).",
+        "ownerRationale": "AgentTaskService.executeStreamingTurn — the turn engine itself. It stamps Thread (agent-task.service.ts:1552) and appends Turn and Step through ConversationService (conversation.service.ts:685, 749), which ADR §1 row 16 names as the other half of this context.",
         "ownerEvidence": "agent.controller.ts:4739",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -1383,12 +1383,13 @@
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
           "Thread",
-          "Turn"
+          "Turn",
+          "Step"
         ],
         "canonicalReads": [
           "AgentBinding"
         ],
-        "ownerRationale": "AgentTaskService.executeNonStreamingTurn — the turn engine.",
+        "ownerRationale": "AgentTaskService.executeNonStreamingTurn — the same turn engine, same three rows.",
         "ownerEvidence": "agent.controller.ts:4896",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -1450,12 +1451,13 @@
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
           "Thread",
-          "Turn"
+          "Turn",
+          "Step"
         ],
         "canonicalReads": [
           "AgentBinding"
         ],
-        "ownerRationale": "AgentTaskService.executeStreamingTurn — the turn engine.",
+        "ownerRationale": "AgentTaskService.executeStreamingTurn — the same turn engine, same three rows.",
         "ownerEvidence": "agent.controller.ts:4962",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
@@ -2040,14 +2042,15 @@
         "owner": "conversations",
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
-          "PostmanExecution"
+          "PostmanExecution",
+          "Thread",
+          "Turn",
+          "Step"
         ],
         "canonicalReads": [
           "PostmanTemplate",
           "OrganizationMembership",
-          "EndUser",
-          "Thread",
-          "Turn"
+          "EndUser"
         ],
         "ownerRationale": "The one postman row that is NOT agents. It writes PostmanExecution (agent.controller.ts:6857 create, 6752 update) and runs a turn through TurnDispatchService.collectTurn; PostmanTemplate is only read here. ADR §1 splits the pair deliberately — PostmanTemplate is agents (row 5), PostmanExecution is conversations (row 16).",
         "ownerEvidence": "agent.controller.ts:6591",
@@ -3291,12 +3294,13 @@
         "ownerSource": "oracle-derived",
         "canonicalWrites": [
           "Thread",
-          "Turn"
+          "Turn",
+          "Step"
         ],
         "canonicalReads": [
           "AgentBinding"
         ],
-        "ownerRationale": "ConversationService.createThread then AgentTaskService.executeNonStreamingTurn — the turn engine, reached over the internal callback surface.",
+        "ownerRationale": "ConversationService.createThread (conversation.service.ts:394) then AgentTaskService.executeNonStreamingTurn — the turn engine, reached over the internal callback surface.",
         "ownerEvidence": "internal-execute-tool.controller.ts:327",
         "persistence": "see owner context (M0.3 ADR)",
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"

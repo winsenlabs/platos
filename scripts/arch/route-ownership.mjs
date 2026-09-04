@@ -297,55 +297,58 @@ export const ROUTE_OWNERSHIP = Object.freeze({
   // ── conversations — ADR §1 row 16 owns Thread / Turn / Step / PostmanExecution
   "POST /api/v1/agent/postman-templates/:id/execute": {
     owner: "conversations",
-    writes: ["PostmanExecution"],
-    reads: ["PostmanTemplate", "OrganizationMembership", "EndUser", "Thread", "Turn"],
+    writes: ["PostmanExecution", "Thread", "Turn", "Step"],
+    reads: ["PostmanTemplate", "OrganizationMembership", "EndUser"],
     rationale:
       "The one postman row that is NOT agents. It writes PostmanExecution (agent.controller.ts:6857 create, 6752 update) and runs a turn through TurnDispatchService.collectTurn; PostmanTemplate is only read here. ADR §1 splits the pair deliberately — PostmanTemplate is agents (row 5), PostmanExecution is conversations (row 16).",
     evidence: "agent.controller.ts:6591",
   },
   "POST /api/v1/agent/internal/durable-turn": {
     owner: "conversations",
-    writes: ["Thread", "Turn"],
+    writes: ["Thread", "Turn", "Step"],
     reads: ["AgentBinding"],
     rationale:
-      "AgentTaskService.executeStreamingTurn — the turn engine itself (agent-task.service.ts).",
+      "AgentTaskService.executeStreamingTurn — the turn engine itself. It stamps Thread (agent-task.service.ts:1552) and appends Turn and Step through ConversationService (conversation.service.ts:685, 749), which ADR §1 row 16 names as the other half of this context.",
     evidence: "agent.controller.ts:4739",
   },
   "POST /api/v1/agent/internal/employee-run": {
     owner: "conversations",
-    writes: ["Thread", "Turn"],
+    writes: ["Thread", "Turn", "Step"],
     reads: ["AgentBinding"],
-    rationale: "AgentTaskService.executeNonStreamingTurn — the turn engine.",
+    rationale:
+      "AgentTaskService.executeNonStreamingTurn — the same turn engine, same three rows.",
     evidence: "agent.controller.ts:4896",
   },
   "POST /api/v1/agent/internal/subagent-report": {
     owner: "conversations",
-    writes: ["Thread", "Turn"],
+    writes: ["Thread", "Turn", "Step"],
     reads: ["AgentBinding"],
-    rationale: "AgentTaskService.executeStreamingTurn — the turn engine.",
+    rationale:
+      "AgentTaskService.executeStreamingTurn — the same turn engine, same three rows.",
     evidence: "agent.controller.ts:4962",
   },
   "POST /api/v1/agent/internal/compaction": {
     owner: "conversations",
-    writes: ["Thread", "Turn"],
-    reads: ["Memory"],
+    writes: ["Thread"],
+    reads: ["Turn"],
     rationale:
-      "AgentTaskService.runCompaction rewrites thread history; Memory is a read-only input.",
+      "AgentTaskService.runCompaction delegates to compactIfNeeded (agent-task.service.ts:1537), which reads the Turn tail and writes the compaction watermark back onto Thread.",
     evidence: "agent.controller.ts:4607",
   },
   "POST /api/v1/agent/internal/chat/reap-sessions": {
     owner: "conversations",
-    writes: ["Thread"],
-    reads: [],
-    rationale: "ConversationService.reapChatSessions closes stale Threads (conversation.service.ts).",
+    writes: [],
+    reads: ["Thread"],
+    rationale:
+      "ConversationService.reapChatSessions (conversation.service.ts:1377) reads each Thread to decide whether its external durable session may be closed, and closes it through the vendor SDK. It writes no canonical row; Thread, the row it reads and the state it acts on, is conversations under ADR §1 row 16.",
     evidence: "agent.controller.ts:4707",
   },
   "POST /internal/subagent-turn": {
     owner: "conversations",
-    writes: ["Thread", "Turn"],
+    writes: ["Thread", "Turn", "Step"],
     reads: ["AgentBinding"],
     rationale:
-      "ConversationService.createThread then AgentTaskService.executeNonStreamingTurn — the turn engine, reached over the internal callback surface.",
+      "ConversationService.createThread (conversation.service.ts:394) then AgentTaskService.executeNonStreamingTurn — the turn engine, reached over the internal callback surface.",
     evidence: "internal-execute-tool.controller.ts:327",
   },
 

@@ -220,14 +220,14 @@ test("recorded evidence: every writing row agrees with the ADR write-owner", () 
     assert.equal(owners[0], entry.owner, `${id} writes ${entry.writes.join(", ")}`);
   }
   // Not vacuous: most of the resolved rows do write something.
-  assert.equal(writingRows, 21);
+  assert.equal(writingRows, 20);
   assert.equal(Object.keys(ROUTE_OWNERSHIP).length, ORACLE_DERIVED_ROW_COUNT);
   assert.equal(ORACLE_DERIVED_ROW_COUNT, 42);
 });
 
 test("recorded evidence: every write-free row records a rationale", () => {
   const writeFree = Object.entries(ROUTE_OWNERSHIP).filter(([, e]) => e.writes.length === 0);
-  assert.equal(writeFree.length, 21);
+  assert.equal(writeFree.length, 22);
   for (const [id, entry] of writeFree) {
     assert.ok(entry.rationale.trim().length > 0, `${id} has no rationale`);
   }
