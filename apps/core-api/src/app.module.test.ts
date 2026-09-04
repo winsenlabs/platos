@@ -475,3 +475,55 @@ describe("the read models the composition root now reaches", () => {
     expect(refusal.error.code).toBe("INVALID_END_USER_FILTER");
   });
 });
+
+describe("the session-cookie exchange contract, reached from the composition root", () => {
+  function composedIdentityAccessAt() {
+    const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+    return identityAccess;
+  }
+
+  it("CORE DECIDES EVERY ATTRIBUTE, so a BFF has nothing left to choose", () => {
+    // The shape that used to live in `apps/webapp/app/services/auth.server.ts`.
+    // A front end deciding the security properties of the credential Core issues
+    // is the wrong way round; this is the assertion that it no longer does.
+    const shape = composedIdentityAccessAt().describeSessionCookie({ secure: true });
+    expect(shape.ok).toBe(true);
+    if (!shape.ok) return;
+    expect(shape.value).toEqual({
+      name: "__Host-platos_operator_session",
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+      domain: null,
+    });
+  });
+
+  it("DROPS THE __Host- PREFIX where there is no TLS, or the browser would drop the cookie", () => {
+    const shape = composedIdentityAccessAt().describeSessionCookie({ secure: false });
+    expect(shape.ok).toBe(true);
+    if (!shape.ok) return;
+    expect(shape.value.name).toBe("platos_operator_session");
+    expect(shape.value.secure).toBe(false);
+  });
+
+  it("REFUSES A DIRECTIVE MODIFIED AFTER IT LEFT CORE", async () => {
+    const identityAccess = composedIdentityAccessAt();
+    const issued = identityAccess.issueSessionCookie({
+      secure: true,
+      token: "plt_os_live",
+      sessionExpiresAt: new Date("2030-01-01T00:00:00.000Z"),
+    });
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    expect(identityAccess.verifySessionCookie(issued.value).ok).toBe(true);
+    expect(
+      identityAccess.verifySessionCookie({
+        ...issued.value,
+        shape: { ...issued.value.shape, secure: false },
+      }).ok,
+    ).toBe(false);
+  });
+});

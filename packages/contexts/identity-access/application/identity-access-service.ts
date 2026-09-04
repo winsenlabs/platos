@@ -21,11 +21,19 @@
 // discovering a second one at this seam.
 
 import {
+  checkSessionCookieShape,
+  clearSessionCookie,
+  describeSessionCookie,
+  invalidSessionCookie,
+  isSessionCookieDirective,
+  issueSessionCookie,
+  rotateSessionCookie,
   scopeKindOf,
   type AuthorizationScope,
   type BearerAuthorization,
   type EndUserWithIdentities,
   type OperatorAuthorization,
+  type SessionCookieDirective,
   type PermittedRateLimitDecision,
 } from "../domain/index.js";
 import type {
@@ -34,7 +42,12 @@ import type {
   AuthorizationScopeView,
   EndUserPageView,
   IdentityAccessContract,
+  IssueSessionCookieRequest,
   ListEndUsersRequest,
+  RotateSessionCookieRequest,
+  SessionCookieDirectiveView,
+  SessionCookieShapeView,
+  SessionTransport,
   OperatorAuthorizationView,
   PrincipalAuthorizationView,
   RateLimitDecisionView,
@@ -45,7 +58,7 @@ import { listEndUsers, type EndUserPage } from "./list-end-users.js";
 import { authenticateOperator } from "./authenticate-operator.js";
 import { consumeRateLimit } from "./consume-rate-limit.js";
 import type { IdentityAccessPorts } from "./dependencies.js";
-import { ok, type Result } from "@platos/kernel";
+import { err, ok, type Result } from "@platos/kernel";
 
 /**
  * Flatten a grant's reach for the wire.
@@ -156,6 +169,21 @@ function endUserPageView(page: EndUserPage): EndUserPageView {
 }
 
 /**
+ * Project a cookie directive — and deliberately DO NOT COPY IT.
+ *
+ * Every other projection in this file flattens a domain value, because those
+ * values carry internals a consumer has no business with. A directive carries
+ * nothing but the attributes a BFF has to set, so there is nothing to hide, and
+ * copying would cost the one property that matters: the value is frozen and
+ * registered when it is minted, and a copy is not the value that was issued.
+ * Handing the minted object across is what lets `verifySessionCookie` refuse a
+ * directive whose `secure` was flipped off on the way to the header.
+ */
+function cookieView(directive: SessionCookieDirective): SessionCookieDirectiveView {
+  return directive;
+}
+
+/**
  * Build the façade.
  *
  * It takes the WHOLE port bundle, unlike a use case, which takes the slice it
@@ -197,6 +225,48 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
         principalId: request.principalId,
       });
       return decision.ok ? ok(rateLimitView(decision.value)) : decision;
+    },
+
+    describeSessionCookie(transport: SessionTransport): Result<SessionCookieShapeView> {
+      // Minting the shape and CHECKING it are two calls on purpose: the check is
+      // the one a transport assembling its own shape has to pass, so running it
+      // here proves the shape this context hands out satisfies the same rules
+      // rather than being exempt from them.
+      return checkSessionCookieShape(describeSessionCookie(transport));
+    },
+
+    issueSessionCookie(request: IssueSessionCookieRequest): Result<SessionCookieDirectiveView> {
+      const directive = issueSessionCookie({
+        shape: describeSessionCookie(request),
+        token: request.token,
+        sessionExpiresAt: request.sessionExpiresAt,
+        now: ports.clock.now(),
+        ...(request.expiresAt === undefined ? {} : { expiresAt: request.expiresAt }),
+      });
+      return directive.ok ? ok(cookieView(directive.value)) : directive;
+    },
+
+    rotateSessionCookie(request: RotateSessionCookieRequest): Result<SessionCookieDirectiveView> {
+      const directive = rotateSessionCookie({
+        shape: describeSessionCookie(request),
+        token: request.token,
+        previousToken: request.previousToken,
+        sessionExpiresAt: request.sessionExpiresAt,
+        now: ports.clock.now(),
+        ...(request.expiresAt === undefined ? {} : { expiresAt: request.expiresAt }),
+      });
+      return directive.ok ? ok(cookieView(directive.value)) : directive;
+    },
+
+    clearSessionCookie(transport: SessionTransport): Result<SessionCookieDirectiveView> {
+      const directive = clearSessionCookie(describeSessionCookie(transport));
+      return directive.ok ? ok(cookieView(directive.value)) : directive;
+    },
+
+    verifySessionCookie(value: unknown): Result<SessionCookieDirectiveView> {
+      return isSessionCookieDirective(value)
+        ? ok(value)
+        : err(invalidSessionCookie("value was not issued by identity-access"));
     },
 
     async listEndUsers(request: ListEndUsersRequest): Promise<Result<EndUserPageView>> {

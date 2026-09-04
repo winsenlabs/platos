@@ -99,7 +99,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   // suites. The two domain files are predicates and comparators with no I/O, and
   // the two application files hold the composition the routes performed, so all
   // eight sit well inside the budget.
-  assert.equal(result.fileCount, 342);
+  //
+  // +4 -> 346: WIN-257 T5 (M2.2) adds domain/session-cookie.ts and its suite —
+  // the whole contract is a shape, four guards and a mint, so it stays far
+  // inside the budget even carrying the RFC reasoning in prose — plus the two
+  // suites THIS GATE forced out of identity-access-service.test.ts, which the
+  // façade's cookie cases took to 501 effective lines. As in the 2026-09-02
+  // note above, the answer was to split along the seam the budget was pointing
+  // at rather than to raise the number: store-backed authentication on one side,
+  // the clock-and-transport cookie contract and the end-user read on the other.
+  assert.equal(result.fileCount, 346);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

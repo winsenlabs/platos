@@ -222,8 +222,10 @@ test("the census is not vacuous — it reads the real suites", () => {
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +1 for the WIN-257 identity-access contract suite, +2 for the WIN-257
-  // tenancy creation suites, +4 for the WIN-257 read models (two per package).
-  assert.equal(live.totalFiles, 95);
+  // tenancy creation suites, +4 for the WIN-257 read models (two per package),
+  // +3 for the WIN-257 session-cookie contract and the two suites the line
+  // budget forced out of the façade file when it landed.
+  assert.equal(live.totalFiles, 98);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -235,15 +237,17 @@ test("the pinned rows sum to the pinned runtime total", () => {
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
   // +1 for the WIN-257 identity-access contract suite, +2 for the WIN-257
-  // tenancy creation suites, +4 for the WIN-257 read models (two per package).
+  // tenancy creation suites, +4 for the WIN-257 read models (two per package),
+  // +3 for the WIN-257 session-cookie contract and the two suites the line
+  // budget forced out of the façade file when it landed.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 95);
+  assert.equal(files, 98);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
   // 716 at 3ed8f3ce, +1 in `files` for the storage-key separator case.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 284, "231 at 3ed8f3ce, +25 for the WIN-257 contract suite, +28 for its end-user read");
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 318, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie");
   assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162);
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 206, "146 at 3ed8f3ce, +29 for the WIN-257 creation suites, +31 for its read models");
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
@@ -258,7 +262,7 @@ test("the providers context rebased onto 75ee484de252 is pinned at what vitest p
   // elsewhere while providers landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21);
   assert.equal(EXPECTED["packages/contexts/providers"].cases, 283);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29 + 59);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 25 + 29 + 59 + 34);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -267,8 +271,8 @@ test("the WIN-257 identity-access contract suite is pinned at what vitest prints
   // the AST census reproduces both with zero refusals. The file count moving is
   // what makes the delta legible, and the +25 is the part a file-count pin
   // cannot see — three EDITED suites in the same package gained no case at all.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 20);
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 284);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 23);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 318);
   assert.ok(
     listTestFiles(undefined, "packages/contexts/identity-access").includes(
       "packages/contexts/identity-access/application/identity-access-service.test.ts",
@@ -302,6 +306,23 @@ test("the WIN-257 read models are pinned at what vitest prints", () => {
   const tenancy = listTestFiles(undefined, "packages/contexts/tenancy");
   assert.ok(tenancy.includes("packages/contexts/tenancy/domain/visibility.test.ts"));
   assert.ok(tenancy.includes("packages/contexts/tenancy/application/operator-read-models.test.ts"));
+});
+
+test("the WIN-257 session-cookie contract is pinned at what vitest prints", () => {
+  // The ONE row T5 moves, and the file count moves by THREE for TWO reasons.
+  // `domain/session-cookie.test.ts` is new behaviour (28). The other two are a
+  // split the 500-effective-line budget forced when the façade's cookie cases
+  // landed: 4 end-user cases and 6 cookie cases left the façade file, which is
+  // back at the 25 it held before this tranche. Only the 28 and the 6 are NEW,
+  // so the case delta is 34.
+  const files = listTestFiles(undefined, "packages/contexts/identity-access");
+  for (const suite of [
+    "domain/session-cookie.test.ts",
+    "application/identity-access-service.end-users.test.ts",
+    "application/identity-access-service.session-cookie.test.ts",
+  ]) {
+    assert.ok(files.includes(`packages/contexts/identity-access/${suite}`), suite);
+  }
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

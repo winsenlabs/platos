@@ -145,6 +145,52 @@ export interface ListEndUsersRequest {
   readonly offset?: number;
 }
 
+/**
+ * The session-cookie exchange contract.
+ *
+ * CORE OWNS THE SHAPE; A BFF MAY ONLY SET THE BYTES. Every attribute that makes
+ * the credential safe — the `__Host-` prefix, `Secure`, `HttpOnly`, `SameSite`,
+ * `Path`, the absence of `Domain`, and the lifetime — was decided in the Remix
+ * tree, where a second front end would have decided them again and got one of
+ * them wrong. They are decided here, once, and refused rather than corrected
+ * when a caller asks for a combination a browser would drop.
+ */
+export interface SessionCookieShapeView {
+  readonly name: string;
+  readonly httpOnly: true;
+  readonly path: "/";
+  readonly sameSite: "lax" | "strict";
+  readonly secure: boolean;
+  /** Always null. `__Host-` forbids the attribute; see domain/session-cookie.ts. */
+  readonly domain: null;
+}
+
+export interface SessionCookieDirectiveView {
+  readonly shape: SessionCookieShapeView;
+  /** The raw token, or the empty string when clearing. */
+  readonly value: string;
+  readonly expiresAt: Date;
+  readonly maxAgeSeconds: number;
+}
+
+/** ONE fact decides the shape: whether the browser reaches this over TLS. */
+export interface SessionTransport {
+  readonly secure: boolean;
+}
+
+export interface IssueSessionCookieRequest extends SessionTransport {
+  readonly token: string;
+  /** The session's own expiry. A cookie may not be asked to outlive it. */
+  readonly sessionExpiresAt: Date;
+  /** A SHORTER browser lifetime, when a caller wants one. Never longer. */
+  readonly expiresAt?: Date;
+}
+
+export interface RotateSessionCookieRequest extends IssueSessionCookieRequest {
+  /** The token being replaced. A "rotation" that reuses it is refused. */
+  readonly previousToken: string;
+}
+
 export interface RateLimitRequest {
   readonly action: "LOGIN" | "INVITE_ACCEPT" | "MFA_VERIFY";
   readonly identifier: string;
@@ -195,6 +241,30 @@ export interface IdentityAccessContract {
    * believes it has seen everything.
    */
   listEndUsers(request: ListEndUsersRequest): Promise<Result<EndUserPageView>>;
+
+  /** The cookie attributes for one install, before any value is put in it. */
+  describeSessionCookie(transport: SessionTransport): Result<SessionCookieShapeView>;
+
+  /** The directive that puts a live session in a browser. */
+  issueSessionCookie(request: IssueSessionCookieRequest): Result<SessionCookieDirectiveView>;
+
+  /**
+   * The directive for a session whose token has just changed — MFA verified,
+   * impersonation started or stopped. Refuses to re-issue the same token.
+   */
+  rotateSessionCookie(request: RotateSessionCookieRequest): Result<SessionCookieDirectiveView>;
+
+  /** The directive that ends the session in the browser. */
+  clearSessionCookie(transport: SessionTransport): Result<SessionCookieDirectiveView>;
+
+  /**
+   * Recognise a directive this context minted and nobody has modified.
+   *
+   * It does not stop a BFF writing whatever header it likes — nothing in a
+   * process can. It stops a MODIFIED directive being accepted back, which is
+   * what makes "the BFF only sets the bytes" checkable at the seam.
+   */
+  verifySessionCookie(value: unknown): Result<SessionCookieDirectiveView>;
 }
 
 /**
@@ -221,6 +291,7 @@ export type IdentityAccessEventName =
 /** The failure codes a consumer may branch on. Stable within a major. */
 export const IDENTITY_ACCESS_ERROR_CODES = [
   "INVALID_END_USER_FILTER",
+  "INVALID_SESSION_COOKIE",
   "UNAUTHENTICATED",
   "SESSION_EXPIRED",
   "SESSION_REVOKED",

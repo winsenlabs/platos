@@ -144,7 +144,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
-  "packages/contexts/identity-access": { files: 20, cases: 284 },
+  "packages/contexts/identity-access": { files: 23, cases: 318 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
@@ -208,6 +208,38 @@ export const EXPECTED = Object.freeze({
  *   and is outside PACKAGE_ROOTS, so it does not appear here.
  */
 
+/*
+ * WIN-257 TRANCHE 5 DELTA (M2.2), the session-cookie exchange contract. ONE
+ * package moves:
+ *
+ *   identity-access 20 -> 23 files, 284 -> 318 cases; 1113 -> 1147 total.
+ *
+ *   THREE files, and only ONE of them is new behaviour.
+ *   `domain/session-cookie.test.ts` (28 cases) is the new one: the `__Host-`
+ *   prefix rules, the TTL relation between a cookie and its session, rotation,
+ *   clearing, and the directive brand. The other two are a SPLIT, forced by the
+ *   line budget rather than chosen: adding the façade's cookie cases took
+ *   `application/identity-access-service.test.ts` to 501 effective lines, one
+ *   over the ADR M0.3 §6 hard limit. The budget was pointing at a real seam, so
+ *   the file was split along it instead of the number being raised —
+ *   `identity-access-service.end-users.test.ts` (4) and
+ *   `identity-access-service.session-cookie.test.ts` (6) leave the original at
+ *   exactly the 25 it held before this tranche.
+ *
+ *   28 + 4 + 6 = 38 gained, and 4 of those (the end-user façade cases) were
+ *   already counted in T4's 284 — they MOVED file, they were not added. So the
+ *   case delta is 28 + 6 = 34, and 284 + 34 = 318.
+ *
+ *   Checked against what `pnpm --filter @platos/context-identity-access exec
+ *   vitest run` prints — "Test Files 23 passed (23) / Tests 318 passed (318)" —
+ *   and each file against the same command filtered to it: 25, 4, 6, 28.
+ *   `apps/core-api` gained 3 more composition cases (113 -> 116) and is outside
+ *   PACKAGE_ROOTS.
+ *
+ *   The running total across T1-T5: 1000 at the branch point, +25 (T1), +29
+ *   (T3), +59 (T4), +34 (T5) = 1147.
+ */
+
 /**
  * The number `pnpm test:v1-packages` prints, pinned separately from the sum
  * above so the two can DISAGREE and be caught. They are computed differently —
@@ -215,7 +247,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1113;
+export const EXPECTED_RUNTIME_TOTAL = 1147;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

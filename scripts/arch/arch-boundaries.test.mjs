@@ -278,7 +278,20 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `domain-purity` is what makes the first pair interesting:
     //               the rule is now expressible with no Prisma type in scope at
     //               all, which is why it can be a domain file.
-    assert.equal(result.fileCount, 411, "the generated V1 source census must stay exact");
+    //
+    //   411 -> 415  +4: WIN-257 T5 (M2.2) moves the session-cookie exchange
+    //               contract out of apps/webapp — the cookie name, the __Host-
+    //               prefix, Secure, HttpOnly, SameSite, Path, the absent Domain
+    //               and the TTL — into domain/session-cookie.ts, with its suite.
+    //               Rule (b) `domain-purity` is the interesting one again: the
+    //               shape is decided with no framework in scope, so `createCookie`
+    //               stays a serialisation detail on the far side of the seam.
+    //               The other two are a SPLIT, not new behaviour: the façade's
+    //               cookie cases took identity-access-service.test.ts to 501
+    //               effective lines, one over the §6 hard limit, so it was split
+    //               along the seam the budget was pointing at rather than the
+    //               limit being raised.
+    assert.equal(result.fileCount, 415, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

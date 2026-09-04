@@ -41,5 +41,6 @@ export * from "./mfa.js";
 export * from "./oauth.js";
 export * from "./principal.js";
 export * from "./rate-limit.js";
+export * from "./session-cookie.js";
 export * from "./session.js";
 export * from "./token.js";
