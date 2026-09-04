@@ -38,8 +38,12 @@
 // ONE VIEW IS THIN AND SAYS SO. `AgentSkillView` carries an
 // `environmentSkillId` and no skill name, because describing a skill needs the
 // `skills` contract and that context was still a generated placeholder when this
-// one was made real. `dependencies.ts` records the same fact from the other
-// side.
+// one was made real. `skills` is real in this tree now, and the view is still
+// thin: thickening it changes this context's read model and the shape every
+// caller of `readLoadout` already reads, which is a decision of its own and not
+// a consequence of the two contexts meeting. `dependencies.ts` records the same
+// fact from the other side, and names the one-method port the projection would
+// travel along when that decision is taken.
 
 import type { Result } from "@platos/kernel";
 

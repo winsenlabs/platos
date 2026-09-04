@@ -34,17 +34,28 @@
 //
 //   `skills` IS AN OPAQUE HANDLE, and honestly so. `AgentSkill` names an
 //   `EnvironmentSkill` by id (§7 decision 5 puts the loadout here), so resolving
-//   a loadout entry into a skill needs a `skills` contract that describes one.
-//   At the time this context was made real, `skills` was still a generated
-//   placeholder whose contract offers a single `describe(id)` returning a
-//   placeholder aggregate. Calling that would be theatre. The handle is the
-//   declared edge along which the loadout projection will travel when `skills`
-//   lands, and `contracts/index.ts` says plainly which view is thin because of
-//   it.
+//   a loadout entry into a skill needs a `skills` surface that describes one. No
+//   use case here calls it, and calling it to look busy would be theatre. So this
+//   bundle does NOT hold `SkillsContract`. It holds `SkillsPeer`, declared below:
+//   the one member of that surface this context has a use for, and nothing else.
+//
+//   THE NARROWING IS THE POINT, NOT TIDINESS. `skills` publishes fourteen methods
+//   and a name. A handle typed as all fifteen makes every in-memory double in
+//   this package a hostage to all fifteen, so a method `skills` adds for its own
+//   reasons breaks a context that never calls one. That is not hypothetical: it
+//   is precisely how `InMemorySkills` stopped compiling the moment `skills`
+//   ceased to be a generated placeholder and the two contexts met in one tree.
+//   A port this context owns cannot be broken from outside, and the real
+//   `SkillsContract` satisfies it structurally, so the composition root hands the
+//   published surface over unchanged and writes no adapter to do it.
+//
+//   `tenancy` and `providers` keep their full published types on purpose. This
+//   context CALLS them, so the whole surface is a dependency it genuinely has,
+//   and their doubles narrow at the double rather than at the seam.
 
-import type { Clock, IdGenerator, UnitOfWork } from "@platos/kernel";
+import type { Clock, IdGenerator, Result, UnitOfWork } from "@platos/kernel";
 import type { ProvidersContract } from "@platos/context-providers";
-import type { SkillsContract } from "@platos/context-skills";
+import type { RequestSkill, SkillView } from "@platos/context-skills";
 import type { TenancyContract } from "@platos/context-tenancy";
 
 import type { AgentsPolicy } from "../domain/index.js";
@@ -54,6 +65,23 @@ import type {
   MacroRecorder,
   ScaffoldingRepository,
 } from "./ports/index.js";
+
+/**
+ * The whole of `skills` this context depends on, named by `agents`.
+ *
+ * One method: the edge a loadout entry would travel along to become a skill a
+ * caller can read the name of. `SkillsContract` is wider by thirteen methods,
+ * every one of them another context's business to call.
+ *
+ * The request and the view stay `skills`' own types. Narrowing which methods
+ * this context depends on does not licence it to restate its neighbour's
+ * vocabulary, and re-declaring either shape here would put a second definition
+ * of a `skills` row in a package that owns no such row.
+ */
+export interface SkillsPeer {
+  readonly name: "skills";
+  describe(request: RequestSkill): Promise<Result<SkillView>>;
+}
 
 export interface AgentsDependencies {
   readonly repository: AgentsRepository;
@@ -66,8 +94,8 @@ export interface AgentsDependencies {
   readonly policy: AgentsPolicy;
   readonly tenancy: TenancyContract;
   readonly providers: ProvidersContract;
-  /** Opaque by design: see the note above. */
-  readonly skills: SkillsContract;
+  /** Opaque by design, and narrow by design: see the note above. */
+  readonly skills: SkillsPeer;
 }
 
 export function agentsDependencies(dependencies: AgentsDependencies): AgentsDependencies {

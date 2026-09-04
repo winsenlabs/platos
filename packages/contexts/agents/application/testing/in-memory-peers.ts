@@ -15,21 +15,27 @@
 //   provider it belongs to. A route pinning a key for the wrong provider fails
 //   HERE, which is the check `resolve-route.ts` exists to make.
 //
-//   Skills answers `null` to everything and counts the calls. That is not
-//   laziness: `agents` holds the handle and never calls it (see
-//   `dependencies.ts`), and a double that returned plausible data would let a
-//   call sneak in unnoticed. The counter is what makes "never called" a testable
-//   claim rather than a comment.
+//   Skills REFUSES everything and counts being asked. That is not laziness:
+//   `agents` holds the handle and never calls it (see `dependencies.ts`), and a
+//   double that returned plausible data would let a call sneak in unnoticed. The
+//   counter is what makes "never called" a testable claim rather than a comment;
+//   the refusal is what makes a call that does sneak in fail where it happens.
+//
+//   IT IMPLEMENTS `SkillsPeer`, NOT `SkillsContract`. The port is this context's
+//   own and has one method, so the double owes one method. Written against the
+//   whole published surface, this class was green only for as long as `skills`
+//   stayed a generated placeholder with a single method to match — and it stopped
+//   compiling the day the real `skills` and this context first shared a tree.
 
 import { err, ok, environmentScope, asIdentifier, type EnvironmentScope, type Result } from "@platos/kernel";
 import type { ProviderKeyView, ProvidersContract } from "@platos/context-providers";
-import type { SkillsContract } from "@platos/context-skills";
 import type {
   EnvironmentAccess,
   EnvironmentOperatorAuthorization as TenancyGrant,
   TenancyContract,
 } from "@platos/context-tenancy";
 
+import type { SkillsPeer } from "../dependencies.js";
 import { repositoryUnavailable } from "../../domain/index.js";
 
 const NOT_OFFERED = () =>
@@ -124,19 +130,21 @@ export class InMemoryProviders implements Pick<ProvidersContract, "name" | "desc
 }
 
 /**
- * An in-memory `skills` that answers nothing and counts being asked.
+ * An in-memory `skills` that refuses and counts being asked.
  *
  * See the note at the top: the count is the control on the claim that this
- * context holds the handle and never calls it.
+ * context holds the handle and never calls it, and `NOT_OFFERED` is why a call
+ * that did happen would surface as a failed `Result` at the call site rather
+ * than as a plausible row nobody questions.
  */
-export class InMemorySkills implements SkillsContract {
+export class InMemorySkills implements SkillsPeer {
   readonly name = "skills" as const;
   calls = 0;
 
-  async describe(): Promise<null> {
+  describe: SkillsPeer["describe"] = async () => {
     this.calls += 1;
-    return null;
-  }
+    return NOT_OFFERED();
+  };
 }
 
 /** A second environment, for the cross-tenant denial tests. */

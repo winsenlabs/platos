@@ -23,7 +23,9 @@
 // id and `skills` owns that row; describing it needs that context's contract,
 // which was still a generated placeholder when this context was made real. So
 // the read returns ids and assignment state, and says so — see
-// `dependencies.ts`.
+// `dependencies.ts`, which now holds a real `skills` behind a one-method port
+// and still does not call it. Widening this read is a change to what every
+// caller receives, so it waits for a decision rather than arriving with a merge.
 
 import { err, ok, type Result } from "@platos/kernel";
 

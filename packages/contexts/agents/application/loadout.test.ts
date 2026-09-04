@@ -33,8 +33,9 @@ describe("reading a loadout", () => {
   });
 
   it("DOES NOT ASK `skills` to describe the entry", async () => {
-    // The view is thin because `skills` was still a generated placeholder. The
-    // counter is the control on that claim.
+    // The view is thin, and stays thin now that `skills` is real: this context
+    // holds a one-method port and calls none of it. The counter is the control
+    // on that claim.
     const { context, authorization, seeded } = newContext();
     context.repository.seedLoadout(seeded.version.agentVersionId, [
       { environmentSkillId: MAIL, enabled: true, config: {} },
