@@ -188,7 +188,10 @@ test("the live selectors scan an exact nonzero source census", () => {
   // +67 and pinned 478 (328 + 67 + 83) — a partial sum too, blind to the other
   // nine. The axes are disjoint, so the
   // integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 = 970.
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 74 = 1044,
+  // the last term being `conversations`, the seventeenth and final context: 78
+  // real .ts files where 4 generated placeholders stood, so 78 - 4 = 74 and the
+  // subtraction is written out rather than folded away.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -241,11 +244,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // it is a warning the gate is meant to show rather than one this pin should
   // hide. `channels` adds none: its largest file is 280 effective lines. The
   // list is four, and the four are named.
-  assert.equal(result.fileCount, 970);
+  assert.equal(result.fileCount, 1044);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
-  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
+  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 74);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

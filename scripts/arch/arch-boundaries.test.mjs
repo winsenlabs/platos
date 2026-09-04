@@ -541,8 +541,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               four fixtures above. This slice adopts NO context, so it is
     //               the one wave-B delta that moves this census without moving
     //               the generator-ownership count beside it.
-    assert.equal(result.fileCount, 1039, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
+    //  1039 -> 1113 +74: WIN-256 adopts `conversations`, the SEVENTEENTH AND
+    //               LAST context (ADR M0.3 section 1 row 16). 78 real .ts files
+    //               stand where 4 generated placeholders stood, so the delta is
+    //               a NET — 78 - 4 = 74 — and it is written as that subtraction
+    //               rather than as a bare +74, because the four released
+    //               placeholders are the only files this slice removes and a
+    //               deletion elsewhere must not be able to hide behind them.
+    //               The `inference-sdk-only` rule is the one to watch here: this
+    //               context is the turn-execution engine, so it is the package
+    //               most tempted to import `ai` or `@ai-sdk/*` directly, and it
+    //               imports neither — the tool loop, the step budget and the
+    //               cache breakpoints all sit BEHIND `providers`' ModelRouter
+    //               port. All 1113 files satisfy every rule, the eleven edges
+    //               out of this context are legal and there are ZERO edges in,
+    //               which is the second half of row 16 and what makes this
+    //               context the DAG sink.
+    assert.equal(result.fileCount, 1113, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 74);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
