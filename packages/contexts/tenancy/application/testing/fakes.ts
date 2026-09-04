@@ -65,6 +65,40 @@ export function createSequentialIdGenerator(prefix = "id"): IdGenerator {
 export interface RecordingUnitOfWork extends UnitOfWork {
   /** How many transactions were opened. Nested `run` joins rather than opens. */
   readonly transactionCount: () => number;
+  /** How many outermost transactions rolled back. */
+  readonly rollbackCount: () => number;
+}
+
+/** Shallow copy of every row list. Records are replaced, never mutated. */
+function snapshot(store: TenancyStore): TenancyStore {
+  return {
+    organizations: [...store.organizations],
+    projects: [...store.projects],
+    environments: [...store.environments],
+    organizationMemberships: [...store.organizationMemberships],
+    projectMemberships: [...store.projectMemberships],
+    invitations: [...store.invitations],
+    entities: [...store.entities],
+    environmentSessions: [...store.environmentSessions],
+    sequence: store.sequence,
+  };
+}
+
+/** Put every row list back the way `snapshot` found it, in place. */
+function restore(store: TenancyStore, taken: TenancyStore): void {
+  store.organizations.splice(0, store.organizations.length, ...taken.organizations);
+  store.projects.splice(0, store.projects.length, ...taken.projects);
+  store.environments.splice(0, store.environments.length, ...taken.environments);
+  store.organizationMemberships.splice(
+    0,
+    store.organizationMemberships.length,
+    ...taken.organizationMemberships,
+  );
+  store.projectMemberships.splice(0, store.projectMemberships.length, ...taken.projectMemberships);
+  store.invitations.splice(0, store.invitations.length, ...taken.invitations);
+  store.entities.splice(0, store.entities.length, ...taken.entities);
+  store.environmentSessions.splice(0, store.environmentSessions.length, ...taken.environmentSessions);
+  store.sequence = taken.sequence;
 }
 
 /**
@@ -72,27 +106,56 @@ export interface RecordingUnitOfWork extends UnitOfWork {
  * outer transaction, which is the kernel port's stated contract, so a use case
  * built from two smaller ones stays one transaction.
  *
- * It does NOT roll back: nothing here is transactional, so a test that wants to
- * assert "nothing was written" asserts on the store rather than on a rollback.
+ * IT ROLLS BACK, and it takes the store in order to be able to. The earlier
+ * version of this fake did not — it said so, and said a test wanting "nothing
+ * was written" should assert on the store instead. That was wrong in a way only
+ * a multi-write use case exposes: with no rollback, a transaction whose SECOND
+ * write throws leaves the FIRST one committed in the store, so an atomicity test
+ * written against this fixture would have to assert the very corruption the
+ * transaction exists to prevent, and would pass against a use case with no
+ * transaction at all. `createProject` writes three rows, so the fixture has to
+ * be able to take them all back.
+ *
+ * WHAT IT DOES NOT DO is turn a returned error `Result` into a rollback. Only a
+ * REJECTION rolls back, which is exactly `UnitOfWork.run`'s contract and exactly
+ * the trap `cost-monitoring` fell into: an error `Result` returned from inside
+ * `run` resolves the promise, and a resolved promise commits. A use case that
+ * must not commit has to throw, and the suites below prove each one does.
  */
-export function createUnitOfWork(): RecordingUnitOfWork {
+export function createUnitOfWork(store: TenancyStore): RecordingUnitOfWork {
   let depth = 0;
   let opened = 0;
+  let rolledBack = 0;
   let current: TransactionScope | null = null;
+  let taken: TenancyStore | null = null;
   return {
     transactionCount: () => opened,
+    rollbackCount: () => rolledBack,
     async run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-      if (current === null) {
+      const outermost = current === null;
+      if (outermost) {
         opened += 1;
         current = { transactionId: asIdentifier(`txn-${opened}`) };
+        taken = snapshot(store);
       }
-      const transaction = current;
+      const transaction = current as TransactionScope;
       depth += 1;
       try {
         return await work(transaction);
+      } catch (failure) {
+        // Only the outermost frame owns the rollback; a nested `run` joined this
+        // transaction and must not restore a snapshot it never took.
+        if (depth === 1 && taken !== null) {
+          restore(store, taken);
+          rolledBack += 1;
+        }
+        throw failure;
       } finally {
         depth -= 1;
-        if (depth === 0) current = null;
+        if (depth === 0) {
+          current = null;
+          taken = null;
+        }
       }
     },
   };

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   ADOPTED_PROJECTS,
+  APPLICATION_ENTRY_PROJECTS,
   EXPECTED_PLACEHOLDER_FILE_COUNT,
   EXPECTED_SCAFFOLDING_FILE_COUNT,
   SCAFFOLDING_BASENAMES,
@@ -198,14 +199,60 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  assert.deepEqual(selfCheck([]), [], "an empty registry is valid");
+  assert.deepEqual(selfCheck([], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"]), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"]), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-257: a context may publish its use cases only when this root composes it.
+// ---------------------------------------------------------------------------
+
+test("selfCheck rejects an application entry that is not an adopted context", () => {
+  const adopted = ["packages/contexts/identity-access"];
+
+  assert.deepEqual(
+    selfCheck(adopted, ["packages/contexts/agents"]),
+    ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
+    "an unadopted context's application/index.ts is a generated placeholder",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, ["apps/core-api"]),
+    [
+      "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
+      "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
+    ],
+    "apps/core-api is adopted but is not a context; both clauses fire",
+  );
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted]), [
+    "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
+  ]);
+});
+
+test("publishing the application entry point is what the list decides, nothing else", () => {
+  const withoutEntry = renderSkeleton(ADOPTED_PROJECTS, []);
+  const withEntry = renderSkeleton(ADOPTED_PROJECTS, ["packages/contexts/identity-access"]);
+  const manifest = "packages/contexts/identity-access/package.json";
+
+  assert.ok(!withoutEntry.get(manifest).includes("./application/index.js"));
+  assert.ok(withEntry.get(manifest).includes('"./application/index.js"'));
+  assert.equal(
+    withoutEntry.size,
+    withEntry.size,
+    "publishing a subpath adds no file; it edits one manifest",
+  );
+
+  // Every other context manifest is byte-identical either way: the list is a
+  // per-project decision and not a global flag.
+  for (const path of withEntry.keys()) {
+    if (path === manifest) continue;
+    assert.equal(withEntry.get(path), withoutEntry.get(path), `${path} must not move`);
+  }
 });
 
 test("the live adoption registry is a subset of the real projects", () => {
@@ -232,5 +279,49 @@ test("gitignored build artifacts are never reported as EXTRA", () => {
     checkSkeleton(root),
     [],
     "a plain `turbo run build` must not turn every project into a phantom EXTRA"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// WIN-257 T2: the published entry list must stay HONEST.
+//
+// `APPLICATION_ENTRY_PROJECTS` is documented as "the contexts apps/core-api
+// ACTUALLY composes", and until now nothing checked that sentence. selfCheck
+// can see that an entry is an adopted context; it cannot see whether anything
+// imports the subpath the entry publishes, which is the exact dead surface
+// WIN-297 declined to create. This closes the loop from the other end by
+// reading the composition root.
+// ---------------------------------------------------------------------------
+
+const COMPOSITION_ROOT = "apps/core-api/src/app.module.ts";
+
+/** Which contexts the composition root imports a use-case entry point from. */
+function entryPointsImportedByCompositionRoot(source) {
+  const specifier = /from "@platos\/context-([a-z-]+)\/application\/index\.js"/gu;
+  const imported = new Set();
+  for (const match of source.matchAll(specifier)) imported.add(`packages/contexts/${match[1]}`);
+  return imported;
+}
+
+test("every published application entry point is imported by the composition root", () => {
+  const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT), "utf8");
+  const imported = entryPointsImportedByCompositionRoot(source);
+
+  assert.deepEqual(
+    [...imported].sort(),
+    [...APPLICATION_ENTRY_PROJECTS].sort(),
+    "an entry nobody imports is dead surface, and an import with no entry cannot resolve",
+  );
+
+  // The negative control: the extractor must be able to SEE an absence. A list
+  // naming a context the root does not import has to disagree with the tree.
+  assert.notDeepEqual(
+    [...imported].sort(),
+    [...APPLICATION_ENTRY_PROJECTS, "packages/contexts/agents"].sort(),
+  );
+  assert.equal(
+    entryPointsImportedByCompositionRoot('import { x } from "@platos/context-tenancy";').size,
+    0,
+    "importing a context's CONTRACTS is not importing its use-case entry point",
   );
 });

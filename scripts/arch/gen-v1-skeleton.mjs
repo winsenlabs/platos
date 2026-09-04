@@ -124,6 +124,30 @@ export const ADOPTED_PROJECTS = [
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
 
+// ---------------------------------------------------------------------------
+// CONTEXTS THAT PUBLISH THEIR USE CASES (WIN-257). Append-only, one project path
+// per entry, each with the issue that needed it.
+//
+// A context manifest publishes two subpaths by default: `.` (its contracts) and
+// `./application/ports/index.js` (its driven ports). Both are types. The factory
+// that BUILDS the context — `createIdentityAccessService`, `createTenancyService`
+// — lives in `application/index.js`, which was not published, so the composition
+// root could name every context contract and construct none of them. WIN-297
+// recorded that as a finding and deliberately did not fix it, on the grounds
+// that publishing an entry point nothing imports is dead surface.
+//
+// So the list is not "every adopted context": it is the contexts `apps/core-api`
+// ACTUALLY composes. An entry here without a matching import in the composition
+// root is exactly the dead surface WIN-297 declined to create, and every entry
+// must be an adopted project — `selfCheck` fails otherwise, because an
+// unadopted project's source tree is generated placeholders and its
+// `application/index.ts` would be one too.
+// ---------------------------------------------------------------------------
+export const APPLICATION_ENTRY_PROJECTS = [
+  "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
+  "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
+];
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -224,24 +248,31 @@ function kernelManifest(adopted) {
   });
 }
 
-function contextManifest(name, adopted) {
+function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const dependencies = workspaceDependencies([
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
   ]);
+  const exports = {
+    ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
+    "./application/ports/index.js": {
+      types: "./dist/application/ports/index.d.ts",
+      import: "./dist/application/ports/index.js",
+    },
+  };
+  if (applicationEntries.includes(`packages/contexts/${name}`)) {
+    exports["./application/index.js"] = {
+      types: "./dist/application/index.d.ts",
+      import: "./dist/application/index.js",
+    };
+  }
   return packageManifest({
     scripts: scriptsFor(`packages/contexts/${name}`, adopted),
     name: `@platos/context-${name}`,
     description: `ADR M0.3 bounded context: ${name}.`,
     main: "./dist/contracts/index.js",
     types: "./dist/contracts/index.d.ts",
-    exports: {
-      ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
-      "./application/ports/index.js": {
-        types: "./dist/application/ports/index.d.ts",
-        import: "./dist/application/ports/index.js",
-      },
-    },
+    exports,
     dependencies,
   });
 }
@@ -423,7 +454,7 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton(adopted) {
+export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
@@ -463,7 +494,7 @@ export function renderSkeleton(adopted) {
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
@@ -598,7 +629,7 @@ export function renderSkeleton(adopted) {
   return files;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS) {
+export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -634,9 +665,29 @@ export function selfCheck(adopted = ADOPTED_PROJECTS) {
     seenAdoptions.add(project);
   }
 
+  // A context may publish its use cases only if it is a context AND is adopted.
+  // An unadopted project's whole source tree is generated placeholders, so its
+  // `application/index.ts` would be one too, and the export would name a file
+  // nothing wrote.
+  const seenEntries = new Set();
+  for (const project of applicationEntries) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenEntries.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    seenEntries.add(project);
+  }
+
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
-  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted));
+  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted, applicationEntries));
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
   }

@@ -1082,6 +1082,34 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
+ *
+ * WIN-257 OPERATOR IDENTITY DELTA (M2.2), `tejas/win-257-operator-identity` on
+ * v1 `95cbacc1`, tranches 1 through 5. Two packages move:
+ *
+ *   identity-access 17 -> 23 files, 231 -> 318 cases. Six new suites:
+ *   `application/identity-access-service.test.ts` and the two files its cookie
+ *   cases later split into, `application/identity-access-service.end-users.test.ts`
+ *   and `application/identity-access-service.session-cookie.test.ts` — that split
+ *   was forced by the ADR M0.3 section 6 line budget, not by new coverage —
+ *   plus `application/list-end-users.test.ts`, `domain/end-user.test.ts` and
+ *   `domain/session-cookie.test.ts`.
+ *
+ *   tenancy 16 -> 20 files, 146 -> 207 cases. Four new suites:
+ *   `application/create-organization.test.ts`, `application/create-project.test.ts`,
+ *   `application/operator-read-models.test.ts` and `domain/visibility.test.ts`.
+ *   `application/tenancy-service.test.ts` was EDITED and gains cases.
+ *
+ *   Workspace total 5377 -> 5525: +10 files and +148 cases. Its own branch read
+ *   the totals off v1, where identity-access, tenancy, providers, secrets, files
+ *   and the kernel were the only real rows: 88 files and 1000 cases there, 328
+ *   and 5377 here. It therefore wrote 98 files and 1148 cases; NEITHER is the
+ *   number on this tree. The per-row deltas — 6 files and 87 cases in
+ *   identity-access, 4 files and 61 cases in tenancy — are what conserves, and
+ *   they are unchanged.
+ *
+ *   `apps/core-api` gained composition cases and is outside PACKAGE_ROOTS, so it
+ *   does not appear here. No other package moved. Any further drift is a finding
+ *   to report, not a number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1103,7 +1131,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/eventing": { files: 14, cases: 149 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 31, cases: 609 },
-  "packages/contexts/identity-access": { files: 17, cases: 231 },
+  "packages/contexts/identity-access": { files: 23, cases: 318 },
   "packages/contexts/jobs": { files: 16, cases: 378 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -1111,10 +1139,107 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/providers": { files: 27, cases: 375 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
-  "packages/contexts/tenancy": { files: 16, cases: 146 },
+  "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
   "packages/kernel": { files: 3, cases: 44 },
 });
+
+/*
+ * WIN-257 TRANCHE 3 DELTA (M2.2), the two missing transactional writes. One
+ * package moves:
+ *
+ *   tenancy 16 -> 18 files, 146 -> 175 cases; 1025 -> 1054 total.
+ *
+ *   The two new files are `application/create-organization.test.ts` (11 cases)
+ *   and `application/create-project.test.ts` (15 cases). `createOrganization`
+ *   gets 3 happy-path cases, 6 refusals and 2 atomicity proofs;
+ *   `createProject` gets 4 happy-path cases (including the two tenant-provenance
+ *   cases), 8 refusals and 3 atomicity proofs. One existing suite is EDITED and
+ *   gains cases: `application/tenancy-service.test.ts` 10 -> 13, the two
+ *   creations reached through the published contract plus one refusal.
+ *
+ *   11 + 15 + 3 = 29, and 146 + 29 = 175. The FILE count moving by two is what
+ *   makes the delta legible; the 29 is the part a file-count pin cannot see.
+ *   Both were checked against what
+ *   `pnpm --filter @platos/context-tenancy exec vitest run` prints —
+ *   "Test Files 18 passed (18) / Tests 175 passed (175)" — and the per-file
+ *   counts against the same command filtered to each file.
+ *
+ *   No other package moved. `apps/core-api` gained 11 composition cases in T2
+ *   and is outside PACKAGE_ROOTS, so it does not appear here.
+ */
+
+/*
+ * WIN-257 TRANCHE 4 DELTA (M2.2), the missing read models. TWO packages move:
+ *
+ *   identity-access 18 -> 20 files, 256 -> 284 cases.
+ *   tenancy         18 -> 20 files, 175 -> 206 cases.
+ *   1054 -> 1113 total.
+ *
+ *   identity-access +28: `domain/end-user.test.ts` (15) covers the listing rule
+ *   and its caps, `application/list-end-users.test.ts` (9) covers the use case,
+ *   and `application/identity-access-service.test.ts` goes 25 -> 29 for the
+ *   contract-level page, its cross-tenant refusal and its two filter refusals.
+ *   15 + 9 + 4 = 28.
+ *
+ *   tenancy +31: `domain/visibility.test.ts` (17) is the rule ported out of
+ *   `operatorVisibleProjectWhere`, `application/operator-read-models.test.ts`
+ *   (11) is the two read models over it, and
+ *   `application/tenancy-service.test.ts` goes 13 -> 16 for the same reads
+ *   through the published contract. 17 + 11 + 3 = 31.
+ *
+ *   Both were checked against what `pnpm --filter <package> exec vitest run`
+ *   prints — "Test Files 20 passed (20) / Tests 284 passed (284)" for
+ *   identity-access and "20 / 206" for tenancy — and each new file against the
+ *   same command filtered to it. `apps/core-api` gained 3 more composition cases
+ *   and is outside PACKAGE_ROOTS, so it does not appear here.
+ */
+
+/*
+ * WIN-257 TRANCHE 5 DELTA (M2.2), the session-cookie exchange contract. ONE
+ * package moves:
+ *
+ *   identity-access 20 -> 23 files, 284 -> 318 cases; 1113 -> 1147 total.
+ *
+ *   THREE files, and only ONE of them is new behaviour.
+ *   `domain/session-cookie.test.ts` (28 cases) is the new one: the `__Host-`
+ *   prefix rules, the TTL relation between a cookie and its session, rotation,
+ *   clearing, and the directive brand. The other two are a SPLIT, forced by the
+ *   line budget rather than chosen: adding the façade's cookie cases took
+ *   `application/identity-access-service.test.ts` to 501 effective lines, one
+ *   over the ADR M0.3 §6 hard limit. The budget was pointing at a real seam, so
+ *   the file was split along it instead of the number being raised —
+ *   `identity-access-service.end-users.test.ts` (4) and
+ *   `identity-access-service.session-cookie.test.ts` (6) leave the original at
+ *   exactly the 25 it held before this tranche.
+ *
+ *   28 + 4 + 6 = 38 gained, and 4 of those (the end-user façade cases) were
+ *   already counted in T4's 284 — they MOVED file, they were not added. So the
+ *   case delta is 28 + 6 = 34, and 284 + 34 = 318.
+ *
+ *   Checked against what `pnpm --filter @platos/context-identity-access exec
+ *   vitest run` prints — "Test Files 23 passed (23) / Tests 318 passed (318)" —
+ *   and each file against the same command filtered to it: 25, 4, 6, 28.
+ *   `apps/core-api` gained 3 more composition cases (113 -> 116) and is outside
+ *   PACKAGE_ROOTS.
+ *
+ *   The running total across T1-T5: 1000 at the branch point, +25 (T1), +29
+ *   (T3), +59 (T4), +34 (T5) = 1147.
+ *
+ * WIN-257 T4 FOLLOW-UP, found while re-reading the port against the oracle. The
+ * route orders BOTH halves of its landing query — `orderBy: { createdAt: "asc" }`
+ * on the membership select AND on the nested `projects` select, the latter with
+ * `take: 1`. `listVisibleProjects` ordered the memberships and left the projects
+ * in store order, so the project an operator lands in would have depended on
+ * insertion order. One case is added for the fix:
+ *
+ *   tenancy 206 -> 207 cases, files unchanged at 20; 1147 -> 1148 total.
+ *
+ *   `application/operator-read-models.test.ts` 11 -> 12, and one existing case
+ *   in the same file changed its expected order rather than gaining a case:
+ *   two projects built by `aProject` share the builder's epoch, so the id
+ *   tiebreak now decides between them deterministically.
+ */
 
 /**
  * The number `pnpm test:v1-packages` prints, pinned separately from the sum
@@ -1123,7 +1248,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5377;
+export const EXPECTED_RUNTIME_TOTAL = 5525;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

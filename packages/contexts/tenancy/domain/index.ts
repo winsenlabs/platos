@@ -23,3 +23,4 @@ export * from "./session-revocation.js";
 export * from "./invitation.js";
 export * from "./environment-session.js";
 export * from "./authorization.js";
+export * from "./visibility.js";

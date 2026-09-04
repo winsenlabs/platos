@@ -563,8 +563,60 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               property the whole extraction turns on, and which was
     //               previously true only because no file anywhere imported the
     //               framework at all.
-    assert.equal(result.fileCount, 1073, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34);
+    //
+    //  1073 -> 1091 +18: WIN-257 OPERATOR IDENTITY (M2.2), tranches 1, 3, 4 and
+    //               5. Its own branch pinned 397 -> 399 -> 403 -> 411 -> 415 on
+    //               v1, blind to the thirteen rows adopted since it left; the
+    //               +18 is the part that conserves and 415 is not the number
+    //               here. Broken out the same way:
+    //
+    //                 +2  T1 adds the first implementation of the published
+    //                     IdentityAccessContract and its refusal suite, both
+    //                     under packages/contexts/identity-access/application/.
+    //                     No rule needed changing: the facade imports its own
+    //                     domain/, its own application/ and the kernel, and the
+    //                     composition root reaching it through the newly
+    //                     published `./application/index.js` subpath is core-api
+    //                     importing a context, which rule (c) judges only
+    //                     between two CONTEXTS.
+    //
+    //                 +4  T3 adds the two transactional writes the product had
+    //                     no home for -- create-organization.ts and
+    //                     create-project.ts -- and a suite for each, all four
+    //                     under packages/contexts/tenancy/application/. Each
+    //                     imports its own context's domain/ and the kernel,
+    //                     which is what rules (a) and (d) already allow.
+    //
+    //                 +8  T4 adds the missing read models, four files per
+    //                     context. tenancy gains domain/visibility.ts -- the
+    //                     rule ported out of `operatorVisibleProjectWhere`,
+    //                     which until now existed only as a Prisma where clause
+    //                     in apps/webapp -- plus application/operator-read-models.ts
+    //                     and a suite for each. identity-access gains
+    //                     domain/end-user.ts and application/list-end-users.ts
+    //                     with their suites. Rule (b) `domain-purity` is what
+    //                     makes the first pair interesting: the rule is now
+    //                     expressible with no Prisma type in scope at all,
+    //                     which is why it can be a domain file.
+    //
+    //                 +4  T5 moves the session-cookie exchange contract out of
+    //                     apps/webapp -- the cookie name, the __Host- prefix,
+    //                     Secure, HttpOnly, SameSite, Path, the absent Domain
+    //                     and the TTL -- into domain/session-cookie.ts, with its
+    //                     suite. Rule (b) `domain-purity` is the interesting one
+    //                     again: the shape is decided with no framework in
+    //                     scope, so `createCookie` stays a serialisation detail
+    //                     on the far side of the seam. The other two are a
+    //                     SPLIT, not new behaviour: the facade's cookie cases
+    //                     took identity-access-service.test.ts to 501 effective
+    //                     lines, one over the section 6 hard limit, so it was
+    //                     split along the seam the budget was pointing at rather
+    //                     than the limit being raised.
+    //
+    //               No rule was added, removed, weakened or reinterpreted by any
+    //               of the four, and the census still only ever grows.
+    assert.equal(result.fileCount, 1091, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

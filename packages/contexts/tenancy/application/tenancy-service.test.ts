@@ -11,8 +11,10 @@ import {
   entityId,
   environmentId,
   isEnvironmentOperatorAuthorization,
+  normalizeEmail,
   OrganizationRole,
   projectId,
+  ProjectRole,
   userId,
 } from "../domain/index.js";
 import type { TenancyContract } from "../contracts/index.js";
@@ -126,6 +128,102 @@ describe("TenancyContract", () => {
     expect((await contract.findOrganizationMembership(tree.organization.id, userId("nobody"))).ok).toBe(
       false,
     );
+  });
+
+  it("CREATES AN ORGANIZATION AND ITS OWNER through the contract", async () => {
+    const { fixture, contract } = scenario();
+    fixture.operators.add({
+      userId: OWNER,
+      email: normalizeEmail("owner@example.com"),
+      disabledAt: null,
+    });
+    const created = await contract.createOrganization({
+      name: "Globex",
+      slug: "globex",
+      founderUserId: OWNER,
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error("unreachable");
+    expect(created.value.founderMembership.role).toBe(OrganizationRole.OWNER);
+
+    // The new organization is immediately administrable, which is the whole
+    // point of the founding membership: the owner can be found through the
+    // contract's own read.
+    const found = await contract.findOrganizationMembership(created.value.organization.id, OWNER);
+    expect(found.ok).toBe(true);
+  });
+
+  it("CREATES A PROJECT, ITS FIRST ENVIRONMENT AND AN ADMIN MEMBERSHIP through the contract", async () => {
+    const { tree, contract } = scenario();
+    const created = await contract.createProject({
+      organizationId: tree.organization.id,
+      actorUserId: OWNER,
+      name: "Checkout",
+      slug: "checkout",
+      environmentName: "Production",
+      environmentSlug: "production",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error("unreachable");
+    expect(created.value.membership.role).toBe(ProjectRole.ADMIN);
+
+    // The environment the create returned resolves as a scope, so the project
+    // is reachable the moment it exists rather than after a second call. The
+    // path is built from IDS, not slugs — that is what every other context is
+    // keyed by — so it is asserted against the ids the create minted.
+    const resolved = await contract.resolveEnvironmentScope(created.value.environment.id);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error("unreachable");
+    expect(resolvePath(resolved.value.scope)).toBe(
+      `org/${tree.organization.id}/proj/${created.value.project.id}/env/${created.value.environment.id}`,
+    );
+  });
+
+  it("refuses a creation the caller is not entitled to, through the contract", async () => {
+    const { tree, contract } = scenario();
+    const refusal = await contract.createProject({
+      organizationId: tree.organization.id,
+      actorUserId: userId("stranger"),
+      name: "Checkout",
+      slug: "checkout",
+      environmentName: "Production",
+      environmentSlug: "production",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) throw new Error("unreachable");
+    expect(refusal.error.code).toBe("TENANCY_PROJECT_CREATE_FORBIDDEN");
+  });
+
+  it("LISTS MY ORGANIZATIONS through the contract, and nobody else's", async () => {
+    const { tree, contract } = scenario();
+    const listed = await contract.listOperatorOrganizations(OWNER);
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) throw new Error("unreachable");
+    expect(listed.value.map((row) => row.organization.id)).toEqual([tree.organization.id]);
+
+    const stranger = await contract.listOperatorOrganizations(userId("stranger"));
+    expect(stranger.ok).toBe(true);
+    if (!stranger.ok) throw new Error("unreachable");
+    expect(stranger.value).toEqual([]);
+  });
+
+  it("LISTS THE PROJECTS I CAN SEE, and says which grant made each visible", async () => {
+    // The replacement for `operatorVisibleProjectWhere`, reached through the
+    // published contract rather than through a Prisma call.
+    const { tree, contract } = scenario();
+    const visible = await contract.listVisibleProjects(OWNER);
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) throw new Error("unreachable");
+    expect(visible.value.map((row) => row.project.id)).toEqual([tree.project.id]);
+    expect(visible.value[0]?.through).toBe("organization-admin");
+  });
+
+  it("SHOWS A STRANGER NO PROJECTS AT ALL", async () => {
+    const { contract } = scenario();
+    const visible = await contract.listVisibleProjects(userId("stranger"));
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) throw new Error("unreachable");
+    expect(visible.value).toEqual([]);
   });
 
   it("advances the access-key generation through the contract", async () => {

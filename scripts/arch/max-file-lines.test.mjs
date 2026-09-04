@@ -267,14 +267,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // The integrated census is the sum of four disjoint scans:
   //
   //     packages/kernel/**                20   NEWLY COVERED
-  //     packages/contexts/**             968
+  //     packages/contexts/**             986
   //     packages/adapters/**              54   NEWLY COVERED
   //     apps/core-api/src/transports/**    6
   //                                     ----
-  //                                     1048
+  //                                     1066
   //
-  // `packages/contexts/**` is 968 and not 964 because the adapter branch also
-  // adds two domain modules and two suites to `providers`. `packages/adapters/**`
+  // `packages/contexts/**` is 986: 964 at adoption, +4 because the adapter branch
+  // adds two domain modules and two suites to `providers`, and +18 for WIN-257.
+  // `packages/adapters/**`
   // is 54: the eleven still-unadopted adapters carry two declaration
   // placeholders each (22), and model-router-providers carries 32 — seventeen
   // source modules and fifteen suites. The adapter branch pinned
@@ -288,15 +289,47 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the integrated tree, not an inherited claim — and the selector is NOT to be
   // narrowed back if a later branch makes it bite, because biting is what it is
   // for.
-  assert.equal(result.fileCount, 1048);
+  //
+  // WIN-257 OPERATOR IDENTITY (M2.2) adds 18 files, 1048 -> 1066, all of them
+  // under `packages/contexts/**`, which is why that row alone moves. Its own
+  // branch pinned 328 -> 330 -> 334 -> 342 -> 346 against v1; 346 is not the
+  // number here and the +18 is the part that conserves. Broken out:
+  //
+  //   +2  T1 adds identity-access-service.ts and its refusal suite. Both are
+  //       well inside the budget; the facade holds no rule, only the
+  //       projection, which is what keeps it small.
+  //
+  //   +4  T3 adds create-organization.ts, create-project.ts and a suite for
+  //       each. Every gate in both use cases runs BEFORE the unit of work
+  //       opens, which is what keeps the transactional block four lines long
+  //       and both files inside the budget.
+  //
+  //   +8  T4 adds the four read-model files and their four suites. The two
+  //       domain files are predicates and comparators with no I/O, and the two
+  //       application files hold the composition the routes performed, so all
+  //       eight sit well inside the budget.
+  //
+  //   +4  T5 adds domain/session-cookie.ts and its suite -- the whole contract
+  //       is a shape, four guards and a mint, so it stays far inside the budget
+  //       even carrying the RFC reasoning in prose -- plus the two suites THIS
+  //       GATE forced out of identity-access-service.test.ts, which the facade's
+  //       cookie cases took to 501 effective lines. As in the note above, the
+  //       answer was to split along the seam the budget was pointing at rather
+  //       than to raise the number: store-backed authentication on one side,
+  //       the clock-and-transport cookie contract and the end-user read on the
+  //       other.
+  //
+  // None of the 18 is inside the 400-line warning band, so the finding list
+  // below is unchanged.
+  assert.equal(result.fileCount, 1066);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18
   );
-  assert.equal(result.fileCount, 20 + 968 + 54 + 6);
+  assert.equal(result.fileCount, 20 + 986 + 54 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -5,15 +5,31 @@
 // grants it (`identity-access`). Never an adapter, never a framework, never a
 // vendor SDK.
 
+// WHY THE FIXTURES ARE PUBLISHED FROM HERE (WIN-257 T2). `apps/core-api` now
+// composes this context, and the composition root's own suite has to prove the
+// wiring REFUSES — a cross-tenant request, an archived ancestor, an environment
+// that does not exist. It can only do that against a bundle that behaves like
+// the real stores. `./testing/` is that bundle: it already ships in the package
+// as the conformance fixture this context publishes for
+// `packages/adapters/postgres-tenancy`, so re-exporting it hands the composition
+// root the same doubles the adapter will be held to rather than a second set of
+// fakes written in `apps/` that could drift from them.
+
 export * from "./ports/index.js";
 export * from "./dependencies.js";
 export * from "./authorize-environment-operator.js";
 export * from "./change-membership-role.js";
 export * from "./invitations.js";
 export * from "./add-project-member.js";
+export * from "./create-organization.js";
+export * from "./create-project.js";
+export * from "./operator-read-models.js";
 export * from "./archive-tenant.js";
 export * from "./revoke-access-key-generation.js";
 export * from "./tenancy-service.js";
+export * from "./testing/fakes.js";
+export * from "./testing/in-memory-repository.js";
+export * from "./testing/tenant-fixture.js";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
 

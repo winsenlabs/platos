@@ -689,7 +689,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // pinned 314 (272 + 8 + 34) on the prerequisite tip and was blind to all
     // eleven adoptions above; 915 + 34 = 949 here, and 314 is wrong by exactly
     // the 635 those eleven contribute.
-    packages: 949,
+    //
+    // WIN-257 OPERATOR IDENTITY (M2.2) adds 18, 949 -> 967, ALL in `packages`
+    // and all under `packages/contexts/**`. T2 adds no file at all -- composing
+    // tenancy is a manifest subpath, a wiring edit and a fixture helper in files
+    // that already existed. T1 +2 (the first implementation of the published
+    // IdentityAccessContract and its refusal suite); T3 +4 (the two
+    // transactional writes whose only home was a Prisma `$transaction` in a
+    // Remix route, and a suite for each); T4 +8 (tenancy domain/visibility.ts,
+    // the authorization rule ported out of
+    // apps/webapp/app/services/projectAccess.server.ts where it existed only as
+    // a Prisma.ProjectWhereInput, plus application/operator-read-models.ts;
+    // identity-access domain/end-user.ts and application/list-end-users.ts, the
+    // read this context published none of despite being sole writer of EndUser;
+    // and a suite for each of the four); T5 +4 (identity-access
+    // domain/session-cookie.ts, the cookie exchange contract moved out of
+    // apps/webapp/app/services/auth.server.ts, and its suite, plus the two
+    // suites the ADR M0.3 section 6 line budget forced out of
+    // identity-access-service.test.ts -- a SPLIT, not new coverage). Its branch
+    // pinned packages 272 -> 290 and the combined delta 346 -> 364 on v1, blind
+    // to every adoption above; the +18 is the part that conserves and 290 is not
+    // the number here. No new ledger rule was needed.
+    packages: 967,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -840,11 +861,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // are all edits to files that already existed and add none.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 + 34 = 1025.
+    //   + 84 + 8 + 2 + 34 + 18 = 1043.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1025);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1043);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -853,16 +874,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +1025 combined delta as the totalFiles
+    // M2 integration: same +20 -> +1043 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
-    // router adapter +34); this one re-derives it by summing the per-area counts
+    // router adapter +34, WIN-257 operator identity +18); this one re-derives it
+    // by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1025
+    rulesDocument.baseline.totalFiles + 1043
   );
 });
 

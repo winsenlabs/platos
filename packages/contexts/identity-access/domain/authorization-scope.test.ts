@@ -97,11 +97,11 @@ describe("permissions are compared exactly, with one wildcard", () => {
     expect(hasPermission(["mcp:*"], "mcp:write")).toBe(false);
   });
 
-  it("refuses a missing permission as FORBIDDEN_SCOPE", () => {
+  it("refuses a missing permission as MISSING_PERMISSION, not FORBIDDEN_SCOPE", () => {
     const denied = assertPermission(["mcp:read"], "mcp:write");
     expect(denied.ok).toBe(false);
     if (denied.ok) return;
-    expect(denied.error.code).toBe("FORBIDDEN_SCOPE");
+    expect(denied.error.code).toBe("MISSING_PERMISSION");
   });
 
   it("denies against an empty grant rather than defaulting open", () => {

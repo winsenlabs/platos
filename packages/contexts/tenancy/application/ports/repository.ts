@@ -37,6 +37,7 @@ import type {
   OrganizationRole,
   ProjectMembershipRecord,
   ProjectRecord,
+  Slug,
   TokenDigest,
   UserId,
 } from "../../domain/index.js";
@@ -63,6 +64,20 @@ export interface TenancyRepository {
   loadProject(projectId: ProjectId): Promise<ProjectRecord | null>;
   loadEnvironment(environmentId: EnvironmentId): Promise<EnvironmentRecord | null>;
 
+  // --- slug lookups, one per unique index ----------------------------------
+  //
+  // These exist so a creation can REFUSE legibly. They are not the enforcer:
+  // `Organization.slug` is `@unique`, `Project` is `@@unique([organizationId,
+  // slug])` and `Environment` is `@@unique([projectId, slug])`, and the index is
+  // what makes a duplicate impossible. A read before the write cannot close the
+  // window between the two, and this port does not pretend otherwise — an
+  // implementation must still surface the index violation, and the in-memory
+  // fake raises one so the transaction that hits it is seen to roll back.
+
+  findOrganizationBySlug(slug: Slug): Promise<OrganizationRecord | null>;
+  findProjectBySlug(organizationId: OrganizationId, slug: Slug): Promise<ProjectRecord | null>;
+  findEnvironmentBySlug(projectId: ProjectId, slug: Slug): Promise<EnvironmentRecord | null>;
+
   listProjects(organizationId: OrganizationId): Promise<readonly ProjectRecord[]>;
   listEnvironments(projectId: ProjectId): Promise<readonly EnvironmentRecord[]>;
 
@@ -86,6 +101,24 @@ export interface TenancyRepository {
 
   /** Active OWNER count, read under the organization row lock. */
   countActiveOwners(organizationId: OrganizationId): Promise<number>;
+
+  /**
+   * EVERY organization membership a user holds, deactivated ones included.
+   *
+   * The `deactivatedAt` filter is deliberately NOT in this signature. The two
+   * operator read models are the only callers, and the rule they apply — a
+   * removed member sees nothing, whatever their `ProjectMembership` rows still
+   * say — has to be falsifiable. A store that filtered would make deleting that
+   * rule from the read model invisible to every test.
+   */
+  listOrganizationMembershipsForUser(
+    userId: UserId,
+  ): Promise<readonly OrganizationMembershipRecord[]>;
+
+  /** Every project role held THROUGH one organization membership. */
+  listProjectMembershipsForMembership(
+    organizationMembershipId: OrganizationMembershipId,
+  ): Promise<readonly ProjectMembershipRecord[]>;
 
   /** The `@@unique([projectId, organizationMembershipId])` lookup. */
   findProjectMembership(

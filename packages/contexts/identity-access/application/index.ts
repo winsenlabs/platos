@@ -18,6 +18,7 @@
 export type { IdentityAccessPorts, PortsOf } from "./dependencies.js";
 export * from "./ports/index.js";
 
+export { createIdentityAccessService } from "./identity-access-service.js";
 export {
   authenticateOperator,
   revokeOperatorSession,
@@ -64,6 +65,17 @@ export {
   type ExchangeRefreshTokenInput,
   type ExchangeRefreshTokenPorts,
 } from "./exchange-oauth-refresh-token.js";
+export {
+  listEndUsers,
+  type EndUserId,
+  type EndUserIdentityId,
+  type EndUserIdentityRecord,
+  type EndUserPage,
+  type EndUserRecord,
+  type EndUserWithIdentities,
+  type ListEndUsersInput,
+  type ListEndUsersPorts,
+} from "./list-end-users.js";
 export {
   authenticateBearerToken,
   type AuthenticateBearerTokenInput,

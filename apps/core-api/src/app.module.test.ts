@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
+import { testPorts } from "@platos/context-identity-access/application/index.js";
+import type { EndUserId } from "@platos/context-identity-access/application/index.js";
+import {
+  createTenancyFixture,
+  seedMember,
+  seedTree,
+  type TenancyFixture,
+} from "@platos/context-tenancy/application/index.js";
+import { OrganizationRole, ProjectRole, type UserId } from "@platos/context-tenancy";
+import { asIdentifier, organizationScope, type EnvironmentId, type OrganizationId } from "@platos/kernel";
+
 import { CompositionFault, DECLARED_BINDING_COUNT, composeApplication } from "./app.module.js";
+import type { SuppliedContextPorts } from "./app.module.js";
 import { ADAPTER_BINDINGS, ADAPTER_NAMES, PORT_SATISFACTION, type SuppliedAdapters } from "./composition/adapter-bindings.js";
 import { describeAdapterSupply, reportAdapterSupply } from "./composition/registry.js";
 import { loadCoreApiConfiguration } from "./config/load.js";
@@ -12,7 +24,7 @@ function configuration() {
   return outcome.value;
 }
 
-function inputs(adapters?: SuppliedAdapters) {
+function inputs(adapters?: SuppliedAdapters, ports?: SuppliedContextPorts) {
   const clock = systemClock();
   return {
     configuration: configuration(),
@@ -20,7 +32,48 @@ function inputs(adapters?: SuppliedAdapters) {
     ids: ulidGenerator(clock),
     logger: createProcessLogger({ minimumLevel: "error", write: () => {} }),
     adapters,
+    ports,
   };
+}
+
+/**
+ * The identity-access contract, composed the way an install composes it.
+ *
+ * `testPorts()` is the context's OWN in-memory bundle, shipped from its
+ * `application/` for exactly this: it enforces what the real stores enforce, so
+ * a refusal observed here is the refusal the context makes rather than one this
+ * file arranged.
+ */
+function composedIdentityAccess() {
+  const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+  const identityAccess = app.contexts.identityAccess;
+  if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+  return identityAccess;
+}
+
+const TENANT = organizationScope(asIdentifier<OrganizationId>("org-1"));
+
+/**
+ * The tenancy contract, composed the way an install composes it.
+ *
+ * The fixture is returned alongside so a case can SEED the tree it is about.
+ * Like `testPorts()`, these doubles ship inside the context rather than being
+ * written here: they are the conformance fixture tenancy publishes for
+ * `packages/adapters/postgres-tenancy`, so a denial observed here is tenancy's
+ * denial and not one this file arranged, and a second set of fakes living in
+ * `apps/` cannot drift from it.
+ */
+function composedTenancy(fixture: TenancyFixture = createTenancyFixture()) {
+  const app = composeApplication(inputs(undefined, { tenancy: fixture.dependencies }));
+  const tenancy = app.contexts.tenancy;
+  if (tenancy === undefined) throw new Error("tenancy should have been composed");
+  return { tenancy, fixture };
+}
+
+/** An already-authenticated operator, as identity-access would hand one over. */
+function principal(user: string) {
+  const id = asIdentifier<UserId>(user);
+  return { actorUserId: id, effectiveUserId: id };
 }
 
 /**
@@ -135,10 +188,344 @@ describe("composing the application", () => {
     expect(app.bindings.unsatisfied).toHaveLength(11);
   });
 
-  it("does not compose a context from an unvalidated binding", () => {
-    // The map is built from `bindings.satisfied`, never from the raw supply, so
-    // a rejected adapter can never reach a context.
+  it("does not compose a context from an adapter supply alone", () => {
+    // A context is composed from the port bundle an install hands to
+    // `ports`, never inferred from an adapter that happens to be present, so
+    // supplying an unrelated adapter reaches no context at all.
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(Object.keys(app.contexts)).toEqual([]);
+  });
+});
+
+describe("composing identity-access", () => {
+  it("LEAVES THE CONTEXT ABSENT when no port bundle is supplied", () => {
+    // Absent rather than a façade over undefined stores: an install that forgot
+    // to wire the identity store must be visible before it serves a request,
+    // not at the first authentication.
+    expect(composeApplication(inputs()).contexts.identityAccess).toBeUndefined();
+  });
+
+  it("composes the published contract when the bundle is supplied", () => {
+    expect(composedIdentityAccess().name).toBe("identity-access");
+  });
+
+  it("REFUSES A REQUEST CARRYING NO SESSION TOKEN", async () => {
+    const refusal = await composedIdentityAccess().authenticateOperator({ presentedToken: null });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("REFUSES A SESSION TOKEN THAT MATCHES NOTHING IN THE STORE", async () => {
+    const refusal = await composedIdentityAccess().authenticateOperator({
+      presentedToken: "plt_os_not-a-real-token",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("REFUSES AN UNKNOWN BEARER CREDENTIAL", async () => {
+    const refusal = await composedIdentityAccess().authenticateBearer({
+      presentedToken: "plt_mcp_not-a-real-token",
+      requestedScope: TENANT,
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("SPENDS A REAL BUDGET, so the wiring cannot be a stub that always allows", async () => {
+    // Eleven LOGIN requests against a ten-request window. A façade wired to a
+    // dead limiter would allow all eleven; the eleventh must be refused, and the
+    // refusal must carry the wait.
+    const identityAccess = composedIdentityAccess();
+    const request = {
+      action: "LOGIN",
+      identifier: "operator@example.com",
+      scope: TENANT,
+      principalId: null,
+    } as const;
+    for (let spent = 0; spent < 10; spent += 1) {
+      expect((await identityAccess.consumeRateLimit(request)).ok).toBe(true);
+    }
+    const refusal = await identityAccess.consumeRateLimit(request);
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("RATE_LIMITED");
+    expect(refusal.error.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it("keeps each composition's budget to itself", async () => {
+    // Two installs, two bundles, two limiters. Asserted by SPENDING one budget
+    // to exhaustion and showing a second composition still allows — not by
+    // comparing object identity, which two factory calls satisfy trivially and
+    // which a module-level limiter behind them would satisfy too.
+    const first = composedIdentityAccess();
+    const request = {
+      action: "LOGIN",
+      identifier: "operator@example.com",
+      scope: TENANT,
+      principalId: null,
+    } as const;
+    for (let spent = 0; spent < 10; spent += 1) await first.consumeRateLimit(request);
+    expect((await first.consumeRateLimit(request)).ok).toBe(false);
+    expect((await composedIdentityAccess().consumeRateLimit(request)).ok).toBe(true);
+  });
+});
+
+describe("composing tenancy", () => {
+  it("LEAVES THE CONTEXT ABSENT when no port bundle is supplied", () => {
+    expect(composeApplication(inputs()).contexts.tenancy).toBeUndefined();
+  });
+
+  it("composes the published contract when the bundle is supplied", () => {
+    expect(composedTenancy().tenancy.name).toBe("tenancy");
+  });
+
+  it("composes BOTH contexts without either displacing the other", () => {
+    // The root merges two optional bundles into one frozen object. A spread
+    // written the other way round — or an early return — would silently drop
+    // whichever context was composed second, and every refusal case below would
+    // still pass because it composes tenancy alone.
+    const app = composeApplication(
+      inputs(undefined, { identityAccess: testPorts(), tenancy: createTenancyFixture().dependencies }),
+    );
+    expect(Object.keys(app.contexts).sort()).toEqual(["identityAccess", "tenancy"]);
+  });
+
+  it("GRANTS AN ACTIVE ORGANIZATION ADMIN, so the wiring cannot be a stub that always denies", async () => {
+    // The positive control. Every case after this one asserts a refusal, and a
+    // façade wired to a dead repository would satisfy all of them.
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", { organizationRole: OrganizationRole.ADMIN });
+    const decision = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(decision.ok).toBe(true);
+    if (!decision.ok) return;
+    expect(decision.value.scope.environmentId).toBe(tree.environment.id);
+    expect(decision.value.organizationRole).toBe(OrganizationRole.ADMIN);
+    // The value the composed contract returns must still be the unforgeable one
+    // tenancy minted, not a structural copy that crossed the seam.
+    expect(tenancy.verifyAuthorization(decision.value).ok).toBe(true);
+    expect(tenancy.verifyAuthorization({ ...decision.value }).ok).toBe(false);
+  });
+
+  it("REFUSES AN ENVIRONMENT THAT DOES NOT EXIST", async () => {
+    const { tenancy } = composedTenancy();
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: asIdentifier<EnvironmentId>("no-such-environment"),
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
+    expect(refusal.error.details).toEqual({ gate: "archived-ancestor" });
+  });
+
+  it("REFUSES ACROSS TENANTS — an admin of one organization is denied the other's environment", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const mine = seedTree(fixture.store, "acme");
+    const theirs = seedTree(fixture.store, "globex");
+    seedMember(fixture.store, mine, "ada", { organizationRole: OrganizationRole.ADMIN });
+    // Ada is an ADMIN — of the WRONG organization. Gate 3 would wave an admin
+    // through, so the denial has to come from gate 2 finding no membership in
+    // the organization the LEAF resolves to.
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: theirs.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "organization-membership" });
+  });
+
+  it("REFUSES UNDER AN ARCHIVED ORGANIZATION, even its own owner", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", { organizationRole: OrganizationRole.OWNER });
+    fixture.store.organizations[0] = { ...tree.organization, archivedAt: new Date("2026-02-01T00:00:00.000Z") };
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "archived-ancestor" });
+  });
+
+  it("REFUSES A DEACTIVATED MEMBER whose row is still on the tree", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", {
+      organizationRole: OrganizationRole.OWNER,
+      deactivatedAt: new Date("2026-01-15T00:00:00.000Z"),
+    });
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "organization-membership" });
+  });
+
+  it("REFUSES A PROJECT VIEWER a secret mutation while allowing them metadata", async () => {
+    // Gate 4, and the pair that proves it is gate 4 rather than an outright
+    // denial: the same operator on the same environment is allowed at
+    // `metadata` and refused at `secret:mutate`.
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "vic", {
+      organizationRole: OrganizationRole.MEMBER,
+      projectRole: ProjectRole.VIEWER,
+    });
+    const request = { environmentId: tree.environment.id, operator: principal("vic") } as const;
+    expect((await tenancy.authorizeEnvironmentOperator({ ...request, access: "metadata" })).ok).toBe(true);
+    const refusal = await tenancy.authorizeEnvironmentOperator({ ...request, access: "secret:mutate" });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "secret-mutate-role" });
+  });
+
+  it("REFUSES to resolve a scope for an environment that does not exist", async () => {
+    const { tenancy } = composedTenancy();
+    const refusal = await tenancy.resolveEnvironmentScope(
+      asIdentifier<EnvironmentId>("no-such-environment"),
+    );
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("TENANCY_NOT_FOUND");
+  });
+
+  it("keeps each composition's tenant tree to itself", async () => {
+    // Two installs, two bundles, two stores. Asserted by seeding REAL STATE in
+    // one and showing the other cannot see it — not by comparing object
+    // identity, which two factory calls satisfy trivially and which a
+    // module-level store behind them would satisfy too.
+    const first = composedTenancy();
+    const tree = seedTree(first.fixture.store);
+    seedMember(first.fixture.store, tree, "ada", { organizationRole: OrganizationRole.ADMIN });
+    const request = {
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    } as const;
+    expect((await first.tenancy.authorizeEnvironmentOperator(request)).ok).toBe(true);
+    expect((await composedTenancy().tenancy.authorizeEnvironmentOperator(request)).ok).toBe(false);
+  });
+});
+
+describe("the read models the composition root now reaches", () => {
+  it("SHOWS AN OPERATOR ONLY THE PROJECTS THEY CAN SEE, through the composed contract", async () => {
+    // `operatorVisibleProjectWhere` was an authorization rule that existed only
+    // as a Prisma fragment inside the Remix tree. Reaching the ported rule from
+    // here is what shows it is now a decision the composition root can serve.
+    const { tenancy, fixture } = composedTenancy();
+    const mine = seedTree(fixture.store, "acme");
+    const theirs = seedTree(fixture.store, "globex");
+    seedMember(fixture.store, mine, "ada", { organizationRole: OrganizationRole.ADMIN });
+    seedMember(fixture.store, theirs, "mel", { organizationRole: OrganizationRole.OWNER });
+
+    const visible = await tenancy.listVisibleProjects(asIdentifier<UserId>("ada"));
+    expect(visible.ok).toBe(true);
+    if (!visible.ok) return;
+    expect(visible.value.map((row) => row.project.id)).toEqual([mine.project.id]);
+    expect(visible.value[0]?.through).toBe("organization-admin");
+  });
+
+  it("REFUSES TO LIST ANOTHER TENANT'S END USERS, through the composed contract", async () => {
+    const ports = testPorts();
+    for (const [id, organizationId] of [
+      ["mine", asIdentifier<OrganizationId>("org-1")],
+      ["theirs", asIdentifier<OrganizationId>("org-2")],
+    ] as const) {
+      ports.repository.state.endUsers.set(asIdentifier<EndUserId>(id), {
+        endUserId: asIdentifier<EndUserId>(id),
+        organizationId,
+        displayName: id,
+        disabledAt: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      });
+    }
+    const app = composeApplication(inputs(undefined, { identityAccess: ports }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+
+    const page = await identityAccess.listEndUsers({ scope: TENANT });
+    expect(page.ok).toBe(true);
+    if (!page.ok) return;
+    expect(page.value.users.map((user) => user.endUserId)).toEqual(["mine"]);
+    expect(page.value.total).toBe(1);
+  });
+
+  it("KEEPS A BAD PAGE SIZE A REFUSAL at the composition root too", async () => {
+    const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+    const refusal = await identityAccess.listEndUsers({ scope: TENANT, limit: 101 });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("INVALID_END_USER_FILTER");
+  });
+});
+
+describe("the session-cookie exchange contract, reached from the composition root", () => {
+  function composedIdentityAccessAt() {
+    const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+    const identityAccess = app.contexts.identityAccess;
+    if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+    return identityAccess;
+  }
+
+  it("CORE DECIDES EVERY ATTRIBUTE, so a BFF has nothing left to choose", () => {
+    // The shape that used to live in `apps/webapp/app/services/auth.server.ts`.
+    // A front end deciding the security properties of the credential Core issues
+    // is the wrong way round; this is the assertion that it no longer does.
+    const shape = composedIdentityAccessAt().describeSessionCookie({ secure: true });
+    expect(shape.ok).toBe(true);
+    if (!shape.ok) return;
+    expect(shape.value).toEqual({
+      name: "__Host-platos_operator_session",
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+      domain: null,
+    });
+  });
+
+  it("DROPS THE __Host- PREFIX where there is no TLS, or the browser would drop the cookie", () => {
+    const shape = composedIdentityAccessAt().describeSessionCookie({ secure: false });
+    expect(shape.ok).toBe(true);
+    if (!shape.ok) return;
+    expect(shape.value.name).toBe("platos_operator_session");
+    expect(shape.value.secure).toBe(false);
+  });
+
+  it("REFUSES A DIRECTIVE MODIFIED AFTER IT LEFT CORE", async () => {
+    const identityAccess = composedIdentityAccessAt();
+    const issued = identityAccess.issueSessionCookie({
+      secure: true,
+      token: "plt_os_live",
+      sessionExpiresAt: new Date("2030-01-01T00:00:00.000Z"),
+    });
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+    expect(identityAccess.verifySessionCookie(issued.value).ok).toBe(true);
+    expect(
+      identityAccess.verifySessionCookie({
+        ...issued.value,
+        shape: { ...issued.value.shape, secure: false },
+      }).ok,
+    ).toBe(false);
   });
 });
