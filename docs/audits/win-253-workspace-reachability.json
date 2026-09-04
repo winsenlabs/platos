@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "466124e83bddc570791d08cf85875b1216b69651c3219b6beedb34598f5126c7",
+  "evidenceSha256": "bbf4423a646d1ee997f0fcb76ac654c0fddbe70259aac51aa431deae7516c2ba",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 38,
+    "explicitHeaderFileCount": 36,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 125,
-        "sha256": "fde1246af84532ec334af1590d191817cc8035183a166f147daa2234ebc82b70"
+        "outputCount": 123,
+        "sha256": "c442458974decf7f6ae67bfd4ed04b936f8c150a2b5a637188c8348447bc6272"
       }
     ],
-    "ownedOutputCount": 125,
+    "ownedOutputCount": 123,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2d26fe44200bf8c5f095ec5930bd734537f38ea701ed0105c8ee37c073f3da7c",
+    "aggregateSha256": "81c422d468ca92258ed9c9d52efe1f48a70784fb442031ae577474908a789f9d",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "3a32f7e5c847e2f7062e777a624df0eeec71f944b68beee7096df6013df4f39b"
+        "sha256": "4bcf914702a9a3d5f74c5eb7a85852a5e5d51c61d1fcfe7b0d6c12b3e817370e"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4049,7 +4049,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "67ec9e830160676a9528d8484ce23087bdf770c757321b29763c9423f1877ea3"
+        "sha256": "2d9bb6a054e79ebc9b78f1fc53c615731fb4bc44cb88a9ec96bbb02c10c585ed"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "c78d4e83db7892662c0bacb1281f5470b3304b66f699a2dfd448d7bd6fb604f9"
+        "sha256": "9634090885afff98b59ef21600840c6ca50a7b2fc1e6f3406e08881d4b2c66e0"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "af476496f713c9ab1ebd8b01c7181eef47ed0ae4909c203a7ab612b655b3d46f"
+        "sha256": "c1b11ea504a9f7614d797547ac994c451285845fce9bd144e3c0787a5369e7f3"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -10913,15 +10913,135 @@
       },
       {
         "path": "packages/adapters/model-router-providers/package.json",
-        "sha256": "58a0a5421915cee83524764f9369c1f40ec0d7195318d0b257f9d37b38b18a8f"
+        "sha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/adapter.test.ts",
+        "sha256": "33074c147da43d0ba554e19e34ff92b3c5c715d69612c6cc60456c5b865c47a4"
       },
       {
         "path": "packages/adapters/model-router-providers/src/adapter.ts",
-        "sha256": "69a681e303219b115e74501feaa5a962aef9b43ae1244501369f8762a5352583"
+        "sha256": "9fbd3c7e414d8ea3a955626db6662d8884c59da6fc03f0cb598c0c45c0b79041"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/call.test.ts",
+        "sha256": "6e849213d6a9abc9a2266759c5108be8fc0d755ad5e7aed11f6256de3f746eb2"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/call.ts",
+        "sha256": "cbeeee34d7a88c08aa696bfdc20f0fc4ab8ff638e8a7c9b1ef952ff6516a144c"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/clients.test.ts",
+        "sha256": "55c186893c9719018ae841196f4160f03edfb7322e39932e4c3a9f49527066bb"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/clients.ts",
+        "sha256": "c4445bb57d827eca8fcb647d18fe8bcb2ccd1e5ad0cf49462726cc943f03e001"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/failure.test.ts",
+        "sha256": "12359cbb09cddecd415737e5a6f158d5f53893b120187d6ea9c6294670469650"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/failure.ts",
+        "sha256": "1d7d6d62ade73b5f8ed6104f4785425cf51eed673447dcd41d02f382ef7489b5"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/generation.test.ts",
+        "sha256": "33948518d9b3061a9010e98e27ba2a8d0cbbd320f7ab481ca1213212f7ddc542"
       },
       {
         "path": "packages/adapters/model-router-providers/src/index.ts",
-        "sha256": "50201daa6c44d26b1268431da8fcae143ee1502f645092eb623468d26b52daae"
+        "sha256": "c9240868575f2452fc8a94b932f7c9de802bccdfffce3b5d38bbf13b1bdb8de9"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/json-value.test.ts",
+        "sha256": "8db530329f00a328e8c2afdafc658e4ca0caf6e85cca972e21214ecc82333c01"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/json-value.ts",
+        "sha256": "72121bc27f3f67d4afb102ee24676e8443faf935d16334e5c4591978157c95c5"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/messages.test.ts",
+        "sha256": "45521d1ccf419ce1ba69d19df1144d3aa585b23caf8580b03e0a7e73bfe8d1ce"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/messages.ts",
+        "sha256": "e93f03d2950d3af83d4a264c86004fa3de4f60014e6347191fc5db7ab6dc8d5b"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/model-list.ts",
+        "sha256": "d86aca6ce4fc0357d772ef97431ffe5772b69666bb6a4baf4baaba3c2ded7603"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/object-output.test.ts",
+        "sha256": "36d7516acfc6257945fe56e69503dbf6e7046d927c97aea5cad1a4a990126a1e"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/probe.ts",
+        "sha256": "836613412df763f11b085324c0ee5f6bd6d42036d955816ac03e3e1502e7a537"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/run.ts",
+        "sha256": "a8758c617ac6f396b5f67f5c218facc5aacc8eb78aa5058ce4ea2bc02015c93e"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/steps.test.ts",
+        "sha256": "2889c8f4d7c0c8b185f1f78e7413e80eb1498e2195d704c1d6848e572e4b4d0d"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/steps.ts",
+        "sha256": "fb84a22f0f9a2ad5da76fa1dafc82834a33f7edd89e55c3267287f18443e611d"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/stream.test.ts",
+        "sha256": "0cdadb0e0be805f7fff08e3fce9c7717ddd745e4744dbe4146e40355685a1d44"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/streaming.ts",
+        "sha256": "93ebbceb002ea4e31f6018107c6cf2cbae5458331129c780ab7085e377f314c1"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/structured.test.ts",
+        "sha256": "1966ed7e1a24e654d5be2fb79cfe60409987a9032b3579b715b01764cdcf80f6"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/structured.ts",
+        "sha256": "229f037081e817c9ed196ce2a2c131771cdc9170d52faf4590c157a61bcb3aa3"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/testing.ts",
+        "sha256": "d260eab9a75888a48a5fccc810e3ccf20a45a260cbd825f95458721d4f5a3e9f"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+        "sha256": "cb9114eedeed8ff13dcba343b9d2c3797af7764c6a3d80d7cbd8e98fa2033fdf"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/tools.test.ts",
+        "sha256": "1bab1ac6388023cf307144c67f555b2f18a5473d8516bb23cec9018510ef8c05"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/tools.ts",
+        "sha256": "d7350b4e02792727d5116bdaf1c49f87dacf3067eda7186324081cc1c40d6818"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/transport.test.ts",
+        "sha256": "8e407c5781c5f95c18dc37b77cfe53dfa3a9810d1a812fa51be1e39528b05c87"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/transport.ts",
+        "sha256": "518981ffeed95f093804ed25566c9249259bbbacaad2c53cdc7838219d6b64c4"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/usage.test.ts",
+        "sha256": "6f1074f97caed4a74554db8eed902788690428b05255d8cf458b0f3d62bfe790"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/usage.ts",
+        "sha256": "69ee8df7d3c442fe8145b180163d46d10419e2ae9349a618c43a3e506bda9fe9"
       },
       {
         "path": "packages/adapters/model-router-providers/tsconfig.json",
@@ -13941,7 +14061,7 @@
       },
       {
         "path": "packages/contexts/providers/application/ports/index.ts",
-        "sha256": "8af9028e6c62a645075b983024c5455fc9d19701ac7f0be53d00a7fc5cf81cb7"
+        "sha256": "614b8d3f7c762ab4f24477f427c6dbe7013e003f549b95031ebab75e89a7a4b3"
       },
       {
         "path": "packages/contexts/providers/application/ports/model-router.ts",
@@ -13997,11 +14117,11 @@
       },
       {
         "path": "packages/contexts/providers/application/run-model-generation.test.ts",
-        "sha256": "ffb88f07274a72f14ee6a77ba02f2fac2ac96c288d490cc525204644e8428f7f"
+        "sha256": "e43a0ba170321105852cea3c66c01532ab88a3b67f35f90400817ca0501d7ab7"
       },
       {
         "path": "packages/contexts/providers/application/run-model-generation.ts",
-        "sha256": "67d5ac40d5c59b3b690950ff92af6902a74fa292d429fafc2baa2402504f534c"
+        "sha256": "26859cc08be2b37c4ffda1ce910c5228ac9cd30e89202e5fbaf60dbe491d7791"
       },
       {
         "path": "packages/contexts/providers/application/runtime-settings.ts",
@@ -14065,19 +14185,19 @@
       },
       {
         "path": "packages/contexts/providers/domain/errors.test.ts",
-        "sha256": "b26ce0923ae714a1a528c0546a0ed758e1c21855345bcd113a81f0b98cdadd9d"
+        "sha256": "bd65cb1c152cc57e5a5381d2d81cff5954b0166530ea45f8b6620afa48cb5e9d"
       },
       {
         "path": "packages/contexts/providers/domain/errors.ts",
-        "sha256": "3c625e855d18dbc3c69fdd213833f2f5535dd3c324342d5f5d73a1a4641ac9ac"
+        "sha256": "2f4c6c8d0faaf02f758bde05e697ba5a3b1404687ebeba63b331f9fa9d78e4f6"
       },
       {
         "path": "packages/contexts/providers/domain/generation.test.ts",
-        "sha256": "f3f9221af3fa5657ede1f663fa1fd627f24aaadf011ac0ddc3f273f9c0c553fc"
+        "sha256": "264da89885c80f29539dbea54384ea02114e5e60e49fcbdebadd9181ffdd15d1"
       },
       {
         "path": "packages/contexts/providers/domain/generation.ts",
-        "sha256": "1aeb1233260444529343d0757ff2f40c289024e06c5ed6a6667f07797e575df7"
+        "sha256": "c53510ae5208bb86c567ccf90c54ae45987130ea0b73c2ff97f71a1befe59803"
       },
       {
         "path": "packages/contexts/providers/domain/health.test.ts",
@@ -14093,7 +14213,7 @@
       },
       {
         "path": "packages/contexts/providers/domain/index.ts",
-        "sha256": "f378f7f2666294f55cfdd9f5a2f84fe8d63d581493bb1fb5515b4d8cfd9f17e0"
+        "sha256": "d3edfd64e3358106858acd4d1c15fa4fa651d585017f12c61df843b41add6bfa"
       },
       {
         "path": "packages/contexts/providers/domain/manifest.test.ts",
@@ -14188,12 +14308,28 @@
         "sha256": "347516094fb9ed0d40ca70d79d35cdc1356cfc011affa40c920ace81d37467b1"
       },
       {
+        "path": "packages/contexts/providers/domain/structured-output.test.ts",
+        "sha256": "df5cf78ae059cffffdd125e2a94c13df5ab3d6ae592b6c4f455a3eeb05b187a6"
+      },
+      {
+        "path": "packages/contexts/providers/domain/structured-output.ts",
+        "sha256": "5179e246992d9d6c25803b58bc3b31799c8c263826abe59c7a321f4108db320f"
+      },
+      {
         "path": "packages/contexts/providers/domain/token-usage.test.ts",
         "sha256": "d4f07894c0047c8236a0e19c163a823f86ff381ab8b25a3bacd211b20893e3cb"
       },
       {
         "path": "packages/contexts/providers/domain/token-usage.ts",
         "sha256": "c375896c52e980037439805cbbf92edc13322d93f7e662f4bb63a37c0c3a61e4"
+      },
+      {
+        "path": "packages/contexts/providers/domain/tool-input-repair.test.ts",
+        "sha256": "7cc5da4d71b1fd198d7e7df34ab0668ac041edd1f917a64e851f10f44dbe63c1"
+      },
+      {
+        "path": "packages/contexts/providers/domain/tool-input-repair.ts",
+        "sha256": "c0c2c7928be6668406527ae5bda560539c7fdee79630c69bc00dea15d4a0ae58"
       },
       {
         "path": "packages/contexts/providers/package.json",
@@ -17077,7 +17213,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "7bc836b724d0d20933050605ebdd3fad81e99f3284ac9d16dc23ea6a6108453d"
+        "sha256": "e197323cf6272d481e4a734b593ba00c0c2935b69dc06b37e96ba90bb8dddde1"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -17221,7 +17357,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "a816f7a4965922f767aef2532ca909ae4d886022ce2946a44abe423f9f0832bd"
+        "sha256": "2eb1e51a5a5ab8ea6b0b069639e579abf412d7d8ba05bb7d9f8457367f04c394"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -17253,7 +17389,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "754725f288cfa147d11aa314420379426c5f1c18684ddbbb286fb2a568990aab"
+        "sha256": "be05d6bd35fdee2dad15dc959e93a7bbf3f8f0f5dbecfb8f6a4d896f33b3a03c"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -17269,11 +17405,11 @@
       },
       {
         "path": "scripts/arch/max-file-lines.mjs",
-        "sha256": "d6e8dda7ab414dfa4fffb97fdb3aa3e17fba1f91cea285923415aa0da20ddc4d"
+        "sha256": "9bd3c6505e5db54fdf6ea1bbd99dadf102f36f2e572781c0f80696b5fd1926c9"
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "c09ef9216742ce709fa2a5798eebc22ba7898bcf84808cf96a93cb329af8d5d0"
+        "sha256": "2ead472aac40a7e45f0cec859ee6aec1b18a7022ced89a37da300aeaf9ca334c"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -17293,19 +17429,19 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "9e849ad63d0b269e8816cfaba16203d699d7f00820998ae6e8f3037072839cdf"
+        "sha256": "e8d3af028347f73b4a25f62e51bfdf31b021785ae0203b0cd98eb00f5cda58cc"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "1e73565ff66cc992f95286d9954375811ff4c16fb8d52f1abd44afdbbfb793d0"
+        "sha256": "ba0b35d472a441c43a3bf1d622f8312e9c2ef004a55c13d92607db8eaf2921cf"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "9ba8beb8b74da65e05d2390bdad7552e00e711e28d29d3b51fc50a6ca39342a1"
+        "sha256": "d1024dd3ad479451929036811803f5ab2a947eb0005b542dfed8cec0d68368fe"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "6d47f2f0518ce172d6def311d875d60b8be639d289d697c03728b34617414232"
+        "sha256": "1055c879290239928d4a107111f2d1e2a442233263a5be27bef9f592ffa6bfae"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -17533,7 +17669,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "aa27d080ef3ce3ab6436e5502beb29301af4f4aff9eb72ba0a39db948e0745b5"
+        "sha256": "f119be32b7040aa800a471a9b049e13a5a85b42bea960655f9fb351dfc451a76"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -17641,7 +17777,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "d045a85d955ad2f23b0add656c0edfb9f3dda98253ff4beeed2c00a0e455daa2"
+        "sha256": "45b85672fc06732507a1522701178475069c5388e10a8a7ca33ebab417809b1b"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -20949,7 +21085,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 91
+              "line": 99
             },
             {
               "from": "scripts/audit-licenses.test.mjs",
@@ -22312,7 +22448,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "412e3973b09a0c5e680a0af6ef9f602fadc8f24fae82a51895f368cd28c7895b",
+      "evidenceSha256": "f46413b56e8a40cbbb049175041e211c0ecabf177d980e99e1996e7d8a5702b8",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -22918,7 +23054,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 37
+              "line": 41
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -23085,7 +23221,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "4c73311593b378117cfca63f5460e3abd3c833003bb9283efb48d4d699d7f194",
+      "evidenceSha256": "c4df53cf3ac16fa45e6802189150ad9702889b15a8c794e670082fed7408660a",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -34799,7 +34935,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 855
+              "line": 895
             }
           ],
           "reversePaths": [
@@ -34824,7 +34960,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "8b4044d63b2da4ad8494ddf10017cce3406d0725c2a8c2a9598598525f08f234",
+      "evidenceSha256": "06d12b3674eb0b783dee72d314485c4c78ad79263e9257f32a603c1d30dbccc1",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -35955,7 +36091,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 854
+              "line": 894
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -36180,7 +36316,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9365f36b301f39155baaa6703a66631be9813cb78c9bc2ccc8080f318d910ed3",
+      "evidenceSha256": "b0621382d20628ab8db4427fad2afd2aef98be3d1a76f7c0c0cd70b2ae2d2c3e",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -42469,16 +42605,6 @@
               "kind": "generator-owned-output"
             },
             {
-              "from": "packages/adapters/model-router-providers/src/adapter.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/adapters/model-router-providers/src/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/adapters/model-router-providers/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -42494,14 +42620,6 @@
               "packages/adapters/model-router-providers/README.md"
             ],
             [
-              "packages/adapters/model-router-providers/src/adapter.ts",
-              "packages/adapters/model-router-providers/src/adapter.ts"
-            ],
-            [
-              "packages/adapters/model-router-providers/src/index.ts",
-              "packages/adapters/model-router-providers/src/index.ts"
-            ],
-            [
               "packages/adapters/model-router-providers/tsconfig.json",
               "packages/adapters/model-router-providers/tsconfig.json"
             ]
@@ -42509,8 +42627,6 @@
           "roots": [
             "packages/adapters/model-router-providers/README.md",
             "packages/adapters/model-router-providers/package.json",
-            "packages/adapters/model-router-providers/src/adapter.ts",
-            "packages/adapters/model-router-providers/src/index.ts",
             "packages/adapters/model-router-providers/tsconfig.json"
           ]
         },
@@ -42547,6 +42663,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/adapters/model-router-providers/package.json",
               "kind": "workspace-script",
@@ -42557,6 +42678,12 @@
               "from": "packages/adapters/model-router-providers/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/adapters/model-router-providers/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -42610,19 +42737,219 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/adapters/model-router-providers/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/call.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/clients.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/failure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/generation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/json-value.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/messages.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/object-output.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/steps.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/stream.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/structured.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tools.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/transport.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 250
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 702
+            },
+            {
+              "from": "scripts/arch/v1-project-graph.test.mjs",
+              "kind": "reference",
+              "line": 87
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 677
+            },
+            {
+              "from": "scripts/workspace-reachability.test.mjs",
+              "kind": "reference",
+              "line": 503
             }
           ],
           "reversePaths": [
             [
+              "packages/adapters/model-router-providers/package.json",
+              "packages/adapters/model-router-providers/package.json"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "packages/adapters/model-router-providers/src/adapter.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/call.test.ts",
+              "packages/adapters/model-router-providers/src/call.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/clients.test.ts",
+              "packages/adapters/model-router-providers/src/clients.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/failure.test.ts",
+              "packages/adapters/model-router-providers/src/failure.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/generation.test.ts",
+              "packages/adapters/model-router-providers/src/generation.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/json-value.test.ts",
+              "packages/adapters/model-router-providers/src/json-value.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/messages.test.ts",
+              "packages/adapters/model-router-providers/src/messages.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/object-output.test.ts",
+              "packages/adapters/model-router-providers/src/object-output.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/steps.test.ts",
+              "packages/adapters/model-router-providers/src/steps.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/stream.test.ts",
+              "packages/adapters/model-router-providers/src/stream.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/structured.test.ts",
+              "packages/adapters/model-router-providers/src/structured.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+              "packages/adapters/model-router-providers/src/tool-loop.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tools.test.ts",
+              "packages/adapters/model-router-providers/src/tools.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/transport.test.ts",
+              "packages/adapters/model-router-providers/src/transport.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/usage.test.ts",
+              "packages/adapters/model-router-providers/src/usage.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
+            ],
+            [
+              "scripts/arch/v1-project-graph.test.mjs",
+              "scripts/arch/v1-project-graph.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ],
+            [
+              "scripts/workspace-reachability.test.mjs",
+              "scripts/workspace-reachability.test.mjs"
             ]
           ],
           "roots": [
-            "scripts/arch/arch-boundaries.test.mjs"
+            "packages/adapters/model-router-providers/package.json",
+            "packages/adapters/model-router-providers/src/adapter.test.ts",
+            "packages/adapters/model-router-providers/src/call.test.ts",
+            "packages/adapters/model-router-providers/src/clients.test.ts",
+            "packages/adapters/model-router-providers/src/failure.test.ts",
+            "packages/adapters/model-router-providers/src/generation.test.ts",
+            "packages/adapters/model-router-providers/src/json-value.test.ts",
+            "packages/adapters/model-router-providers/src/messages.test.ts",
+            "packages/adapters/model-router-providers/src/object-output.test.ts",
+            "packages/adapters/model-router-providers/src/steps.test.ts",
+            "packages/adapters/model-router-providers/src/stream.test.ts",
+            "packages/adapters/model-router-providers/src/structured.test.ts",
+            "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+            "packages/adapters/model-router-providers/src/tools.test.ts",
+            "packages/adapters/model-router-providers/src/transport.test.ts",
+            "packages/adapters/model-router-providers/src/usage.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/test-case-census.test.mjs",
+            "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/v1-ledger.test.mjs",
+            "scripts/workspace-reachability.test.mjs"
           ]
         }
       },
@@ -42681,8 +43008,8 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "e36e70820c604b86245d465fefb3a37149935e914edcf98e6dc8c98c82ae2cfd",
-      "manifestSha256": "58a0a5421915cee83524764f9369c1f40ec0d7195318d0b257f9d37b38b18a8f",
+      "evidenceSha256": "0b90ef3d142414581f4d9ebd73596e9c81601275c61e4d7e57aa80358e9b8bbc",
+      "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
         "reachable": false,
@@ -44840,7 +45167,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 317
+              "line": 346
             }
           ],
           "reversePaths": [
@@ -44919,7 +45246,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "1f1e0b111263b745865e5e1db89c5f47f1f593afde77237bf1f2a27bcac300bb",
+      "evidenceSha256": "e5457b239b424919c49007e0d30854df78fb2723e528b7b9c494bce5ce0cd512",
       "manifestSha256": "aac45cec450579897470f8a1710290c96f5cd6139631eb189394fee7c9b41c8c",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -46164,7 +46491,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 571
+              "line": 589
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -46417,7 +46744,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "1c48fa680768c0cb36b66e4308c1045486aeb77c4e9cd6cce0469a53f2e22f28",
+      "evidenceSha256": "7bb50c223d2714273a6467d82f423a3bc5cee8fbf55eb12122d6e0330a73d278",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -46835,7 +47162,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 635
+              "line": 653
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -47016,7 +47343,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "188d5bc909fa38533937e579b399518fa926b9068cd9802c67c6e74325614375",
+      "evidenceSha256": "39294622079f7003e7926db435d1db7f6501baa87d0f0b3af9c200a3d5810770",
       "manifestSha256": "f730d3dae4a01c286db678b29bc1dd47a16621613359455e0370048e6826b762",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -47352,12 +47679,12 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 159
+              "line": 188
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 609
+              "line": 634
             }
           ],
           "reversePaths": [
@@ -47441,7 +47768,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "05f89929aa6aa77d2513a2f8cd447d554cbecb6d5a812e3735e4e5f171964f9e",
+      "evidenceSha256": "e54b7eb2ab790d4f57e4a92222233281946a91853ca5567c61b32457c8deccba",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -47951,7 +48278,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 458
+              "line": 476
             }
           ],
           "reversePaths": [
@@ -48196,7 +48523,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "2d85221b6027d0b06f464bccd5c0364a60e5d1c733c68b4110297f7b8242a468",
+      "evidenceSha256": "0dede029849916e8aed82ec21f94fbcaf9fffff7d4c74534cfbe55e22cdbfab8",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -48568,7 +48895,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 312
+              "line": 320
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -48722,7 +49049,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "c33559ad39aae9bcab83aeb74775e91cdf28b396e621c1b9ec32bfa3d0baf178",
+      "evidenceSha256": "0e3aea98b36757b3b74b684b0c91f62767c8960d46b2f079e10a0a66b1eeb37f",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -50006,7 +50333,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 661
+              "line": 679
             }
           ],
           "reversePaths": [
@@ -50235,7 +50562,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "088a77ad715e2ccbd0f9f188751225832549ffffb6d9410460c38f88a66def8f",
+      "evidenceSha256": "c0d98797f37a5bdca381b7b83aa998b2bdf44b5115a2e8772f207627cd5469b9",
       "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -51352,12 +51679,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 292
+              "line": 300
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 262
+              "line": 291
             }
           ],
           "reversePaths": [
@@ -52149,7 +52476,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "075e1c49cc6b791702f2d8fdf997817fb711befc52e37cb2a32fbab87edea462",
+      "evidenceSha256": "70aca89c288cec3145f32c82e799deda638fa872bc4d81e14e267f8308766468",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -52562,7 +52889,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 200
+              "line": 208
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -52748,7 +53075,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "23e3295c5839c7843a52b7395dbd961da3cc38fa8ca8098bd0a2a5074f852134",
+      "evidenceSha256": "cd15978b8e4343e8057563ac8edd8f0558bfd1db46eeb53ee30dc508236905fe",
       "manifestSha256": "8377a2b32de602e485f4f42df4340e0c89095648a1f96fc4a3a72df9a003fed9",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -53262,17 +53589,17 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 201
+              "line": 209
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 428
+              "line": 446
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 311
+              "line": 340
             }
           ],
           "reversePaths": [
@@ -53540,7 +53867,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "1cf000159ce10420cc12f71fa7a0ac079c0a2b28e48983a2de8ab9464f09e162",
+      "evidenceSha256": "bb5bfc478e17bb1bd0c8d6c11804cca876c1a0d8e70d6c5da684f0f341105f9c",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -53968,7 +54295,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 529
+              "line": 547
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54159,7 +54486,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "f9f4ddb4ba4ed8e7c44a490940467597583fa751adb7a3d768fce6b8feb014a1",
+      "evidenceSha256": "74a33ba49ab187081d79ad4a3faa41258fbec19ca0497e3c2f89d82d879790b5",
       "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -54541,7 +54868,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 496
+              "line": 514
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54705,7 +55032,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "58ba1490065be46bdd2c13902c7e03f1362ba6802fe5c76a1bd29776529d7a6b",
+      "evidenceSha256": "0ae3ce55d2b93bd97295c9ad36634085c792efc95201fe18335b1c073b69f739",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -55124,10 +55451,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/adapters/model-router-providers/src/adapter.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/conversations/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -55149,10 +55472,6 @@
           ],
           "reversePaths": [
             [
-              "packages/adapters/model-router-providers/src/adapter.ts",
-              "packages/adapters/model-router-providers/src/adapter.ts"
-            ],
-            [
               "packages/contexts/conversations/application/index.ts",
               "packages/contexts/conversations/application/index.ts"
             ],
@@ -55170,7 +55489,6 @@
             ]
           ],
           "roots": [
-            "packages/adapters/model-router-providers/src/adapter.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/providers/README.md",
             "packages/contexts/providers/package.json",
@@ -55276,6 +55594,96 @@
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
+              "file": "packages/adapters/model-router-providers/src/adapter.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 35,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/call.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 9,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/clients.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 27,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/failure.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 21,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/messages.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 31,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/model-list.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 13,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/probe.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 24,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/run.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 16,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/steps.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 17,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/streaming.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 21,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/structured.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 22,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/testing.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 17,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/tools.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 37,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/transport.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 16,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/usage.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 41,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
               "file": "packages/contexts/agents/application/dependencies.ts",
               "from": "packages/contexts/agents",
               "line": 57,
@@ -55346,6 +55754,66 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/call.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/clients.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/failure.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/messages.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/model-list.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/probe.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/run.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/steps.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/streaming.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/structured.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/testing.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/tools.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/transport.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/usage.ts"
+            ],
+            [
               "packages/contexts/agents",
               "packages/contexts/agents/application/dependencies.ts"
             ],
@@ -55388,6 +55856,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/adapters/model-router-providers",
             "packages/contexts/agents",
             "packages/contexts/cost-monitoring",
             "packages/contexts/memory",
@@ -55397,6 +55866,46 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "kind": "reference",
+              "line": 5
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/generation.test.ts",
+              "kind": "reference",
+              "line": 13
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/messages.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/steps.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/stream.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/structured.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+              "kind": "reference",
+              "line": 7
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tools.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "workspace-owned-file",
@@ -55518,7 +56027,17 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/providers/domain/structured-output.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/providers/domain/token-usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/tool-input-repair.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -55530,17 +56049,17 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 530
+              "line": 532
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 168
+              "line": 176
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 343
+              "line": 358
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -55549,6 +56068,38 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "packages/adapters/model-router-providers/src/adapter.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/generation.test.ts",
+              "packages/adapters/model-router-providers/src/generation.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/messages.test.ts",
+              "packages/adapters/model-router-providers/src/messages.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/steps.test.ts",
+              "packages/adapters/model-router-providers/src/steps.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/stream.test.ts",
+              "packages/adapters/model-router-providers/src/stream.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/structured.test.ts",
+              "packages/adapters/model-router-providers/src/structured.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+              "packages/adapters/model-router-providers/src/tool-loop.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tools.test.ts",
+              "packages/adapters/model-router-providers/src/tools.test.ts"
+            ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
@@ -55646,8 +56197,16 @@
               "packages/contexts/providers/domain/route.test.ts"
             ],
             [
+              "packages/contexts/providers/domain/structured-output.test.ts",
+              "packages/contexts/providers/domain/structured-output.test.ts"
+            ],
+            [
               "packages/contexts/providers/domain/token-usage.test.ts",
               "packages/contexts/providers/domain/token-usage.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/tool-input-repair.test.ts",
+              "packages/contexts/providers/domain/tool-input-repair.test.ts"
             ],
             [
               "packages/contexts/providers/package.json",
@@ -55671,6 +56230,14 @@
             ]
           ],
           "roots": [
+            "packages/adapters/model-router-providers/src/adapter.test.ts",
+            "packages/adapters/model-router-providers/src/generation.test.ts",
+            "packages/adapters/model-router-providers/src/messages.test.ts",
+            "packages/adapters/model-router-providers/src/steps.test.ts",
+            "packages/adapters/model-router-providers/src/stream.test.ts",
+            "packages/adapters/model-router-providers/src/structured.test.ts",
+            "packages/adapters/model-router-providers/src/tool-loop.test.ts",
+            "packages/adapters/model-router-providers/src/tools.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/check-provider-health.test.ts",
             "packages/contexts/providers/application/describe-providers.test.ts",
@@ -55695,7 +56262,9 @@
             "packages/contexts/providers/domain/rate-card-import.test.ts",
             "packages/contexts/providers/domain/rate.test.ts",
             "packages/contexts/providers/domain/route.test.ts",
+            "packages/contexts/providers/domain/structured-output.test.ts",
             "packages/contexts/providers/domain/token-usage.test.ts",
+            "packages/contexts/providers/domain/tool-input-repair.test.ts",
             "packages/contexts/providers/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
@@ -56015,7 +56584,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "8618aea5441c4d9649e1c589b724046ee6bcd5964b40cc8befce752819da7290",
+      "evidenceSha256": "d82a2a7af67c9ee627596e8c7f2e037479973f45810a542609eed9411dd3582e",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -56857,12 +57426,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 293
+              "line": 301
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 263
+              "line": 292
             }
           ],
           "reversePaths": [
@@ -57330,7 +57899,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1c674121ee1f0d44f377f0d09465fccf3a0b0fa237381a9c3f3e11382f2262c4",
+      "evidenceSha256": "f63e73c0bacddc8f28ab2b05c9e59c55309df25b502256487a1dbcb3fded949b",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -57820,7 +58389,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 367
+              "line": 382
             }
           ],
           "reversePaths": [
@@ -58062,7 +58631,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "2b66543b95707dafde9f15009ab607ca8e02db7742e4fc7da1bd8b4204b47c61",
+      "evidenceSha256": "a7ea919dd4f0728725dbe3eaf6fcbb348cbd91f3f79c74194120947c6b9221a6",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -59447,12 +60016,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 294
+              "line": 302
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 256
+              "line": 285
             }
           ],
           "reversePaths": [
@@ -60187,7 +60756,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "4ed81d4acc382164cc63c61c53905e7c7b86896bc9200694286cf08a90acfbb9",
+      "evidenceSha256": "64ecd3ee2e88018d3a90c1c7813d82467c8408aa12df3fb44f28d62fa972e60f",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -60565,7 +61134,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 562,
+              "line": 594,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -60713,22 +61282,22 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 59
+              "line": 64
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 600
+              "line": 618
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 285
+              "line": 314
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 735
+              "line": 756
             }
           ],
           "reversePaths": [
@@ -60970,7 +61539,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "21d28fb771245999859cacd36134cc3c7f6efb29d4d097ae1ef221379b71432d",
+      "evidenceSha256": "9d9168bb16b13aa8f6b55a2edf18b626e712d0142c2bdd5a11fda8169758b20b",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -65920,6 +66489,18 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/providers/application/ports/index.ts",
+              "from": "packages/contexts/providers",
+              "line": 57,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ports/index.ts",
+              "from": "packages/contexts/providers",
+              "line": 58,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/providers/application/ports/model-router.ts",
               "from": "packages/contexts/providers",
               "line": 48,
@@ -67080,7 +67661,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 442,
+              "line": 474,
               "specifier": "@platos/kernel"
             }
           ],
@@ -68540,6 +69121,10 @@
             [
               "packages/contexts/providers",
               "packages/contexts/providers/application/open-model-route.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ports/index.ts"
             ],
             [
               "packages/contexts/providers",
@@ -70129,12 +70714,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 79
+              "line": 38
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 258
+              "line": 264
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -71872,7 +72457,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "4b96794c48ad19a0fac0ace86c8f60a71184c02c908174370d2838ed36745148",
+      "evidenceSha256": "08450a717839382698027a7ed519010ce78e760649e493416e38fcad3612da6b",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
