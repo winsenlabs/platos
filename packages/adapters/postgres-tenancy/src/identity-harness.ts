@@ -148,8 +148,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
     async seedEndUser(input): Promise<string> {
       const id = base.freshId("0005");
       await client.$executeRawUnsafe(
-        'INSERT INTO "EndUser" ("id","organizationId","displayName","disabledAt","createdAt","updatedAt")' +
-          " VALUES ($1::uuid,$2::uuid,$3,$4::timestamp,$5::timestamp,$5::timestamp)",
+        `INSERT INTO "EndUser" ("id","organizationId","displayName","disabledAt","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,$3,$4::timestamp,$5::timestamp,$5::timestamp)`,
         id,
         input.organizationId,
         input.displayName,
@@ -158,9 +157,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
       );
       for (const identity of input.identities) {
         await client.$executeRawUnsafe(
-          'INSERT INTO "EndUserIdentity"' +
-            ' ("id","endUserId","organizationId","issuer","channel","subject","createdAt","updatedAt")' +
-            " VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7::timestamp,$7::timestamp)",
+          `INSERT INTO "EndUserIdentity" ("id","endUserId","organizationId","issuer","channel","subject","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7::timestamp,$7::timestamp)`,
           base.freshId("0009"),
           id,
           input.organizationId,
@@ -176,11 +173,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
     async seedOAuthClient(organizationId: string, userId: string): Promise<string> {
       const id = base.freshId("0006");
       await client.$executeRawUnsafe(
-        'INSERT INTO "OAuthClient"' +
-          ' ("id","organizationId","clientId","clientName","redirectUris","tokenEndpointAuthMethod",' +
-          ' "grantTypes","scopes","registeredByUserId","createdAt")' +
-          " VALUES ($1::uuid,$2::uuid,$3,'Conformance client',ARRAY['https://example.test/cb']," +
-          " 'client_secret_basic',ARRAY['authorization_code'],ARRAY['read'],$4::uuid,$5::timestamp)",
+        `INSERT INTO "OAuthClient" ("id","organizationId","clientId","clientName","redirectUris","tokenEndpointAuthMethod", "grantTypes","scopes","registeredByUserId","createdAt") VALUES ($1::uuid,$2::uuid,$3,'Conformance client',ARRAY['https://example.test/cb'], 'client_secret_basic',ARRAY['authorization_code'],ARRAY['read'],$4::uuid,$5::timestamp)`,
         id,
         organizationId,
         `client-${id}`,
@@ -192,11 +185,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
 
     async seedAuthorizationCode(input): Promise<void> {
       await client.$executeRawUnsafe(
-        'INSERT INTO "OAuthAuthorizationCode"' +
-          ' ("id","scopeKind","organizationId","projectId","environmentId","clientId","userId",' +
-          ' "codeHash","codeChallenge","codeChallengeMethod","redirectUri","scopes","expiresAt","createdAt")' +
-          " VALUES ($1::uuid,$2::\"AuthorizationScopeKind\",$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid," +
-          " $8,'challenge','S256','https://example.test/cb',ARRAY['read'],$9::timestamp,$10::timestamp)",
+        `INSERT INTO "OAuthAuthorizationCode" ("id","scopeKind","organizationId","projectId","environmentId","clientId","userId", "codeHash","codeChallenge","codeChallengeMethod","redirectUri","scopes","expiresAt","createdAt") VALUES ($1::uuid,$2::"AuthorizationScopeKind",$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::uuid, $8,'challenge','S256','https://example.test/cb',ARRAY['read'],$9::timestamp,$10::timestamp)`,
         base.freshId("0007"),
         input.scopeKind,
         input.organizationId,
@@ -213,9 +202,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
     async seedMcpToken(input): Promise<string> {
       const id = base.freshId("0008");
       await client.$executeRawUnsafe(
-        'INSERT INTO "McpToken"' +
-          ' ("id","environmentId","mintedByUserId","name","tokenHash","permissions","tier","createdAt")' +
-          " VALUES ($1::uuid,$2::uuid,$3::uuid,'conformance',$4,$5::text[],$6,$7::timestamp)",
+        `INSERT INTO "McpToken" ("id","environmentId","mintedByUserId","name","tokenHash","permissions","tier","createdAt") VALUES ($1::uuid,$2::uuid,$3::uuid,'conformance',$4,$5::text[],$6,$7::timestamp)`,
         id,
         input.environmentId,
         input.mintedByUserId,

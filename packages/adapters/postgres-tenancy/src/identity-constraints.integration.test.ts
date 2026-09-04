@@ -68,8 +68,7 @@ describe("the digest CHECKs (five columns, migrations only)", () => {
     ).rejects.toThrow(/64 lowercase hexadecimal/u);
     await expect(
       harness.client.$executeRawUnsafe(
-        'INSERT INTO "OperatorSession" ("id","tokenHash","tier","userId","expiresAt","createdAt")' +
-          " VALUES ($1::uuid,$2,'OPERATOR',$3::uuid,$4::timestamp,$5::timestamp)",
+        `INSERT INTO "OperatorSession" ("id","tokenHash","tier","userId","expiresAt","createdAt") VALUES ($1::uuid,$2,'OPERATOR',$3::uuid,$4::timestamp,$5::timestamp)`,
         harness.freshId("0201"),
         "session-token-1",
         userId,
@@ -101,8 +100,7 @@ describe("the email normalisation CHECKs (migrations only)", () => {
   test("User_email_normalized_check refuses a mixed-case address", async () => {
     await expect(
       harness.client.$executeRawUnsafe(
-        'INSERT INTO "User" ("id","email","createdAt","updatedAt")' +
-          " VALUES ($1::uuid,$2,$3::timestamp,$3::timestamp)",
+        `INSERT INTO "User" ("id","email","createdAt","updatedAt") VALUES ($1::uuid,$2,$3::timestamp,$3::timestamp)`,
         harness.freshId("0202"),
         "Mixed@Example.Test",
         AT,
@@ -131,8 +129,7 @@ describe("AccessKey_one_active_per_environment — a PARTIAL unique index", () =
   test("two active keys for one environment are impossible", async () => {
     const first = harness.freshId("0205");
     await harness.client.$executeRawUnsafe(
-      'INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt")' +
-        " VALUES ($1::uuid,$2::uuid,'platos_live_aaa',$3,$4::timestamp,$4::timestamp)",
+      `INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,'platos_live_aaa',$3,$4::timestamp,$4::timestamp)`,
       first,
       tenant.environmentId,
       digest("11"),
@@ -140,8 +137,7 @@ describe("AccessKey_one_active_per_environment — a PARTIAL unique index", () =
     );
     await expect(
       harness.client.$executeRawUnsafe(
-        'INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt")' +
-          " VALUES ($1::uuid,$2::uuid,'platos_live_bbb',$3,$4::timestamp,$4::timestamp)",
+        `INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,'platos_live_bbb',$3,$4::timestamp,$4::timestamp)`,
         harness.freshId("0206"),
         tenant.environmentId,
         digest("22"),
@@ -160,8 +156,7 @@ describe("AccessKey_one_active_per_environment — a PARTIAL unique index", () =
     // which is the case that proves the extra statement is load-bearing.
     const environment = (await harness.seedTenant("rotation-index")).environmentId;
     await harness.client.$executeRawUnsafe(
-      'INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt")' +
-        " VALUES ($1::uuid,$2::uuid,'platos_live_aaa',$3,$4::timestamp,$4::timestamp)",
+      `INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,'platos_live_aaa',$3,$4::timestamp,$4::timestamp)`,
       harness.freshId("0207"),
       environment,
       digest("33"),
@@ -169,8 +164,7 @@ describe("AccessKey_one_active_per_environment — a PARTIAL unique index", () =
     );
     await expect(
       harness.client.$executeRawUnsafe(
-        'INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","validUntil","createdAt","updatedAt")' +
-          " VALUES ($1::uuid,$2::uuid,'platos_live_bbb',$3,$4::timestamp,$5::timestamp,$5::timestamp)",
+        `INSERT INTO "AccessKey" ("id","environmentId","keyPrefix","keyHash","validUntil","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,'platos_live_bbb',$3,$4::timestamp,$5::timestamp,$5::timestamp)`,
         harness.freshId("0208"),
         environment,
         digest("44"),
@@ -195,8 +189,7 @@ describe("OperatorMfaTotp_active_pending_shape_check", () => {
     ).rejects.toThrow(/fully unenrolled or has both/u);
     await expect(
       harness.client.$executeRawUnsafe(
-        'INSERT INTO "OperatorMfaTotp" ("id","userId","enabledAt","createdAt","updatedAt")' +
-          " VALUES ($1::uuid,$2::uuid,$3::timestamp,$3::timestamp,$3::timestamp)",
+        `INSERT INTO "OperatorMfaTotp" ("id","userId","enabledAt","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,$3::timestamp,$3::timestamp,$3::timestamp)`,
         harness.freshId("0209"),
         userId,
         AT,
@@ -287,8 +280,7 @@ describe("the ancestry rules — the largest class the double cannot carry", () 
       tier: "scope",
     });
     await harness.client.$executeRawUnsafe(
-      'UPDATE "OrganizationMembership" SET "deactivatedAt" = $1::timestamp' +
-        ' WHERE "organizationId" = $2::uuid AND "userId" = $3::uuid',
+      `UPDATE "OrganizationMembership" SET "deactivatedAt" = $1::timestamp WHERE "organizationId" = $2::uuid AND "userId" = $3::uuid`,
       LATER,
       scoped.organizationId,
       actor,

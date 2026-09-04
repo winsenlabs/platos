@@ -98,9 +98,13 @@ export function createAccessKeyStore(transactions: TenancyTransactions): AccessK
     }): Promise<{ readonly committed: boolean; readonly generation: number }> {
       requireDigest("AccessKey.keyHash", input.plan.nextKey.keyHash);
       return transactions.atomic(async (client) => {
+        // ONE string literal, not a concatenation. `scripts/arch/sole-writer.mjs`
+        // reads raw SQL off the AST and can attribute a statement only when the
+        // table name is written literally; text assembled at run time is
+        // UNATTRIBUTABLE and no package may make it, which is the correct answer
+        // for a rule about who may write which row.
         const locked = await client.$queryRawUnsafe<LockedEnvironment[]>(
-          'SELECT "id", "accessKeyRevocationVersion" FROM "public"."Environment"' +
-            " WHERE \"id\" = $1::uuid FOR UPDATE",
+          `SELECT "id", "accessKeyRevocationVersion" FROM "public"."Environment" WHERE "id" = $1::uuid FOR UPDATE`,
           input.environmentId,
         );
         const environment = locked[0];
@@ -143,8 +147,7 @@ export function createAccessKeyStore(transactions: TenancyTransactions): AccessK
     async revokeAll(environmentId: EnvironmentId, now: Date): Promise<number> {
       return transactions.atomic(async (client) => {
         await client.$queryRawUnsafe<LockedEnvironment[]>(
-          'SELECT "id", "accessKeyRevocationVersion" FROM "public"."Environment"' +
-            " WHERE \"id\" = $1::uuid FOR UPDATE",
+          `SELECT "id", "accessKeyRevocationVersion" FROM "public"."Environment" WHERE "id" = $1::uuid FOR UPDATE`,
           environmentId,
         );
         // The increment comes BEFORE the revocation, under the same lock. A

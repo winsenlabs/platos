@@ -1204,6 +1204,42 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * not move if that assertion were weakened to counting rollbacks — the same
  * blind spot `run-turn.test.ts` has above — so `mutations.json` beside the
  * package is where that guard is held falsifiable, not here.
+ *
+ * WIN-258 TRANCHE 2 — THE IDENTITY-ACCESS CANONICAL STORE. The SAME package
+ * moves again, because ADR M0.3 §15 puts both contexts' repositories in one
+ * adapter directory:
+ *
+ *   packages/adapters/postgres-tenancy   4 -> 10 files,   56 -> 121 cases
+ *
+ * 371 + 6 = 377 files and 5931 + 65 = 5996 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 25 = 377.
+ *
+ * WHAT THE 65 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   identity-mapping.test.ts                     17  scope assembly, the five
+ *                                                    row refusals and the four
+ *                                                    write guards, all pure
+ *   identity-conformance.integration.test.ts      3  the fake and the adapter
+ *                                                    asked the SAME questions,
+ *                                                    plus two cases proving the
+ *                                                    fake WRONG
+ *   identity-constraints.integration.test.ts     15  rules that live only in the
+ *                                                    migrations
+ *   identity-transaction.integration.test.ts     11  failure injection, and the
+ *                                                    three scope refusals
+ *   identity-statements.integration.test.ts       6  measured statement counts
+ *   identity-differential.integration.test.ts    13  against PlatosAuthService
+ *
+ * 17 + 3 + 15 + 11 + 6 + 13 = 65. Five of the six files are integration suites
+ * and do not run in `pnpm test:v1-packages` for the reason stated above; the
+ * `postgres-tenancy-repository` CI job runs them, and they are counted here
+ * because this census measures the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 3 in the conformance suite. It is
+ * small because it is ONE scenario of forty-six observations compared verbatim
+ * against the in-memory fake, plus the two cases that assert the fake is wrong.
+ * Adding an observation to that scenario strengthens it and moves no count here,
+ * which is why `mutations-identity.json` is where those guards are falsifiable.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1214,7 +1250,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 4, cases: 56 },
+  "packages/adapters/postgres-tenancy": { files: 10, cases: 121 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1336,13 +1372,27 @@ export const EXPECTED = Object.freeze({
  */
 
 /**
- * The number `pnpm test:v1-packages` prints, pinned separately from the sum
- * above so the two can DISAGREE and be caught. They are computed differently —
- * one by this AST, one by vitest — and the refusal list is what keeps them
+ * The sum the pinned rows must reach, pinned separately from the rows above so
+ * the two can DISAGREE and be caught. They are computed differently — one by
+ * this AST, one by the pinned table — and the refusal list is what keeps them
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
+ *
+ * WIN-258 T2 — A CORRECTION TO THIS COMMENT, made rather than left standing.
+ * It used to read "the number `pnpm test:v1-packages` prints", and that has not
+ * been true since tranche 1: the adapter's own `test` script excludes
+ * `*.integration.test.ts` because the typecheck job has no Docker daemon, so
+ * that command executes 25 cases FEWER than this sum at tranche 1 and 90 fewer
+ * here. The census deliberately counts the suites a package SHIPS rather than
+ * the suites one runner happens to execute (see the note beside the
+ * postgres-tenancy row), and this constant is the sum of the rows under that
+ * rule. The `postgres-tenancy-repository` CI job is what makes the excluded 90
+ * run.
+ *
+ * 5931 -> 5996: the 65 identity-access cases of WIN-258 tranche 2, enumerated
+ * file by file in the block beside the postgres-tenancy row.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5931;
+export const EXPECTED_RUNTIME_TOTAL = 5996;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
