@@ -107,8 +107,26 @@ export class TestUnitOfWork implements UnitOfWork {
   }
 }
 
-export class TestOutbox implements OutboxWriter {
-  readonly appended: { name: string; payload: JsonValue; transactionId: string }[] = [];
+/**
+ * The outbox, and it ROLLS BACK WITH THE WRITE IT DESCRIBES.
+ *
+ * A real outbox row is written through the same transaction as the settlement,
+ * so a rollback takes both. A double that kept the append after the store was
+ * restored would let a suite certify a turn that emitted
+ * `conversations.turn.settled` for a settlement that never landed — the exact
+ * split-brain the single transaction exists to prevent — while every assertion
+ * about the store still passed.
+ */
+export class TestOutbox implements OutboxWriter, Snapshottable {
+  appended: { name: string; payload: JsonValue; transactionId: string }[] = [];
+
+  snapshot(): unknown {
+    return [...this.appended];
+  }
+
+  restore(state: unknown): void {
+    this.appended = [...(state as { name: string; payload: JsonValue; transactionId: string }[])];
+  }
 
   async append<Payload extends JsonValue>(
     event: DomainEventDraft<Payload>,

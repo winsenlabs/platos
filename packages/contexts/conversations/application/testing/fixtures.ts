@@ -114,8 +114,8 @@ export function buildConversationsTestContext(
   const store = new SnapshottableStore();
   const clock = new TestClock();
   const ids = new TestIds();
-  const unitOfWork = new TestUnitOfWork([store]);
   const outbox = new TestOutbox();
+  const unitOfWork = new TestUnitOfWork([store, outbox]);
   const logger = new TestLogger();
   const tenancy = new InMemoryTenancy(scope);
   const agents = new InMemoryAgents();

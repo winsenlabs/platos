@@ -238,7 +238,7 @@ describe("runTurn", () => {
     expect(context.providers.generated).toHaveLength(0);
   });
 
-  it("rolls back the settlement when the store refuses inside the transaction", async () => {
+  it("rolls back the settlement AND its event when the store refuses inside the transaction", async () => {
     const context = buildConversationsTestContext();
     context.store.seedThread(threadFixture());
 
@@ -253,5 +253,20 @@ describe("runTurn", () => {
     const refused = await runTurn(context.dependencies, command());
     expect(refused.ok).toBe(false);
     expect(context.unitOfWork.rollbacks).toBe(1);
+
+    // FAILURE INJECTION, AND THE POINT IS THAT NEITHER WRITE SURVIVED. Counting
+    // the rollback alone would pass against a unit of work that incremented a
+    // number and left both writes in place. `conversations.turn.settled` is what
+    // `cost-monitoring` bills off, so an event that outlived its own settlement
+    // would charge for a turn no row records.
+    expect(context.outbox.names()).toEqual([]);
+    // The turn row is created BEFORE the transaction and stays: it is the open
+    // row the settlement was going to close. What must not survive is the
+    // settlement, and it did not — the stored status is still the one
+    // `createTurn` wrote, and no step row landed beside it.
+    const [surviving] = [...context.store.turns.values()];
+    expect(surviving?.status).toBe("PENDING");
+    expect(surviving?.completedAt).toBeNull();
+    expect([...context.store.steps.values()].flat()).toEqual([]);
   });
 });
