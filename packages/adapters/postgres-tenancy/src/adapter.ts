@@ -68,8 +68,9 @@ export function createPostgresTenancyAdapter(
   options: PostgresTenancyOptions,
 ): PostgresTenancyAdapter {
   const { transactionTimeoutMs, maxWaitMs, ...clientOptions } = options;
-  const timeouts: TransactionTimeouts = {};
-  if (transactionTimeoutMs !== undefined) timeouts.transactionTimeoutMs = transactionTimeoutMs;
-  if (maxWaitMs !== undefined) timeouts.maxWaitMs = maxWaitMs;
+  const timeouts: TransactionTimeouts = {
+    ...(transactionTimeoutMs === undefined ? {} : { transactionTimeoutMs }),
+    ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+  };
   return buildPostgresTenancyAdapter(createTenancyDatabaseClient(clientOptions), timeouts);
 }

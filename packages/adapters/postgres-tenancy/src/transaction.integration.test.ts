@@ -14,11 +14,16 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import type { OrganizationId, TransactionScope } from "@platos/context-tenancy/application/ports/index.js";
+import type {
+  OrganizationId,
+  OrganizationRecord,
+  TransactionId,
+  TransactionScope,
+} from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
 
 import type { TenancyHarness } from "./harness.js";
-import { AT, startTenancyHarness } from "./harness.js";
+import { AT, orgId, slugOf, startTenancyHarness } from "./harness.js";
 import {
   TRANSACTION_NOT_OPEN,
   TRANSACTION_SCOPE_FOREIGN,
@@ -35,17 +40,18 @@ afterAll(async () => {
   await harness?.stop();
 });
 
-function organization(id: OrganizationId, slug: string) {
-  return { id, slug: asIdentifier(slug), name: slug, archivedAt: null, createdAt: AT, updatedAt: AT };
+function organization(id: OrganizationId, slug: string): OrganizationRecord {
+  return { id, slug: slugOf(slug), name: slug, archivedAt: null, createdAt: AT, updatedAt: AT };
 }
+
+/** A token no transaction was ever given, for the cases that must be refused. */
+const ABSENT_SCOPE: TransactionScope = { transactionId: asIdentifier<TransactionId>("pg-txn-1") };
 
 describe("transaction scope guards", () => {
   test("a write outside any transaction is refused with not_open", async () => {
-    const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const id = orgId(harness.freshId("0001"));
     await expect(
-      harness.adapter.saveOrganization(organization(id, "no-transaction"), {
-        transactionId: asIdentifier("pg-txn-1"),
-      }),
+      harness.adapter.saveOrganization(organization(id, "no-transaction"), ABSENT_SCOPE),
     ).rejects.toMatchObject({ name: "TransactionScopeError", code: TRANSACTION_NOT_OPEN });
     expect(await harness.adapter.loadOrganization(id)).toBeNull();
   });
@@ -57,7 +63,7 @@ describe("transaction scope guards", () => {
     });
     const stale = escaped;
     expect(stale).toBeDefined();
-    const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const id = orgId(harness.freshId("0001"));
     await harness.adapter.unitOfWork.run(async () => {
       await expect(
         harness.adapter.saveOrganization(organization(id, "stale-token"), stale as TransactionScope),
@@ -67,7 +73,7 @@ describe("transaction scope guards", () => {
   });
 
   test("a write carrying another LIVE transaction's token is refused with scope_foreign", async () => {
-    const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const id = orgId(harness.freshId("0001"));
 
     // A second transaction opened OUTSIDE any ambient frame, so it is genuinely
     // concurrent rather than a nested join, and held open on a gate while the
@@ -112,8 +118,8 @@ describe("transaction scope guards", () => {
 describe("transaction boundaries, proven by failure injection", () => {
   test("when the SECOND write of a transaction fails, NEITHER write committed", async () => {
     await harness.seedOrganization("occupied-slug");
-    const first = asIdentifier<OrganizationId>(harness.freshId("0001"));
-    const second = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const first = orgId(harness.freshId("0001"));
+    const second = orgId(harness.freshId("0001"));
 
     await expect(
       harness.adapter.unitOfWork.run(async (transaction) => {
@@ -129,8 +135,8 @@ describe("transaction boundaries, proven by failure injection", () => {
   });
 
   test("a REJECTION rolls back; a RETURNED error value commits, which is the kernel contract", async () => {
-    const discarded = asIdentifier<OrganizationId>(harness.freshId("0001"));
-    const kept = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const discarded = orgId(harness.freshId("0001"));
+    const kept = orgId(harness.freshId("0001"));
 
     await expect(
       harness.adapter.unitOfWork.run(async (transaction) => {
@@ -151,7 +157,7 @@ describe("transaction boundaries, proven by failure injection", () => {
   });
 
   test("nesting JOINS the outer transaction rather than opening a second one", async () => {
-    const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const id = orgId(harness.freshId("0001"));
     await expect(
       harness.adapter.unitOfWork.run(async (outer) => {
         await harness.adapter.unitOfWork.run(async (inner) => {
@@ -167,7 +173,7 @@ describe("transaction boundaries, proven by failure injection", () => {
   });
 
   test("a read inside a transaction sees that transaction's own uncommitted rows", async () => {
-    const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+    const id = orgId(harness.freshId("0001"));
     await expect(
       harness.adapter.unitOfWork.run(async (transaction) => {
         await harness.adapter.saveOrganization(organization(id, "read-your-writes"), transaction);
@@ -188,8 +194,8 @@ describe("transaction boundaries, proven by failure injection", () => {
     ).rejects.toThrow("rolled back");
     await expect(
       harness.adapter.saveOrganization(
-        organization(asIdentifier<OrganizationId>(harness.freshId("0001")), "after-registry"),
-        { transactionId: asIdentifier("pg-txn-1") },
+        organization(orgId(harness.freshId("0001")), "after-registry"),
+        ABSENT_SCOPE,
       ),
     ).rejects.toMatchObject({ code: TRANSACTION_NOT_OPEN });
   });

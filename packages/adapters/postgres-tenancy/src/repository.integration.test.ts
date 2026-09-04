@@ -29,12 +29,29 @@ import type {
   ProjectId,
   TenancyRepository,
 } from "@platos/context-tenancy/application/ports/index.js";
-import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
+import { OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
 
 import type { ConformanceIds } from "./conformance.js";
 import { runTenancyConformance } from "./conformance.js";
 import type { TenancyHarness } from "./harness.js";
-import { AT, EXPIRES, MEMBER_USER, OPERATOR_SESSION, OWNER_USER, SECOND_OWNER_USER, startTenancyHarness } from "./harness.js";
+import {
+  AT,
+  digestOf,
+  emailOf,
+  envId,
+  EXPIRES,
+  inviteId,
+  MEMBER_USER,
+  OPERATOR_SESSION,
+  orgId,
+  OWNER_USER,
+  SECOND_OWNER_USER,
+  entityIdOf,
+  projectMembershipIdOf,
+  slugOf,
+  startTenancyHarness,
+  userId,
+} from "./harness.js";
 
 const CONFORMANCE_IDS: ConformanceIds = {
   organizationId: "aaaaaaaa-0000-4000-8000-000000000001",
@@ -87,14 +104,14 @@ describe("tenant isolation is in the key, not in a check afterwards", () => {
       harness.adapter.upsertOrganizationMembership(
         {
           organizationId: home,
-          userId: asIdentifier(OWNER_USER),
+          userId: userId(OWNER_USER),
           role: OrganizationRole.OWNER,
           at: AT,
         },
         transaction,
       ),
     );
-    const membershipId = asIdentifier<OrganizationMembershipId>(membership.id);
+    const membershipId = membership.id as OrganizationMembershipId;
     expect(await harness.adapter.findOrganizationMembershipById(home, membershipId)).not.toBeNull();
     expect(await harness.adapter.findOrganizationMembershipById(other, membershipId)).toBeNull();
   });
@@ -104,8 +121,8 @@ describe("tenant isolation is in the key, not in a check afterwards", () => {
     const other = await harness.seedOrganization("project-isolation-other");
     await harness.seedProject(home, "shared-slug");
     await harness.seedProject(other, "shared-slug");
-    expect((await harness.adapter.findProjectBySlug(home, asIdentifier("shared-slug")))?.organizationId).toBe(home);
-    expect((await harness.adapter.findProjectBySlug(other, asIdentifier("shared-slug")))?.organizationId).toBe(other);
+    expect((await harness.adapter.findProjectBySlug(home, slugOf("shared-slug")))?.organizationId).toBe(home);
+    expect((await harness.adapter.findProjectBySlug(other, slugOf("shared-slug")))?.organizationId).toBe(other);
   });
 
   test("findEntityByExternalId refuses to answer across projects", async () => {
@@ -115,7 +132,7 @@ describe("tenant isolation is in the key, not in a check afterwards", () => {
     await harness.adapter.unitOfWork.run((transaction) =>
       harness.adapter.saveEntity(
         {
-          id: asIdentifier(harness.freshId("0005")),
+          id: entityIdOf(harness.freshId("0005")),
           projectId: home,
           externalId: "shared-external",
           displayName: "Home entity",
@@ -140,13 +157,13 @@ describe("integrity the in-memory double does NOT have", () => {
   test("deleting an organization cascades to its memberships, projects and environments", async () => {
     const organizationId = await harness.seedOrganization("cascade-org");
     const projectId = await harness.seedProject(organizationId, "cascade-project");
-    const environmentId = asIdentifier(harness.freshId("0003"));
+    const environmentId = envId(harness.freshId("0003"));
     await harness.adapter.unitOfWork.run(async (transaction) => {
       await harness.adapter.saveEnvironment(
         {
           id: environmentId,
           projectId,
-          slug: asIdentifier("cascade-env"),
+          slug: slugOf("cascade-env"),
           name: "Cascade",
           archivedAt: null,
           accessKeyRevocationVersion: 0,
@@ -158,7 +175,7 @@ describe("integrity the in-memory double does NOT have", () => {
         transaction,
       );
       await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: asIdentifier(MEMBER_USER), role: OrganizationRole.MEMBER, at: AT },
+        { organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.MEMBER, at: AT },
         transaction,
       );
     });
@@ -170,7 +187,7 @@ describe("integrity the in-memory double does NOT have", () => {
     expect(await harness.adapter.loadProject(projectId)).toBeNull();
     expect(await harness.adapter.loadEnvironment(environmentId)).toBeNull();
     expect(
-      await harness.adapter.findOrganizationMembershipByUser(organizationId, asIdentifier(MEMBER_USER)),
+      await harness.adapter.findOrganizationMembershipByUser(organizationId, userId(MEMBER_USER)),
     ).toBeNull();
   });
 
@@ -182,7 +199,7 @@ describe("integrity the in-memory double does NOT have", () => {
       harness.adapter.upsertOrganizationMembership(
         {
           organizationId: home,
-          userId: asIdentifier(SECOND_OWNER_USER),
+          userId: userId(SECOND_OWNER_USER),
           role: OrganizationRole.ADMIN,
           at: AT,
         },
@@ -193,9 +210,9 @@ describe("integrity the in-memory double does NOT have", () => {
       harness.adapter.unitOfWork.run((transaction) =>
         harness.adapter.saveProjectMembership(
           {
-            id: asIdentifier(harness.freshId("0007")),
+            id: projectMembershipIdOf(harness.freshId("0007")),
             projectId,
-            organizationMembershipId: asIdentifier(membership.id),
+            organizationMembershipId: membership.id as OrganizationMembershipId,
             // The lie: this row claims a different tenant than its project has.
             organizationId: other,
             role: "EDITOR",
@@ -227,13 +244,13 @@ function invitation(
   tokenDigest: string,
 ): OrganizationInvitationRecord {
   return {
-    id: asIdentifier(id),
+    id: inviteId(id),
     organizationId,
-    inviterId: asIdentifier(OWNER_USER),
+    inviterId: userId(OWNER_USER),
     acceptedByUserId: null,
-    email: asIdentifier(email),
+    email: emailOf(email),
     role: OrganizationRole.MEMBER,
-    tokenDigest: asIdentifier(tokenDigest),
+    tokenDigest: digestOf(tokenDigest),
     expiresAt: EXPIRES,
     acceptedAt: null,
     revokedAt: null,
@@ -278,24 +295,24 @@ describe("constraints that live in the MIGRATIONS and not in the double", () => 
     // then accepted. The index is PARTIAL, and this is what that word means at
     // run time — and why the port's `findLiveInvitations` filters as it does.
     await harness.adapter.unitOfWork.run(async (transaction) => {
-      const live = await harness.adapter.findLiveInvitations(organizationId, asIdentifier(email));
+      const live = await harness.adapter.findLiveInvitations(organizationId, emailOf(email));
       expect(live).toHaveLength(1);
       await harness.adapter.saveInvitation({ ...live[0]!, revokedAt: AT }, transaction);
     });
     await save(second);
-    expect(await harness.adapter.findLiveInvitations(organizationId, asIdentifier(email))).toHaveLength(1);
+    expect(await harness.adapter.findLiveInvitations(organizationId, emailOf(email))).toHaveLength(1);
   });
 });
 
 describe("read semantics", () => {
   async function seedEnvironment(projectId: ProjectId, slug: string, version = 0): Promise<EnvironmentId> {
-    const id = asIdentifier<EnvironmentId>(harness.freshId("0003"));
+    const id = envId(harness.freshId("0003"));
     await harness.adapter.unitOfWork.run((transaction) =>
       harness.adapter.saveEnvironment(
         {
           id,
           projectId,
-          slug: asIdentifier(slug),
+          slug: slugOf(slug),
           name: slug,
           archivedAt: null,
           accessKeyRevocationVersion: version,
@@ -362,15 +379,15 @@ describe("read semantics", () => {
     const organizationId = await harness.seedOrganization("owner-count-org");
     await harness.adapter.unitOfWork.run(async (transaction) => {
       await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: asIdentifier(OWNER_USER), role: OrganizationRole.OWNER, at: AT },
+        { organizationId, userId: userId(OWNER_USER), role: OrganizationRole.OWNER, at: AT },
         transaction,
       );
       await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: asIdentifier(SECOND_OWNER_USER), role: OrganizationRole.MEMBER, at: AT },
+        { organizationId, userId: userId(SECOND_OWNER_USER), role: OrganizationRole.MEMBER, at: AT },
         transaction,
       );
       const removedOwner = await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: asIdentifier(MEMBER_USER), role: OrganizationRole.OWNER, at: AT },
+        { organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.OWNER, at: AT },
         transaction,
       );
       await harness.adapter.saveOrganizationMembership(
@@ -385,7 +402,7 @@ describe("read semantics", () => {
     const organizationId = await harness.seedOrganization("deactivated-visible");
     await harness.adapter.unitOfWork.run(async (transaction) => {
       const membership = await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: asIdentifier(MEMBER_USER), role: OrganizationRole.MEMBER, at: AT },
+        { organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.MEMBER, at: AT },
         transaction,
       );
       await harness.adapter.saveOrganizationMembership(
@@ -393,7 +410,7 @@ describe("read semantics", () => {
         transaction,
       );
     });
-    const rows = await harness.adapter.listOrganizationMembershipsForUser(asIdentifier(MEMBER_USER));
+    const rows = await harness.adapter.listOrganizationMembershipsForUser(userId(MEMBER_USER));
     expect(rows.some((row) => row.organizationId === organizationId && row.deactivatedAt !== null)).toBe(true);
   });
 });
@@ -417,10 +434,10 @@ describe("expand/contract during a rollout", () => {
         updatedAt: AT,
       },
     });
-    const environment = await harness.adapter.loadEnvironment(asIdentifier(environmentId));
+    const environment = await harness.adapter.loadEnvironment(envId(environmentId));
     expect(environment?.accessKeyRevocationVersion).toBe(0);
     expect(environment?.memoryFeedbackBackfillCursor).toBeNull();
     expect(environment?.memoryFeedbackBackfillCompletedAt).toBeNull();
-    expect(await harness.adapter.loadEnvironmentAncestry(asIdentifier(environmentId))).not.toBeNull();
+    expect(await harness.adapter.loadEnvironmentAncestry(envId(environmentId))).not.toBeNull();
   });
 });

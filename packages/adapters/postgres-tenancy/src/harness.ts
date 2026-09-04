@@ -15,7 +15,19 @@ import { resolve } from "node:path";
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 
-import type { OrganizationId, ProjectId } from "@platos/context-tenancy/application/ports/index.js";
+import type {
+  EmailAddress,
+  EntityId,
+  EnvironmentId,
+  EnvironmentSessionId,
+  OrganizationId,
+  OrganizationInvitationId,
+  ProjectId,
+  ProjectMembershipId,
+  Slug,
+  TokenDigest,
+  UserId,
+} from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "./adapter.js";
@@ -33,6 +45,24 @@ export const AT = new Date("2026-05-01T09:00:00.000Z");
 
 /** A week after `AT`. Every invitation in the suites expires here. */
 export const EXPIRES = new Date("2026-05-08T09:00:00.000Z");
+
+// Typed identifier constructors. A bare `asIdentifier("x")` infers the generic
+// brand and is rejected by every parameter that wants a specific one, so the
+// suites name the brand once, here, rather than at each of forty call sites.
+export const orgId = (value: string): OrganizationId => asIdentifier<OrganizationId>(value);
+export const projId = (value: string): ProjectId => asIdentifier<ProjectId>(value);
+export const envId = (value: string): EnvironmentId => asIdentifier<EnvironmentId>(value);
+export const userId = (value: string): UserId => asIdentifier<UserId>(value);
+export const slugOf = (value: string): Slug => asIdentifier<Slug>(value);
+export const emailOf = (value: string): EmailAddress => asIdentifier<EmailAddress>(value);
+export const digestOf = (value: string): TokenDigest => asIdentifier<TokenDigest>(value);
+export const inviteId = (value: string): OrganizationInvitationId =>
+  asIdentifier<OrganizationInvitationId>(value);
+export const sessionId = (value: string): EnvironmentSessionId =>
+  asIdentifier<EnvironmentSessionId>(value);
+export const entityIdOf = (value: string): EntityId => asIdentifier<EntityId>(value);
+export const projectMembershipIdOf = (value: string): ProjectMembershipId =>
+  asIdentifier<ProjectMembershipId>(value);
 
 export interface TenancyHarness {
   readonly client: TenancyDatabaseClient;
@@ -104,12 +134,12 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
       return `bbbbbbbb-${kind}-4000-8000-${String(sequence).padStart(12, "0")}`;
     },
     async seedOrganization(slug: string): Promise<OrganizationId> {
-      const id = asIdentifier<OrganizationId>(harness.freshId("0001"));
+      const id = orgId(harness.freshId("0001"));
       await adapter.unitOfWork.run((transaction) =>
         adapter.saveOrganization(
           {
             id,
-            slug: asIdentifier(slug),
+            slug: slugOf(slug),
             name: slug,
             archivedAt: null,
             createdAt: AT,
@@ -121,13 +151,13 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
       return id;
     },
     async seedProject(organizationId: OrganizationId, slug: string): Promise<ProjectId> {
-      const id = asIdentifier<ProjectId>(harness.freshId("0002"));
+      const id = projId(harness.freshId("0002"));
       await adapter.unitOfWork.run((transaction) =>
         adapter.saveProject(
           {
             id,
             organizationId,
-            slug: asIdentifier(slug),
+            slug: slugOf(slug),
             name: slug,
             archivedAt: null,
             createdAt: AT,
