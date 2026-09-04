@@ -7,8 +7,8 @@
     "the edit that removes it (`to`), and the suites that are supposed to notice",
     "(`suites`).",
     "",
-    "A guard nothing can turn red is a guard that is not there. All 67 entries",
-    "below were exercised before this context was proposed and all 67 were",
+    "A guard nothing can turn red is a guard that is not there. All 74 entries",
+    "below were exercised before this context was proposed and all 74 were",
     "falsifiable. A guard added later belongs here; one that is not here has not",
     "been shown to be more than a comment.",
     "",
@@ -681,6 +681,71 @@
       "to": "      return err(ledgerUnavailable(reason));",
       "suites": [
         "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M68 sink translation: a rule with too few segments is admitted",
+      "file": "domain/safety-observation.ts",
+      "from": "  if (segments.length < 3) return err(safetyRuleMalformed(rule));",
+      "to": "  if (false) return err(safetyRuleMalformed(rule));",
+      "suites": [
+        "domain/safety-observation.test.ts",
+        "application/safety-event-sink.test.ts"
+      ]
+    },
+    {
+      "name": "M69 sink translation: a rule with an EMPTY segment is admitted",
+      "file": "domain/safety-observation.ts",
+      "from": "  if (segments.some((segment) => segment.trim() === \"\")) return err(safetyRuleMalformed(rule));",
+      "to": "  if (false) return err(safetyRuleMalformed(rule));",
+      "suites": [
+        "domain/safety-observation.test.ts"
+      ]
+    },
+    {
+      "name": "M70 sink translation: a rule naming a detector the ledger has no bucket for is admitted",
+      "file": "domain/safety-observation.ts",
+      "from": "  if (!isSafetyDetector(detector)) return err(safetyDetectorUnknown(detector));",
+      "to": "  if (false) return err(safetyDetectorUnknown(detector));",
+      "suites": [
+        "domain/safety-observation.test.ts",
+        "application/safety-event-sink.test.ts"
+      ]
+    },
+    {
+      "name": "M71 sink translation: every outcome maps to one action, and the map is not identity",
+      "file": "domain/safety-observation.ts",
+      "from": "    action: OUTCOME_ACTIONS[observation.outcome],",
+      "to": "    action: \"flag\" as (typeof OUTCOME_ACTIONS)[keyof typeof OUTCOME_ACTIONS],",
+      "suites": [
+        "domain/safety-observation.test.ts"
+      ]
+    },
+    {
+      "name": "M72 sink translation: every outcome maps to one severity",
+      "file": "domain/safety-observation.ts",
+      "from": "    severity: OUTCOME_SEVERITIES[observation.outcome],",
+      "to": "    severity: \"low\" as (typeof OUTCOME_SEVERITIES)[keyof typeof OUTCOME_SEVERITIES],",
+      "suites": [
+        "domain/safety-observation.test.ts"
+      ]
+    },
+    {
+      "name": "M73 eval page: the search term is dropped",
+      "file": "application/read-evals.ts",
+      "from": "    search: blankToNull(query.search ?? null),",
+      "to": "    search: null,",
+      "suites": [
+        "application/read-evals.test.ts"
+      ]
+    },
+    {
+      "name": "M74 erasure: the ledger DELETES the row instead of overwriting it",
+      "file": "application/testing/in-memory-safety-ledger.ts",
+      "from": "      this.rows[index] = { ...row, principalId: null, detail: null, metadata: null, endUserId: null };",
+      "to": "      this.rows.splice(index, 1);",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
       ]
     }
   ]

@@ -12,9 +12,14 @@
 // crossed the contract boundary from `agents` reaches a repository method here
 // without a cast, and an `AgentVersionId` still cannot.
 //
-//   AgentId, AgentVersionId  `agents` owns them (ADR M0.3 §1 row 5). An eval,
-//                            a rating and a criterion all name one; this
-//                            context writes none of them.
+//   AgentId, AgentVersionId  `agents` owns them (ADR M0.3 §1 row 5). ALL FIVE
+//                            owned rows carry an `agentId` — three of them
+//                            required, and a safety event's and a criterion's
+//                            nullable, because a control can fire outside an
+//                            agent and a criterion may be shared across an
+//                            environment. `AgentVersionId` is carried by a
+//                            rating and an eval, the two the canary axis is
+//                            drawn from. This context writes neither id.
 //   ThreadId, TurnId         `conversations` owns them (row 16). Every row here
 //                            except a criterion hangs off one, which is why the
 //                            AgentEval erasure item is a zero-count item: the
@@ -52,7 +57,7 @@ export type GoldenSetId = Branded<string, "GoldenSetId">;
  */
 export type EvalRunId = Branded<string, "EvalRunId">;
 
-/** `Agent.id`. Written by `agents` (ADR M0.3 §1 row 5); named by four rows here. */
+/** `Agent.id`. Written by `agents` (ADR M0.3 §1 row 5); named by all five rows here. */
 export type AgentId = Branded<string, "AgentId">;
 
 /** `AgentVersion.id`. Written by `agents`; the axis a canary is judged along. */

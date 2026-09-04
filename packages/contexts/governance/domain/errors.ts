@@ -22,14 +22,22 @@
 //     that is the model under test are three codes, not one "cannot run".
 //
 // WHERE ONE CODE COVERS MORE THAN ONE DECISION IT IS SAID SO AT THE
-// CONSTRUCTOR, and there are four such places. Two are deliberate concealment:
-// a rating target that does not exist and one belonging to somebody else answer
-// identically ON PURPOSE, and a cross-scope read answers `not_found`, both so
-// probing cannot enumerate ids. `GOVERNANCE_TRANSCRIPT_NOT_FOUND` is the same
-// idea for a thread — absent, or present and another agent's. The fourth is not
-// concealment but a shared SHAPE: `GOVERNANCE_PAGE_REQUEST_INVALID` covers a
-// negative offset and an unusable limit, and the two are separated by the
-// violation's `field`, which is what a caller reads to fix its request.
+// CONSTRUCTOR, and they fall into two kinds rather than one list.
+//
+// DELIBERATE CONCEALMENT, where telling the two apart would be the probe: a
+// rating target that does not exist and one belonging to somebody else answer
+// identically, a cross-scope read answers `not_found`, and
+// `GOVERNANCE_TRANSCRIPT_NOT_FOUND` covers a thread that is absent and one that
+// is present and another agent's.
+//
+// A SHARED SHAPE, where the remedy is the same and the payload says which: the
+// `fields` violation carries a `field` and a `code`, so a blank name and an
+// over-long one both answer `GOVERNANCE_CRITERION_NAME_INVALID`, a blank judge
+// prompt and an over-long one both answer the prompt's code, and a negative
+// offset and an unusable limit both answer `GOVERNANCE_PAGE_REQUEST_INVALID`.
+// That is not the defect this file is guarding against — the caller reads
+// `field` to fix its request — but it IS the reason `errors.test.ts` checking
+// constructors for uniqueness is not enough on its own.
 //
 // This inventory is maintained by hand and its known limit is that
 // `errors.test.ts` can only check CONSTRUCTORS for uniqueness, not guards. Two
