@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d530722424617bd8bc006b570f2d273e17d285bf633b2160b8d04d11df18727b",
+  "evidenceSha256": "30dbe1073ba1bf3b6cd60b1ab9be68280106037765b2a07c955349e4db58d0c7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 36,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b3aafa114f9592f20a0fad769146bd6c202663151f1c08a1aaae286629424b54",
+    "aggregateSha256": "e31c05501442f45427df663e3a9f9ef42366427e81f21f8a47b1bb148f30cec4",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -17505,7 +17505,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "9eca472c756d9947dae9c940385aa13bce6f3ce40e4fce06a2691849aa8ff8c8"
+        "sha256": "c099272e20b37aef97856520545eb2df882a8b76b9081bdd1e053580cdce2617"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
