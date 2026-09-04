@@ -32,6 +32,13 @@ const SAMPLES = [
   errors.stepBudgetInvalid(0),
   errors.modelSessionExpired("session-1", "2026-01-01T00:00:00.000Z"),
   errors.structuredOutputInvalid("no parseable object", 2),
+  errors.retryPolicyInvalid("retryCount must be a whole number", "retryCount", -1),
+  errors.serviceAccountInvalid("credential is not JSON", "google-vertex"),
+  errors.outputSchemaInvalid("unknown keyword"),
+  errors.toolExecutorFailed("search", "boom"),
+  errors.generationAborted("caller signalled abort"),
+  errors.messageNotRepresentable("system", "image"),
+  errors.passBudgetInvalid(0),
 ];
 
 describe("the catalogue", () => {
@@ -89,6 +96,27 @@ describe("categories carry the meaning a transport maps from", () => {
     expect(errors.credentialUnavailable("N", "openai").code).not.toBe(
       errors.providerCredentialUnavailable("boom").code,
     );
+  });
+
+  it("keeps the adapter's seven apart from each other and from the codes they resemble", () => {
+    // The rule this pins: two guards returning one code cannot be told apart.
+    // Each pair below is a pair a reader would otherwise be tempted to merge.
+    expect(errors.outputSchemaInvalid("bad").code).not.toBe(
+      errors.structuredOutputInvalid("bad", 1).code,
+    );
+    expect(errors.serviceAccountInvalid("bad", "google-vertex").code).not.toBe(
+      errors.providerCredentialUnavailable("bad").code,
+    );
+    expect(errors.generationAborted("stopped").code).not.toBe(
+      errors.providerRequestFailed("down").code,
+    );
+    expect(errors.toolExecutorFailed("t", "boom").category).toBe("internal");
+    expect(errors.generationAborted("stopped").category).toBe("precondition_failed");
+    expect(errors.retryPolicyInvalid("bad", "retryCount", -1).category).toBe("invalid_input");
+    expect(errors.messageNotRepresentable("system", "image").code).not.toBe(
+      errors.mediaTypeMissing("system", "image").code,
+    );
+    expect(errors.passBudgetInvalid(0).code).not.toBe(errors.stepBudgetInvalid(0).code);
   });
 
   it("carries the pinned-agent count the control surface renders", () => {

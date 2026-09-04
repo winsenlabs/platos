@@ -15,9 +15,17 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@platos/context-providers": "workspace:*"
+    "@platos/context-providers": "workspace:*",
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
+    "ai": "^7.0.28",
+    "ajv": "8.18.0",
+    "zod": "3.25.76"
   }
 }
