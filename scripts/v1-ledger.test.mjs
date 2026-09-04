@@ -940,10 +940,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
-    // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1); this one
-    // re-derives it by summing the
-    // per-area counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1132
+    // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
+    // tranche 2's identity-access canonical store +23); this one re-derives it
+    // by summing the per-area counts independently, so the two can DISAGREE and
+    // be caught.
+    rulesDocument.baseline.totalFiles + 1155
   );
 });
 
