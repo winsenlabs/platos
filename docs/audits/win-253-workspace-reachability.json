@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5d8f0e698c3f2ddf9077bb9c859473d0f7c9ae22e5e1617e3c1d9ef4e6f6ef8f",
+  "evidenceSha256": "75a7318a1ba76f2b88362a384b2897189efbf61ca860c9a68283e60e3880eb07",
   "generatedOwnership": {
     "explicitHeaderFileCount": 30,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ebc9a7cacb9eae8a48e37010bf03ec46f562f1701f40c4be1db83f44d193f800",
+    "aggregateSha256": "fc96cacbd1521f5fcb0ee45eafb8dd5802782e860e2541f3a33f1d4f8faa051b",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "9634090885afff98b59ef21600840c6ca50a7b2fc1e6f3406e08881d4b2c66e0"
+        "sha256": "eadb63965fe360fc1a549946a3e46c6ae8037c028a7c870ad874a20e055b9730"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "10bd6184a4fff14e8d2c94017f40d778ac66e3f0350301bcb5fd73c5950113c4"
+        "sha256": "c4682f5e6380d6edd4bd141522fa26742b94b28345ff157895f127de078ff872"
       },
       {
         "path": "docs/v3-openapi.yaml",
