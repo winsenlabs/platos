@@ -20,28 +20,27 @@
 //   card's `cacheWriteInputTokens` is exactly the kind of mapping that goes
 //   wrong silently.
 //
-// Everything the TENANCY double is not asked for by this context returns a
-// refusal rather than a plausible value: a test that starts depending on an
-// unimplemented method finds out immediately.
+// NEITHER DOUBLE CARRIES REFUSALS ANY MORE, and neither needs them. Each is
+// typed as the one-method port this context owns — `TenancyPeer` and
+// `ProvidersPeer` — so a test that reaches for a member `memory` does not depend
+// on does not get a refusal at run time, it fails to compile. That is the
+// stronger of the two guarantees.
 //
-// The providers double needs no such refusals any more, and has none. It is
-// typed as `ProvidersPeer` — the one-method port this context owns — so a test
-// that reaches for a member `memory` does not depend on does not get a refusal
-// at run time, it fails to compile. That is the stronger of the two guarantees,
-// and it is why nineteen NOT_OFFERED lines left this file rather than gaining a
-// twentieth and twenty-first for the WIN-256 inference surface.
+// It is why nineteen NOT_OFFERED lines left this file rather than gaining a
+// twentieth and twenty-first for the WIN-256 inference surface, and why eleven
+// more left it rather than gaining four for WIN-257's `createOrganization`,
+// `createProject`, `listOperatorOrganizations` and `listVisibleProjects`. A
+// double written against a whole peer contract is a hostage to all of it; that
+// has now broken `build:v1` at this seam twice, from two different neighbours,
+// for the same reason.
 
 import { asIdentifier, err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import type {
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
-  TenancyContract,
 } from "@platos/context-tenancy";
 import { repositoryUnavailable, scopeMismatch } from "../../domain/index.js";
-import type { ProvidersPeer } from "../dependencies.js";
-
-const NOT_OFFERED = () =>
-  err(repositoryUnavailable("this in-memory double does not implement that operation"));
+import type { ProvidersPeer, TenancyPeer } from "../dependencies.js";
 
 const MARK = Symbol("in-memory-tenancy-grant");
 
@@ -56,7 +55,7 @@ function opaque(value: object): unknown {
  * Issues marked grants and recognises only its own. `verifyAuthorization` is the
  * one method this context calls, and it is the one method that behaves.
  */
-export class InMemoryTenancy implements TenancyContract {
+export class InMemoryTenancy implements TenancyPeer {
   readonly name = "tenancy" as const;
 
   /** How many times this context asked tenancy to verify a grant. */
@@ -91,20 +90,6 @@ export class InMemoryTenancy implements TenancyContract {
     }
     return ok(opaque(value) as EnvironmentOperatorAuthorization);
   }
-
-  resolveEnvironmentScope: TenancyContract["resolveEnvironmentScope"] = async () => NOT_OFFERED();
-  describeTenant: TenancyContract["describeTenant"] = async () => NOT_OFFERED();
-  authorizeEnvironmentOperator: TenancyContract["authorizeEnvironmentOperator"] = async () =>
-    NOT_OFFERED();
-  changeMembershipRole: TenancyContract["changeMembershipRole"] = async () => NOT_OFFERED();
-  deactivateMembership: TenancyContract["deactivateMembership"] = async () => NOT_OFFERED();
-  addProjectMember: TenancyContract["addProjectMember"] = async () => NOT_OFFERED();
-  findOrganizationMembership: TenancyContract["findOrganizationMembership"] = async () =>
-    NOT_OFFERED();
-  listProjectEntities: TenancyContract["listProjectEntities"] = async () => NOT_OFFERED();
-  findEntity: TenancyContract["findEntity"] = async () => NOT_OFFERED();
-  revokeAccessKeyGeneration: TenancyContract["revokeAccessKeyGeneration"] = async () => NOT_OFFERED();
-  scopeContains: TenancyContract["scopeContains"] = () => false;
 }
 
 /**

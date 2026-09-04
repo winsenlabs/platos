@@ -20,7 +20,18 @@
 //   `tenancy` is the authorization seam (`authorization.ts`). Every control
 //   surface here verifies an operator grant through it before it reads or writes
 //   a row, and the environment a use case works in is taken FROM that grant
-//   rather than from an id the caller also supplied.
+//   rather than from an id the caller also supplied. THAT ONE METHOD IS THE
+//   WHOLE DEPENDENCY here too, so this bundle holds `TenancyPeer` and not
+//   `TenancyContract`, for exactly the reason it holds `ProvidersPeer`.
+//
+//   WIN-257 proved the point a second time and in the same way. It gave
+//   `tenancy` `createOrganization`, `createProject`, `listOperatorOrganizations`
+//   and `listVisibleProjects` — the transactional writes and operator reads the
+//   product had no home for. Memory calls none of the four, and all four broke
+//   `build:v1` here the moment the two branches met in one tree, because
+//   `InMemoryTenancy` implemented the whole contract and suddenly implemented
+//   part of it. The narrowing is the fix; four more refusals would have been the
+//   deferral, and the next method `tenancy` adds would have cost a fifth.
 //
 //   `providers` prices the extraction judge. A sweep is billable work no turn
 //   asked for; the running system prices it against the model's rate card and
@@ -65,6 +76,25 @@ import type {
 } from "./ports/index.js";
 
 /**
+ * The whole of `tenancy` this context depends on, named by `memory`.
+ *
+ * One method: verifying that an operator grant is one tenancy really minted,
+ * which `authorization.ts` asks before any control surface reads or writes a
+ * row. `TenancyContract` is wider, and every other member of it is another
+ * context's business to call.
+ *
+ * The grant stays `tenancy`'s own type — taken by indexed access off the
+ * published contract rather than restated — because narrowing WHICH methods
+ * this context depends on does not licence it to redeclare its neighbour's
+ * vocabulary. If `tenancy` changes what a verified authorization is, this
+ * breaks, which is correct: that IS a dependency memory has.
+ */
+export interface TenancyPeer {
+  readonly name: "tenancy";
+  readonly verifyAuthorization: TenancyContract["verifyAuthorization"];
+}
+
+/**
  * The whole of `providers` this context depends on, named by `memory`.
  *
  * One method: what a priced model call costs, which `judge-pricing.ts` reads and
@@ -93,7 +123,8 @@ export interface MemoryDependencies {
   readonly ids: IdGenerator;
   readonly unitOfWork: UnitOfWork;
   readonly policy: MemoryPolicy;
-  readonly tenancy: TenancyContract;
+  /** Narrow by design, and owned here rather than imported whole: see above. */
+  readonly tenancy: TenancyPeer;
   /** Narrow by design, and owned here rather than imported whole: see above. */
   readonly providers: ProvidersPeer;
 }
