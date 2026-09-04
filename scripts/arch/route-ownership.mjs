@@ -80,6 +80,14 @@ export const PERMITTED_OWNERS = Object.freeze(
   [...ADR_M03_CONTEXTS, PLATFORM_TRANSPORT].sort(),
 );
 
+/**
+ * The value WIN-256 retires. `PERMITTED_OWNERS` already excludes it, but it is
+ * named here so the audit rejects it with its own message rather than folding
+ * it into the generic not-an-ADR-context failure — a reader who hits this rule
+ * learns which criterion they have walked back into.
+ */
+export const RETIRED_OWNER_PLACEHOLDER = "unassigned (review)";
+
 /** The exact rows admitted to PLATFORM_TRANSPORT. Pinned by count below. */
 export const PLATFORM_TRANSPORT_ROWS = Object.freeze([
   "GET /api/health",
@@ -508,6 +516,12 @@ export function validateOwners(restRows, mcpRows) {
     // (1) present, non-empty, and a name ADR M0.3 §1 defines.
     if (typeof row.owner !== "string" || row.owner.trim() === "") {
       errors.push(`owner-missing: ${id} has no owner`);
+      continue;
+    }
+    if (row.owner === RETIRED_OWNER_PLACEHOLDER) {
+      errors.push(
+        `owner-is-retired-placeholder: ${id} carries the placeholder WIN-256 retired; resolve it against the ${ORACLE} oracle and record it in ROUTE_OWNERSHIP`,
+      );
       continue;
     }
     if (!permitted.has(row.owner)) {
