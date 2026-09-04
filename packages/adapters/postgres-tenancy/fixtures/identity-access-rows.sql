@@ -3,15 +3,21 @@
 -- `EnvironmentSession.operatorSessionId` and `OrganizationMembership.userId` are
 -- real foreign keys into `OperatorSession` and `User`, both of which ADR M0.3 §1
 -- makes `identity-access` the sole writer of. An integration suite for the
--- tenancy repository still needs those rows to exist, and the sole-writer lint
--- correctly refuses `db.user.create()` from this package — the whole point of
--- the gate is that a package cannot write another owner's row, and a fixture is
--- not an exemption.
+-- tenancy repository still needs those rows to exist.
 --
--- So the fixture is SQL applied by `prisma db execute`, outside the source the
--- lint judges, and the file states plainly which owner's rows it is standing in
--- for. When identity-access grows its own PostgreSQL adapter this file is
--- replaced by a call to it.
+-- WIN-258 T2 CHANGED WHY THIS FILE IS SQL, AND THE OLD REASON IS RECORDED HERE
+-- RATHER THAN QUIETLY REPLACED. It used to be SQL because the sole-writer lint
+-- refused a `User` write from this package: the only directory permitted to
+-- write that row was `packages/contexts/identity-access`, which may not hold a
+-- client. Tranche 2 delegates identity-access's canonical store to THIS
+-- directory (`CANONICAL_STORE_ADAPTERS` in scripts/arch/table-ownership.mjs), so
+-- that refusal no longer applies and `src/identity-harness.ts` seeds its users
+-- THROUGH the port instead.
+--
+-- The file stays because tranche 1's two suites name these exact identifiers and
+-- because a fixture applied by `prisma db execute` needs no code path at all.
+-- It is a fixture for the TENANCY suites, and the identity-access suites do not
+-- use it.
 --
 -- The identifiers are fixed so the suite can name them. They match the
 -- constants in src/harness.ts.

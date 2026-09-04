@@ -341,7 +341,18 @@ jobs:
         # vitest resolves @platos/context-tenancy through its package `main` too.
         run: pnpm --filter "@platos/context-tenancy..." build
 
-      - name: PostgreSQL TenancyRepository integration suites
+      - name: Build the identity-access context
+        # WIN-258 T2. The same directory now also implements
+        # `IdentityAccessRepository` (ADR M0.3 §15), and its suites resolve that
+        # context through its package `main`, which is dist/.
+        run: pnpm --filter "@platos/context-identity-access..." build
+
+      - name: PostgreSQL repository integration suites
+        # Both halves: the tenancy repository and the identity-access canonical
+        # store, its conformance differential against the in-memory fake, its
+        # differential against PlatosAuthService, the migration-only constraint
+        # proofs, the failure-injection transaction proofs and the statement
+        # counts. They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration
 
   differential-state-conservation:
