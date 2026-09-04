@@ -88,20 +88,3 @@ export function createGovernanceContract(dependencies: GovernanceDependencies): 
   };
   return Object.freeze(contract);
 }
-
-/** The integration events this context publishes through the kernel outbox. */
-export const GOVERNANCE_EVENT_NAMES = [
-  "governance.safety.recorded",
-  "governance.rating.cast",
-  "governance.rating.withdrawn",
-  "governance.criterion.created",
-  "governance.criterion.updated",
-  "governance.criterion.removed",
-  "governance.eval.scored",
-  "governance.golden_set.created",
-  "governance.golden_set.updated",
-  "governance.golden_set.removed",
-  "governance.eval_run.queued",
-] as const;
-
-export type GovernanceEventName = (typeof GOVERNANCE_EVENT_NAMES)[number];

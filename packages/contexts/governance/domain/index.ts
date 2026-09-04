@@ -9,6 +9,7 @@
 export * from "./agent-eval.js";
 export * from "./criterion.js";
 export * from "./errors.js";
+export * from "./events.js";
 export * from "./eval-aggregate.js";
 export * from "./golden-set.js";
 export * from "./identifiers.js";

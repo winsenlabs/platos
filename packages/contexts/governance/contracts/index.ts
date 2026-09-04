@@ -8,10 +8,14 @@
 // therefore both kernel ports — `safetyEventSink()` for the enforcement layer
 // and `erasureTarget()` for `privacy` — plus this contract for the transports.
 //
-// It is types only. Nothing here has a runtime representation, so importing this
-// module costs a consumer no code and cannot drag an implementation across a
-// context boundary. The implementation is `createGovernanceContract` in
-// `application/`, and it is reached only through the composition root.
+// IT CARRIES NO IMPLEMENTATION. Everything here is either a type or a frozen
+// vocabulary — the error codes, the three safety enumerations, the judge
+// providers, the shipped policy and the event names. All of them come from
+// `domain/`, which imports nothing but the kernel, so importing this module
+// pulls in a handful of arrays and cannot drag a use case, a port or a peer
+// context's contract across a boundary with it. The implementation is
+// `createGovernanceContract` in `application/`, and it is reached only through
+// the composition root.
 //
 // The ten driven ports are NOT re-exported here. They are adapter-facing, not
 // context-facing, and they are published from `application/ports/index.js` where
@@ -95,6 +99,7 @@ export type {
 
 export {
   GOVERNANCE_ERROR_CODES,
+  GOVERNANCE_EVENT_NAMES,
   SAFETY_ACTIONS,
   SAFETY_DETECTORS,
   SAFETY_SEVERITIES,
@@ -103,7 +108,7 @@ export {
   COLUMN_SCORE_SCALE_MAX,
 } from "../domain/index.js";
 
-export type { GovernanceErrorCode } from "../domain/index.js";
+export type { GovernanceErrorCode, GovernanceEventName } from "../domain/index.js";
 
 // Policy, published so the composition root can change a ceiling or throw the
 // eval kill switch without reaching into this package for the shape of one.
