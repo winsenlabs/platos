@@ -60,6 +60,7 @@ export const CONVERSATIONS_ERROR_CODES = [
   "CONVERSATIONS_FORK_CEILING_EXCEEDED",
   "CONVERSATIONS_FORK_DEPTH_EXCEEDED",
   "CONVERSATIONS_COMPACTION_IN_PROGRESS",
+  "CONVERSATIONS_COMPACTION_LOCK_HELD",
   "CONVERSATIONS_COMPACTION_CURSOR_REGRESSED",
   "CONVERSATIONS_COMPACTION_SUMMARY_TOO_LONG",
   "CONVERSATIONS_TURN_NOT_FOUND",
@@ -258,6 +259,26 @@ export function forkDepthExceeded(depth: number, maximum: number): DomainError {
 export function compactionInProgress(threadId: string): DomainError {
   const message = "a compaction is already running on this thread";
   return domainError("CONVERSATIONS_COMPACTION_IN_PROGRESS", "conflict", message, {
+    details: { threadId },
+  });
+}
+
+/**
+ * Another worker holds the row lock. A DIFFERENT CODE FROM THE ONE ABOVE, and
+ * the difference is the point.
+ *
+ * `compactionInProgress` is what `beginCompaction` answers when THIS caller's
+ * own snapshot of the row already says IN_PROGRESS. This one is what the
+ * repository answers when the conditional update lost a race to another worker.
+ * Both mean "somebody is compacting", but they are detected in different places
+ * and only one of them is a race, so an operator reading the log needs to know
+ * which fired. While they shared a code, deleting the lock check left every case
+ * green — the domain check answered identically — and a lock that nothing can
+ * turn red is not a lock.
+ */
+export function compactionLockHeld(threadId: string): DomainError {
+  const message = "another worker holds the compaction lock on this thread";
+  return domainError("CONVERSATIONS_COMPACTION_LOCK_HELD", "conflict", message, {
     details: { threadId },
   });
 }

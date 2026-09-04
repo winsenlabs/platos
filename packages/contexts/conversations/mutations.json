@@ -1,0 +1,1230 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing in domain/, application/ or contracts/ imports this file.",
+  "purpose": [
+    "The guard ledger for @platos/context-conversations. One entry per",
+    "authorization check, scope check, cap, kill switch, step ceiling, abort path",
+    "and erasure step in the package, each carrying the file it lives in, the",
+    "EXACT text that implements it (`from`), the edit that removes it (`to`), the",
+    "suites that are supposed to notice (`suites`), and the named cases that",
+    "actually went red when it was removed (`killedBy`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there. All 89 entries",
+    "below were exercised before this context was proposed and all 89 were",
+    "falsifiable. A guard added later belongs here; one that is not here has not",
+    "been shown to be more than a comment.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
+    "PLACEHOLDERS, never its scaffolding, so an adopted context still owes the",
+    "generator its README verbatim."
+  ],
+  "procedure": [
+    "For one entry: replace its `from` with its `to` in the named file, run",
+    "`pnpm exec vitest run <suites>`, and confirm a NAMED case goes red. Then",
+    "revert and confirm green. A mutation that leaves every case green is a",
+    "finding, not a pass.",
+    "",
+    "No `from` here was transcribed by hand. Each was extracted from the file by",
+    "a unique anchor line and its span, and the extractor refuses an anchor that",
+    "matches no line or more than one, so a `from` that has drifted from the",
+    "source cannot sit in this file looking plausible.",
+    "",
+    "THREE ENTRIES WERE NOT FALSIFIABLE WHEN FIRST WRITTEN, and they are the",
+    "reason this file is worth keeping.",
+    "",
+    "M60 (the compaction lock) shared CONVERSATIONS_COMPACTION_IN_PROGRESS with",
+    "`beginCompaction`. Two guards on one code cannot be told apart: deleting the",
+    "repository's lock check left the domain check answering the identical",
+    "refusal and every case stayed green. The race now has its own code,",
+    "CONVERSATIONS_COMPACTION_LOCK_HELD, and the suite asserts which of the two",
+    "fired.",
+    "",
+    "M62 (releasing the lock when there is nothing to compact) was unfalsifiable",
+    "as a transform, and the finding stands rather than being papered over:",
+    "`acquireCompactionLock` refuses a row that already says IN_PROGRESS, so the",
+    "row the empty-plan path holds is provably IDLE and `releaseCompaction`",
+    "cannot change it. THE RELEASE IS THE WRITE, so the mutation removes the",
+    "write, which is the thing that would actually strand the lock.",
+    "",
+    "M83 (the target-name check inside `carryOutPlan`) was unreachable through",
+    "the published binder, because `erase` rejects any plan its WeakMap does not",
+    "know first. It is reachable by a caller that tampers with a plan it did",
+    "legitimately obtain — the plan is a plain object — and the suite now does",
+    "exactly that.",
+    "",
+    "ONE ENTRY MUTATES A DOUBLE RATHER THAN A USE CASE. M86 removes the cascade",
+    "from `deleteThreadsForEndUser` in the in-memory erasure store. `Turn` and",
+    "`Step` hang off `Thread` with onDelete: Cascade, and a double that did not",
+    "model it would let the erasure suite certify that a subject's own words",
+    "outlive the thread that held them."
+  ],
+  "mutations": [
+    {
+      "name": "M01 work-status: any transition is allowed",
+      "file": "domain/work-status.ts",
+      "from": "  if (!canTransition(from, to)) return err(turnAlreadySettled(id, from));",
+      "to": "  if (false) return err(turnAlreadySettled(id, from));",
+      "suites": [
+        "domain/work-status.test.ts",
+        "domain/turn.test.ts",
+        "domain/step.test.ts"
+      ],
+      "killedBy": [
+        "transition > refuses a second settlement and names the status that closed it first",
+        "transition > refuses re-opening a cancelled row, which a retry would otherwise do",
+        "settleStep > refuses a SECOND settlement before it looks at the rates",
+        "beginTurn and settleTurn > refuses a SECOND settlement"
+      ]
+    },
+    {
+      "name": "M02 turn: a turn may carry no input at all",
+      "file": "domain/turn.ts",
+      "from": "  if ((text === null || text.trim() === \"\") && structured === null) {\n    return err(turnInputInvalid(\"a turn must carry input text or structured input\"));\n  }",
+      "to": "  if (false) {\n    return err(turnInputInvalid(\"a turn must carry input text or structured input\"));\n  }",
+      "suites": [
+        "domain/turn.test.ts"
+      ],
+      "killedBy": [
+        "admitTurnInput > refuses a turn with NEITHER, including a blank string"
+      ]
+    },
+    {
+      "name": "M03 turn: the input byte cap does not bind",
+      "file": "domain/turn.ts",
+      "from": "  if (bytes > policy.maxInputBytes) return err(turnInputTooLarge(bytes, policy.maxInputBytes));",
+      "to": "  if (false) return err(turnInputTooLarge(bytes, policy.maxInputBytes));",
+      "suites": [
+        "domain/turn.test.ts"
+      ],
+      "killedBy": [
+        "admitTurnInput > refuses input over the ceiling with a DIFFERENT code from emptiness",
+        "admitTurnInput > counts the structured half toward the same ceiling"
+      ]
+    },
+    {
+      "name": "M04 turn: the step ceiling does not clamp the agent's request",
+      "file": "domain/turn.ts",
+      "from": "  return Math.min(asked, policy.maxStepsPerTurn);",
+      "to": "  return asked;",
+      "suites": [
+        "domain/turn.test.ts",
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "stepCeiling > clamps an agent's request to the installation ceiling",
+        "stepCeiling > the extraction source has no clamp at all, and this one is reachable",
+        "runTurn > clamps the agent's step budget before it reaches `providers`"
+      ]
+    },
+    {
+      "name": "M05 thread: a blank title is admitted",
+      "file": "domain/thread.ts",
+      "from": "    return err(threadTitleInvalid([{ field: \"title\", code: \"BLANK\", message }]));",
+      "to": "    return ok(trimmed);",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "openThread > refuses a blank title, distinguishing it from an absent one"
+      ]
+    },
+    {
+      "name": "M06 thread: the title length cap does not bind",
+      "file": "domain/thread.ts",
+      "from": "  if (trimmed.length > policy.maxTitleLength) {\n    const message = `a title may be at most ${policy.maxTitleLength} characters`;\n    return err(threadTitleInvalid([{ field: \"title\", code: \"TOO_LONG\", message }]));\n  }",
+      "to": "  if (false) {\n    const message = `a title may be at most ${policy.maxTitleLength} characters`;\n    return err(threadTitleInvalid([{ field: \"title\", code: \"TOO_LONG\", message }]));\n  }",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "openThread > refuses a title one character over the ceiling"
+      ]
+    },
+    {
+      "name": "M07 thread: the tag count cap does not bind",
+      "file": "domain/thread.ts",
+      "from": "  if (given.length > policy.maxTags) {\n    const message = `a thread may carry at most ${policy.maxTags} tags`;\n    return err(threadTagsInvalid([{ field: \"tags\", code: \"TOO_MANY\", message }]));\n  }",
+      "to": "  if (false) {\n    const message = `a thread may carry at most ${policy.maxTags} tags`;\n    return err(threadTagsInvalid([{ field: \"tags\", code: \"TOO_MANY\", message }]));\n  }",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "openThread > refuses one tag over the ceiling and admits exactly the ceiling"
+      ]
+    },
+    {
+      "name": "M08 thread: the per-tag length cap does not bind",
+      "file": "domain/thread.ts",
+      "from": "    if (tag.length > policy.maxTagLength) {\n      const message = `a tag may be at most ${policy.maxTagLength} characters`;\n      return err(threadTagsInvalid([{ field: `tags[${index}]`, code: \"TOO_LONG\", message }]));\n    }",
+      "to": "    if (false) {\n      const message = `a tag may be at most ${policy.maxTagLength} characters`;\n      return err(threadTagsInvalid([{ field: `tags[${index}]`, code: \"TOO_LONG\", message }]));\n    }",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "openThread > refuses an over-long tag and names its index"
+      ]
+    },
+    {
+      "name": "M09 thread: session context need not be a JSON object",
+      "file": "domain/thread.ts",
+      "from": "    return err(sessionContextInvalid(\"session context must be a JSON object at its root\"));",
+      "to": "    return ok(null);",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "admitSessionContext > refuses an ARRAY root, which the column's own registry cannot validate",
+        "admitSessionContext > refuses a SCALAR root with the same code, and a huge object with a DIFFERENT one"
+      ]
+    },
+    {
+      "name": "M10 thread: the session-context byte cap does not bind",
+      "file": "domain/thread.ts",
+      "from": "  if (bytes > policy.maxSessionContextBytes) {\n    return err(sessionContextTooLarge(bytes, policy.maxSessionContextBytes));\n  }",
+      "to": "  if (false) {\n    return err(sessionContextTooLarge(bytes, policy.maxSessionContextBytes));\n  }",
+      "suites": [
+        "domain/thread.test.ts"
+      ],
+      "killedBy": [
+        "admitSessionContext > refuses a SCALAR root with the same code, and a huge object with a DIFFERENT one"
+      ]
+    },
+    {
+      "name": "M11 thread: an ARCHIVED thread is still writable",
+      "file": "domain/thread.ts",
+      "from": "  if (thread.archivedAt !== null) return err(threadArchived(thread.threadId));",
+      "to": "  if (false) return err(threadArchived(thread.threadId));",
+      "suites": [
+        "domain/thread.test.ts",
+        "application/turn-admission.test.ts",
+        "application/fork-thread.test.ts"
+      ],
+      "killedBy": [
+        "requireWritable > refuses an ARCHIVED thread with its own code, not the settled one",
+        "admitTurn > refuses an ARCHIVED thread with its own code",
+        "forkConversation > refuses to fork an ARCHIVED thread"
+      ]
+    },
+    {
+      "name": "M12 attachment: the per-turn attachment COUNT cap does not bind",
+      "file": "domain/attachment.ts",
+      "from": "  if (candidates.length > policy.maxAttachmentsPerTurn) {\n    return err(attachmentCountExceeded(candidates.length, policy.maxAttachmentsPerTurn));\n  }",
+      "to": "  if (false) {\n    return err(attachmentCountExceeded(candidates.length, policy.maxAttachmentsPerTurn));\n  }",
+      "suites": [
+        "domain/attachment.test.ts"
+      ],
+      "killedBy": [
+        "admitAttachments > refuses too MANY files, each of them one byte",
+        "admitAttachments > reports the COUNT breach first when a request breaches count and size"
+      ]
+    },
+    {
+      "name": "M13 attachment: the per-attachment BYTE cap does not bind",
+      "file": "domain/attachment.ts",
+      "from": "    if (candidate.bytes > policy.maxBytesPerAttachment) {\n      return err(attachmentTooLarge(candidate.bytes, policy.maxBytesPerAttachment));\n    }",
+      "to": "    if (false) {\n      return err(attachmentTooLarge(candidate.bytes, policy.maxBytesPerAttachment));\n    }",
+      "suites": [
+        "domain/attachment.test.ts"
+      ],
+      "killedBy": [
+        "admitAttachments > refuses one file over the per-file ceiling"
+      ]
+    },
+    {
+      "name": "M14 attachment: any media type is promptable",
+      "file": "domain/attachment.ts",
+      "from": "    if (!promptable(candidate.mediaType, policy)) {\n      return err(attachmentMediaTypeRefused(candidate.mediaType));\n    }",
+      "to": "    if (false) {\n      return err(attachmentMediaTypeRefused(candidate.mediaType));\n    }",
+      "suites": [
+        "domain/attachment.test.ts"
+      ],
+      "killedBy": [
+        "admitAttachments > refuses a media type no prompt content part can carry"
+      ]
+    },
+    {
+      "name": "M15 attachment: a file belonging to ANOTHER thread is admitted",
+      "file": "domain/attachment.ts",
+      "from": "    if (candidate.threadId !== threadId) {\n      return err(attachmentForeign(candidate.fileId, threadId));\n    }",
+      "to": "    if (false) {\n      return err(attachmentForeign(candidate.fileId, threadId));\n    }",
+      "suites": [
+        "domain/attachment.test.ts"
+      ],
+      "killedBy": [
+        "admitAttachments > refuses a file that hangs off ANOTHER thread",
+        "admitAttachments > refuses a file that hangs off NO thread"
+      ]
+    },
+    {
+      "name": "M16 attachment: the per-turn TOTAL byte cap does not bind",
+      "file": "domain/attachment.ts",
+      "from": "  if (totalBytes > policy.maxBytesPerTurn) {\n    return err(attachmentTurnTooLarge(totalBytes, policy.maxBytesPerTurn));\n  }",
+      "to": "  if (false) {\n    return err(attachmentTurnTooLarge(totalBytes, policy.maxBytesPerTurn));\n  }",
+      "suites": [
+        "domain/attachment.test.ts"
+      ],
+      "killedBy": [
+        "admitAttachments > refuses the per-TURN total with a DIFFERENT code, every file being legal"
+      ]
+    },
+    {
+      "name": "M17 sub-agent: the delegation KILL SWITCH is dead",
+      "file": "domain/sub-agent.ts",
+      "from": "  if (!policy.subAgentsEnabled) return err(subAgentsDisabled());",
+      "to": "  if (false) return err(subAgentsDisabled());",
+      "suites": [
+        "domain/sub-agent.test.ts",
+        "application/run-sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "admitDelegation > refuses when the kill switch is off, BEFORE any ceiling is consulted",
+        "runSubAgent > refuses when the KILL SWITCH is off, and calls no provider"
+      ]
+    },
+    {
+      "name": "M18 sub-agent: an agent may delegate to itself (cycle)",
+      "file": "domain/sub-agent.ts",
+      "from": "  if (request.chain.agentIds.includes(request.childAgentId)) {\n    return err(subAgentCycle(request.childAgentId));\n  }",
+      "to": "  if (false) {\n    return err(subAgentCycle(request.childAgentId));\n  }",
+      "suites": [
+        "domain/sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "admitDelegation > refuses a CYCLE with its own code, even inside every ceiling",
+        "admitDelegation > refuses an agent delegating to ITSELF, the shortest cycle",
+        "admitDelegation > reports a CYCLE rather than a depth breach when a request is both"
+      ]
+    },
+    {
+      "name": "M19 sub-agent: the delegation DEPTH ceiling does not bind",
+      "file": "domain/sub-agent.ts",
+      "from": "  if (depth > policy.maxDepth) return err(subAgentDepthExceeded(depth, policy.maxDepth));",
+      "to": "  if (false) return err(subAgentDepthExceeded(depth, policy.maxDepth));",
+      "suites": [
+        "domain/sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "admitDelegation > refuses the DEPTH ceiling, admitting exactly at it"
+      ]
+    },
+    {
+      "name": "M20 sub-agent: the delegation FAN-OUT ceiling does not bind",
+      "file": "domain/sub-agent.ts",
+      "from": "  if (fanOut > policy.maxFanOut) return err(subAgentFanOutExceeded(fanOut, policy.maxFanOut));",
+      "to": "  if (false) return err(subAgentFanOutExceeded(fanOut, policy.maxFanOut));",
+      "suites": [
+        "domain/sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "admitDelegation > refuses the FAN-OUT ceiling with a DIFFERENT code, admitting exactly at it"
+      ]
+    },
+    {
+      "name": "M21 sub-agent: a delegated call's step ceiling does not clamp",
+      "file": "domain/sub-agent.ts",
+      "from": "  return Math.min(asked, policy.maxStepsPerSubAgent);",
+      "to": "  return asked;",
+      "suites": [
+        "domain/sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "subAgentStepCeiling > clamps a request to the installation ceiling"
+      ]
+    },
+    {
+      "name": "M22 sub-agent: a child may delegate past the depth ceiling",
+      "file": "domain/sub-agent.ts",
+      "from": "  return policy.subAgentsEnabled && chainDepth(chain) + 1 <= policy.maxDepth;",
+      "to": "  return true;",
+      "suites": [
+        "domain/sub-agent.test.ts",
+        "application/run-sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "mayDelegateFurther > is true below the ceiling and false at it — the ABSENT-capability rule",
+        "mayDelegateFurther > is false whenever the kill switch is off, at any depth",
+        "runSubAgent > WITHHOLDS the delegation tools at the depth ceiling, rather than refusing later"
+      ]
+    },
+    {
+      "name": "M23 fork: the per-thread fork ceiling does not bind",
+      "file": "domain/thread-fork.ts",
+      "from": "  if (request.existingForkCount >= policy.maxForksPerThread) {\n    return err(forkCeilingExceeded(request.existingForkCount + 1, policy.maxForksPerThread));\n  }",
+      "to": "  if (false) {\n    return err(forkCeilingExceeded(request.existingForkCount + 1, policy.maxForksPerThread));\n  }",
+      "suites": [
+        "domain/thread-fork.test.ts",
+        "application/fork-thread.test.ts"
+      ],
+      "killedBy": [
+        "planFork > refuses the FAN-OUT ceiling with its own code, at exactly the ceiling",
+        "planFork > tells the two ceilings apart on a request that breaches only one",
+        "forkConversation > refuses at the FAN-OUT ceiling, counting the forks the store already holds"
+      ]
+    },
+    {
+      "name": "M24 fork: the fork DEPTH ceiling does not bind",
+      "file": "domain/thread-fork.ts",
+      "from": "  if (depth > policy.maxForkDepth) return err(forkDepthExceeded(depth, policy.maxForkDepth));",
+      "to": "  if (false) return err(forkDepthExceeded(depth, policy.maxForkDepth));",
+      "suites": [
+        "domain/thread-fork.test.ts"
+      ],
+      "killedBy": [
+        "planFork > refuses the DEPTH ceiling with a DIFFERENT code, at exactly the ceiling",
+        "planFork > tells the two ceilings apart on a request that breaches only one"
+      ]
+    },
+    {
+      "name": "M25 fork: a boundary turn from ANOTHER thread is accepted",
+      "file": "domain/thread-fork.ts",
+      "from": "  if (boundary === -1) {\n    return err(forkTurnForeign(request.parent.threadId, request.forkedUpToTurnId));\n  }",
+      "to": "  if (false) {\n    return err(forkTurnForeign(request.parent.threadId, request.forkedUpToTurnId));\n  }",
+      "suites": [
+        "domain/thread-fork.test.ts"
+      ],
+      "killedBy": [
+        "planFork > refuses a boundary turn that is not in the parent — its own code"
+      ]
+    },
+    {
+      "name": "M26 compaction: a thread already compacting may be compacted again",
+      "file": "domain/thread-compaction.ts",
+      "from": "  if (thread.compactionState === \"IN_PROGRESS\") return err(compactionInProgress(thread.threadId));",
+      "to": "  if (false) return err(compactionInProgress(thread.threadId));",
+      "suites": [
+        "domain/thread-compaction.test.ts",
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "beginCompaction — the lock > refuses a thread already IN_PROGRESS, as a conflict"
+      ]
+    },
+    {
+      "name": "M27 compaction: the summary length ceiling does not bind",
+      "file": "domain/thread-compaction.ts",
+      "from": "  if (result.summary.length > policy.maxSummaryLength) {\n    return err(compactionSummaryTooLong(result.summary.length, policy.maxSummaryLength));\n  }",
+      "to": "  if (false) {\n    return err(compactionSummaryTooLong(result.summary.length, policy.maxSummaryLength));\n  }",
+      "suites": [
+        "domain/thread-compaction.test.ts"
+      ],
+      "killedBy": [
+        "completeCompaction > refuses an over-long summary with a DIFFERENT code, before touching the cursor"
+      ]
+    },
+    {
+      "name": "M28 compaction: the cursor may move BACKWARDS",
+      "file": "domain/thread-compaction.ts",
+      "from": "    return err(compactionCursorRegressed(result.previousCursorSequence, result.cursorSequence));",
+      "to": "",
+      "suites": [
+        "domain/thread-compaction.test.ts",
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "completeCompaction > refuses a cursor that moved BACKWARDS, which would re-expose compacted turns",
+        "completeCompaction > refuses a cursor that did not move at all",
+        "completeConversationCompaction > REFUSES a cursor that moved backwards, which a replayed job would bring"
+      ]
+    },
+    {
+      "name": "M29 tool-catalogue: the offered-tool ceiling does not bind",
+      "file": "domain/tool-catalogue.ts",
+      "from": "  if (byName.size > maxTools) return err(toolCatalogueExceeded(byName.size, maxTools));",
+      "to": "  if (false) return err(toolCatalogueExceeded(byName.size, maxTools));",
+      "suites": [
+        "domain/tool-catalogue.test.ts",
+        "application/turn-tools.test.ts"
+      ],
+      "killedBy": [
+        "buildToolCatalogue > refuses a catalogue over the ceiling, and admits exactly at it",
+        "composeTurnSurface > refuses a catalogue over the ceiling"
+      ]
+    },
+    {
+      "name": "M30 tool-catalogue: a tool that was NOT offered may still be called",
+      "file": "domain/tool-catalogue.ts",
+      "from": "  if (offered === undefined) return err(toolNotOffered(toolName));",
+      "to": "  if (false) return err(toolNotOffered(toolName));",
+      "suites": [
+        "domain/tool-catalogue.test.ts",
+        "application/turn-tools.test.ts"
+      ],
+      "killedBy": [
+        "requireOffered > REFUSES a name that was never offered, as forbidden rather than not_found",
+        "requireOffered > refuses every name in an EMPTY catalogue",
+        "executeToolCall > REFUSES a tool the turn was not offered, and never dispatches it"
+      ]
+    },
+    {
+      "name": "M31 step-rates: a charged token count may carry a NULL rate",
+      "file": "domain/step-rates.ts",
+      "from": "    if (tokens > 0 && rates[name] === null) return err(stepRateMissing(`${name}Rate`, tokens));",
+      "to": "    if (false) return err(stepRateMissing(`${name}Rate`, tokens));",
+      "suites": [
+        "domain/step-rates.test.ts",
+        "domain/step.test.ts"
+      ],
+      "killedBy": [
+        "requireExplainedRates > refuses a charged rate that is absent, and names the column",
+        "requireExplainedRates > refuses each of the four columns by name when its own count is charged",
+        "settleStep > refuses a row whose charged tokens have no rate, through THIS entry point"
+      ]
+    },
+    {
+      "name": "M32 step-rates: an UNAVAILABLE rate counts as observed",
+      "file": "domain/step-rates.ts",
+      "from": "    return rate === null || rate.source !== \"UNAVAILABLE\";",
+      "to": "    return rate === null || true;",
+      "suites": [
+        "domain/step-rates.test.ts",
+        "domain/turn-cost.test.ts"
+      ],
+      "killedBy": [
+        "ratesFullyObserved > is FALSE when any rate was UNAVAILABLE — the cost is then a floor",
+        "rollUpTurnCost > marks a total incomplete when a rate was UNAVAILABLE, even though it priced"
+      ]
+    },
+    {
+      "name": "M33 step-usage: a negative or fractional token count is admitted",
+      "file": "domain/step-usage.ts",
+      "from": "    if (!Number.isInteger(value) || value < 0) return err(stepUsageInvalid(field, value));",
+      "to": "    if (false) return err(stepUsageInvalid(field, value));",
+      "suites": [
+        "domain/step-usage.test.ts"
+      ],
+      "killedBy": [
+        "stepUsage > refuses a negative count, naming the field",
+        "stepUsage > refuses a fractional count, which no token counter produces",
+        "stepUsage > refuses each of the five fields by its own name"
+      ]
+    },
+    {
+      "name": "M34 step-usage: cached tokens are ALSO charged at the full input rate",
+      "file": "domain/step-usage.ts",
+      "from": "    freshInputTokens: Math.max(0, usage.inputTokens - cached),",
+      "to": "    freshInputTokens: usage.inputTokens,",
+      "suites": [
+        "domain/step-usage.test.ts",
+        "application/turn-steps.test.ts"
+      ],
+      "killedBy": [
+        "billableStepTokens > subtracts BOTH cache figures from the input total, exactly",
+        "billableStepTokens > floors the fresh figure at zero when a provider over-reports its cache"
+      ]
+    },
+    {
+      "name": "M35 step-usage: a turn's usage is NOT the sum of its steps",
+      "file": "domain/step-usage.ts",
+      "from": "        inputTokens: total.inputTokens + usage.inputTokens,",
+      "to": "        inputTokens: usage.inputTokens,",
+      "suites": [
+        "domain/step-usage.test.ts"
+      ],
+      "killedBy": [
+        "sumStepUsage — the turn total is DERIVED > sums three steps to exactly the figures they carry"
+      ]
+    },
+    {
+      "name": "M36 step: a step that already settled may be settled again",
+      "file": "domain/step.ts",
+      "from": "  if (isTerminal(step.status)) return err(stepAlreadySettled(step.stepId, step.status));",
+      "to": "  if (false) return err(stepAlreadySettled(step.stepId, step.status));",
+      "suites": [
+        "domain/step.test.ts"
+      ],
+      "killedBy": [
+        "retryStep > refuses a retry of a SETTLED step"
+      ]
+    },
+    {
+      "name": "M37 turn-cost: THE ZEROING MUTATION — a turn costs nothing",
+      "file": "domain/turn-cost.ts",
+      "from": "    amount: sum(amounts),",
+      "to": "    amount: zero(),",
+      "suites": [
+        "domain/turn-cost.test.ts",
+        "domain/turn.test.ts",
+        "application/turn-steps.test.ts",
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "rollUpTurnCost > sums three steps to an EXACT micro-cent total",
+        "rollUpTurnCost > leaves NO RESIDUE: the total minus the parts is exactly zero",
+        "rollUpTurnCost > is associative: the order the steps arrive in cannot change the total",
+        "rollUpTurnCost > counts an UNPRICED step and marks the total incomplete"
+      ]
+    },
+    {
+      "name": "M38 turn-cost: an unpriced or unobserved total reports itself COMPLETE",
+      "file": "domain/turn-cost.ts",
+      "from": "    complete: unpricedSteps === 0 && observed,",
+      "to": "    complete: true,",
+      "suites": [
+        "domain/turn-cost.test.ts"
+      ],
+      "killedBy": [
+        "rollUpTurnCost > counts an UNPRICED step and marks the total incomplete",
+        "rollUpTurnCost > distinguishes an EMPTY turn from a turn whose one step is unpriced",
+        "rollUpTurnCost > marks a total incomplete when a rate was UNAVAILABLE, even though it priced"
+      ]
+    },
+    {
+      "name": "M39 turn-cost: the primary rollup counts the DELEGATED steps too",
+      "file": "domain/turn-cost.ts",
+      "from": "  return rollUpTurnCost(steps.filter((step) => step.sequence === PRIMARY_STEP_SEQUENCE));",
+      "to": "  return rollUpTurnCost(steps);",
+      "suites": [
+        "domain/turn-cost.test.ts"
+      ],
+      "killedBy": [
+        "rollUpPrimaryCost — what the turn's OWN calls cost > keeps step 1 and excludes every delegated step"
+      ]
+    },
+    {
+      "name": "M40 structured-output: a non-object output schema is accepted",
+      "file": "domain/structured-output.ts",
+      "from": "    return err(outputSchemaInvalid(\"an output schema must be a JSON Schema object\"));",
+      "to": "",
+      "suites": [
+        "domain/structured-output.test.ts"
+      ],
+      "killedBy": [
+        "admitOutputSchema > refuses an ARRAY, which is valid JSON and never a schema document",
+        "admitOutputSchema > refuses a scalar"
+      ]
+    },
+    {
+      "name": "M41 structured-output: the reported-error cap does not bind",
+      "file": "domain/structured-output.ts",
+      "from": "  const reported = errors.slice(0, MAX_REPORTED_ERRORS);",
+      "to": "  const reported = errors;",
+      "suites": [
+        "domain/structured-output.test.ts"
+      ],
+      "killedBy": [
+        "buildCorrection > reports at most ten errors and says how many it dropped"
+      ]
+    },
+    {
+      "name": "M42 structured-output: the raw-text cap does not bind",
+      "file": "domain/structured-output.ts",
+      "from": "  const text = rawText.length > MAX_REPORTED_TEXT ? rawText.slice(0, MAX_REPORTED_TEXT) : rawText;",
+      "to": "  const text = rawText;",
+      "suites": [
+        "domain/structured-output.test.ts"
+      ],
+      "killedBy": [
+        "buildCorrection > truncates the quoted text, so a bad answer cannot balloon the retry prompt"
+      ]
+    },
+    {
+      "name": "M43 transcript: the entry ceiling does not bind",
+      "file": "domain/transcript.ts",
+      "from": "  const ceiling = Math.max(0, request.maxEntries);",
+      "to": "  const ceiling = Number.MAX_SAFE_INTEGER;",
+      "suites": [
+        "domain/transcript.test.ts"
+      ],
+      "killedBy": [
+        "buildTranscript > keeps the NEWEST entries when the window is spent, never the oldest"
+      ]
+    },
+    {
+      "name": "M44 postman: an EXPIRED context handle is still usable",
+      "file": "domain/postman-execution.ts",
+      "from": "    return err(postmanHandleExpired(execution.contextHandle, execution.contextExpiresAt));",
+      "to": "",
+      "suites": [
+        "domain/postman-execution.test.ts",
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "requireLiveHandle > refuses a handle AT its deadline, and after it",
+        "settleExecution > REFUSES an expired handle, which the source never checks"
+      ]
+    },
+    {
+      "name": "M45 postman: a replayed launch with a DIFFERENT request is reconciled",
+      "file": "domain/postman-execution.ts",
+      "from": "    return err(postmanFingerprintMismatch(existing.requestId));",
+      "to": "",
+      "suites": [
+        "domain/postman-execution.test.ts",
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "reconcileReplay > REFUSES a differing fingerprint, because answering it hands over another's result",
+        "launchPostmanExecution > REFUSES the same request id with a DIFFERENT body"
+      ]
+    },
+    {
+      "name": "M46 postman: an execution may be SETTLED TWICE",
+      "file": "domain/postman-execution.ts",
+      "from": "  if (!moved.ok) return err(postmanAlreadySettled(execution.executionId, execution.status));",
+      "to": "  if (false) return err(postmanAlreadySettled(execution.executionId, execution.status));",
+      "suites": [
+        "domain/postman-execution.test.ts",
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "settlePostmanExecution > refuses a SECOND settlement with its own code",
+        "settleExecution > refuses a SECOND settlement"
+      ]
+    },
+    {
+      "name": "M47 authorization: an operator grant is never verified",
+      "file": "application/authorization.ts",
+      "from": "  const verified = dependencies.tenancy.verifyAuthorization(authorization);",
+      "to": "  const verified = ok(authorization as TenancyOperatorGrant);",
+      "suites": [
+        "application/authorization.test.ts",
+        "application/manage-threads.test.ts",
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "verifyOperator > refuses a hand-built object with the right SHAPE — identity, not shape",
+        "launchPostmanExecution > demands BOTH grants: a runtime one alone is not enough either",
+        "the two reads > refuses an operator read without a minted grant"
+      ]
+    },
+    {
+      "name": "M48 authorization: an operator grant for ANOTHER environment is accepted",
+      "file": "application/authorization.ts",
+      "from": "  if (!authorizes(verified.value, scope)) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
+      "to": "  if (false) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
+      "suites": [
+        "application/authorization.test.ts"
+      ],
+      "killedBy": [
+        "verifyOperator > refuses a grant minted for ANOTHER environment, and never says not_found",
+        "verifyOperator > compares the WHOLE ancestry: a matching leaf under another project refuses"
+      ]
+    },
+    {
+      "name": "M49 authorization: a runtime grant is matched on the LEAF, not the chain",
+      "file": "application/authorization.ts",
+      "from": "    granted.organizationId !== scope.organizationId ||\n    granted.projectId !== scope.projectId ||\n    granted.environmentId !== scope.environmentId",
+      "to": "    false ||\n    false ||\n    granted.environmentId !== scope.environmentId",
+      "suites": [
+        "application/authorization.test.ts"
+      ],
+      "killedBy": [
+        "verifyRuntime > refuses on the ORGANIZATION, the PROJECT and the ENVIRONMENT independently"
+      ]
+    },
+    {
+      "name": "M50 authorization: a thread owned by ANOTHER end user is readable",
+      "file": "application/authorization.ts",
+      "from": "  if (thread === null || thread.endUserId !== endUserId) return err(threadNotFound(threadId));",
+      "to": "  if (thread === null) return err(threadNotFound(threadId));",
+      "suites": [
+        "application/authorization.test.ts",
+        "application/turn-admission.test.ts"
+      ],
+      "killedBy": [
+        "the two thread refusals, which MUST differ > hides ANOTHER end user's thread behind the SAME code as an absent one",
+        "admitTurn > refuses an absent thread and a FOREIGN one identically"
+      ]
+    },
+    {
+      "name": "M51 authorization: the operator's foreign-thread refusal is dropped",
+      "file": "application/authorization.ts",
+      "from": "  if (endUserId !== null && thread.endUserId !== endUserId) {\n    return err(threadForbidden(threadId, endUserId));\n  }",
+      "to": "  if (false) {\n    return err(threadForbidden(threadId, endUserId));\n  }",
+      "suites": [
+        "application/authorization.test.ts"
+      ],
+      "killedBy": [
+        "the two thread refusals, which MUST differ > tells an OPERATOR the two apart, because the grant already entitles them"
+      ]
+    },
+    {
+      "name": "M52 turn-admission: the runtime grant is not verified against the scope",
+      "file": "application/turn-admission.ts",
+      "from": "  const grant = verifyRuntime(request.authorization, request.scope);",
+      "to": "  const grant = ok(request.authorization);",
+      "suites": [
+        "application/turn-admission.test.ts"
+      ],
+      "killedBy": [
+        "admitTurn > refuses a grant for another scope BEFORE it reads any tenant data"
+      ]
+    },
+    {
+      "name": "M53 turn-admission: THE TURNS KILL SWITCH is dead",
+      "file": "application/turn-admission.ts",
+      "from": "  if (!dependencies.policy.turn.turnsEnabled) return err(turnsDisabled());",
+      "to": "  if (false) return err(turnsDisabled());",
+      "suites": [
+        "application/turn-admission.test.ts",
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "admitTurn > refuses when the KILL SWITCH is off, even for a thread that would pass",
+        "runTurn > refuses when the KILL SWITCH is off, before it reads the thread"
+      ]
+    },
+    {
+      "name": "M54 turn-admission: the idempotency FINGERPRINT is not compared",
+      "file": "application/turn-admission.ts",
+      "from": "      if (seen !== fingerprintInput(request.inputText)) {\n        return err(turnIdempotencyConflict(request.idempotencyKey));\n      }",
+      "to": "      if (false) {\n        return err(turnIdempotencyConflict(request.idempotencyKey));\n      }",
+      "suites": [
+        "application/turn-admission.test.ts"
+      ],
+      "killedBy": [
+        "admitTurn > REFUSES the same key with DIFFERENT input, which the constraint cannot see"
+      ]
+    },
+    {
+      "name": "M55 turn-admission: the per-thread TURN CEILING does not bind",
+      "file": "application/turn-admission.ts",
+      "from": "  if (count.value >= dependencies.policy.turn.maxTurnsPerThread) {\n    return err(turnCeilingExceeded(count.value, dependencies.policy.turn.maxTurnsPerThread));\n  }",
+      "to": "  if (false) {\n    return err(turnCeilingExceeded(count.value, dependencies.policy.turn.maxTurnsPerThread));\n  }",
+      "suites": [
+        "application/turn-admission.test.ts"
+      ],
+      "killedBy": [
+        "admitTurn > refuses a thread at its TURN CEILING, and admits one below it"
+      ]
+    },
+    {
+      "name": "M56 manage-threads: a NEGATIVE offset is admitted",
+      "file": "application/manage-threads.ts",
+      "from": "    return err(pageRequestInvalid(message, [{ field: \"offset\", code: \"NEGATIVE\", message }]));",
+      "to": "",
+      "suites": [
+        "application/manage-threads.test.ts"
+      ],
+      "killedBy": [
+        "admitPage — the ceiling the source does not have > names the OFFSET when the offset is what is wrong"
+      ]
+    },
+    {
+      "name": "M57 manage-threads: a non-positive limit is admitted",
+      "file": "application/manage-threads.ts",
+      "from": "    return err(pageRequestInvalid(message, [{ field: \"limit\", code: \"NOT_POSITIVE\", message }]));",
+      "to": "",
+      "suites": [
+        "application/manage-threads.test.ts"
+      ],
+      "killedBy": [
+        "admitPage — the ceiling the source does not have > names the LIMIT when the limit is not positive"
+      ]
+    },
+    {
+      "name": "M58 manage-threads: the PAGE CEILING the source does not have is removed",
+      "file": "application/manage-threads.ts",
+      "from": "    return err(pageRequestInvalid(message, [{ field: \"limit\", code: \"TOO_LARGE\", message }]));",
+      "to": "",
+      "suites": [
+        "application/manage-threads.test.ts"
+      ],
+      "killedBy": [
+        "admitPage — the ceiling the source does not have > REFUSES a limit over the ceiling rather than clamping it silently",
+        "pageConversationTurns > applies the page ceiling on this surface too"
+      ]
+    },
+    {
+      "name": "M59 erasure: the plan-provenance check is deleted",
+      "file": "application/conversations-erasure-target.ts",
+      "from": "        throw new ConversationsErasureRejected(\n          error.code,\n          \"this plan was not produced by this target\",\n        );",
+      "to": "",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "erasing > REFUSES a plan this target did not produce"
+      ]
+    },
+    {
+      "name": "M60 compact-thread: a thread already locked is compacted anyway",
+      "file": "application/compact-thread.ts",
+      "from": "  if (!locked.value) return err(compactionLockHeld(command.threadId));",
+      "to": "  if (false) return err(compactionLockHeld(command.threadId));",
+      "suites": [
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "planConversationCompaction > refuses a SECOND compaction while one is running"
+      ]
+    },
+    {
+      "name": "M61 compact-thread: THE DURABLE DISPATCH is deleted — the summary is never asked for",
+      "file": "application/compact-thread.ts",
+      "from": "  const queued = await dependencies.jobs.execute({\n    scope: command.scope,\n    body: {\n      job: COMPACTION_JOB_KEY,\n      threadId: command.threadId,\n      cursorTurnId: plan.cursorTurnId,\n      turnCount: plan.turns.length,\n    },\n  });",
+      "to": "  const queued = ok(undefined as never);",
+      "suites": [
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "planConversationCompaction > dispatches the summarising as a DURABLE job, never inside the request",
+        "planConversationCompaction > refuses a SECOND compaction while one is running"
+      ]
+    },
+    {
+      "name": "M62 compact-thread: the lock is NEVER RELEASED when there is nothing to compact",
+      "file": "application/compact-thread.ts",
+      "from": "    const released = await dependencies.threads.saveThread(\n      command.scope,\n      releaseCompaction(found.value),\n    );",
+      "to": "    const released = ok(found.value);",
+      "suites": [
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "planConversationCompaction > RELEASES the lock and dispatches nothing when there is too little to compact"
+      ]
+    },
+    {
+      "name": "M63 compact-thread: the settlement leaves the transaction",
+      "file": "application/compact-thread.ts",
+      "from": "  return dependencies.unitOfWork.run(async (transaction) => {",
+      "to": "  return await (async (transaction: { transactionId: string }) => {",
+      "suites": [
+        "application/compact-thread.test.ts"
+      ],
+      "killedBy": [
+        "completeConversationCompaction > stores the summary, advances the cursor, releases the lock and emits",
+        "completeConversationCompaction > REFUSES a cursor that moved backwards, which a replayed job would bring"
+      ]
+    },
+    {
+      "name": "M64 fork-thread: the fork write leaves the transaction, splitting row from event",
+      "file": "application/fork-thread.ts",
+      "from": "  return dependencies.unitOfWork.run(async (transaction) => {",
+      "to": "  return await (async (transaction: { transactionId: string }) => {",
+      "suites": [
+        "application/fork-thread.test.ts"
+      ],
+      "killedBy": [
+        "forkConversation > writes ONE row and copies no turn, no step and no ledger row",
+        "forkConversation > inherits the parent's agent and end user, with no way to change either",
+        "forkConversation > emits `conversations.thread.forked` inside the same transaction",
+        "forkConversation > refuses at the FAN-OUT ceiling, counting the forks the store already holds"
+      ]
+    },
+    {
+      "name": "M65 execute-postman: the OPERATOR grant is not required",
+      "file": "application/execute-postman.ts",
+      "from": "  const operator = verifyOperator(dependencies, command.authorization, command.scope);",
+      "to": "  const operator = ok(command.authorization as never);",
+      "suites": [
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "launchPostmanExecution > demands BOTH grants: a runtime one alone is not enough either"
+      ]
+    },
+    {
+      "name": "M66 execute-postman: the RUNTIME grant is not required beside the operator one",
+      "file": "application/execute-postman.ts",
+      "from": "  const runtime = verifyRuntime(command.runtimeAuthorization, command.scope);",
+      "to": "  const runtime = ok(command.runtimeAuthorization);",
+      "suites": [
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "launchPostmanExecution > demands BOTH grants: an operator one alone is not enough"
+      ]
+    },
+    {
+      "name": "M67 execute-postman: a replay is not reconciled against the first request",
+      "file": "application/execute-postman.ts",
+      "from": "      const reconciled = reconcileReplay(existing.value, command.requestFingerprint);",
+      "to": "      const reconciled = ok(existing.value);",
+      "suites": [
+        "application/execute-postman.test.ts"
+      ],
+      "killedBy": [
+        "launchPostmanExecution > REFUSES the same request id with a DIFFERENT body"
+      ]
+    },
+    {
+      "name": "M68 run-turn: THE ABORT PATH is dead — an aborted turn settles as a success",
+      "file": "application/run-turn.ts",
+      "from": "  const aborted = generation.value.generation.finishReason === \"aborted\";",
+      "to": "  const aborted = false;",
+      "suites": [
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "runTurn > CANCELS an aborted turn and KEEPS the money its steps already spent"
+      ]
+    },
+    {
+      "name": "M69 run-turn: THE STEP CLAMP never reaches `providers`",
+      "file": "application/run-turn.ts",
+      "from": "    maxSteps: stepCeiling(command.requestedMaxSteps ?? null, dependencies.policy.turn),",
+      "to": "    maxSteps: command.requestedMaxSteps ?? dependencies.policy.turn.defaultStepsPerTurn,",
+      "suites": [
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "runTurn > clamps the agent's step budget before it reaches `providers`"
+      ]
+    },
+    {
+      "name": "M70 run-turn: a provider refusal is not settled — the turn is left open",
+      "file": "application/run-turn.ts",
+      "from": "  const persisted = await persist(dependencies, scope, settled.value, [], false);",
+      "to": "  const persisted = ok(undefined as never);",
+      "suites": [
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "runTurn > SETTLES the turn as FAILED when the provider refuses, and still emits"
+      ]
+    },
+    {
+      "name": "M71 run-turn: THE SETTLEMENT leaves the transaction, splitting the row from its event",
+      "file": "application/run-turn.ts",
+      "from": "  return dependencies.unitOfWork.run(async (transaction) => {",
+      "to": "  return await (async (transaction: { transactionId: string }) => {",
+      "suites": [
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "runTurn > runs a turn, settles it, and derives its cost from the steps",
+        "runTurn > emits `conversations.turn.settled` with the EXACT cost as a cent string",
+        "runTurn > writes the settlement and the event in ONE transaction",
+        "runTurn > pins the version and its bucket onto the turn, from the draw it was given"
+      ]
+    },
+    {
+      "name": "M72 turn-preparation: THE BUDGET GATE does not refuse an exhausted budget",
+      "file": "application/turn-preparation.ts",
+      "from": "  if (!guard.value.allowed) return err(budgetExhausted(guard.value.refusal.label));",
+      "to": "  if (false) return err(budgetExhausted(guard.value.refusal.label));",
+      "suites": [
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "runTurn > guards the budget BEFORE the provider is called at all"
+      ]
+    },
+    {
+      "name": "M73 turn-steps: THE ZEROING MUTATION on the priced step — every step costs nothing",
+      "file": "application/turn-steps.ts",
+      "from": "    cost: moneyFromCentsString(priced.value.costCents),",
+      "to": "    cost: moneyFromCentsString(\"0\"),",
+      "suites": [
+        "application/turn-steps.test.ts",
+        "application/run-turn.test.ts"
+      ],
+      "killedBy": [
+        "recordStep > prices a step to an EXACT cent string",
+        "recordStep > charges a CACHED step less than an uncached one with the same input total",
+        "recordStep > charges cache WRITE at a different rate from cache READ",
+        "recordSteps > numbers steps from the sequence it was given and prices each separately"
+      ]
+    },
+    {
+      "name": "M74 turn-steps: the CACHE WRITE figure never reaches the pricing draft",
+      "file": "application/turn-steps.ts",
+      "from": "    cacheWriteInputTokens: usage.cacheCreationInputTokens,",
+      "to": "    cacheWriteInputTokens: 0,",
+      "suites": [
+        "application/turn-steps.test.ts"
+      ],
+      "killedBy": [
+        "recordStep > charges cache WRITE at a different rate from cache READ",
+        "recordSteps > agrees with the rate card's own arithmetic on a mixed step"
+      ]
+    },
+    {
+      "name": "M75 turn-steps: REASONING is folded into the priced output and charged twice",
+      "file": "application/turn-steps.ts",
+      "from": "    outputTokens: usage.outputTokens,",
+      "to": "    outputTokens: usage.outputTokens + usage.reasoningTokens,",
+      "suites": [
+        "application/turn-steps.test.ts"
+      ],
+      "killedBy": [
+        "recordStep > does NOT charge for reasoning, which is already inside the output count"
+      ]
+    },
+    {
+      "name": "M76 turn-steps: an unreported rate becomes a ZERO rate rather than a null",
+      "file": "application/turn-steps.ts",
+      "from": "    if (!(entry.rate in book)) continue;",
+      "to": "    if (!(entry.rate in book)) continue;\n    if (entry.rate === \"cacheWrite\") continue;",
+      "suites": [
+        "application/turn-steps.test.ts"
+      ],
+      "killedBy": [
+        "recordStep > charges cache WRITE at a different rate from cache READ",
+        "recordSteps > agrees with the rate card's own arithmetic on a mixed step"
+      ]
+    },
+    {
+      "name": "M77 turn-tools: THE RESULT SCRUB is removed",
+      "file": "application/turn-tools.ts",
+      "from": "  const sanitized = sanitizeToolResult(executed.value.result);",
+      "to": "  const sanitized = { ok: true, value: executed.value.result, error: null } as ReturnType<typeof sanitizeToolResult>;",
+      "suites": [
+        "application/turn-tools.test.ts"
+      ],
+      "killedBy": [
+        "executeToolCall > SCRUBS the result, so a Map does not become an empty object downstream",
+        "executeToolCall > fails a tool whose answer will not serialize at all"
+      ]
+    },
+    {
+      "name": "M78 turn-tools: THE CATALOGUE CEILING never reaches the composer",
+      "file": "application/turn-tools.ts",
+      "from": "  const catalogue = buildToolCatalogue(offers, dependencies.policy.turn.maxToolsPerTurn);",
+      "to": "  const catalogue = buildToolCatalogue(offers, Number.MAX_SAFE_INTEGER);",
+      "suites": [
+        "application/turn-tools.test.ts"
+      ],
+      "killedBy": [
+        "composeTurnSurface > refuses a catalogue over the ceiling"
+      ]
+    },
+    {
+      "name": "M79 turn-tools: an approval-parked tool reads as a plain success",
+      "file": "application/turn-tools.ts",
+      "from": "  if (executed.value.kind === \"awaiting_approval\") {\n    return failure(call, `approval required: ${executed.value.reason}`);\n  }",
+      "to": "  if (false) {\n    return failure(call, `approval required: ${executed.value.reason}`);\n  }",
+      "suites": [
+        "application/turn-tools.test.ts"
+      ],
+      "killedBy": [
+        "executeToolCall > answers an APPROVAL requirement as a failed result rather than blocking"
+      ]
+    },
+    {
+      "name": "M80 run-sub-agent: THE CATALOGUE NARROWING is removed — a child sees every parent tool",
+      "file": "application/run-sub-agent.ts",
+      "from": "  const kept = parent.tools.filter((tool) => allowed === null || allowed.has(tool.name));",
+      "to": "  const kept = parent.tools;",
+      "suites": [
+        "application/run-sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "narrowToParentCatalogue > intersects with the allow-list and never widens",
+        "runSubAgent > offers the child a NARROWED catalogue and nothing the parent lacked"
+      ]
+    },
+    {
+      "name": "M81 run-sub-agent: a delegated call's STEP CEILING never reaches `providers`",
+      "file": "application/run-sub-agent.ts",
+      "from": "    maxSteps: subAgentStepCeiling(command.requestedMaxSteps ?? null, dependencies.policy.subAgent),",
+      "to": "    maxSteps: command.requestedMaxSteps ?? 6,",
+      "suites": [
+        "application/run-sub-agent.test.ts"
+      ],
+      "killedBy": [
+        "runSubAgent > clamps the delegated step budget to the sub-agent ceiling"
+      ]
+    },
+    {
+      "name": "M82 erasure: A LEGAL HOLD no longer blocks the plan",
+      "file": "application/conversations-erasure-target.ts",
+      "from": "    const blockedBy = held.value.length > 0 ? `legal-hold:${held.value.length}` : null;",
+      "to": "    const blockedBy = null;",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "planning for an END USER > names a legal hold on the three conversation items when one exists"
+      ]
+    },
+    {
+      "name": "M83 erasure: a plan built by ANOTHER target is carried out",
+      "file": "application/conversations-erasure-target.ts",
+      "from": "  if (plan.targetName !== CONVERSATIONS_ERASURE_TARGET_NAME) {\n    const error = erasurePlanForeign(plan.targetName);\n    throw new ConversationsErasureRejected(error.code, error.message);\n  }",
+      "to": "  if (false) {\n    const error = erasurePlanForeign(plan.targetName);\n    throw new ConversationsErasureRejected(error.code, error.message);\n  }",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "erasing > REFUSES a plan of OURS whose target name was tampered with after it was built"
+      ]
+    },
+    {
+      "name": "M84 erasure: THE THREAD DELETION step is skipped — the subject's words survive",
+      "file": "application/conversations-erasure-target.ts",
+      "from": "    const threads = await dependencies.erasureStore.deleteThreadsForEndUser(\n      subject.subjectId as EndUserId,\n      organizationId,\n      transaction,\n    );",
+      "to": "    const threads = ok(0);",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "erasing > deletes the threads AND CASCADES to the turns and their steps",
+        "erasing > ANONYMIZES the audit row rather than deleting it, keeping the operator's trail",
+        "erasing > stamps the receipt with the clock it was given, not the wall clock",
+        "erasing > leaves ANOTHER end user's conversation entirely alone"
+      ]
+    },
+    {
+      "name": "M85 erasure: THE POSTMAN ANONYMISE step is skipped",
+      "file": "application/conversations-erasure-target.ts",
+      "from": "    const stripped = await dependencies.erasureStore.anonymizeExecutionsForEndUser(\n      subject.subjectId as EndUserId,\n      organizationId,\n      transaction,\n    );",
+      "to": "    const stripped = ok(0);",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "erasing > deletes the threads AND CASCADES to the turns and their steps",
+        "erasing > ANONYMIZES the audit row rather than deleting it, keeping the operator's trail",
+        "erasing > stamps the receipt with the clock it was given, not the wall clock",
+        "erasing > leaves ANOTHER end user's conversation entirely alone"
+      ]
+    },
+    {
+      "name": "M86 erasure store double: deleting a thread does NOT cascade to its turns and steps",
+      "file": "application/testing/in-memory-stores.ts",
+      "from": "      for (const turn of [...this.turns.values()].filter((t) => t.threadId === thread.threadId)) {\n        this.steps.delete(turn.turnId);\n        this.turns.delete(turn.turnId);\n      }",
+      "to": "      void thread;",
+      "suites": [
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "erasing > deletes the threads AND CASCADES to the turns and their steps"
+      ]
+    },
+    {
+      "name": "M87 contract: THE CONTRACT IS NOT FROZEN — a transport can monkey-patch it",
+      "file": "application/conversations-contract.ts",
+      "from": "  return Object.freeze(contract);",
+      "to": "  return contract;",
+      "suites": [
+        "contracts/index.test.ts"
+      ],
+      "killedBy": [
+        "the binder > is FROZEN, so a transport cannot patch behaviour onto it"
+      ]
+    },
+    {
+      "name": "M88 contract: THE ERASURE TARGET IS FRESH PER CALL — `privacy` can double-count",
+      "file": "application/conversations-contract.ts",
+      "from": "    erasureTarget: () => erasure,",
+      "to": "    erasureTarget: () => createConversationsErasureTarget(dependencies),",
+      "suites": [
+        "contracts/index.test.ts",
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "the binder > publishes the ErasureTarget as a STABLE instance",
+        "the target is reachable through the published contract > hands back the SAME target every call, so two injections cannot double-count"
+      ]
+    },
+    {
+      "name": "M89 contract: THE ERASURE TARGET IS NOT PUBLISHED — erasure silently skips this context",
+      "file": "application/conversations-contract.ts",
+      "from": "    erasureTarget: () => erasure,",
+      "to": "    erasureTarget: undefined as never,",
+      "suites": [
+        "contracts/index.test.ts",
+        "application/conversations-erasure-target.test.ts"
+      ],
+      "killedBy": [
+        "the binder > publishes every use case a transport needs, and each is callable",
+        "the binder > publishes the ErasureTarget as a STABLE instance",
+        "the target is reachable through the published contract > is published, and names this context",
+        "the target is reachable through the published contract > hands back the SAME target every call, so two injections cannot double-count"
+      ]
+    }
+  ]
+}

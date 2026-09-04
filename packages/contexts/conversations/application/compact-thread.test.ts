@@ -95,7 +95,12 @@ describe("planConversationCompaction", () => {
     });
     expect(second.ok).toBe(false);
     if (second.ok) return;
-    expect(second.error.code).toBe("CONVERSATIONS_COMPACTION_IN_PROGRESS");
+    // THE LOCK'S OWN CODE, not the domain's. `beginCompaction` refuses a
+    // snapshot that already says IN_PROGRESS with
+    // CONVERSATIONS_COMPACTION_IN_PROGRESS; this refusal comes from the
+    // repository losing the conditional update, and while the two shared one
+    // code deleting the lock check left this case green.
+    expect(second.error.code).toBe("CONVERSATIONS_COMPACTION_LOCK_HELD");
     // The lock was taken once. Two callers, one winner.
     expect(context.store.lockTaken).toBe(1);
     expect(context.jobs.dispatched).toHaveLength(1);

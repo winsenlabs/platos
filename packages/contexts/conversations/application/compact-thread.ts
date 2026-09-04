@@ -33,7 +33,7 @@ import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   beginCompaction,
-  compactionInProgress,
+  compactionLockHeld,
   completeCompaction,
   planCompaction,
   releaseCompaction,
@@ -83,7 +83,7 @@ export async function planConversationCompaction(
 
   const locked = await dependencies.threads.acquireCompactionLock(command.scope, command.threadId);
   if (!locked.ok) return err(locked.error);
-  if (!locked.value) return err(compactionInProgress(command.threadId));
+  if (!locked.value) return err(compactionLockHeld(command.threadId));
 
   const turns = await dependencies.turns.readTranscriptTurns(
     command.scope,

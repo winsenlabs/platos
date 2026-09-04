@@ -221,6 +221,23 @@ describe("erasing", () => {
     );
   });
 
+  it("REFUSES a plan of OURS whose target name was tampered with after it was built", async () => {
+    // The WeakMap knows this object — it IS the plan `plan()` returned — so the
+    // provenance check passes and the SECOND check, on the name the plan
+    // carries, is the one that has to fire. Without a case that reaches it, that
+    // check was unreachable from the published surface and deleting it left
+    // every case green.
+    const context = buildConversationsTestContext();
+    seedConversation(context);
+    const target = targetOf(context);
+    const plan = (await target.plan(endUserSubject())) as { targetName: string };
+    plan.targetName = "files";
+
+    await expect(target.erase(plan as never, TRANSACTION)).rejects.toThrow(/files/u);
+    // And nothing was erased on the way to refusing.
+    expect(context.store.threads.has("thread-1")).toBe(true);
+  });
+
   it("REFUSES a plan that claims to be ours but was built elsewhere", async () => {
     const context = buildConversationsTestContext();
     const target = targetOf(context);
