@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "29346574f000511ffa899f8b5e33fed7ef0ce96ae26b341b9d5524ba1cc7034a"
+      "sha256": "e612a4b4f733a1e0a4627528db3a51832e8cc4ce1cd9eaab878f840f1f5d9a21"
     },
     {
       "path": "LICENSE",
@@ -808,12 +808,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "8fe3dfc9eb510c95a39b1e572b8674714b7ba52d10d416aaae54987696cf0c6c"
+      "sha256": "4108079539771b41272c3b09b95d18960238dfe25c799f5b5f359c75c644f6a8"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "65b1757eac1891ac66e8c04b5395cb340a77a6e6d10cc74f2e2d4b3dc3200cc7"
+      "sha256": "3db6e5cf5c0ef68bf9f962b10d7c7e754970489bb11c93396ffcf7fa45a73516"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -1033,17 +1033,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "72682c00939fa219cb1f8de2ba18e8fcdda4a3747dab5007ec00c4eafd56f896"
+      "sha256": "bbd44c8da52f95128259c13ec7c7b68925ae8e9c37e33bcda56262799068fa91"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "50849da9fdc3d8d85bbbe59a914969d2ed4993a27459491ca3e03b48e1b7cee8"
+      "sha256": "6a57c784ee74bc20df9b4ad45b6e073e0ad42e09e7c35c01c2c093d988446d48"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "7ebb90ed44a8f657bf0db31366f8b2e46a0c387075ee95797f9a32378eb57afa"
+      "sha256": "015e5aa711ab8c880e75f92306e42910d6ad777a70bb3dfacf49d19cd20c05d9"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "104c5269156e1fdf40e7f7c391b6e144016471a32bfa096281a9eec119d22b89"
+      "sha256": "c681dc9436cbec364294b833b28995ab0f17e6bc14f99c26b89c77f3418df604"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "2a2372d20607a52049f2ec82e6ce0693ea863fa176425313ae3b4bccf29c339e"
+      "sha256": "8a4e0b25db1990fec336cace685260d2075a6e735b41ae2ff6670d6ef10e823d"
     },
     {
       "path": "docs/v3-openapi.yaml",
