@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "fb9c155b5b679d99e4faef31cc3856e9cce210bd3613becf3b8daca265f958e5",
+  "evidenceSha256": "2e737c0e45a0589b303ee681db02b8dcb20b85c4cc8bf448f8cf5e168c00eddd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 74,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "222c535be251b26e49090042578414ff4ccded7ea3485d4051a8544fcab82323",
+    "aggregateSha256": "577d0c3d5f9691bfc4cc452eaa0b201b805b1a55738b12dba1baf0aeb0f62d09",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11705,7 +11705,7 @@
       },
       {
         "path": "packages/contexts/governance/application/criteria.test.ts",
-        "sha256": "d5b12d5bbc80efb9579bd8e307780e79d0c1739aa2d398306de4a4925d75cc78"
+        "sha256": "15ac744422cabbee6090064c107f4da9d3e59594c5625cc471df1fb3d02e8c2e"
       },
       {
         "path": "packages/contexts/governance/application/criteria.ts",
@@ -11717,7 +11717,7 @@
       },
       {
         "path": "packages/contexts/governance/application/enqueue-eval-run.test.ts",
-        "sha256": "b39338d785069bdeaae9e269b947416f97274e6dce75955f935498cd60e960bf"
+        "sha256": "12ebdc39ffb4df31900892bf8337dc9658b002137f1120e4dec8fd076f70d67c"
       },
       {
         "path": "packages/contexts/governance/application/enqueue-eval-run.ts",
@@ -11725,7 +11725,7 @@
       },
       {
         "path": "packages/contexts/governance/application/golden-sets.test.ts",
-        "sha256": "37d8ff98cdeb27af10ba6a8a5f6e33822f2f30e638d6cb6df45cb2fa24e8130b"
+        "sha256": "3d81792660d26f9f5868bb2bb3c7117391c232141aae8009ba403d9e94f0ec68"
       },
       {
         "path": "packages/contexts/governance/application/golden-sets.ts",
@@ -11733,7 +11733,7 @@
       },
       {
         "path": "packages/contexts/governance/application/governance-contract.test.ts",
-        "sha256": "ef93b7e6bed91d019ceadb071bae9159abeca3a94102491ecb45810ed701d01e"
+        "sha256": "38a5a53156ae69f88f588580da2c515478ae474e9b49544fd73ac46e890a2593"
       },
       {
         "path": "packages/contexts/governance/application/governance-contract.ts",
@@ -11757,7 +11757,7 @@
       },
       {
         "path": "packages/contexts/governance/application/ports/eval-run-queue.ts",
-        "sha256": "e4c654e0e15e04cfcb8ffd8c79980b168da0ec8fdf3375e32b1b72d4b87c359d"
+        "sha256": "73fd73b6e33220d5e8696ae8c576cb3ac264dc5de44476ec66585335e2c9e24e"
       },
       {
         "path": "packages/contexts/governance/application/ports/evals-repository.ts",
@@ -11769,7 +11769,7 @@
       },
       {
         "path": "packages/contexts/governance/application/ports/index.ts",
-        "sha256": "6926e1c6e801f5100df0c75f0e88bbc8494d783184dc235fad1a304ec02ab651"
+        "sha256": "20a9f0a68c4c0b30d8ab7166eaaad4041a412f30fb58e2a9a9f73c22c817827a"
       },
       {
         "path": "packages/contexts/governance/application/ports/judge.ts",
@@ -11789,11 +11789,11 @@
       },
       {
         "path": "packages/contexts/governance/application/rate-turn.test.ts",
-        "sha256": "c84c31b55386fd1655487931ba8ec94b7abb9ec8275413751e855f4db8c5fb04"
+        "sha256": "cf00520355a06704ab5c3561c1dfa7e05ab9b2d9a3d2eb1f0e059447699b1211"
       },
       {
         "path": "packages/contexts/governance/application/rate-turn.ts",
-        "sha256": "d86a7d0eb87b01d571a3f4568927a8e878b24a99a973b963b6d9ffdf69069fbf"
+        "sha256": "98f1888a15bb52f507dbc8e0a8c73033dcedeb9a07177469d22f7323cdb7f036"
       },
       {
         "path": "packages/contexts/governance/application/read-evals.test.ts",
@@ -11805,7 +11805,7 @@
       },
       {
         "path": "packages/contexts/governance/application/read-ratings.test.ts",
-        "sha256": "eae8e1506c8b90174724ab7e83d4b2a44f3a776960d0db2849672987a61793aa"
+        "sha256": "e54df1bed460e8df02121bbf4d1fdade1a9f2faf4cc6441ac82e20f0f7809df0"
       },
       {
         "path": "packages/contexts/governance/application/read-ratings.ts",
@@ -11813,7 +11813,7 @@
       },
       {
         "path": "packages/contexts/governance/application/read-safety.test.ts",
-        "sha256": "9bb0d486654c9f5320eb5b7b98ed4a0332750fdc3736d0f4614b4edfce5d657e"
+        "sha256": "1f47980d2c9ee7967b177491da30ba4e25b0e98143b6ef4850528176d89a4c82"
       },
       {
         "path": "packages/contexts/governance/application/read-safety.ts",
@@ -11825,7 +11825,7 @@
       },
       {
         "path": "packages/contexts/governance/application/regression-report.test.ts",
-        "sha256": "79ca24a8b804aecfe4324ceffe6428919611808b737a17ba28b36f7112b500f5"
+        "sha256": "20ecb63d08c213e3f6ea8cc92fb3c69f69904c49639f85c0b35739226bbf1ec2"
       },
       {
         "path": "packages/contexts/governance/application/regression-report.ts",
@@ -11833,7 +11833,7 @@
       },
       {
         "path": "packages/contexts/governance/application/risk-report.test.ts",
-        "sha256": "ac8ea57ce5308834e4d2394c5a24954357ffce4180b69c1bf2f8bf5ecf94ce3f"
+        "sha256": "2cf5829783161949cf49d359c98e865c4294e9cf0129bbeb056de8ffeb0a4730"
       },
       {
         "path": "packages/contexts/governance/application/risk-report.ts",
@@ -11841,7 +11841,7 @@
       },
       {
         "path": "packages/contexts/governance/application/run-judge.test.ts",
-        "sha256": "766c7a1f2128594d916c8c7276244aeac34fa2cb0bf76c3a939dc070c6bdd5d8"
+        "sha256": "e5a62971b6c6b57339f1cc10523bcfb7243de199267006709c04f308791e5775"
       },
       {
         "path": "packages/contexts/governance/application/run-judge.ts",
@@ -11853,7 +11853,7 @@
       },
       {
         "path": "packages/contexts/governance/application/safety-event-sink.ts",
-        "sha256": "d14560de2cfaee7a743c23841fa6f5373f1e109b5a625cd21aa895a4303be593"
+        "sha256": "1142221bef92ee0ca005e8fed0f6cd9dbb52b6ce0adc27a900e4a2d503e1165e"
       },
       {
         "path": "packages/contexts/governance/application/testing/fixtures.ts",
@@ -11861,7 +11861,7 @@
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-eval-stores.ts",
-        "sha256": "2a5431ff05a9b9f7cfa2ee86be5f8a4f5b98a04350b35247bf04021cc7a26586"
+        "sha256": "2eaf9603a3018b3d765f02b943052cc3d0a63f447774133943283ec78bb30c0d"
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-golden-sets-repository.ts",
@@ -11873,7 +11873,7 @@
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-peers.ts",
-        "sha256": "dfe3fc70a637b77c1a5b899d83610e923fa113b014b5496b8aadab72aaaea54f"
+        "sha256": "44eff234ec8be9784f69250d9331ee065cfece033763d6e6a09cbe44e584e026"
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-ratings-repository.ts",
@@ -11885,7 +11885,7 @@
       },
       {
         "path": "packages/contexts/governance/application/testing/in-memory-seams.ts",
-        "sha256": "9f70b37464be6326fee74ef5adb0a97f60513960018d2699905016b9266d2ab1"
+        "sha256": "481491f2b268a3fe9231e5ec3f7d90c5bd1347a90d0b405080362159e775f52d"
       },
       {
         "path": "packages/contexts/governance/application/testing/index.ts",
@@ -11897,11 +11897,11 @@
       },
       {
         "path": "packages/contexts/governance/contracts/index.test.ts",
-        "sha256": "279a35c5742b2e65b9d66ebfba3a0ff91b87e24a4f982f7398e1ef40066a4142"
+        "sha256": "b988018a2f1eb30da01c1711320e4ffff6242ec96abc71eede989b088ea6e6f1"
       },
       {
         "path": "packages/contexts/governance/contracts/index.ts",
-        "sha256": "30904565e6745d0ef063b671af5c66ccf6c8a323bea19c520425faeac5859ff2"
+        "sha256": "5c5fcdde3489a3adf066db73515f3a165f8a85f1a468bf39f155c01cd0f3bd17"
       },
       {
         "path": "packages/contexts/governance/domain/agent-eval.test.ts",
@@ -11909,23 +11909,23 @@
       },
       {
         "path": "packages/contexts/governance/domain/agent-eval.ts",
-        "sha256": "e1e3b46ab5bbddd8ceeec094208137ede7bddad11e8a277f5d8bae7ab9c6584f"
+        "sha256": "8bbe6c543934a93027ad54e5138a2077791bf8088222804c4dbc5534bd32c8e1"
       },
       {
         "path": "packages/contexts/governance/domain/criterion.test.ts",
-        "sha256": "5ab7397c8cc6441d7b917730df783f75b2ee9dfac089038155acbe51b3048fe9"
+        "sha256": "7ffff230496af60d949812bddd45dcd42bab3598e79b6bc943e7afaed5df4406"
       },
       {
         "path": "packages/contexts/governance/domain/criterion.ts",
-        "sha256": "edf590c227aced343fedd25e9e22da09d1c97bb4c37e02628a6ba20ebf3e8633"
+        "sha256": "0314c0e6617dd035b95fc162f7f97979f6de7e28eb47066b4b586230365098de"
       },
       {
         "path": "packages/contexts/governance/domain/errors.test.ts",
-        "sha256": "5837ff8712ae742187c83ad16f4fa021a5c504489a3b959705a40dd782304207"
+        "sha256": "7b79359abc449ea76a3dc772f5d2b94133b055ab1ac9302c725117fde0229017"
       },
       {
         "path": "packages/contexts/governance/domain/errors.ts",
-        "sha256": "34faa3688e2e2d258f59ad2e2f8a5a39d898eb73ca86fc6258c6292bdae92a7e"
+        "sha256": "97df24ebcba728672ef67348786c198266c82ae45c6458b9b90f0e08d563a549"
       },
       {
         "path": "packages/contexts/governance/domain/eval-aggregate.test.ts",
@@ -11941,7 +11941,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/golden-set.test.ts",
-        "sha256": "4ba10022ffe7a2db397d659d1019de49afa187a57a1605c83325000ccc1f5814"
+        "sha256": "912da73b861a23c9646d44c0395f57accac51fa4f77e8da71e581afdfd717d07"
       },
       {
         "path": "packages/contexts/governance/domain/golden-set.ts",
@@ -11949,7 +11949,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/identifiers.ts",
-        "sha256": "52471c870529f6eaee855e1e095415df92972fac59f7dd6f101bfaf9346a0fcc"
+        "sha256": "b2b6df0ef5d35098c3f636d3db41b6939510b68be5d399036c5915fd48e0f1e1"
       },
       {
         "path": "packages/contexts/governance/domain/index.ts",
@@ -11965,7 +11965,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/judge-verdict.test.ts",
-        "sha256": "5ac42a740276deafda613ea26b0c654375d854b57644715a7531a7dc80428f67"
+        "sha256": "ee33f88d6aef4e9ea27407aebe71550d5c898b1c6a4fb104e79f34e89e7840a5"
       },
       {
         "path": "packages/contexts/governance/domain/judge-verdict.ts",
@@ -11993,7 +11993,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/regression.ts",
-        "sha256": "10a44fba293b4e6eeba308a299dd4b7ff1f9481ac20e2c57a68d9a14ef1c2e1c"
+        "sha256": "0c6bc07b779b281fc1c5e150d62ec14eba49ce3713525b726106ba4f1f331ac5"
       },
       {
         "path": "packages/contexts/governance/domain/risk.test.ts",
@@ -12029,7 +12029,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/satisfaction.test.ts",
-        "sha256": "bd270e5604d4538491e83db678ad608ffee3c949d1f98b6f150f99b6ba77a458"
+        "sha256": "36b514f3aaeff050bd11082b86430c24b65189a82e755325f46000c31c44a89b"
       },
       {
         "path": "packages/contexts/governance/domain/satisfaction.ts",
@@ -12041,11 +12041,11 @@
       },
       {
         "path": "packages/contexts/governance/domain/window.ts",
-        "sha256": "a32774776ecd232d74424ee22e38e24dcba197c2dd9a2985132004b403774083"
+        "sha256": "5a09ad283de5170bc421cb18d0508b515ab34d8c20e648b6a61fc0ed256028a1"
       },
       {
         "path": "packages/contexts/governance/mutations.json",
-        "sha256": "844ead7bdf4eab92b7e3c879e783ca0f5c6370477ebcae698adff20c3b51f295"
+        "sha256": "93d99a8167af24e25c2b0e36ce7e6c239de61261dffb01f3eb79e4fd0d433b72"
       },
       {
         "path": "packages/contexts/governance/package.json",
@@ -15321,11 +15321,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "e024cc0e65893e0c5699803b7e4973bafba307c00fa071d711a908f949a5fe95"
+        "sha256": "2ce24b44d2d76bed576cb0f14f7cb4617fe5acc320892088b85fda85d380866c"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "77e3adbc538f4f2ae7761f95cf82398cff6bec49ca240d2018d8d297653ecec2"
+        "sha256": "d3fd2e72a825dddeebe43614fd1439392d2abbb0255e2cc05ee40ccd2d44f097"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -44094,7 +44094,7 @@
             {
               "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/governance",
-              "line": 24,
+              "line": 26,
               "specifier": "@platos/context-agents"
             }
           ],
@@ -44510,7 +44510,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "8b4153a4d46fe7b74fddaa6c1fe798355f962704c07a50782b27231bdc86f500",
+      "evidenceSha256": "782c153ab7946dece5dcad8a39d190ebfc69bcaa52b05ef4bbf2bf35f2f18e6a",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -47575,7 +47575,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 300
+              "line": 301
             }
           ],
           "reversePaths": [
@@ -47804,7 +47804,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "1dd06e9f7632bb10a139e2ee8c21f2736c9476dba6e516188a12e053f61246eb",
+      "evidenceSha256": "a53e6edce906832adf717163c3aa695f900ccb1d8be23c90cf1c04c0ec173541",
       "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -55465,7 +55465,7 @@
             {
               "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/governance",
-              "line": 25,
+              "line": 27,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -56428,7 +56428,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e67886fa32d0788f96c76aa4ed3466e60cebed954de214fb1388e0d496eef131",
+      "evidenceSha256": "318c1007708767010ab25b4866271f0d30bf824ae489445715bfca082d72e8d2",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -60279,7 +60279,7 @@
             {
               "file": "packages/contexts/governance/application/rate-turn.ts",
               "from": "packages/contexts/governance",
-              "line": 35,
+              "line": 42,
               "specifier": "@platos/kernel"
             },
             {
@@ -60327,7 +60327,7 @@
             {
               "file": "packages/contexts/governance/application/safety-event-sink.ts",
               "from": "packages/contexts/governance",
-              "line": 32,
+              "line": 33,
               "specifier": "@platos/kernel"
             },
             {
@@ -60363,7 +60363,7 @@
             {
               "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/governance",
-              "line": 23,
+              "line": 25,
               "specifier": "@platos/kernel"
             },
             {
@@ -60393,7 +60393,7 @@
             {
               "file": "packages/contexts/governance/contracts/index.ts",
               "from": "packages/contexts/governance",
-              "line": 66,
+              "line": 68,
               "specifier": "@platos/kernel"
             },
             {
@@ -60405,7 +60405,7 @@
             {
               "file": "packages/contexts/governance/domain/errors.ts",
               "from": "packages/contexts/governance",
-              "line": 29,
+              "line": 39,
               "specifier": "@platos/kernel"
             },
             {
@@ -60447,7 +60447,7 @@
             {
               "file": "packages/contexts/governance/domain/window.ts",
               "from": "packages/contexts/governance",
-              "line": 21,
+              "line": 26,
               "specifier": "@platos/kernel"
             },
             {
@@ -64042,7 +64042,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "3697231ade00cf3291a9348772dbc31b41180acd8c5d0a264146fa00e208ae21",
+      "evidenceSha256": "792328e7e2466ef1f017264d938c3e44784367225500951c9cfc89aaed71a0a5",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
