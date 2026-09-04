@@ -49,7 +49,10 @@
 //     ENVIRONMENT asks; `createdBy` records who wrote it, not whose data it
 //     holds. Erasing an author's criteria would delete working evaluation the
 //     organization still depends on and that contains none of the subject's
-//     personal data.
+//     personal data — and, because `AgentEval.criterion` is `onDelete: Cascade`,
+//     it would take every measurement ever scored against those questions with
+//     it. An author leaving is not a reason to destroy an environment's
+//     evaluation history.
 //
 //   GoldenSet -> DELETE, ALWAYS ZERO. Same reasoning: a pinned list of thread
 //     ids and criterion ids, authored by somebody, about nobody.
