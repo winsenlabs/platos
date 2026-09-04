@@ -73,8 +73,13 @@ const expectedPnpmRunInstructions = new Map([
 // typecheck job's service containers cannot provide. The count is pinned rather
 // than derived so that adding a job stays a reviewed decision: a silently
 // appearing runner is how unreviewed steps enter a pipeline.
+// One per JOB, so the count IS the job count of each workflow and a new job that
+// forgot to pin its Node version cannot pass. WIN-258 took ci.yml from four jobs
+// to five by adding `postgres-tenancy-repository`, which needs a Docker daemon
+// the typecheck job's service containers do not provide — the same reason
+// `differential-state-conservation` is its own job.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 4],
+  ["ci", 5],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
