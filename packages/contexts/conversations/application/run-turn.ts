@@ -177,7 +177,7 @@ export async function runTurn(
     sampling: { maxOutputTokens: null, temperature: null },
     maxSteps: stepCeiling(command.requestedMaxSteps ?? null, dependencies.policy.turn),
     abortSignal: command.abortSignal ?? null,
-  } as Parameters<ConversationsDependencies["providers"]["runModelGeneration"]>[0]);
+  });
 
   if (!generation.ok) {
     return settleFailure(dependencies, command.scope, running.value, generation.error.code);

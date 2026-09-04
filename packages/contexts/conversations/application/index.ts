@@ -22,6 +22,7 @@ export * from "./turn-prompt.js";
 export * from "./turn-tools.js";
 export * from "./turn-steps.js";
 export * from "./run-turn.js";
+export * from "./run-sub-agent.js";
 export * from "./execute-postman.js";
 export * from "./conversations-erasure-target.js";
 export * from "./conversations-contract.js";

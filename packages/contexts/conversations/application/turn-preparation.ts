@@ -42,6 +42,7 @@ import {
   buildTranscript,
   budgetExhausted,
   type AttachmentCandidate,
+  type ProviderKeyId,
   type Thread,
   type Transcript,
   type Turn,
@@ -68,7 +69,7 @@ export interface PreparedTurn {
   readonly agentVersionId: string;
   readonly versionBucket: VersionBucket;
   readonly model: string;
-  readonly providerKeyId: string | null;
+  readonly providerKeyId: ProviderKeyId | null;
   readonly transcript: Transcript;
   readonly attachments: readonly AttachmentCandidate[];
   readonly surface: ComposedTurnSurface;
@@ -126,7 +127,7 @@ export async function prepareTurn(
     agentVersionId: String(version.value.versionId),
     versionBucket: version.value.bucket as VersionBucket,
     model: route.value.model,
-    providerKeyId: route.value.providerKeyId,
+    providerKeyId: route.value.providerKeyId === null ? null : (route.value.providerKeyId as ProviderKeyId),
     transcript: transcript.value,
     attachments: attachments.value.candidates,
     surface: surface.value,

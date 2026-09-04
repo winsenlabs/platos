@@ -119,6 +119,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/tools", // WIN-256 — the tool-gateway/mcp-platform merge: the registry, the four-tier gate, and the ToolDispatch port it owns
   "packages/contexts/channels", // WIN-256 — hosted channels, the inbox lease, the refresh fence, and the ChannelAdapter port it owns
   "packages/contexts/governance", // WIN-256 — the safety ledger and the kernel SafetyEventSink behind it, message ratings, eval criteria, judged evals and golden sets
+  "packages/contexts/conversations", // WIN-256 — the turn-execution engine: Thread, Turn, Step, PostmanExecution, and the DAG sink nothing imports
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];

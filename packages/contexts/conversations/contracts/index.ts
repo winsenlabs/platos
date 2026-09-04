@@ -159,6 +159,8 @@ export type {
   TurnTrace,
 } from "../application/manage-threads.js";
 export type { RanTurn, RunTurnCommand } from "../application/run-turn.js";
+export type { RunSubAgentCommand, SubAgentRan } from "../application/run-sub-agent.js";
+export { DELEGATION_TOOL_NAMES } from "../application/run-sub-agent.js";
 export type {
   AgentsPeer,
   ConversationsDependencies,
