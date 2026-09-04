@@ -12,12 +12,12 @@
 // is how `app.module.test.ts` proves the mis-wire detection without binding a
 // port.
 //
-// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; six are real
-// (WIN-256) and eleven are still declaration-only placeholders. Of the six, one
-// is composed here today — see the note below on what an install must still
-// supply. Modelling that as `Partial<ContextContracts>` states the truth in the
-// type instead of shipping seventeen `null!` casts that would compile and then
-// explode.
+// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; FIVE are real
+// (WIN-256: identity-access, tenancy, secrets, files, providers) and twelve are
+// still declaration-only placeholders. Of the five, one is composed here today —
+// see the note below on what an install must still supply. Modelling that as
+// `Partial<ContextContracts>` states the truth in the type instead of shipping
+// seventeen `null!` casts that would compile and then explode.
 //
 // ---------------------------------------------------------------------------
 // THE WIN-297 FINDING, CLOSED BY WIN-257 (M2.2).
