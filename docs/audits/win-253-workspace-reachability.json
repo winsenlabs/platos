@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ed9c165dd7c5507dad8baed3982a70c888443c20a37bee3cd997ffaf2c68325d",
+  "evidenceSha256": "79c1fc497323b9121f319aea0ac4338aaf77078ce6d25ce5747a82aeef1f653e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 74,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ee8d7120ac4b4a4bb380f71e58adc3a7d1df48ab898f1ee9cfff2fdd144508e7",
+    "aggregateSha256": "8ee71a020021b119add2cc95d57be847982a40fa80fa5d7beb2e74b684bf54d1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11925,7 +11925,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/errors.ts",
-        "sha256": "97df24ebcba728672ef67348786c198266c82ae45c6458b9b90f0e08d563a549"
+        "sha256": "6e49b443a99a6c6de9a765c9f731fa96141817c52af525a599d8d0d739c28529"
       },
       {
         "path": "packages/contexts/governance/domain/eval-aggregate.test.ts",
@@ -11949,7 +11949,7 @@
       },
       {
         "path": "packages/contexts/governance/domain/identifiers.ts",
-        "sha256": "b2b6df0ef5d35098c3f636d3db41b6939510b68be5d399036c5915fd48e0f1e1"
+        "sha256": "5860677c5bb3216e49485b8a3b9f018499520dfafbe72255ed770bc425ea678a"
       },
       {
         "path": "packages/contexts/governance/domain/index.ts",
@@ -12045,7 +12045,7 @@
       },
       {
         "path": "packages/contexts/governance/mutations.json",
-        "sha256": "92d04b6cd735577a824171314638107f964919a32083ab4a5310a5b1587407d4"
+        "sha256": "bd0d8ef2e3c40170a240092ef0950b19bba0f80356aeb654cd96b6c219e44772"
       },
       {
         "path": "packages/contexts/governance/package.json",
@@ -60405,7 +60405,7 @@
             {
               "file": "packages/contexts/governance/domain/errors.ts",
               "from": "packages/contexts/governance",
-              "line": 39,
+              "line": 47,
               "specifier": "@platos/kernel"
             },
             {
@@ -60417,7 +60417,7 @@
             {
               "file": "packages/contexts/governance/domain/identifiers.ts",
               "from": "packages/contexts/governance",
-              "line": 28,
+              "line": 33,
               "specifier": "@platos/kernel"
             },
             {
@@ -64042,7 +64042,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "53d18ac0684bed912a5223f099784bca4865709fe949914fb759744d628826d5",
+      "evidenceSha256": "3e9b037629869114f652fcf41d4a5e7429e1c3e8e1c05886c857af17e59f7fad",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
