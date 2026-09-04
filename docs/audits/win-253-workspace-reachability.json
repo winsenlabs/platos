@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0670448c096c99747ab17839ad77f8be6a9413b4ee848a0a5eaed615f50ce26e",
+  "evidenceSha256": "946ef2c10bff7a4da497bf8cb30eee62a0509ebdd1fdf1acfcc7f6da0728716e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ac34448dcf7e3d79bdfe5561438f66b3fe8c398946fe25609114bc47c3a92e1d",
+    "aggregateSha256": "77e8d1ca66acb4909a8818dd9070714a8e74590bb674a06dc41ce0c2a02dbdf7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11845,7 +11845,7 @@
       },
       {
         "path": "packages/contexts/providers/application/ports/index.ts",
-        "sha256": "c4322fb105bc0c32d44f59e71beb85221479419fcdc5e19167dc1daf0b84a789"
+        "sha256": "8af9028e6c62a645075b983024c5455fc9d19701ac7f0be53d00a7fc5cf81cb7"
       },
       {
         "path": "packages/contexts/providers/application/ports/model-router.ts",
