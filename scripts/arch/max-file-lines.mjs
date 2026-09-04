@@ -8,7 +8,24 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
-export const SELECTORS = ["packages/contexts/**", "apps/core-api/src/transports/**"];
+// WIN-256 widens this from `packages/contexts/**` to every V1-OWNED package
+// root. The rule was written for the layer ADR M0.3 §6 is about, and it read as
+// if it covered `packages/**`; it did not, and the gap was the two roots that
+// had held nothing but declaration placeholders. The first real adapter arrived
+// at 645 effective lines in one test file — under no threshold at all, because
+// no threshold applied — which is the same shape one layer down as the
+// 7,121-line service this programme is extracting.
+//
+// `packages/**` itself is deliberately NOT the selector. The other eleven
+// directories under it are legacy packages this programme does not own and has
+// not budgeted, and pointing the rule at them would make it a wall of findings
+// nobody can act on, which is how a gate stops being read.
+export const SELECTORS = [
+  "packages/kernel/**",
+  "packages/contexts/**",
+  "packages/adapters/**",
+  "apps/core-api/src/transports/**",
+];
 export const WARNING_THRESHOLD = 400;
 export const ERROR_THRESHOLD = 500;
 const SOURCE_EXTENSION = /\.(?:cts|mts|tsx?|jsx?)$/u;

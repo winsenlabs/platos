@@ -221,9 +221,9 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +12 for
-  // the adapter that implements the port. 67 + 21 + 4 + 2 + 12 = 106.
-  assert.equal(live.totalFiles, 106);
+  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +15 for
+  // the adapter that implements the port. 67 + 21 + 4 + 2 + 15 = 109.
+  assert.equal(live.totalFiles, 109);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -234,10 +234,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +12 for
-  // the adapter that implements the port. 67 + 21 + 4 + 2 + 12 = 106.
+  // +4 for the WIN-256 inference suites, +2 for its domain pieces and +15 for
+  // the adapter that implements the port. 67 + 21 + 4 + 2 + 15 = 109.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 106);
+  assert.equal(files, 109);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -269,10 +269,10 @@ test("the providers context is pinned at what vitest prints", () => {
 test("the model-router adapter is pinned at what vitest prints", () => {
   // The row that had never held a case. `pnpm --filter
   // @platos/adapter-model-router-providers exec vitest run` prints "Test Files
-  // 12 passed (12) / Tests 197 passed (197)". Every other package is held at its
+  // 15 passed (15) / Tests 197 passed (197)". Every other package is held at its
   // earlier value by the tests above, so a suite quietly deleted elsewhere while
   // these landed cannot hide inside the new total.
-  assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 12);
+  assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 197);
 });
 

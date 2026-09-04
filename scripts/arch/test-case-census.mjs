@@ -136,21 +136,26 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * move -- the adapter, which had never held a case, and `providers`, which gains
  * the two pure pieces the adapter would otherwise have hidden beside an SDK call.
  *
- *   packages/adapters/model-router-providers   0 -> 12 files,   0 -> 197 cases
+ *   packages/adapters/model-router-providers   0 -> 15 files,   0 -> 197 cases
  *   packages/contexts/providers               25 -> 27 files, 346 -> 374 cases
  *
- * The adapter's 197, suite by suite:
+ * The adapter's 197, suite by suite. Fifteen files and not twelve: the
+ * end-to-end suite was ONE file at 645 effective lines until the widened
+ * max-file-lines selector could see it, and it is now four split by concern.
  *
  *     src/adapter.test.ts          20  the factory, open, probe, listModels
  *     src/call.test.ts             12  the joined abort, sampling, prepareStep
  *     src/clients.test.ts          13  dialect -> client, the service account
  *     src/failure.test.ts          13  abort vs auth refusal vs outage
- *     src/generation.test.ts       25  end to end on the framework's own mock
+ *     src/generation.test.ts        9  one step, the markers, the failures
  *     src/json-value.test.ts       11  making a tool result embeddable
  *     src/messages.test.ts         20  the prompt on the wire, and back
+ *     src/object-output.test.ts     7  schema-shaped passes and their cost
  *     src/steps.test.ts             7  one step, and a call with no answer
+ *     src/stream.test.ts            4  the one terminal event
  *     src/structured.test.ts       14  schema compile, validate, pass loop
- *     src/tools.test.ts            11  the tool bridge and the input repair
+ *     src/tool-loop.test.ts         5  round trips, budgets, input repair
+ *     src/tools.test.ts            11  the tool bridge and the repair hook
  *     src/transport.test.ts        27  the retry policy, guard by guard
  *     src/usage.test.ts            24  the provider metadata chains
  *                                 ---
@@ -178,10 +183,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   when this number moves: a suite whose case count is unchanged while its
  *   coverage changed is exactly what a file-count pin cannot see.
  *
- * ARITHMETIC. Files: 92 + 12 + 2 = 106. Cases: 197 + 28 = 225 added, and
+ * ARITHMETIC. Files: 92 + 15 + 2 = 109. Cases: 197 + 28 = 225 added, and
  * 1063 + 225 = 1288 across the workspace. Both entry points print the same
  * pairs: `pnpm --filter @platos/adapter-model-router-providers exec vitest run`
- * gives "Test Files 12 passed (12) / Tests 197 passed (197)", and
+ * gives "Test Files 15 passed (15) / Tests 197 passed (197)", and
  * `pnpm --filter @platos/context-providers exec vitest run` gives
  * "Test Files 27 passed (27) / Tests 374 passed (374)".
  *
@@ -192,7 +197,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
-  "packages/adapters/model-router-providers": { files: 12, cases: 197 },
+  "packages/adapters/model-router-providers": { files: 15, cases: 197 },
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },

@@ -34,7 +34,12 @@ function codeLines(count) {
 }
 
 test("selectors and thresholds are the exact accepted WIN-251 max-file-lines slice", () => {
-  assert.deepEqual(SELECTORS, ["packages/contexts/**", "apps/core-api/src/transports/**"]);
+  assert.deepEqual(SELECTORS, [
+    "packages/kernel/**",
+    "packages/contexts/**",
+    "packages/adapters/**",
+    "apps/core-api/src/transports/**",
+  ]);
   assert.equal(WARNING_THRESHOLD, 400);
   assert.equal(ERROR_THRESHOLD, 500);
 });
@@ -93,7 +98,31 @@ test("the live selectors scan an exact nonzero source census", () => {
   // vocabulary and the use case were written as four files rather than one for
   // exactly the reason ADR M0.3 §6 names: a turn's orchestration split into
   // named sub-use-case files is what stops the next 7.1k-line service.
-  assert.equal(result.fileCount, 328 + 8);
+  //
+  // WIN-256 MODEL ROUTER ADAPTER: the selector list widens from one package root
+  // to three, and the census is now the sum of four disjoint scans:
+  //
+  //     packages/kernel/**                20
+  //     packages/contexts/**             334   (336 - 6 transports + 4 new)
+  //     packages/adapters/**              54
+  //     apps/core-api/src/transports/**    6
+  //                                      ---
+  //                                      414
+  //
+  // `packages/contexts/**` moves 330 -> 334: the adapter branch adds two domain
+  // modules and two suites to `providers`. `packages/adapters/**` is 54: the
+  // eleven unadopted adapters carry two declaration placeholders each (22), and
+  // model-router-providers carries 32 -- seventeen source modules and fifteen
+  // suites.
+  //
+  // THE BUDGET BIT AGAIN, AND AGAIN THE ANSWER WAS TO SPLIT. The adapter's
+  // end-to-end suite reached 645 effective lines while it was being written,
+  // which is over the ERROR threshold and was invisible because the old selector
+  // did not reach `packages/adapters/**`. It is now four suites split by
+  // concern -- one step, the tool loop, schema-shaped output, streaming -- and
+  // the largest file under the whole selector set is inside the warning band.
+  assert.equal(result.fileCount, 20 + 334 + 54 + 6);
+  assert.equal(result.fileCount, 414);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });
