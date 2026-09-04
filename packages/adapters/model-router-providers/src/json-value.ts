@@ -27,17 +27,17 @@ export type JsonValue =
   | number
   | boolean
   | null
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 /** What a tool that returned nothing usable becomes. Never `undefined`. */
-export const EMPTY_TOOL_RESULT = { ok: false } as const;
+export const EMPTY_TOOL_RESULT: JsonValue = { ok: false };
 
 /** What a value that defeated the scrubber becomes. */
-export const UNSERIALISABLE_TOOL_RESULT = {
+export const UNSERIALISABLE_TOOL_RESULT: JsonValue = {
   ok: false,
   error: "tool result was not serialisable",
-} as const;
+};
 
 /** The marker a cycle is replaced with, so the rest of the value survives. */
 export const CIRCULAR_MARKER = "[Circular]";

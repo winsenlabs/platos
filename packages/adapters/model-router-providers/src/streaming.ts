@@ -32,7 +32,7 @@ import {
 } from "@platos/context-providers/application/ports/index.js";
 import { isStepCount, streamObject, streamText, type LanguageModel, type ModelMessage } from "ai";
 
-import { linkAbort, prepareStepFor, samplingOptions } from "./call.js";
+import { linkAbort, prepareStepFor, PROMPT_SHAPE_OPTIONS, samplingOptions } from "./call.js";
 import { isAbort, translate, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
 import { answerFor, toGenerationStep, toToolCall, type FrameworkStep } from "./steps.js";
@@ -137,6 +137,7 @@ async function* streamTextEvents(
       prepareStep: prepareStepFor(request.session.plan, request.rewritePrompt),
       repairToolCall: repairCall,
       abortSignal: link.signal,
+      ...PROMPT_SHAPE_OPTIONS,
       ...samplingOptions(request.sampling),
     });
 
@@ -272,7 +273,8 @@ async function* streamObjectEvents(
           messages: messages.value,
           schema: validator.value.schema,
           abortSignal: link.signal,
-          ...samplingOptions(request.sampling),
+          ...PROMPT_SHAPE_OPTIONS,
+      ...samplingOptions(request.sampling),
         });
         // The RAW JSON text, delta by delta, exactly as the extraction source
         // forwards it. The parsed object arrives once, in `finished`.

@@ -31,7 +31,7 @@ import {
   type Result,
 } from "@platos/context-providers/application/ports/index.js";
 import { jsonSchema, type Schema } from "ai";
-import Ajv, { type ErrorObject } from "ajv";
+import { Ajv, type ErrorObject, type ValidateFunction } from "ajv";
 
 /** What a validation says. Errors are strings because that is what the model reads. */
 export type ValidationOutcome =
@@ -59,11 +59,30 @@ function describeError(error: ErrorObject): string {
  * sent an operator hunting a model for a defect in the caller.
  */
 export function compileOutputSchema(document: JsonSchemaDocument): Result<OutputValidator> {
-  let validate: ReturnType<Ajv["compile"]>;
+  const compiled = validatingSchema(document);
+  if (compiled === null) {
+    return err(outputSchemaInvalid("the document is not a JSON Schema this validator can compile"));
+  }
+  return ok(compiled);
+}
+
+/**
+ * The same compilation, for a schema whose failure is not fatal.
+ *
+ * Returns null rather than a `Result` because its one other caller — the tool
+ * bridge — has a working answer for a schema that will not compile: send the
+ * document to the provider anyway, and skip only the LOCAL check. The provider
+ * still receives the schema, which is what shapes the model's output; what is
+ * lost is the pre-execution validation, and with it the chance to repair a
+ * stringified input before the tool sees it. That is a cost, not a correctness
+ * failure, and it is the behaviour a tool with a broken schema has today.
+ */
+export function validatingSchema(document: JsonSchemaDocument): OutputValidator | null {
+  let validate: ValidateFunction;
   try {
     validate = new Ajv({ allErrors: true, strict: false }).compile(document as object);
-  } catch (thrown) {
-    return err(outputSchemaInvalid(thrown instanceof Error ? thrown.message : String(thrown)));
+  } catch {
+    return null;
   }
 
   const check = (value: unknown): ValidationOutcome => {
@@ -80,7 +99,7 @@ export function compileOutputSchema(document: JsonSchemaDocument): Result<Output
     },
   });
 
-  return ok({ schema, check });
+  return { schema, check };
 }
 
 /** What one pass produced, whether or not it satisfied the schema. */

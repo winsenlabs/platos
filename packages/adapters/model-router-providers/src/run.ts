@@ -25,7 +25,7 @@ import {
 } from "@platos/context-providers/application/ports/index.js";
 import { generateObject, generateText, isStepCount, type LanguageModel } from "ai";
 
-import { linkAbort, prepareStepFor, samplingOptions } from "./call.js";
+import { linkAbort, prepareStepFor, PROMPT_SHAPE_OPTIONS, samplingOptions } from "./call.js";
 import { failed, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
 import { toGenerationStep, type FrameworkStep } from "./steps.js";
@@ -91,6 +91,7 @@ async function runTextGeneration(
       prepareStep: prepareStepFor(request.session.plan, request.rewritePrompt),
       repairToolCall: repairCall,
       abortSignal: signal,
+      ...PROMPT_SHAPE_OPTIONS,
       ...samplingOptions(request.sampling),
     });
     // The caller's executor broke its contract. That ended the generation, and
@@ -142,7 +143,8 @@ async function runObjectGeneration(
           messages: messages.value,
           schema: validator.value.schema,
           abortSignal: signal,
-          ...samplingOptions(request.sampling),
+          ...PROMPT_SHAPE_OPTIONS,
+      ...samplingOptions(request.sampling),
         });
         steps.push({
           text: JSON.stringify(result.object),

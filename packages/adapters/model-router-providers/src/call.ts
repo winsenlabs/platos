@@ -48,6 +48,24 @@ export function linkAbort(caller: AbortSignal | null): LinkedAbort {
   };
 }
 
+/**
+ * Keep the system prompt INSIDE the message array.
+ *
+ * `ai@7` defaults this off and insists a system message be passed as a separate
+ * `instructions` option. This system cannot do that: `domain/prompt.ts` carries
+ * the system prompt as a MESSAGE precisely because a message can carry a cache
+ * breakpoint and a bare string field cannot, and `prompt-cache.ts` calls that
+ * marker the most valuable single one in a turn — it is stable across every turn
+ * and it covers the whole system prompt. Splitting it out would also make the
+ * per-step `prepareStep` rewrite operate on a different array from the one the
+ * placement rule indexes into.
+ *
+ * So the option is turned back on, in one place, for every call this package
+ * makes. The framework still honours the message's `providerOptions`, which is
+ * the only thing the marker needs.
+ */
+export const PROMPT_SHAPE_OPTIONS = Object.freeze({ allowSystemInMessages: true });
+
 /** The sampling controls, with "the provider's default" expressed as absence. */
 export function samplingOptions(sampling: SamplingLimits): {
   maxOutputTokens?: number;

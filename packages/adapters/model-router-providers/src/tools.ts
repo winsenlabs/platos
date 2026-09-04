@@ -44,7 +44,9 @@ import {
   type ToolExecutor,
   type ToolResultPart,
 } from "@platos/context-providers/application/ports/index.js";
-import { jsonSchema, NoSuchToolError, dynamicTool, type ToolSet } from "ai";
+import { dynamicTool, jsonSchema, NoSuchToolError, type ToolCallRepairFunction, type ToolSet } from "ai";
+
+import { validatingSchema } from "./structured.js";
 
 /**
  * Thrown out of a tool whose result said it failed.
@@ -110,7 +112,16 @@ export function toolBridge(
   for (const definition of definitions) {
     tools[definition.name] = dynamicTool({
       description: definition.description,
-      inputSchema: jsonSchema(definition.inputSchema as Parameters<typeof jsonSchema>[0]),
+      // THE INPUT IS VALIDATED LOCALLY, AND THAT IS WHAT MAKES `repairCall`
+      // REACHABLE. A schema handed over without a validator is a hint to the
+      // provider and nothing more: the framework then accepts whatever comes
+      // back, calls the tool with it, and the repair hook — which only fires on
+      // an invalid-input failure — is dead code. The extraction source gets this
+      // for free because its tools carry validating schemas; a tool defined by a
+      // bare JSON Schema document does not, so the validator is wired in here.
+      inputSchema:
+        validatingSchema(definition.inputSchema)?.schema ??
+        jsonSchema(definition.inputSchema as Parameters<typeof jsonSchema>[0]),
       execute: async (input: unknown, options: { toolCallId: string }): Promise<JsonValue> => {
         const call: ToolCallPart = {
           kind: "tool-call",
@@ -143,13 +154,6 @@ export function toolBridge(
   };
 }
 
-/** The repair hook's arguments, as the framework hands them over. */
-interface RepairRequest {
-  readonly toolCall: { readonly toolName: string; readonly input: string };
-  readonly inputSchema: (options: { toolName: string }) => PromiseLike<unknown>;
-  readonly error: unknown;
-}
-
 /**
  * Repair a tool call the model got the shape of wrong, or let the failure stand.
  *
@@ -157,22 +161,24 @@ interface RepairRequest {
  * case this cannot improve: an unknown tool, a schema that will not resolve, an
  * input that was already right. A repair that changed nothing would put the same
  * rejected call back on the wire and cost the step twice.
+ *
+ * The call comes back with every field it arrived with and only `input`
+ * replaced. Rebuilding it from the two fields this reads would have dropped the
+ * id the framework matches the result against.
  */
-export function repairCall(request: RepairRequest): Promise<{ input: string } | null> {
-  return (async () => {
-    try {
-      // An INPUT that is wrong is repairable; a tool that does not exist is not.
-      // The class check rather than the error's name string: a name comparison
-      // silently stops matching the day the framework renames one.
-      if (NoSuchToolError.isInstance(request.error)) return null;
-      const schema = await request.inputSchema({ toolName: request.toolCall.toolName });
-      const repaired = repairToolCallInput(request.toolCall.input, schema as JsonSchemaDocument);
-      if (repaired === null) return null;
-      return { ...request.toolCall, input: repaired };
-    } catch {
-      // A repair that itself failed must not replace the model's error with
-      // this one. The provider's own report is the honest answer.
-      return null;
-    }
-  })();
-}
+export const repairCall: ToolCallRepairFunction<ToolSet> = async ({ toolCall, inputSchema, error }) => {
+  try {
+    // An INPUT that is wrong is repairable; a tool that does not exist is not.
+    // The class check rather than the error's name string: a name comparison
+    // silently stops matching the day the framework renames one.
+    if (NoSuchToolError.isInstance(error)) return null;
+    const schema = await inputSchema({ toolName: toolCall.toolName });
+    const repaired = repairToolCallInput(toolCall.input, schema as JsonSchemaDocument);
+    if (repaired === null) return null;
+    return { ...toolCall, input: repaired };
+  } catch {
+    // A repair that itself failed must not replace the model's error with this
+    // one. The provider's own report is the honest answer.
+    return null;
+  }
+};
