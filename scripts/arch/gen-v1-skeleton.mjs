@@ -112,6 +112,29 @@ export const ADOPTED_PROJECTS = [
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
 
+// ---------------------------------------------------------------------------
+// CONTEXTS THAT PUBLISH THEIR USE CASES (WIN-257). Append-only, one project path
+// per entry, each with the issue that needed it.
+//
+// A context manifest publishes two subpaths by default: `.` (its contracts) and
+// `./application/ports/index.js` (its driven ports). Both are types. The factory
+// that BUILDS the context — `createIdentityAccessService`, `createTenancyService`
+// — lives in `application/index.js`, which was not published, so the composition
+// root could name every context contract and construct none of them. WIN-297
+// recorded that as a finding and deliberately did not fix it, on the grounds
+// that publishing an entry point nothing imports is dead surface.
+//
+// So the list is not "every adopted context": it is the contexts `apps/core-api`
+// ACTUALLY composes. An entry here without a matching import in the composition
+// root is exactly the dead surface WIN-297 declined to create, and every entry
+// must be an adopted project — `selfCheck` fails otherwise, because an
+// unadopted project's source tree is generated placeholders and its
+// `application/index.ts` would be one too.
+// ---------------------------------------------------------------------------
+export const APPLICATION_ENTRY_PROJECTS = [
+  "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
+];
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -217,19 +240,26 @@ function contextManifest(name, adopted) {
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
   ]);
+  const exports = {
+    ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
+    "./application/ports/index.js": {
+      types: "./dist/application/ports/index.d.ts",
+      import: "./dist/application/ports/index.js",
+    },
+  };
+  if (APPLICATION_ENTRY_PROJECTS.includes(`packages/contexts/${name}`)) {
+    exports["./application/index.js"] = {
+      types: "./dist/application/index.d.ts",
+      import: "./dist/application/index.js",
+    };
+  }
   return packageManifest({
     scripts: scriptsFor(`packages/contexts/${name}`, adopted),
     name: `@platos/context-${name}`,
     description: `ADR M0.3 bounded context: ${name}.`,
     main: "./dist/contracts/index.js",
     types: "./dist/contracts/index.d.ts",
-    exports: {
-      ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
-      "./application/ports/index.js": {
-        types: "./dist/application/ports/index.d.ts",
-        import: "./dist/application/ports/index.js",
-      },
-    },
+    exports,
     dependencies,
   });
 }
@@ -589,6 +619,26 @@ export function selfCheck(adopted = ADOPTED_PROJECTS) {
     if (!knownProjects.has(project)) errors.push(`ADOPTED_PROJECTS names ${project}, which is not a V1 project`);
     if (seenAdoptions.has(project)) errors.push(`ADOPTED_PROJECTS names ${project} more than once`);
     seenAdoptions.add(project);
+  }
+
+  // A context may publish its use cases only if it is a context AND is adopted.
+  // An unadopted project's whole source tree is generated placeholders, so its
+  // `application/index.ts` would be one too, and the export would name a file
+  // nothing wrote.
+  const seenEntries = new Set();
+  for (const project of APPLICATION_ENTRY_PROJECTS) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenEntries.has(project)) {
+      errors.push(`APPLICATION_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    seenEntries.add(project);
   }
 
   // The two tiers must still account for the whole skeleton. Scaffolding is

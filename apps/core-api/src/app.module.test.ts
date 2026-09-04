@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { testPorts } from "@platos/context-identity-access/application/index.js";
+import { asIdentifier, organizationScope, type OrganizationId } from "@platos/kernel";
+
 import { CompositionFault, DECLARED_BINDING_COUNT, composeApplication } from "./app.module.js";
+import type { SuppliedContextPorts } from "./app.module.js";
 import { ADAPTER_BINDINGS, ADAPTER_NAMES, PORT_SATISFACTION, type SuppliedAdapters } from "./composition/adapter-bindings.js";
 import { describeAdapterSupply, reportAdapterSupply } from "./composition/registry.js";
 import { loadCoreApiConfiguration } from "./config/load.js";
@@ -12,7 +16,7 @@ function configuration() {
   return outcome.value;
 }
 
-function inputs(adapters?: SuppliedAdapters) {
+function inputs(adapters?: SuppliedAdapters, ports?: SuppliedContextPorts) {
   const clock = systemClock();
   return {
     configuration: configuration(),
@@ -20,8 +24,26 @@ function inputs(adapters?: SuppliedAdapters) {
     ids: ulidGenerator(clock),
     logger: createProcessLogger({ minimumLevel: "error", write: () => {} }),
     adapters,
+    ports,
   };
 }
+
+/**
+ * The identity-access contract, composed the way an install composes it.
+ *
+ * `testPorts()` is the context's OWN in-memory bundle, shipped from its
+ * `application/` for exactly this: it enforces what the real stores enforce, so
+ * a refusal observed here is the refusal the context makes rather than one this
+ * file arranged.
+ */
+function composedIdentityAccess() {
+  const app = composeApplication(inputs(undefined, { identityAccess: testPorts() }));
+  const identityAccess = app.contexts.identityAccess;
+  if (identityAccess === undefined) throw new Error("identity-access should have been composed");
+  return identityAccess;
+}
+
+const TENANT = organizationScope(asIdentifier<OrganizationId>("org-1"));
 
 /**
  * A stand-in for an adapter that does not exist yet.
@@ -135,10 +157,77 @@ describe("composing the application", () => {
     expect(app.bindings.unsatisfied).toHaveLength(11);
   });
 
-  it("does not compose a context from an unvalidated binding", () => {
-    // The map is built from `bindings.satisfied`, never from the raw supply, so
-    // a rejected adapter can never reach a context.
+  it("does not compose a context from an adapter supply alone", () => {
+    // A context is composed from the port bundle an install hands to
+    // `ports`, never inferred from an adapter that happens to be present, so
+    // supplying an unrelated adapter reaches no context at all.
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(Object.keys(app.contexts)).toEqual([]);
+  });
+});
+
+describe("composing identity-access", () => {
+  it("LEAVES THE CONTEXT ABSENT when no port bundle is supplied", () => {
+    // Absent rather than a façade over undefined stores: an install that forgot
+    // to wire the identity store must be visible before it serves a request,
+    // not at the first authentication.
+    expect(composeApplication(inputs()).contexts.identityAccess).toBeUndefined();
+  });
+
+  it("composes the published contract when the bundle is supplied", () => {
+    expect(composedIdentityAccess().name).toBe("identity-access");
+  });
+
+  it("REFUSES A REQUEST CARRYING NO SESSION TOKEN", async () => {
+    const refusal = await composedIdentityAccess().authenticateOperator({ presentedToken: null });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("REFUSES A SESSION TOKEN THAT MATCHES NOTHING IN THE STORE", async () => {
+    const refusal = await composedIdentityAccess().authenticateOperator({
+      presentedToken: "plt_os_not-a-real-token",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("REFUSES AN UNKNOWN BEARER CREDENTIAL", async () => {
+    const refusal = await composedIdentityAccess().authenticateBearer({
+      presentedToken: "plt_mcp_not-a-real-token",
+      requestedScope: TENANT,
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("SPENDS A REAL BUDGET, so the wiring cannot be a stub that always allows", async () => {
+    // Eleven LOGIN requests against a ten-request window. A façade wired to a
+    // dead limiter would allow all eleven; the eleventh must be refused, and the
+    // refusal must carry the wait.
+    const identityAccess = composedIdentityAccess();
+    const request = {
+      action: "LOGIN",
+      identifier: "operator@example.com",
+      scope: TENANT,
+      principalId: null,
+    } as const;
+    for (let spent = 0; spent < 10; spent += 1) {
+      expect((await identityAccess.consumeRateLimit(request)).ok).toBe(true);
+    }
+    const refusal = await identityAccess.consumeRateLimit(request);
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("RATE_LIMITED");
+    expect(refusal.error.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it("keeps each composition's budget to itself", () => {
+    // Two installs, two bundles, two limiters. A module-level store would make
+    // the case above pass once and fail on a re-run.
+    expect(composedIdentityAccess()).not.toBe(composedIdentityAccess());
   });
 });
