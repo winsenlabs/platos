@@ -215,6 +215,23 @@ async function runMagicLinksAndMfa(
   observed.secondConsume = await repository.magicLinks.consume(linkHash, LATER);
   observed.magicLinkAfterConsume = await repository.magicLinks.findByTokenHash(linkHash);
 
+  // An EXPIRED link cannot be consumed even by a caller that skipped the domain
+  // check, because the expiry is in the conditional write's own WHERE clause. A
+  // store that filtered only on `consumedAt` would answer true here and a link
+  // left in a mailbox would be usable for ever.
+  const staleHash = digest("f0");
+  await repository.magicLinks.save({
+    tokenHash: staleHash,
+    email: asIdentifier<EmailAddress>("conformance@example.test"),
+    expiresAt: AT,
+    consumedAt: null,
+    createdAt: AT,
+  });
+  observed.consumeExpired = await repository.magicLinks.consume(staleHash, LATER);
+  observed.expiredLinkUntouched = (
+    await repository.magicLinks.findByTokenHash(staleHash)
+  )?.consumedAt;
+
   await repository.mfa.saveTotp({
     userId,
     encryptedSecret: null,

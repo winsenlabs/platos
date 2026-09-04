@@ -329,6 +329,64 @@ describe("OperatorIdentity carries TWO unique indexes and they mean different th
   }, 60_000);
 });
 
+describe("the store's own refusals, on a real database", () => {
+  test("revokeAllForUser reaches a session that IMPERSONATES the user", async () => {
+    // Both arms of the filter matter. A privilege change must not leave an
+    // operator holding a live session OVER the account whose facts changed, and
+    // a filter on `userId` alone would leave exactly that.
+    const operator = await harness.seedUser("revoke-operator@example.test");
+    const target = await harness.seedUser("revoke-target@example.test");
+    await harness.client.user.updateMany({
+      where: { id: operator },
+      data: { platformOperator: true },
+    });
+    const parentId = harness.freshId("0215");
+    await harness.repository.operatorSessions.save(
+      session({
+        sessionId: asIdentifier<OperatorSessionId>(parentId),
+        tokenHash: digest("cc"),
+        userId: asIdentifier<UserId>(operator),
+      }),
+    );
+    await harness.repository.operatorSessions.save(
+      session({
+        sessionId: asIdentifier<OperatorSessionId>(harness.freshId("0216")),
+        tokenHash: digest("dd"),
+        userId: asIdentifier<UserId>(operator),
+        impersonatedUserId: asIdentifier<UserId>(target),
+        parentSessionId: asIdentifier<OperatorSessionId>(parentId),
+      }),
+    );
+    // The TARGET has no session of their own; the only credential naming them is
+    // the impersonating one, and revoking for the target must reach it.
+    const revoked = await harness.repository.operatorSessions.revokeAllForUser(
+      asIdentifier<UserId>(target),
+      LATER,
+    );
+    expect(revoked).toBe(1);
+  }, 60_000);
+
+  test("bearerCredentials.save refuses a credential with no row behind it", async () => {
+    // `save` UPDATES. Every one of the four tables carries required columns the
+    // port cannot supply, so a save that created a row would be minting a
+    // credential through a method that cannot mint.
+    await expect(
+      harness.repository.bearerCredentials.save({
+        credentialId: harness.freshId("0217"),
+        kind: "mcp-token",
+        tokenHash: digest("ee"),
+        tier: "OPERATOR",
+        principalId: asIdentifier(userId),
+        scope: { kind: "GLOBAL" },
+        permissions: [],
+        expiresAt: null,
+        revokedAt: null,
+        lastUsedAt: LATER,
+      }),
+    ).rejects.toThrow(/save updates a credential, it does not mint one/u);
+  }, 60_000);
+});
+
 describe("the session parent and cascade rules", () => {
   test("a child session may not outlive its parent, and revoking the parent revokes it", async () => {
     const parentId = harness.freshId("0212");
