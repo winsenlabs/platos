@@ -14,10 +14,11 @@
 //
 // WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; FIVE are real
 // (WIN-256: identity-access, tenancy, secrets, files, providers) and twelve are
-// still declaration-only placeholders. Of the five, one is composed here today —
-// see the note below on what an install must still supply. Modelling that as
-// `Partial<ContextContracts>` states the truth in the type instead of shipping
-// seventeen `null!` casts that would compile and then explode.
+// still declaration-only placeholders. Of the five, TWO are composed here today
+// — identity-access and tenancy — see the note below on what an install must
+// still supply. Modelling that as `Partial<ContextContracts>` states the truth
+// in the type instead of shipping seventeen `null!` casts that would compile and
+// then explode.
 //
 // ---------------------------------------------------------------------------
 // THE WIN-297 FINDING, CLOSED BY WIN-257 (M2.2).
@@ -32,16 +33,22 @@
 //
 // `APPLICATION_ENTRY_PROJECTS` in `scripts/arch/gen-v1-skeleton.mjs` now
 // publishes `./application/index.js` for the contexts this file ACTUALLY
-// composes — one entry today, `identity-access` — and `selfCheck` refuses an
-// entry that is not an adopted context. So the surface is not dead: the import
-// below is the consumer that justifies it.
+// composes — two entries today, `identity-access` and `tenancy` — and
+// `selfCheck` refuses an entry that is not an adopted context. So the surface is
+// not dead: the imports below are the consumers that justify it.
 //
-// WHAT IS STILL OPEN. identity-access is composed from a supplied PORT BUNDLE,
-// not from an adapter, because `IdentityAccessRepository` has no adapter slot:
-// the twelve declared bindings give `postgres-tenancy` the tenancy repository
-// and give identity-access only `redis-ratelimit`. There is no identity store
-// among the twelve. That is reported, not absorbed — WIN-258 owns the
-// repositories — and until one exists an install supplies the bundle itself and
+// WHAT IS STILL OPEN. Both contexts are composed from a supplied PORT BUNDLE
+// rather than from an adapter. For identity-access that is forced:
+// `IdentityAccessRepository` has no adapter slot at all — the twelve declared
+// bindings give `postgres-tenancy` the tenancy repository and give
+// identity-access only `redis-ratelimit`, and there is no identity store among
+// the twelve. For tenancy the slot exists and is EMPTY: `postgres-tenancy` is
+// still a generated placeholder with no `TenancyRepository` in it, and tenancy
+// needs five more ports besides the repository (locks, a session revoker, an
+// access-key revocation counter, an invitation token issuer and an operator
+// directory) that no binding declares. So neither context can be built from
+// `adapters` today. That is reported, not absorbed — WIN-258 owns the
+// repositories — and until they exist an install supplies each bundle itself and
 // readiness stays honest about every binding that is unsatisfied.
 // ---------------------------------------------------------------------------
 
@@ -51,6 +58,8 @@ import type { IdentityAccessContract } from "@platos/context-identity-access";
 import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
 import type { IdentityAccessPorts } from "@platos/context-identity-access/application/index.js";
 import type { TenancyContract } from "@platos/context-tenancy";
+import { createTenancyService } from "@platos/context-tenancy/application/index.js";
+import type { TenancyDependencies } from "@platos/context-tenancy/application/index.js";
 import type { SecretsContract } from "@platos/context-secrets";
 import type { ProvidersContract } from "@platos/context-providers";
 import type { AgentsContract } from "@platos/context-agents";
@@ -123,6 +132,15 @@ export interface AppModule {
  */
 export interface SuppliedContextPorts {
   readonly identityAccess?: IdentityAccessPorts;
+  /**
+   * Tenancy's bundle is `TenancyDependencies` rather than a bare repository
+   * because five of its six driven ports are not repositories: the row lock, the
+   * session revoker, the access-key revocation counter, the invitation token
+   * issuer and the operator directory. An install that supplied only a store
+   * would produce a context that cannot serialise an owner demotion, which is
+   * the one thing `changeMembershipRole` exists to guarantee.
+   */
+  readonly tenancy?: TenancyDependencies;
 }
 
 export interface CompositionInput {
@@ -160,11 +178,14 @@ export function composeApplication(input: CompositionInput): AppModule {
   // the context absent rather than producing a façade over undefined stores,
   // which would turn every authentication into a run-time crash instead of a
   // readiness signal a caller can see before it serves anything.
-  const contexts: ComposedContexts = Object.freeze(
-    input.ports?.identityAccess === undefined
+  const contexts: ComposedContexts = Object.freeze({
+    ...(input.ports?.identityAccess === undefined
       ? {}
-      : { identityAccess: createIdentityAccessService(input.ports.identityAccess) },
-  );
+      : { identityAccess: createIdentityAccessService(input.ports.identityAccess) }),
+    ...(input.ports?.tenancy === undefined
+      ? {}
+      : { tenancy: createTenancyService(input.ports.tenancy) }),
+  });
 
   return Object.freeze({
     configuration: input.configuration,

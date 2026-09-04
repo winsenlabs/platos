@@ -133,6 +133,7 @@ export const ADOPTED_PROJECTS = [
 // ---------------------------------------------------------------------------
 export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
+  "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption

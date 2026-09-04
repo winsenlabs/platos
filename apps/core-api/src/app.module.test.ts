@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { testPorts } from "@platos/context-identity-access/application/index.js";
-import { asIdentifier, organizationScope, type OrganizationId } from "@platos/kernel";
+import {
+  createTenancyFixture,
+  seedMember,
+  seedTree,
+  type TenancyFixture,
+} from "@platos/context-tenancy/application/index.js";
+import { OrganizationRole, ProjectRole, type UserId } from "@platos/context-tenancy";
+import { asIdentifier, organizationScope, type EnvironmentId, type OrganizationId } from "@platos/kernel";
 
 import { CompositionFault, DECLARED_BINDING_COUNT, composeApplication } from "./app.module.js";
 import type { SuppliedContextPorts } from "./app.module.js";
@@ -44,6 +51,27 @@ function composedIdentityAccess() {
 }
 
 const TENANT = organizationScope(asIdentifier<OrganizationId>("org-1"));
+
+/**
+ * The tenancy contract, composed the way an install composes it.
+ *
+ * The fixture is returned alongside so a case can SEED the tree it is about.
+ * Like `testPorts()`, these doubles ship inside the context — they are the same
+ * ones `packages/adapters/postgres-tenancy` is measured against — so a denial
+ * observed here is tenancy's denial and not one this file arranged.
+ */
+function composedTenancy(fixture: TenancyFixture = createTenancyFixture()) {
+  const app = composeApplication(inputs(undefined, { tenancy: fixture.dependencies }));
+  const tenancy = app.contexts.tenancy;
+  if (tenancy === undefined) throw new Error("tenancy should have been composed");
+  return { tenancy, fixture };
+}
+
+/** An already-authenticated operator, as identity-access would hand one over. */
+function principal(user: string) {
+  const id = asIdentifier<UserId>(user);
+  return { actorUserId: id, effectiveUserId: id };
+}
 
 /**
  * A stand-in for an adapter that does not exist yet.
@@ -240,5 +268,155 @@ describe("composing identity-access", () => {
     for (let spent = 0; spent < 10; spent += 1) await first.consumeRateLimit(request);
     expect((await first.consumeRateLimit(request)).ok).toBe(false);
     expect((await composedIdentityAccess().consumeRateLimit(request)).ok).toBe(true);
+  });
+});
+
+describe("composing tenancy", () => {
+  it("LEAVES THE CONTEXT ABSENT when no port bundle is supplied", () => {
+    expect(composeApplication(inputs()).contexts.tenancy).toBeUndefined();
+  });
+
+  it("composes the published contract when the bundle is supplied", () => {
+    expect(composedTenancy().tenancy.name).toBe("tenancy");
+  });
+
+  it("composes BOTH contexts without either displacing the other", () => {
+    // The root merges two optional bundles into one frozen object. A spread
+    // written the other way round — or an early return — would silently drop
+    // whichever context was composed second, and every refusal case below would
+    // still pass because it composes tenancy alone.
+    const app = composeApplication(
+      inputs(undefined, { identityAccess: testPorts(), tenancy: createTenancyFixture().dependencies }),
+    );
+    expect(Object.keys(app.contexts).sort()).toEqual(["identityAccess", "tenancy"]);
+  });
+
+  it("GRANTS AN ACTIVE ORGANIZATION ADMIN, so the wiring cannot be a stub that always denies", async () => {
+    // The positive control. Every case after this one asserts a refusal, and a
+    // façade wired to a dead repository would satisfy all of them.
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", { organizationRole: OrganizationRole.ADMIN });
+    const decision = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(decision.ok).toBe(true);
+    if (!decision.ok) return;
+    expect(decision.value.scope.environmentId).toBe(tree.environment.id);
+    expect(decision.value.organizationRole).toBe(OrganizationRole.ADMIN);
+    // The value the composed contract returns must still be the unforgeable one
+    // tenancy minted, not a structural copy that crossed the seam.
+    expect(tenancy.verifyAuthorization(decision.value).ok).toBe(true);
+    expect(tenancy.verifyAuthorization({ ...decision.value }).ok).toBe(false);
+  });
+
+  it("REFUSES AN ENVIRONMENT THAT DOES NOT EXIST", async () => {
+    const { tenancy } = composedTenancy();
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: asIdentifier<EnvironmentId>("no-such-environment"),
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
+    expect(refusal.error.details).toEqual({ gate: "archived-ancestor" });
+  });
+
+  it("REFUSES ACROSS TENANTS — an admin of one organization is denied the other's environment", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const mine = seedTree(fixture.store, "acme");
+    const theirs = seedTree(fixture.store, "globex");
+    seedMember(fixture.store, mine, "ada", { organizationRole: OrganizationRole.ADMIN });
+    // Ada is an ADMIN — of the WRONG organization. Gate 3 would wave an admin
+    // through, so the denial has to come from gate 2 finding no membership in
+    // the organization the LEAF resolves to.
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: theirs.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "organization-membership" });
+  });
+
+  it("REFUSES UNDER AN ARCHIVED ORGANIZATION, even its own owner", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", { organizationRole: OrganizationRole.OWNER });
+    fixture.store.organizations[0] = { ...tree.organization, archivedAt: new Date("2026-02-01T00:00:00.000Z") };
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "archived-ancestor" });
+  });
+
+  it("REFUSES A DEACTIVATED MEMBER whose row is still on the tree", async () => {
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "ada", {
+      organizationRole: OrganizationRole.OWNER,
+      deactivatedAt: new Date("2026-01-15T00:00:00.000Z"),
+    });
+    const refusal = await tenancy.authorizeEnvironmentOperator({
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "organization-membership" });
+  });
+
+  it("REFUSES A PROJECT VIEWER a secret mutation while allowing them metadata", async () => {
+    // Gate 4, and the pair that proves it is gate 4 rather than an outright
+    // denial: the same operator on the same environment is allowed at
+    // `metadata` and refused at `secret:mutate`.
+    const { tenancy, fixture } = composedTenancy();
+    const tree = seedTree(fixture.store);
+    seedMember(fixture.store, tree, "vic", {
+      organizationRole: OrganizationRole.MEMBER,
+      projectRole: ProjectRole.VIEWER,
+    });
+    const request = { environmentId: tree.environment.id, operator: principal("vic") } as const;
+    expect((await tenancy.authorizeEnvironmentOperator({ ...request, access: "metadata" })).ok).toBe(true);
+    const refusal = await tenancy.authorizeEnvironmentOperator({ ...request, access: "secret:mutate" });
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.details).toEqual({ gate: "secret-mutate-role" });
+  });
+
+  it("REFUSES to resolve a scope for an environment that does not exist", async () => {
+    const { tenancy } = composedTenancy();
+    const refusal = await tenancy.resolveEnvironmentScope(
+      asIdentifier<EnvironmentId>("no-such-environment"),
+    );
+    expect(refusal.ok).toBe(false);
+    if (refusal.ok) return;
+    expect(refusal.error.code).toBe("TENANCY_NOT_FOUND");
+  });
+
+  it("keeps each composition's tenant tree to itself", async () => {
+    // Two installs, two bundles, two stores. Asserted by seeding REAL STATE in
+    // one and showing the other cannot see it — not by comparing object
+    // identity, which two factory calls satisfy trivially and which a
+    // module-level store behind them would satisfy too.
+    const first = composedTenancy();
+    const tree = seedTree(first.fixture.store);
+    seedMember(first.fixture.store, tree, "ada", { organizationRole: OrganizationRole.ADMIN });
+    const request = {
+      environmentId: tree.environment.id,
+      operator: principal("ada"),
+      access: "metadata",
+    } as const;
+    expect((await first.tenancy.authorizeEnvironmentOperator(request)).ok).toBe(true);
+    expect((await composedTenancy().tenancy.authorizeEnvironmentOperator(request)).ok).toBe(false);
   });
 });
