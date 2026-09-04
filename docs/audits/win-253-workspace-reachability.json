@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "946ef2c10bff7a4da497bf8cb30eee62a0509ebdd1fdf1acfcc7f6da0728716e",
+  "evidenceSha256": "0f5a6ed327b56077b1d7a0d53c7cd24a221614709927c2de4ad37e9914fc2097",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "77e8d1ca66acb4909a8818dd9070714a8e74590bb674a06dc41ce0c2a02dbdf7",
+    "aggregateSha256": "60f55ea272e65f41b22ee19a831eb8c3339d73dbf7fed058b0df4aea6b8e3149",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11849,7 +11849,7 @@
       },
       {
         "path": "packages/contexts/providers/application/ports/model-router.ts",
-        "sha256": "f3590828e9a42d1a2111c33b961fba54b1702c58feef1741cc9c561ccfdd7d95"
+        "sha256": "160912e9e2372d1b32f6d3f277967bac05f1f9a32443b2f4d6042eb609e3e81e"
       },
       {
         "path": "packages/contexts/providers/application/ports/provider-probe-cache.ts",
@@ -11905,7 +11905,7 @@
       },
       {
         "path": "packages/contexts/providers/application/run-model-generation.ts",
-        "sha256": "764af900d2f5c1c9f4720e9824408eac43fa3ed3ce5614860912a9a109096e6a"
+        "sha256": "67d5ac40d5c59b3b690950ff92af6902a74fa292d429fafc2baa2402504f534c"
       },
       {
         "path": "packages/contexts/providers/application/runtime-settings.ts",
@@ -11973,7 +11973,7 @@
       },
       {
         "path": "packages/contexts/providers/domain/errors.ts",
-        "sha256": "a8a08e72c39eaf8a7a417f2053bebf2d7b12329e94de151ce6d55ff8d340b4e0"
+        "sha256": "3c625e855d18dbc3c69fdd213833f2f5535dd3c324342d5f5d73a1a4641ac9ac"
       },
       {
         "path": "packages/contexts/providers/domain/generation.test.ts",
@@ -59127,7 +59127,7 @@
             {
               "file": "packages/contexts/providers/application/run-model-generation.ts",
               "from": "packages/contexts/providers",
-              "line": 40,
+              "line": 44,
               "specifier": "@platos/kernel"
             },
             {
@@ -61882,7 +61882,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "083378939cfd1580d67296d68f9685ee4bdca546e427fedb5c104c7b426b54fa",
+      "evidenceSha256": "7176c678a89e0bbe620fee785244dcdddfb2dbbf9cf1436e00ea00eb1403f0a4",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
