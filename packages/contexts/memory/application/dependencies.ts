@@ -28,6 +28,27 @@
 //   surface that does it. The priced amount travels on the extraction report so
 //   the composition root can attribute it to a budget — this context writes no
 //   ledger row, because it owns none.
+//
+//   THAT ONE METHOD IS THE WHOLE DEPENDENCY, so the handle is typed as the one
+//   method. This bundle does NOT hold `ProvidersContract`. It holds
+//   `ProvidersPeer`, declared below, for exactly the reason `agents` declares
+//   `SkillsPeer`: a handle typed as a neighbour's ENTIRE published surface makes
+//   every in-memory double in this package a hostage to all of it, so a method
+//   `providers` adds for its own reasons breaks a context that never calls one.
+//
+//   That is not hypothetical. WIN-256's `conversations` prerequisite put the
+//   inference surface on the ModelRouter and grew `ProvidersContract` by
+//   `runModelGeneration` and `streamModelGeneration`. Neither has anything to do
+//   with memory, and both broke `build:v1` here the moment the two branches met
+//   in one tree — `InMemoryProviders` implemented the whole contract and
+//   suddenly implemented two-thirds of it. A port this context OWNS cannot be
+//   broken from outside, and the real `ProvidersContract` satisfies it
+//   structurally, so the composition root hands the published surface over
+//   unchanged and writes no adapter to do it.
+//
+//   The alternative was to fatten the double with two more refusals it will
+//   never be asked for, which buys silence until the next method `providers`
+//   adds. The narrowing is the fix; the refusals would have been the deferral.
 
 import type { Clock, IdGenerator, UnitOfWork } from "@platos/kernel";
 import type { ProvidersContract } from "@platos/context-providers";
@@ -43,6 +64,24 @@ import type {
   MemoryRepository,
 } from "./ports/index.js";
 
+/**
+ * The whole of `providers` this context depends on, named by `memory`.
+ *
+ * One method: what a priced model call costs, which `judge-pricing.ts` reads and
+ * puts on the extraction report. `ProvidersContract` is wider, and every other
+ * member of it is another context's business to call.
+ *
+ * The query and the result stay `providers`' own types — taken by indexed
+ * access off the published contract rather than restated — because narrowing
+ * WHICH methods this context depends on does not licence it to redeclare its
+ * neighbour's vocabulary. If `providers` changes the shape of a price, this
+ * breaks, which is correct: that IS a dependency memory has.
+ */
+export interface ProvidersPeer {
+  readonly name: "providers";
+  readonly priceModelUsage: ProvidersContract["priceModelUsage"];
+}
+
 export interface MemoryDependencies {
   readonly repository: MemoryRepository;
   readonly graph: KnowledgeGraphRepository;
@@ -55,7 +94,8 @@ export interface MemoryDependencies {
   readonly unitOfWork: UnitOfWork;
   readonly policy: MemoryPolicy;
   readonly tenancy: TenancyContract;
-  readonly providers: ProvidersContract;
+  /** Narrow by design, and owned here rather than imported whole: see above. */
+  readonly providers: ProvidersPeer;
 }
 
 export function memoryDependencies(dependencies: MemoryDependencies): MemoryDependencies {

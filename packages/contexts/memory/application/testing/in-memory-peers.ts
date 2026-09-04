@@ -20,9 +20,16 @@
 //   card's `cacheWriteInputTokens` is exactly the kind of mapping that goes
 //   wrong silently.
 //
-// Everything either double is not asked for by this context returns a refusal
-// rather than a plausible value: a test that starts depending on an unimplemented
-// method finds out immediately.
+// Everything the TENANCY double is not asked for by this context returns a
+// refusal rather than a plausible value: a test that starts depending on an
+// unimplemented method finds out immediately.
+//
+// The providers double needs no such refusals any more, and has none. It is
+// typed as `ProvidersPeer` — the one-method port this context owns — so a test
+// that reaches for a member `memory` does not depend on does not get a refusal
+// at run time, it fails to compile. That is the stronger of the two guarantees,
+// and it is why nineteen NOT_OFFERED lines left this file rather than gaining a
+// twentieth and twenty-first for the WIN-256 inference surface.
 
 import { asIdentifier, err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import type {
@@ -30,9 +37,8 @@ import type {
   EnvironmentOperatorAuthorization,
   TenancyContract,
 } from "@platos/context-tenancy";
-import type { ProvidersContract } from "@platos/context-providers";
-
 import { repositoryUnavailable, scopeMismatch } from "../../domain/index.js";
+import type { ProvidersPeer } from "../dependencies.js";
 
 const NOT_OFFERED = () =>
   err(repositoryUnavailable("this in-memory double does not implement that operation"));
@@ -101,8 +107,17 @@ export class InMemoryTenancy implements TenancyContract {
   scopeContains: TenancyContract["scopeContains"] = () => false;
 }
 
-/** An in-memory `providers`. Only `priceModelUsage` is real; it is all this uses. */
-export class InMemoryProviders implements ProvidersContract {
+/**
+ * An in-memory `providers`. `priceModelUsage` is real, and it is the ONLY member
+ * this double has, because it is the only member the seam has.
+ *
+ * IT IMPLEMENTS `ProvidersPeer`, NOT `ProvidersContract`. The port is this
+ * context's own (see `../dependencies.ts`), so a method `providers` adds for its
+ * own reasons cannot break this file — which is exactly what happened when the
+ * WIN-256 inference surface added `runModelGeneration` and `streamModelGeneration`
+ * and this class, then typed as the whole contract, stopped compiling.
+ */
+export class InMemoryProviders implements ProvidersPeer {
   readonly name = "providers" as const;
 
   /** Every pricing request, so a test can assert the translated usage shape. */
@@ -118,7 +133,7 @@ export class InMemoryProviders implements ProvidersContract {
     this.failure = reason;
   }
 
-  priceModelUsage: ProvidersContract["priceModelUsage"] = async (query) => {
+  priceModelUsage: ProvidersPeer["priceModelUsage"] = async (query) => {
     const usage = query.usage;
     const input = usage.inputTokens ?? 0;
     const output = usage.outputTokens ?? 0;
@@ -154,24 +169,4 @@ export class InMemoryProviders implements ProvidersContract {
       charged: { input: fresh, output, cacheRead, cacheWrite },
     });
   };
-
-  listProviderKeys: ProvidersContract["listProviderKeys"] = async () => NOT_OFFERED();
-  pageProviderKeys: ProvidersContract["pageProviderKeys"] = async () => NOT_OFFERED();
-  describeProviderKey: ProvidersContract["describeProviderKey"] = async () => NOT_OFFERED();
-  linkProviderKey: ProvidersContract["linkProviderKey"] = async () => NOT_OFFERED();
-  registerProviderKey: ProvidersContract["registerProviderKey"] = async () => NOT_OFFERED();
-  rotateProviderKeySecret: ProvidersContract["rotateProviderKeySecret"] = async () => NOT_OFFERED();
-  relinkProviderKey: ProvidersContract["relinkProviderKey"] = async () => NOT_OFFERED();
-  updateProviderKey: ProvidersContract["updateProviderKey"] = async () => NOT_OFFERED();
-  deleteProviderKey: ProvidersContract["deleteProviderKey"] = async () => NOT_OFFERED();
-  describeProviders: ProvidersContract["describeProviders"] = async () => NOT_OFFERED();
-  describeProvider: ProvidersContract["describeProvider"] = async () => NOT_OFFERED();
-  setProviderAdoption: ProvidersContract["setProviderAdoption"] = async () => NOT_OFFERED();
-  unlinkProvider: ProvidersContract["unlinkProvider"] = async () => NOT_OFFERED();
-  listUsableProviders: ProvidersContract["listUsableProviders"] = async () => NOT_OFFERED();
-  checkProviderHealth: ProvidersContract["checkProviderHealth"] = async () => NOT_OFFERED();
-  checkAllProvidersHealth: ProvidersContract["checkAllProvidersHealth"] = async () => NOT_OFFERED();
-  openModelRoute: ProvidersContract["openModelRoute"] = async () => NOT_OFFERED();
-  resolveModelPrice: ProvidersContract["resolveModelPrice"] = async () => NOT_OFFERED();
-  ingestRateCard: ProvidersContract["ingestRateCard"] = async () => NOT_OFFERED();
 }
