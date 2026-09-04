@@ -57,11 +57,23 @@ const SKIP_DIRECTORIES = new Set([
   "generated",
 ]);
 
+// A rule that only sees `import ... from "x"` is a rule you can walk around by
+// writing `await import("x")` instead, and that evasion has to cost the same as
+// the honest form or the whole rule set is advisory. So the second pattern
+// covers the call forms, INCLUDING a backtick specifier: a template literal with
+// no substitution in it is a static specifier written in a different quote, and
+// leaving it out would have left one spelling of every ban unenforced.
+//
+// `[^`$\\]+` deliberately refuses a specifier containing `$`. A real
+// substitution (`import(`${base}/x`)`) is not statically resolvable and must not
+// be reported as if it were a known target; it is out of reach of a textual
+// checker either way, and guessing at one would produce a violation naming a
+// path no file imports.
 const IMPORT_PATTERNS = [
   // import ... from "x"; export ... from "x"; import "x"
   /\b(?:import|export)\s+(?:[^'"]*?\sfrom\s*)?["']([^"']+)["']/g,
-  // import("x")  and  require("x")
-  /\b(?:import|require)\s*\(\s*["']([^"']+)["']\s*\)/g,
+  // import("x"), import(`x`) and require("x")
+  /\b(?:import|require)\s*\(\s*(?:["']([^"']+)["']|`([^`$\\]+)`)\s*\)/g,
 ];
 
 function listSourceFiles(absoluteRoot) {
@@ -95,7 +107,13 @@ function extractSpecifiers(source) {
   for (const pattern of IMPORT_PATTERNS) {
     pattern.lastIndex = 0;
     let match;
-    while ((match = pattern.exec(source)) !== null) specifiers.push(match[1]);
+    // A pattern may carry more than one capture group (quoted vs backtick); the
+    // one that participated in the match is the specifier and the rest are
+    // undefined.
+    while ((match = pattern.exec(source)) !== null) {
+      const specifier = match.slice(1).find((group) => group !== undefined);
+      if (specifier !== undefined) specifiers.push(specifier);
+    }
   }
   return specifiers;
 }

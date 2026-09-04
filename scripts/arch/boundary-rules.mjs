@@ -58,6 +58,28 @@ export const BANNED_CORE_IMPORT_SOURCES = [
 // One node_modules regex alternation for the banned list above.
 const BANNED_CORE_IMPORT_RE = `node_modules/(${BANNED_CORE_IMPORT_SOURCES.join("|")})`;
 
+// The one directory that may hold a model-provider client (ADR M0.3 §5.1(h),
+// §13). Two containment entries below share it, and they are deliberately
+// separate rules: see INFERENCE_SDK_SOURCE.
+const MODEL_ROUTER_ADAPTER = "^packages/adapters/model-router-providers/";
+
+// The cross-vendor inference framework — the `ai` package and its `@ai-sdk/*`
+// provider bindings (ADR M0.3 §14).
+//
+// WHY IT IS NOT SIMPLY ADDED TO `provider-sdk-only`. That rule bans a RAW
+// provider client. This one bans the layer ABOVE such a client: the framework
+// that owns message shape, tool-call round trips, streaming and the
+// prompt-cache markers. They fail for different reasons and a reader of a
+// violation needs to know which one they hit, so they are two ids over one home
+// rather than one widened alternation.
+//
+// WHY `ai` IS MATCHED AS A WHOLE SEGMENT AND NOT AS A PREFIX. Every other entry
+// in this file is a prefix, which is safe for a distinctive scope like
+// `@clickhouse`. A two-letter prefix is not: `node_modules/ai` as a prefix also
+// condemns `airtable`, `aigle` and anything else whose name opens with those
+// bytes. `ai(?:/|$)` matches the package and its subpaths and nothing else.
+const INFERENCE_SDK_SOURCE = "node_modules/(ai(?:/|$)|@ai-sdk/)";
+
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
 export const SDK_CONTAINMENT = [
@@ -84,8 +106,20 @@ export const SDK_CONTAINMENT = [
   },
   {
     id: "provider-sdk-only",
-    home: "^packages/adapters/model-router-providers/",
+    home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",
+  },
+  {
+    // ADR M0.3 §1 row 16 makes `conversations` the turn-execution engine and the
+    // deepest node in the DAG. It becomes extractable only once a turn can be RUN
+    // without the inference framework in scope — which means the framework has
+    // exactly one home, and every context asks `providers` for the `ModelRouter`
+    // inference surface instead of importing a client of its own. This rule is
+    // that "exactly one home", and the home is the adapter that already owns the
+    // raw provider clients above.
+    id: "inference-sdk-only",
+    home: MODEL_ROUTER_ADAPTER,
+    source: INFERENCE_SDK_SOURCE,
   },
 ];
 
