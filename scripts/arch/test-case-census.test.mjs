@@ -371,13 +371,15 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   for (const [name, cases] of Object.entries(untouched)) assert.equal(EXPECTED[name].cases, cases);
   const sum = Object.values(untouched).reduce((total, cases) => total + cases, 0);
   // M2 WAVE-B: `eventing`, `jobs`, `memory`, `cost-monitoring`, `privacy`,
-  // `observability`, `agents`, `tools` and `channels` land in the same
-  // integration branch on INDEPENDENT axes, so this re-derivation carries their
-  // 149, 378, 605, 352, 254, 288, 515, 362 and 269 too. Without those terms the identity would
+  // `observability`, `agents`, `tools`, `channels` and `governance` land in the
+  // same integration branch on INDEPENDENT axes, so this re-derivation carries
+  // their 149, 378, 605, 352, 254, 288, 515, 362, 269 and 609 too. Without those
+  // terms the identity would
   // hold only on the skills branch alone, which is exactly the side-picking
-  // this comment exists to prevent: 1000 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 = 4478.
+  // this comment exists to prevent:
+  // 1000 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 = 5087.
   assert.equal(
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269,
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
