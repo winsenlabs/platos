@@ -21,6 +21,7 @@ import {
   type FinishReason,
   type GenerationStep,
   type Result,
+  type TokenUsage,
   type ToolCallPart,
   type ToolResultPart,
 } from "@platos/context-providers/application/ports/index.js";
@@ -91,3 +92,36 @@ export function toGenerationStep(
     finishReason,
   });
 }
+
+/**
+ * What the passes so far have cost, in this system's four counts.
+ *
+ * Built from the SAME step list the successful path assembles a generation
+ * from, so a failed structured turn is priced exactly as a successful one of
+ * the same length would be. A reading the domain refuses — cache counts larger
+ * than the prompt they came out of — reports as nothing rather than as a
+ * plausible number, because a corrupt figure on an error is worse than no
+ * figure at all: nobody reconciles it.
+ */
+export function spentAcross(steps: readonly FrameworkStep[]): TokenUsage {
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let cacheReadInputTokens = 0;
+  let cacheWriteInputTokens = 0;
+  for (const step of steps) {
+    const counts = readStepCounts(step.usage, step.providerMetadata);
+    inputTokens += counts.inputTokens;
+    outputTokens += counts.outputTokens;
+    cacheReadInputTokens += counts.cacheReadInputTokens;
+    cacheWriteInputTokens += counts.cacheWriteInputTokens;
+  }
+  const usage = tokenUsage({ inputTokens, outputTokens, cacheReadInputTokens, cacheWriteInputTokens });
+  return usage.ok ? usage.value : NO_SPEND;
+}
+
+const NO_SPEND: TokenUsage = Object.freeze({
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadInputTokens: 0,
+  cacheWriteInputTokens: 0,
+});

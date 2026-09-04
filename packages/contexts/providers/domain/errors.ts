@@ -28,6 +28,8 @@
 
 import { domainError, type DomainError, type FieldViolation } from "@platos/kernel";
 
+import type { TokenUsage } from "./token-usage.js";
+
 export const PROVIDERS_ERROR_CODES = [
   "PROVIDERS_UNKNOWN_PROVIDER",
   "PROVIDERS_KEY_NOT_FOUND",
@@ -348,13 +350,39 @@ export function modelSessionExpired(sessionId: string, expiredAt: string): Domai
   );
 }
 
-/** The model produced nothing that satisfies the schema the caller asked for. */
-export function structuredOutputInvalid(reason: string, passes: number): DomainError {
+/**
+ * The model produced nothing that satisfies the schema the caller asked for.
+ *
+ * IT CARRIES WHAT IT SPENT. Every pass was sent and every pass was billed, and a
+ * failure is the one outcome with no `ModelGeneration` to hang a usage record
+ * on: the port returns `Result<ModelGeneration>`, so an `err` has nowhere else
+ * to put the four counts. The streaming surface does not have this problem — it
+ * emits a `step-finished` event per pass before it emits `failed` — and a
+ * non-streaming failure that reported nothing would have made the same turn cost
+ * a different amount depending on which entry point ran it.
+ *
+ * `spent` is a required argument, not an optional one. A caller that cannot say
+ * what a loop cost should not be running a loop that costs anything.
+ */
+export function structuredOutputInvalid(
+  reason: string,
+  passes: number,
+  spent: TokenUsage,
+): DomainError {
   return domainError(
     "PROVIDERS_STRUCTURED_OUTPUT_INVALID",
     "invalid_input",
     "the model did not produce output matching the requested schema",
-    { details: { reason, passes } },
+    {
+      details: {
+        reason,
+        passes,
+        inputTokens: spent.inputTokens,
+        outputTokens: spent.outputTokens,
+        cacheReadInputTokens: spent.cacheReadInputTokens,
+        cacheWriteInputTokens: spent.cacheWriteInputTokens,
+      },
+    },
   );
 }
 

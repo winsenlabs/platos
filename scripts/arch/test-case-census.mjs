@@ -136,10 +136,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * move -- the adapter, which had never held a case, and `providers`, which gains
  * the two pure pieces the adapter would otherwise have hidden beside an SDK call.
  *
- *   packages/adapters/model-router-providers   0 -> 15 files,   0 -> 197 cases
- *   packages/contexts/providers               25 -> 27 files, 346 -> 374 cases
+ *   packages/adapters/model-router-providers   0 -> 15 files,   0 -> 198 cases
+ *   packages/contexts/providers               25 -> 27 files, 346 -> 375 cases
  *
- * The adapter's 197, suite by suite. Fifteen files and not twelve: the
+ * The adapter's 198, suite by suite. Fifteen files and not twelve: the
  * end-to-end suite was ONE file at 645 effective lines until the widened
  * max-file-lines selector could see it, and it is now four split by concern.
  *
@@ -150,7 +150,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *     src/generation.test.ts        9  one step, the markers, the failures
  *     src/json-value.test.ts       11  making a tool result embeddable
  *     src/messages.test.ts         20  the prompt on the wire, and back
- *     src/object-output.test.ts     7  schema-shaped passes and their cost
+ *     src/object-output.test.ts     8  schema-shaped passes and their cost
  *     src/steps.test.ts             7  one step, and a call with no answer
  *     src/stream.test.ts            4  the one terminal event
  *     src/structured.test.ts       14  schema compile, validate, pass loop
@@ -159,23 +159,24 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *     src/transport.test.ts        27  the retry policy, guard by guard
  *     src/usage.test.ts            24  the provider metadata chains
  *                                 ---
- *                                 197
+ *                                 198
  *
- * The +28 in `providers`, which is TWO new suites and one case added to each of
- * three existing ones:
+ * The +29 in `providers`, which is TWO new suites and one case added to each of
+ * four existing ones:
  *
  *     domain/tool-input-repair.test.ts     16  new file
  *     domain/structured-output.test.ts      9  new file
- *     domain/errors.test.ts             9 -> 10  the adapter's seven codes are
+ *     domain/errors.test.ts             9 -> 11  the adapter's seven codes are
  *                                              kept apart from the codes they
- *                                              resemble
+ *                                              resemble, and a failed schema
+ *                                              loop carries what it spent
  *     domain/generation.test.ts        14 -> 15  the pass budget, under its own
  *                                              code and not the step budget's
  *     application/run-model-generation.test.ts
  *                                      17 -> 18  the pass budget refused before
  *                                              a route is opened
  *                                     ---
- *                                      28
+ *                                      29
  *
  *   `domain/errors.test.ts` also grows its SAMPLES list by the seven new codes
  *   without gaining a case for them, which its existing "mints every declared
@@ -183,12 +184,12 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   when this number moves: a suite whose case count is unchanged while its
  *   coverage changed is exactly what a file-count pin cannot see.
  *
- * ARITHMETIC. Files: 92 + 15 + 2 = 109. Cases: 197 + 28 = 225 added, and
- * 1063 + 225 = 1288 across the workspace. Both entry points print the same
+ * ARITHMETIC. Files: 92 + 15 + 2 = 109. Cases: 198 + 29 = 227 added, and
+ * 1063 + 227 = 1290 across the workspace. Both entry points print the same
  * pairs: `pnpm --filter @platos/adapter-model-router-providers exec vitest run`
- * gives "Test Files 15 passed (15) / Tests 197 passed (197)", and
+ * gives "Test Files 15 passed (15) / Tests 198 passed (198)", and
  * `pnpm --filter @platos/context-providers exec vitest run` gives
- * "Test Files 27 passed (27) / Tests 374 passed (374)".
+ * "Test Files 27 passed (27) / Tests 375 passed (375)".
  *
  * No other package moved. Any further drift is a finding to report, not a
  * number to force.
@@ -197,7 +198,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
-  "packages/adapters/model-router-providers": { files: 15, cases: 197 },
+  "packages/adapters/model-router-providers": { files: 15, cases: 198 },
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
@@ -218,7 +219,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
   "packages/contexts/privacy": { files: 0, cases: 0 },
-  "packages/contexts/providers": { files: 27, cases: 374 },
+  "packages/contexts/providers": { files: 27, cases: 375 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 0, cases: 0 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -233,7 +234,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1288;
+export const EXPECTED_RUNTIME_TOTAL = 1290;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

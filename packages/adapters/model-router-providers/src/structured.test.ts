@@ -1,8 +1,19 @@
 import type { Prompt } from "@platos/context-providers/application/ports/index.js";
 import { describe, expect, it } from "vitest";
 
+import { err, ok, type TokenUsage } from "@platos/context-providers/application/ports/index.js";
+
 import { compileOutputSchema, runObjectPasses, validatingSchema, type PassOutcome } from "./structured.js";
-import { err, ok } from "@platos/context-providers/application/ports/index.js";
+
+/** What two rejected passes cost, so the failure can carry it. */
+const SPENT: TokenUsage = {
+  inputTokens: 240_000,
+  outputTokens: 900,
+  cacheReadInputTokens: 180_000,
+  cacheWriteInputTokens: 12_000,
+};
+
+const spent = () => SPENT;
 
 const PERSON = {
   type: "object",
@@ -98,6 +109,7 @@ describe("the pass loop", () => {
         passes += 1;
         return ok({ object: { name: "ada", age: 36 }, rawText: '{"name":"ada","age":36}' });
       },
+      spent,
     );
 
     expect(passes).toBe(1);
@@ -120,6 +132,7 @@ describe("the pass loop", () => {
           ? ok({ object: { name: 1, age: "old" }, rawText: '{"name":1,"age":"old"}' })
           : ok({ object: { name: "ada", age: 36 }, rawText: "{}" });
       },
+      spent,
     );
 
     expect(seen).toHaveLength(2);
@@ -147,6 +160,7 @@ describe("the pass loop", () => {
         passNumber === 1
           ? ok({ object: { wrong: true }, rawText: "{}" })
           : ok({ object: { name: "ada", age: 36 }, rawText: "{}" }),
+      spent,
     );
 
     expect(rewrites).toBe(1);
@@ -163,6 +177,7 @@ describe("the pass loop", () => {
         passes += 1;
         return ok({ object: { wrong: true }, rawText: "{}" });
       },
+      spent,
     );
 
     expect(passes).toBe(3);
@@ -170,6 +185,13 @@ describe("the pass loop", () => {
     if (outcome.ok) throw new Error("unreachable");
     expect(outcome.error.code).toBe("PROVIDERS_STRUCTURED_OUTPUT_INVALID");
     expect(outcome.error.details.passes).toBe(3);
+    // The failure carries what the three rejected passes cost. Without this a
+    // failed structured turn is billed at nothing on this entry point and at its
+    // real price on the streaming one.
+    expect(outcome.error.details.inputTokens).toBe(240_000);
+    expect(outcome.error.details.cacheReadInputTokens).toBe(180_000);
+    expect(outcome.error.details.cacheWriteInputTokens).toBe(12_000);
+    expect(outcome.error.details.outputTokens).toBe(900);
   });
 
   it("runs exactly ONE pass when the budget is one, and fails closed", async () => {
@@ -185,6 +207,7 @@ describe("the pass loop", () => {
         passes += 1;
         return ok({ object: { wrong: true }, rawText: "{}" });
       },
+      spent,
     );
 
     expect(passes).toBe(1);
@@ -204,6 +227,7 @@ describe("the pass loop", () => {
           ? ok({ object: undefined, rawText: "I am afraid I cannot" } satisfies PassOutcome)
           : ok({ object: { name: "ada", age: 36 }, rawText: "{}" });
       },
+      spent,
     );
 
     expect(outcome.ok).toBe(true);
@@ -231,6 +255,7 @@ describe("the pass loop", () => {
           retryAfterSeconds: null,
         });
       },
+      spent,
     );
 
     expect(passes).toBe(1);
@@ -251,6 +276,7 @@ describe("the pass loop", () => {
         if (passNumber === 1) return ok({ object: { bad: 1 }, rawText: "FIRST TRY TEXT" });
         return ok({ object: { bad: 2 }, rawText: "" });
       },
+      spent,
     );
 
     const third = seen[2]?.messages[seen[2].messages.length - 1];

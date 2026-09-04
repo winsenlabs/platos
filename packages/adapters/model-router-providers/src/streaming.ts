@@ -41,7 +41,7 @@ import {
 } from "./call.js";
 import { isAbort, translate, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
-import { answerFor, toGenerationStep, toToolCall, type FrameworkStep } from "./steps.js";
+import { answerFor, spentAcross, toGenerationStep, toToolCall, type FrameworkStep } from "./steps.js";
 import { accountingOf, compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
 import { repairCall, toolBridge, type ToolBridge } from "./tools.js";
 
@@ -316,6 +316,7 @@ async function* streamObjectEvents(
         return ok({ object: undefined, rawText: accounting.text === "" ? raw : accounting.text });
       }
     },
+    () => spentAcross(steps),
   );
 
   const settled = passes.then(

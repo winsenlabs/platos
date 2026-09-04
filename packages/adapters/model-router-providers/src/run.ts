@@ -34,7 +34,7 @@ import {
 } from "./call.js";
 import { failed, toFinishReason } from "./failure.js";
 import { toModelMessages } from "./messages.js";
-import { toGenerationStep, type FrameworkStep } from "./steps.js";
+import { spentAcross, toGenerationStep, type FrameworkStep } from "./steps.js";
 import { accountingOf, compileOutputSchema, runObjectPasses, type PassOutcome } from "./structured.js";
 import { repairCall, toolBridge, type ToolBridge } from "./tools.js";
 
@@ -180,6 +180,7 @@ async function runObjectGeneration(
         return ok({ object: undefined, rawText: accounting.text });
       }
     },
+    () => spentAcross(steps),
   );
   if (!outcome.ok) return err(outcome.error);
 

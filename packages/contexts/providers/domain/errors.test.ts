@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import * as errors from "./errors.js";
 import { PROVIDERS_ERROR_CODES } from "./errors.js";
+import { NO_TOKEN_USAGE } from "./token-usage.js";
 
 const SAMPLES = [
   errors.unknownProvider("nope"),
@@ -31,7 +32,7 @@ const SAMPLES = [
   errors.cacheBudgetExceeded(5, 4),
   errors.stepBudgetInvalid(0),
   errors.modelSessionExpired("session-1", "2026-01-01T00:00:00.000Z"),
-  errors.structuredOutputInvalid("no parseable object", 2),
+  errors.structuredOutputInvalid("no parseable object", 2, NO_TOKEN_USAGE),
   errors.retryPolicyInvalid("retryCount must be a whole number", "retryCount", -1),
   errors.serviceAccountInvalid("credential is not JSON", "google-vertex"),
   errors.outputSchemaInvalid("unknown keyword"),
@@ -102,7 +103,7 @@ describe("categories carry the meaning a transport maps from", () => {
     // The rule this pins: two guards returning one code cannot be told apart.
     // Each pair below is a pair a reader would otherwise be tempted to merge.
     expect(errors.outputSchemaInvalid("bad").code).not.toBe(
-      errors.structuredOutputInvalid("bad", 1).code,
+      errors.structuredOutputInvalid("bad", 1, NO_TOKEN_USAGE).code,
     );
     expect(errors.serviceAccountInvalid("bad", "google-vertex").code).not.toBe(
       errors.providerCredentialUnavailable("bad").code,
@@ -121,6 +122,25 @@ describe("categories carry the meaning a transport maps from", () => {
 
   it("carries the pinned-agent count the control surface renders", () => {
     expect(errors.providerKeyPinnedByAgents("k", 3).details.pinnedAgents).toBe(3);
+  });
+
+  it("carries what a failed schema loop SPENT, because an err has no usage record", () => {
+    // The port returns `Result<ModelGeneration>`, so a failure has nowhere else
+    // to put the four counts, and the passes were billed either way. The
+    // streaming surface reports them as step events; this is how the
+    // non-streaming one reports the same turn at the same price.
+    const spent = { inputTokens: 240_000, outputTokens: 900, cacheReadInputTokens: 180_000, cacheWriteInputTokens: 12_000 };
+
+    const error = errors.structuredOutputInvalid("two passes rejected", 2, spent);
+
+    expect(error.details).toEqual({
+      reason: "two passes rejected",
+      passes: 2,
+      inputTokens: 240_000,
+      outputTokens: 900,
+      cacheReadInputTokens: 180_000,
+      cacheWriteInputTokens: 12_000,
+    });
   });
 
   it("gives every retryable failure a retry hint", () => {

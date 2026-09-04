@@ -13,13 +13,20 @@
 // 7,121-line service where the caching, the usage arithmetic and the tool loop
 // can only be reached through a live provider.
 //
-// SESSIONS ARE CACHED, AND THE PORT SAYS THEY MAY BE. Constructing a client per
-// call is waste, and the running system holds one resolved handle for a route's
-// lifetime. What is forbidden is handing back an EXPIRED one, so these never
-// expire: a handle here holds a plan and a credential fingerprint, and both are
-// re-supplied on every call that uses it. `expiresAt` is null for that reason
-// and not as a shrug — an implementation that DID age its handles would have to
-// say when, and the use case checks it against the clock port.
+// NOTHING IS CACHED HERE, AND `expiresAt` IS NULL BECAUSE OF IT. The port PERMITS
+// an implementation to hand back a handle it minted earlier, and says the one
+// thing it may not do is hand back an expired one. This implementation sidesteps
+// that question rather than answering it: a `ModelSession` here holds no client
+// and no material, only a plan and a credential FINGERPRINT, and every method
+// that talks to a provider builds its client afresh from the plan and the
+// credential it is given for that call. There is nothing to go stale, so there
+// is no expiry to declare.
+//
+// A handle's id is DERIVED, not allocated, so two calls naming the same route
+// and the same key still produce the same id — which is what makes it useful to
+// log — while a rotated key produces a different one. An implementation that did
+// hold clients would have to age them, and the use case is where that would be
+// checked, against the clock port.
 //
 // THE CREDENTIAL IS NEVER CACHED WITH THE SESSION. `open` records a fingerprint;
 // every method that talks to a provider takes the material afresh. That is what

@@ -25,10 +25,10 @@ import {
   outputSchemaInvalid,
   structuredOutputCorrection,
   structuredOutputInvalid,
-  type DomainError,
   type JsonSchemaDocument,
   type Prompt,
   type Result,
+  type TokenUsage,
 } from "@platos/context-providers/application/ports/index.js";
 import { jsonSchema, type Schema } from "ai";
 import { Ajv, type ErrorObject, type ValidateFunction } from "ajv";
@@ -158,6 +158,9 @@ export interface StructuredOutcome {
 /**
  * The pass loop.
  *
+ * `spent` is asked for exactly once, on the failure path, and it is a callback
+ * rather than a value because the counts are not known until the loop is over.
+ *
  * Shared by the streaming and non-streaming entry points so the two cannot
  * drift into two different ideas of how many chances a model gets — which is
  * exactly the kind of divergence that shows up as an unexplained cost
@@ -174,6 +177,7 @@ export async function runObjectPasses(
   maxPasses: number,
   rewritePrompt: (prompt: Prompt) => Prompt,
   runPass: RunPass,
+  spent: () => TokenUsage,
 ): Promise<Result<StructuredOutcome>> {
   let prompt = source;
   let errors: readonly string[] = [];
@@ -208,9 +212,8 @@ export async function runObjectPasses(
     }
   }
 
-  return err(structuredOutputFailure(errors, maxPasses));
-}
-
-function structuredOutputFailure(errors: readonly string[], passes: number): DomainError {
-  return structuredOutputInvalid(errors.join("; "), passes);
+  // The passes were sent and the passes were billed. `spent` is what the caller
+  // accumulated across them, and it travels on the failure because a `Result`
+  // that is `err` has no `ModelGeneration` to carry a usage record.
+  return err(structuredOutputInvalid(errors.join("; "), maxPasses, spent()));
 }

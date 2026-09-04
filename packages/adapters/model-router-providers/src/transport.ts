@@ -16,8 +16,9 @@
 // import (ADR M0.3 §1 row 4 permits `tenancy` and `secrets` and nothing else).
 // Carrying it per call would mean a new field on `ModelGenerationRequest` whose
 // only honest source is a context that does not exist yet. A construction seam
-// closes the hard-coding without inventing that field; see the package README's
-// sibling note in `adapter.ts`.
+// closes the hard-coding without inventing that field, and an installation that
+// needs two policies builds two adapters — which the factory in `adapter.ts`
+// makes cheap, because an adapter holds no state beyond its transport.
 //
 // STREAMING SAFETY. Only a response that has not been read is retried. Once the
 // caller owns the body, retrying would lose whatever it has already consumed, so

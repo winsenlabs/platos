@@ -80,6 +80,26 @@ describe("schema-shaped output", () => {
     expect(generated.error.details.passes).toBe(2);
   });
 
+  it("carries what the rejected passes SPENT on the failure, at exact values", async () => {
+    // A failed structured turn has no `ModelGeneration` to hang a usage record
+    // on, and both passes were billed. The streaming surface reports them as
+    // step events; this is how the non-streaming one reports the same turn at
+    // the same price rather than at nothing.
+    const generated = await runGeneration(
+      request({ output: { kind: "object", schema: PERSON, maxPasses: 2 } }),
+      objectModel(JSON.stringify({ name: 1, age: "old" })),
+    );
+
+    if (generated.ok) throw new Error("unreachable");
+    expect(generated.error.details).toMatchObject({
+      passes: 2,
+      inputTokens: 3_000,
+      outputTokens: 20,
+      cacheReadInputTokens: 300,
+      cacheWriteInputTokens: 0,
+    });
+  });
+
   it("refuses a pass budget of zero before any material moves", async () => {
     let called = 0;
     const model = new MockLanguageModelV4({
