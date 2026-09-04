@@ -221,8 +221,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   const live = census();
   assert.equal(live.totalCases, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +25 for the agents context.
-  assert.equal(live.totalFiles, 113);
+  // +25 for the agents context, +31 for the governance context. 67 + 21 + 25
+  // + 31 = 144, and the sum is written out beside the literal so a file that
+  // vanished while governance's 31 arrived cannot reach the same total.
+  assert.equal(live.totalFiles, 144);
+  assert.equal(live.totalFiles, 67 + 21 + 25 + 31);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -233,9 +236,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   const sum = Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0);
   assert.equal(sum, EXPECTED_RUNTIME_TOTAL);
   // 67 at 3ed8f3ce, +21 for the providers context rebased onto 75ee484de252,
-  // +25 for the agents context.
+  // +25 for the agents context, +31 for the governance context.
   const files = Object.values(EXPECTED).reduce((total, row) => total + row.files, 0);
-  assert.equal(files, 113);
+  assert.equal(files, 144);
+  assert.equal(files, 67 + 21 + 25 + 31);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -277,7 +281,27 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 515);
+});
+
+test("the governance context is pinned at what vitest prints", () => {
+  // The ONE row WIN-256's governance slice moves. `pnpm --filter
+  // @platos/context-governance exec vitest run` prints "Test Files 31 passed
+  // (31) / Tests 586 passed (586)"; the AST census reproduces both with zero
+  // refusals. Every other package is held at its previous value by the tests
+  // above, so a suite quietly deleted elsewhere while governance landed cannot
+  // hide inside the new total.
+  //
+  // 0 -> 586 with the file count 0 -> 31: a first adoption, so this row has no
+  // internal arithmetic to spell out. The TOTAL does, and it is written as a sum
+  // of every pinned row rather than as `previous + 586`, so a row that fell
+  // while this one rose cannot cancel out and reach the same number.
+  assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
+  assert.equal(EXPECTED["packages/contexts/governance"].cases, 586);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 515 + 586);
+  assert.equal(
+    EXPECTED_RUNTIME_TOTAL,
+    Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
+  );
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

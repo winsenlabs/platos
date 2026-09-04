@@ -100,7 +100,23 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // Two of the 67 files exist only because of those splits. Every one of the 395
   // is inside the budget and none is inside the warning band.
-  assert.equal(result.fileCount, 395);
+  //
+  // +82: the same issue makes `governance` real. The budget did NOT bite: the
+  // largest file in that tree is `application/testing/in-memory-eval-stores.ts`
+  // at 391 effective lines, nine under the 400-line warning band, and it holds
+  // three repositories that share a failure-injection idiom rather than one that
+  // outgrew its file. The layout was designed for the ceiling up front — the
+  // extraction source's `eval.service.ts` is 678 lines and lands here as
+  // `run-judge.ts`, `read-evals.ts` and four domain modules — so no split was
+  // forced after the fact. Every one of the 477 is inside the budget and none is
+  // inside the warning band.
+  //
+  // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: 74 -> 263 -> 328
+  // -> 395 -> 477, which is 263 + 65 + 67 + 82. Adoption replaces a context's
+  // four placeholders in place and adds the rest, so this number only ever
+  // grows and a fall in it is always a finding.
+  assert.equal(result.fileCount, 477);
+  assert.equal(result.fileCount, 263 + 65 + 67 + 82);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

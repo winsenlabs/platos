@@ -180,6 +180,34 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved. Any further drift is a finding to report, not a number
  * to force.
+ *
+ * WIN-256 DELTA — `governance` (ADR M0.3 §1 context 14) becomes real. One row
+ * moves, and only one:
+ *
+ *   governance 0 -> 31 files, 0 -> 586 cases; 1515 -> 2101 total.
+ *
+ * The arithmetic is written out so a deletion cannot hide inside an addition:
+ * 1515 + 586 = 2101, and the 586 is 0 + 586 rather than a net of two movements.
+ * The 31 files are 16 domain suites, 14 application suites and the
+ * contracts-barrel suite. The census REFUSED nothing in that tree, so its 586 is
+ * a statically exact count, and
+ * `pnpm --filter @platos/context-governance exec vitest run` prints the same
+ * pair — "Test Files 31 passed (31) / Tests 586 passed (586)" — which is the
+ * agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Every one of the 14 application suites exists because a use case had no
+ * control of its own, and the four written last are the ones that matter:
+ * `governance-erasure-target.test.ts`, which reaches the target ONLY through the
+ * published binder so a binder that drops `erasureTarget()` goes red rather than
+ * leaving a factory-level suite green; `governance-contract.test.ts`, which
+ * drives all 26 contract methods and pins both kernel ports by identity;
+ * `regression-report.test.ts`, which holds the property the extraction source
+ * cannot express — a run in which every judge call failed must not read as a
+ * clean pass; and `risk-report.test.ts`, which holds the two flags that separate
+ * an invented denominator from a measured one.
+ *
+ * No other package moved: this slice touched no suite outside governance and no
+ * shared script but this one and `workspace-reachability.test.mjs`.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -200,7 +228,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/cost-monitoring": { files: 0, cases: 0 },
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
-  "packages/contexts/governance": { files: 0, cases: 0 },
+  "packages/contexts/governance": { files: 31, cases: 586 },
   "packages/contexts/identity-access": { files: 17, cases: 231 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
@@ -221,7 +249,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1515;
+export const EXPECTED_RUNTIME_TOTAL = 2101;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

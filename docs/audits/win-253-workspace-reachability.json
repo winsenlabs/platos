@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e5d07ccb1c641b810cdce8ea30e8ebc7275d1b5ae4c476a6c62aa71c820d81c9",
+  "evidenceSha256": "bc866c0ad8acad96c7a4dfed9b1c0374dde89fc30742f56f894acb5f9a836680",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 78,
+    "explicitHeaderFileCount": 74,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 165,
-        "sha256": "17606335f3c7d2289685b17b258bebbf09ad200babd5e9cb7dab292129c9393e"
+        "outputCount": 161,
+        "sha256": "54a765d7b2f86e38c650471f6dbeac6de871e0308def0fea4639d234c9049517"
       }
     ],
-    "ownedOutputCount": 165,
+    "ownedOutputCount": 161,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "fbf70b67658dcac5f5d306313e98bc4089b22dbc9803e2b727b971396b2a4f86",
+    "aggregateSha256": "ada09eb1634baca905a390dd064411f369d9e7dee453e64f6027d15201d2d373",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11693,27 +11693,363 @@
       },
       {
         "path": "packages/contexts/governance/README.md",
-        "sha256": "fbef13dc790fc04503e937a4ff1facaef0d3654aacd2158d06b48b1d7a0524e7"
+        "sha256": "3463c0f098726b909c70c087fa3a64f17a0dcb2c2954a4df6dbbf4fd0e6a07ef"
+      },
+      {
+        "path": "packages/contexts/governance/application/authorization.test.ts",
+        "sha256": "83c9516d72c23e1db40ff7c7b5b2842b2cd77dae336b4d44c97f58d6f4b3251b"
+      },
+      {
+        "path": "packages/contexts/governance/application/authorization.ts",
+        "sha256": "92e512f2d7f8c92f4b88743b33d0b7e54c1c3c3d0301500ead4bae046e152915"
+      },
+      {
+        "path": "packages/contexts/governance/application/criteria.test.ts",
+        "sha256": "d5b12d5bbc80efb9579bd8e307780e79d0c1739aa2d398306de4a4925d75cc78"
+      },
+      {
+        "path": "packages/contexts/governance/application/criteria.ts",
+        "sha256": "20bc45cf32e6706ab6f8138771976fe9ef85a3c1f4dc952b1fab8215fe360aa8"
+      },
+      {
+        "path": "packages/contexts/governance/application/dependencies.ts",
+        "sha256": "294c5f88f7f41ad353ae613c8870160c5a76ca17902687e028115d75a99ee071"
+      },
+      {
+        "path": "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+        "sha256": "b39338d785069bdeaae9e269b947416f97274e6dce75955f935498cd60e960bf"
+      },
+      {
+        "path": "packages/contexts/governance/application/enqueue-eval-run.ts",
+        "sha256": "351a67bafe002c27b32c24f13a293dcff2dedcd4ac3123a31a63e8e14ae1de08"
+      },
+      {
+        "path": "packages/contexts/governance/application/golden-sets.test.ts",
+        "sha256": "37d8ff98cdeb27af10ba6a8a5f6e33822f2f30e638d6cb6df45cb2fa24e8130b"
+      },
+      {
+        "path": "packages/contexts/governance/application/golden-sets.ts",
+        "sha256": "aaa036c7cb1ebafa289d913ee244b5aab49726f0b06dc49f22a6372a661f7c56"
+      },
+      {
+        "path": "packages/contexts/governance/application/governance-contract.test.ts",
+        "sha256": "ef93b7e6bed91d019ceadb071bae9159abeca3a94102491ecb45810ed701d01e"
+      },
+      {
+        "path": "packages/contexts/governance/application/governance-contract.ts",
+        "sha256": "f07b33c0f7345879e86f6879aed1a8caa03cb6182c126e363e7a3b0e605b2474"
+      },
+      {
+        "path": "packages/contexts/governance/application/governance-erasure-target.test.ts",
+        "sha256": "8930acd257b2a2577d67944f2ead9e72e729d44bebe701481580ff0aa8abd051"
+      },
+      {
+        "path": "packages/contexts/governance/application/governance-erasure-target.ts",
+        "sha256": "999d5b995ddde7a5fdf3f17e314675e12d026c6b5e6c145376bf89e58002eed2"
       },
       {
         "path": "packages/contexts/governance/application/index.ts",
-        "sha256": "60633b9246ae8dc7375f7766a962f3786a0120e9bd2b10ae7b6d32e1019445c7"
+        "sha256": "46856045da959c776fca3720a3be9737976c9a4a0ed2701fed6dd124830919e4"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/criteria-repository.ts",
+        "sha256": "62d5d45e2230cd15efa93840434fdd9d8f3f0bd42890829e35a26748a51764c4"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/eval-run-queue.ts",
+        "sha256": "e4c654e0e15e04cfcb8ffd8c79980b168da0ec8fdf3375e32b1b72d4b87c359d"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/evals-repository.ts",
+        "sha256": "91256a54281363c0e7802f3895e9604f69ac9c3e9611bc15d49dc72b2146f078"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/golden-sets-repository.ts",
+        "sha256": "b76c943063890f93b72abfb6bb4ef8e1c7b395ee285819e4727cd8b6213f946d"
       },
       {
         "path": "packages/contexts/governance/application/ports/index.ts",
-        "sha256": "d073d4b85e4d7b4b5378cf91e3eec64fd57cbd5e8906e76a0cfac909cf887d31"
+        "sha256": "6926e1c6e801f5100df0c75f0e88bbc8494d783184dc235fad1a304ec02ab651"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/judge.ts",
+        "sha256": "218a60ac1c4aea060ed5058cb7141ae3db77eb5ffe82d9b3694ce7f6867a5d5f"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/ratings-repository.ts",
+        "sha256": "963e6f1499d5409742b19af0d1a9ce9b10ce44d09c4472bc703b6455921df764"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/read-seams.ts",
+        "sha256": "d923b011d270f8b43265343fa096f9f868982e7b0b603f873a78000df8bbf807"
+      },
+      {
+        "path": "packages/contexts/governance/application/ports/safety-ledger.ts",
+        "sha256": "88016aa1d92ccf6361fc8e7d7e2a5a62361aa55021f85a8e969c3baaf2ae38b6"
+      },
+      {
+        "path": "packages/contexts/governance/application/rate-turn.test.ts",
+        "sha256": "c84c31b55386fd1655487931ba8ec94b7abb9ec8275413751e855f4db8c5fb04"
+      },
+      {
+        "path": "packages/contexts/governance/application/rate-turn.ts",
+        "sha256": "d86a7d0eb87b01d571a3f4568927a8e878b24a99a973b963b6d9ffdf69069fbf"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-evals.test.ts",
+        "sha256": "e1e600d2c5aebeac4c41510804779b4a8aa6a65f37a87cfc634cadc4a4350b84"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-evals.ts",
+        "sha256": "587feef20110c982237c67fa982af289f849d2ab7cad69ef668e62fad2bc7d16"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-ratings.test.ts",
+        "sha256": "eae8e1506c8b90174724ab7e83d4b2a44f3a776960d0db2849672987a61793aa"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-ratings.ts",
+        "sha256": "8aaf497fec4eb0a484ca017bcdf1a4b1af5a1d95a5dd7ca34079504dde15f3a3"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-safety.test.ts",
+        "sha256": "9bb0d486654c9f5320eb5b7b98ed4a0332750fdc3736d0f4614b4edfce5d657e"
+      },
+      {
+        "path": "packages/contexts/governance/application/read-safety.ts",
+        "sha256": "616d6baaf2b14738dab00c46cbe7182674e149c821cdbc4fa13435f92759dfd4"
+      },
+      {
+        "path": "packages/contexts/governance/application/record-safety-event.ts",
+        "sha256": "29d6a4876fc4b654820cd0aea3b36bdc7c6200c574b53ce629237fb7675d2cc5"
+      },
+      {
+        "path": "packages/contexts/governance/application/regression-report.test.ts",
+        "sha256": "79ca24a8b804aecfe4324ceffe6428919611808b737a17ba28b36f7112b500f5"
+      },
+      {
+        "path": "packages/contexts/governance/application/regression-report.ts",
+        "sha256": "86b5b8ac2ab6a13b3f6c6b53ac3d6e938796c4d7c83d5e6ede4ecea3ccb65092"
+      },
+      {
+        "path": "packages/contexts/governance/application/risk-report.test.ts",
+        "sha256": "ac8ea57ce5308834e4d2394c5a24954357ffce4180b69c1bf2f8bf5ecf94ce3f"
+      },
+      {
+        "path": "packages/contexts/governance/application/risk-report.ts",
+        "sha256": "a0451778cdd7fc25bead764589ef23477dd7f337a376325eaf1fe9102fbfa532"
+      },
+      {
+        "path": "packages/contexts/governance/application/run-judge.test.ts",
+        "sha256": "766c7a1f2128594d916c8c7276244aeac34fa2cb0bf76c3a939dc070c6bdd5d8"
+      },
+      {
+        "path": "packages/contexts/governance/application/run-judge.ts",
+        "sha256": "65ca075f6b9490cd607c976af9a274965ba58f724bd3c063b3fa325b9363608d"
+      },
+      {
+        "path": "packages/contexts/governance/application/safety-event-sink.test.ts",
+        "sha256": "59bc6b4f56817e95b49686507ce804a56b2641e9d7a08ebc38e098675086ba0f"
+      },
+      {
+        "path": "packages/contexts/governance/application/safety-event-sink.ts",
+        "sha256": "d14560de2cfaee7a743c23841fa6f5373f1e109b5a625cd21aa895a4303be593"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/fixtures.ts",
+        "sha256": "2f8647231188958ad0724e5ed5e96e724887d217744f9c529767d742378ed19a"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-eval-stores.ts",
+        "sha256": "4b50433f9131c3c66879341e476b013c54b5ab14239a1b95101cfe3c85fb8f0b"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-infrastructure.ts",
+        "sha256": "3a5615dc94a328afde79e1a29811aeef5f30eff2588cc184d76be19e80bbcc66"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-peers.ts",
+        "sha256": "dfe3fc70a637b77c1a5b899d83610e923fa113b014b5496b8aadab72aaaea54f"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-ratings-repository.ts",
+        "sha256": "c2811bc6988fdebbd8458b2a38c2d8209cc91ea08bd5f20871945216d7595ce4"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-safety-ledger.ts",
+        "sha256": "b0934ff3213735b090f0ff6f774833b04f30830e589057d52e3f9154a944cad4"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/in-memory-seams.ts",
+        "sha256": "9f70b37464be6326fee74ef5adb0a97f60513960018d2699905016b9266d2ab1"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/index.ts",
+        "sha256": "ba1aa2b0ef19e6201fcc3b435987d23bbb065979f58388b95d7db1ad30a727e5"
+      },
+      {
+        "path": "packages/contexts/governance/application/testing/scope-match.ts",
+        "sha256": "370258b59592d94709ec50159e09c009d8fb8992c2bf19776914714c725bdcca"
+      },
+      {
+        "path": "packages/contexts/governance/contracts/index.test.ts",
+        "sha256": "279a35c5742b2e65b9d66ebfba3a0ff91b87e24a4f982f7398e1ef40066a4142"
       },
       {
         "path": "packages/contexts/governance/contracts/index.ts",
-        "sha256": "e1b41581d0c5a71e8305853e638e8675e1571c2dda5c64bf8198248ade7d2e5a"
+        "sha256": "30904565e6745d0ef063b671af5c66ccf6c8a323bea19c520425faeac5859ff2"
+      },
+      {
+        "path": "packages/contexts/governance/domain/agent-eval.test.ts",
+        "sha256": "6ddf5e782e1d53295c7b717d81fadbc72006cc0b4e44fb30f7c5e4996985348b"
+      },
+      {
+        "path": "packages/contexts/governance/domain/agent-eval.ts",
+        "sha256": "e1e3b46ab5bbddd8ceeec094208137ede7bddad11e8a277f5d8bae7ab9c6584f"
+      },
+      {
+        "path": "packages/contexts/governance/domain/criterion.test.ts",
+        "sha256": "5ab7397c8cc6441d7b917730df783f75b2ee9dfac089038155acbe51b3048fe9"
+      },
+      {
+        "path": "packages/contexts/governance/domain/criterion.ts",
+        "sha256": "edf590c227aced343fedd25e9e22da09d1c97bb4c37e02628a6ba20ebf3e8633"
+      },
+      {
+        "path": "packages/contexts/governance/domain/errors.test.ts",
+        "sha256": "5837ff8712ae742187c83ad16f4fa021a5c504489a3b959705a40dd782304207"
+      },
+      {
+        "path": "packages/contexts/governance/domain/errors.ts",
+        "sha256": "34faa3688e2e2d258f59ad2e2f8a5a39d898eb73ca86fc6258c6292bdae92a7e"
+      },
+      {
+        "path": "packages/contexts/governance/domain/eval-aggregate.test.ts",
+        "sha256": "129413203005f9876ea9ab7aa1d7541fa070c0e5ae99865f0dd029e76e1ca7e7"
+      },
+      {
+        "path": "packages/contexts/governance/domain/eval-aggregate.ts",
+        "sha256": "06f315b3db119033235d61ad173e01a15f33f78dc1b44fd222c79d8e5d16c0eb"
+      },
+      {
+        "path": "packages/contexts/governance/domain/events.ts",
+        "sha256": "137462e519b36ce79d8d53b1ce3e87fd24eee166ebb5266a9e2766fb4e84683f"
+      },
+      {
+        "path": "packages/contexts/governance/domain/golden-set.test.ts",
+        "sha256": "4ba10022ffe7a2db397d659d1019de49afa187a57a1605c83325000ccc1f5814"
+      },
+      {
+        "path": "packages/contexts/governance/domain/golden-set.ts",
+        "sha256": "a564ae6b4dc417bbdcc318af949bf5905ce99f2e98ce64339ec074c18a3ac511"
+      },
+      {
+        "path": "packages/contexts/governance/domain/identifiers.ts",
+        "sha256": "52471c870529f6eaee855e1e095415df92972fac59f7dd6f101bfaf9346a0fcc"
       },
       {
         "path": "packages/contexts/governance/domain/index.ts",
-        "sha256": "e2cccd51eb03e8d1b670bd29e703c78ad4b862fd84d562a06cf1d740a7923b78"
+        "sha256": "b6566a004614998bf3da60ce726179fa036d95ee5797dd089d7313c66d664b62"
+      },
+      {
+        "path": "packages/contexts/governance/domain/judge-model.test.ts",
+        "sha256": "8398bfed8e87964f7a0d734b3034cae76430418cb2010c5953a7ce96b649cab4"
+      },
+      {
+        "path": "packages/contexts/governance/domain/judge-model.ts",
+        "sha256": "5307c722e132bc4bd0499f0de6024e439b85b21dd2585c14e74b4a3448fc58bc"
+      },
+      {
+        "path": "packages/contexts/governance/domain/judge-verdict.test.ts",
+        "sha256": "5ac42a740276deafda613ea26b0c654375d854b57644715a7531a7dc80428f67"
+      },
+      {
+        "path": "packages/contexts/governance/domain/judge-verdict.ts",
+        "sha256": "13b159c95bb99fd6d0378c92d7d40d2d12a8f1ed960a03d4cffdd62b4960e256"
+      },
+      {
+        "path": "packages/contexts/governance/domain/policy.test.ts",
+        "sha256": "ac5a4e493d233a883c154544a40bde8a6a6f90c369f144e57b422bc14e93a474"
+      },
+      {
+        "path": "packages/contexts/governance/domain/policy.ts",
+        "sha256": "b1b926015ab96b8b510f4758e24599bb5be143434421dcabf7809583b4edf5b9"
+      },
+      {
+        "path": "packages/contexts/governance/domain/rating.test.ts",
+        "sha256": "aa1c04d84cde7d0fbe89fa972ff03ef6c4e2e62a5d95ddf3df103e1b24e1a99f"
+      },
+      {
+        "path": "packages/contexts/governance/domain/rating.ts",
+        "sha256": "e7b98ddaf1ee9a0b659d61036e5ff8fd96df691d76e8193ab3e5b1805628c705"
+      },
+      {
+        "path": "packages/contexts/governance/domain/regression.test.ts",
+        "sha256": "33cc3c9c81e633ce159460fa358e606e15ff209048d6def53f295dc5678d9932"
+      },
+      {
+        "path": "packages/contexts/governance/domain/regression.ts",
+        "sha256": "10a44fba293b4e6eeba308a299dd4b7ff1f9481ac20e2c57a68d9a14ef1c2e1c"
+      },
+      {
+        "path": "packages/contexts/governance/domain/risk.test.ts",
+        "sha256": "cd7ad54380dff536ed12458261d6806f81e2914f07c61d8459273da5ad1642a5"
+      },
+      {
+        "path": "packages/contexts/governance/domain/risk.ts",
+        "sha256": "a367b069457ba1625e89f7bd65584138395d61910c9324562f09837cdf54bb0c"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-event.test.ts",
+        "sha256": "f5f985e02ec47a83e094dac3bf35705d76c52a162cbe4531bb2bf41eba585e27"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-event.ts",
+        "sha256": "4bb552a7631469f1e65c0022ad06febdba83e7c03e7deae383206e8b47d1836c"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-observation.test.ts",
+        "sha256": "a769f9f2967f2cbe6044fa394248c0facebd4d8bff223e959b8c87ce2cf87ea5"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-observation.ts",
+        "sha256": "d6449463a6e493c9fe420e47159e673e3503425d8e1142b9521ec0aa0b0737cd"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-summary.test.ts",
+        "sha256": "0f14729be01ca5f2d06d13fef6dcd14b7dce82945f5a93e2f04457bff41ec532"
+      },
+      {
+        "path": "packages/contexts/governance/domain/safety-summary.ts",
+        "sha256": "95de8fc74b44dccc612f803197f360f6d7eadd24482fc57c810a6e44b1ca0e20"
+      },
+      {
+        "path": "packages/contexts/governance/domain/satisfaction.test.ts",
+        "sha256": "bd270e5604d4538491e83db678ad608ffee3c949d1f98b6f150f99b6ba77a458"
+      },
+      {
+        "path": "packages/contexts/governance/domain/satisfaction.ts",
+        "sha256": "cde1b07bfd02ca18eaba66b49fc6f848a0020594ed2fdc145dc09817b7baeaef"
+      },
+      {
+        "path": "packages/contexts/governance/domain/window.test.ts",
+        "sha256": "20bb5550baf3d26083024ac0b19184b9e9fa9880bfc1388040619f80a4b6d4de"
+      },
+      {
+        "path": "packages/contexts/governance/domain/window.ts",
+        "sha256": "a32774776ecd232d74424ee22e38e24dcba197c2dd9a2985132004b403774083"
+      },
+      {
+        "path": "packages/contexts/governance/mutation-check.mjs",
+        "sha256": "3521a0f120b42980ffd2a02d37b38c314569767504fe95e13a5c9038f0933c3e"
+      },
+      {
+        "path": "packages/contexts/governance/mutations.json",
+        "sha256": "2312ed67a28b20eeb8f96ce51a99f09d4078d5ef9491328f4aff7fad69ee1918"
       },
       {
         "path": "packages/contexts/governance/package.json",
-        "sha256": "e0d38bcdaf239b91dfad014c46890c3a6cd120e4afe83c65e33f16e67ba39466"
+        "sha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7"
       },
       {
         "path": "packages/contexts/governance/tsconfig.json",
@@ -14949,7 +15285,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "acdfc1c1b60c0d58c939c155a7c92edd16212eb7ccc5a670ceb81d5de0061902"
+        "sha256": "aabc2bf1bba5f95039e931d580c6c174405a4b13e0d1ec5cd193043e57f74b19"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -16404,7 +16740,7 @@
       "patches": 17,
       "sourceDynamic": 0,
       "sourceStatic": 43,
-      "testsFixtures": 45
+      "testsFixtures": 46
     },
     "configuredPatchCount": 5,
     "deploymentUnionWorkspaceCount": 38,
@@ -20365,14 +20701,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/governance/application/ports/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/governance/contracts/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/jobs/application/ports/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -20467,14 +20795,6 @@
               "packages/contexts/eventing/contracts/index.ts"
             ],
             [
-              "packages/contexts/governance/application/ports/index.ts",
-              "packages/contexts/governance/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/governance/contracts/index.ts",
-              "packages/contexts/governance/contracts/index.ts"
-            ],
-            [
               "packages/contexts/jobs/application/ports/index.ts",
               "packages/contexts/jobs/application/ports/index.ts"
             ],
@@ -20535,8 +20855,6 @@
             "packages/contexts/cost-monitoring/contracts/index.ts",
             "packages/contexts/eventing/application/ports/index.ts",
             "packages/contexts/eventing/contracts/index.ts",
-            "packages/contexts/governance/application/ports/index.ts",
-            "packages/contexts/governance/contracts/index.ts",
             "packages/contexts/jobs/application/ports/index.ts",
             "packages/contexts/jobs/contracts/index.ts",
             "packages/contexts/memory/application/ports/index.ts",
@@ -20913,7 +21231,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "7aad53a5b595eb01a258f08638cc31a6736cb1f2854ecc23e8ad630640e2d20c",
+      "evidenceSha256": "85e28e7fb463d182214f4b8de7a24a1a08893e5888f56911735ae133518a81ca",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -43632,10 +43950,6 @@
             {
               "from": "packages/contexts/conversations/application/index.ts",
               "kind": "explicit-generated-header-reference"
-            },
-            {
-              "from": "packages/contexts/governance/application/index.ts",
-              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -43654,18 +43968,13 @@
             [
               "packages/contexts/conversations/application/index.ts",
               "packages/contexts/conversations/application/index.ts"
-            ],
-            [
-              "packages/contexts/governance/application/index.ts",
-              "packages/contexts/governance/application/index.ts"
             ]
           ],
           "roots": [
             "packages/contexts/agents/README.md",
             "packages/contexts/agents/package.json",
             "packages/contexts/agents/tsconfig.json",
-            "packages/contexts/conversations/application/index.ts",
-            "packages/contexts/governance/application/index.ts"
+            "packages/contexts/conversations/application/index.ts"
           ]
         },
         "license": {
@@ -43769,16 +44078,47 @@
               "from": "apps/core-api",
               "line": 51,
               "specifier": "@platos/context-agents"
+            },
+            {
+              "file": "packages/contexts/governance/application/dependencies.ts",
+              "from": "packages/contexts/governance",
+              "line": 38,
+              "specifier": "@platos/context-agents"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/fixtures.ts",
+              "from": "packages/contexts/governance",
+              "line": 16,
+              "specifier": "@platos/context-agents"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/governance",
+              "line": 24,
+              "specifier": "@platos/context-agents"
             }
           ],
           "reversePaths": [
             [
               "apps/core-api",
               "apps/core-api/src/app.module.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/contexts/governance"
           ]
         },
         "testsFixtures": {
@@ -44170,7 +44510,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "e42016f72ccda607e297c7609c4d9ebb1d81acf05cf61a441de678243f24f71e",
+      "evidenceSha256": "eb32e414bb583ed253eab7a2da0c92f542a78cc8ce2c475bfa5f5005098b5ee1",
       "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -46931,26 +47271,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/contexts/governance/application/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/governance/application/ports/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/governance/contracts/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/contexts/governance/domain/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/contexts/governance/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -46968,22 +47288,6 @@
           ],
           "reversePaths": [
             [
-              "packages/contexts/governance/application/index.ts",
-              "packages/contexts/governance/application/index.ts"
-            ],
-            [
-              "packages/contexts/governance/application/ports/index.ts",
-              "packages/contexts/governance/application/ports/index.ts"
-            ],
-            [
-              "packages/contexts/governance/contracts/index.ts",
-              "packages/contexts/governance/contracts/index.ts"
-            ],
-            [
-              "packages/contexts/governance/domain/index.ts",
-              "packages/contexts/governance/domain/index.ts"
-            ],
-            [
               "packages/contexts/governance/package.json",
               "packages/contexts/governance/package.json"
             ],
@@ -46998,10 +47302,6 @@
           ],
           "roots": [
             "packages/contexts/governance/README.md",
-            "packages/contexts/governance/application/index.ts",
-            "packages/contexts/governance/application/ports/index.ts",
-            "packages/contexts/governance/contracts/index.ts",
-            "packages/contexts/governance/domain/index.ts",
             "packages/contexts/governance/package.json",
             "packages/contexts/governance/tsconfig.json"
           ]
@@ -47039,6 +47339,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/contexts/governance/package.json",
               "kind": "workspace-script",
@@ -47049,6 +47354,12 @@
               "from": "packages/contexts/governance/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/contexts/governance/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -47099,10 +47410,333 @@
           ]
         },
         "testsFixtures": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
+          "reachable": true,
+          "reasons": [
+            {
+              "from": "packages/contexts/governance/application/authorization.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/criteria.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/golden-sets.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/governance-contract.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/governance-erasure-target.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/rate-turn.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/read-evals.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/read-ratings.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/read-safety.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/regression-report.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/risk-report.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/run-judge.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/safety-event-sink.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/contracts/index.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/agent-eval.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/criterion.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/errors.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/eval-aggregate.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/golden-set.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/judge-model.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/judge-verdict.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/policy.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/rating.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/regression.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/risk.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/safety-event.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/safety-observation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/safety-summary.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/satisfaction.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/window.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/package.json",
+              "kind": "test-script",
+              "script": "test"
+            }
+          ],
+          "reversePaths": [
+            [
+              "packages/contexts/governance/application/authorization.test.ts",
+              "packages/contexts/governance/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/criteria.test.ts",
+              "packages/contexts/governance/application/criteria.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+              "packages/contexts/governance/application/enqueue-eval-run.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/golden-sets.test.ts",
+              "packages/contexts/governance/application/golden-sets.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/governance-contract.test.ts",
+              "packages/contexts/governance/application/governance-contract.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/governance-erasure-target.test.ts",
+              "packages/contexts/governance/application/governance-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/rate-turn.test.ts",
+              "packages/contexts/governance/application/rate-turn.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/read-evals.test.ts",
+              "packages/contexts/governance/application/read-evals.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/read-ratings.test.ts",
+              "packages/contexts/governance/application/read-ratings.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/read-safety.test.ts",
+              "packages/contexts/governance/application/read-safety.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/regression-report.test.ts",
+              "packages/contexts/governance/application/regression-report.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/risk-report.test.ts",
+              "packages/contexts/governance/application/risk-report.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/run-judge.test.ts",
+              "packages/contexts/governance/application/run-judge.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/safety-event-sink.test.ts",
+              "packages/contexts/governance/application/safety-event-sink.test.ts"
+            ],
+            [
+              "packages/contexts/governance/contracts/index.test.ts",
+              "packages/contexts/governance/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/agent-eval.test.ts",
+              "packages/contexts/governance/domain/agent-eval.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/criterion.test.ts",
+              "packages/contexts/governance/domain/criterion.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/errors.test.ts",
+              "packages/contexts/governance/domain/errors.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/eval-aggregate.test.ts",
+              "packages/contexts/governance/domain/eval-aggregate.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/golden-set.test.ts",
+              "packages/contexts/governance/domain/golden-set.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/judge-model.test.ts",
+              "packages/contexts/governance/domain/judge-model.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/judge-verdict.test.ts",
+              "packages/contexts/governance/domain/judge-verdict.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/policy.test.ts",
+              "packages/contexts/governance/domain/policy.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/rating.test.ts",
+              "packages/contexts/governance/domain/rating.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/regression.test.ts",
+              "packages/contexts/governance/domain/regression.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/risk.test.ts",
+              "packages/contexts/governance/domain/risk.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/safety-event.test.ts",
+              "packages/contexts/governance/domain/safety-event.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/safety-observation.test.ts",
+              "packages/contexts/governance/domain/safety-observation.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/safety-summary.test.ts",
+              "packages/contexts/governance/domain/safety-summary.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/satisfaction.test.ts",
+              "packages/contexts/governance/domain/satisfaction.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/window.test.ts",
+              "packages/contexts/governance/domain/window.test.ts"
+            ],
+            [
+              "packages/contexts/governance/package.json",
+              "packages/contexts/governance/package.json"
+            ]
+          ],
+          "roots": [
+            "packages/contexts/governance/application/authorization.test.ts",
+            "packages/contexts/governance/application/criteria.test.ts",
+            "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+            "packages/contexts/governance/application/golden-sets.test.ts",
+            "packages/contexts/governance/application/governance-contract.test.ts",
+            "packages/contexts/governance/application/governance-erasure-target.test.ts",
+            "packages/contexts/governance/application/rate-turn.test.ts",
+            "packages/contexts/governance/application/read-evals.test.ts",
+            "packages/contexts/governance/application/read-ratings.test.ts",
+            "packages/contexts/governance/application/read-safety.test.ts",
+            "packages/contexts/governance/application/regression-report.test.ts",
+            "packages/contexts/governance/application/risk-report.test.ts",
+            "packages/contexts/governance/application/run-judge.test.ts",
+            "packages/contexts/governance/application/safety-event-sink.test.ts",
+            "packages/contexts/governance/contracts/index.test.ts",
+            "packages/contexts/governance/domain/agent-eval.test.ts",
+            "packages/contexts/governance/domain/criterion.test.ts",
+            "packages/contexts/governance/domain/errors.test.ts",
+            "packages/contexts/governance/domain/eval-aggregate.test.ts",
+            "packages/contexts/governance/domain/golden-set.test.ts",
+            "packages/contexts/governance/domain/judge-model.test.ts",
+            "packages/contexts/governance/domain/judge-verdict.test.ts",
+            "packages/contexts/governance/domain/policy.test.ts",
+            "packages/contexts/governance/domain/rating.test.ts",
+            "packages/contexts/governance/domain/regression.test.ts",
+            "packages/contexts/governance/domain/risk.test.ts",
+            "packages/contexts/governance/domain/safety-event.test.ts",
+            "packages/contexts/governance/domain/safety-observation.test.ts",
+            "packages/contexts/governance/domain/safety-summary.test.ts",
+            "packages/contexts/governance/domain/satisfaction.test.ts",
+            "packages/contexts/governance/domain/window.test.ts",
+            "packages/contexts/governance/package.json"
+          ]
         }
       },
       "deploymentUnionClosure": {
@@ -47160,8 +47794,8 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "61caf74d69d2c59c4b16ee7da7c91202b183e69d5ba169f9bf19346c7b6121d1",
-      "manifestSha256": "e0d38bcdaf239b91dfad014c46890c3a6cd120e4afe83c65e33f16e67ba39466",
+      "evidenceSha256": "b11eb0769ed9c9083ec41ccf37975e3ea921ff23d8894ac8d093ad51a4bd4ef0",
+      "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
         "reachable": false,
@@ -54546,10 +55180,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/governance/application/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/jobs/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -54611,10 +55241,6 @@
               "packages/contexts/eventing/application/index.ts"
             ],
             [
-              "packages/contexts/governance/application/index.ts",
-              "packages/contexts/governance/application/index.ts"
-            ],
-            [
               "packages/contexts/jobs/application/index.ts",
               "packages/contexts/jobs/application/index.ts"
             ],
@@ -54657,7 +55283,6 @@
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/application/index.ts",
             "packages/contexts/eventing/application/index.ts",
-            "packages/contexts/governance/application/index.ts",
             "packages/contexts/jobs/application/index.ts",
             "packages/contexts/memory/application/index.ts",
             "packages/contexts/observability/application/index.ts",
@@ -54804,6 +55429,36 @@
               "specifier": "@platos/context-tenancy"
             },
             {
+              "file": "packages/contexts/governance/application/authorization.ts",
+              "from": "packages/contexts/governance",
+              "line": 36,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/governance/application/dependencies.ts",
+              "from": "packages/contexts/governance",
+              "line": 39,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/fixtures.ts",
+              "from": "packages/contexts/governance",
+              "line": 15,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/fixtures.ts",
+              "from": "packages/contexts/governance",
+              "line": 17,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/governance",
+              "line": 25,
+              "specifier": "@platos/context-tenancy"
+            },
+            {
               "file": "packages/contexts/providers/application/authorization.ts",
               "from": "packages/contexts/providers",
               "line": 49,
@@ -54862,6 +55517,22 @@
               "packages/contexts/files/application/testing/fixtures.ts"
             ],
             [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-peers.ts"
+            ],
+            [
               "packages/contexts/providers",
               "packages/contexts/providers/application/authorization.ts"
             ],
@@ -54882,6 +55553,7 @@
             "apps/core-api",
             "packages/contexts/agents",
             "packages/contexts/files",
+            "packages/contexts/governance",
             "packages/contexts/providers"
           ]
         },
@@ -54892,6 +55564,11 @@
               "from": "packages/contexts/agents/application/authorization.test.ts",
               "kind": "reference",
               "line": 2
+            },
+            {
+              "from": "packages/contexts/governance/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 1
             },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
@@ -55025,6 +55702,10 @@
               "packages/contexts/agents/application/authorization.test.ts"
             ],
             [
+              "packages/contexts/governance/application/authorization.test.ts",
+              "packages/contexts/governance/application/authorization.test.ts"
+            ],
+            [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
             ],
@@ -55127,6 +55808,7 @@
           ],
           "roots": [
             "packages/contexts/agents/application/authorization.test.ts",
+            "packages/contexts/governance/application/authorization.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/tenancy/application/add-project-member.test.ts",
             "packages/contexts/tenancy/application/archive-tenant.test.ts",
@@ -55736,7 +56418,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "77900ea063b142bbcd139d69a1a26332c1fe1c0c08ed8964b7cc5d2ff279cabd",
+      "evidenceSha256": "c5ebdcf01395c67d91639bf778c1d104eb90b2cf9e64ea5bb72e1fdf54d048d0",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -56133,7 +56815,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 552,
+              "line": 553,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -56318,7 +57000,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1bea15d5782c236e9f79851e3514c5507ffce61bc57d95202ce39c210794715f",
+      "evidenceSha256": "6fe1d08a80855a673bcffa1df47f007ae3fe32414138a9468f5008bb81ec3ec7",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -58870,10 +59552,6 @@
               "kind": "explicit-generated-header-reference"
             },
             {
-              "from": "packages/contexts/governance/domain/index.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/jobs/domain/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -58943,10 +59621,6 @@
               "packages/contexts/eventing/domain/index.ts"
             ],
             [
-              "packages/contexts/governance/domain/index.ts",
-              "packages/contexts/governance/domain/index.ts"
-            ],
-            [
               "packages/contexts/jobs/domain/index.ts",
               "packages/contexts/jobs/domain/index.ts"
             ],
@@ -58991,7 +59665,6 @@
             "packages/contexts/conversations/domain/index.ts",
             "packages/contexts/cost-monitoring/domain/index.ts",
             "packages/contexts/eventing/domain/index.ts",
-            "packages/contexts/governance/domain/index.ts",
             "packages/contexts/jobs/domain/index.ts",
             "packages/contexts/memory/domain/index.ts",
             "packages/contexts/observability/domain/index.ts",
@@ -59501,6 +60174,264 @@
               "file": "packages/contexts/files/domain/storage-key.ts",
               "from": "packages/contexts/files",
               "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/authorization.ts",
+              "from": "packages/contexts/governance",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/criteria.ts",
+              "from": "packages/contexts/governance",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/dependencies.ts",
+              "from": "packages/contexts/governance",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/enqueue-eval-run.ts",
+              "from": "packages/contexts/governance",
+              "line": 31,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/golden-sets.ts",
+              "from": "packages/contexts/governance",
+              "line": 15,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/governance-contract.ts",
+              "from": "packages/contexts/governance",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/governance-erasure-target.ts",
+              "from": "packages/contexts/governance",
+              "line": 65,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/criteria-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 17,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/eval-run-queue.ts",
+              "from": "packages/contexts/governance",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/evals-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/golden-sets-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 11,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/judge.ts",
+              "from": "packages/contexts/governance",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/ratings-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 18,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/read-seams.ts",
+              "from": "packages/contexts/governance",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/ports/safety-ledger.ts",
+              "from": "packages/contexts/governance",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/rate-turn.ts",
+              "from": "packages/contexts/governance",
+              "line": 35,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/read-evals.ts",
+              "from": "packages/contexts/governance",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/read-ratings.ts",
+              "from": "packages/contexts/governance",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/read-safety.ts",
+              "from": "packages/contexts/governance",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/record-safety-event.ts",
+              "from": "packages/contexts/governance",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/regression-report.ts",
+              "from": "packages/contexts/governance",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/risk-report.ts",
+              "from": "packages/contexts/governance",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/run-judge.ts",
+              "from": "packages/contexts/governance",
+              "line": 55,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/safety-event-sink.ts",
+              "from": "packages/contexts/governance",
+              "line": 32,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/fixtures.ts",
+              "from": "packages/contexts/governance",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-eval-stores.ts",
+              "from": "packages/contexts/governance",
+              "line": 14,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-infrastructure.ts",
+              "from": "packages/contexts/governance",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-infrastructure.ts",
+              "from": "packages/contexts/governance",
+              "line": 20,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-peers.ts",
+              "from": "packages/contexts/governance",
+              "line": 23,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-ratings-repository.ts",
+              "from": "packages/contexts/governance",
+              "line": 11,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-safety-ledger.ts",
+              "from": "packages/contexts/governance",
+              "line": 13,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/in-memory-seams.ts",
+              "from": "packages/contexts/governance",
+              "line": 19,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/application/testing/scope-match.ts",
+              "from": "packages/contexts/governance",
+              "line": 10,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/contracts/index.ts",
+              "from": "packages/contexts/governance",
+              "line": 66,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/criterion.ts",
+              "from": "packages/contexts/governance",
+              "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/errors.ts",
+              "from": "packages/contexts/governance",
+              "line": 29,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/golden-set.ts",
+              "from": "packages/contexts/governance",
+              "line": 25,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/identifiers.ts",
+              "from": "packages/contexts/governance",
+              "line": 28,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/judge-model.ts",
+              "from": "packages/contexts/governance",
+              "line": 30,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/rating.ts",
+              "from": "packages/contexts/governance",
+              "line": 22,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/safety-event.ts",
+              "from": "packages/contexts/governance",
+              "line": 34,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/safety-observation.ts",
+              "from": "packages/contexts/governance",
+              "line": 37,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/governance/domain/window.ts",
+              "from": "packages/contexts/governance",
+              "line": 21,
               "specifier": "@platos/kernel"
             },
             {
@@ -60508,7 +61439,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 432,
+              "line": 433,
               "specifier": "@platos/kernel"
             }
           ],
@@ -60780,6 +61711,174 @@
             [
               "packages/contexts/files",
               "packages/contexts/files/domain/storage-key.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/authorization.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/criteria.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/dependencies.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/enqueue-eval-run.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/golden-sets.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/governance-contract.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/governance-erasure-target.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/criteria-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/eval-run-queue.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/evals-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/golden-sets-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/judge.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/ratings-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/read-seams.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/ports/safety-ledger.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/rate-turn.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/read-evals.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/read-ratings.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/read-safety.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/record-safety-event.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/regression-report.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/risk-report.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/run-judge.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/safety-event-sink.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/fixtures.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-eval-stores.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-infrastructure.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-peers.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-ratings-repository.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-safety-ledger.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/in-memory-seams.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/application/testing/scope-match.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/contracts/index.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/criterion.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/errors.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/golden-set.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/identifiers.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/judge-model.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/rating.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/safety-event.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/safety-observation.ts"
+            ],
+            [
+              "packages/contexts/governance",
+              "packages/contexts/governance/domain/window.ts"
             ],
             [
               "packages/contexts/identity-access",
@@ -61306,6 +62405,7 @@
             "apps/core-api",
             "packages/contexts/agents",
             "packages/contexts/files",
+            "packages/contexts/governance",
             "packages/contexts/identity-access",
             "packages/contexts/providers",
             "packages/contexts/secrets",
@@ -61400,6 +62500,111 @@
               "from": "packages/contexts/files/domain/storage-key.test.ts",
               "kind": "reference",
               "line": 119
+            },
+            {
+              "from": "packages/contexts/governance/application/authorization.test.ts",
+              "kind": "reference",
+              "line": 2
+            },
+            {
+              "from": "packages/contexts/governance/application/criteria.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "packages/contexts/governance/application/golden-sets.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/governance/application/governance-contract.test.ts",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "packages/contexts/governance/application/governance-erasure-target.test.ts",
+              "kind": "reference",
+              "line": 11
+            },
+            {
+              "from": "packages/contexts/governance/application/rate-turn.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/read-evals.test.ts",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "packages/contexts/governance/application/read-ratings.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/regression-report.test.ts",
+              "kind": "reference",
+              "line": 12
+            },
+            {
+              "from": "packages/contexts/governance/application/risk-report.test.ts",
+              "kind": "reference",
+              "line": 18
+            },
+            {
+              "from": "packages/contexts/governance/application/run-judge.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/application/safety-event-sink.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "packages/contexts/governance/domain/agent-eval.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/criterion.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/eval-aggregate.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/golden-set.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/regression.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/risk.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/safety-observation.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/governance/domain/satisfaction.test.ts",
+              "kind": "reference",
+              "line": 1
             },
             {
               "from": "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
@@ -61712,6 +62917,90 @@
               "packages/contexts/files/domain/storage-key.test.ts"
             ],
             [
+              "packages/contexts/governance/application/authorization.test.ts",
+              "packages/contexts/governance/application/authorization.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/criteria.test.ts",
+              "packages/contexts/governance/application/criteria.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+              "packages/contexts/governance/application/enqueue-eval-run.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/golden-sets.test.ts",
+              "packages/contexts/governance/application/golden-sets.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/governance-contract.test.ts",
+              "packages/contexts/governance/application/governance-contract.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/governance-erasure-target.test.ts",
+              "packages/contexts/governance/application/governance-erasure-target.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/rate-turn.test.ts",
+              "packages/contexts/governance/application/rate-turn.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/read-evals.test.ts",
+              "packages/contexts/governance/application/read-evals.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/read-ratings.test.ts",
+              "packages/contexts/governance/application/read-ratings.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/regression-report.test.ts",
+              "packages/contexts/governance/application/regression-report.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/risk-report.test.ts",
+              "packages/contexts/governance/application/risk-report.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/run-judge.test.ts",
+              "packages/contexts/governance/application/run-judge.test.ts"
+            ],
+            [
+              "packages/contexts/governance/application/safety-event-sink.test.ts",
+              "packages/contexts/governance/application/safety-event-sink.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/agent-eval.test.ts",
+              "packages/contexts/governance/domain/agent-eval.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/criterion.test.ts",
+              "packages/contexts/governance/domain/criterion.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/eval-aggregate.test.ts",
+              "packages/contexts/governance/domain/eval-aggregate.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/golden-set.test.ts",
+              "packages/contexts/governance/domain/golden-set.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/regression.test.ts",
+              "packages/contexts/governance/domain/regression.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/risk.test.ts",
+              "packages/contexts/governance/domain/risk.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/safety-observation.test.ts",
+              "packages/contexts/governance/domain/safety-observation.test.ts"
+            ],
+            [
+              "packages/contexts/governance/domain/satisfaction.test.ts",
+              "packages/contexts/governance/domain/satisfaction.test.ts"
+            ],
+            [
               "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
               "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts"
             ],
@@ -61922,6 +63211,27 @@
             "packages/contexts/files/domain/destruction.test.ts",
             "packages/contexts/files/domain/scope.test.ts",
             "packages/contexts/files/domain/storage-key.test.ts",
+            "packages/contexts/governance/application/authorization.test.ts",
+            "packages/contexts/governance/application/criteria.test.ts",
+            "packages/contexts/governance/application/enqueue-eval-run.test.ts",
+            "packages/contexts/governance/application/golden-sets.test.ts",
+            "packages/contexts/governance/application/governance-contract.test.ts",
+            "packages/contexts/governance/application/governance-erasure-target.test.ts",
+            "packages/contexts/governance/application/rate-turn.test.ts",
+            "packages/contexts/governance/application/read-evals.test.ts",
+            "packages/contexts/governance/application/read-ratings.test.ts",
+            "packages/contexts/governance/application/regression-report.test.ts",
+            "packages/contexts/governance/application/risk-report.test.ts",
+            "packages/contexts/governance/application/run-judge.test.ts",
+            "packages/contexts/governance/application/safety-event-sink.test.ts",
+            "packages/contexts/governance/domain/agent-eval.test.ts",
+            "packages/contexts/governance/domain/criterion.test.ts",
+            "packages/contexts/governance/domain/eval-aggregate.test.ts",
+            "packages/contexts/governance/domain/golden-set.test.ts",
+            "packages/contexts/governance/domain/regression.test.ts",
+            "packages/contexts/governance/domain/risk.test.ts",
+            "packages/contexts/governance/domain/safety-observation.test.ts",
+            "packages/contexts/governance/domain/satisfaction.test.ts",
             "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
             "packages/contexts/identity-access/application/exchange-oauth-refresh-token.test.ts",
             "packages/contexts/identity-access/domain/access-key.test.ts",
@@ -62712,7 +64022,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "8e1c5d9cec4d1f3fccd448f6d1e9ba05b2fee9950b114bef7d4ae566020a5e67",
+      "evidenceSha256": "d48d6c3ed53b82ab5d258292271d55eb3cdf8d6205eb1d348d7d57080609ced3",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

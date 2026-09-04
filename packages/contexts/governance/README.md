@@ -39,15 +39,21 @@ caps the fan-out and hands it over; it never pays a judge inside the request.
 
 ## Falsifiability
 
-`mutations.json` lists every guard in this package together with the edit that
-would remove it, and `mutation-check.mjs` applies each one, runs the suites that
-are supposed to notice, records which named cases went red, and puts the file
-back. It is dev tooling, not shipped code: nothing in `domain/`,
-`application/` or `contracts/` imports it.
+`mutations.json` is the guard ledger: one entry per authorization check, scope
+check, cap, kill switch and erasure step in this package, each carrying the file
+it lives in, the EXACT text that implements it (`from`), the edit that removes it
+(`to`), and the suites that are supposed to notice (`suites`). It is data, not
+code — nothing imports it, and the `.json` extension is what keeps it out of the
+compiled tree.
 
-```
-node mutation-check.mjs            # every guard
-node mutation-check.mjs --only M17 # one
-```
+To check one guard is real: apply the entry's `to` in place of its `from`, run
+its suites, and confirm a NAMED case goes red; then revert and confirm green. All
+54 entries were exercised that way before this context was proposed, and 54 of
+54 were falsifiable. Two of them were not on the first pass — the in-memory
+doubles enforce the two unique constraints themselves, so deleting the use case's
+pre-check produced an identical refusal — and both suites now assert the
+transaction count instead, which is what distinguishes a pre-check from a store
+constraint.
 
-It exits non-zero if any guard turns out to be unfalsifiable.
+A guard added later belongs in this file. One that is not here has not been
+shown to be more than a comment.

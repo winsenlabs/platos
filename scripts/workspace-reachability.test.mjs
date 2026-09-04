@@ -462,7 +462,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 165 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 161 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 169. Adoption RELEASES placeholders, so this
   // count only ever falls, and the three adopting slices release placeholders
@@ -482,16 +482,27 @@ test("generated ownership includes the generator's exact 165 outputs across 32 V
   //   169 -> 165  WIN-256 adopts `agents` (context 5), releasing its 4 —
   //               domain/index.ts, application/index.ts,
   //               application/ports/index.ts and contracts/index.ts.
+  //   165 -> 161  WIN-256 adopts `governance` (context 14), releasing its 4 —
+  //               the same four placeholder names, from a project none of the
+  //               slices above touched.
   //
   // No two slices release the same placeholder, so the pins the branches
   // carried are each partial: WIN-297 branched from WIN-256 at 3ed8f3ce BEFORE
   // the providers commit and pinned 182 - 9 = 173; WIN-256's providers tip
   // pinned 178 and never saw the apps; the agents branch pinned 178 - 4 = 174
-  // and never saw the apps either. 201 - 19 - 4 - 9 - 4 = 165, which is
-  // 169 - 4 and 174 - 9 alike.
+  // and never saw the apps either. 201 - 19 - 4 - 9 - 4 - 4 = 161, which is
+  // 165 - 4; the governance branch is the first to see all five reductions, so
+  // 161 is the whole chain rather than another partial pin.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 68
-  // placeholders of the 23 still-unadopted projects. The scaffolding tier is
+  // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: the arithmetic is
+  // 201 released 19 (slices 1-5), then 4 (providers), then 9 (the two apps),
+  // then 4 (agents), then 4 (governance). Five reductions, 40 placeholders
+  // released, 161 left. The 4 per context is fixed by the generator emitting
+  // exactly four placeholder files per context, which is why adopting one
+  // ALWAYS drops this by four and never by three or five.
+  //
+  // The generator now owns the same 97 SCAFFOLDING files plus the 64
+  // placeholders of the 22 still-unadopted projects. The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
   // package.json, tsconfig.json and README.md. The project count is unchanged
@@ -505,18 +516,21 @@ test("generated ownership includes the generator's exact 165 outputs across 32 V
   // of the ci.yml typecheck job, so a branch that adopts a context and does not
   // reconcile the number here is red before any of its own code is compiled.
   // `tejas/win-256-providers-context` at 25b231b asserted 182 while its own
-  // committed evidence recorded 178. Every number here moves with its delta and
+  // committed evidence recorded 178. The 161 below was READ BACK from a
+  // regenerated `docs/audits/win-253-workspace-reachability.json`, not derived
+  // from the chain above; the chain is the explanation, the report is the
+  // authority, and they agree. Every number here moves with its delta and
   // is never forced, and `pnpm audit:workspace-reachability` is regenerated to a
   // fixpoint beside it.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 165);
+  assert.equal(report.generatedOwnership.ownedOutputCount, 161);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 165 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 165);
+  // Same 161 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 161);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

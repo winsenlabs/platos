@@ -250,12 +250,28 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               published contract exactly like the other two. The 67 are
     //               NET of the 4 generated placeholders adoption released and
     //               this code replaced in place.
+    //   464 -> 546  +82: WIN-256 makes `governance` real (context 14). It is the
+    //               first adopted context that IMPLEMENTS TWO KERNEL PORTS
+    //               rather than only consuming them — `SafetyEventSink` and
+    //               `ErasureTarget` — which is what deletes the `auth ->
+    //               monitoring` edge ADR M0.3 §3 records without creating an
+    //               identity-access -> governance one in its place. Rule (g)
+    //               `identity-isolation` needed no change and no exception: the
+    //               two contexts never name each other, the composition root
+    //               binds them, and `packages/kernel` is the only module both
+    //               import. The 82 are NET of the 4 generated placeholders
+    //               adoption released and this code replaced in place.
     //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the agents branch pinned 375 + 67 =
     // 442 without the apps. All four slices are disjoint, so the integrated
-    // census is 397 + 67 = 442 + 22 = 464.
+    // census is 397 + 67 = 442 + 22 = 464, and 464 + 82 = 546 with governance.
+    //
+    // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: 310 + 65 + 22 +
+    // 67 + 82 = 546. Five reductions never happened here — this census only ever
+    // grows, because adoption replaces four placeholders in place and adds the
+    // rest, so a fall in this number is always a finding.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -263,7 +279,8 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 464, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 546, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 310 + 65 + 22 + 67 + 82);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
