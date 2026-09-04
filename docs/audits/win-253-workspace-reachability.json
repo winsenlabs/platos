@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "bd11da8800205111161086c56eb238b4148987d1a1c4ad0d9c660770a26fda2b",
+  "evidenceSha256": "cff28cbcb7c75642b33cf3f2b79dff575e52b8abf05ddf62d83bf33579815700",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 82,
+    "explicitHeaderFileCount": 80,
     "generatedProjectCount": 36,
     "generatedProjects": [
       "apps/core-api",
@@ -67,11 +67,11 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 169,
-        "sha256": "a1663399ca3aff4456372be6c8cfa99f30089aa5f8cb440e240cbe9efdfc87e0"
+        "outputCount": 167,
+        "sha256": "1ffc09027769331ebb6703b7ff602d778ad5ff85e073bcc58658d30356557b46"
       }
     ],
-    "ownedOutputCount": 169,
+    "ownedOutputCount": 167,
     "ownedOutputProjectCount": 32,
     "ownedOutputProjects": [
       "apps/core-api",
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "cde29a2b53a5a273f850f7e6fd913951965aae6ff93929205dd02806a5a12b35",
+    "aggregateSha256": "f4a2adeed1e92c96855854cf06303086b08fd6fb6e80b263183e821e1947f7ad",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4049,7 +4049,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "67ec9e830160676a9528d8484ce23087bdf770c757321b29763c9423f1877ea3"
+        "sha256": "2d9bb6a054e79ebc9b78f1fc53c615731fb4bc44cb88a9ec96bbb02c10c585ed"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "3d61ab2c20657c112d04f881258eebd4683b09d23e2872770688a6bac5a0975d"
+        "sha256": "79d925600e28d5754725dcb46550bc5526ce9cf8458b7457c59feec88d41bd16"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -10913,15 +10913,123 @@
       },
       {
         "path": "packages/adapters/model-router-providers/package.json",
-        "sha256": "58a0a5421915cee83524764f9369c1f40ec0d7195318d0b257f9d37b38b18a8f"
+        "sha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/adapter.test.ts",
+        "sha256": "33074c147da43d0ba554e19e34ff92b3c5c715d69612c6cc60456c5b865c47a4"
       },
       {
         "path": "packages/adapters/model-router-providers/src/adapter.ts",
-        "sha256": "69a681e303219b115e74501feaa5a962aef9b43ae1244501369f8762a5352583"
+        "sha256": "c647833e7d17642d665acbe9f6ea78fa96d8b6ede7a9c7f8d9111a16b82896cc"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/call.test.ts",
+        "sha256": "6e849213d6a9abc9a2266759c5108be8fc0d755ad5e7aed11f6256de3f746eb2"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/call.ts",
+        "sha256": "cbeeee34d7a88c08aa696bfdc20f0fc4ab8ff638e8a7c9b1ef952ff6516a144c"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/clients.test.ts",
+        "sha256": "fffda3babdf98b0136a686746f9cc9d1604420adcd617150ca2d4cc796516638"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/clients.ts",
+        "sha256": "53d7499a4c48259f5b10ef98b85ee32bb9f45f800788cf942998767b3ad9a4fa"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/failure.test.ts",
+        "sha256": "12359cbb09cddecd415737e5a6f158d5f53893b120187d6ea9c6294670469650"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/failure.ts",
+        "sha256": "1d7d6d62ade73b5f8ed6104f4785425cf51eed673447dcd41d02f382ef7489b5"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/generation.test.ts",
+        "sha256": "af63b6e6abda6cb22501a94434dd94ce022a877c708761cccc88b116bfa1128e"
       },
       {
         "path": "packages/adapters/model-router-providers/src/index.ts",
-        "sha256": "50201daa6c44d26b1268431da8fcae143ee1502f645092eb623468d26b52daae"
+        "sha256": "c9240868575f2452fc8a94b932f7c9de802bccdfffce3b5d38bbf13b1bdb8de9"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/json-value.test.ts",
+        "sha256": "8db530329f00a328e8c2afdafc658e4ca0caf6e85cca972e21214ecc82333c01"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/json-value.ts",
+        "sha256": "72121bc27f3f67d4afb102ee24676e8443faf935d16334e5c4591978157c95c5"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/messages.test.ts",
+        "sha256": "45521d1ccf419ce1ba69d19df1144d3aa585b23caf8580b03e0a7e73bfe8d1ce"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/messages.ts",
+        "sha256": "e93f03d2950d3af83d4a264c86004fa3de4f60014e6347191fc5db7ab6dc8d5b"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/model-list.ts",
+        "sha256": "d86aca6ce4fc0357d772ef97431ffe5772b69666bb6a4baf4baaba3c2ded7603"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/probe.ts",
+        "sha256": "836613412df763f11b085324c0ee5f6bd6d42036d955816ac03e3e1502e7a537"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/run.ts",
+        "sha256": "4557b5b20da9515b9a1fa77bd8241a059583f7039c6ef1d2b7efd71ba4bc59b7"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/steps.test.ts",
+        "sha256": "2889c8f4d7c0c8b185f1f78e7413e80eb1498e2195d704c1d6848e572e4b4d0d"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/steps.ts",
+        "sha256": "656d1788a97345474906c5609494e0f8e8e58d602321f018dc26b9335fa97cf7"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/streaming.ts",
+        "sha256": "9a18e9a0a740c025190b437beb50272cba5220d0fabf1d1794ab7dc8b623f44a"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/structured.test.ts",
+        "sha256": "52982969a47540de94cd317b89a9a8d018ebc44b2f7af6f48d0f2ea7f0546de1"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/structured.ts",
+        "sha256": "300730937c48fd1a5662666785576da511353000b899253080f336a6bdc3f5f5"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/testing.ts",
+        "sha256": "cb74f0ea472d5801771d2420c5e76e0144fcf0f556f92018588287e1aaa1b78d"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/tools.test.ts",
+        "sha256": "1bab1ac6388023cf307144c67f555b2f18a5473d8516bb23cec9018510ef8c05"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/tools.ts",
+        "sha256": "d7350b4e02792727d5116bdaf1c49f87dacf3067eda7186324081cc1c40d6818"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/transport.test.ts",
+        "sha256": "8e407c5781c5f95c18dc37b77cfe53dfa3a9810d1a812fa51be1e39528b05c87"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/transport.ts",
+        "sha256": "de336db5f3e2df1512b3d086b990d05d3e086eaeb85a3e3f02452ab671439708"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/usage.test.ts",
+        "sha256": "6368c30b8d2ad242a0f7797563010f1be395fbda579ad21514baa397d0171764"
+      },
+      {
+        "path": "packages/adapters/model-router-providers/src/usage.ts",
+        "sha256": "19308eff6537808e8db284742c464d012ee3e59d7fcc01aca1dad23086eee13a"
       },
       {
         "path": "packages/adapters/model-router-providers/tsconfig.json",
@@ -11845,7 +11953,7 @@
       },
       {
         "path": "packages/contexts/providers/application/ports/index.ts",
-        "sha256": "8af9028e6c62a645075b983024c5455fc9d19701ac7f0be53d00a7fc5cf81cb7"
+        "sha256": "614b8d3f7c762ab4f24477f427c6dbe7013e003f549b95031ebab75e89a7a4b3"
       },
       {
         "path": "packages/contexts/providers/application/ports/model-router.ts",
@@ -11905,7 +12013,7 @@
       },
       {
         "path": "packages/contexts/providers/application/run-model-generation.ts",
-        "sha256": "67d5ac40d5c59b3b690950ff92af6902a74fa292d429fafc2baa2402504f534c"
+        "sha256": "26859cc08be2b37c4ffda1ce910c5228ac9cd30e89202e5fbaf60dbe491d7791"
       },
       {
         "path": "packages/contexts/providers/application/runtime-settings.ts",
@@ -11969,11 +12077,11 @@
       },
       {
         "path": "packages/contexts/providers/domain/errors.test.ts",
-        "sha256": "b26ce0923ae714a1a528c0546a0ed758e1c21855345bcd113a81f0b98cdadd9d"
+        "sha256": "5f505da387b2d991339d5b2b5b1cd6475449755ff6170ae49da87d09c0f558b9"
       },
       {
         "path": "packages/contexts/providers/domain/errors.ts",
-        "sha256": "3c625e855d18dbc3c69fdd213833f2f5535dd3c324342d5f5d73a1a4641ac9ac"
+        "sha256": "a37f720d5287b8eea85d24c9faf53d05eba169b32cc8ae290a7540ee963415fa"
       },
       {
         "path": "packages/contexts/providers/domain/generation.test.ts",
@@ -11981,7 +12089,7 @@
       },
       {
         "path": "packages/contexts/providers/domain/generation.ts",
-        "sha256": "1aeb1233260444529343d0757ff2f40c289024e06c5ed6a6667f07797e575df7"
+        "sha256": "c53510ae5208bb86c567ccf90c54ae45987130ea0b73c2ff97f71a1befe59803"
       },
       {
         "path": "packages/contexts/providers/domain/health.test.ts",
@@ -11997,7 +12105,7 @@
       },
       {
         "path": "packages/contexts/providers/domain/index.ts",
-        "sha256": "f378f7f2666294f55cfdd9f5a2f84fe8d63d581493bb1fb5515b4d8cfd9f17e0"
+        "sha256": "d3edfd64e3358106858acd4d1c15fa4fa651d585017f12c61df843b41add6bfa"
       },
       {
         "path": "packages/contexts/providers/domain/manifest.test.ts",
@@ -12092,12 +12200,28 @@
         "sha256": "347516094fb9ed0d40ca70d79d35cdc1356cfc011affa40c920ace81d37467b1"
       },
       {
+        "path": "packages/contexts/providers/domain/structured-output.test.ts",
+        "sha256": "df5cf78ae059cffffdd125e2a94c13df5ab3d6ae592b6c4f455a3eeb05b187a6"
+      },
+      {
+        "path": "packages/contexts/providers/domain/structured-output.ts",
+        "sha256": "5179e246992d9d6c25803b58bc3b31799c8c263826abe59c7a321f4108db320f"
+      },
+      {
         "path": "packages/contexts/providers/domain/token-usage.test.ts",
         "sha256": "d4f07894c0047c8236a0e19c163a823f86ff381ab8b25a3bacd211b20893e3cb"
       },
       {
         "path": "packages/contexts/providers/domain/token-usage.ts",
         "sha256": "c375896c52e980037439805cbbf92edc13322d93f7e662f4bb63a37c0c3a61e4"
+      },
+      {
+        "path": "packages/contexts/providers/domain/tool-input-repair.test.ts",
+        "sha256": "fa479b89c79cd17364a1fd3cfe0fc90321a2f9c0fd07e71cff8ba9d727c659d1"
+      },
+      {
+        "path": "packages/contexts/providers/domain/tool-input-repair.ts",
+        "sha256": "ebf263b3e3dd54891112b6c07d48027ea2694716b1615fc290188939cb21526d"
       },
       {
         "path": "packages/contexts/providers/package.json",
@@ -14537,7 +14661,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "7bc836b724d0d20933050605ebdd3fad81e99f3284ac9d16dc23ea6a6108453d"
+        "sha256": "e197323cf6272d481e4a734b593ba00c0c2935b69dc06b37e96ba90bb8dddde1"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -14713,7 +14837,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b8523301c79645161ca90f3dcc9d7527d9a75102c127cb0ce4741ecfeade7760"
+        "sha256": "ee5006ae8e87a225ffdce696a3775ed41d443bbdd8f79bc4ed15bebe2c6da23d"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -14749,11 +14873,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "c94e45415a723a3481049339ffaa2f6a10862bf9ab722c7d62421e5926cc40d3"
+        "sha256": "0a5ddf905dce82bff96b2d595da64b00ebfa39492957447df762763aa7788aaf"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "fa0e3215830e71827e09d735fa61184dc2d7134760a5d8f0a15035db554df1d5"
+        "sha256": "dc518d91a93689bf5efda38b96ec47a64cf50e8502d332792bfa777bc9dc655c"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -40049,16 +40173,6 @@
               "kind": "generator-owned-output"
             },
             {
-              "from": "packages/adapters/model-router-providers/src/adapter.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/adapters/model-router-providers/src/index.ts",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
               "from": "packages/adapters/model-router-providers/tsconfig.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
               "kind": "generator-owned-output"
@@ -40074,14 +40188,6 @@
               "packages/adapters/model-router-providers/README.md"
             ],
             [
-              "packages/adapters/model-router-providers/src/adapter.ts",
-              "packages/adapters/model-router-providers/src/adapter.ts"
-            ],
-            [
-              "packages/adapters/model-router-providers/src/index.ts",
-              "packages/adapters/model-router-providers/src/index.ts"
-            ],
-            [
               "packages/adapters/model-router-providers/tsconfig.json",
               "packages/adapters/model-router-providers/tsconfig.json"
             ]
@@ -40089,8 +40195,6 @@
           "roots": [
             "packages/adapters/model-router-providers/README.md",
             "packages/adapters/model-router-providers/package.json",
-            "packages/adapters/model-router-providers/src/adapter.ts",
-            "packages/adapters/model-router-providers/src/index.ts",
             "packages/adapters/model-router-providers/tsconfig.json"
           ]
         },
@@ -40127,6 +40231,11 @@
               "script": "clean"
             },
             {
+              "from": "package.json",
+              "kind": "root-turbo-task",
+              "script": "test"
+            },
+            {
               "command": "tsc -b",
               "from": "packages/adapters/model-router-providers/package.json",
               "kind": "workspace-script",
@@ -40137,6 +40246,12 @@
               "from": "packages/adapters/model-router-providers/package.json",
               "kind": "workspace-script",
               "script": "clean"
+            },
+            {
+              "command": "vitest run",
+              "from": "packages/adapters/model-router-providers/package.json",
+              "kind": "workspace-script",
+              "script": "test"
             }
           ],
           "reversePaths": [
@@ -40190,19 +40305,159 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "packages/adapters/model-router-providers/package.json",
+              "kind": "test-script",
+              "script": "test"
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/call.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/clients.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/failure.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/generation.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/json-value.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/messages.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/steps.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/structured.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tools.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/transport.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 250
+            },
+            {
+              "from": "scripts/arch/test-case-census.test.mjs",
+              "kind": "reference",
+              "line": 274
             }
           ],
           "reversePaths": [
             [
+              "packages/adapters/model-router-providers/package.json",
+              "packages/adapters/model-router-providers/package.json"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "packages/adapters/model-router-providers/src/adapter.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/call.test.ts",
+              "packages/adapters/model-router-providers/src/call.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/clients.test.ts",
+              "packages/adapters/model-router-providers/src/clients.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/failure.test.ts",
+              "packages/adapters/model-router-providers/src/failure.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/generation.test.ts",
+              "packages/adapters/model-router-providers/src/generation.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/json-value.test.ts",
+              "packages/adapters/model-router-providers/src/json-value.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/messages.test.ts",
+              "packages/adapters/model-router-providers/src/messages.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/steps.test.ts",
+              "packages/adapters/model-router-providers/src/steps.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/structured.test.ts",
+              "packages/adapters/model-router-providers/src/structured.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tools.test.ts",
+              "packages/adapters/model-router-providers/src/tools.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/transport.test.ts",
+              "packages/adapters/model-router-providers/src/transport.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/usage.test.ts",
+              "packages/adapters/model-router-providers/src/usage.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/test-case-census.test.mjs",
+              "scripts/arch/test-case-census.test.mjs"
             ]
           ],
           "roots": [
-            "scripts/arch/arch-boundaries.test.mjs"
+            "packages/adapters/model-router-providers/package.json",
+            "packages/adapters/model-router-providers/src/adapter.test.ts",
+            "packages/adapters/model-router-providers/src/call.test.ts",
+            "packages/adapters/model-router-providers/src/clients.test.ts",
+            "packages/adapters/model-router-providers/src/failure.test.ts",
+            "packages/adapters/model-router-providers/src/generation.test.ts",
+            "packages/adapters/model-router-providers/src/json-value.test.ts",
+            "packages/adapters/model-router-providers/src/messages.test.ts",
+            "packages/adapters/model-router-providers/src/steps.test.ts",
+            "packages/adapters/model-router-providers/src/structured.test.ts",
+            "packages/adapters/model-router-providers/src/tools.test.ts",
+            "packages/adapters/model-router-providers/src/transport.test.ts",
+            "packages/adapters/model-router-providers/src/usage.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/test-case-census.test.mjs"
           ]
         }
       },
@@ -40261,8 +40516,8 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "e36e70820c604b86245d465fefb3a37149935e914edcf98e6dc8c98c82ae2cfd",
-      "manifestSha256": "58a0a5421915cee83524764f9369c1f40ec0d7195318d0b257f9d37b38b18a8f",
+      "evidenceSha256": "15e22b1f3f5c08dc21d89a703c8d2ac4e7e373ac56d0ccc16dabae9f4e505a70",
+      "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
         "reachable": false,
@@ -47797,7 +48052,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 244
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -48594,7 +48849,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "5e00b98bd3da39f3d5c00a6ba3c3d1c910be31d3c1a72af9f5936fc57ef67085",
+      "evidenceSha256": "d0fd13aa4c5a5c5326fad6edba5acd78ad5264f5481dae7f701f49cd01e6f996",
       "manifestSha256": "65647e161d653fcb1798a964b95f17b563d35fe056bc97998c1cca57c3dffffa",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -50835,10 +51090,6 @@
           "reachable": true,
           "reasons": [
             {
-              "from": "packages/adapters/model-router-providers/src/adapter.ts",
-              "kind": "explicit-generated-header-reference"
-            },
-            {
               "from": "packages/contexts/agents/application/index.ts",
               "kind": "explicit-generated-header-reference"
             },
@@ -50876,10 +51127,6 @@
           ],
           "reversePaths": [
             [
-              "packages/adapters/model-router-providers/src/adapter.ts",
-              "packages/adapters/model-router-providers/src/adapter.ts"
-            ],
-            [
               "packages/contexts/agents/application/index.ts",
               "packages/contexts/agents/application/index.ts"
             ],
@@ -50913,7 +51160,6 @@
             ]
           ],
           "roots": [
-            "packages/adapters/model-router-providers/src/adapter.ts",
             "packages/contexts/agents/application/index.ts",
             "packages/contexts/conversations/application/index.ts",
             "packages/contexts/cost-monitoring/application/index.ts",
@@ -51021,6 +51267,96 @@
               "from": "apps/core-api",
               "line": 33,
               "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/adapter.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 28,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/call.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 9,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/clients.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 27,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/failure.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 21,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/messages.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 31,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/model-list.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 13,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/probe.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 24,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/run.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 16,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/steps.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 17,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/streaming.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 21,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/structured.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 22,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/testing.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 17,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/tools.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 37,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/transport.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 26,
+              "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/model-router-providers/src/usage.ts",
+              "from": "packages/adapters/model-router-providers",
+              "line": 41,
+              "specifier": "@platos/context-providers/application/ports/index.js"
             }
           ],
           "reversePaths": [
@@ -51031,15 +51367,106 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/call.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/clients.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/failure.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/messages.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/model-list.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/probe.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/run.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/steps.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/streaming.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/structured.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/testing.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/tools.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/transport.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers",
+              "packages/adapters/model-router-providers/src/usage.ts"
             ]
           ],
           "roots": [
-            "apps/core-api"
+            "apps/core-api",
+            "packages/adapters/model-router-providers"
           ]
         },
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "kind": "reference",
+              "line": 5
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/generation.test.ts",
+              "kind": "reference",
+              "line": 18
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/messages.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/steps.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/structured.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/model-router-providers/src/tools.test.ts",
+              "kind": "reference",
+              "line": 1
+            },
             {
               "from": "packages/contexts/providers/application/authorization.test.ts",
               "kind": "workspace-owned-file",
@@ -51161,7 +51588,17 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/providers/domain/structured-output.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/contexts/providers/domain/token-usage.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/providers/domain/tool-input-repair.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -51183,7 +51620,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 260
+              "line": 263
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -51192,6 +51629,30 @@
             }
           ],
           "reversePaths": [
+            [
+              "packages/adapters/model-router-providers/src/adapter.test.ts",
+              "packages/adapters/model-router-providers/src/adapter.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/generation.test.ts",
+              "packages/adapters/model-router-providers/src/generation.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/messages.test.ts",
+              "packages/adapters/model-router-providers/src/messages.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/steps.test.ts",
+              "packages/adapters/model-router-providers/src/steps.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/structured.test.ts",
+              "packages/adapters/model-router-providers/src/structured.test.ts"
+            ],
+            [
+              "packages/adapters/model-router-providers/src/tools.test.ts",
+              "packages/adapters/model-router-providers/src/tools.test.ts"
+            ],
             [
               "packages/contexts/providers/application/authorization.test.ts",
               "packages/contexts/providers/application/authorization.test.ts"
@@ -51289,8 +51750,16 @@
               "packages/contexts/providers/domain/route.test.ts"
             ],
             [
+              "packages/contexts/providers/domain/structured-output.test.ts",
+              "packages/contexts/providers/domain/structured-output.test.ts"
+            ],
+            [
               "packages/contexts/providers/domain/token-usage.test.ts",
               "packages/contexts/providers/domain/token-usage.test.ts"
+            ],
+            [
+              "packages/contexts/providers/domain/tool-input-repair.test.ts",
+              "packages/contexts/providers/domain/tool-input-repair.test.ts"
             ],
             [
               "packages/contexts/providers/package.json",
@@ -51314,6 +51783,12 @@
             ]
           ],
           "roots": [
+            "packages/adapters/model-router-providers/src/adapter.test.ts",
+            "packages/adapters/model-router-providers/src/generation.test.ts",
+            "packages/adapters/model-router-providers/src/messages.test.ts",
+            "packages/adapters/model-router-providers/src/steps.test.ts",
+            "packages/adapters/model-router-providers/src/structured.test.ts",
+            "packages/adapters/model-router-providers/src/tools.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/providers/application/check-provider-health.test.ts",
             "packages/contexts/providers/application/describe-providers.test.ts",
@@ -51338,7 +51813,9 @@
             "packages/contexts/providers/domain/rate-card-import.test.ts",
             "packages/contexts/providers/domain/rate.test.ts",
             "packages/contexts/providers/domain/route.test.ts",
+            "packages/contexts/providers/domain/structured-output.test.ts",
             "packages/contexts/providers/domain/token-usage.test.ts",
+            "packages/contexts/providers/domain/tool-input-repair.test.ts",
             "packages/contexts/providers/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
@@ -51658,7 +52135,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "a34c0369d96aa01cd92fd956ed153b2a7a69e51411f3a015edbe6a96d3729925",
+      "evidenceSha256": "283f3c3769b8ce1f2444bc0e362e3c6fbfe1a1e8dc7216c821fc1f8e7575528f",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -52448,7 +52925,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 245
+              "line": 247
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52921,7 +53398,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "6dd371a1da305fb5a654e8b9e8b6a6ef04fcaf6d655ddb3a661acf704ba81eb2",
+      "evidenceSha256": "a787f1cf634a2caefd59fa2ce08b0226da921ab84d002a0cabd7f31827e6d6d8",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -54584,7 +55061,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 246
+              "line": 248
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55304,7 +55781,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d54dd80a303682423356ec2e2373b95f559e081a25239497f2b792d833b5535b",
+      "evidenceSha256": "e4ec41c2dff4db455d4aaff42d45d10ece915042a02344d387105299853e36fd",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -55701,7 +56178,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 551,
+              "line": 583,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -55886,7 +56363,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "215da6f07c3ba0e14255675a8824300764a07597606adcc9b2ba4baa93d5a8af",
+      "evidenceSha256": "b6a84a48b01d9131bb98022e42cb0a4f1f5cdfeda151a9cbf7034ca20495f295",
       "manifestSha256": "fd016548d2d81835179a973a17c610deafe989d7b9727fd16f31bfeaf44e627f",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -59081,6 +59558,18 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/providers/application/ports/index.ts",
+              "from": "packages/contexts/providers",
+              "line": 57,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/providers/application/ports/index.ts",
+              "from": "packages/contexts/providers",
+              "line": 58,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/providers/application/ports/model-router.ts",
               "from": "packages/contexts/providers",
               "line": 48,
@@ -59875,7 +60364,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 431,
+              "line": 463,
               "specifier": "@platos/kernel"
             }
           ],
@@ -60147,6 +60636,10 @@
             [
               "packages/contexts/providers",
               "packages/contexts/providers/application/open-model-route.ts"
+            ],
+            [
+              "packages/contexts/providers",
+              "packages/contexts/providers/application/ports/index.ts"
             ],
             [
               "packages/contexts/providers",
@@ -60824,7 +61317,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 228
+              "line": 229
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -61892,7 +62385,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "7176c678a89e0bbe620fee785244dcdddfb2dbbf9cf1436e00ea00eb1403f0a4",
+      "evidenceSha256": "b4b071efa02d9d288ac9328d3d0c142398f924ceed7a193058b587821bbdee9f",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
