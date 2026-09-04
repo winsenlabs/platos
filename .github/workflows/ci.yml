@@ -129,6 +129,7 @@ jobs:
           pnpm test:win253-vendored-build
           pnpm audit:win253-vendored-build
           pnpm audit:capability-matrix
+          pnpm test:capability-matrix
           node scripts/rest-census-independent.mjs --check
           node --test scripts/rest-census-independent.test.mjs
           node scripts/webapp-bff-matrix.mjs --check
