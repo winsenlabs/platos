@@ -323,8 +323,9 @@ describe("the one behavioural divergence, measured and recorded", () => {
 
     // Reported, not absorbed. It is the intended consequence of ADR M0.3's
     // "time is an input, never ambient", it is the only column on which the two
-    // sides disagree across the whole differential, and a deployment running
-    // both binaries would see sessions stamped by two clocks.
+    // sides disagree across the whole differential, and an expand/contract
+    // window running both binaries at once would see sessions stamped by two
+    // clocks.
   }, 180_000);
 });
 
