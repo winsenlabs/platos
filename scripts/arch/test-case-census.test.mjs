@@ -771,8 +771,6 @@ test("the WIN-257 session-cookie contract is pinned at what vitest prints", () =
   }
 });
 
-});
-
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {
   const live = listPackages();
   assert.deepEqual(live.sort(), Object.keys(EXPECTED).sort());
