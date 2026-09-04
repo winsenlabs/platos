@@ -198,10 +198,14 @@ export async function runObjectPasses(
       errors = checked.errors;
     }
 
-    if (passNumber >= maxPasses) break;
-    prompt = rewritePrompt({
-      messages: [...prompt.messages, structuredOutputCorrection(rawText, errors)],
-    });
+    // The loop bound is the ONLY budget guard. An inner `break` on the same
+    // condition would be a second one over the same behaviour, and a guard that
+    // cannot be made to fail on its own is a guard no test can hold to account.
+    if (passNumber < maxPasses) {
+      prompt = rewritePrompt({
+        messages: [...prompt.messages, structuredOutputCorrection(rawText, errors)],
+      });
+    }
   }
 
   return err(structuredOutputFailure(errors, maxPasses));

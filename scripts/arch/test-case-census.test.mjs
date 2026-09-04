@@ -259,21 +259,21 @@ test("the providers context is pinned at what vitest prints", () => {
   // suites: `errors.test.ts` keeping the adapter's seven new codes apart from
   // the codes they resemble, and the pass budget in `generation.test.ts` and
   // `run-model-generation.test.ts`. `pnpm --filter @platos/context-providers
-  // exec vitest run` prints "Test Files 27 passed (27) / Tests 373 passed
-  // (373)"; the AST census reproduces both with zero refusals.
+  // exec vitest run` prints "Test Files 27 passed (27) / Tests 374 passed
+  // (374)"; the AST census reproduces both with zero refusals.
   assert.equal(EXPECTED["packages/contexts/providers"].files, 21 + 4 + 2);
-  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63 + 27);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63 + 27 + 196);
+  assert.equal(EXPECTED["packages/contexts/providers"].cases, 283 + 63 + 28);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 283 + 63 + 28 + 197);
 });
 
 test("the model-router adapter is pinned at what vitest prints", () => {
   // The row that had never held a case. `pnpm --filter
   // @platos/adapter-model-router-providers exec vitest run` prints "Test Files
-  // 12 passed (12) / Tests 196 passed (196)". Every other package is held at its
+  // 12 passed (12) / Tests 197 passed (197)". Every other package is held at its
   // earlier value by the tests above, so a suite quietly deleted elsewhere while
   // these landed cannot hide inside the new total.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 12);
-  assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 196);
+  assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 197);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

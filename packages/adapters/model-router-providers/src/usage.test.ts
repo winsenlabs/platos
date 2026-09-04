@@ -101,15 +101,27 @@ describe("the cache-read chain", () => {
 
   it("reads a malformed figure as absent rather than letting NaN reach the bill", () => {
     // The extraction source's chains end in a bare `Number(...)`, so a string or
-    // a NaN in the last position yields NaN and NaN flows into the accounting.
-    const meta = {
+    // a NaN in the LAST position yields NaN and NaN flows into the accounting.
+    // Both halves are asserted: a malformed link is skipped in favour of a real
+    // one, and a chain that is malformed all the way down reads ZERO — never NaN,
+    // never a negative, and never a string.
+    const skipped = {
       anthropic: { cacheReadInputTokens: "lots" },
       openai: { cachedPromptTokens: Number.NaN },
       google: { usageMetadata: { cachedContentTokenCount: -5 } },
       vertex: { usageMetadata: { cachedContentTokenCount: VERTEX_READ } },
     };
+    expect(cacheReadTokens(bareUsage(), skipped)).toBe(VERTEX_READ);
 
-    expect(cacheReadTokens(bareUsage(), meta)).toBe(VERTEX_READ);
+    const allMalformed = {
+      anthropic: { cacheReadInputTokens: "lots" },
+      openai: { cachedPromptTokens: Number.NaN },
+      google: { usageMetadata: { cachedContentTokenCount: -5 } },
+      vertex: { usageMetadata: { cachedContentTokenCount: "many" } },
+    };
+    const read = cacheReadTokens(bareUsage(), allMalformed);
+    expect(read).toBe(0);
+    expect(Number.isSafeInteger(read)).toBe(true);
   });
 
   it("does not read a cache WRITE figure as a read", () => {

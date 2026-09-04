@@ -79,7 +79,16 @@ function at(source: unknown, ...path: readonly string[]): unknown {
   return current;
 }
 
-/** The first link in the chain that carries a number, or zero. */
+/**
+ * The first link in the chain that carries a number, or zero.
+ *
+ * `> 0` is what makes the chain a chain. A link reporting zero has reported
+ * nothing useful and the next shape must be consulted — which is the `||` of the
+ * extraction source, and is NOT `??`: that would stop at the zero and report it
+ * as the answer. The same test rejects a malformed reading, so a string or a NaN
+ * in the LAST position reads as absent instead of flowing into the bill as NaN,
+ * which is what the source's bare `Number(...)` does.
+ */
 function firstOf(candidates: readonly unknown[]): number {
   for (const candidate of candidates) {
     const value = finiteCount(candidate);

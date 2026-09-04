@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { JsonSchemaDocument } from "./generation.js";
-import { MAX_REPAIR_DEPTH, repairToolCallInput } from "./tool-input-repair.js";
+import { repairToolCallInput } from "./tool-input-repair.js";
 
 /** The schema of the tool whose calls the extraction source saw fail. */
 const EXECUTE_TOOLS: JsonSchemaDocument = {
@@ -58,8 +58,13 @@ describe("repairToolCallInput", () => {
 
   it("refuses to repair with no schema, rather than guessing", () => {
     const broken = JSON.stringify({ calls: '[{"tool": "SEND"}]' });
-
     expect(repairToolCallInput(broken, undefined)).toBeNull();
+
+    // A TOP-LEVEL string is the case that actually reaches the schema question:
+    // with an object the walk stops at the absent `properties` either way, so
+    // an assertion on one alone would leave `schemaAllows` free to say yes to
+    // everything with every test still green.
+    expect(repairToolCallInput(JSON.stringify("[1,2]"), undefined)).toBeNull();
   });
 
   it("refuses when the schema declares the property a string", () => {
@@ -129,22 +134,34 @@ describe("repairToolCallInput", () => {
     expect(repairToolCallInput(fine, EXECUTE_TOOLS)).toBeNull();
   });
 
-  it("stops at the depth bound rather than following a self-referential schema", () => {
-    // A schema that names itself as its own child. Without the bound the walk
-    // would not return; with it, the value below the bound is left as written.
-    const recursive: Record<string, unknown> = { type: "object", properties: {} };
-    (recursive.properties as Record<string, unknown>).next = recursive;
+  it("returns on a payload deep enough to exhaust the stack without the bound", () => {
+    // The bound's whole job, stated as the one thing that is observable about
+    // it. A model can emit — and an adversary can send — a payload nested
+    // thousands deep, and a walk with no bound descends one frame per level and
+    // dies inside the request. With the bound it returns, in bounded time,
+    // having repaired nothing below the sixth level.
+    const recursive: Record<string, unknown> = { type: "array" };
+    recursive.items = recursive;
 
-    // One string-encoded object per level, one level deeper than the bound.
-    let payload: unknown = '{"next": "{}"}';
-    for (let level = 0; level < MAX_REPAIR_DEPTH + 2; level += 1) {
-      payload = JSON.stringify({ next: payload });
-    }
+    let deep = "[]";
+    for (let level = 0; level < 40_000; level += 1) deep = `[${deep}]`;
 
-    const repaired = repairToolCallInput(payload as string, recursive as JsonSchemaDocument);
+    expect(() => repairToolCallInput(deep, recursive as JsonSchemaDocument)).not.toThrow();
+    expect(repairToolCallInput(deep, recursive as JsonSchemaDocument)).toBeNull();
+  });
 
-    // It returns, and it returns a string. That is the property under test.
-    expect(typeof repaired).toBe("string");
+  it("repairs within the bound, so the bound is not simply switching repair off", () => {
+    // The control on the case above: at a depth the walk does reach, a
+    // string-encoded container IS unwrapped. Without this, a bound of zero would
+    // pass the test above just as well.
+    const schema: JsonSchemaDocument = {
+      type: "object",
+      properties: { calls: { type: "array", items: { type: "object" } } },
+    };
+
+    const repaired = repairToolCallInput(JSON.stringify({ calls: '[{"a":1}]' }), schema);
+
+    expect(JSON.parse(repaired as string)).toEqual({ calls: [{ a: 1 }] });
   });
 
   it("leaves an empty string alone", () => {

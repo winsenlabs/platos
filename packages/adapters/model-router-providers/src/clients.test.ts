@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveModel } from "./clients.js";
+import { resolveModel, serviceAccount } from "./clients.js";
 import { credential, routePlan } from "./testing.js";
 
 /** A transport that records what it was handed and answers nothing. */
@@ -148,6 +148,19 @@ describe("the service-account guard", () => {
     );
 
     expect(built.ok).toBe(false);
+  });
+
+  it("unescapes the newlines an environment variable put into the private key", () => {
+    // A key still carrying literal backslash-n is rejected by the signer with an
+    // error that names neither the field nor the cause.
+    const read = serviceAccount(SERVICE_ACCOUNT);
+
+    expect(read.ok).toBe(true);
+    if (!read.ok) throw new Error("unreachable");
+    expect(read.value.key).toBe("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n");
+    expect(read.value.key).not.toContain("\\n");
+    expect(read.value.project).toBe("platos-prod");
+    expect(read.value.email).toBe("signer@platos-prod.iam.gserviceaccount.com");
   });
 
   it("says nothing about the material in the message a client would see", () => {

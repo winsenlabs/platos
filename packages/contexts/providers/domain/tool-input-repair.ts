@@ -33,10 +33,14 @@ import type { JsonSchemaDocument } from "./generation.js";
 /**
  * How deep the walk goes before it stops.
  *
- * A bound and not a formality: a schema may be self-referential through `$ref`,
- * and a repair that recursed on one would not return. Six is the extraction
- * source's number and it covers the observed shape — an array of objects each
- * carrying a nested params object — with room to spare.
+ * A bound and not a formality. The walk descends one level per nested container,
+ * and a payload nested thousands deep — which a model can emit and an adversary
+ * can send — would otherwise exhaust the stack inside a request. Six is the
+ * extraction source's number and it covers the observed shape (an array of
+ * objects each carrying a nested params object) with room to spare.
+ *
+ * Its effect is observable and is pinned: a container at depth six is unwrapped
+ * and one at depth seven is left exactly as the model wrote it.
  */
 export const MAX_REPAIR_DEPTH = 6;
 
@@ -163,8 +167,12 @@ export function repairToolCallInput(
   rawInput: unknown,
   schema: JsonSchemaDocument | undefined,
 ): string | null {
+  // NO EARLY RETURN FOR AN ABSENT SCHEMA, deliberately. `schemaAllows` already
+  // answers false for one, so the walk unwraps nothing and this returns null by
+  // the ordinary route. An early return here would be a second guard over the
+  // same behaviour, and one of the two could then be deleted with every test
+  // still green — which is the definition of a guard nothing holds to account.
   const repairSchema = asRepairSchema(schema);
-  if (repairSchema === undefined) return null;
 
   let parsed: unknown;
   if (typeof rawInput === "string") {

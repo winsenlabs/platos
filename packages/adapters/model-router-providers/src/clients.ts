@@ -57,8 +57,14 @@ function textField(document: ServiceAccountDocument, field: keyof ServiceAccount
  * rejected by the signer with an error that names neither the field nor the
  * cause. Unescaping here is the difference between a working route and an hour
  * of looking at the wrong layer.
+ *
+ * EXPORTED FOR ONE REASON: the unescape is invisible from outside. Once the
+ * document is inside the signing client there is no way to ask what key it
+ * holds, so a test of `resolveModel` alone can only assert that a model was
+ * built — which it is either way. A guard whose effect cannot be observed is a
+ * guard no test can prove wrong.
  */
-function serviceAccount(material: string): Result<{ project: string; email: string; key: string }> {
+export function serviceAccount(material: string): Result<{ project: string; email: string; key: string }> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(material);
