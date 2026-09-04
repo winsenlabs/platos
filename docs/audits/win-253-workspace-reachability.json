@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5b6877cc0f1042a4e22c316d86c96792386354048298510933c23a195cbc36c7",
+  "evidenceSha256": "cd44e1627fa2e0eb71c7eb7a3b8baf313bb32f033d7dcc228cddc2166807cf45",
   "generatedOwnership": {
     "explicitHeaderFileCount": 42,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d5e51b9f3742c1e4ae81c4f84c9dc34f8d22a93e58cb71bac2367255f9ef32cf",
+    "aggregateSha256": "cc29bb2b347da645b31028c55645af90fa5c77a0c17610efaa460affbaab7f28",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -17273,7 +17273,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "3e3bd8104c640b2dba0f9ec14549950836e80ab99b0e44c5263315f657958e5f"
+        "sha256": "79ae01ad0311dc5ae991edfb472fcc0b1bca836a0ee8d00e1e67e975a3e7b442"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -46962,7 +46962,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 582
+              "line": 590
             }
           ],
           "reversePaths": [
@@ -47046,7 +47046,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "1268c4aa940d3b92403e159d8205465087cc9dad37950b3eba09cb8a95a16f1f",
+      "evidenceSha256": "44fd2e467dfd49ff43bee9819063dc79f2053194bd886f16a84362e285b063db",
       "manifestSha256": "d850f050beb92883858d3b947cc40b6e95728374a95445b041aa5077dda45893",
       "name": "@platos/context-conversations",
       "ociImageClosure": {

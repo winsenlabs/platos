@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `5b6877cc0f1042a4e22c316d86c96792386354048298510933c23a195cbc36c7`
+Evidence SHA-256: `cd44e1627fa2e0eb71c7eb7a3b8baf313bb32f033d7dcc228cddc2166807cf45`
 
 ## Baseline
 
@@ -75,7 +75,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/adapters/redis-streams` | `@platos/adapter-redis-streams` | no | yes | yes | no | retain-application-deployable | no | no | `66f9d8efe7be4ece…` |
 | `packages/contexts/agents` | `@platos/context-agents` | no | yes | yes | no | retain-application-deployable | no | no | `fc26f384a188537e…` |
 | `packages/contexts/channels` | `@platos/context-channels` | no | yes | yes | no | retain-application-deployable | no | no | `96e29160afa7c13c…` |
-| `packages/contexts/conversations` | `@platos/context-conversations` | no | yes | yes | no | retain-application-deployable | no | no | `1268c4aa940d3b92…` |
+| `packages/contexts/conversations` | `@platos/context-conversations` | no | yes | yes | no | retain-application-deployable | no | no | `44fd2e467dfd49ff…` |
 | `packages/contexts/cost-monitoring` | `@platos/context-cost-monitoring` | no | yes | yes | no | retain-application-deployable | no | no | `0ff25ff0a9e3754b…` |
 | `packages/contexts/eventing` | `@platos/context-eventing` | no | yes | yes | no | retain-application-deployable | no | no | `e8dc7af0a8456311…` |
 | `packages/contexts/files` | `@platos/context-files` | no | yes | yes | no | retain-application-deployable | no | no | `02d66baf456eb522…` |

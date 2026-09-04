@@ -576,8 +576,16 @@ test("an explicit generated header, not a generated-looking path, owns generated
   // packages/kernel/src/index.ts, which WIN-256 adopted out of generator
   // ownership — its first line became real source, so the fixture silently
   // stopped carrying a generated header and the assertion below inverted.
-  // conversations/ is one of the 27 projects still generator-owned; the
-  // assertion right after this one fails if the header is ever not generated.
+  // CORRECTION, 2026-09-04. This said "one of the 27 projects still
+  // generator-owned", which was written when WIN-256 slice 5 had adopted five
+  // projects (32 - 5 = 27) and was silently false from the sixth adoption on:
+  // 18 projects are adopted here, so 14 still carry generator-owned source. The
+  // count is dropped rather than re-pinned because it rots on every adoption
+  // and nothing checks it. What the fixture actually needs is the property, and
+  // that is asserted: conversations is one of the two contexts still on
+  // generator-owned placeholders (governance is the other), so its
+  // domain/index.ts still carries the generated header, and the assertion right
+  // after this one fails the moment that stops being true.
   const realHeader = fs
     .readFileSync(path.join(ROOT, "packages/contexts/conversations/domain/index.ts"), "utf8")
     .split("\n", 1)[0];
