@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "de05c2cfa8e47d3234662cddaebbe4d48166e1a47c1e797346e2add570058625",
+  "evidenceSha256": "d530722424617bd8bc006b570f2d273e17d285bf633b2160b8d04d11df18727b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 36,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "96519286191889a7e57549929ac1f14f0f0c628e134c7202d94eed35ec1559ea",
+    "aggregateSha256": "b3aafa114f9592f20a0fad769146bd6c202663151f1c08a1aaae286629424b54",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -13281,7 +13281,7 @@
       },
       {
         "path": "packages/contexts/memory/application/dependencies.ts",
-        "sha256": "b84ef36f8c37bc990a91d56374482cc2b18643f59084aa97f31433bed66505a9"
+        "sha256": "c55020e99f2df584e2b0adcff3affd6a9a20784f0ab8d46f412b12ff4336651b"
       },
       {
         "path": "packages/contexts/memory/application/embedding.ts",
@@ -13437,7 +13437,7 @@
       },
       {
         "path": "packages/contexts/memory/application/testing/in-memory-peers.ts",
-        "sha256": "dfb21751eff752b830b135d83570debdf9448d123140dc1961ba4e0113a72b2d"
+        "sha256": "67dd68cbbb4c6f935b5dda395d78e906a9238431e6e9f9b10010952ef8c7d361"
       },
       {
         "path": "packages/contexts/memory/application/testing/index.ts",
@@ -55915,7 +55915,7 @@
             {
               "file": "packages/contexts/memory/application/dependencies.ts",
               "from": "packages/contexts/memory",
-              "line": 54,
+              "line": 65,
               "specifier": "@platos/context-providers"
             },
             {
@@ -56771,7 +56771,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "17c07bc9168dd39d33442a01af78483cb99abb75c136808f63638a813cf5aded",
+      "evidenceSha256": "4d6bfc5e09bffbed69fd556054bbfce04b6f3754eb047c3f7730f40ab76e2077",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -59801,13 +59801,13 @@
             {
               "file": "packages/contexts/memory/application/dependencies.ts",
               "from": "packages/contexts/memory",
-              "line": 55,
+              "line": 66,
               "specifier": "@platos/context-tenancy"
             },
             {
               "file": "packages/contexts/memory/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/memory",
-              "line": 35,
+              "line": 38,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -61015,7 +61015,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e310489ac1fa11f5e5a7cc818df0f59db7c7c3d544a30ff9c022a1e4b27283c4",
+      "evidenceSha256": "beb943f185eb493d0aef71cf62d758910ccbd57005a20f2fb39bf253e63e3e7e",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -66126,7 +66126,7 @@
             {
               "file": "packages/contexts/memory/application/dependencies.ts",
               "from": "packages/contexts/memory",
-              "line": 53,
+              "line": 64,
               "specifier": "@platos/kernel"
             },
             {
@@ -66288,7 +66288,7 @@
             {
               "file": "packages/contexts/memory/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/memory",
-              "line": 34,
+              "line": 37,
               "specifier": "@platos/kernel"
             },
             {
@@ -72890,7 +72890,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "499db1f46a797c7b7970197fd4177f362f6782ed28658c07923d66a61898dd08",
+      "evidenceSha256": "98bba97805dd0d0d577dbc09ca8c18780cafa548bb356ea562a8f5f45f9ec8a3",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
