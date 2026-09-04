@@ -78,12 +78,28 @@ test("stale, missing, and extra owned files each fail closed", () => {
   for (const [kind, mutate, expected] of [
     // Sample an UNADOPTED placeholder: an adopted project's source tree is
     // released by design, and its own controls live in the adoption tests below.
-    ["stale", (root) => writeFileSync(join(root, "packages/contexts/tools/domain/index.ts"), "stale\n"), "STALE   packages/contexts/tools/domain/index.ts"],
-    // WIN-297 adopted apps/mcp-stdio, so its src/main.ts is no longer generated
-    // and cannot serve as the MISSING sample. Moved to a still-unadopted
-    // placeholder rather than dropped: the case being tested is unchanged.
-    ["missing", (root) => rmSync(join(root, "packages/contexts/tools/application/index.ts")), "MISSING packages/contexts/tools/application/index.ts"],
-    ["extra", (root) => write(root, "packages/contexts/tools/extra.ts", "export {};\n"), "EXTRA   packages/contexts/tools/extra.ts"],
+    //
+    // THE SAMPLE IS NOT ARBITRARY and it is not a name to force: it must be a
+    // project ABSENT from ADOPTED_PROJECTS, because an adopted project has no
+    // generated source files left to be stale, missing or extra. The adoption
+    // tests below prove the other half — that an adopted project's source tree
+    // is released rather than merely unchecked.
+    //
+    // IT HAS MOVED THREE TIMES, AND EACH MOVE IS AN ADOPTION CATCHING UP WITH
+    // IT. `packages/contexts/tools` on the M2 trunk; the tools branch moved it
+    // to `memory` because it was adopting `tools`, and WIN-297 had already moved
+    // the MISSING case off `apps/mcp-stdio/src/main.ts` for the same reason.
+    // `memory` is adopted on THIS trunk, so the tools branch's choice arrived
+    // here naming a project that no longer has the files — an auto-merge with no
+    // textual conflict and a red test. It now names `conversations`, which stays
+    // a generated placeholder through both remaining wave-b adoptions and after
+    // them. A future adoption of `conversations` must move it again, to whatever
+    // is still unadopted then; a sample that names an adopted project fails with
+    // ENOENT rather than passing quietly, which is why this is safe to move but
+    // never safe to delete.
+    ["stale", (root) => writeFileSync(join(root, "packages/contexts/conversations/domain/index.ts"), "stale\n"), "STALE   packages/contexts/conversations/domain/index.ts"],
+    ["missing", (root) => rmSync(join(root, "packages/contexts/conversations/application/index.ts")), "MISSING packages/contexts/conversations/application/index.ts"],
+    ["extra", (root) => write(root, "packages/contexts/conversations/extra.ts", "export {};\n"), "EXTRA   packages/contexts/conversations/extra.ts"],
   ]) {
     const root = fixture();
     mutate(root);

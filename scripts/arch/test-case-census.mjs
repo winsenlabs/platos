@@ -711,6 +711,113 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * No other package moved.
  * Any further drift is a finding to report, not a number to force.
+ *
+ * ---------------------------------------------------------------------------
+ * `tools` ARRIVES NEXT, AND ITS THREE WAVES ARE CARRIED VERBATIM BELOW WITH ONE
+ * CORRECTION: every running TOTAL it quotes was read off its own branch, where
+ * the only real context was `tools` itself and the base was the 1000 that closed
+ * MAJOR 2. In THIS tree the base is the 3847 above, so 1000 -> 1299 -> 1325 ->
+ * 1362 there is 3847 -> 4146 -> 4172 -> 4209 here. The per-row deltas — 299, 26
+ * and 37 — are properties of the suites and are unchanged, which is why they are
+ * the numbers to check. The file count it quotes as "106" is the same kind of
+ * branch-local reading: this tree has 242 files before `tools` and 261 after.
+ * ---------------------------------------------------------------------------
+ *
+ * WIN-256, `tools` (ADR M0.3 §1 context 7). One row moves:
+ *
+ *   tools 0 -> 18 files, 0 -> 299 cases; 3847 -> 4146 total. 13 domain suites,
+ *   4 application suites and the contracts-barrel suite. The census REFUSED
+ *   nothing in that tree, so its 299 is a statically exact count, and
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints the same pair
+ *   — "Test Files 18 passed (18) / Tests 299 passed (299)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce.
+ *
+ * Verified as a LIVE control, the same way the providers row was: deleting one
+ * `it()` from `tools/domain/permission.test.ts` leaves the file count at 260
+ * and turns the case count red, which is precisely the drift a file-count pin
+ * cannot see. No other package moved.
+ *
+ * WIN-256, `tools` again — the hosted-MCP gate. The SAME row moves again, and
+ * the file count does not:
+ *
+ *   tools 299 -> 325 cases; 4146 -> 4172 total. 18 files, unchanged: every one
+ *   of the 26 added cases lands in a suite that already existed. That shape is
+ *   the point of this canary — a wave that adds only assertions is invisible to
+ *   a file-count pin, and 26 of them is exactly the size of change that would
+ *   otherwise pass unremarked.
+ *
+ *   Where the 26 went, and why each is a case rather than a comment:
+ *
+ *     +14  application/tool-policy.test.ts (10 -> 24). The hosted MCP surface
+ *          had NO authentication before this wave: `verifyMcpCaller` and
+ *          `MCP_TOOLS_PERMISSION` were deletable with the whole suite green.
+ *          Eleven of the fourteen are refusals — absent, unknown, wrong-scope
+ *          and permission-less credentials; a surface switched off; a caller
+ *          missing a scope label, an explicit un-exposure, a token allowlist it
+ *          is not on, and a bearer caller on an oidc surface — and three are
+ *          the positive controls without which a refusal test passes for the
+ *          wrong reason (parent-project containment, the caller's own token id,
+ *          and labels taken from the verified principal).
+ *     +4   application/mcp-surface.test.ts (14 -> 18). Two for the
+ *          `secret:mutate` gate on the switch that makes an entity's tools
+ *          publicly reachable, which was deletable; two for the audit window,
+ *          whose only case asked a window of an EMPTY store.
+ *     +4   contracts/index.test.ts (10 -> 14). The same gate through the
+ *          PUBLISHED contract, because a transport binds that object and a
+ *          binder that dropped the credential would leave every use-case
+ *          refusal above passing and production open.
+ *     +2   application/execution.test.ts (31 -> 33). The not-dispatchable
+ *          refusal in `resolveDispatchTarget`, with its positive control.
+ *     +2   application/tool-policy.test.ts, allowlist resync — counted in the
+ *          +14 above; named here because they are the two that need the
+ *          repository double's new by-name failure injection.
+ *
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints the same pair
+ *   — "Test Files 18 passed (18) / Tests 325 passed (325)" — which is the
+ *   agreement EXPECTED_RUNTIME_TOTAL exists to enforce. No other package moved,
+ *   and no case was deleted: 299 + 26 = 325 and 4146 + 26 = 4172.
+ *
+ * WIN-256, `tools` a third time — the unproven-guard wave. Both numbers on the
+ * row move, and the file is the point:
+ *
+ *   tools 18 -> 19 files, 325 -> 362 cases; 4172 -> 4209 total.
+ *
+ *   +29  contracts/operator-gate.test.ts, NEW (0 -> 29). The operator gate, on
+ *        every published method that has one. `verifyOperator` guarded fourteen
+ *        use cases and ELEVEN of them could have their guard deleted with all
+ *        325 green — six of the eleven MUTATE. One case classifies every method
+ *        on `Object.keys(contract)` as operator- or credential-authorized, so a
+ *        method added to the surface later cannot arrive unclassified; fourteen
+ *        refuse a grant tenancy did not mint; fourteen are the positive
+ *        controls, without which a method that refused everything would satisfy
+ *        its refusal case for the wrong reason. 1 + 14 + 14 = 29.
+ *
+ *        THE TWENTY-EIGHT ARE WRITTEN OUT RATHER THAN LOOPED, and this census
+ *        is why. A `for` over the invocation table declares the same cases in
+ *        four lines, and `declarationSiteIsCountable` REFUSES that shape —
+ *        correctly, because a census that cannot count a suite exactly cannot
+ *        canary it. The table is still the single source of the calls; only the
+ *        `it()` declarations are unrolled.
+ *
+ *   +6   application/registry.test.ts (22 -> 28). The page clamp. Its one case
+ *        asked `limit: 10_000, offset: -3` of a TWO-row fixture and asserted
+ *        `items.length <= 200`, which holds with the clamp applied and with it
+ *        removed. That case is now two — the window the port was actually
+ *        handed, and the below-one/fractional window — and five more address
+ *        the extracted `clampExposurePage` directly. 1 + 5 = 6.
+ *
+ *   +2   application/execution.test.ts (33 -> 35). The cost column on the row
+ *        execution itself mints, and the per-entity `ToolHealth` key.
+ *
+ *   contracts/index.test.ts stays at 14: the gate suite that briefly lived
+ *   there moved out whole, and the two cases it did change — the audit-row
+ *   redaction case and the cost case — were REWRITTEN, not added to.
+ *
+ *   `pnpm --filter @platos/context-tools exec vitest run` prints "Test Files 19
+ *   passed (19) / Tests 362 passed (362)", and the census REFUSES nothing in
+ *   that tree, so 362 is a statically exact count. No other package moved and
+ *   no case was deleted: 29 + 6 + 2 = 37, 325 + 37 = 362, 18 + 1 = 19, and
+ *   4172 + 37 = 4209.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -741,7 +848,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
-  "packages/contexts/tools": { files: 0, cases: 0 },
+  "packages/contexts/tools": { files: 19, cases: 362 },
   "packages/kernel": { files: 3, cases: 44 },
 });
 
@@ -752,7 +859,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 3847;
+export const EXPECTED_RUNTIME_TOTAL = 4209;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

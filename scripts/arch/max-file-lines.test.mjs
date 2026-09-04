@@ -120,26 +120,40 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the integrated tree, not carried from the branch, which is why the warning
   // list below is unchanged at three files.
   //
+  // +56: the same issue makes `tools` real, and it is the budget's largest single
+  // test: the three source files it replaces are 1,644, 845 and 587 lines, and
+  // §6 names the first of those as the failure the budget exists to prevent. The
+  // 1,644-line executor became a routing rule, a permission rule, a transport
+  // resolution and one use case with a single exit — 256 effective lines, the
+  // largest non-test module in the package. 55 of the 56 arrived with the
+  // context; the 56th is contracts/operator-gate.test.ts, which exists BECAUSE
+  // this budget bit: twenty-nine gate cases written inside contracts/index.test.ts
+  // took that file to the top of the warning band, and moving them out is why
+  // that delta is 1 and not 0.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
   // 391 (328 + 63), privacy pinned 376 (328 + 48) and observability pinned 376
-  // (328 + 48) as well, and agents pinned 395 (328 + 67). The axes are disjoint,
-  // so the integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 = 781.
+  // (328 + 48) as well, agents pinned 395 (328 + 67) and tools pinned 384
+  // (328 + 56). The axes are disjoint, so the integrated census is their SUM and
+  // not any branch pin:
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 837.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
   //
-  // THREE FILES ARE IN THE WARNING BAND, and this comment says so rather than
-  // repeating the sentence that was true before `jobs` and `memory` landed:
+  // FOUR FILES ARE IN THE WARNING BAND, and this comment says so rather than
+  // repeating the sentence that was true before `jobs`, `memory` and `tools`
+  // landed:
   //
   //   packages/contexts/jobs/application/approval-lifecycle.test.ts   465
   //   packages/contexts/memory/application/authorization.test.ts      448
   //   packages/contexts/memory/contracts/index.test.ts                404
+  //   packages/contexts/tools/application/tool-policy.test.ts         453
   //
-  // All three are TEST modules, all three are below the 500-line hard error,
+  // All four are TEST modules, all four are below the 500-line hard error,
   // and the gate reports them as warnings by design. The assertions below pin
   // what the gate ENFORCES — zero errors — and deliberately do not pin zero
   // warnings, because the warning band exists to be visible rather than empty.
@@ -166,9 +180,18 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // `agents` adds none either, and its branch is the one that did NOT claim
   // otherwise: two of its 25 files exist precisely because this budget bit in the
-  // warning band and the answer was a split rather than a waiver. The list is
-  // still exactly the three named above after all three wave-b adoptions.
-  assert.equal(result.fileCount, 781);
+  // warning band and the answer was a split rather than a waiver.
+  //
+  // `tools` DOES add one, and it is named above rather than absorbed:
+  // application/tool-policy.test.ts at 453 effective lines. The tools branch
+  // said of its own last wave that "neither file is in the warning band", which
+  // was a true sentence about the two files that wave touched and is not a
+  // sentence about this census — tool-policy.test.ts reached the band in the
+  // hosted-MCP gate wave before it, when fourteen cases were added to a suite
+  // already at 10. It is inside the budget, below the 500-line hard error, and
+  // it is a warning the gate is meant to show rather than one this pin should
+  // hide. The list is four, and the four are named.
+  assert.equal(result.fileCount, 837);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -178,9 +201,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // shrug. EMPTY is false of the integrated tree — `jobs` and `memory` each
   // brought a warning-band suite with them — so the anti-drift property is kept
   // by pinning the EXACT list rather than by deleting the assertion or by
-  // reformatting three real warnings out of existence. A fourth file drifting
-  // into the band still turns this red, which is the whole point; the three
-  // below are named, in the band, and below the 500-line hard error.
+  // reformatting four real warnings out of existence. A FIFTH file drifting into
+  // the band still turns this red, which is the whole point; the four below are
+  // named, in the band, and below the 500-line hard error. `tools` is the fourth
+  // and it arrived with this merge, so it is added here with its measured line
+  // count rather than left to be discovered by a later branch.
   assert.deepEqual(result.findings, [
     {
       path: "packages/contexts/jobs/application/approval-lifecycle.test.ts",
@@ -195,6 +220,11 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/contexts/memory/contracts/index.test.ts",
       effectiveLines: 404,
+      severity: "warning",
+    },
+    {
+      path: "packages/contexts/tools/application/tool-policy.test.ts",
+      effectiveLines: 453,
       severity: "warning",
     },
   ]);

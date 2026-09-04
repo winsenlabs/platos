@@ -116,6 +116,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/privacy", // WIN-256 — right-to-erasure orchestration over the kernel ErasureTarget[]
   "packages/contexts/observability", // WIN-256 — the analytical projection, the drain, and the AdminAudit trail
   "packages/contexts/agents", // WIN-256 — agent definitions, immutable versions, bindings and the canary split, clusters, skill loadout, macros and saved requests
+  "packages/contexts/tools", // WIN-256 — the tool-gateway/mcp-platform merge: the registry, the four-tier gate, and the ToolDispatch port it owns
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];

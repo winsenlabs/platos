@@ -1,0 +1,497 @@
+// An in-memory `ToolsRepository`.
+//
+// IT ENFORCES THE STORE'S CONSTRAINTS RATHER THAN STANDING IN FOR THEM. Four
+// invariants that the real schema guarantees are checked here, because a use
+// case that only meets them by accident passes against a permissive double and
+// fails on the first real write:
+//
+//   `@@unique([name, schemaHash])`             — `upsertTool` finds before it mints.
+//   `@@unique([environmentId, entityId, toolId])` — an exposure is replaced, not doubled.
+//   `@@unique([environmentId, entityId, toolId])` on EntityToolPolicy — same.
+//   `@@unique([organizationId, pattern])`      — a second write to a pattern updates.
+//
+// AND IT ENFORCES SCOPE. Every scoped method compares the whole ancestry, not
+// the leaf, so a use case that passed a grant's scope where it meant a
+// caller-supplied one is caught here — which is the class of defect the whole
+// tenancy tree exists to prevent and the one a permissive double hides best.
+//
+// `Tool` IS DELIBERATELY UNSCOPED, matching the port's note: the row is
+// installation-global and content-addressed, so two scopes declaring an
+// identical tool share one row. Making the double scope it would hide the fact.
+
+import { err, ok, resolvePath, type EntityId, type EnvironmentScope, type Result } from "@platos/kernel";
+
+import {
+  asToolsIdentifier,
+  byExposureOrder,
+  exposureNotFound,
+  repositoryUnavailable,
+  type AgentPolicyBinding,
+  type AuditEntry,
+  type AuditQuery,
+  type EntityMcpClient,
+  type EntityMcpConfig,
+  type EntityToolPolicy,
+  type ExposureId,
+  type ExternalEntityId,
+  type PolicyEffect,
+  type SchemaHash,
+  type Tool,
+  type ToolCall,
+  type ToolExposure,
+  type ToolHealth,
+  type ToolId,
+  type ToolName,
+  type OrganizationMcpPolicyId,
+} from "../../domain/index.js";
+import type {
+  ExposurePage,
+  ExposurePageQuery,
+  ExposureReplacement,
+  OrganizationPolicyRecord,
+  ToolsRepository,
+  ToolUpsert,
+} from "../ports/index.js";
+
+// ---- composite keys ------------------------------------------------------
+//
+// THE SEPARATOR IS PRINTABLE, AND THE REASON IS REVIEW. Both maps below stand
+// in for a compound unique index, so both need a key that two different pairs
+// cannot collide on. The earlier form joined the halves with a raw NUL byte,
+// which is injective — a NUL occurs in neither half — and which also made Git
+// classify this file as binary. The one file whose job is to hold the store's
+// constraints honestly reached review as `Bin 0 -> 16767 bytes`, with every one
+// of its lines unreadable. Both keys below are injective WITHOUT a control
+// character, so the diff comes back.
+
+/**
+ * The key standing in for `@@unique([name, schemaHash])`.
+ *
+ * THE DIGEST GOES FIRST, AND THAT IS WHAT FIXES THE SPLIT POINT. A tool name is
+ * free-form — `admitDeclaration` refuses an empty one and caps its length, and
+ * nothing else constrains it — so no character can be reserved against it.
+ * `toSchemaHash` guarantees the other half is exactly `SCHEMA_HASH_LENGTH`
+ * lowercase hex characters, so leading with it means the first sixteen
+ * characters are the digest, the seventeenth is the one colon the digest cannot
+ * contain, and the rest is the name, whatever the name holds.
+ */
+function fingerprintKey(name: ToolName, schemaHash: SchemaHash): string {
+  return `${schemaHash}:${name}`;
+}
+
+/**
+ * The key standing in for `@@unique([toolId, entityExternalId])` on `ToolHealth`.
+ *
+ * NEITHER HALF IS FIXED-WIDTH HERE, so the length of the first is written into
+ * the key instead. `12:tool-1:acme` can only ever be read back as
+ * `("tool-1", "acme")`, whichever characters either identifier holds, which is
+ * the property a bare separator gives up the moment one of the halves is free
+ * to contain it. A null external id is its own case and is encoded as such,
+ * because "no entity" and "an entity named the empty string" are different rows.
+ */
+function healthKey(toolId: ToolId, entityExternalId: ExternalEntityId | null): string {
+  return `${toolId.length}:${toolId}:${entityExternalId === null ? "" : entityExternalId}`;
+}
+
+export class InMemoryToolsRepository implements ToolsRepository {
+  private readonly tools = new Map<string, Tool>();
+  private exposures: ToolExposure[] = [];
+  private bindings: AgentPolicyBinding[] = [];
+  private entityPolicies: EntityToolPolicy[] = [];
+  private organizationPolicies: OrganizationPolicyRecord[] = [];
+  private readonly mcpConfigs = new Map<string, EntityMcpConfig>();
+  private readonly mcpClients = new Map<string, EntityMcpClient>();
+  private calls: ToolCall[] = [];
+  private readonly health = new Map<string, ToolHealth>();
+  private sequence = 0;
+
+  /** Every audit row ever appended, in write order. */
+  readonly audit: AuditEntry[] = [];
+  /**
+   * Every window `pageExposures` was handed, in call order.
+   *
+   * THE EFFECTIVE WINDOW, MADE OBSERVABLE. A caller's clamp is otherwise only
+   * visible in the size of the page it produces, and a fixture smaller than the
+   * ceiling satisfies `items.length <= 200` whether the clamp ran or not — so a
+   * suite that asks that question of two rows proves nothing about a caller who
+   * asked for ten thousand. Recording what crossed the port makes the clamp
+   * something a test can read rather than infer.
+   */
+  readonly pageQueries: ExposurePageQuery[] = [];
+  /** Set to make the next scoped read fail, for the unavailable-store paths. */
+  failNextRead: string | null = null;
+  /**
+   * Operations that must fail every time they are reached, by name.
+   *
+   * `failNextRead` can only reach the FIRST store call a use case makes, which
+   * is the wrong instrument for a failure that happens LATE — the allowlist
+   * resync at the end of `setEntityToolPolicy`, say, whose whole point is that
+   * a revocation which did not land must be reported rather than swallowed.
+   * Naming the operation is what lets a test put the failure exactly there.
+   */
+  readonly failOperations = new Set<string>();
+
+  constructor(private readonly scope: EnvironmentScope) {}
+
+  // ---- seeding -----------------------------------------------------------
+
+  seedTool(tool: Tool): Tool {
+    this.tools.set(fingerprintKey(tool.name, tool.schemaHash), tool);
+    return tool;
+  }
+
+  seedExposure(exposure: ToolExposure): ToolExposure {
+    this.exposures = [
+      ...this.exposures.filter(
+        (held) =>
+          held.environmentId !== exposure.environmentId ||
+          held.entityId !== exposure.entityId ||
+          held.toolId !== exposure.toolId,
+      ),
+      exposure,
+    ];
+    return exposure;
+  }
+
+  seedBindings(bindings: readonly AgentPolicyBinding[]): void {
+    this.bindings = [...bindings];
+  }
+
+  seedEntityPolicy(policy: EntityToolPolicy): EntityToolPolicy {
+    this.entityPolicies = [
+      ...this.entityPolicies.filter(
+        (held) =>
+          held.environmentId !== policy.environmentId ||
+          held.entityId !== policy.entityId ||
+          held.toolId !== policy.toolId,
+      ),
+      policy,
+    ];
+    return policy;
+  }
+
+  seedMcpConfig(config: EntityMcpConfig): EntityMcpConfig {
+    this.mcpConfigs.set(config.entityId, config);
+    return config;
+  }
+
+  seedMcpClient(client: EntityMcpClient): EntityMcpClient {
+    this.mcpClients.set(client.entityId, client);
+    return client;
+  }
+
+  // ---- Tool --------------------------------------------------------------
+
+  async findToolByFingerprint(name: ToolName, schemaHash: SchemaHash): Promise<Result<Tool | null>> {
+    return ok(this.tools.get(fingerprintKey(name, schemaHash)) ?? null);
+  }
+
+  async upsertTool(tool: ToolUpsert): Promise<Result<Tool>> {
+    const key = fingerprintKey(tool.name, tool.schemaHash);
+    const held = this.tools.get(key);
+    if (held !== undefined) return ok(held);
+    const at = new Date("2026-01-01T00:00:00.000Z");
+    const minted: Tool = {
+      toolId: asToolsIdentifier<ToolId>(`tool-${(this.sequence += 1)}`),
+      name: tool.name,
+      description: tool.description,
+      kind: "ENTITY",
+      paramSchema: tool.paramSchema,
+      category: tool.category,
+      schemaHash: tool.schemaHash,
+      createdAt: at,
+      updatedAt: at,
+    };
+    this.tools.set(key, minted);
+    return ok(minted);
+  }
+
+  async findTools(toolIds: readonly ToolId[]): Promise<Result<readonly Tool[]>> {
+    const wanted = new Set<string>(toolIds);
+    return ok([...this.tools.values()].filter((tool) => wanted.has(tool.toolId)));
+  }
+
+  // ---- EnvironmentEntityTool ---------------------------------------------
+
+  async listExposures(scope: EnvironmentScope): Promise<Result<readonly ToolExposure[]>> {
+    const guarded = this.guard(scope, "listExposures");
+    if (!guarded.ok) return err(guarded.error);
+    return ok([...this.exposures].sort(byExposureOrder));
+  }
+
+  async listEntityExposures(
+    scope: EnvironmentScope,
+    entityId: EntityId,
+  ): Promise<Result<readonly ToolExposure[]>> {
+    const guarded = this.guard(scope, "listEntityExposures");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.exposures.filter((exposure) => exposure.entityId === entityId).sort(byExposureOrder));
+  }
+
+  async pageExposures(scope: EnvironmentScope, query: ExposurePageQuery): Promise<Result<ExposurePage>> {
+    const guarded = this.guard(scope, "pageExposures");
+    if (!guarded.ok) return err(guarded.error);
+    this.pageQueries.push(query);
+    const matched = this.exposures
+      .filter((exposure) => query.entityId === null || query.entityId === undefined || exposure.entityId === query.entityId)
+      .filter(
+        (exposure) =>
+          query.search === null ||
+          query.search === undefined ||
+          exposure.toolName.toLowerCase().includes(query.search.toLowerCase()),
+      )
+      .sort(byExposureOrder);
+    return ok({ items: matched.slice(query.offset, query.offset + query.limit), total: matched.length });
+  }
+
+  async replaceExposures(replacement: ExposureReplacement): Promise<Result<readonly ToolExposure[]>> {
+    const guarded = this.guard(replacement.scope, "replaceExposures");
+    if (!guarded.ok) return err(guarded.error);
+
+    const survivors = this.exposures.filter(
+      (exposure) =>
+        exposure.environmentId !== replacement.scope.environmentId ||
+        exposure.entityId !== replacement.entityId,
+    );
+    const previous = new Map(
+      this.exposures
+        .filter(
+          (exposure) =>
+            exposure.environmentId === replacement.scope.environmentId &&
+            exposure.entityId === replacement.entityId,
+        )
+        .map((exposure) => [exposure.toolId, exposure]),
+    );
+
+    const written: ToolExposure[] = [];
+    for (const toolId of replacement.toolIds) {
+      const tool = [...this.tools.values()].find((candidate) => candidate.toolId === toolId);
+      if (tool === undefined) return err(repositoryUnavailable(`tool_missing:${toolId}`));
+      const held = previous.get(toolId);
+      written.push({
+        exposureId:
+          held?.exposureId ?? asToolsIdentifier<ExposureId>(`exposure-${(this.sequence += 1)}`),
+        environmentId: replacement.scope.environmentId,
+        entityId: replacement.entityId,
+        externalEntityId: held?.externalEntityId ?? asToolsIdentifier<ExternalEntityId>("entity-1"),
+        toolId,
+        toolName: tool.name,
+        description: tool.description,
+        paramSchema: tool.paramSchema,
+        category: tool.category,
+        callbackUrl: replacement.callbackUrl ?? "",
+        connectionKind: held?.connectionKind ?? "wire",
+        enabled: true,
+        dispatchable: held?.dispatchable ?? replacement.callbackUrl !== null,
+        allowedAgentIds: held?.allowedAgentIds ?? [],
+        injectMcpContext: held?.injectMcpContext ?? false,
+      });
+    }
+    this.exposures = [...survivors, ...written];
+    return ok([...written].sort(byExposureOrder));
+  }
+
+  async setExposureEnabled(
+    scope: EnvironmentScope,
+    exposureId: ExposureId,
+    enabled: boolean,
+  ): Promise<Result<ToolExposure>> {
+    const guarded = this.guard(scope, "setExposureEnabled");
+    if (!guarded.ok) return err(guarded.error);
+    const index = this.exposures.findIndex((exposure) => exposure.exposureId === exposureId);
+    if (index === -1) return err(exposureNotFound(exposureId));
+    const next = { ...(this.exposures[index] as ToolExposure), enabled };
+    this.exposures[index] = next;
+    return ok(next);
+  }
+
+  // ---- AgentToolPolicy ----------------------------------------------------
+
+  async listAgentPolicyBindings(
+    scope: EnvironmentScope,
+  ): Promise<Result<readonly AgentPolicyBinding[]>> {
+    const guarded = this.guard(scope, "listAgentPolicyBindings");
+    if (!guarded.ok) return err(guarded.error);
+    return ok([...this.bindings]);
+  }
+
+  async findAgentPolicyBinding(
+    scope: EnvironmentScope,
+    agentId: string,
+  ): Promise<Result<AgentPolicyBinding | null>> {
+    const guarded = this.guard(scope, "findAgentPolicyBinding");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.bindings.find((binding) => binding.agentId === agentId) ?? null);
+  }
+
+  // ---- EntityToolPolicy ---------------------------------------------------
+
+  async listEntityToolPolicies(
+    scope: EnvironmentScope,
+    entityId: EntityId,
+  ): Promise<Result<readonly EntityToolPolicy[]>> {
+    const guarded = this.guard(scope, "listEntityToolPolicies");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.entityPolicies.filter((policy) => policy.entityId === entityId));
+  }
+
+  async upsertEntityToolPolicy(policy: EntityToolPolicy): Promise<Result<EntityToolPolicy>> {
+    return ok(this.seedEntityPolicy(policy));
+  }
+
+  // ---- OrganizationMcpPolicy ----------------------------------------------
+
+  async listOrganizationPolicies(
+    scope: EnvironmentScope,
+  ): Promise<Result<readonly OrganizationPolicyRecord[]>> {
+    const guarded = this.guard(scope, "listOrganizationPolicies");
+    if (!guarded.ok) return err(guarded.error);
+    return ok([...this.organizationPolicies]);
+  }
+
+  async upsertOrganizationPolicy(
+    scope: EnvironmentScope,
+    pattern: string,
+    effect: PolicyEffect,
+  ): Promise<Result<OrganizationPolicyRecord>> {
+    const guarded = this.guard(scope, "upsertOrganizationPolicy");
+    if (!guarded.ok) return err(guarded.error);
+    const at = new Date("2026-01-01T00:00:00.000Z");
+    const held = this.organizationPolicies.find((policy) => policy.pattern === pattern);
+    const record: OrganizationPolicyRecord = {
+      organizationMcpPolicyId:
+        held?.organizationMcpPolicyId ??
+        asToolsIdentifier<OrganizationMcpPolicyId>(`orgpolicy-${(this.sequence += 1)}`),
+      pattern,
+      effect,
+      createdAt: held?.createdAt ?? at,
+      updatedAt: at,
+    };
+    this.organizationPolicies = [
+      ...this.organizationPolicies.filter((policy) => policy.pattern !== pattern),
+      record,
+    ];
+    return ok(record);
+  }
+
+  async deleteOrganizationPolicy(
+    scope: EnvironmentScope,
+    organizationMcpPolicyId: OrganizationMcpPolicyId,
+  ): Promise<Result<boolean>> {
+    const guarded = this.guard(scope, "deleteOrganizationPolicy");
+    if (!guarded.ok) return err(guarded.error);
+    const before = this.organizationPolicies.length;
+    this.organizationPolicies = this.organizationPolicies.filter(
+      (policy) => policy.organizationMcpPolicyId !== organizationMcpPolicyId,
+    );
+    return ok(this.organizationPolicies.length !== before);
+  }
+
+  // ---- EntityMcpConfig / EntityMcpClient ----------------------------------
+
+  async findMcpConfig(
+    scope: EnvironmentScope,
+    entityId: EntityId,
+  ): Promise<Result<EntityMcpConfig | null>> {
+    const guarded = this.guard(scope, "findMcpConfig");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.mcpConfigs.get(entityId) ?? null);
+  }
+
+  async saveMcpConfig(scope: EnvironmentScope, config: EntityMcpConfig): Promise<Result<EntityMcpConfig>> {
+    const guarded = this.guard(scope, "saveMcpConfig");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.seedMcpConfig(config));
+  }
+
+  async findMcpClient(
+    scope: EnvironmentScope,
+    entityId: EntityId,
+  ): Promise<Result<EntityMcpClient | null>> {
+    const guarded = this.guard(scope, "findMcpClient");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.mcpClients.get(entityId) ?? null);
+  }
+
+  async saveMcpClient(scope: EnvironmentScope, client: EntityMcpClient): Promise<Result<EntityMcpClient>> {
+    const guarded = this.guard(scope, "saveMcpClient");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.seedMcpClient(client));
+  }
+
+  // ---- ToolCall ----------------------------------------------------------
+
+  async listStepCalls(scope: EnvironmentScope, stepId: string): Promise<Result<readonly ToolCall[]>> {
+    const guarded = this.guard(scope, "listStepCalls");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.calls.filter((call) => call.stepId === stepId));
+  }
+
+  async saveCall(scope: EnvironmentScope, call: ToolCall): Promise<Result<ToolCall>> {
+    const guarded = this.guard(scope, "saveCall");
+    if (!guarded.ok) return err(guarded.error);
+    this.calls = [...this.calls.filter((held) => held.toolCallId !== call.toolCallId), call];
+    return ok(call);
+  }
+
+  // ---- ToolHealth ---------------------------------------------------------
+
+  async findHealth(
+    scope: EnvironmentScope,
+    toolId: ToolId,
+    entityExternalId: ExternalEntityId | null,
+  ): Promise<Result<ToolHealth | null>> {
+    const guarded = this.guard(scope, "findHealth");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(this.health.get(healthKey(toolId, entityExternalId)) ?? null);
+  }
+
+  async saveHealth(scope: EnvironmentScope, health: ToolHealth): Promise<Result<ToolHealth>> {
+    const guarded = this.guard(scope, "saveHealth");
+    if (!guarded.ok) return err(guarded.error);
+    this.health.set(healthKey(health.toolId, health.entityExternalId), health);
+    return ok(health);
+  }
+
+  // ---- ToolCallAudit ------------------------------------------------------
+
+  async appendAudit(scope: EnvironmentScope, entry: AuditEntry): Promise<Result<AuditEntry>> {
+    const guarded = this.guard(scope, "appendAudit");
+    if (!guarded.ok) return err(guarded.error);
+    this.audit.push(entry);
+    return ok(entry);
+  }
+
+  async pageAudit(scope: EnvironmentScope, query: AuditQuery): Promise<Result<readonly AuditEntry[]>> {
+    const guarded = this.guard(scope, "pageAudit");
+    if (!guarded.ok) return err(guarded.error);
+    return ok(
+      [...this.audit]
+        .filter((entry) => query.toolName === null || entry.toolName === query.toolName)
+        .reverse()
+        .slice(query.offset, query.offset + query.limit),
+    );
+  }
+
+  /**
+   * The WHOLE ancestry, not the leaf.
+   *
+   * Comparing `environmentId` alone would accept a grant minted for an
+   * environment that has since been re-parented — the exact cross-tenant read
+   * the scope union exists to prevent, and the one a permissive double hides.
+   */
+  private guard(scope: EnvironmentScope, operation: string): Result<true> {
+    if (this.failNextRead !== null) {
+      const reason = this.failNextRead;
+      this.failNextRead = null;
+      return err(repositoryUnavailable(reason));
+    }
+    if (this.failOperations.has(operation)) {
+      return err(repositoryUnavailable(`unavailable:${operation}`));
+    }
+    if (resolvePath(scope) !== resolvePath(this.scope)) {
+      return err(repositoryUnavailable(`out_of_scope:${operation}`));
+    }
+    return ok(true);
+  }
+}

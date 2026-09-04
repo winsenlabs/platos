@@ -307,18 +307,49 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //   783 -> 850  +67: WIN-256 makes `agents` real (ADR M0.3 §1 context 5).
     //               Measured over the integrated tree, not carried.
     //
+    //   850 -> 905  +55: WIN-256 makes `tools` real (ADR M0.3 §1 context 7).
+    //               Two rules are exercised here for the first time against
+    //               production code:
+    //
+    //                 (g) identity-isolation. `tools` is the first adopted
+    //                     context on the FAR side of that rule — it imports
+    //                     `@platos/context-identity-access` one way, which is
+    //                     exactly the §3 `auth -> tool-gateway` inversion, and
+    //                     the rule proves the reverse edge is absent.
+    //
+    //                 (h) SDK containment for `@modelcontextprotocol`. The
+    //                     context declares the `ToolDispatch` port the SDK will
+    //                     sit behind; no file under `domain/` or `application/`
+    //                     names the package, which is what makes the rule
+    //                     enforceable rather than aspirational once the adapter
+    //                     lands.
+    //
+    //               Its four peer dependencies are the widest allow-list any
+    //               adopted context has, and no rule needed changing. Measured
+    //               over the integrated tree, not carried.
+    //   905 -> 906   +1: WIN-256's unproven-guard wave adds
+    //               packages/contexts/tools/contracts/operator-gate.test.ts,
+    //               the suite that proves the operator gate on all fourteen
+    //               published methods that have one. It is a contracts-layer
+    //               file and rule (c) judges it: it imports this context's own
+    //               `contracts/index.js`, its `domain/index.js` and its
+    //               `application/testing/index.js`, and no peer context at all.
+    //               Every other file that wave touches already existed, so the
+    //               census moves by exactly one.
+    //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
     // 397 + 44 = 441, the skills branch pinned 397 + 55 = 452, the jobs branch
     // pinned 397 + 51 = 448, the memory branch pinned 397 + 77 = 474 and the
     // cost-monitoring branch pinned 397 + 63 = 460, the privacy branch pinned
-    // 397 + 48 = 445, the observability branch pinned 397 + 48 = 445 as well and
-    // the agents branch pinned 397 + 67 = 464, each blind to the others.
-    // All eleven slices are disjoint and eventing, skills, jobs, memory,
-    // cost-monitoring, privacy, observability and agents move this census on
-    // INDEPENDENT axes, so the integrated census is their SUM and not any pin:
-    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 = 850.
+    // 397 + 48 = 445, the observability branch pinned 397 + 48 = 445 as well,
+    // the agents branch pinned 397 + 67 = 464 and the tools branch pinned
+    // 397 + 56 = 453, each blind to the others.
+    // All twelve slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring, privacy, observability, agents and tools move this census
+    // on INDEPENDENT axes, so the integrated census is their SUM and not any
+    // pin: 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 = 906.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -326,7 +357,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 850, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 906, "the generated V1 source census must stay exact");
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

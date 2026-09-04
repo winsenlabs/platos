@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "699585d71cc2593dd4b2e4d04f95c2bfb73e918356ff865453b0ce6037f8e706"
+      "sha256": "6eb35eeee5db83be32899eb65716427c4525404b8c53e41d5111b83618502e51"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "51380c20431ba5996458a6a2851c0d0bcd6be35e2564697a51f500d6a4f0b611"
+      "sha256": "392fe4560673b719f08fe453b441cfe347113df2ce5553fab25e53e4bb8672bc"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "3d61ab2c20657c112d04f881258eebd4683b09d23e2872770688a6bac5a0975d"
+      "sha256": "c78d4e83db7892662c0bacb1281f5470b3304b66f699a2dfd448d7bd6fb604f9"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "8e4081d708943b45a7836e42416aaaa476e2bf0827331e32537f56395d6ff9c9"
+      "sha256": "2424143d78d82fe06796a525497085acf115755c7dca3f6ede0ba75b0d38b94c"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "b225df7a693149e4b7e20131c45d68dcdf8d13e093d2403f6973f205d1f8388e"
+      "sha256": "61b90d4d3ca60bef7a0e7979e67580b85c3726cb006db8b8659e72aae8d0e097"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "685898e45d08ae5d6b4f01a1a3e650ccad92a63413c4c5bdca36e42984c348e3"
+      "sha256": "aa8e86ef57ccbb07022c4ef57c38a9acf383fe1efc198cdeaa77f0d66c1e91c0"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "06d4c360937e5ea660e171e56bde42b3fa09f7258b94042f72b7de1cf022a6f7"
+      "sha256": "40db42906528985f1fea4c67afbf6b9cfdad16b056e9865b92ca76bbcb275508"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3938,7 +3938,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "b650770cd840983fdbe1f9548ac58e95a61330e45f50cca31a28a4c766080c1a"
+      "sha256": "9e996572548f1cfed665073d4441a9273170f73cd8e41f7b643618f2a28f1651"
     },
     {
       "path": "scripts/workspace-reachability.mjs",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "10e53e217240112975a96fc7e5d2afba1f516e05bb2241d79b8786ffd5d7ef9b"
+      "sha256": "d5f12938f03271571008ecf686aacdcbe5e5ef74e60633c811c2f28cbae7d303"
     }
   ]
 }
