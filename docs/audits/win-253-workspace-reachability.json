@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "25c39fd174130451bd48256efdb95cc2c28edc76b3f46397fd402d4228871276",
+  "evidenceSha256": "e9d08c09aab2ee4bda6189ca4f9f3d2d503332a86beafb4d59fefeac07af88ed",
   "generatedOwnership": {
     "explicitHeaderFileCount": 30,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f06208f5e1dea268264da7d91c1b775a4734df914742252c49690092bc727d8d",
+    "aggregateSha256": "1f6b9675eb2d6c35032d9322794cabdad7d91ef8e428cbca4bb40f137e9a9732",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -3901,7 +3901,7 @@
       },
       {
         "path": "docs/adr/M0.3-bounded-contexts.md",
-        "sha256": "34d27d54593b0d42bf210c7fd027b9d75047b6e35d44e6521e68978182de10fc"
+        "sha256": "4b966149553581d44e2eeb6509b8aaa140f4fcf6f548cf242824127060d2a0e9"
       },
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "a5e9bcf59b7e0da312483b47c1afc3eed180a708c1043ec773b280369cfd8004"
+        "sha256": "74fdb2b6381b5b1fcde2c0535c4ccc623ca1da8266e8d02d1d4870677e8c0b0a"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11137,7 +11137,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-identity.json",
-        "sha256": "12d510b558b51d712bd49d827fd27a972031ab763a4e1cc29d543cce94970dee"
+        "sha256": "e0d7681553c4dab0afcddfac6aad3f7633aeb628762962fa5caf5dcc04b12b5b"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations.json",
@@ -45342,7 +45342,7 @@
             {
               "from": "docs/adr/M0.3-bounded-contexts.md",
               "kind": "reference",
-              "line": 508
+              "line": 525
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -45788,7 +45788,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "1bd8a4e324f5e5cdb87a1a849b268604df77a2e525929971f9a1fbe243cabba7",
+      "evidenceSha256": "6f7b9c4e0806f429ca3ba87ae1346fe9e91b216d6db697aaebd19078fac0a668",
       "manifestSha256": "fdadd25374dd9fe10175698879fbbf24aa22acea5003b38595d32444e35b1c83",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -52579,6 +52579,11 @@
               "line": 185
             },
             {
+              "from": "docs/v1-ledger-rules.json",
+              "kind": "reference",
+              "line": 689
+            },
+            {
               "from": "packages/contexts/identity-access/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -52590,12 +52595,17 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/v1-ledger-rules.json",
+              "docs/v1-ledger-rules.json"
+            ],
+            [
               "packages/contexts/identity-access/README.md",
               "packages/contexts/identity-access/README.md"
             ]
           ],
           "roots": [
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/v1-ledger-rules.json",
             "packages/contexts/identity-access/README.md"
           ]
         },
@@ -54137,7 +54147,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "424b0ec38a5c2f593776a4d3a91f948b0437f0e33422b8e9a400dec7f9bdc57d",
+      "evidenceSha256": "328f477a17ab5eadb1d8cd9978abe3dc34c1cd21341dd114e06dd319a05a4968",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
