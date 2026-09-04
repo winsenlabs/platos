@@ -101,6 +101,28 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * No other package moved: the rebase touched no suite outside providers, and
  * `files` stays at the 134 that closed MAJOR 2. Any further drift is a finding
  * to report, not a number to force.
+ *
+ * WIN-257 TRANCHE 1 DELTA (M2.2), `tejas/win-257-operator-identity` on v1
+ * `95cbacc1`. One package moves:
+ *
+ *   identity-access 17 -> 18 files, 231 -> 256 cases; 1000 -> 1025 total. The
+ *   new file is `application/identity-access-service.test.ts` (25 cases): the
+ *   refusal suite for `createIdentityAccessService`, the first implementation of
+ *   the published `IdentityAccessContract`. Its cases are 1 contract-identity, 6
+ *   operator refusals, 4 operator projection cases, 4 cross-tenant denials, 6
+ *   capability/lifecycle refusals and 4 rate-limit cases.
+ *
+ *   The FILE count moving is what makes this delta legible; the CASE count is
+ *   the part a file-count pin could not see, and both were checked against what
+ *   `pnpm --filter @platos/context-identity-access exec vitest run` prints —
+ *   "Test Files 18 passed (18) / Tests 256 passed (256)".
+ *
+ *   Three existing identity-access suites were EDITED and none gained or lost a
+ *   case: two assertions in `authenticate-bearer-token.test.ts` and one in
+ *   `domain/authorization-scope.test.ts` moved to the new MISSING_PERMISSION
+ *   code, and one case in `authenticate-operator.test.ts` gained a store-lookup
+ *   assertion. `apps/core-api` gained 8 composition cases and is outside
+ *   PACKAGE_ROOTS, so it does not appear here.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -122,7 +144,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/eventing": { files: 0, cases: 0 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 0, cases: 0 },
-  "packages/contexts/identity-access": { files: 17, cases: 231 },
+  "packages/contexts/identity-access": { files: 18, cases: 256 },
   "packages/contexts/jobs": { files: 0, cases: 0 },
   "packages/contexts/memory": { files: 0, cases: 0 },
   "packages/contexts/observability": { files: 0, cases: 0 },
@@ -142,7 +164,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 1000;
+export const EXPECTED_RUNTIME_TOTAL = 1025;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
