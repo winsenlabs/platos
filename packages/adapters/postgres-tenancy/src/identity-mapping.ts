@@ -91,8 +91,31 @@ export interface ScopeAncestry {
   readonly environmentOrganizationId?: string | null;
 }
 
+/**
+ * The four columns as READ. `scopeKind` is a bare `string` on purpose.
+ *
+ * The generated client types it as the schema enum, which is exactly the
+ * assumption this module exists to refuse: during the expand/contract window a
+ * row written by a binary that knows a fifth value is sitting in the table, and
+ * a type that says it cannot be there does not stop it being there — it stops
+ * the code that would have caught it from being written.
+ */
 export interface ScopeColumns {
   readonly scopeKind: string;
+  readonly organizationId: string | null;
+  readonly projectId: string | null;
+  readonly environmentId: string | null;
+}
+
+/**
+ * The four columns as WRITTEN, narrowed to the schema enum.
+ *
+ * The write side is the opposite case from the read side: this binary chooses
+ * the value, so it must be one of the four, and the generated client's enum type
+ * is the right one to be held to.
+ */
+export interface ScopeWriteColumns {
+  readonly scopeKind: AuthorizationScopeKind;
   readonly organizationId: string | null;
   readonly projectId: string | null;
   readonly environmentId: string | null;
@@ -207,7 +230,7 @@ export function readAuthorizationScope(
  * The ancestry is recoverable from the project, which is what `readAuthorizationScope`
  * does.
  */
-export function writeAuthorizationScope(scope: AuthorizationScope): ScopeColumns {
+export function writeAuthorizationScope(scope: AuthorizationScope): ScopeWriteColumns {
   if (scope.kind === "GLOBAL") {
     return { scopeKind: "GLOBAL", organizationId: null, projectId: null, environmentId: null };
   }

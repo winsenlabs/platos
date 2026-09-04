@@ -28,6 +28,11 @@ export type { IdentityAccessRepository } from "./repository.js";
 export type {
   AccessKeyStore,
   BearerCredentialStore,
+  // WIN-258 T2: `EndUserStore` was declared in ./repository.ts, named on
+  // `IdentityAccessRepository`, and never re-exported here — so the one store of
+  // the ten that an adapter could not name was the one holding the tenant
+  // clause. Found by the first implementation of the port failing to compile.
+  EndUserStore,
   ImpersonationAuditStore,
   MagicLinkStore,
   OAuthStore,

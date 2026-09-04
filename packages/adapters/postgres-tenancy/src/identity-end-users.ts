@@ -48,10 +48,17 @@ const IDENTITY_COLUMNS = {
   disabledAt: true,
 } as const;
 
+interface EndUserSearchClause {
+  readonly displayName?: { readonly contains: string; readonly mode: "insensitive" };
+  readonly identities?: {
+    readonly some: { readonly subject: { readonly contains: string; readonly mode: "insensitive" } };
+  };
+}
+
 interface EndUserFilter {
   readonly organizationId: string;
   disabledAt?: null | { not: null };
-  OR?: readonly unknown[];
+  OR?: EndUserSearchClause[];
 }
 
 /**
@@ -85,7 +92,11 @@ export function createEndUserStore(transactions: TenancyTransactions): EndUserSt
           displayName: true,
           disabledAt: true,
           createdAt: true,
-          identities: { select: IDENTITY_COLUMNS },
+          // ORDERED, because an unordered nested list is not a reproducible
+          // answer. Without this the two identities of one end user come back
+          // in whatever order the planner produced, so the conformance run
+          // against the in-memory fake would pass or fail by luck.
+          identities: { select: IDENTITY_COLUMNS, orderBy: { id: "asc" } },
         },
         // `id` descending is the tiebreak, not decoration. Rows created in the
         // same millisecond would otherwise come back in an unstable order and a

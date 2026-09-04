@@ -99,16 +99,23 @@ export function createOperatorIdentityStore(
     },
 
     async upsert(identity: OperatorIdentityRecord): Promise<void> {
-      // Keyed on (userId, provider), NOT on (provider, subject), and the two
-      // are different upserts. The schema carries BOTH unique indexes: a user
-      // has at most one identity per provider, and a provider subject belongs
-      // to at most one user. Upserting on the subject would let a user
-      // accumulate a second GitHub identity when the provider re-issued their
-      // subject; upserting on (userId, provider) rebinds the existing row,
-      // which is what the extraction source does.
+      // KEYED ON (provider, subject), AND ONLY `providerEmail` IS UPDATED.
+      // That is `completeOAuthLogin`'s upsert byte for byte, and the first
+      // draft of this store had it keyed on (userId, provider) instead —
+      // rebinding a user's existing row to a new subject, which is a DIFFERENT
+      // operation. The differential against `PlatosAuthService` is what caught
+      // it; both keys exist as unique indexes on the table, so nothing about
+      // the schema alone says which one an upsert means.
+      //
+      // The consequence of matching the oracle is worth stating: a second
+      // subject for a user who already has an identity with this provider is an
+      // INSERT, and `OperatorIdentity_userId_provider_key` refuses it. That is
+      // the oracle's behaviour, it is asserted in
+      // `identity-constraints.integration.test.ts`, and the in-memory double —
+      // which carries neither unique index — accepts it silently.
       await transactions.reader().operatorIdentity.upsert({
         where: {
-          userId_provider: { userId: identity.userId, provider: identity.provider },
+          provider_subject: { provider: identity.provider, subject: identity.subject },
         },
         create: {
           userId: identity.userId,
@@ -116,7 +123,7 @@ export function createOperatorIdentityStore(
           subject: identity.subject,
           providerEmail: identity.providerEmail,
         },
-        update: { subject: identity.subject, providerEmail: identity.providerEmail },
+        update: { providerEmail: identity.providerEmail },
       });
     },
   };
