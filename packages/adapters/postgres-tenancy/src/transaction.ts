@@ -82,8 +82,6 @@ export interface TenancyTransactions {
   writer(scope: TransactionScope): TenancyTransactionClient;
   /** The client a READ must use: the open transaction if there is one, else the pool. */
   reader(): TenancyReader;
-  /** Open transactions, for tests that assert the registry does not leak. */
-  openTransactionCount(): number;
 }
 
 export function createTenancyTransactions(
@@ -156,10 +154,6 @@ export function createTenancyTransactions(
 
     reader(): TenancyReader {
       return ambient.getStore()?.client ?? client;
-    },
-
-    openTransactionCount(): number {
-      return open.size;
     },
   };
 }
