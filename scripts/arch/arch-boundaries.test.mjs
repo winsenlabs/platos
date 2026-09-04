@@ -636,8 +636,25 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               of which landed on the integration branch after it was cut.
     //               1113 is not the number here: the three deltas are disjoint
     //               and SUM, 1039 + 34 + 18 + 74 = 1165.
-    assert.equal(result.fileCount, 1165, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74);
+    //  1165 -> 1177 +12: WIN-258 adopts `packages/adapters/postgres-tenancy`,
+    //               the SECOND adapter and the first PostgreSQL one. 14 real .ts
+    //               files stand where 2 generated placeholders stood, so the
+    //               delta is a NET -- 14 - 2 = 12 -- written as that subtraction
+    //               for the same reason as conversations' above: the two
+    //               released placeholders are the only files this slice removes
+    //               and a deletion elsewhere must not hide behind them. Its
+    //               `.sql` fixture and its `mutations.json` are not source and
+    //               are not counted here; the v1 ledger counts all sixteen.
+    //               The rule to watch here is the NEW one, `tenancy-prisma-only`:
+    //               this is the only package in the V1 layout that may import
+    //               the ORM or the generated client package, and `src/client.ts`
+    //               is the only file in it that does. Before this slice the rule
+    //               did not exist and the ORM had no home at all -- it was banned
+    //               inside a context's domain/ and application/ and permitted
+    //               everywhere else. The rule is proved non-vacuous by adding
+    //               the import to a context file and watching it turn red.
+    assert.equal(result.fileCount, 1177, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
