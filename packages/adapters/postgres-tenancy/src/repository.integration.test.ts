@@ -31,7 +31,7 @@ import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/applicat
 import type { ConformanceIds } from "./conformance.js";
 import { runTenancyConformance } from "./conformance.js";
 import type { TenancyHarness } from "./harness.js";
-import { AT, MEMBER_USER, OPERATOR_SESSION, OWNER_USER, SECOND_OWNER_USER, startTenancyHarness } from "./harness.js";
+import { AT, EXPIRES, MEMBER_USER, OPERATOR_SESSION, OWNER_USER, SECOND_OWNER_USER, startTenancyHarness } from "./harness.js";
 
 const CONFORMANCE_IDS: ConformanceIds = {
   organizationId: "aaaaaaaa-0000-4000-8000-000000000001",
@@ -214,6 +214,116 @@ describe("integrity the in-memory double does NOT have", () => {
     const organizationId = await harness.seedOrganization("unique-project-org");
     await harness.seedProject(organizationId, "unique-project");
     await expect(harness.seedProject(organizationId, "unique-project")).rejects.toBeDefined();
+  });
+});
+
+describe("constraints that live in the MIGRATIONS and not in the double", () => {
+  // These three exist only in `prisma/migrations`, not in schema.prisma and not
+  // in the in-memory fake. The first one was found by this suite failing: a
+  // readable placeholder digest passed every unit test in the tree and was
+  // refused by PostgreSQL the first time the fixture was applied.
+
+  test("OrganizationInvitation_tokenHash_check refuses a digest that is not 64 hex characters", async () => {
+    const organizationId = await harness.seedOrganization("digest-check");
+    await expect(
+      harness.adapter.unitOfWork.run((transaction) =>
+        harness.adapter.saveInvitation(
+          {
+            id: asIdentifier(harness.freshId("0004")),
+            organizationId,
+            inviterId: asIdentifier(OWNER_USER),
+            acceptedByUserId: null,
+            email: asIdentifier("readable@example.test"),
+            role: OrganizationRole.MEMBER,
+            tokenDigest: asIdentifier("not-a-digest"),
+            expiresAt: EXPIRES,
+            acceptedAt: null,
+            revokedAt: null,
+            createdAt: AT,
+          },
+          transaction,
+        ),
+      ),
+    ).rejects.toBeDefined();
+  });
+
+  test("OrganizationInvitation_email_normalized_check refuses an unnormalised address", async () => {
+    const organizationId = await harness.seedOrganization("email-check");
+    await expect(
+      harness.adapter.unitOfWork.run((transaction) =>
+        harness.adapter.saveInvitation(
+          {
+            id: asIdentifier(harness.freshId("0004")),
+            organizationId,
+            inviterId: asIdentifier(OWNER_USER),
+            acceptedByUserId: null,
+            email: asIdentifier("  Mixed.Case@Example.Test  "),
+            role: OrganizationRole.MEMBER,
+            tokenDigest: asIdentifier("b2".repeat(32)),
+            expiresAt: EXPIRES,
+            acceptedAt: null,
+            revokedAt: null,
+            createdAt: AT,
+          },
+          transaction,
+        ),
+      ),
+    ).rejects.toBeDefined();
+  });
+
+  test("the PARTIAL unique index allows one live invitation per address and refuses a second", async () => {
+    const organizationId = await harness.seedOrganization("one-active-per-email");
+    const email = asIdentifier("one-active@example.test");
+    const first = asIdentifier(harness.freshId("0004"));
+    await harness.adapter.unitOfWork.run((transaction) =>
+      harness.adapter.saveInvitation(
+        {
+          id: first,
+          organizationId,
+          inviterId: asIdentifier(OWNER_USER),
+          acceptedByUserId: null,
+          email,
+          role: OrganizationRole.MEMBER,
+          tokenDigest: asIdentifier("c1".repeat(32)),
+          expiresAt: EXPIRES,
+          acceptedAt: null,
+          revokedAt: null,
+          createdAt: AT,
+        },
+        transaction,
+      ),
+    );
+    const second = {
+      id: asIdentifier(harness.freshId("0004")),
+      organizationId,
+      inviterId: asIdentifier(OWNER_USER),
+      acceptedByUserId: null,
+      email,
+      role: OrganizationRole.MEMBER,
+      tokenDigest: asIdentifier("c2".repeat(32)),
+      expiresAt: EXPIRES,
+      acceptedAt: null,
+      revokedAt: null,
+      createdAt: AT,
+    };
+    await expect(
+      harness.adapter.unitOfWork.run((transaction) =>
+        harness.adapter.saveInvitation(second, transaction),
+      ),
+    ).rejects.toBeDefined();
+
+    // Revoking the first one takes it out of the index's predicate, and the
+    // second row is then accepted. The index is PARTIAL, and this is what that
+    // word means at run time.
+    await harness.adapter.unitOfWork.run(async (transaction) => {
+      const live = await harness.adapter.findLiveInvitations(organizationId, email);
+      expect(live).toHaveLength(1);
+      await harness.adapter.saveInvitation({ ...live[0]!, revokedAt: AT }, transaction);
+    });
+    await harness.adapter.unitOfWork.run((transaction) =>
+      harness.adapter.saveInvitation(second, transaction),
+    );
+    expect(await harness.adapter.findLiveInvitations(organizationId, email)).toHaveLength(1);
   });
 });
 

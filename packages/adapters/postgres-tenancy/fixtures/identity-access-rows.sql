@@ -13,8 +13,14 @@
 -- for. When identity-access grows its own PostgreSQL adapter this file is
 -- replaced by a call to it.
 --
--- The identifiers are fixed so the suite can name them. They match
--- CONFORMANCE_IDS in src/repository.integration.test.ts.
+-- The identifiers are fixed so the suite can name them. They match the
+-- constants in src/harness.ts.
+--
+-- `OperatorSession.tokenHash` is 64 lowercase hex characters because
+-- `OperatorSession_tokenHash_check` requires it. That constraint is in the
+-- migrations and NOT in the in-memory double, which is the first thing this
+-- suite found: a readable placeholder was refused by PostgreSQL and would have
+-- been accepted by every unit test in the tree.
 
 INSERT INTO "User" ("id", "email", "displayName", "platformOperator", "createdAt", "updatedAt")
 VALUES
@@ -24,4 +30,4 @@ VALUES
 
 INSERT INTO "OperatorSession" ("id", "tokenHash", "tier", "userId", "expiresAt", "createdAt")
 VALUES
-  ('44444444-4444-4444-8444-444444444444', 'conformance-session-hash', 'OPERATOR', '11111111-1111-4111-8111-111111111111', '2026-06-01T09:00:00Z', '2026-05-01T09:00:00Z');
+  ('44444444-4444-4444-8444-444444444444', 'c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0', 'OPERATOR', '11111111-1111-4111-8111-111111111111', '2026-06-01T09:00:00Z', '2026-05-01T09:00:00Z');

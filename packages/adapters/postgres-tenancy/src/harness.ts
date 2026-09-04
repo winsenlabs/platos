@@ -31,6 +31,9 @@ export const OPERATOR_SESSION = "44444444-4444-4444-8444-444444444444";
 /** The one instant every fixture row is stamped with, so nothing is time-dependent. */
 export const AT = new Date("2026-05-01T09:00:00.000Z");
 
+/** A week after `AT`. Every invitation in the suites expires here. */
+export const EXPIRES = new Date("2026-05-08T09:00:00.000Z");
+
 export interface TenancyHarness {
   readonly client: TenancyDatabaseClient;
   readonly adapter: PostgresTenancyAdapter;

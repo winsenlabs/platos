@@ -44,6 +44,16 @@ export interface ConformanceIds {
   readonly operatorSessionId: string;
 }
 
+/**
+ * A token digest that satisfies `OrganizationInvitation_tokenHash_check`.
+ *
+ * The constraint is `~ '^[0-9a-f]{64}$'` and it lives in the migrations, not in
+ * the schema file and not in the in-memory double. A readable placeholder passes
+ * every unit test in the tree and is refused by PostgreSQL, which is precisely
+ * the class of divergence this scenario exists to surface.
+ */
+export const CONFORMANCE_TOKEN_DIGEST = "a1".repeat(32);
+
 const AT = new Date("2026-05-01T09:00:00.000Z");
 const LATER = new Date("2026-05-02T09:00:00.000Z");
 const EXPIRES = new Date("2026-05-08T09:00:00.000Z");
@@ -207,7 +217,7 @@ export async function runTenancyConformance(
         acceptedByUserId: null,
         email,
         role: OrganizationRole.MEMBER,
-        tokenDigest: asIdentifier<TokenDigest>("conformance-digest"),
+        tokenDigest: asIdentifier<TokenDigest>(CONFORMANCE_TOKEN_DIGEST),
         expiresAt: EXPIRES,
         acceptedAt: null,
         revokedAt: null,
@@ -218,7 +228,7 @@ export async function runTenancyConformance(
   );
   observed.liveInvitations = (await repository.findLiveInvitations(organizationId, email)).length;
   observed.invitationByDigest = (
-    await repository.findInvitationByTokenDigest(asIdentifier<TokenDigest>("conformance-digest"))
+    await repository.findInvitationByTokenDigest(asIdentifier<TokenDigest>(CONFORMANCE_TOKEN_DIGEST))
   )?.role;
   observed.firstConsume = await unitOfWork.run((transaction) =>
     repository.consumeInvitation(invitationId, LATER, memberUserId, transaction),
@@ -230,7 +240,7 @@ export async function runTenancyConformance(
     await repository.findLiveInvitations(organizationId, email)
   ).length;
   observed.consumedBy = (
-    await repository.findInvitationByTokenDigest(asIdentifier<TokenDigest>("conformance-digest"))
+    await repository.findInvitationByTokenDigest(asIdentifier<TokenDigest>(CONFORMANCE_TOKEN_DIGEST))
   )?.acceptedByUserId;
 
   // --- entity and environment session --------------------------------------
