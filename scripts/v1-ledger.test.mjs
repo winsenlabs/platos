@@ -729,8 +729,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // rule this issue adds. Nothing outside that directory moves: the generator
     // adoption, the new boundary rule, the sole-writer delegation and every
     // census pin are edits to files that already existed.
-    // 1042 + 13 = 1055.
-    packages: 1055,
+    //
+    // A FOURTEENTH file joined it once the guard sweep had been run:
+    // `packages/adapters/postgres-tenancy/mutations.json`, the 22-entry ledger,
+    // which the existing `packages.adapters.config` rule already classifies, so
+    // it needed no rule of its own. 16 real files where 2 placeholders stood.
+    // 1042 + 13 + 1 = 1056, and on the kind axis the extra 1 is config.
+    packages: 1056,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -890,11 +895,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // are all edits to files that already existed and add none.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 = 1131.
+    //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1131);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1132);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -911,9 +916,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
-    // +75, WIN-258 postgres-tenancy +13); this one re-derives it by summing the
+    // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1); this one
+    // re-derives it by summing the
     // per-area counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1131
+    rulesDocument.baseline.totalFiles + 1132
   );
 });
 
