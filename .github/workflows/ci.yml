@@ -294,6 +294,56 @@ jobs:
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
 
+  postgres-tenancy-repository:
+    name: postgres-tenancy-repository
+    # WIN-258. Runs the PostgreSQL TenancyRepository against a REAL PostgreSQL
+    # built by the repository's own `prisma migrate deploy` over the canonical
+    # tenancy schema, and compares it step by step against the in-memory fake the
+    # context ships as its contract fixture. It also proves the transaction
+    # boundary by failure injection and the three transaction-scope refusals by
+    # violating input.
+    #
+    # It is a SEPARATE job for the same reason differential-state-conservation
+    # is: it needs a Docker daemon, which the typecheck job's service containers
+    # do not provide, and `pnpm test:v1-packages` must stay runnable without one.
+    #
+    # The suites FAIL when Docker is absent rather than skipping. A skipped
+    # integration run and a passing one are indistinguishable in a summary, and
+    # this job is the whole of this issue's real-store evidence.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the tenancy database client
+        # The adapter imports the generated client through the package `main`,
+        # which vite resolves from dist/. Building it also runs `prisma generate`
+        # through the package's own prebuild, so the client and the migrations
+        # this job applies come from one schema.
+        run: pnpm --filter @platos/tenancy-database build
+
+      - name: Build the tenancy context
+        # vitest resolves @platos/context-tenancy through its package `main` too.
+        run: pnpm --filter "@platos/context-tenancy..." build
+
+      - name: PostgreSQL TenancyRepository integration suites
+        run: pnpm test:postgres-tenancy:integration
+
   differential-state-conservation:
     name: differential-state-conservation
     # WIN-284. Twin-runs the harness against TWO isolated PostgreSQL databases

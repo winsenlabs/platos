@@ -202,6 +202,36 @@ export const UNOWNED_ADR_ROWS = Object.freeze({
 });
 
 /**
+ * The ADAPTER that holds each owner's canonical PostgreSQL store.
+ *
+ * WHY THIS MAP HAS TO EXIST. The sole-writer rule says a canonical row has one
+ * writing CONTEXT. ADR M0.3 §2 says a context's `domain/` and `application/` may
+ * not import the ORM. Those two sentences are both right and, taken literally
+ * together, they forbid the row from ever being written: the only package
+ * allowed to write it is the only package not allowed to hold a client. The
+ * missing third sentence is ADR M0.3 §4's own note on the adapter directory —
+ * "the tenancy-database client; per-context repositories, owner-tagged" — which
+ * says the owner's PostgreSQL adapter writes on the owner's behalf.
+ *
+ * WHY IT IS NOT "ANY ADAPTER WHOSE OWNER MATCHES". `redis-ratelimit` is owned by
+ * `identity-access` and `notifier-email` by `cost-monitoring`; neither has any
+ * business writing a canonical row, and a rule derived from the adapter table's
+ * owner column would have granted both. Only a CANONICAL-STORE adapter is
+ * listed, and it is listed by hand, so granting one is a decision somebody made
+ * rather than a consequence of an unrelated table.
+ *
+ * The outbox pseudo-owner is absent because it is already an adapter: it
+ * resolves through `ownerDirectory` and needs no delegation.
+ */
+export const CANONICAL_STORE_ADAPTERS = Object.freeze({
+  // WIN-258. The PostgreSQL TenancyRepository. `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names the same directory as the ORM's one
+  // home, so the package permitted to write these rows and the package permitted
+  // to hold the client are the same package by construction.
+  tenancy: "packages/adapters/postgres-tenancy",
+});
+
+/**
  * ADR M0.3 §7 decision 10: the durable-runtime adapter owns the ENTIRE vendor
  * database behind one kernel port, so that schema needs no per-model rows. This
  * blanket entry is what makes "no domain context touches it" checkable.

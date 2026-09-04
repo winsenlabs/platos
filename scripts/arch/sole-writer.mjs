@@ -107,6 +107,7 @@ import ts from "typescript";
 import {
   BLANKET_OWNER,
   CANONICAL_SCHEMA,
+  CANONICAL_STORE_ADAPTERS,
   MUTATING_DELEGATE_METHODS,
   MUTATING_SQL_STATEMENT,
   OWNER,
@@ -128,6 +129,23 @@ const OUTBOX_DIRECTORY = "packages/adapters/outbox";
 /** Repo-relative directory that owns writes for `owner`. */
 export function ownerDirectory(owner) {
   return owner === OUTBOX_OWNER ? OUTBOX_DIRECTORY : `packages/contexts/${owner}`;
+}
+
+/**
+ * EVERY repo-relative directory permitted to write `owner`'s rows.
+ *
+ * The context itself, plus its canonical-store adapter when it has one. This is
+ * the pair the enforcement half compares against, and it is why the half can be
+ * switched on at all: before WIN-258 the only permitted directory was the
+ * context, and a context may not import the ORM (ADR M0.3 §2), so the one
+ * package allowed to write a row was the one package unable to. The delegation
+ * is declared per owner in `CANONICAL_STORE_ADAPTERS` rather than derived from
+ * the adapter table's owner column — see the note there for why.
+ */
+export function ownerDirectories(owner) {
+  const primary = ownerDirectory(owner);
+  const store = CANONICAL_STORE_ADAPTERS[owner];
+  return store === undefined ? [primary] : [primary, store];
 }
 
 /** Read the model names declared in the canonical schema. */
@@ -463,13 +481,15 @@ export function checkWriteEnforcement(root = repositoryRoot, scanRoots = SCAN_RO
     for (const write of found.writes) {
       writeCount += 1;
       const actual = owningPackage(virtualPath);
-      const expected = ownerDirectory(OWNER[write.model]);
-      if (actual !== expected) {
+      const permitted = ownerDirectories(OWNER[write.model]);
+      const expected = permitted[0];
+      if (!permitted.includes(actual)) {
         violations.push({
           ...write,
           expected,
+          permitted,
           actual,
-          message: `${write.model}.${write.method}() may be called only from ${expected}; ${OWNER[write.model]} is its sole writer`,
+          message: `${write.model}.${write.method}() may be called only from ${permitted.join(" or ")}; ${OWNER[write.model]} is its sole writer`,
         });
       }
     }

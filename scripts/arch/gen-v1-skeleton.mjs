@@ -121,6 +121,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/governance", // WIN-256 — the safety ledger and the kernel SafetyEventSink behind it, message ratings, eval criteria, judged evals and golden sets
   "packages/contexts/conversations", // WIN-256 — the turn-execution engine: Thread, Turn, Step, PostmanExecution, and the DAG sink nothing imports
   "packages/adapters/model-router-providers", // WIN-256 — the ModelRouter implementation and THE sole holder of the inference SDK
+  "packages/adapters/postgres-tenancy", // WIN-258 — the TenancyRepository over PostgreSQL and THE sole holder of the tenancy-database client
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
@@ -222,7 +223,7 @@ function workspaceDependencies(names) {
   return Object.fromEntries(names.map((name) => [name, "workspace:*"]));
 }
 
-function packageManifest({ name, description, main, types, dependencies = {}, exports = undefined, scripts = BUILD_SCRIPTS }) {
+function packageManifest({ name, description, main, types, dependencies = {}, devDependencies = {}, exports = undefined, scripts = BUILD_SCRIPTS }) {
   const manifest = {
     name,
     version: "0.0.0",
@@ -236,6 +237,7 @@ function packageManifest({ name, description, main, types, dependencies = {}, ex
     scripts,
   };
   if (Object.keys(dependencies).length) manifest.dependencies = dependencies;
+  if (Object.keys(devDependencies).length) manifest.devDependencies = devDependencies;
   return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
@@ -295,6 +297,16 @@ function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_P
 // permission real rather than theoretical. `ajv` is the JSON Schema validator the
 // structured-output surface needs and `zod` is the framework's own peer.
 const ADAPTER_RUNTIME_DEPENDENCIES = {
+  // WIN-258. `@platos/tenancy-database` is the generated PostgreSQL client over
+  // the canonical 93-model schema. It appears HERE and nowhere else, and
+  // `tenancy-prisma-only` in scripts/arch/boundary-rules.mjs names this one
+  // directory as its only home, so this table is what makes that permission real.
+  // It is a workspace specifier rather than a version range because the client is
+  // generated from a schema inside this repository; a range would pin a copy that
+  // could disagree with the migrations the same commit ships.
+  "postgres-tenancy": {
+    "@platos/tenancy-database": "workspace:*",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -306,8 +318,25 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   },
 };
 
+// What an adapter needs to TEST itself and must not ship with (WIN-258).
+//
+// `@testcontainers/postgresql` is the container harness the real-PostgreSQL
+// integration suites start. It is declared as a DEV dependency because it is not
+// part of the adapter at run time, and a container library in the runtime
+// dependency set would follow the adapter into the production image and into the
+// SBOM. The specifier is byte-identical to the one
+// `internal-packages/tenancy-database` already uses for the same purpose, so it
+// resolves to the entry already in pnpm-lock.yaml rather than opening a new
+// resolution — the same rule ADAPTER_RUNTIME_DEPENDENCIES states above.
+const ADAPTER_DEV_DEPENDENCIES = {
+  "postgres-tenancy": {
+    "@testcontainers/postgresql": "^10.28.0",
+  },
+};
+
 function adapterManifest(adapter, adopted) {
   const dependency = adapter.owner === "kernel" ? "@platos/kernel" : `@platos/context-${adapter.owner}`;
+  const isAdopted = adoptedSet(adopted).has(`packages/adapters/${adapter.dir}`);
   return packageManifest({
     scripts: scriptsFor(`packages/adapters/${adapter.dir}`, adopted),
     name: `@platos/adapter-${adapter.dir}`,
@@ -318,6 +347,9 @@ function adapterManifest(adapter, adopted) {
       ...workspaceDependencies([dependency]),
       ...(ADAPTER_RUNTIME_DEPENDENCIES[adapter.dir] ?? {}),
     },
+    // An unadopted adapter has no source of its own, so it has nothing to test
+    // and gets no test-only dependency.
+    devDependencies: isAdopted ? (ADAPTER_DEV_DEPENDENCIES[adapter.dir] ?? {}) : {},
   });
 }
 
