@@ -342,7 +342,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // seam; and the integration suite is two files plus a harness, because it
   // reached 604 effective lines — over the 500 ERROR threshold — as one. Nothing
   // the adapter adds is inside the 400-line warning band; the largest is the
-  // repository integration suite at 357, so the finding list below is unchanged.
+  // repository integration suite at 374, so the finding list below is unchanged.
   //
   // WIN-256 CONVERSATIONS, the seventeenth and last context, adds 74 more under
   // `packages/contexts/**` (78 real .ts files where 4 generated placeholders stood),
