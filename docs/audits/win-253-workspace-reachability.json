@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "03b143bb81fa6427aba0e5d275dcf9dfb575e1ceaae060d4556791e3acf831de",
+  "evidenceSha256": "fd6fd05841cd3fb8aefb23c3c206002df3f4614b1bfe22ec45359a3ebef00d7d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 30,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6e6e02096c823049f63d2e14742fc0856a84a42af5182db4714fdc0f24182828",
+    "aggregateSha256": "4bde510c1258d7d4cd7ba4fe46d585ab156563d533a097cf864f2eef8330d745",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11137,7 +11137,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations.json",
-        "sha256": "fa28f8c27838efbfc5fe2227a86b916314e380c178fdd746b0c430cfef6c6076"
+        "sha256": "7568a0f206175a1fcc4e457f6e0a46d5f03313e62b81b746503c3cc45f50af4c"
       },
       {
         "path": "packages/adapters/postgres-tenancy/package.json",
@@ -17837,7 +17837,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "31b90c9038e6b99cabe76da54e7c36c293477209247dd1e4ef58560b05fc7bdf"
+        "sha256": "229d2133fd06ef15aadf5012ba708f024730abbbc0167fdb656b2a1f07ad1674"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
