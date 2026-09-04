@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4f9ca66d2f2eec8fe4b876baf592d382c68678ff3e425ef68b21d7aad98c636a",
+  "evidenceSha256": "d99702d9ddada9b39a633cf0322ec1aea7b05ff2cbaa89c9e53b6b32061e7cfd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 50,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8fa688f6fa2a10acd1055b54d1775eac8e385c659ed8ec856c8502662e5f089f",
+    "aggregateSha256": "f1dd6ad09aae45d5d552ce0a975692001a94e555d03d604a064be7b4aa9aba9a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11137,7 +11137,7 @@
       },
       {
         "path": "packages/contexts/agents/application/dependencies.ts",
-        "sha256": "b36118e08e10617f591f4fd31e4f9985c7ffaef03740fccf088f02736fd2f350"
+        "sha256": "d1c13bd2186397cb4c63243f8d2a21db66410df22ef84a83fb04b65d32335541"
       },
       {
         "path": "packages/contexts/agents/application/index.ts",
@@ -11145,11 +11145,11 @@
       },
       {
         "path": "packages/contexts/agents/application/loadout.test.ts",
-        "sha256": "36a423259039087a63ac6593d80ee652e2f04362278cc0685889ee73c7a2fdb1"
+        "sha256": "0d78a651102bd4d6526fbbcbabb1af1ac20f385f49238786892f8fa6030d2aa0"
       },
       {
         "path": "packages/contexts/agents/application/loadout.ts",
-        "sha256": "80936befd381ce4deaf2a5feb641a21f9b0fec029e71e0bd01ec6b13599b14aa"
+        "sha256": "eae664b6a9ff95e1bd41d11f40f550cab7f2bbf12d95b12140f20f628db16b35"
       },
       {
         "path": "packages/contexts/agents/application/macros.test.ts",
@@ -11209,7 +11209,7 @@
       },
       {
         "path": "packages/contexts/agents/application/testing/in-memory-peers.ts",
-        "sha256": "a4dd7a8e5edb13ebe4f385f6595838315c44d96a87edc5c592d12849f4c60e7f"
+        "sha256": "08209fe97b85c489a22e13788a5001953c263bc121280ac557ab4cdf381031e2"
       },
       {
         "path": "packages/contexts/agents/application/testing/in-memory-scaffolding.ts",
@@ -11245,7 +11245,7 @@
       },
       {
         "path": "packages/contexts/agents/contracts/index.ts",
-        "sha256": "235e752ab5680d0735efacbdc9b6c2a0d2b259893b424b75182e091abf767963"
+        "sha256": "3784cc46bc17d0f381a28db30912da1ad4fcb3db121e9fc9e26f7c72de50ccee"
       },
       {
         "path": "packages/contexts/agents/contracts/views.ts",
@@ -53986,7 +53986,7 @@
             {
               "file": "packages/contexts/agents/application/dependencies.ts",
               "from": "packages/contexts/agents",
-              "line": 46,
+              "line": 57,
               "specifier": "@platos/context-providers"
             },
             {
@@ -53998,7 +53998,7 @@
             {
               "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/agents",
-              "line": 25,
+              "line": 31,
               "specifier": "@platos/context-providers"
             },
             {
@@ -54642,7 +54642,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "111ac81a9572fb42c9d573645e8a966940447a923e023a7412e8ff81262da7cb",
+      "evidenceSha256": "3fe02e8feeed439ff775f9ab7c8da7492560d29e1ed28c4f5d87582b62305dc9",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -56265,13 +56265,7 @@
             {
               "file": "packages/contexts/agents/application/dependencies.ts",
               "from": "packages/contexts/agents",
-              "line": 47,
-              "specifier": "@platos/context-skills"
-            },
-            {
-              "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
-              "from": "packages/contexts/agents",
-              "line": 26,
+              "line": 58,
               "specifier": "@platos/context-skills"
             }
           ],
@@ -56283,10 +56277,6 @@
             [
               "packages/contexts/agents",
               "packages/contexts/agents/application/dependencies.ts"
-            ],
-            [
-              "packages/contexts/agents",
-              "packages/contexts/agents/application/testing/in-memory-peers.ts"
             ]
           ],
           "roots": [
@@ -56647,7 +56637,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "6667a3af6d59fd2bfc002890c6798971284adddc0187e1074c78f8c543bbbf8d",
+      "evidenceSha256": "104a85ba8d8dc5cb6c829e25835bd789b8c58189ffe960debd5d9f82ff9b07f0",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -57513,7 +57503,7 @@
             {
               "file": "packages/contexts/agents/application/dependencies.ts",
               "from": "packages/contexts/agents",
-              "line": 48,
+              "line": 59,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -57525,7 +57515,7 @@
             {
               "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/agents",
-              "line": 27,
+              "line": 32,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -58680,7 +58670,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e5ab26a050a5439a604b16d80813f8562af2cab72de9e9290926bb8718f428fd",
+      "evidenceSha256": "ef964d11f4118b956524dd3abc960e590bf2953ccf43d39a03a8458c52e26da9",
       "manifestSha256": "f47da6a12a581ad961875d007cbeb6cf55037cdc46e8eba9b225c994c595daa4",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -62033,13 +62023,13 @@
             {
               "file": "packages/contexts/agents/application/dependencies.ts",
               "from": "packages/contexts/agents",
-              "line": 45,
+              "line": 56,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/agents/application/loadout.ts",
               "from": "packages/contexts/agents",
-              "line": 28,
+              "line": 30,
               "specifier": "@platos/kernel"
             },
             {
@@ -62105,7 +62095,7 @@
             {
               "file": "packages/contexts/agents/application/testing/in-memory-peers.ts",
               "from": "packages/contexts/agents",
-              "line": 24,
+              "line": 30,
               "specifier": "@platos/kernel"
             },
             {
@@ -62135,7 +62125,7 @@
             {
               "file": "packages/contexts/agents/contracts/index.ts",
               "from": "packages/contexts/agents",
-              "line": 44,
+              "line": 48,
               "specifier": "@platos/kernel"
             },
             {
@@ -68684,7 +68674,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "edcb1d12e24cf5f123047e0b491637f618b474c3cd414ed1649a1c19db4a6f25",
+      "evidenceSha256": "319f780882c2feb25675821342f0a69117abe6d0b6a759c4cbfb1134b4e4d480",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
