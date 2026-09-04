@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "46ba17df084ee4fc22924f7632bcf3cd90d4af7528912e7405b7d31b3a0565a7",
+  "evidenceSha256": "67eb2c2107332808cbf468cde04f9b63e137262eea1a67d37a2f63d8a3374748",
   "generatedOwnership": {
     "explicitHeaderFileCount": 80,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "dbee925cdce7104fbeb4d972b29b5915d211a9587d08f5ec2d48d099ee39c7e3",
+    "aggregateSha256": "5ef447a9ee50fbd3c4651091f32f7330c424ba91dcc2934e0325efcc7c9948f1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -10921,7 +10921,7 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/adapter.ts",
-        "sha256": "c647833e7d17642d665acbe9f6ea78fa96d8b6ede7a9c7f8d9111a16b82896cc"
+        "sha256": "9fbd3c7e414d8ea3a955626db6662d8884c59da6fc03f0cb598c0c45c0b79041"
       },
       {
         "path": "packages/adapters/model-router-providers/src/call.test.ts",
@@ -10977,7 +10977,7 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/object-output.test.ts",
-        "sha256": "03edbf7b9a46d75b870ebe526c829977c024b47ef75978a0c03b7aa3dca6e6b7"
+        "sha256": "36d7516acfc6257945fe56e69503dbf6e7046d927c97aea5cad1a4a990126a1e"
       },
       {
         "path": "packages/adapters/model-router-providers/src/probe.ts",
@@ -10985,7 +10985,7 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/run.ts",
-        "sha256": "4557b5b20da9515b9a1fa77bd8241a059583f7039c6ef1d2b7efd71ba4bc59b7"
+        "sha256": "31f06ef6e1a17dfd2718bfdfe056e4d183d66321c2f3cd369344887cff15cfb9"
       },
       {
         "path": "packages/adapters/model-router-providers/src/steps.test.ts",
@@ -10993,7 +10993,7 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/steps.ts",
-        "sha256": "656d1788a97345474906c5609494e0f8e8e58d602321f018dc26b9335fa97cf7"
+        "sha256": "fb84a22f0f9a2ad5da76fa1dafc82834a33f7edd89e55c3267287f18443e611d"
       },
       {
         "path": "packages/adapters/model-router-providers/src/stream.test.ts",
@@ -11001,15 +11001,15 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/streaming.ts",
-        "sha256": "9a18e9a0a740c025190b437beb50272cba5220d0fabf1d1794ab7dc8b623f44a"
+        "sha256": "c42fa0731c77de6c41fca0937b571bf01e4e28f6b5bcf7e54f2cfb17feca1578"
       },
       {
         "path": "packages/adapters/model-router-providers/src/structured.test.ts",
-        "sha256": "52982969a47540de94cd317b89a9a8d018ebc44b2f7af6f48d0f2ea7f0546de1"
+        "sha256": "1966ed7e1a24e654d5be2fb79cfe60409987a9032b3579b715b01764cdcf80f6"
       },
       {
         "path": "packages/adapters/model-router-providers/src/structured.ts",
-        "sha256": "aa650f3e2f0ddc3b68eaa351646b319600a637f321b4b50d1a8eaf29680b57b0"
+        "sha256": "229f037081e817c9ed196ce2a2c131771cdc9170d52faf4590c157a61bcb3aa3"
       },
       {
         "path": "packages/adapters/model-router-providers/src/testing.ts",
@@ -11033,7 +11033,7 @@
       },
       {
         "path": "packages/adapters/model-router-providers/src/transport.ts",
-        "sha256": "de336db5f3e2df1512b3d086b990d05d3e086eaeb85a3e3f02452ab671439708"
+        "sha256": "518981ffeed95f093804ed25566c9249259bbbacaad2c53cdc7838219d6b64c4"
       },
       {
         "path": "packages/adapters/model-router-providers/src/usage.test.ts",
@@ -12089,11 +12089,11 @@
       },
       {
         "path": "packages/contexts/providers/domain/errors.test.ts",
-        "sha256": "5f505da387b2d991339d5b2b5b1cd6475449755ff6170ae49da87d09c0f558b9"
+        "sha256": "bd65cb1c152cc57e5a5381d2d81cff5954b0166530ea45f8b6620afa48cb5e9d"
       },
       {
         "path": "packages/contexts/providers/domain/errors.ts",
-        "sha256": "a37f720d5287b8eea85d24c9faf53d05eba169b32cc8ae290a7540ee963415fa"
+        "sha256": "2f4c6c8d0faaf02f758bde05e697ba5a3b1404687ebeba63b331f9fa9d78e4f6"
       },
       {
         "path": "packages/contexts/providers/domain/generation.test.ts",
@@ -14885,11 +14885,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "5281973f3c6d1a78a3b11696813fee6bc0243bedc461d4af91cead8b0ef7c312"
+        "sha256": "5fa897fd59fe6c827374dcbef71f04025b3c235cb6113807a60a2f064095eb49"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "814a079f8f9e2752881306c1148b4ac896c05c24bdadebdaa8fd5bfebf86313c"
+        "sha256": "fddd4fea7a4cadd938270a9e37898d98988eaca95bfde1d0425c508106acbc60"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -40404,7 +40404,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 275
+              "line": 276
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -40568,7 +40568,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "801c6faecd7c0993cf221504e6a2e92e5fd528a12e1b21d1b2f9743fccd91725",
+      "evidenceSha256": "2b56c59015ab43c9019f9e619695a2671ca84955bc240109369daa48ebc1a791",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -51323,7 +51323,7 @@
             {
               "file": "packages/adapters/model-router-providers/src/adapter.ts",
               "from": "packages/adapters/model-router-providers",
-              "line": 28,
+              "line": 35,
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
@@ -51401,7 +51401,7 @@
             {
               "file": "packages/adapters/model-router-providers/src/transport.ts",
               "from": "packages/adapters/model-router-providers",
-              "line": 26,
+              "line": 16,
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
@@ -51682,7 +51682,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 264
+              "line": 265
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -52207,7 +52207,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d2a7a16aea4ab05bd82cbce11dce64ccb633197485bd05f7195afbfbf09cd821",
+      "evidenceSha256": "c0bb356cf9a1823dcb8cefcfc21f446d5d8c1a882f617237fc2aedef30e0e34a",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
