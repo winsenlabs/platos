@@ -54,6 +54,30 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
     "reflect-metadata": "^0.2.2",
     rxjs: "^7.8.1",
   },
+  // WIN-256. The inference framework, its four provider bindings, the JSON
+  // Schema validator the structured-output surface needs, and the framework's
+  // own zod peer.
+  //
+  // This is the SECOND half of ADR M0.3's cutting rule made executable. §5.1
+  // rule (h) and the `inference-sdk-only` / `provider-sdk-only` rules in
+  // scripts/arch/boundary-rules.mjs say the SDK may only be IMPORTED here; this
+  // line is where it may only be DECLARED here. Without it a context could add
+  // `ai` to its own manifest and pass the import rule by never importing it —
+  // and then the next file that did would be one review away from legal.
+  //
+  // The ranges are byte-identical to apps/agent's, on purpose: pnpm then
+  // resolves them to the entries already in pnpm-lock.yaml rather than opening a
+  // second resolution, so extracting a context cannot become a supply-chain
+  // change. Changing a range here is a reviewed line, which is the point.
+  "packages/adapters/model-router-providers": {
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
+    ai: "^7.0.28",
+    ajv: "8.18.0",
+    zod: "3.25.76",
+  },
 };
 export const EXPECTED_ALIASES = {
   "@platos/kernel": ["packages/kernel/src/index.ts"],

@@ -511,11 +511,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // to the others. The governance branch alone branched from the agents
     // branch rather than from v1, so it could see agents' +67 and pinned
     // 397 + 67 + 83 = 547 — a partial sum too, blind to the other nine.
-    // All fourteen slices are disjoint and eventing, skills, jobs, memory,
-    // cost-monitoring, privacy, observability, agents, tools, channels and
-    // governance move this census on INDEPENDENT axes, so the integrated census
-    // is their SUM and not any pin:
-    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 = 1031.
+    // All sixteen slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring, privacy, observability, agents, tools, channels,
+    // governance, the conversations prerequisite and the model router adapter
+    // move this census on INDEPENDENT axes, so the integrated census is their
+    // SUM and not any pin:
+    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 = 1031, and the
+    // last two rows below carry it to 1073.
     // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: this census only
     // ever grows, because adoption replaces four placeholders in place and adds
     // the rest, so a fall in this number is always a finding.
@@ -538,11 +540,31 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               property that makes it satisfiable at all, and the eleven
     //               contexts adopted since that branch left v1 name no `ai` or
     //               `@ai-sdk/*` import either. Its own mutation proofs are the
-    //               four fixtures above. This slice adopts NO context, so it is
+    //               four fixtures above. This slice adopts NO project, so it is
     //               the one wave-B delta that moves this census without moving
     //               the generator-ownership count beside it.
-    assert.equal(result.fileCount, 1039, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
+    //  1039 -> 1073 +34: WIN-256's MODEL ROUTER ADAPTER. Fifteen source modules
+    //               and fifteen suites under packages/adapters/model-router-
+    //               providers, plus two domain modules and two suites under
+    //               packages/contexts/providers. Nothing was deleted — the two
+    //               declaration placeholders adoption released were REPLACED in
+    //               place by real files of the same names — so the +34 is
+    //               32 + 2 with no subtraction hidden inside it. Its own branch
+    //               pinned 397 + 8 + 34 = 439, blind to the eleven contexts
+    //               adopted since it left v1; the +34 is the part that
+    //               conserves and 439 is not the number here.
+    //
+    //               `inference-sdk-only` stops being a rule with nothing to
+    //               judge. It now judges a package that really does import `ai`
+    //               and four `@ai-sdk/*` bindings, and finds nothing, because
+    //               that package is its declared home. Every other one of the
+    //               1073 is judged by the same rule against the same source
+    //               pattern and none of them reaches for it — which is the
+    //               property the whole extraction turns on, and which was
+    //               previously true only because no file anywhere imported the
+    //               framework at all.
+    assert.equal(result.fileCount, 1073, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

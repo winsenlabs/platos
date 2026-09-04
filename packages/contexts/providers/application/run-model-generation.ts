@@ -46,6 +46,7 @@ import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 import {
   DEFAULT_PROMPT_CACHE_POLICY,
   modelSessionExpired,
+  passBudget,
   placeCacheBreakpoints,
   stepBudget,
   toolCatalogue,
@@ -126,6 +127,14 @@ async function admit(
   if (!budget.ok) return err(budget.error);
   const tools = toolCatalogue(command.tools);
   if (!tools.ok) return err(tools.error);
+  // The step budget bounds the tool loop; the PASS budget bounds the
+  // schema-correction loop, and only a schema-shaped request has one. Both are
+  // checked here for the same reason: a budget a provider discovers is a budget
+  // a provider has already been paid to discover.
+  if (command.output.kind === "object") {
+    const passes = passBudget(command.output.maxPasses);
+    if (!passes.ok) return err(passes.error);
+  }
   const admissible = withinCacheBudget(command.prompt, policy);
   if (!admissible.ok) return err(admissible.error);
 

@@ -34,7 +34,12 @@ function codeLines(count) {
 }
 
 test("selectors and thresholds are the exact accepted WIN-251 max-file-lines slice", () => {
-  assert.deepEqual(SELECTORS, ["packages/contexts/**", "apps/core-api/src/transports/**"]);
+  assert.deepEqual(SELECTORS, [
+    "packages/kernel/**",
+    "packages/contexts/**",
+    "packages/adapters/**",
+    "apps/core-api/src/transports/**",
+  ]);
   assert.equal(WARNING_THRESHOLD, 400);
   assert.equal(ERROR_THRESHOLD, 500);
 });
@@ -75,11 +80,14 @@ test("comment and blank padding cannot mutate a 400-line file into a warning", (
 
 test("the live selectors scan an exact nonzero source census", () => {
   const result = auditMaxFileLines(repositoryRoot);
-  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666 -> 714 -> 781. WIN-256 made
-  // packages/kernel and four contexts
+  // 74 -> 263 -> 328 -> 372 -> 427 -> 478 -> 555 -> 618 -> 666 -> 714 -> 781 ->
+  // 837 -> 879 -> 962 -> 970, and then 970 -> 974 -> 1048 once the selector
+  // widens. WIN-256 made packages/kernel and four contexts
   // real, so the ADR M0.3 §6 file-size budget now applies to real production
   // source rather than to placeholders. Every one of the 263 is inside the
-  // 400/500-line budget.
+  // 400/500-line budget. The chain above stopped at 781 while the pin below had
+  // already moved four times past it; it is carried through to the pinned number
+  // here rather than left short.
   //
   // +65: the same issue makes `providers` real. The budget bit once while it was
   // being written — one test module reached 441 effective lines — and the answer
@@ -241,11 +249,54 @@ test("the live selectors scan an exact nonzero source census", () => {
   // it is a warning the gate is meant to show rather than one this pin should
   // hide. `channels` adds none: its largest file is 280 effective lines. The
   // list is four, and the four are named.
-  assert.equal(result.fileCount, 970);
+  //
+  // WIN-256 MODEL ROUTER ADAPTER: THE SELECTOR ITSELF WIDENS, from two roots to
+  // four, and this is the one delta on the list that changes what the gate
+  // JUDGES rather than only what the tree CONTAINS. `packages/kernel/**` and
+  // `packages/adapters/**` had never been covered: the rule was written for the
+  // layer ADR M0.3 §6 is about and read as if it covered `packages/**`, and the
+  // gap was the two roots that had held nothing but declaration placeholders.
+  // The first real adapter arrived with a 645-effective-line end-to-end suite —
+  // over the ERROR threshold, under no threshold at all — and the answer was
+  // again a split rather than a waiver: it is now four suites divided by concern
+  // (one step, the tool loop, schema-shaped output, streaming).
+  //
+  // `packages/**` itself is deliberately NOT the selector; the other eleven
+  // directories under it are legacy packages this programme does not own.
+  //
+  // The integrated census is the sum of four disjoint scans:
+  //
+  //     packages/kernel/**                20   NEWLY COVERED
+  //     packages/contexts/**             968
+  //     packages/adapters/**              54   NEWLY COVERED
+  //     apps/core-api/src/transports/**    6
+  //                                     ----
+  //                                     1048
+  //
+  // `packages/contexts/**` is 968 and not 964 because the adapter branch also
+  // adds two domain modules and two suites to `providers`. `packages/adapters/**`
+  // is 54: the eleven still-unadopted adapters carry two declaration
+  // placeholders each (22), and model-router-providers carries 32 — seventeen
+  // source modules and fifteen suites. The adapter branch pinned
+  // 20 + 334 + 54 + 6 = 414 against a v1-based tree that had none of the eleven
+  // contexts; 414 is not the number here and its +4, +20 and +54 are the parts
+  // that conserve.
+  //
+  // WIDENING THE SELECTOR ADDED NO VIOLATION. The 74 newly covered files produce
+  // zero errors and zero warnings; the finding list below is unchanged at the
+  // same four contexts files it already named. That is a measured result over
+  // the integrated tree, not an inherited claim — and the selector is NOT to be
+  // narrowed back if a later branch makes it bite, because biting is what it is
+  // for.
+  assert.equal(result.fileCount, 1048);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
-  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8);
+  assert.equal(
+    result.fileCount,
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54
+  );
+  assert.equal(result.fileCount, 20 + 968 + 54 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

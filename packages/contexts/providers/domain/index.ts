@@ -43,3 +43,5 @@ export * from "./rate-card-import.js";
 export * from "./prompt.js";
 export * from "./prompt-cache.js";
 export * from "./generation.js";
+export * from "./structured-output.js";
+export * from "./tool-input-repair.js";

@@ -219,6 +219,20 @@ describe("what it refuses, and refuses BEFORE spending anything", () => {
     expect(context.modelRouter.generations).toEqual([]);
   });
 
+  it("refuses a pass budget of zero, and never opens a route", async () => {
+    // Only a schema-shaped request has a pass budget, and it is checked in the
+    // same place and for the same reason as the step budget: a budget a provider
+    // discovers is a budget a provider has already been paid to discover.
+    const { context, outcome } = await refuse({
+      output: { kind: "object", schema: { type: "object" }, maxPasses: 0 },
+    });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) throw new Error("unreachable");
+    expect(outcome.error.code).toBe("PROVIDERS_PASS_BUDGET_INVALID");
+    expect(context.modelRouter.opens).toEqual([]);
+    expect(context.modelRouter.generations).toEqual([]);
+  });
+
   it("refuses two tools of one name, and never opens a route", async () => {
     const { context, outcome } = await refuse({ tools: [SEARCH, { ...SEARCH, description: "other" }] });
     expect(outcome.ok).toBe(false);

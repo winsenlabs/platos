@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   modelGeneration,
+  passBudget,
   stepBudget,
   sumStepUsage,
   toolCatalogue,
@@ -76,6 +77,24 @@ describe("the step budget", () => {
     expect(stepBudget(-1).ok).toBe(false);
     expect(stepBudget(1.5).ok).toBe(false);
     expect(stepBudget(Number.NaN).ok).toBe(false);
+  });
+});
+
+describe("the pass budget", () => {
+  it("bounds the schema-correction loop under its OWN code", () => {
+    // A STEP is a tool round trip; a PASS is a whole second generation with the
+    // first one's output quoted back inside it. Sharing one code would leave an
+    // operator unable to tell which of the two budgets was wrong.
+    const built = passBudget(0);
+    expect(built.ok).toBe(false);
+    if (built.ok) throw new Error("unreachable");
+    expect(built.error.code).toBe("PROVIDERS_PASS_BUDGET_INVALID");
+    expect(built.error.details).toEqual({ maxPasses: 0 });
+    expect(built.error.code).not.toBe(stepBudget(0).ok ? "" : "PROVIDERS_STEP_BUDGET_INVALID");
+
+    expect(passBudget(1).ok).toBe(true);
+    expect(passBudget(-1).ok).toBe(false);
+    expect(passBudget(1.5).ok).toBe(false);
   });
 });
 

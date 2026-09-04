@@ -668,21 +668,42 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // inference surface on the ModelRouter port. Four source modules under
     // packages/contexts/providers — domain/prompt.ts, domain/prompt-cache.ts,
     // domain/generation.ts and application/run-model-generation.ts — and the
-    // four suites beside them. It ADOPTS NO CONTEXT, so unlike every delta
+    // four suites beside them. It ADOPTS NO PROJECT, so unlike every delta
     // above it releases no placeholder and replaces nothing: this +8 is gross
     // and net alike. Its branch pinned 280 (272 + 8) on v1 and was blind to all
     // eleven adoptions; 907 + 8 = 915 here.
-    packages: 915,
+    //
+    // +34: WIN-256's MODEL ROUTER ADAPTER. Fifteen source modules and fifteen
+    // suites under packages/adapters/model-router-providers, the sole holder of
+    // the inference SDK, plus two domain modules and two suites under
+    // packages/contexts/providers — the tool-input repair and the
+    // structured-output correction, both PURE, which is the same property that
+    // puts prompt-cache.ts in the domain too.
+    //
+    // It is the FIRST delta on this axis that lands under
+    // `packages/adapters/**` rather than `packages/contexts/**`, and the first
+    // adapter adoption of any kind. Adoption releases that project's TWO
+    // declaration placeholders (src/adapter.ts and src/index.ts) and this code
+    // replaced BOTH in place under the same names, so the +34 is 32 + 2 with no
+    // subtraction hidden inside it and is net as well as gross. Its branch
+    // pinned 314 (272 + 8 + 34) on the prerequisite tip and was blind to all
+    // eleven adoptions above; 915 + 34 = 949 here, and 314 is wrong by exactly
+    // the 635 those eleven contribute.
+    packages: 949,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
     // M2 INTEGRATION DELTA — apps-core-api 0 -> 19, apps-mcp-stdio 0 -> 3,
-    // packages 1 -> 907 -> 915, docs-content 9 -> 13, root-infra 10 -> 39,
-    // total +20 -> +981. Fifteen branches add files on independent axes, so each
-    // area is the SUM of every contribution, not any one alone; WIN-256's
-    // `conversations` prerequisite adds the last eight to `packages` and to
-    // nothing else.
+    // packages 1 -> 907 -> 915 -> 949, docs-content 9 -> 13, root-infra 10 -> 39,
+    // total +20 -> +991 -> +1025. Sixteen branches add files on independent
+    // axes, so each area is the SUM of every contribution, not any one alone;
+    // WIN-256's `conversations` prerequisite adds eight to `packages` and to
+    // nothing else, and its model router adapter adds the last thirty-four to
+    // `packages` and to nothing else. The running total on this line read +981
+    // while the assertions below already read +991; it was short by the
+    // prerequisite's 8 and the capability-matrix +2, and is carried through
+    // here rather than left stale.
     //
     // WIN-299 (M2.6) contributes +5 (docs-content +2, root-infra +3):
     //   docs-content  docs/audits/sbom/advisory/README.md
@@ -800,12 +821,30 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one moves `root-infra` alone — so the integrated delta is the SUM,
     // 989 + 2, and neither branch pin (897 or 348) is correct here.
     //
+    // WIN-256's MODEL ROUTER ADAPTER contributes +34, ALL of it on the packages
+    // axis (915 -> 949) and none of it anywhere else:
+    //
+    //   packages/adapters/model-router-providers/src  15 source + 15 suites
+    //     the sole holder of the inference SDK. Fifteen modules because ADR
+    //     M0.3 §6 is the reason the extraction source's turn engine is 7,121
+    //     lines, and fifteen suites because the end-to-end one reached 645
+    //     effective lines as a single file.
+    //
+    //   packages/contexts/providers/domain            2 source + 2 suites
+    //     tool-input-repair and structured-output: the two PURE pieces the
+    //     adapter would otherwise have hidden beside an SDK call, on the same
+    //     argument prompt-cache.ts already makes for itself.
+    //
+    // Every other area is unchanged by it. The generator adoption, the widened
+    // max-file-lines selector, the seven new error codes and the census pins
+    // are all edits to files that already existed and add none.
+    //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 = 991.
+    //   + 84 + 8 + 2 + 34 = 1025.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 991);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1025);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -814,15 +853,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +991 combined delta as the totalFiles
+    // M2 integration: same +20 -> +1025 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
-    // prerequisite +8, WIN-256 capability-matrix ownership +2); this one
-    // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 991
+    // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
+    // router adapter +34); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1025
   );
 });
 

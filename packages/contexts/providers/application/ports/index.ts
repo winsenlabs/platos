@@ -33,9 +33,67 @@ export * from "./provider-probe-cache.js";
 // adapter wanting anything not on this list is reaching past its one job.
 export {
   configurationUnavailable,
+  generationAborted,
+  honoursExplicitCacheBreakpoints,
+  messageNotRepresentable,
   modelGeneration,
+  outputSchemaInvalid,
+  passBudget,
   providerCredentialUnavailable,
   providerRequestFailed,
+  repairToolCallInput,
+  retryPolicyInvalid,
+  serviceAccountInvalid,
+  structuredOutputCorrection,
   structuredOutputInvalid,
   tokenUsage,
+  toolExecutorFailed,
+} from "../../domain/index.js";
+
+// `ok` and `err`, from the kernel, for the same reason as the error factories
+// above: every method on this port returns `Result<T>`, and a package with no
+// way to CONSTRUCT one could not implement a single one of them. Types would not
+// have been enough — these two are values.
+export { err, ok } from "@platos/kernel";
+export type { DomainError, Result } from "@platos/kernel";
+
+// EVERY TYPE THAT APPEARS IN THIS PORT'S OWN SIGNATURES, and the ones an
+// implementation of those signatures has to NAME in order to build the values
+// they return. `ContentPart` and `PromptMessage` are how a `Prompt` is taken
+// apart; `GenerationStep`, `FinishReason` and `TokenUsage` are what
+// `modelGeneration` and a `step-finished` event are assembled from;
+// `ProviderDialect` is what an implementation switches on to pick a client;
+// `ModelListShape` and `ModelListAuth` are how `listModels` reads an endpoint.
+//
+// This is not a widening of the rule stated above — it is that rule applied
+// honestly. A port whose parameter types cannot be named by its one permitted
+// implementer is not a port, and re-deriving these shapes inside the adapter
+// would have produced a second, drifting copy of the vocabulary this context
+// owns. Types only: nothing here adds a runtime edge.
+export type {
+  ContentPart,
+  FilePart,
+  FinishReason,
+  GenerationEvent,
+  GenerationStep,
+  ImagePart,
+  JsonSchemaDocument,
+  MessageRole,
+  ModelGeneration,
+  ModelListAuth,
+  ModelListEndpoint,
+  ModelListShape,
+  ModelRoutePlan,
+  OutputMode,
+  ProbeFailure,
+  Prompt,
+  PromptMessage,
+  ProviderDialect,
+  ReasoningPart,
+  SamplingLimits,
+  TextPart,
+  TokenUsage,
+  ToolCallPart,
+  ToolDefinition,
+  ToolResultPart,
 } from "../../domain/index.js";

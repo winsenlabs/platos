@@ -33,7 +33,7 @@
 
 import { err, ok, type DomainError, type Result } from "@platos/kernel";
 
-import { stepBudgetInvalid, toolNameDuplicated } from "./errors.js";
+import { passBudgetInvalid, stepBudgetInvalid, toolNameDuplicated } from "./errors.js";
 import type { ContentPart, ToolCallPart, ToolResultPart } from "./prompt.js";
 import { tokenUsage, type TokenUsage } from "./token-usage.js";
 
@@ -148,6 +148,19 @@ export interface ModelGeneration {
 export function stepBudget(maxSteps: number): Result<number> {
   if (!Number.isSafeInteger(maxSteps) || maxSteps < 1) return err(stepBudgetInvalid(maxSteps));
   return ok(maxSteps);
+}
+
+/**
+ * A pass budget: a whole number, at least one.
+ *
+ * Read only for `{ kind: "object" }` output, where a rejected answer is quoted
+ * back to the model and asked for again. Zero is refused rather than treated as
+ * "never retry", because a caller that means "never retry" says one, and a zero
+ * arriving here is an uninitialised field rather than a decision.
+ */
+export function passBudget(maxPasses: number): Result<number> {
+  if (!Number.isSafeInteger(maxPasses) || maxPasses < 1) return err(passBudgetInvalid(maxPasses));
+  return ok(maxPasses);
 }
 
 /**

@@ -1017,9 +1017,30 @@ importers:
 
   packages/adapters/model-router-providers:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.15
+        version: 4.0.15(zod@3.25.76)
+      '@ai-sdk/google':
+        specifier: ^4.0.16
+        version: 4.0.16(zod@3.25.76)
+      '@ai-sdk/google-vertex':
+        specifier: ^5.0.20
+        version: 5.0.20(zod@3.25.76)
+      '@ai-sdk/openai':
+        specifier: ^4.0.14
+        version: 4.0.14(zod@3.25.76)
       '@platos/context-providers':
         specifier: workspace:*
         version: link:../../contexts/providers
+      ai:
+        specifier: ^7.0.28
+        version: 7.0.28(zod@3.25.76)
+      ajv:
+        specifier: 8.18.0
+        version: 8.18.0
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/adapters/notifier-email:
     dependencies:

@@ -1007,12 +1007,87 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * besides the four that closed MAJOR 2: 88 files and 1000 cases there, 307 and
  * 5087 here. The per-row delta — 4 files and 63 cases — is the property that
  * conserves, and it is unchanged.
+ *
+ * WIN-256 MODEL ROUTER ADAPTER (2026-09-04), on the prerequisite branch
+ * `7f266e3b`. The `ModelRouter` port gets its one implementation, and TWO rows
+ * move -- the adapter, which had never held a case, and `providers`, which gains
+ * the two pure pieces the adapter would otherwise have hidden beside an SDK call.
+ *
+ *   packages/adapters/model-router-providers   0 -> 15 files,   0 -> 198 cases
+ *   packages/contexts/providers               25 -> 27 files, 346 -> 375 cases
+ *
+ * The adapter's 198, suite by suite. Fifteen files and not twelve: the
+ * end-to-end suite was ONE file at 645 effective lines until the widened
+ * max-file-lines selector could see it, and it is now four split by concern.
+ *
+ *     src/adapter.test.ts          20  the factory, open, probe, listModels
+ *     src/call.test.ts             12  the joined abort, sampling, prepareStep
+ *     src/clients.test.ts          13  dialect -> client, the service account
+ *     src/failure.test.ts          13  abort vs auth refusal vs outage
+ *     src/generation.test.ts        9  one step, the markers, the failures
+ *     src/json-value.test.ts       11  making a tool result embeddable
+ *     src/messages.test.ts         20  the prompt on the wire, and back
+ *     src/object-output.test.ts     8  schema-shaped passes and their cost
+ *     src/steps.test.ts             7  one step, and a call with no answer
+ *     src/stream.test.ts            4  the one terminal event
+ *     src/structured.test.ts       14  schema compile, validate, pass loop
+ *     src/tool-loop.test.ts         5  round trips, budgets, input repair
+ *     src/tools.test.ts            11  the tool bridge and the repair hook
+ *     src/transport.test.ts        27  the retry policy, guard by guard
+ *     src/usage.test.ts            24  the provider metadata chains
+ *                                 ---
+ *                                 198
+ *
+ * The +29 in `providers`, which is TWO new suites and one case added to each of
+ * four existing ones:
+ *
+ *     domain/tool-input-repair.test.ts     16  new file
+ *     domain/structured-output.test.ts      9  new file
+ *     domain/errors.test.ts             9 -> 11  the adapter's seven codes are
+ *                                              kept apart from the codes they
+ *                                              resemble, and a failed schema
+ *                                              loop carries what it spent
+ *     domain/generation.test.ts        14 -> 15  the pass budget, under its own
+ *                                              code and not the step budget's
+ *     application/run-model-generation.test.ts
+ *                                      17 -> 18  the pass budget refused before
+ *                                              a route is opened
+ *                                     ---
+ *                                      29
+ *
+ *   `domain/errors.test.ts` also grows its SAMPLES list by the seven new codes
+ *   without gaining a case for them, which its existing "mints every declared
+ *   code and nothing else" case asserts over. That is the shape to check for
+ *   when this number moves: a suite whose case count is unchanged while its
+ *   coverage changed is exactly what a file-count pin cannot see.
+ *
+ * ARITHMETIC. Files: 311 + 15 + 2 = 328. Cases: 198 + 29 = 227 added, and
+ * 5150 + 227 = 5377 across the workspace. Both entry points print the same
+ * pairs: `pnpm --filter @platos/adapter-model-router-providers exec vitest run`
+ * gives "Test Files 15 passed (15) / Tests 198 passed (198)", and
+ * `pnpm --filter @platos/context-providers exec vitest run` gives
+ * "Test Files 27 passed (27) / Tests 375 passed (375)".
+ *
+ * Its branch read the workspace totals off the prerequisite branch, where
+ * providers and the four MAJOR-2 contexts were the only real rows: 92 files and
+ * 1063 cases there, 311 and 5150 here. It therefore wrote 109 files and 1290
+ * cases; NEITHER is the number on this tree. The per-row deltas — 15 files and
+ * 198 cases in the adapter, 2 files and 29 cases in providers — are what
+ * conserves, and they are unchanged.
+ *
+ * THIS IS ALSO THE FIRST TIME A ROW UNDER `packages/adapters` IS NONZERO, so the
+ * census stops being a contexts-plus-kernel sum. The identity the v1-ledger
+ * checks against this file moves with it, and is restated there rather than
+ * quietly re-spelled.
+ *
+ * No other package moved. Any further drift is a finding to report, not a
+ * number to force.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
-  "packages/adapters/model-router-providers": { files: 0, cases: 0 },
+  "packages/adapters/model-router-providers": { files: 15, cases: 198 },
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
@@ -1033,7 +1108,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 25, cases: 346 },
+  "packages/contexts/providers": { files: 27, cases: 375 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 16, cases: 146 },
@@ -1048,7 +1123,7 @@ export const EXPECTED = Object.freeze({
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5150;
+export const EXPECTED_RUNTIME_TOTAL = 5377;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

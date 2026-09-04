@@ -119,6 +119,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/tools", // WIN-256 — the tool-gateway/mcp-platform merge: the registry, the four-tier gate, and the ToolDispatch port it owns
   "packages/contexts/channels", // WIN-256 — hosted channels, the inbox lease, the refresh fence, and the ChannelAdapter port it owns
   "packages/contexts/governance", // WIN-256 — the safety ledger and the kernel SafetyEventSink behind it, message ratings, eval criteria, judged evals and golden sets
+  "packages/adapters/model-router-providers", // WIN-256 — the ModelRouter implementation and THE sole holder of the inference SDK
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
@@ -245,6 +246,34 @@ function contextManifest(name, adopted) {
   });
 }
 
+// The external runtime dependencies an adapter needs to BE the sole holder of
+// its vendor client (WIN-256). They are declared HERE, in the generator, for the
+// same reason apps/core-api's are: a project's manifest is SCAFFOLDING, adoption
+// releases a project's source tree and never its package.json, so the only
+// honest place to add a runtime dependency is the generator that owns the file.
+//
+// Specifiers are byte-identical to apps/agent's, so pnpm resolves them to the
+// entries already in pnpm-lock.yaml instead of opening a new resolution. An
+// adapter that forced a second copy of the inference framework into the lockfile
+// would be a supply-chain change disguised as an extraction.
+//
+// `ai` and the four `@ai-sdk/*` bindings appear HERE and nowhere else:
+// `inference-sdk-only` and `provider-sdk-only` in scripts/arch/boundary-rules.mjs
+// name this one directory as their only home, and this table is what makes that
+// permission real rather than theoretical. `ajv` is the JSON Schema validator the
+// structured-output surface needs and `zod` is the framework's own peer.
+const ADAPTER_RUNTIME_DEPENDENCIES = {
+  "model-router-providers": {
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
+    ai: "^7.0.28",
+    ajv: "8.18.0",
+    zod: "3.25.76",
+  },
+};
+
 function adapterManifest(adapter, adopted) {
   const dependency = adapter.owner === "kernel" ? "@platos/kernel" : `@platos/context-${adapter.owner}`;
   return packageManifest({
@@ -253,7 +282,10 @@ function adapterManifest(adapter, adopted) {
     description: `Implements the ${adapter.owner} ${adapter.port} port.`,
     main: "./dist/index.js",
     types: "./dist/index.d.ts",
-    dependencies: workspaceDependencies([dependency]),
+    dependencies: {
+      ...workspaceDependencies([dependency]),
+      ...(ADAPTER_RUNTIME_DEPENDENCIES[adapter.dir] ?? {}),
+    },
   });
 }
 
