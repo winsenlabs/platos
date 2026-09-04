@@ -16,7 +16,7 @@
 // no second path: a use case that needs the check calls this, and a use case
 // that forgets fails its negative control.
 
-import { forbiddenScope } from "./errors.js";
+import { forbiddenScope, missingPermission } from "./errors.js";
 import { contains, err, ok, resolvePath, type Result, type TenantScope } from "@platos/kernel";
 
 export const AUTHORIZATION_SCOPE_KINDS = [
@@ -99,7 +99,7 @@ export function assertPermission(
   required: string,
 ): Result<string> {
   if (!hasPermission(granted, required)) {
-    return err(forbiddenScope(`Credential does not carry the ${required} permission`));
+    return err(missingPermission(required));
   }
   return ok(required);
 }

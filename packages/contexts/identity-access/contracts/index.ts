@@ -59,12 +59,23 @@ export interface PrincipalAuthorizationView {
   readonly permissions: readonly string[];
 }
 
+/** Every outcome the limiter can reach, including the one that is a refusal. */
 export type RateLimitOutcome = "allowed" | "limited" | "degraded";
 
+/**
+ * What a SUCCESSFUL consumption reports.
+ *
+ * `limited` is deliberately not among these. A limited decision is a REFUSAL, so
+ * it arrives as `err` with code `RATE_LIMITED`, and the kernel error's
+ * `retryAfterSeconds` carries the wait. That way a caller which ignores the
+ * failure branch cannot proceed — the property an authentication budget needs —
+ * whereas an `ok` carrying `outcome: "limited"` would let a forgotten check
+ * become an unlimited window.
+ */
 export interface RateLimitDecisionView {
-  readonly outcome: RateLimitOutcome;
-  /** Populated only when `outcome` is `"limited"`. */
-  readonly retryAfterSeconds: number | null;
+  readonly outcome: Exclude<RateLimitOutcome, "limited">;
+  /** Requests left in the current window; null when the limiter was degraded. */
+  readonly remaining: number | null;
 }
 
 export interface AuthenticateOperatorRequest {
@@ -149,6 +160,7 @@ export const IDENTITY_ACCESS_ERROR_CODES = [
   "INVALID_MFA_CODE",
   "RATE_LIMITED",
   "FORBIDDEN_SCOPE",
+  "MISSING_PERMISSION",
   "IMPERSONATION_FORBIDDEN",
   "CREDENTIAL_EXPIRED",
   "CREDENTIAL_REVOKED",

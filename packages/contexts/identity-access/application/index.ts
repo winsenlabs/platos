@@ -18,6 +18,7 @@
 export type { IdentityAccessPorts, PortsOf } from "./dependencies.js";
 export * from "./ports/index.js";
 
+export { createIdentityAccessService } from "./identity-access-service.js";
 export {
   authenticateOperator,
   revokeOperatorSession,

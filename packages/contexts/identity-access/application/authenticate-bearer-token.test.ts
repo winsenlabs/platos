@@ -150,12 +150,14 @@ describe("lifecycle negative controls", () => {
         requestedScope: ENVIRONMENT,
         requiredPermission: "mcp:write",
       }),
-    ).toBe("FORBIDDEN_SCOPE");
+    ).toBe("MISSING_PERMISSION");
   });
 
   it("checks the scope BEFORE the permission, so permissions cannot be probed", async () => {
     // Out of scope AND missing the permission: the answer must be the scope one,
     // identical to the answer for a credential that DOES carry the permission.
+    // The two gates mint DIFFERENT codes, so reversing the order turns this red
+    // rather than leaving it green on a shared `FORBIDDEN_SCOPE`.
     expect(
       await refusalCode(arrange(), {
         presentedToken: RAW,

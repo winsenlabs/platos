@@ -11,6 +11,7 @@
 //
 //   unauthorized            -> UNAUTHENTICATED          (401)
 //   forbidden               -> FORBIDDEN_SCOPE          (403)
+//   forbidden (capability)  -> MISSING_PERMISSION       (403)
 //   expired                 -> SESSION_EXPIRED          (401)
 //   revoked                 -> SESSION_REVOKED          (401)
 //   mfa_required            -> MFA_REQUIRED             (401)
@@ -70,6 +71,21 @@ export function rateLimited(retryAfterSeconds: number): DomainError {
 
 export function forbiddenScope(message = "Principal is not authorized for this scope"): DomainError {
   return domainError("FORBIDDEN_SCOPE", "forbidden", message);
+}
+
+/**
+ * A credential that REACHES the scope but does not carry the capability.
+ *
+ * It is a separate code from `forbiddenScope` on purpose. The two denials are
+ * decided by different gates, in a fixed order — scope first, so a caller cannot
+ * probe which capabilities a credential holds by asking about a tenant it cannot
+ * reach — and while both answered `FORBIDDEN_SCOPE` that ordering was not
+ * observable: a build that checked capability first returned the same code and
+ * every ordering test still passed. Distinct codes make the order falsifiable,
+ * and give a transport the information it needs to say which of the two failed.
+ */
+export function missingPermission(required: string): DomainError {
+  return domainError("MISSING_PERMISSION", "forbidden", `Credential does not carry the ${required} permission`);
 }
 
 export function impersonationForbidden(): DomainError {

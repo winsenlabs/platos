@@ -60,6 +60,16 @@ export type RateLimitDecision =
   | { readonly outcome: "degraded" };
 
 /**
+ * A decision that let the request through.
+ *
+ * `limited` is a REFUSAL, and `asResult` below turns it into a failure, so it can
+ * never inhabit the success branch of a consumption. Saying that in the TYPE is
+ * what keeps every caller from carrying an impossible-but-uncheckable case: a
+ * branch no input can reach is a branch no test can turn red.
+ */
+export type PermittedRateLimitDecision = Exclude<RateLimitDecision, { outcome: "limited" }>;
+
+/**
  * WHAT HAPPENS WHEN THE LIMITER ITSELF IS DOWN.
  *
  * `"allow"` — availability over limiting. This is the behaviour the running
@@ -140,7 +150,7 @@ export function isPermitted(decision: RateLimitDecision): boolean {
   return decision.outcome !== "limited";
 }
 
-export function asResult(decision: RateLimitDecision): Result<RateLimitDecision> {
+export function asResult(decision: RateLimitDecision): Result<PermittedRateLimitDecision> {
   if (decision.outcome === "limited") return err(rateLimited(decision.retryAfterSeconds));
   return ok(decision);
 }
