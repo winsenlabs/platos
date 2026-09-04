@@ -225,9 +225,20 @@ describe("composing identity-access", () => {
     expect(refusal.error.retryAfterSeconds).toBeGreaterThan(0);
   });
 
-  it("keeps each composition's budget to itself", () => {
-    // Two installs, two bundles, two limiters. A module-level store would make
-    // the case above pass once and fail on a re-run.
-    expect(composedIdentityAccess()).not.toBe(composedIdentityAccess());
+  it("keeps each composition's budget to itself", async () => {
+    // Two installs, two bundles, two limiters. Asserted by SPENDING one budget
+    // to exhaustion and showing a second composition still allows — not by
+    // comparing object identity, which two factory calls satisfy trivially and
+    // which a module-level limiter behind them would satisfy too.
+    const first = composedIdentityAccess();
+    const request = {
+      action: "LOGIN",
+      identifier: "operator@example.com",
+      scope: TENANT,
+      principalId: null,
+    } as const;
+    for (let spent = 0; spent < 10; spent += 1) await first.consumeRateLimit(request);
+    expect((await first.consumeRateLimit(request)).ok).toBe(false);
+    expect((await composedIdentityAccess().consumeRateLimit(request)).ok).toBe(true);
   });
 });
