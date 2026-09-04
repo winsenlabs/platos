@@ -626,17 +626,44 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // deliberately, not tidied away: `channel-persistence.service.ts` already
     // enforces three axes, so deleting the field would be a silent regression.
     //
+    // +84: the same issue makes `governance` real (ADR M0.3 §1 row 14). The tree
+    // holds 87 TypeScript files — 19 domain modules and 16 domain suites, 17
+    // application modules and 14 application suites, 9 ports, 10 in-memory
+    // doubles and testing fixtures, and 2 contracts files (the barrel and its
+    // suite) — of which FOUR are the generated placeholders adoption released
+    // and this code replaced in place, so 83 are new. The 84th is
+    // `mutations.json`, the guard ledger that names every authorization check,
+    // cap, kill switch and erasure step in the package together with the edit
+    // that would remove it. That one is the single `config` file in this delta
+    // and needed NO new ledger rule: `packages.contexts.config` already matches
+    // `packages/contexts/**/*.json`.
+    //
+    // The 84 conserves against the other two censuses rather than standing
+    // alone: 83 TypeScript files (52 source + 31 test, which is the same +83
+    // that `scripts/arch/arch-boundaries.test.mjs` counts as 948 -> 1031 and
+    // `scripts/arch/max-file-lines.test.mjs` counts as 879 -> 962) plus the one
+    // JSON. Its branch stated those two as 464 -> 547 and 395 -> 478, which were
+    // its own tree's numbers; the DELTA is what conserves and the delta is
+    // unchanged. All three are NET of the 4 generated placeholders adoption
+    // released and this code replaced in place. A deletion cannot hide inside
+    // this addition because the same 83 has to appear in three independently
+    // computed places.
+    //
     // THE ADOPTIONS ARE SUMMED, NOT SIDE-PICKED: they add DISJOINT files under
-    // ten different package directories and each moves this one number, so
-    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 823. The eventing
+    // eleven different package directories and each moves this one number, so
+    // 272 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 84 = 907. The
+    // eventing
     // branch pinned 316, the skills branch pinned 327, the jobs branch pinned
     // 323, the memory branch pinned 349, the cost-monitoring branch pinned 335
     // and the privacy branch pinned 320, the observability branch pinned 320 as
     // well, the agents branch pinned 339, the tools branch pinned 328 and the
-    // channels branch pinned 314; each is right for its own tree alone. Taking any of them would leave whole
+    // channels branch pinned 314; the governance branch, which alone branched
+    // from the agents branch rather than from v1, pinned 423 (272 + 67 + 84) and
+    // was blind to the other nine. Each is right for its own tree alone. Taking
+    // any of them would leave whole
     // contexts' files unaccounted while the gate stayed green on the branch it
     // came from.
-    packages: 823,
+    packages: 907,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -741,9 +768,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // which is why these slices compose with the other four — and with each
     // other — by addition rather than by reconciliation.
     //
-    // WIN-256 (tools context) contributes +56 and WIN-256 (channels context)
-    // contributes +42 on the same packages axis, 725 -> 781 -> 823, for the same
+    // WIN-256 (tools context) contributes +56, WIN-256 (channels context)
+    // contributes +42 and WIN-256 (governance context) contributes +84 on the
+    // same packages axis, 725 -> 781 -> 823 -> 907, for the same
     // reason and with the same absence of a root-infra or docs-content file.
+    // Governance's 84 is the only adoption delta that is not purely TypeScript:
+    // 83 .ts files plus `mutations.json`, which the existing
+    // `packages.contexts.config` rule already classifies, so no ledger rule
+    // changed for it either.
     //
     // WIN-256 (capability-matrix ownership) contributes +2, both root-infra,
     // and is a different slice of the same issue from the domain-contracts
@@ -755,14 +787,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // kindCounts source +1 and test +1 sum to the same 2. Its axis is disjoint
     // from every context adoption above — those move `packages` alone and this
     // one moves `root-infra` alone — so the integrated delta is the SUM,
-    // 897 + 2, and neither branch pin (897 or 348) is correct here.
+    // 981 + 2, and neither branch pin (897 or 348) is correct here.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 2 = 899.
+    //   + 84 + 2 = 983.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 899);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 983);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -771,14 +803,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +899 combined delta as the totalFiles
+    // M2 integration: same +20 -> +983 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
     // WIN-297 +24, WIN-256 eventing +44, WIN-256 skills +55, WIN-256 jobs +51,
     // WIN-256 memory +77, WIN-256 cost-monitoring +63, WIN-256 privacy +48,
     // WIN-256 observability +48, WIN-256 agents +67, WIN-256 tools +56,
-    // WIN-256 channels +42, WIN-256 capability-matrix ownership +2); this one
+    // WIN-256 channels +42, WIN-256 governance +84, WIN-256 capability-matrix
+    // ownership +2); this one
     // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 899
+    rulesDocument.baseline.totalFiles + 983
   );
 });
 

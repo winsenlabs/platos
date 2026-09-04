@@ -462,9 +462,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 129 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 125 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 137. Adoption RELEASES placeholders, so this
+  // M2 INTEGRATION DELTA — 201 -> 125. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
   // DISJOINT projects. The integrated count is therefore the SUM of every
   // reduction, never the smallest of the branch pins:
@@ -494,6 +494,12 @@ test("generated ownership includes the generator's exact 129 outputs across 32 V
   //               releasing the same 4 barrels.
   //   141 -> 137  WIN-256 adopts `agents` (ADR M0.3 §1 context 5), releasing the
   //               same 4 barrels.
+  //   137 -> 133  WIN-256 adopts `tools` (ADR M0.3 §1 row 6), releasing the same
+  //               4 barrels.
+  //   133 -> 129  WIN-256 adopts `channels` (ADR M0.3 §1 row 7), releasing the
+  //               same 4 barrels.
+  //   129 -> 125  WIN-256 adopts `governance` (ADR M0.3 §1 row 14), releasing
+  //               the same 4 barrels, from a project no slice above touched.
   //
   // Each branch pinned only what its own lineage could see: WIN-297 branched
   // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
@@ -501,28 +507,37 @@ test("generated ownership includes the generator's exact 129 outputs across 32 V
   // the eventing, skills, jobs, memory, cost-monitoring, privacy, observability,
   // agents, tools and channels branches EACH pinned 165, because each saw the
   // two apps and providers but not the other contexts. 165 is therefore the pin
-  // of TEN different trees, and it is correct for none of them merged. None of
-  // those pins is correct here.
-  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 = 129, which is
-  // 165 - 36 read from any of the ten branches alike.
+  // of TEN different trees, and it is correct for none of them merged. The
+  // governance branch is the one exception in shape but not in kind: it branched
+  // from the agents branch at e602cb0b, so it could see agents' reduction and
+  // pinned 165 - 4 = 161 — still partial, because the eventing, skills, jobs,
+  // memory, cost-monitoring, privacy, observability, tools and channels
+  // reductions were all invisible to it. None of those pins is correct here.
+  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 = 125: nineteen
+  // released by slices 1-5, four by providers, nine by the two apps, and four
+  // each by the ELEVEN contexts adopted since. That is 165 - 40 read from any of
+  // the ten branches that pinned 165, and 161 - 36 read from the governance
+  // branch that pinned 161.
   //
   // THAT IS THE WHOLE POINT OF THIS COMMENT. `eventing`, `skills`, `jobs`,
-  // `memory`, `cost-monitoring`, `privacy`, `observability`, `agents`, `tools`
-  // and `channels` move the SAME constant on INDEPENDENT axes, so the
-  // reconciliation is arithmetic on every delta and not a choice between green
-  // branches. Side-picking 165 would leave the tree with thirty-six unaccounted
-  // released placeholders and the canary would be quietly wrong while staying
-  // green on each branch alone.
+  // `memory`, `cost-monitoring`, `privacy`, `observability`, `agents`, `tools`,
+  // `channels` and `governance` move the SAME constant on INDEPENDENT axes, so
+  // the reconciliation is arithmetic on every delta and not a choice between
+  // green branches. Side-picking 161 would leave the tree with thirty-six
+  // unaccounted released placeholders and the canary would be quietly wrong
+  // while staying green on each branch alone.
   //
   // THE DELTA IS ALWAYS EXACTLY 4 PER ADOPTION, and that is the property to
   // check rather than the total: adoption releases a project's PLACEHOLDERS and
   // never its scaffolding, so a delta of anything but 4 means a scaffolding
-  // file was moved or a fifth placeholder was invented.
+  // file was moved or a fifth placeholder was invented. Written out so a
+  // DELETION CANNOT HIDE INSIDE AN ADDITION: fourteen reductions, 76
+  // placeholders released, 125 owned outputs left.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 32
-  // placeholders of the 14 still-unadopted projects (2 contexts x 4 +
-  // 12 adapters x 2). The two contexts still on placeholders are
-  // `conversations` and `governance`. The scaffolding tier is
+  // The generator now owns the same 97 SCAFFOLDING files plus the 28
+  // placeholders of the 13 still-unadopted projects (1 context x 4 +
+  // 12 adapters x 2). The ONE context still on placeholders is
+  // `conversations`. The scaffolding tier is
   // untouched and stays byte-compared: adoption releases only a project's
   // source tree, so every adopted project still owes its generated
   // package.json, tsconfig.json and README.md. The project count is unchanged
@@ -538,25 +553,28 @@ test("generated ownership includes the generator's exact 129 outputs across 32 V
   // context ALWAYS drops the count by exactly 4, so a branch that adopts one
   // and does not reconcile the number here is red before any of its own code is
   // compiled. `tejas/win-256-providers-context` at 25b231b asserted 182 while
-  // its own committed evidence recorded 178. Every number here moves with its
-  // delta and is never forced, and `pnpm audit:workspace-reachability` is
-  // regenerated to a fixpoint beside it.
+  // its own committed evidence recorded 178. The 125 below was READ BACK from a
+  // regenerated `docs/audits/win-253-workspace-reachability.json`, not derived
+  // from the chain above; the chain is the explanation, the report is the
+  // authority, and they agree. Every number here moves with its delta and is
+  // never forced, and `pnpm audit:workspace-reachability` is regenerated to a
+  // fixpoint beside it.
   //
   // `node scripts/arch/gen-v1-skeleton.mjs --check` prints the same arithmetic
-  // from the other side: "97 scaffolding + 32 placeholder = 129 generated
-  // file(s) for 32 V1 projects and 95 project edges (18 project(s) adopted,
-  // 72 placeholder(s) released)". The two 52s that sentence once carried were the
-  // same number by coincidence and are not any more: 32 placeholders REMAIN owned
-  // and 72 have been RELEASED.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 129);
+  // from the other side: "97 scaffolding + 28 placeholder = 125 generated
+  // file(s) for 32 V1 projects and 95 project edges (19 project(s) adopted,
+  // 76 placeholder(s) released)". The two 52s that sentence once carried were the
+  // same number by coincidence and are not any more: 28 placeholders REMAIN owned
+  // and 76 have been RELEASED.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 125);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 129 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 129);
+  // Same 125 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 125);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
@@ -579,13 +597,14 @@ test("an explicit generated header, not a generated-looking path, owns generated
   // CORRECTION, 2026-09-04. This said "one of the 27 projects still
   // generator-owned", which was written when WIN-256 slice 5 had adopted five
   // projects (32 - 5 = 27) and was silently false from the sixth adoption on:
-  // 18 projects are adopted here, so 14 still carry generator-owned source. The
+  // 19 projects are adopted here, so 13 still carry generator-owned source. The
   // count is dropped rather than re-pinned because it rots on every adoption
   // and nothing checks it. What the fixture actually needs is the property, and
-  // that is asserted: conversations is one of the two contexts still on
-  // generator-owned placeholders (governance is the other), so its
-  // domain/index.ts still carries the generated header, and the assertion right
-  // after this one fails the moment that stops being true.
+  // that is asserted: conversations is now the ONLY context still on
+  // generator-owned placeholders — governance was the other, and WIN-256
+  // adopted it here — so its domain/index.ts still carries the generated
+  // header, and the assertion right after this one fails the moment that stops
+  // being true.
   const realHeader = fs
     .readFileSync(path.join(ROOT, "packages/contexts/conversations/domain/index.ts"), "utf8")
     .split("\n", 1)[0];

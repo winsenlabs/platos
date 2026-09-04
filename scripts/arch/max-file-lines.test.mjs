@@ -142,15 +142,40 @@ test("the live selectors scan an exact nonzero source census", () => {
   // four files named below are findings — so that half of the sentence is
   // dropped rather than carried.
   //
+  // +83: the same issue makes `governance` real. The layout was designed for the
+  // ceiling up front — the extraction source's `eval.service.ts` is 678 lines
+  // and lands here as `run-judge.ts`, `read-evals.ts` and four domain modules —
+  // so the production tree never approached the budget. It bit ONCE, in the
+  // 400-line WARNING band rather than at the 500-line wall, and in a test
+  // double:
+  //
+  //   application/testing/in-memory-eval-stores.ts, 401 effective. It held three
+  //   repositories, and the third had no reason to be there: a criterion and an
+  //   eval are coupled by `AgentEval.criterion @relation(onDelete: Cascade)`,
+  //   which the double now models, and a golden set is coupled to neither. Split
+  //   into `in-memory-eval-stores.ts` and
+  //   `in-memory-golden-sets-repository.ts` along that seam rather than waived.
+  //
+  // One of the 83 files exists only because of that split, and `governance` adds
+  // NO file to the warning list below. Its branch went on to say "every one of
+  // the 478 is inside the budget and none is inside the warning band", which was
+  // a claim about the whole census on the tree it measured and is NOT true of
+  // this one — the four files named below are findings — so that sentence is
+  // corrected here rather than carried, exactly as the channels and
+  // observability branches' versions of it were.
+  //
   // Each branch pinned only the axis it could see: eventing pinned 307
   // (263 + 44), skills pinned 318 (263 + 55), and each pinned 372 and 383
   // respectively once rebased onto the providers tip; jobs pinned 379
   // (328 + 51) on v1, memory pinned 405 (328 + 77) and cost-monitoring pinned
   // 391 (328 + 63), privacy pinned 376 (328 + 48) and observability pinned 376
   // (328 + 48) as well, agents pinned 395 (328 + 67), tools pinned 384
-  // (328 + 56) and channels pinned 370 (328 + 42). The axes are disjoint, so the
+  // (328 + 56) and channels pinned 370 (328 + 42). The governance branch alone
+  // branched from the agents branch rather than from v1, so it could see agents'
+  // +67 and pinned 478 (328 + 67 + 83) — a partial sum too, blind to the other
+  // nine. The axes are disjoint, so the
   // integrated census is their SUM and not any branch pin:
-  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 879.
+  // 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 = 962.
   // Privacy and observability pinned the SAME 376 from the same base by
   // coincidence — both are 33 source + 15 test — which is precisely why the two
   // are summed rather than reconciled to the number they agree on.
@@ -203,7 +228,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // it is a warning the gate is meant to show rather than one this pin should
   // hide. `channels` adds none: its largest file is 280 effective lines. The
   // list is four, and the four are named.
-  assert.equal(result.fileCount, 879);
+  assert.equal(result.fileCount, 962);
+  // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
+  // a context's four placeholders in place and adds the rest, so this number
+  // only ever grows and a fall in it is always a finding.
+  assert.equal(result.fileCount, 328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

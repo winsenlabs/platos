@@ -352,6 +352,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               allow-list. No rule was changed, weakened, or given an
     //               exception.
     //
+    //   948 -> 1031 +83: WIN-256 makes `governance` real (ADR M0.3 §1 row 14).
+    //               It is the first adopted context that IMPLEMENTS TWO KERNEL
+    //               PORTS rather than only consuming them — `SafetyEventSink`
+    //               and `ErasureTarget` — which is what deletes the `auth ->
+    //               monitoring` edge ADR M0.3 §3 records without creating an
+    //               identity-access -> governance one in its place. Rule (g)
+    //               `identity-isolation` needed no change and no exception: the
+    //               two contexts never name each other, the composition root
+    //               binds them, and `packages/kernel` is the only module both
+    //               import. The 83 are NET of the 4 generated placeholders
+    //               adoption released and this code replaced in place, and one
+    //               of the 83 exists only because the ADR M0.3 §6 budget bit in
+    //               its warning band and a test double was split rather than
+    //               waived. The governance branch's own ledger said "the 82 are
+    //               NET" one line above calling them 83; 83 is the number the
+    //               audit measures over the integrated tree, and the 82 is
+    //               dropped rather than carried.
+    //
     // The branches pinned partial sums because each saw only its own slice:
     // WIN-297 branched from WIN-256 before providers and pinned 310 + 22 = 332;
     // WIN-256's providers tip pinned 375; the eventing branch pinned
@@ -361,12 +379,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // 397 + 48 = 445, the observability branch pinned 397 + 48 = 445 as well,
     // the agents branch pinned 397 + 67 = 464, the tools branch pinned
     // 397 + 56 = 453 and the channels branch pinned 397 + 42 = 439, each blind
-    // to the others.
-    // All thirteen slices are disjoint and eventing, skills, jobs, memory,
-    // cost-monitoring, privacy, observability, agents, tools and channels move
-    // this census on INDEPENDENT axes, so the integrated census is their SUM and
-    // not any pin:
-    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 = 948.
+    // to the others. The governance branch alone branched from the agents
+    // branch rather than from v1, so it could see agents' +67 and pinned
+    // 397 + 67 + 83 = 547 — a partial sum too, blind to the other nine.
+    // All fourteen slices are disjoint and eventing, skills, jobs, memory,
+    // cost-monitoring, privacy, observability, agents, tools, channels and
+    // governance move this census on INDEPENDENT axes, so the integrated census
+    // is their SUM and not any pin:
+    // 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 = 1031.
+    // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: this census only
+    // ever grows, because adoption replaces four placeholders in place and adds
+    // the rest, so a fall in this number is always a finding.
     //
     // The two rules WIN-297 exists to exercise both held. Rule (j) now judges
     // TWELVE REAL ADAPTER IMPORTS instead of a generated placeholder list, and
@@ -374,7 +397,8 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // directory from context code. Neither was changed, weakened or
     // reinterpreted; their real-tree negative controls are in
     // scripts/arch/composition-root.test.mjs.
-    assert.equal(result.fileCount, 948, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 1031, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
