@@ -232,9 +232,11 @@ export interface TenancyContract {
    *
    * Tenancy could archive, rename and re-role an organization and could not make
    * one: the only creator was a Prisma nested write in the Remix route. Both
-   * rows commit together, because an organization with no owner has no path back
-   * — every membership grant needs an existing organization admin to authorize
-   * it.
+   * rows commit together, because an organization with no owner has almost no
+   * path back — `changeMembershipRole` and `addProjectMember` both refuse an
+   * actor who is not an active organization admin, and the one path that does
+   * not check a role, `issueInvitation`, is gated only by its caller. See
+   * `application/create-organization.ts`.
    */
   createOrganization(request: CreateOrganizationRequest): Promise<Result<CreatedOrganization>>;
 

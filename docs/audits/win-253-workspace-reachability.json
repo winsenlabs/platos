@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "3d4340244520a0ced90929a6b23cca230fc2ad554cc81815e5b6750320c4d18b",
+  "evidenceSha256": "825e4968c4f3208bf63e1b173dbb03a6e8dc6f472dae62b175308d5f1b4cbf61",
   "generatedOwnership": {
     "explicitHeaderFileCount": 82,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "acc45db06673b0603e5d86810c660dd95f79a8c8763161f97c8b767edfcaf8a2",
+    "aggregateSha256": "b7bfded89e271e9171c5bab3a08d41d1be214fc38c35ecc43bfe4111c5ce1add",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "251a338d11c447a1506274ed250137092b38ab95c466bd7d4cad0be141527b1e"
+        "sha256": "6a1b437d4d2a040c96bd528ac0b7ea57cc59dcf8bfed647fccc0f3a19b239cc8"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -12405,7 +12405,7 @@
       },
       {
         "path": "packages/contexts/tenancy/application/create-organization.ts",
-        "sha256": "cbd6d222ab71f9948494e32c0eab1c00f73e5e38a5275207dc3bb67656c094ef"
+        "sha256": "dd505ebb2ea1434f32b9a88a21d1febf0a8cd1f8aee5e31963ad39b980655a9e"
       },
       {
         "path": "packages/contexts/tenancy/application/create-project.test.ts",
@@ -12421,7 +12421,7 @@
       },
       {
         "path": "packages/contexts/tenancy/application/index.ts",
-        "sha256": "3638b446e963e06c559480a9567aad6980a587b45cbc7817f843505d87783cdf"
+        "sha256": "b4c9f4fcccfb313d44116e7bf95e9241cb0fa64f81319aa8d53f96fd018426b7"
       },
       {
         "path": "packages/contexts/tenancy/application/invitations.test.ts",
@@ -12489,7 +12489,7 @@
       },
       {
         "path": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
-        "sha256": "86d7ea146fa464feb53ec356f2acd3373735b46a45bde4a658dd3da443db9b19"
+        "sha256": "ffd467335d112dd247f318341d4ad40cf275211c14b00df0d51a0e110ec359ed"
       },
       {
         "path": "packages/contexts/tenancy/application/testing/tenant-fixture.ts",
@@ -12501,7 +12501,7 @@
       },
       {
         "path": "packages/contexts/tenancy/contracts/index.ts",
-        "sha256": "da19daa3a8273557f1b6387899082a33978a1b0b64b77a09abb4ecbfabb96116"
+        "sha256": "bafdc0ff426e2244811105e675185ab813b79451f7d1d212342002e161fb377d"
       },
       {
         "path": "packages/contexts/tenancy/domain/ancestry.test.ts",
@@ -22570,7 +22570,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 488
+              "line": 490
             },
             {
               "from": "apps/webapp/package.json",
@@ -23381,7 +23381,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "b17b0d03e9e8e423fec952cad62f64c927a1a8c6ee4ccd7d847afbaa57c8981f",
+      "evidenceSha256": "3e280de013a28f7dff0b71cc4b97b9d8f445fc3e12503db6fc452f85353e23ae",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -42085,7 +42085,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 61
+              "line": 62
             }
           ],
           "reversePaths": [
@@ -42154,7 +42154,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "90a0f7599b1e9b688abeb01ad93aa6f653f46596a47ec8763a6a2c7f854397ce",
+      "evidenceSha256": "a748825197a5afde5219c29b5460c0bda76227e83a3b181b6600c8e7712c9955",
       "manifestSha256": "2e6c786f8f1a83cbecd1a1c1218a4c060f4355826de8d2cbda9fd2d84320c224",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -59819,13 +59819,13 @@
             {
               "file": "packages/contexts/tenancy/application/create-organization.ts",
               "from": "packages/contexts/tenancy",
-              "line": 27,
+              "line": 35,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/tenancy/application/create-organization.ts",
               "from": "packages/contexts/tenancy",
-              "line": 28,
+              "line": 36,
               "specifier": "@platos/kernel"
             },
             {
@@ -59933,13 +59933,13 @@
             {
               "file": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
               "from": "packages/contexts/tenancy",
-              "line": 30,
+              "line": 48,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/tenancy/application/testing/in-memory-repository.ts",
               "from": "packages/contexts/tenancy",
-              "line": 37,
+              "line": 55,
               "specifier": "@platos/kernel"
             },
             {
@@ -62170,7 +62170,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "20426441e271eca613b4b98832678953ddbc2c8638fba03eddbdc16923008baa",
+      "evidenceSha256": "b0a7ceccc1b1b68ce37c61286abbfc4d42a2511b869407e191a49f5492c979ce",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

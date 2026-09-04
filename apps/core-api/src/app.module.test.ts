@@ -57,9 +57,11 @@ const TENANT = organizationScope(asIdentifier<OrganizationId>("org-1"));
  * The tenancy contract, composed the way an install composes it.
  *
  * The fixture is returned alongside so a case can SEED the tree it is about.
- * Like `testPorts()`, these doubles ship inside the context — they are the same
- * ones `packages/adapters/postgres-tenancy` is measured against — so a denial
- * observed here is tenancy's denial and not one this file arranged.
+ * Like `testPorts()`, these doubles ship inside the context rather than being
+ * written here: they are the conformance fixture tenancy publishes for
+ * `packages/adapters/postgres-tenancy`, so a denial observed here is tenancy's
+ * denial and not one this file arranged, and a second set of fakes living in
+ * `apps/` cannot drift from it.
  */
 function composedTenancy(fixture: TenancyFixture = createTenancyFixture()) {
   const app = composeApplication(inputs(undefined, { tenancy: fixture.dependencies }));

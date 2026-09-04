@@ -17,7 +17,7 @@
 // and why a use case that relies on the database for that check would pass its
 // unit tests and fail in production.
 //
-// IT DOES ENFORCE THE UNIQUE INDEXES, and that is not the same decision. A
+// IT DOES ENFORCE FIVE UNIQUE INDEXES, and that is not the same decision. A
 // missing foreign key makes a use case look MORE correct than it is, so leaving
 // it out keeps the domain's restatement honest. A missing unique index makes a
 // use case look LESS correct than it is: a creation that refuses a duplicate
@@ -26,6 +26,24 @@
 // on the database. So `UniqueViolation` is raised here exactly where Postgres
 // raises 23505 — and, because it is raised from inside the write, it is also how
 // a transaction is seen to roll back without any fault having to be injected.
+//
+// The five are exactly the indexes on the rows a CREATION writes:
+// `Organization_slug_key`, `Project_organizationId_slug_key`,
+// `Environment_projectId_slug_key`,
+// `OrganizationMembership_organizationId_userId_key` and
+// `ProjectMembership_projectId_organizationMembershipId_key`.
+//
+// TWO MORE EXIST ON THIS CONTEXT'S TABLES AND ARE NOT REPRODUCED, each for a
+// stated reason rather than by omission.
+// `OrganizationInvitation_one_active_per_email` is PARTIAL — it covers only live
+// rows — and `issueInvitation` already reads `findLiveInvitations` and refuses
+// with `invitationAlreadyActive` before writing; a fake that refused the write
+// as well would make that guard undeletable and therefore unproven.
+// `Entity_projectId_externalId_key` is left out because no use case in this
+// context writes an `Entity` yet — `saveEntity` exists for an adapter to
+// conformance-test against — so an enforcement here would be guarding nothing.
+// Which treatment an index gets is decided by whether an application guard is
+// the thing under test, and this note is where that is written down.
 
 import type {
   EntityId,

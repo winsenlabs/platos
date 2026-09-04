@@ -10,10 +10,10 @@
 // wiring REFUSES — a cross-tenant request, an archived ancestor, an environment
 // that does not exist. It can only do that against a bundle that behaves like
 // the real stores. `./testing/` is that bundle: it already ships in the package
-// as the contract fixture `packages/adapters/postgres-tenancy` is measured
-// against, so re-exporting it here gives the composition root the same doubles
-// this context measures its own adapter with, rather than a second set of fakes
-// written in `apps/` that could drift.
+// as the conformance fixture this context publishes for
+// `packages/adapters/postgres-tenancy`, so re-exporting it hands the composition
+// root the same doubles the adapter will be held to rather than a second set of
+// fakes written in `apps/` that could drift from them.
 
 export * from "./ports/index.js";
 export * from "./dependencies.js";

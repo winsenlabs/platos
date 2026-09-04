@@ -11,11 +11,19 @@
 //
 // That nested `create` is the whole invariant. Prisma issues both inserts inside
 // one implicit transaction, so an organization has never existed without an
-// owner — and an organization without one is unrecoverable, because every path
-// that could grant a membership (`changeMembershipRole`, `addProjectMember`,
-// `issueInvitation`) requires an existing organization ADMIN to authorize it.
-// Splitting the two writes would create a state the product has no way out of,
-// which is why they are one `UnitOfWork.run` here.
+// owner — and an organization without one has almost no way back.
+// `changeMembershipRole` and `addProjectMember` both refuse an actor who is not
+// an ACTIVE organization admin, so neither can hand out the first membership.
+//
+// THE ONE REMAINING PATH IS GATED IN THE WRONG PLACE, and it is worth saying so
+// rather than rounding off. Neither `issueInvitation` here nor the oracle's
+// `PlatosAuthService.issueInvitation` checks the inviter's role at all: the only
+// check is in the Remix route, which looks for an OWNER/ADMIN membership before
+// calling it. That gate lives in exactly the layer this issue exists to empty,
+// so relying on it to repair an ownerless organization would be relying on the
+// thing being deleted. Splitting the two writes below would therefore create a
+// state the product has no supported way out of, which is why they are one
+// `UnitOfWork.run`.
 //
 // WHO MAY CALL IT. The oracle asks only `requireOperator`: any authenticated
 // operator may create an organization, with no quota, no allow-list and no
