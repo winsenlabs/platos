@@ -653,8 +653,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               inside a context's domain/ and application/ and permitted
     //               everywhere else. The rule is proved non-vacuous by adding
     //               the import to a context file and watching it turn red.
-    assert.equal(result.fileCount, 1177, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12);
+    //  1177 -> 1199 +22: WIN-258 TRANCHE 2 adds the identity-access canonical
+    //               store to the SAME package. Twenty-two .ts files -- fifteen
+    //               source and seven suites -- and NO subtraction this time,
+    //               because the directory was already adopted at tranche 1 and
+    //               has no placeholders left to release. Its
+    //               `mutations-identity.json` is not source and is not counted
+    //               here; the v1 ledger counts it and the total there is 23.
+    //               The rule to watch is still `tenancy-prisma-only`, and the
+    //               reason it is the rule to watch got sharper: this tranche is
+    //               the one that would have broken it. Sixteen contexts' worth
+    //               of canonical-store repositories over ONE PostgreSQL database
+    //               packaged as sixteen adapters would be sixteen homes for the
+    //               ORM, and the rule could not then be written as a single-home
+    //               rule at all. ADR M0.3 §15 records that as the deciding
+    //               argument for many ports per DIRECTORY, and `src/client.ts`
+    //               is still the only file in the layout that imports the ORM.
+    assert.equal(result.fileCount, 1199, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

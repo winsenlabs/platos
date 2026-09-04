@@ -271,10 +271,10 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   //     packages/kernel/**                20   NEWLY COVERED
   //     packages/contexts/**            1060
-  //     packages/adapters/**              66
+  //     packages/adapters/**              88
   //     apps/core-api/src/transports/**    6
   //                                     ----
-  //                                     1152
+  //                                     1174
   //
   // `packages/contexts/**` is 1060: 964 at adoption, +4 because the adapter branch
   // adds two domain modules and two suites to `providers`, +18 for WIN-257, and
@@ -350,15 +350,35 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the adapter's +4/+20/+54 and to WIN-257's +18; 1044 is not the number here. The
   // 7,121-line oracle service it brings is split below even the 400-line warning
   // band, so the finding list below is unchanged by it.
-  assert.equal(result.fileCount, 1152);
+  //
+  // WIN-258 TRANCHE 2 adds 22 more under `packages/adapters/**`, 1152 -> 1174,
+  // and no subtraction: the directory was already adopted, so it has no
+  // placeholders left to release. THIS GATE BIT TWICE while the tranche was
+  // written, and both times the budget was pointing at a real seam rather than
+  // at a number that wanted raising:
+  //
+  //   `identity-mapping.ts` reached 452 effective lines and was split into the
+  //   REFUSALS (scope assembly and the five row-refusal codes) and the
+  //   TRANSCRIPTION (`identity-rows.ts`: the structural row shapes and the pure
+  //   row -> record mappers). 188 and 297.
+  //
+  //   `identity-differential.integration.test.ts` reached 537 — over the 500
+  //   ERROR threshold — and was split into a shared harness plus two suites
+  //   along the seam it already had: the session methods, and the login paths
+  //   with MFA and impersonation. 273, 121 and 279.
+  //
+  // The conformance scenario was split for the same reason at 428, into the
+  // person-keyed half and the tenant-scoped half. Nothing this tranche adds is
+  // now inside the 400-line warning band, so the finding list below is unchanged.
+  assert.equal(result.fileCount, 1174);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22
   );
-  assert.equal(result.fileCount, 20 + 1060 + 66 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 88 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

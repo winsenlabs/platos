@@ -100,7 +100,7 @@ describe("the process starts and serves", () => {
     expect(messages).toContain("process.starting");
     expect(messages).toContain("process.started");
     const started = harness.lines().find((line) => line["message"] === "process.started");
-    expect(started).toMatchObject({ bindings: "0/12 adapter bindings satisfied", unsatisfied: 12 });
+    expect(started).toMatchObject({ bindings: "0/13 adapter bindings satisfied", unsatisfied: 13 });
   });
 });
 
@@ -134,8 +134,13 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(12);
-    expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy");
+    expect(body.detail.declaredBindings).toBe(13);
+    // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
+    // WHICH port is unserved rather than only which package is absent.
+    expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");
+    expect(body.detail.unsatisfiedBindings).toContain(
+      "postgres-tenancy:IdentityAccessRepository",
+    );
   });
 
   it("refuses a wrong token, a near-miss token, and an unset token", async () => {

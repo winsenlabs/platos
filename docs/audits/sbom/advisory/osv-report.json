@@ -1,7 +1,7 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-04T13:54:58.410Z",
+  "scannedAt": "2026-09-04T16:20:56.309Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
@@ -13,7 +13,7 @@
     "cacheFallbacks": 0,
     "limitations": []
   },
-  "lockfileSha256": "e927db2d41745b19407e647f3b429b781d6d672b9afea9d84bf44041a50aac04",
+  "lockfileSha256": "18d32716ed2dfc0388a897514dbfaa8816db89ab20645f85623e7b89df8a9ba6",
   "ecosystem": "npm",
   "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {
