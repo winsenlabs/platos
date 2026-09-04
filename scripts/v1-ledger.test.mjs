@@ -616,11 +616,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 = 346.
+    // WIN-256 (capability-matrix ownership) contributes +2, both root-infra,
+    // and is a different slice of the same issue from the domain-contracts
+    // +278 above:
+    //   scripts/arch/route-ownership.mjs   root-infra.tooling.scripts, source
+    //   scripts/capability-matrix.test.mjs root-infra.test.script-suites, test
+    // Nothing is deleted on this axis, so the two additions ARE the whole
+    // delta and no removal can hide inside them: root-infra 39 -> 41, and
+    // kindCounts source +1 and test +1 sum to the same 2.
+    //
+    // 20 + 5 + 19 + 278 + 24 + 2 = 348.
     "docs-content": 13,
-    "root-infra": 39,
+    "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 346);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 348);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -629,10 +638,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +346 combined delta as the totalFiles
-    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 +278, WIN-297 +24);
-    // this one re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 346
+    // M2 integration: same +20 -> +348 combined delta as the totalFiles
+    // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
+    // WIN-297 +24, WIN-256 capability-matrix ownership +2); this one
+    // re-derives it by summing the per-area counts independently.
+    rulesDocument.baseline.totalFiles + 348
   );
 });
 
