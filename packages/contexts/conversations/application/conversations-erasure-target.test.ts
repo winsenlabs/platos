@@ -29,7 +29,7 @@ import {
   turnFixture,
   type ConversationsTestContext,
 } from "./testing/index.js";
-import type { ActorId, EndUserId, PostmanContextHandle, PostmanExecutionId } from "../domain/index.js";
+import type { ActorId, EndUserId, PostmanContextHandle, PostmanExecutionId, ThreadId } from "../domain/index.js";
 import { openPostmanExecution } from "../domain/index.js";
 
 const TRANSACTION: TransactionScope = { transactionId: asIdentifier("txn-erasure") };
@@ -233,7 +233,7 @@ describe("erasing", () => {
     seedConversation(context);
     context.store.seedThread(
       threadFixture({
-        threadId: asIdentifier("thread-2"),
+        threadId: asIdentifier<ThreadId>("thread-2"),
         endUserId: asIdentifier<EndUserId>("end-user-2"),
       }),
     );

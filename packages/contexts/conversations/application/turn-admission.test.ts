@@ -17,7 +17,7 @@ import {
   threadFixture,
   turnFixture,
 } from "./testing/index.js";
-import { DEFAULT_CONVERSATIONS_POLICY, type EndUserId, type IdempotencyKey } from "../domain/index.js";
+import { DEFAULT_CONVERSATIONS_POLICY, type EndUserId, type IdempotencyKey, type TurnId } from "../domain/index.js";
 
 function request(overrides: Record<string, unknown> = {}) {
   return {
@@ -151,11 +151,11 @@ describe("admitTurn", () => {
       turn: { ...DEFAULT_CONVERSATIONS_POLICY.turn, maxTurnsPerThread: 2 },
     });
     context.store.seedThread(threadFixture());
-    context.store.seedTurn(turnFixture({ turnId: asIdentifier("turn-1"), sequence: 1 }));
+    context.store.seedTurn(turnFixture({ turnId: asIdentifier<TurnId>("turn-1"), sequence: 1 }));
     const below = await admitTurn(context.dependencies, request());
     expect(below.ok).toBe(true);
 
-    context.store.seedTurn(turnFixture({ turnId: asIdentifier("turn-2"), sequence: 2 }));
+    context.store.seedTurn(turnFixture({ turnId: asIdentifier<TurnId>("turn-2"), sequence: 2 }));
     const refused = await admitTurn(context.dependencies, request());
     expect(refused.ok).toBe(false);
     if (refused.ok) return;

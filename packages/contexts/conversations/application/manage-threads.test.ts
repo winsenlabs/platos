@@ -26,7 +26,7 @@ import {
   threadFixture,
   turnFixture,
 } from "./testing/index.js";
-import { DEFAULT_CONVERSATIONS_POLICY, type EndUserId, type TurnId } from "../domain/index.js";
+import { DEFAULT_CONVERSATIONS_POLICY, type EndUserId, type ThreadId, type TurnId } from "../domain/index.js";
 
 const SCOPE = {
   level: "environment",
@@ -179,7 +179,7 @@ describe("pageConversations", () => {
     const context = buildConversationsTestContext();
     context.store.seedThread(threadFixture());
     context.store.seedThread(
-      threadFixture({ threadId: asIdentifier("thread-2"), endUserId: asIdentifier<EndUserId>("u2") }),
+      threadFixture({ threadId: asIdentifier<ThreadId>("thread-2"), endUserId: asIdentifier<EndUserId>("u2") }),
     );
 
     const page = await pageConversations(context.dependencies, {
