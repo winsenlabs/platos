@@ -248,6 +248,27 @@ function main() {
   }
 
   if (check) {
+    // WIN-256 — validate the COMMITTED rows too, not just the fresh build. A
+    // hand-edited owner would otherwise only ever report as "out of date", and
+    // the reader would not learn which rule they broke.
+    try {
+      const onDisk = JSON.parse(readFileSync(OUT_JSON, "utf8"));
+      const committedErrors = validateOwners(
+        onDisk.surfaces?.rest ?? [],
+        onDisk.surfaces?.mcp ?? [],
+      );
+      if (committedErrors.length > 0) {
+        console.error(`capability-matrix: ${committedErrors.length} owner violation(s) in the COMMITTED artifact against ADR M0.3 §1.`);
+        for (const e of committedErrors) console.error(`  ${e}`);
+        process.exit(1);
+      }
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        console.error(`capability-matrix: the committed artifact is not valid JSON — ${err.message}`);
+        process.exit(1);
+      }
+      throw err;
+    }
     let committedMd;
     try { committedMd = readFileSync(OUT_MD, "utf8"); } catch { committedMd = null; }
     if (committedMd !== rendered) {
