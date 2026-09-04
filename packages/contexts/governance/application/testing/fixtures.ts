@@ -35,11 +35,8 @@ import {
 import { InMemoryAgents, InMemoryTenancy } from "./in-memory-peers.js";
 import { InMemoryRatingsRepository } from "./in-memory-ratings-repository.js";
 import { InMemorySafetyLedger } from "./in-memory-safety-ledger.js";
-import {
-  InMemoryCriteriaRepository,
-  InMemoryEvalsRepository,
-  InMemoryGoldenSetsRepository,
-} from "./in-memory-eval-stores.js";
+import { InMemoryCriteriaRepository, InMemoryEvalsRepository } from "./in-memory-eval-stores.js";
+import { InMemoryGoldenSetsRepository } from "./in-memory-golden-sets-repository.js";
 import {
   InMemoryActivity,
   InMemoryEvalRunQueue,
@@ -118,6 +115,9 @@ export function buildGovernanceTestContext(options: TestContextOptions = {}): Go
   const criteria = new InMemoryCriteriaRepository(now);
   const evals = new InMemoryEvalsRepository(now);
   const goldenSets = new InMemoryGoldenSetsRepository(now);
+  // `AgentEval.criterion` is `onDelete: Cascade` in the canonical schema, so the
+  // two stores are wired together here rather than left independent.
+  criteria.cascadeInto(evals);
   const ratingTargets = new InMemoryRatingTargets();
   const transcripts = new InMemoryTranscripts();
   const activity = new InMemoryActivity();

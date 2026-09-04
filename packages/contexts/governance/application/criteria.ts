@@ -23,10 +23,27 @@
 // write as well, so the narrowing does not depend on the order of two statements
 // in one function.
 //
-// DELETING A CRITERION DOES NOT DELETE ITS EVALS, and that is the point of the
-// snapshot: past measurements keep the question they were taken against. The
-// aggregate reports such a bucket with a null criterion name rather than dropping
-// it, which would silently improve the average every time an operator tidied up.
+// DELETING A CRITERION DELETES ITS EVALS, AND THAT IS A FINDING RATHER THAN A
+// DESIGN. The canonical schema declares
+// `criterion EvalCriterion @relation(..., onDelete: Cascade)`, so `removeCriterion`
+// destroys every historical `AgentEval` taken against it. That defeats what
+// `criterionSnapshot` is for at the one moment it matters most: the snapshot
+// makes a measurement immune to the criterion being EDITED, and nothing makes it
+// immune to the criterion being REMOVED.
+//
+// It is recorded here, and on `CriteriaRepository.remove`, rather than fixed,
+// because the remedy is a schema change — a soft delete, or `SetNull` on a
+// nullable `criterionId` — and this slice does not own the migration. The
+// in-memory `CriteriaRepository` MODELS THE CASCADE for the same reason a double
+// enforces the unique constraints: a double that quietly kept the evals would
+// certify a behaviour the database contradicts, and this package has a suite
+// asserting the rows go.
+//
+// WHAT REMAINS TRUE is the weaker claim the rollup depends on: a bucket whose
+// criterion NAME cannot be resolved still carries its scores. That is reachable
+// without deletion — the criteria store can be unavailable when the rollup is
+// taken — and `read-evals.ts` keeps the bucket rather than dropping it, because
+// dropping it would improve the average exactly when the names stopped resolving.
 
 import { err, ok, type Result } from "@platos/kernel";
 

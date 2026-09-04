@@ -1,15 +1,31 @@
-// In-memory `CriteriaRepository`, `EvalsRepository` and `GoldenSetsRepository`.
+// In-memory `CriteriaRepository` and `EvalsRepository` — the criterion a
+// measurement is taken against, and the measurement.
 //
-// THE TWO UNIQUE CONSTRAINTS ARE REAL HERE. `@@unique([environmentId, name])` on
-// a criterion and `@@unique([environmentId, agentId, name])` on a golden set are
-// enforced by these doubles, not merely pre-checked by the use case — so a use
-// case whose pre-check was removed still fails, which is what makes the
-// pre-check's own test non-vacuous.
+// The golden-set store lives in `in-memory-golden-sets-repository.ts`. The two
+// files split when this one crossed the ADR M0.3 §6 400-line warning band, along
+// the seam the budget was pointing at: these two stores are COUPLED by
+// `AgentEval.criterion @relation(onDelete: Cascade)` and a golden set is coupled
+// to neither.
+//
+// THE UNIQUE CONSTRAINT IS REAL HERE. `@@unique([environmentId, name])` on a
+// criterion is enforced by this double, not merely pre-checked by the use case —
+// so a use case whose pre-check was removed still fails, which is what makes the
+// pre-check's own test non-vacuous. What DOES distinguish the two is where the
+// refusal happens, which is why the suite asserts the transaction count.
 //
 // EVERY READ FILTERS BY ENVIRONMENT. A `findById` for an id that exists in
 // another environment answers null, exactly as the port requires, so the
 // cross-tenant tests are testing the store's narrowing rather than the absence
 // of a seeded row.
+//
+// AND THE CRITERION CASCADE IS MODELLED. `AgentEval.criterion` is
+// `onDelete: Cascade` in the canonical schema, so removing a criterion destroys
+// every eval taken against it. A double that quietly kept those rows would let a
+// suite certify that `criterionSnapshot` preserves history through a deletion,
+// which the database contradicts — the exact shape of defect where a fixture
+// certifies a live bug. `InMemoryCriteriaRepository.cascadeInto` wires the two
+// stores together and `buildGovernanceTestContext` does that wiring, so the
+// cascade is on by default rather than opt-in.
 
 import { err, ok, asIdentifier, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
 
@@ -49,8 +65,14 @@ export class InMemoryCriteriaRepository implements CriteriaRepository {
   private readonly rows: EvalCriterion[] = [];
   private counter = 0;
   private failure: string | null = null;
+  private cascade: { removeForCriterion(criterionId: EvalCriterionId): number } | null = null;
 
   constructor(private readonly now: () => Date) {}
+
+  /** Wire the schema's `onDelete: Cascade` from `EvalCriterion` to `AgentEval`. */
+  cascadeInto(evals: { removeForCriterion(criterionId: EvalCriterionId): number }): void {
+    this.cascade = evals;
+  }
 
   failNext(reason: string): void {
     this.failure = reason;
@@ -121,6 +143,7 @@ export class InMemoryCriteriaRepository implements CriteriaRepository {
     );
     if (held === undefined) return ok(false);
     this.rows.splice(this.rows.indexOf(held), 1);
+    this.cascade?.removeForCriterion(criterionId);
     return ok(true);
   }
 
@@ -199,6 +222,20 @@ export class InMemoryEvalsRepository implements EvalsRepository {
 
   all(): readonly AgentEval[] {
     return this.rows;
+  }
+
+  /**
+   * What the database does when the criterion an eval names is deleted.
+   *
+   * Not part of `EvalsRepository`: this context never deletes an eval, and the
+   * port says so. It exists because the CRITERION store's `remove` has to
+   * reproduce `onDelete: Cascade`, and a double that did not would certify that
+   * a measurement outlives the question it was taken against.
+   */
+  removeForCriterion(criterionId: EvalCriterionId): number {
+    const doomed = this.rows.filter((row) => row.criterionId === criterionId);
+    for (const row of doomed) this.rows.splice(this.rows.indexOf(row), 1);
+    return doomed.length;
   }
 
   async append(
@@ -310,126 +347,6 @@ export class InMemoryEvalsRepository implements EvalsRepository {
         .filter((row) => row.createdAt.getTime() >= query.since.getTime())
         .map((row) => ({ criterionId: row.criterionId, score: row.score })),
     );
-  }
-
-  private takeFailure() {
-    if (this.failure === null) return null;
-    const reason = this.failure;
-    this.failure = null;
-    return ledgerUnavailable(reason);
-  }
-}
-
-export class InMemoryGoldenSetsRepository implements GoldenSetsRepository {
-  private readonly rows: GoldenSet[] = [];
-  private counter = 0;
-  private failure: string | null = null;
-
-  constructor(private readonly now: () => Date) {}
-
-  failNext(reason: string): void {
-    this.failure = reason;
-  }
-
-  size(): number {
-    return this.rows.length;
-  }
-
-  async create(
-    scope: EnvironmentScope,
-    set: AdmittedGoldenSet,
-    createdBy: ActorId,
-    _transaction: TransactionScope,
-  ): Promise<Result<GoldenSet>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    const clash = this.rows.find(
-      (row) =>
-        row.environmentId === scope.environmentId && row.agentId === set.agentId && row.name === set.name,
-    );
-    if (clash !== undefined) {
-      return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));
-    }
-    this.counter += 1;
-    const at = this.now();
-    const row: GoldenSet = {
-      goldenSetId: asIdentifier<GoldenSetId>(`golden-${String(this.counter).padStart(4, "0")}`),
-      environmentId: scope.environmentId,
-      agentId: set.agentId,
-      name: set.name,
-      description: set.description,
-      threadIds: set.threadIds,
-      criterionIds: set.criterionIds,
-      createdBy,
-      createdAt: at,
-      updatedAt: at,
-    };
-    this.rows.push(row);
-    return ok(row);
-  }
-
-  async update(
-    scope: EnvironmentScope,
-    set: GoldenSet,
-    _transaction: TransactionScope,
-  ): Promise<Result<GoldenSet>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    const held = this.rows.find(
-      (row) => row.goldenSetId === set.goldenSetId && row.environmentId === scope.environmentId,
-    );
-    if (held === undefined) return err(ledgerUnavailable("golden_set_not_in_scope"));
-    this.rows[this.rows.indexOf(held)] = set;
-    return ok(set);
-  }
-
-  async remove(
-    scope: EnvironmentScope,
-    goldenSetId: GoldenSetId,
-    _transaction: TransactionScope,
-  ): Promise<Result<boolean>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    const held = this.rows.find(
-      (row) => row.goldenSetId === goldenSetId && row.environmentId === scope.environmentId,
-    );
-    if (held === undefined) return ok(false);
-    this.rows.splice(this.rows.indexOf(held), 1);
-    return ok(true);
-  }
-
-  async findById(scope: EnvironmentScope, goldenSetId: GoldenSetId): Promise<Result<GoldenSet | null>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    return ok(
-      this.rows.find(
-        (row) => row.goldenSetId === goldenSetId && row.environmentId === scope.environmentId,
-      ) ?? null,
-    );
-  }
-
-  async findByName(
-    scope: EnvironmentScope,
-    agentId: AgentId,
-    name: string,
-  ): Promise<Result<GoldenSet | null>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    return ok(
-      this.rows.find(
-        (row) =>
-          row.environmentId === scope.environmentId && row.agentId === agentId && row.name === name,
-      ) ?? null,
-    );
-  }
-
-  async page(scope: EnvironmentScope, query: GoldenSetQuery): Promise<Result<GoldenSetPage>> {
-    const failed = this.takeFailure();
-    if (failed !== null) return err(failed);
-    const matched = this.rows
-      .filter((row) => row.environmentId === scope.environmentId)
-      .filter((row) => query.agentId === null || row.agentId === query.agentId);
-    return ok({ items: matched.slice(query.offset, query.offset + query.limit), total: matched.length });
   }
 
   private takeFailure() {

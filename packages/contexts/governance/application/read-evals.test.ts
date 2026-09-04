@@ -3,8 +3,14 @@
 // The rollup is the interesting one. It joins nothing: criterion names come from
 // this context's own table by id and version numbers come from `agents`, and a
 // label neither can supply is null rather than a reason to drop the bucket —
-// because dropping it would improve the mean every time an operator deleted a
-// criterion.
+// because dropping it would improve the mean exactly when the labels stopped
+// resolving.
+//
+// THAT IS THE WEAKER CLAIM, AND IT IS THE ONE THAT HOLDS. An unnameable bucket
+// is NOT what an operator sees after deleting a criterion: the canonical schema
+// cascades `AgentEval` from `EvalCriterion`, so the measurements go with it.
+// Both cases have a test, and the in-memory criteria store models the cascade so
+// the second one cannot be certified away.
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { asIdentifier } from "@platos/kernel";
@@ -256,17 +262,17 @@ describe("aggregateAgentEvals", () => {
     expect(row?.versionNumber).toBe(6);
   });
 
-  it("KEEPS a bucket whose criterion was deleted, with a null name", async () => {
-    // Dropping it would improve the mean every time an operator deleted a
-    // criterion, which is the wrong direction for a number read as a score.
+  it("KEEPS a bucket whose criterion NAME could not be resolved, with a null name", async () => {
+    // Dropping it would improve the mean exactly when the names stopped
+    // resolving, which is the wrong direction for a number read as a score. The
+    // criterion still EXISTS here — only the lookup fails — because deleting it
+    // would take the evals with it; see the deletion case below.
     const criterion = await seedCriterion();
     await score(criterion, '{"score": 20, "passed": false}');
-    const removed = await removeCriterion(context.dependencies, {
-      authorization: context.authorization,
-      criterionId: criterion.evalCriterionId,
-    });
-    expect(removed.ok && removed.value).toBe(true);
 
+    // `sample` succeeds and `findMany` is the next criteria call, so this
+    // failure lands on the name lookup alone.
+    context.criteria.failNext("name lookup down");
     const rolled = await aggregateAgentEvals(context.dependencies, {
       authorization: context.authorization,
       agentId: AGENT_ID,
@@ -275,6 +281,30 @@ describe("aggregateAgentEvals", () => {
     const row = rolled.ok ? rolled.value.rows[0] : undefined;
     expect(row?.criterionName).toBeNull();
     expect(row?.meanScore).toBe(20);
+  });
+
+  it("LOSES the evals when the criterion is removed — the schema cascades them", async () => {
+    // `AgentEval.criterion` is `onDelete: Cascade`, so `criterionSnapshot` makes
+    // a measurement immune to the criterion being EDITED and NOT to it being
+    // REMOVED. This is a finding recorded in `application/criteria.ts`, and it is
+    // asserted here so a double that quietly kept the rows cannot certify the
+    // opposite.
+    const criterion = await seedCriterion();
+    await score(criterion, '{"score": 20, "passed": false}');
+    expect(context.evals.size()).toBe(1);
+
+    const removed = await removeCriterion(context.dependencies, {
+      authorization: context.authorization,
+      criterionId: criterion.evalCriterionId,
+    });
+    expect(removed.ok && removed.value).toBe(true);
+    expect(context.evals.size()).toBe(0);
+
+    const rolled = await aggregateAgentEvals(context.dependencies, {
+      authorization: context.authorization,
+      agentId: AGENT_ID,
+    });
+    expect(rolled.ok && rolled.value.rows).toEqual([]);
   });
 
   it("still answers, unlabelled, when `agents` cannot supply version numbers", async () => {

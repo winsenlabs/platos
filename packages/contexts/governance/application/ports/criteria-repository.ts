@@ -57,6 +57,16 @@ export interface CriteriaRepository {
     transaction: TransactionScope,
   ): Promise<Result<EvalCriterion>>;
 
+  /**
+   * Destroy one criterion, AND WITH IT EVERY EVAL TAKEN AGAINST IT.
+   *
+   * The canonical schema declares
+   * `criterion EvalCriterion @relation(..., onDelete: Cascade)` on `AgentEval`,
+   * so this is not a choice an implementation makes: the database does it. It is
+   * stated here so no adapter is written believing `criterionSnapshot` keeps the
+   * measurements — the snapshot survives an EDIT, not a DELETE — and so the
+   * in-memory double is obliged to model the same cascade.
+   */
   remove(
     scope: EnvironmentScope,
     criterionId: EvalCriterionId,

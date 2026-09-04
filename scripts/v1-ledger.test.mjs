@@ -550,27 +550,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // budget bit in its warning band and the answer was to split rather than to
     // waive.
     //
-    // +83: the same issue makes `governance` real (context 14). The tree holds
-    // 86 TypeScript files — 19 domain modules and 16 domain suites, 17
-    // application modules and 14 application suites, 9 ports, 9 in-memory
+    // +84: the same issue makes `governance` real (context 14). The tree holds
+    // 87 TypeScript files — 19 domain modules and 16 domain suites, 17
+    // application modules and 14 application suites, 9 ports, 10 in-memory
     // doubles and testing fixtures, and 2 contracts files (the barrel and its
     // suite) — of which FOUR are the generated placeholders adoption released
-    // and this code replaced in place, so 82 are new. The 83rd is
+    // and this code replaced in place, so 83 are new. The 84th is
     // `mutations.json`, the guard ledger that names every authorization check,
     // cap, kill switch and erasure step in the package together with the edit
     // that would remove it. That one is the single `config` file in this delta
     // and needed NO new ledger rule: `packages.contexts.config` already matches
     // `packages/contexts/**/*.json`.
     //
-    // The 83 conserves against the other two censuses rather than standing
-    // alone: 82 TypeScript files (51 source + 31 test, which is the same +82
-    // that `scripts/arch/arch-boundaries.test.mjs` counts as 464 -> 546 and
-    // `scripts/arch/max-file-lines.test.mjs` counts as 395 -> 477) plus the one
+    // The 84 conserves against the other two censuses rather than standing
+    // alone: 83 TypeScript files (52 source + 31 test, which is the same +83
+    // that `scripts/arch/arch-boundaries.test.mjs` counts as 464 -> 547 and
+    // `scripts/arch/max-file-lines.test.mjs` counts as 395 -> 478) plus the one
     // JSON. All three are NET of the 4 generated placeholders adoption released
     // and this code replaced in place. A deletion cannot hide inside this
-    // addition because the same 82 has to appear in three independently
+    // addition because the same 83 has to appear in three independently
     // computed places.
-    packages: 422,
+    packages: 423,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -650,11 +650,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transports rule so process code does not inherit transport evidence.
     // Every added file is enumerated above and conserves exactly to these
     // deltas; attributed for ledger-owner review, not forced to green.
-    // 20 + 5 + 19 + 278 + 24 + 67 = 413, and + 83 for governance = 496.
+    // 20 + 5 + 19 + 278 + 24 + 67 = 413, and + 84 for governance = 497.
     "docs-content": 13,
     "root-infra": 39,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 496);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 497);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -663,11 +663,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   );
   assert.equal(
     Object.values(summary.areaCounts).reduce((a, b) => a + b, 0),
-    // M2 integration: same +20 -> +496 combined delta as the totalFiles
+    // M2 integration: same +20 -> +497 combined delta as the totalFiles
     // assertion above (WIN-299 +5, WIN-284 +19, WIN-256 domain contracts +278,
-    // WIN-297 +24, WIN-256 agents +67, WIN-256 governance +83); this one
+    // WIN-297 +24, WIN-256 agents +67, WIN-256 governance +84); this one
     // re-derives it by summing the per-area counts independently.
-    rulesDocument.baseline.totalFiles + 496
+    rulesDocument.baseline.totalFiles + 497
   );
 });
 

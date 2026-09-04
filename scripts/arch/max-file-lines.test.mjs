@@ -101,22 +101,29 @@ test("the live selectors scan an exact nonzero source census", () => {
   // Two of the 67 files exist only because of those splits. Every one of the 395
   // is inside the budget and none is inside the warning band.
   //
-  // +82: the same issue makes `governance` real. The budget did NOT bite: the
-  // largest file in that tree is `application/testing/in-memory-eval-stores.ts`
-  // at 391 effective lines, nine under the 400-line warning band, and it holds
-  // three repositories that share a failure-injection idiom rather than one that
-  // outgrew its file. The layout was designed for the ceiling up front — the
-  // extraction source's `eval.service.ts` is 678 lines and lands here as
-  // `run-judge.ts`, `read-evals.ts` and four domain modules — so no split was
-  // forced after the fact. Every one of the 477 is inside the budget and none is
-  // inside the warning band.
+  // +83: the same issue makes `governance` real. The layout was designed for the
+  // ceiling up front — the extraction source's `eval.service.ts` is 678 lines
+  // and lands here as `run-judge.ts`, `read-evals.ts` and four domain modules —
+  // so the production tree never approached the budget. It bit ONCE, in the
+  // 400-line WARNING band rather than at the 500-line wall, and in a test
+  // double:
+  //
+  //   application/testing/in-memory-eval-stores.ts, 401 effective. It held three
+  //   repositories, and the third had no reason to be there: a criterion and an
+  //   eval are coupled by `AgentEval.criterion @relation(onDelete: Cascade)`,
+  //   which the double now models, and a golden set is coupled to neither. Split
+  //   into `in-memory-eval-stores.ts` and
+  //   `in-memory-golden-sets-repository.ts` along that seam rather than waived.
+  //
+  // One of the 83 files exists only because of that split. Every one of the 478
+  // is inside the budget and none is inside the warning band.
   //
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: 74 -> 263 -> 328
-  // -> 395 -> 477, which is 263 + 65 + 67 + 82. Adoption replaces a context's
+  // -> 395 -> 478, which is 263 + 65 + 67 + 83. Adoption replaces a context's
   // four placeholders in place and adds the rest, so this number only ever
   // grows and a fall in it is always a finding.
-  assert.equal(result.fileCount, 477);
-  assert.equal(result.fileCount, 263 + 65 + 67 + 82);
+  assert.equal(result.fileCount, 478);
+  assert.equal(result.fileCount, 263 + 65 + 67 + 83);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
 });

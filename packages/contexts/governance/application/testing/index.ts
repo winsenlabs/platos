@@ -7,6 +7,7 @@
 
 export * from "./fixtures.js";
 export * from "./in-memory-eval-stores.js";
+export * from "./in-memory-golden-sets-repository.js";
 export * from "./in-memory-infrastructure.js";
 export * from "./in-memory-peers.js";
 export * from "./in-memory-ratings-repository.js";

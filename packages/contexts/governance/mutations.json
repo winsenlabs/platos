@@ -1,520 +1,564 @@
-[
-  {
-    "name": "M01 authorization: verifyOperator accepts anything",
-    "file": "application/authorization.ts",
-    "from": "  return dependencies.tenancy.verifyAuthorization(authorization);",
-    "to": "  return ok(authorization as TenancyOperatorGrant);",
-    "suites": [
-      "application/authorization.test.ts",
-      "application/governance-contract.test.ts"
-    ]
-  },
-  {
-    "name": "M02 authorization: scope mismatch not checked",
-    "file": "application/authorization.ts",
-    "from": "  if (!authorizes(verified.value, scope)) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
-    "to": "  if (false) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
-    "suites": [
-      "application/authorization.test.ts"
-    ]
-  },
-  {
-    "name": "M03 authorization: an operator may write an end user's rating",
-    "file": "application/authorization.ts",
-    "from": "  if (actor.kind === \"operator\") return err(ratingActorForbidden());",
-    "to": "  if (false) return err(ratingActorForbidden());",
-    "suites": [
-      "application/authorization.test.ts",
-      "application/rate-turn.test.ts"
-    ]
-  },
-  {
-    "name": "M04 safety vocabulary: an unknown detector is admitted",
-    "file": "domain/safety-event.ts",
-    "from": "  if (!isSafetyDetector(draft.detector)) return err(safetyDetectorUnknown(draft.detector));",
-    "to": "  if (false) return err(safetyDetectorUnknown(draft.detector));",
-    "suites": [
-      "domain/safety-event.test.ts",
-      "application/read-safety.test.ts"
-    ]
-  },
-  {
-    "name": "M05 safety vocabulary: an unknown action is admitted",
-    "file": "domain/safety-event.ts",
-    "from": "  if (!isSafetyAction(draft.action)) return err(safetyActionUnknown(draft.action));",
-    "to": "  if (false) return err(safetyActionUnknown(draft.action));",
-    "suites": [
-      "domain/safety-event.test.ts"
-    ]
-  },
-  {
-    "name": "M06 safety vocabulary: an unknown severity is admitted",
-    "file": "domain/safety-event.ts",
-    "from": "  if (!isSafetySeverity(draft.severity)) return err(safetySeverityUnknown(draft.severity));",
-    "to": "  if (false) return err(safetySeverityUnknown(draft.severity));",
-    "suites": [
-      "domain/safety-event.test.ts"
-    ]
-  },
-  {
-    "name": "M07 sink: a non-environment observation is filed anyway",
-    "file": "application/safety-event-sink.ts",
-    "from": "        if (observation.scope.level !== \"environment\") {",
-    "to": "        if (false) {",
-    "suites": [
-      "application/safety-event-sink.test.ts"
-    ]
-  },
-  {
-    "name": "M08 sink: a drop is silent",
-    "file": "application/safety-event-sink.ts",
-    "from": "  dependencies.logger.log(\"warn\", SAFETY_SINK_DROP_MESSAGE, {",
-    "to": "  const unused = () => ({",
-    "suites": [
-      "application/safety-event-sink.test.ts"
-    ]
-  },
-  {
-    "name": "M09 rating value: any integer is a vote",
-    "file": "domain/rating.ts",
-    "from": "  if (value !== 1 && value !== -1) return err(ratingValueInvalid(value));",
-    "to": "  if (false) return err(ratingValueInvalid(value));",
-    "suites": [
-      "domain/rating.test.ts",
-      "application/rate-turn.test.ts"
-    ]
-  },
-  {
-    "name": "M10 rating comment: the length ceiling is not enforced",
-    "file": "domain/rating.ts",
-    "from": "  if (trimmed.length > maxLength) return err(ratingCommentTooLong(trimmed.length, maxLength));",
-    "to": "  if (false) return err(ratingCommentTooLong(trimmed.length, maxLength));",
-    "suites": [
-      "domain/rating.test.ts",
-      "application/rate-turn.test.ts"
-    ]
-  },
-  {
-    "name": "M11 rating ownership: any end user may rate any turn",
-    "file": "application/rate-turn.ts",
-    "from": "  if (found.value.endUserId !== endUserId) return err(ratingTargetNotFound(turnId));",
-    "to": "  if (false) return err(ratingTargetNotFound(turnId));",
-    "suites": [
-      "application/rate-turn.test.ts"
-    ]
-  },
-  {
-    "name": "M12 criterion scale: min may equal or exceed max",
-    "file": "domain/criterion.ts",
-    "from": "  if (minimum >= maximum) return err(criterionScaleInvalid(minimum, maximum));",
-    "to": "  if (false) return err(criterionScaleInvalid(minimum, maximum));",
-    "suites": [
-      "domain/criterion.test.ts",
-      "application/criteria.test.ts"
-    ]
-  },
-  {
-    "name": "M13 criterion name: the environment-unique pre-check opens a transaction anyway",
-    "file": "application/criteria.ts",
-    "from": "  if (taken.value !== null) {\n    return err(criterionAlreadyExists(scope.environmentId, admitted.value.name));\n  }",
-    "to": "  if (false) {\n    return err(criterionAlreadyExists(scope.environmentId, admitted.value.name));\n  }",
-    "suites": [
-      "application/criteria.test.ts"
-    ]
-  },
-  {
-    "name": "M14 criterion read: a criterion in another environment is described",
-    "file": "application/criteria.ts",
-    "from": "  if (found.value === null) return err(criterionNotFound(query.criterionId));",
-    "to": "  if (false as boolean) return err(criterionNotFound(query.criterionId));",
-    "suites": [
-      "application/criteria.test.ts"
-    ]
-  },
-  {
-    "name": "M15 eval kill switch: judging runs while disabled",
-    "file": "application/run-judge.ts",
-    "from": "  if (!dependencies.policy.evals.enabled) return err(evalsDisabled());",
-    "to": "  if (false) return err(evalsDisabled());",
-    "suites": [
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M16 eval: an inactive criterion may still be scored",
-    "file": "application/run-judge.ts",
-    "from": "  if (!found.value.isActive) return err(criterionInactive(criterionId));",
-    "to": "  if (false) return err(criterionInactive(criterionId));",
-    "suites": [
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M17 eval: a model may grade its own output",
-    "file": "domain/judge-model.ts",
-    "from": "  if (agent.value.provider === judge.provider && agent.value.model === judge.model) {",
-    "to": "  if (false) {",
-    "suites": [
-      "domain/judge-model.test.ts",
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M18 eval: another agent's conversation may be scored as this agent's",
-    "file": "application/run-judge.ts",
-    "from": "  if (read.value.agentId !== command.agentId) return err(transcriptNotFound(command.threadId));",
-    "to": "  if (false) return err(transcriptNotFound(command.threadId));",
-    "suites": [
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M19 eval attribution: the eval is filed against the LIVE version again",
-    "file": "application/run-judge.ts",
-    "from": "    agentVersionId: versionUnderTest(transcript.value.turns),",
-    "to": "    agentVersionId: live.value.versionId,",
-    "suites": [
-      "application/run-judge.test.ts",
-      "application/read-evals.test.ts"
-    ]
-  },
-  {
-    "name": "M20 eval attribution: a conversation spanning a promotion is filed under its last version",
-    "file": "domain/agent-eval.ts",
-    "from": "  const last = turns.at(-1);\n  if (last === undefined) return null;\n  for (const turn of turns) {\n    if (turn.agentVersionId !== last.agentVersionId) return null;\n  }\n  return last.agentVersionId;",
-    "to": "  return turns.at(-1)?.agentVersionId ?? null;",
-    "suites": [
-      "domain/agent-eval.test.ts",
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M21 golden set: an agent that is not here may be named",
-    "file": "application/golden-sets.ts",
-    "from": "  if (!described.ok) return err(agentNotVisible(agentId));",
-    "to": "  if (false) return err(agentNotVisible(agentId));",
-    "suites": [
-      "application/golden-sets.test.ts",
-      "application/enqueue-eval-run.test.ts"
-    ]
-  },
-  {
-    "name": "M22 golden set: the thread ceiling is not enforced",
-    "file": "domain/golden-set.ts",
-    "from": "  if (threadIds.length > policy.maxThreads) {\n    return err(goldenSetTooManyThreads(threadIds.length, policy.maxThreads));\n  }",
-    "to": "  if (false) {\n    return err(goldenSetTooManyThreads(threadIds.length, policy.maxThreads));\n  }",
-    "suites": [
-      "domain/golden-set.test.ts",
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M23 golden set: the criterion ceiling is not enforced",
-    "file": "domain/golden-set.ts",
-    "from": "  if (criterionIds.length > policy.maxCriteria) {\n    return err(goldenSetTooManyCriteria(criterionIds.length, policy.maxCriteria));\n  }",
-    "to": "  if (false) {\n    return err(goldenSetTooManyCriteria(criterionIds.length, policy.maxCriteria));\n  }",
-    "suites": [
-      "domain/golden-set.test.ts",
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M24 golden set: the PAIR ceiling is not enforced",
-    "file": "domain/golden-set.ts",
-    "from": "  if (pairCount > policy.maxPairs) return err(goldenSetTooManyPairs(pairCount, policy.maxPairs));",
-    "to": "  if (false) return err(goldenSetTooManyPairs(pairCount, policy.maxPairs));",
-    "suites": [
-      "domain/golden-set.test.ts",
-      "application/golden-sets.test.ts",
-      "application/enqueue-eval-run.test.ts"
-    ]
-  },
-  {
-    "name": "M25 golden set: duplicate threads are paid for twice",
-    "file": "domain/golden-set.ts",
-    "from": "    if (seen.has(trimmed)) continue;",
-    "to": "    if (false) continue;",
-    "suites": [
-      "domain/golden-set.test.ts",
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M26 golden set: the per-agent name pre-check opens a transaction anyway",
-    "file": "application/golden-sets.ts",
-    "from": "  if (taken.value !== null) {\n    return err(goldenSetAlreadyExists(scope.environmentId, admitted.value.agentId, admitted.value.name));\n  }",
-    "to": "  if (false) {\n    return err(goldenSetAlreadyExists(scope.environmentId, admitted.value.agentId, admitted.value.name));\n  }",
-    "suites": [
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M27 run queue: the kill switch does not stop a dispatch",
-    "file": "application/enqueue-eval-run.ts",
-    "from": "  if (!dependencies.policy.evals.enabled) return err(evalsDisabled());",
-    "to": "  if (false) return err(evalsDisabled());",
-    "suites": [
-      "application/enqueue-eval-run.test.ts"
-    ]
-  },
-  {
-    "name": "M28 run queue: the STORED set is not re-admitted against today's caps",
-    "file": "application/enqueue-eval-run.ts",
-    "from": "  if (!admitted.ok) return err(admitted.error);",
-    "to": "  if (false) return err(admitted.error);",
-    "suites": [
-      "application/enqueue-eval-run.test.ts"
-    ]
-  },
-  {
-    "name": "M29 run queue: the idempotency key carries the instant",
-    "file": "application/enqueue-eval-run.ts",
-    "from": "  return `eval-run/${goldenSetId}/${baselineVersionId ?? \"no-baseline\"}/${rendered}`;",
-    "to": "  return `eval-run/${goldenSetId}/${baselineVersionId ?? \"no-baseline\"}/${rendered}/${Date.now()}`;",
-    "suites": [
-      "application/enqueue-eval-run.test.ts"
-    ]
-  },
-  {
-    "name": "M30 page request: a negative offset serves page one",
-    "file": "domain/window.ts",
-    "from": "  if (!Number.isFinite(offset) || !Number.isInteger(offset) || offset < 0) {",
-    "to": "  if (false) {",
-    "suites": [
-      "domain/window.test.ts",
-      "application/read-safety.test.ts",
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M31 page request: the width ceiling does not clamp",
-    "file": "domain/window.ts",
-    "from": "  if (asked > bounds.maxPageSize) return ok({ limit: bounds.maxPageSize, offset, clamped: true });",
-    "to": "  if (false) return ok({ limit: bounds.maxPageSize, offset, clamped: true });",
-    "suites": [
-      "domain/window.test.ts",
-      "application/read-safety.test.ts",
-      "application/read-evals.test.ts",
-      "application/golden-sets.test.ts"
-    ]
-  },
-  {
-    "name": "M32 window: an over-wide day count is not clamped",
-    "file": "domain/window.ts",
-    "from": "  if (floored > bounds.maxWindowDays) return bounds.maxWindowDays;",
-    "to": "  if (false) return bounds.maxWindowDays;",
-    "suites": [
-      "domain/window.test.ts",
-      "application/read-evals.test.ts",
-      "application/risk-report.test.ts"
-    ]
-  },
-  {
-    "name": "M33 window: a non-finite day count propagates NaN into the date",
-    "file": "domain/window.ts",
-    "from": "  if (!Number.isFinite(requested)) return bounds.defaultWindowDays;",
-    "to": "  if (false) return bounds.defaultWindowDays;",
-    "suites": [
-      "domain/window.test.ts",
-      "application/read-evals.test.ts"
-    ]
-  },
-  {
-    "name": "M34 erasure: a plan minted by another context is carried out",
-    "file": "application/governance-erasure-target.ts",
-    "from": "  if (!isGovernanceErasurePlan(plan)) refuse(erasurePlanForeign(plan.targetName));",
-    "to": "  if (false) refuse(erasurePlanForeign(plan.targetName));",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M35 erasure: an operator subject matches the rating table's end-user column",
-    "file": "application/governance-erasure-target.ts",
-    "from": "  if (subject.subjectKind !== \"end-user\") return { scope: subject.scope, endUserId: null };",
-    "to": "  if (false) return { scope: subject.scope, endUserId: null };",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M36 erasure: safety events are DELETED rather than anonymised",
-    "file": "application/governance-erasure-target.ts",
-    "from": "    anonymized(SAFETY_EVENT_MODEL, safetyEvents),",
-    "to": "    deleted(SAFETY_EVENT_MODEL, safetyEvents),",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M37 erasure: three owned models are dropped from the plan",
-    "file": "application/governance-erasure-target.ts",
-    "from": "    deleted(EVAL_MODEL, 0),\n    deleted(CRITERION_MODEL, 0),\n    deleted(GOLDEN_SET_MODEL, 0),",
-    "to": "",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M38 erasure: a failing count is reported as zero rows",
-    "file": "application/governance-erasure-target.ts",
-    "from": "    if (!counted.ok) refuse(counted.error);\n    ratings = counted.value;",
-    "to": "    if (!counted.ok) { ratings = 0; } else { ratings = counted.value; }",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M39 erasure: a failing erase is receipted as though it worked",
-    "file": "application/governance-erasure-target.ts",
-    "from": "    if (!erased.ok) refuse(erased.error);\n    ratings = erased.value;",
-    "to": "    if (!erased.ok) { ratings = 0; } else { ratings = erased.value; }",
-    "suites": [
-      "application/governance-erasure-target.test.ts"
-    ]
-  },
-  {
-    "name": "M40 binder: the erasure target is dropped from the published contract",
-    "file": "application/governance-contract.ts",
-    "from": "    erasureTarget: () => erasure,",
-    "to": "    erasureTarget: undefined as unknown as GovernanceContract[\"erasureTarget\"],",
-    "suites": [
-      "application/governance-erasure-target.test.ts",
-      "application/governance-contract.test.ts"
-    ]
-  },
-  {
-    "name": "M41 binder: a fresh erasure target per call, so two injections double-count",
-    "file": "application/governance-contract.ts",
-    "from": "    erasureTarget: () => erasure,",
-    "to": "    erasureTarget: () => createGovernanceErasureTarget(dependencies),",
-    "suites": [
-      "application/governance-contract.test.ts"
-    ]
-  },
-  {
-    "name": "M42 binder: a fresh safety sink per enforcement decision",
-    "file": "application/governance-contract.ts",
-    "from": "    safetyEventSink: () => sink,",
-    "to": "    safetyEventSink: () => createGovernanceSafetyEventSink(dependencies),",
-    "suites": [
-      "application/governance-contract.test.ts"
-    ]
-  },
-  {
-    "name": "M43 risk board: an invented denominator is not marked",
-    "file": "domain/risk.ts",
-    "from": "  const denominatorSubstituted = activity.turns <= 0;",
-    "to": "  const denominatorSubstituted = false;",
-    "suites": [
-      "domain/risk.test.ts",
-      "application/risk-report.test.ts"
-    ]
-  },
-  {
-    "name": "M44 risk board: a degraded board reports itself complete",
-    "file": "application/risk-report.ts",
-    "from": "    complete: activity.ok,",
-    "to": "    complete: true,",
-    "suites": [
-      "application/risk-report.test.ts"
-    ]
-  },
-  {
-    "name": "M45 risk board: a dead safety ledger degrades instead of refusing",
-    "file": "application/risk-report.ts",
-    "from": "  if (!detectors.ok) return err(detectors.error);",
-    "to": "  if (false) return err(detectors.error);",
-    "suites": [
-      "application/risk-report.test.ts"
-    ]
-  },
-  {
-    "name": "M46 risk board: the band boundary is exclusive rather than inclusive",
-    "file": "domain/risk.ts",
-    "from": "  if (risk >= policy.highBand) return \"high\";",
-    "to": "  if (risk > policy.highBand) return \"high\";",
-    "suites": [
-      "domain/risk.test.ts",
-      "application/risk-report.test.ts"
-    ]
-  },
-  {
-    "name": "M47 regression: the expected criteria come from the results, not the set",
-    "file": "application/regression-report.ts",
-    "from": "      expectedCriterionIds: set.value.criterionIds,",
-    "to": "      expectedCriterionIds: [],",
-    "suites": [
-      "application/regression-report.test.ts"
-    ]
-  },
-  {
-    "name": "M48 regression: a run that produced nothing reports itself complete",
-    "file": "domain/regression.ts",
-    "from": "      verdict = \"no-candidate\";\n      complete = false;",
-    "to": "      verdict = \"no-candidate\";",
-    "suites": [
-      "domain/regression.test.ts",
-      "application/regression-report.test.ts"
-    ]
-  },
-  {
-    "name": "M49 regression: the verdict is taken on the ROUNDED delta",
-    "file": "domain/regression.ts",
-    "from": "      if (exact <= -input.thresholdPoints) {",
-    "to": "      if (roundToTwo(exact) < -input.thresholdPoints) {",
-    "suites": [
-      "domain/regression.test.ts",
-      "application/regression-report.test.ts"
-    ]
-  },
-  {
-    "name": "M50 eval admission: the raw response is stored untruncated",
-    "file": "domain/agent-eval.ts",
-    "from": "  const truncated = draft.rawResponse.length > maxRawResponseLength;",
-    "to": "  const truncated = false;",
-    "suites": [
-      "domain/agent-eval.test.ts",
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M51 judge verdict: a non-numeric score is read as a score",
-    "file": "domain/judge-verdict.ts",
-    "from": "  if (rawScore === null) {",
-    "to": "  if (false) {",
-    "suites": [
-      "domain/judge-verdict.test.ts"
-    ]
-  },
-  {
-    "name": "M52 judge model: an unparseable spec is accepted",
-    "file": "domain/judge-model.ts",
-    "from": "  if (!isJudgeProvider(provider)) return err(judgeModelInvalid(trimmed, \"unsupported-provider\"));",
-    "to": "  if (false) return err(judgeModelInvalid(trimmed, \"unsupported-provider\"));",
-    "suites": [
-      "domain/judge-model.test.ts",
-      "application/run-judge.test.ts"
-    ]
-  },
-  {
-    "name": "M53 safety detail: the ceiling does not truncate",
-    "file": "domain/safety-event.ts",
-    "from": "  const detail = truncateDetail(draft.detail ?? null, policy.maxDetailLength);",
-    "to": "  const detail = { value: draft.detail ?? null, truncated: false };",
-    "suites": [
-      "domain/safety-event.test.ts",
-      "application/read-safety.test.ts"
-    ]
-  },
-  {
-    "name": "M54 rating attribution: the vote is filed against the LIVE version again",
-    "file": "application/rate-turn.ts",
-    "from": "        agentVersionId: target.value.agentVersionId,",
-    "to": "        agentVersionId: (await dependencies.agents.describeAgent({ authorization: command.authorization, agentId: target.value.agentId })).ok ? ((await dependencies.agents.describeAgent({ authorization: command.authorization, agentId: target.value.agentId })) as { value: { currentVersionId: string } }).value.currentVersionId as typeof target.value.agentVersionId : null,",
-    "suites": [
-      "application/rate-turn.test.ts",
-      "application/read-ratings.test.ts"
-    ]
-  }
-]
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing in domain/, application/ or contracts/ imports this file.",
+  "purpose": [
+    "The guard ledger for @platos/context-governance. One entry per authorization",
+    "check, scope check, cap, kill switch and erasure step in the package, each",
+    "carrying the file it lives in, the EXACT text that implements it (`from`),",
+    "the edit that removes it (`to`), and the suites that are supposed to notice",
+    "(`suites`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there. Every entry below",
+    "was exercised before this context was proposed and all 55 were falsifiable.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
+    "PLACEHOLDERS, never its scaffolding, so an adopted context still owes the",
+    "generator its README verbatim."
+  ],
+  "procedure": [
+    "For one entry: replace its `from` with its `to` in the named file, run",
+    "`pnpm exec vitest run <suites>`, and confirm a NAMED case goes red. Then",
+    "revert and confirm green. A mutation that leaves every case green is a",
+    "finding, not a pass.",
+    "",
+    "Two entries \u2014 M13 and M26 \u2014 were NOT falsifiable when first written. The",
+    "in-memory doubles enforce the two unique constraints themselves, so deleting",
+    "the use case's pre-check produced an identical refusal with an identical",
+    "code. What distinguishes a pre-check from a store constraint is WHERE the",
+    "refusal happens, so both suites now assert the transaction count. M55 exists",
+    "for the mirror-image defect: a double that did NOT model",
+    "`AgentEval.criterion @relation(onDelete: Cascade)` let a suite certify that a",
+    "measurement outlives the criterion it was taken against, which the schema",
+    "contradicts."
+  ],
+  "mutations": [
+    {
+      "name": "M01 authorization: verifyOperator accepts anything",
+      "file": "application/authorization.ts",
+      "from": "  return dependencies.tenancy.verifyAuthorization(authorization);",
+      "to": "  return ok(authorization as TenancyOperatorGrant);",
+      "suites": [
+        "application/authorization.test.ts",
+        "application/governance-contract.test.ts"
+      ]
+    },
+    {
+      "name": "M02 authorization: scope mismatch not checked",
+      "file": "application/authorization.ts",
+      "from": "  if (!authorizes(verified.value, scope)) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
+      "to": "  if (false) {\n    return err(scopeMismatch(pathOf(scope), pathOf(verified.value.scope)));\n  }",
+      "suites": [
+        "application/authorization.test.ts"
+      ]
+    },
+    {
+      "name": "M03 authorization: an operator may write an end user's rating",
+      "file": "application/authorization.ts",
+      "from": "  if (actor.kind === \"operator\") return err(ratingActorForbidden());",
+      "to": "  if (false) return err(ratingActorForbidden());",
+      "suites": [
+        "application/authorization.test.ts",
+        "application/rate-turn.test.ts"
+      ]
+    },
+    {
+      "name": "M04 safety vocabulary: an unknown detector is admitted",
+      "file": "domain/safety-event.ts",
+      "from": "  if (!isSafetyDetector(draft.detector)) return err(safetyDetectorUnknown(draft.detector));",
+      "to": "  if (false) return err(safetyDetectorUnknown(draft.detector));",
+      "suites": [
+        "domain/safety-event.test.ts",
+        "application/read-safety.test.ts"
+      ]
+    },
+    {
+      "name": "M05 safety vocabulary: an unknown action is admitted",
+      "file": "domain/safety-event.ts",
+      "from": "  if (!isSafetyAction(draft.action)) return err(safetyActionUnknown(draft.action));",
+      "to": "  if (false) return err(safetyActionUnknown(draft.action));",
+      "suites": [
+        "domain/safety-event.test.ts"
+      ]
+    },
+    {
+      "name": "M06 safety vocabulary: an unknown severity is admitted",
+      "file": "domain/safety-event.ts",
+      "from": "  if (!isSafetySeverity(draft.severity)) return err(safetySeverityUnknown(draft.severity));",
+      "to": "  if (false) return err(safetySeverityUnknown(draft.severity));",
+      "suites": [
+        "domain/safety-event.test.ts"
+      ]
+    },
+    {
+      "name": "M07 sink: a non-environment observation is filed anyway",
+      "file": "application/safety-event-sink.ts",
+      "from": "        if (observation.scope.level !== \"environment\") {",
+      "to": "        if (false) {",
+      "suites": [
+        "application/safety-event-sink.test.ts"
+      ]
+    },
+    {
+      "name": "M08 sink: a drop is silent",
+      "file": "application/safety-event-sink.ts",
+      "from": "  dependencies.logger.log(\"warn\", SAFETY_SINK_DROP_MESSAGE, {",
+      "to": "  const unused = () => ({",
+      "suites": [
+        "application/safety-event-sink.test.ts"
+      ]
+    },
+    {
+      "name": "M09 rating value: any integer is a vote",
+      "file": "domain/rating.ts",
+      "from": "  if (value !== 1 && value !== -1) return err(ratingValueInvalid(value));",
+      "to": "  if (false) return err(ratingValueInvalid(value));",
+      "suites": [
+        "domain/rating.test.ts",
+        "application/rate-turn.test.ts"
+      ]
+    },
+    {
+      "name": "M10 rating comment: the length ceiling is not enforced",
+      "file": "domain/rating.ts",
+      "from": "  if (trimmed.length > maxLength) return err(ratingCommentTooLong(trimmed.length, maxLength));",
+      "to": "  if (false) return err(ratingCommentTooLong(trimmed.length, maxLength));",
+      "suites": [
+        "domain/rating.test.ts",
+        "application/rate-turn.test.ts"
+      ]
+    },
+    {
+      "name": "M11 rating ownership: any end user may rate any turn",
+      "file": "application/rate-turn.ts",
+      "from": "  if (found.value.endUserId !== endUserId) return err(ratingTargetNotFound(turnId));",
+      "to": "  if (false) return err(ratingTargetNotFound(turnId));",
+      "suites": [
+        "application/rate-turn.test.ts"
+      ]
+    },
+    {
+      "name": "M12 criterion scale: min may equal or exceed max",
+      "file": "domain/criterion.ts",
+      "from": "  if (minimum >= maximum) return err(criterionScaleInvalid(minimum, maximum));",
+      "to": "  if (false) return err(criterionScaleInvalid(minimum, maximum));",
+      "suites": [
+        "domain/criterion.test.ts",
+        "application/criteria.test.ts"
+      ]
+    },
+    {
+      "name": "M13 criterion name: the environment-unique pre-check opens a transaction anyway",
+      "file": "application/criteria.ts",
+      "from": "  if (taken.value !== null) {\n    return err(criterionAlreadyExists(scope.environmentId, admitted.value.name));\n  }",
+      "to": "  if (false) {\n    return err(criterionAlreadyExists(scope.environmentId, admitted.value.name));\n  }",
+      "suites": [
+        "application/criteria.test.ts"
+      ]
+    },
+    {
+      "name": "M14 criterion read: a criterion in another environment is described",
+      "file": "application/criteria.ts",
+      "from": "  if (found.value === null) return err(criterionNotFound(query.criterionId));",
+      "to": "  if (false as boolean) return err(criterionNotFound(query.criterionId));",
+      "suites": [
+        "application/criteria.test.ts"
+      ]
+    },
+    {
+      "name": "M15 eval kill switch: judging runs while disabled",
+      "file": "application/run-judge.ts",
+      "from": "  if (!dependencies.policy.evals.enabled) return err(evalsDisabled());",
+      "to": "  if (false) return err(evalsDisabled());",
+      "suites": [
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M16 eval: an inactive criterion may still be scored",
+      "file": "application/run-judge.ts",
+      "from": "  if (!found.value.isActive) return err(criterionInactive(criterionId));",
+      "to": "  if (false) return err(criterionInactive(criterionId));",
+      "suites": [
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M17 eval: a model may grade its own output",
+      "file": "domain/judge-model.ts",
+      "from": "  if (agent.value.provider === judge.provider && agent.value.model === judge.model) {",
+      "to": "  if (false) {",
+      "suites": [
+        "domain/judge-model.test.ts",
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M18 eval: another agent's conversation may be scored as this agent's",
+      "file": "application/run-judge.ts",
+      "from": "  if (read.value.agentId !== command.agentId) return err(transcriptNotFound(command.threadId));",
+      "to": "  if (false) return err(transcriptNotFound(command.threadId));",
+      "suites": [
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M19 eval attribution: the eval is filed against the LIVE version again",
+      "file": "application/run-judge.ts",
+      "from": "    agentVersionId: versionUnderTest(transcript.value.turns),",
+      "to": "    agentVersionId: live.value.versionId,",
+      "suites": [
+        "application/run-judge.test.ts",
+        "application/read-evals.test.ts"
+      ]
+    },
+    {
+      "name": "M20 eval attribution: a conversation spanning a promotion is filed under its last version",
+      "file": "domain/agent-eval.ts",
+      "from": "  const last = turns.at(-1);\n  if (last === undefined) return null;\n  for (const turn of turns) {\n    if (turn.agentVersionId !== last.agentVersionId) return null;\n  }\n  return last.agentVersionId;",
+      "to": "  return turns.at(-1)?.agentVersionId ?? null;",
+      "suites": [
+        "domain/agent-eval.test.ts",
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M21 golden set: an agent that is not here may be named",
+      "file": "application/golden-sets.ts",
+      "from": "  if (!described.ok) return err(agentNotVisible(agentId));",
+      "to": "  if (false) return err(agentNotVisible(agentId));",
+      "suites": [
+        "application/golden-sets.test.ts",
+        "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M22 golden set: the thread ceiling is not enforced",
+      "file": "domain/golden-set.ts",
+      "from": "  if (threadIds.length > policy.maxThreads) {\n    return err(goldenSetTooManyThreads(threadIds.length, policy.maxThreads));\n  }",
+      "to": "  if (false) {\n    return err(goldenSetTooManyThreads(threadIds.length, policy.maxThreads));\n  }",
+      "suites": [
+        "domain/golden-set.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M23 golden set: the criterion ceiling is not enforced",
+      "file": "domain/golden-set.ts",
+      "from": "  if (criterionIds.length > policy.maxCriteria) {\n    return err(goldenSetTooManyCriteria(criterionIds.length, policy.maxCriteria));\n  }",
+      "to": "  if (false) {\n    return err(goldenSetTooManyCriteria(criterionIds.length, policy.maxCriteria));\n  }",
+      "suites": [
+        "domain/golden-set.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M24 golden set: the PAIR ceiling is not enforced",
+      "file": "domain/golden-set.ts",
+      "from": "  if (pairCount > policy.maxPairs) return err(goldenSetTooManyPairs(pairCount, policy.maxPairs));",
+      "to": "  if (false) return err(goldenSetTooManyPairs(pairCount, policy.maxPairs));",
+      "suites": [
+        "domain/golden-set.test.ts",
+        "application/golden-sets.test.ts",
+        "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M25 golden set: duplicate threads are paid for twice",
+      "file": "domain/golden-set.ts",
+      "from": "    if (seen.has(trimmed)) continue;",
+      "to": "    if (false) continue;",
+      "suites": [
+        "domain/golden-set.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M26 golden set: the per-agent name pre-check opens a transaction anyway",
+      "file": "application/golden-sets.ts",
+      "from": "  if (taken.value !== null) {\n    return err(goldenSetAlreadyExists(scope.environmentId, admitted.value.agentId, admitted.value.name));\n  }",
+      "to": "  if (false) {\n    return err(goldenSetAlreadyExists(scope.environmentId, admitted.value.agentId, admitted.value.name));\n  }",
+      "suites": [
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M27 run queue: the kill switch does not stop a dispatch",
+      "file": "application/enqueue-eval-run.ts",
+      "from": "  if (!dependencies.policy.evals.enabled) return err(evalsDisabled());",
+      "to": "  if (false) return err(evalsDisabled());",
+      "suites": [
+        "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M28 run queue: the STORED set is not re-admitted against today's caps",
+      "file": "application/enqueue-eval-run.ts",
+      "from": "  if (!admitted.ok) return err(admitted.error);",
+      "to": "  if (false) return err(admitted.error);",
+      "suites": [
+        "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M29 run queue: the idempotency key carries the instant",
+      "file": "application/enqueue-eval-run.ts",
+      "from": "  return `eval-run/${goldenSetId}/${baselineVersionId ?? \"no-baseline\"}/${rendered}`;",
+      "to": "  return `eval-run/${goldenSetId}/${baselineVersionId ?? \"no-baseline\"}/${rendered}/${Date.now()}`;",
+      "suites": [
+        "application/enqueue-eval-run.test.ts"
+      ]
+    },
+    {
+      "name": "M30 page request: a negative offset serves page one",
+      "file": "domain/window.ts",
+      "from": "  if (!Number.isFinite(offset) || !Number.isInteger(offset) || offset < 0) {",
+      "to": "  if (false) {",
+      "suites": [
+        "domain/window.test.ts",
+        "application/read-safety.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M31 page request: the width ceiling does not clamp",
+      "file": "domain/window.ts",
+      "from": "  if (asked > bounds.maxPageSize) return ok({ limit: bounds.maxPageSize, offset, clamped: true });",
+      "to": "  if (false) return ok({ limit: bounds.maxPageSize, offset, clamped: true });",
+      "suites": [
+        "domain/window.test.ts",
+        "application/read-safety.test.ts",
+        "application/read-evals.test.ts",
+        "application/golden-sets.test.ts"
+      ]
+    },
+    {
+      "name": "M32 window: an over-wide day count is not clamped",
+      "file": "domain/window.ts",
+      "from": "  if (floored > bounds.maxWindowDays) return bounds.maxWindowDays;",
+      "to": "  if (false) return bounds.maxWindowDays;",
+      "suites": [
+        "domain/window.test.ts",
+        "application/read-evals.test.ts",
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M33 window: a non-finite day count propagates NaN into the date",
+      "file": "domain/window.ts",
+      "from": "  if (!Number.isFinite(requested)) return bounds.defaultWindowDays;",
+      "to": "  if (false) return bounds.defaultWindowDays;",
+      "suites": [
+        "domain/window.test.ts",
+        "application/read-evals.test.ts"
+      ]
+    },
+    {
+      "name": "M34 erasure: a plan minted by another context is carried out",
+      "file": "application/governance-erasure-target.ts",
+      "from": "  if (!isGovernanceErasurePlan(plan)) refuse(erasurePlanForeign(plan.targetName));",
+      "to": "  if (false) refuse(erasurePlanForeign(plan.targetName));",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M35 erasure: an operator subject matches the rating table's end-user column",
+      "file": "application/governance-erasure-target.ts",
+      "from": "  if (subject.subjectKind !== \"end-user\") return { scope: subject.scope, endUserId: null };",
+      "to": "  if (false) return { scope: subject.scope, endUserId: null };",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M36 erasure: safety events are DELETED rather than anonymised",
+      "file": "application/governance-erasure-target.ts",
+      "from": "    anonymized(SAFETY_EVENT_MODEL, safetyEvents),",
+      "to": "    deleted(SAFETY_EVENT_MODEL, safetyEvents),",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M37 erasure: three owned models are dropped from the plan",
+      "file": "application/governance-erasure-target.ts",
+      "from": "    deleted(EVAL_MODEL, 0),\n    deleted(CRITERION_MODEL, 0),\n    deleted(GOLDEN_SET_MODEL, 0),",
+      "to": "",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M38 erasure: a failing count is reported as zero rows",
+      "file": "application/governance-erasure-target.ts",
+      "from": "    if (!counted.ok) refuse(counted.error);\n    ratings = counted.value;",
+      "to": "    if (!counted.ok) { ratings = 0; } else { ratings = counted.value; }",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M39 erasure: a failing erase is receipted as though it worked",
+      "file": "application/governance-erasure-target.ts",
+      "from": "    if (!erased.ok) refuse(erased.error);\n    ratings = erased.value;",
+      "to": "    if (!erased.ok) { ratings = 0; } else { ratings = erased.value; }",
+      "suites": [
+        "application/governance-erasure-target.test.ts"
+      ]
+    },
+    {
+      "name": "M40 binder: the erasure target is dropped from the published contract",
+      "file": "application/governance-contract.ts",
+      "from": "    erasureTarget: () => erasure,",
+      "to": "    erasureTarget: undefined as unknown as GovernanceContract[\"erasureTarget\"],",
+      "suites": [
+        "application/governance-erasure-target.test.ts",
+        "application/governance-contract.test.ts"
+      ]
+    },
+    {
+      "name": "M41 binder: a fresh erasure target per call, so two injections double-count",
+      "file": "application/governance-contract.ts",
+      "from": "    erasureTarget: () => erasure,",
+      "to": "    erasureTarget: () => createGovernanceErasureTarget(dependencies),",
+      "suites": [
+        "application/governance-contract.test.ts"
+      ]
+    },
+    {
+      "name": "M42 binder: a fresh safety sink per enforcement decision",
+      "file": "application/governance-contract.ts",
+      "from": "    safetyEventSink: () => sink,",
+      "to": "    safetyEventSink: () => createGovernanceSafetyEventSink(dependencies),",
+      "suites": [
+        "application/governance-contract.test.ts"
+      ]
+    },
+    {
+      "name": "M43 risk board: an invented denominator is not marked",
+      "file": "domain/risk.ts",
+      "from": "  const denominatorSubstituted = activity.turns <= 0;",
+      "to": "  const denominatorSubstituted = false;",
+      "suites": [
+        "domain/risk.test.ts",
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M44 risk board: a degraded board reports itself complete",
+      "file": "application/risk-report.ts",
+      "from": "    complete: activity.ok,",
+      "to": "    complete: true,",
+      "suites": [
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M45 risk board: a dead safety ledger degrades instead of refusing",
+      "file": "application/risk-report.ts",
+      "from": "  if (!detectors.ok) return err(detectors.error);",
+      "to": "  if (false) return err(detectors.error);",
+      "suites": [
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M46 risk board: the band boundary is exclusive rather than inclusive",
+      "file": "domain/risk.ts",
+      "from": "  if (risk >= policy.highBand) return \"high\";",
+      "to": "  if (risk > policy.highBand) return \"high\";",
+      "suites": [
+        "domain/risk.test.ts",
+        "application/risk-report.test.ts"
+      ]
+    },
+    {
+      "name": "M47 regression: the expected criteria come from the results, not the set",
+      "file": "application/regression-report.ts",
+      "from": "      expectedCriterionIds: set.value.criterionIds,",
+      "to": "      expectedCriterionIds: [],",
+      "suites": [
+        "application/regression-report.test.ts"
+      ]
+    },
+    {
+      "name": "M48 regression: a run that produced nothing reports itself complete",
+      "file": "domain/regression.ts",
+      "from": "      verdict = \"no-candidate\";\n      complete = false;",
+      "to": "      verdict = \"no-candidate\";",
+      "suites": [
+        "domain/regression.test.ts",
+        "application/regression-report.test.ts"
+      ]
+    },
+    {
+      "name": "M49 regression: the verdict is taken on the ROUNDED delta",
+      "file": "domain/regression.ts",
+      "from": "      if (exact <= -input.thresholdPoints) {",
+      "to": "      if (roundToTwo(exact) < -input.thresholdPoints) {",
+      "suites": [
+        "domain/regression.test.ts",
+        "application/regression-report.test.ts"
+      ]
+    },
+    {
+      "name": "M50 eval admission: the raw response is stored untruncated",
+      "file": "domain/agent-eval.ts",
+      "from": "  const truncated = draft.rawResponse.length > maxRawResponseLength;",
+      "to": "  const truncated = false;",
+      "suites": [
+        "domain/agent-eval.test.ts",
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M51 judge verdict: a non-numeric score is read as a score",
+      "file": "domain/judge-verdict.ts",
+      "from": "  if (rawScore === null) {",
+      "to": "  if (false) {",
+      "suites": [
+        "domain/judge-verdict.test.ts"
+      ]
+    },
+    {
+      "name": "M52 judge model: an unparseable spec is accepted",
+      "file": "domain/judge-model.ts",
+      "from": "  if (!isJudgeProvider(provider)) return err(judgeModelInvalid(trimmed, \"unsupported-provider\"));",
+      "to": "  if (false) return err(judgeModelInvalid(trimmed, \"unsupported-provider\"));",
+      "suites": [
+        "domain/judge-model.test.ts",
+        "application/run-judge.test.ts"
+      ]
+    },
+    {
+      "name": "M53 safety detail: the ceiling does not truncate",
+      "file": "domain/safety-event.ts",
+      "from": "  const detail = truncateDetail(draft.detail ?? null, policy.maxDetailLength);",
+      "to": "  const detail = { value: draft.detail ?? null, truncated: false };",
+      "suites": [
+        "domain/safety-event.test.ts",
+        "application/read-safety.test.ts"
+      ]
+    },
+    {
+      "name": "M54 rating attribution: the vote is filed against the LIVE version again",
+      "file": "application/rate-turn.ts",
+      "from": "        agentVersionId: target.value.agentVersionId,",
+      "to": "        agentVersionId: (await dependencies.agents.describeAgent({ authorization: command.authorization, agentId: target.value.agentId })).ok ? ((await dependencies.agents.describeAgent({ authorization: command.authorization, agentId: target.value.agentId })) as { value: { currentVersionId: string } }).value.currentVersionId as typeof target.value.agentVersionId : null,",
+      "suites": [
+        "application/rate-turn.test.ts",
+        "application/read-ratings.test.ts"
+      ]
+    },
+    {
+      "name": "M55 criteria: the store does NOT cascade evals when a criterion is removed",
+      "file": "application/testing/in-memory-eval-stores.ts",
+      "from": "    this.cascade?.removeForCriterion(criterionId);",
+      "to": "    void this.cascade;",
+      "suites": [
+        "application/read-evals.test.ts"
+      ]
+    }
+  ]
+}
