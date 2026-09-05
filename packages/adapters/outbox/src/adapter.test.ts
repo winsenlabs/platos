@@ -97,6 +97,27 @@ describe("append", () => {
     expect(first.slice(14, 18)).toBe("7000");
   });
 
+  test("the row is stamped with the MINTED instant, not with the raw clock", async () => {
+    // A clock that steps backwards is clamped by the minter, and the row has to
+    // carry the clamped value: the drain orders by `createdAt` FIRST, so a row
+    // stamped from the raw reading would sort before the event that preceded it
+    // however ordered its identifier was. Every other case in this file uses a
+    // clock that stands still, where the two values coincide — the mutation
+    // sweep found `createdAt: clock.now()` surviving until this case existed.
+    const { memory, clock, adapter } = harness();
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.issued", { n: 1 }), transaction),
+    );
+    clock.set(new Date(AT.getTime() - 5));
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.accepted", { n: 2 }), transaction),
+    );
+    const rows = memory.rows();
+    expect(rows.map((row) => row.createdAt.getTime())).toEqual([AT.getTime(), AT.getTime()]);
+    const page = await adapter.drain(null, 10);
+    expect(page.events.map((event) => event.payload)).toEqual([{ n: 1 }, { n: 2 }]);
+  });
+
   test("an append outside a transaction is refused by the store, and nothing is written", async () => {
     const { memory, adapter } = harness();
     const stale = await memory.unitOfWork.run((transaction) => Promise.resolve(transaction));

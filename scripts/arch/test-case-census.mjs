@@ -1250,10 +1250,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * WIN-258 TRANCHE 4 — THE KERNEL OUTBOX. TWO packages move, and they move for
  * two different reasons, so the delta is written as two rows rather than one:
  *
- *   packages/adapters/outbox              0 -> 4 files,    0 -> 39 cases
+ *   packages/adapters/outbox              0 -> 4 files,    0 -> 41 cases
  *   packages/adapters/postgres-tenancy   11 -> 15 files, 123 -> 156 cases
  *
- * 378 + 4 + 4 = 386 files and 5998 + 39 + 33 = 6070 cases. The adapters term of
+ * 378 + 4 + 4 = 386 files and 5998 + 41 + 33 = 6072 cases. The adapters term of
  * the identity moves by the same eight: 349 + 3 + 34 = 386.
  *
  * WHY THE OUTBOX IS TWO PACKAGES AT ALL. `Event` has an owner that is an ADAPTER
@@ -1264,18 +1264,27 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * WHAT THE 39 ARE, file by file:
  *
- *   event-id.test.ts        10  the UUIDv7 that makes `ORDER BY createdAt, id`
- *                               append order, and the four ways it could stop
+ *   event-id.test.ts        11  the UUIDv7 that makes `ORDER BY createdAt, id`
+ *                               append order, and the five ways it could stop
  *   envelope.test.ts        15  the seven refusal codes, the object-root
  *                               constraint the double cannot see, and the
  *                               pre-envelope row a drain must still read
- *   adapter.test.ts         10  what `append` writes and what `drain` returns
+ *   adapter.test.ts         11  what `append` writes and what `drain` returns
  *   conformance.test.ts      4  the committed scenario against the double, plus
  *                               TWO negative controls: a store outside the
  *                               snapshot set and a store that never refuses
  *
- * 10 + 15 + 10 + 4 = 39. None of them needs a database, so all 39 run in
+ * 11 + 15 + 11 + 4 = 41. None of them needs a database, so all 41 run in
  * `pnpm test:v1-packages`.
+ *
+ * THE TWO ODD ONES OUT are the eleventh case in each of event-id and adapter,
+ * and both were written because the MUTATION SWEEP found a survivor rather than
+ * because a reviewer thought of them. `bytes[8] = tail[0]` — the variant bits
+ * left as drawn — survived every case in the file, because the fixed tail those
+ * cases use already carries the right two bits; and `createdAt: clock.now()` —
+ * the raw reading rather than the clamped one — survived because every case
+ * used a clock that stands still. A count that moved without that history is
+ * exactly what this block exists to prevent.
  *
  * WHAT THE 33 ARE, and all 33 need a real PostgreSQL:
  *
@@ -1308,7 +1317,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 4, cases: 39 },
+  "packages/adapters/outbox": { files: 4, cases: 41 },
   "packages/adapters/postgres-tenancy": { files: 15, cases: 156 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
@@ -1451,7 +1460,7 @@ export const EXPECTED = Object.freeze({
  * 5931 -> 5998: the 67 identity-access cases of WIN-258 tranche 2, enumerated
  * file by file in the block beside the postgres-tenancy row.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6070;
+export const EXPECTED_RUNTIME_TOTAL = 6072;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

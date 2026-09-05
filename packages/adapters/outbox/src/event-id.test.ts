@@ -25,10 +25,21 @@ describe("the minted identifier is a well-formed UUIDv7", () => {
   test("the version nibble is 7 and the variant bits are 10", () => {
     const { eventId } = createEventIdMinter(fixedTail).mint(AT);
     expect(eventId[14]).toBe("7");
-    // 0xab & 0x3f | 0x80 = 0xeb, so the variant nibble is 'e' — one of 8/9/a/b/
-    // c/d/e/f is not enough: RFC 9562 says the top two bits are exactly 10.
     const variant = Number.parseInt(eventId.slice(19, 21), 16);
     expect(variant & 0xc0).toBe(0x80);
+  });
+
+  test("the variant bits are IMPOSED on the random tail, not hoped for", () => {
+    // The case above cannot see this on its own: 0xab already has the right top
+    // two bits, so a minter that wrote the drawn byte through unchanged would
+    // pass it. A tail of 0xff has the WRONG top bits, and the only thing that
+    // can make the variant read 10 here is the mask actually being applied. The
+    // mutation sweep found this: `bytes[8] = tail[0]` survived until this case.
+    const allOnes = (length: number): Uint8Array => new Uint8Array(length).fill(0xff);
+    const { eventId } = createEventIdMinter(allOnes).mint(AT);
+    const variant = Number.parseInt(eventId.slice(19, 21), 16);
+    expect(variant & 0xc0).toBe(0x80);
+    expect(eventId.slice(19, 21)).toBe("bf");
   });
 
   test("the first 48 bits are the Unix millisecond, big-endian", () => {
