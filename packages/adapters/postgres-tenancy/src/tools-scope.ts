@@ -50,7 +50,7 @@ interface ResolvedAncestry {
  * A JOIN WRITTEN OUT, AND THAT IS THE POINT OF THE RAW READ. The obvious
  * spelling — `environment.findUnique` selecting `project: { organizationId }` —
  * is two round trips, because the client loads a relation as a separate query.
- * This is on the front of EVERY scoped method of a twenty-four-method port, so
+ * This is on the front of EVERY scoped method of a twenty-five-method port, so
  * that is one extra round trip per repository call, measured at exactly that by
  * `tools-statements.integration.test.ts` before this was written out. The SQL is
  * a static tagged template with one interpolated VALUE, so it stays attributable
