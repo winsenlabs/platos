@@ -1371,6 +1371,53 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 3's 16/166 would have dropped the outbox's four suites and 33 cases; taking
  * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
  * their own branch's arithmetic and neither is the tree.
+ *
+ * TRANCHE 5 — THE `tools` CANONICAL STORE — adds 5 files and 45 cases to
+ * `packages/adapters/postgres-tenancy`, and to no other package at all. The
+ * `tools` CONTEXT gains no test file: the port and its in-memory double already
+ * existed and already had suites, and this tranche implements the port rather
+ * than widening it.
+ *
+ * WHAT THE 45 ARE, and 29 of them need a real PostgreSQL:
+ *
+ *   tools-mapping.test.ts                    16  row -> domain mapping, the
+ *                                                label codec and the policy
+ *                                                fold; NO database, which is
+ *                                                why it is the one countable
+ *                                                unit suite of the five
+ *   tools-constraints.integration.test.ts    12  rules that live ONLY in the
+ *                                                migrations — the json-root
+ *                                                CHECK, the partial unique
+ *                                                index on the exposure, the
+ *                                                append-only audit trigger
+ *   tools-statements.integration.test.ts      7  measured statement counts, each
+ *                                                pinned on a SMALL and a LARGE
+ *                                                fixture so an N+1 moves one
+ *   tools-conformance.integration.test.ts     5  the shared scenario against a
+ *                                                real database, compared
+ *                                                observation for observation
+ *                                                with the in-memory double's
+ *   tools-transaction.integration.test.ts     5  failure injection and the three
+ *                                                distinct scope refusals
+ *
+ * 16 + 12 + 7 + 5 + 5 = 45. Four of the five are excluded from the package's
+ * default `test` script by filename and run by the `postgres-tenancy-repository`
+ * CI job.
+ *
+ * THE NUMBER TO WATCH HERE is the 5 in the conformance suite. It is small for
+ * the same reason the outbox's 3 is: it is ONE scenario compared verbatim, so
+ * adding an observation strengthens the differential and moves no count in this
+ * file. `packages/adapters/postgres-tenancy/mutations-tools.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * So `packages/adapters/postgres-tenancy` moves a third time:
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 25 files,  199 -> 244 cases
+ *
+ * 20 + 5 = 25 files and 199 + 45 = 244 cases. The tree total is 391 + 5 = 396
+ * files and 6115 + 45 = 6160 cases. The adapters term of the three-way identity
+ * carries all of it, because every added file is an adapter's: 39 + 5 = 44, and
+ * 349 + 3 + 44 = 396.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1381,7 +1428,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 20, cases: 199 },
+  "packages/adapters/postgres-tenancy": { files: 25, cases: 244 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1529,7 +1576,7 @@ export const EXPECTED = Object.freeze({
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6115;
+export const EXPECTED_RUNTIME_TOTAL = 6160;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

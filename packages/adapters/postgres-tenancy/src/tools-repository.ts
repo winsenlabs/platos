@@ -1,4 +1,4 @@
-// The `ToolsRepository` composite — the twenty-four methods, assembled.
+// The `ToolsRepository` composite — the twenty-five methods, assembled.
 //
 // FIVE MODULES AND NOT ONE, split by the four things `domain/index.ts` says the
 // ten rows group into rather than by method count: what a tool IS
@@ -30,8 +30,15 @@ import type { TenancyTransactions } from "./transaction.js";
 
 export function createToolsRepository(transactions: TenancyTransactions): ToolsRepository {
   const catalogue = createToolsCatalogue(transactions);
+  // `readBindings` IS NOT SPREAD. It is the catalogue's internal projection —
+  // the binding fold with the tenant clause already applied by the caller — and
+  // its own comment says it is "never reachable through `ToolsRepository`". That
+  // was true of the TYPE and false of the OBJECT: `...catalogue` put a method
+  // that skips the scope resolve onto the adapter every app holds. The exposures
+  // module still gets it, by reference, below.
+  const { readBindings: _internalProjection, ...catalogueMethods } = catalogue;
   return {
-    ...catalogue,
+    ...catalogueMethods,
     ...createToolsExposures(transactions, catalogue),
     ...createToolsPolicies(transactions),
     ...createToolsMcp(transactions),

@@ -19,7 +19,7 @@ export * from "./content-digest.js";
 // WIN-258 T5. `packages/adapters/postgres-tenancy` implements
 // `ToolsRepository`, and `cross-context-contracts-only` (ADR M0.3 §5.1 rule (c))
 // stops it reaching into `../../domain/`. Every parameter and every return of
-// the twenty-four methods above is spelled in domain vocabulary, so without the
+// the twenty-five methods above is spelled in domain vocabulary, so without the
 // block below the one package entitled to implement the port cannot name a
 // single thing the port says. The precedent is the identical block in
 // `@platos/context-tenancy` and `@platos/context-identity-access`, added for the

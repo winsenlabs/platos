@@ -38,7 +38,7 @@
 // `ToolCall`, `ToolCallAudit`, `AgentToolPolicy`, `EntityToolPolicy`,
 // `EntityMcpConfig`, `EntityMcpClient` and `OrganizationMcpPolicy` live in the
 // SAME PostgreSQL database behind the SAME client. Its twenty-five names —
-// twenty-four methods, no properties — collide with nothing tenancy or
+// twenty-five methods, no properties — collide with nothing tenancy or
 // identity-access publishes, which is what lets the composite be SPREAD in and
 // therefore lets `PORT_SATISFACTION` resolve `PostgresTenancyAdapter extends
 // ToolsRepository` at compile time. A nested property could not satisfy that.
