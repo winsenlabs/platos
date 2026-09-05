@@ -35,6 +35,7 @@ import {
   type ExposureRow,
   type ToolRow,
 } from "./tools-rows.js";
+import { guarded } from "./tools-scope.js";
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
 
@@ -266,5 +267,65 @@ describe("the audit envelope's layout", () => {
       createdAt: AT,
     };
     expect(toAuditEntry(row).costCents).toBe("123456789012.345678");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The driver-failure boundary. `guarded` is the ONE place this port's promise
+// — "a store failure is a business outcome, not an exception" — is kept, and
+// the two rules it holds are invisible in every integration assertion because
+// both are about what a THROW becomes. Neither had a case until the tranche-5
+// mutation sweep found both guards unfalsifiable.
+// ---------------------------------------------------------------------------
+
+describe("what a throw becomes on the way out of the store", () => {
+  test("a TransactionScopeError is RE-THROWN, never folded into a Result", async () => {
+    // It means a write was issued outside its unit of work — a defect in the
+    // composition, not an outcome a use case can handle. Swallowing it into a
+    // refusal would let a write that never ran read as a store that was busy,
+    // and every caller would carry on.
+    const scopeError = Object.assign(new Error("no transaction is open"), {
+      name: "TransactionScopeError",
+    });
+    await expect(
+      guarded("replaceExposures", async () => {
+        throw scopeError;
+      }),
+    ).rejects.toBe(scopeError);
+  });
+
+  test("any OTHER driver error becomes a refusal that names the driver's code", async () => {
+    const unique = Object.assign(new Error("unique violation"), { code: "P2002" });
+    const refused = await guarded("saveCall", async () => {
+      throw unique;
+    });
+    expect(refused.ok).toBe(false);
+    expect(refused.ok ? null : refused.error.details.reason).toBe("saveCall:P2002");
+  });
+
+  test("a CLIENT-SIDE validation error carries no code, so the refusal names its CLASS", async () => {
+    // The distinction this case pins: `saveCall:P2002` is a constraint the
+    // database refused and `saveCall:PrismaClientValidationError` is a bug in
+    // this package. Falling back to the literal `unknown` made the two read
+    // identically, which cost an hour on the first real run of the constraints
+    // suite. Two guards returning one string cannot be told apart.
+    const validation = Object.assign(new Error("Invalid value for argument"), {
+      name: "PrismaClientValidationError",
+    });
+    const refused = await guarded("saveCall", async () => {
+      throw validation;
+    });
+    expect(refused.ok).toBe(false);
+    expect(refused.ok ? null : refused.error.details.reason).toBe(
+      "saveCall:PrismaClientValidationError",
+    );
+  });
+
+  test("a thrown value that is not an object at all still refuses, and says so", async () => {
+    const refused = await guarded("pageAudit", async () => {
+      throw "a string";
+    });
+    expect(refused.ok).toBe(false);
+    expect(refused.ok ? null : refused.error.details.reason).toBe("pageAudit:unknown");
   });
 });

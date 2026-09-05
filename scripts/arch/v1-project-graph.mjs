@@ -36,7 +36,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // The edge cannot create a cycle: nothing imports an adapter except the
 // composition root, and `tenancy` already depends on `identity-access`, so
 // `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged.
-export const EXPECTED_EDGE_COUNT = 96;
+//
+// 96 -> 97 (WIN-258 T5, the same amendment a third time). The directory gained
+// a THIRD owner edge, to `packages/contexts/tools`, because the ten rows that
+// context owns are in the same PostgreSQL database behind the same client. It
+// is ONE edge and not two: `@platos/context-tools` already depended on
+// `@platos/context-tenancy` and on `@platos/context-identity-access` before this
+// tranche, so no context edge is added and `EXPECTED_CONTEXT_DEPENDS_ON` below
+// is again unchanged. Nothing imports an adapter except the composition root,
+// so a cycle is still unreachable by construction.
+export const EXPECTED_EDGE_COUNT = 97;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -152,7 +161,7 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access"],
+  "postgres-tenancy": ["tenancy", "identity-access", "tools"],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -174,7 +183,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 2 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 3 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.
