@@ -1,0 +1,566 @@
+{
+  "$schema-note": "Hand-maintained DATA, not code. Nothing under src/ imports it; two suites READ it.",
+  "purpose": [
+    "One sequence of OutboxEventStore calls and the transcript it must produce,",
+    "run twice: against the in-memory double in this package, and against the",
+    "real PostgreSQL store in packages/adapters/postgres-tenancy. ADR M0.3 §5.1",
+    "rule (j2) forbids either adapter importing the other, so the two halves",
+    "cannot share a module — and two independently written suites would measure",
+    "two things and agree by coincidence. The CALLS and the EXPECTED TRANSCRIPT",
+    "are therefore this file, and each package holds a small runner over it.",
+    "",
+    "Every row is spelled out: fixed identifiers, fixed instants, fixed bodies.",
+    "Nothing in a transcript depends on a clock, on a random draw, or on which",
+    "store answered — the environment identifiers are the one exception and are",
+    "named by KEY here and mapped to seeded rows by each runner.",
+    "",
+    "THE STEP THIS FILE EXISTS FOR is `rollback-loses-the-appended-event`.",
+    "`conversations` shipped a TestOutbox that was not in its unit of work's",
+    "snapshot set, so an event appended inside a rolled-back transaction",
+    "SURVIVED and certified a turn as settled against a settlement that never",
+    "landed. Every test was green. Here the rejected transaction's first row is",
+    "asked for immediately afterwards, from both stores, and both must have",
+    "forgotten it."
+  ],
+  "environments": [
+    "envA",
+    "envB"
+  ],
+  "steps": [
+    {
+      "op": "commit",
+      "name": "two events in one millisecond commit together",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "environment": "envA",
+          "eventType": "tenancy.invitation.issued",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "envelope": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0001",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "role": "MEMBER"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000002",
+          "environment": "envA",
+          "eventType": "tenancy.invitation.accepted",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "envelope": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 2,
+            "requestId": null,
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "userId": "user-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "op": "drain",
+      "name": "the committed pair comes back in append order",
+      "from": "start",
+      "limit": 10
+    },
+    {
+      "op": "reject",
+      "name": "rollback-loses-the-appended-event",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000003",
+          "environment": "envA",
+          "eventType": "tenancy.project.archived",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "envelope": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0003",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "projectId": "proj-1"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "environment": "envA",
+          "eventType": "tenancy.environment.archived",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "envelope": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0004",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "environmentId": "env-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "op": "drain",
+      "name": "the rolled-back event is not in the outbox",
+      "from": "start",
+      "limit": 10
+    },
+    {
+      "op": "outside",
+      "name": "an append with no open transaction is refused",
+      "row": {
+        "eventId": "01926f9c-0000-7000-8000-000000000003",
+        "environment": "envA",
+        "eventType": "tenancy.project.archived",
+        "subjectId": null,
+        "createdAt": "2026-05-01T09:00:00.000Z",
+        "envelope": {
+          "outboxEnvelope": 1,
+          "schemaVersion": 1,
+          "requestId": null,
+          "scope": {
+            "level": "environment",
+            "organizationId": "org-1",
+            "projectId": "proj-1",
+            "environmentId": "env-1"
+          },
+          "payload": {}
+        }
+      }
+    },
+    {
+      "op": "stale",
+      "name": "an append carrying a finished transaction's token is refused",
+      "row": {
+        "eventId": "01926f9c-0000-7000-8000-000000000003",
+        "environment": "envA",
+        "eventType": "tenancy.project.archived",
+        "subjectId": null,
+        "createdAt": "2026-05-01T09:00:00.000Z",
+        "envelope": {
+          "outboxEnvelope": 1,
+          "schemaVersion": 1,
+          "requestId": null,
+          "scope": {
+            "level": "environment",
+            "organizationId": "org-1",
+            "projectId": "proj-1",
+            "environmentId": "env-1"
+          },
+          "payload": {}
+        }
+      }
+    },
+    {
+      "op": "commit",
+      "name": "a row written before the envelope existed",
+      "rows": [
+        {
+          "eventId": "01926f9c-0001-7000-8000-000000000004",
+          "environment": "envA",
+          "eventType": "mcp.platform.emitted",
+          "subjectId": "subject-42",
+          "createdAt": "2026-05-01T09:00:00.001Z",
+          "envelope": {
+            "channel": "slack",
+            "messageId": "m-1"
+          }
+        }
+      ]
+    },
+    {
+      "op": "commit",
+      "name": "a third millisecond, in a second environment",
+      "rows": [
+        {
+          "eventId": "01926f9c-0002-7000-8000-000000000005",
+          "environment": "envB",
+          "eventType": "privacy.erasure.finished",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.002Z",
+          "envelope": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 3,
+            "requestId": "req-0005",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-2",
+              "projectId": "proj-2",
+              "environmentId": "env-2"
+            },
+            "payload": {
+              "erasureOperationId": "er-1",
+              "targets": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "op": "drain",
+      "name": "page one of two",
+      "from": "start",
+      "limit": 2
+    },
+    {
+      "op": "drain",
+      "name": "page two, continued from the cursor",
+      "from": "cursor",
+      "limit": 2
+    },
+    {
+      "op": "drain",
+      "name": "the cursor is exhausted",
+      "from": "cursor",
+      "limit": 2
+    },
+    {
+      "op": "drain",
+      "name": "the whole outbox, in append order",
+      "from": "start",
+      "limit": 10
+    }
+  ],
+  "expected": [
+    {
+      "step": "two events in one millisecond commit together",
+      "op": "commit",
+      "written": [
+        "01926f9c-0000-7000-8000-000000000001",
+        "01926f9c-0000-7000-8000-000000000002"
+      ],
+      "refusal": null
+    },
+    {
+      "step": "the committed pair comes back in append order",
+      "op": "drain",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "eventType": "tenancy.invitation.issued",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0001",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "role": "MEMBER"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000002",
+          "eventType": "tenancy.invitation.accepted",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 2,
+            "requestId": null,
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "userId": "user-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "rollback-loses-the-appended-event",
+      "op": "reject",
+      "written": [
+        "01926f9c-0000-7000-8000-000000000003"
+      ],
+      "refusal": "outbox.store.event_id_taken"
+    },
+    {
+      "step": "the rolled-back event is not in the outbox",
+      "op": "drain",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "eventType": "tenancy.invitation.issued",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0001",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "role": "MEMBER"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000002",
+          "eventType": "tenancy.invitation.accepted",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 2,
+            "requestId": null,
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "userId": "user-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "an append with no open transaction is refused",
+      "op": "outside",
+      "refusal": "tenancy.transaction.not_open"
+    },
+    {
+      "step": "an append carrying a finished transaction's token is refused",
+      "op": "stale",
+      "refusal": "tenancy.transaction.scope_unknown"
+    },
+    {
+      "step": "a row written before the envelope existed",
+      "op": "commit",
+      "written": [
+        "01926f9c-0001-7000-8000-000000000004"
+      ],
+      "refusal": null
+    },
+    {
+      "step": "a third millisecond, in a second environment",
+      "op": "commit",
+      "written": [
+        "01926f9c-0002-7000-8000-000000000005"
+      ],
+      "refusal": null
+    },
+    {
+      "step": "page one of two",
+      "op": "drain",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "eventType": "tenancy.invitation.issued",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0001",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "role": "MEMBER"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000002",
+          "eventType": "tenancy.invitation.accepted",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 2,
+            "requestId": null,
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "userId": "user-1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "page two, continued from the cursor",
+      "op": "drain",
+      "rows": [
+        {
+          "eventId": "01926f9c-0001-7000-8000-000000000004",
+          "eventType": "mcp.platform.emitted",
+          "subjectId": "subject-42",
+          "createdAt": "2026-05-01T09:00:00.001Z",
+          "payload": {
+            "channel": "slack",
+            "messageId": "m-1"
+          }
+        },
+        {
+          "eventId": "01926f9c-0002-7000-8000-000000000005",
+          "eventType": "privacy.erasure.finished",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.002Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 3,
+            "requestId": "req-0005",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-2",
+              "projectId": "proj-2",
+              "environmentId": "env-2"
+            },
+            "payload": {
+              "erasureOperationId": "er-1",
+              "targets": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "the cursor is exhausted",
+      "op": "drain",
+      "rows": []
+    },
+    {
+      "step": "the whole outbox, in append order",
+      "op": "drain",
+      "rows": [
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000001",
+          "eventType": "tenancy.invitation.issued",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 1,
+            "requestId": "req-0001",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "role": "MEMBER"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0000-7000-8000-000000000002",
+          "eventType": "tenancy.invitation.accepted",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.000Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 2,
+            "requestId": null,
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-1",
+              "projectId": "proj-1",
+              "environmentId": "env-1"
+            },
+            "payload": {
+              "invitationId": "inv-1",
+              "userId": "user-1"
+            }
+          }
+        },
+        {
+          "eventId": "01926f9c-0001-7000-8000-000000000004",
+          "eventType": "mcp.platform.emitted",
+          "subjectId": "subject-42",
+          "createdAt": "2026-05-01T09:00:00.001Z",
+          "payload": {
+            "channel": "slack",
+            "messageId": "m-1"
+          }
+        },
+        {
+          "eventId": "01926f9c-0002-7000-8000-000000000005",
+          "eventType": "privacy.erasure.finished",
+          "subjectId": null,
+          "createdAt": "2026-05-01T09:00:00.002Z",
+          "payload": {
+            "outboxEnvelope": 1,
+            "schemaVersion": 3,
+            "requestId": "req-0005",
+            "scope": {
+              "level": "environment",
+              "organizationId": "org-2",
+              "projectId": "proj-2",
+              "environmentId": "env-2"
+            },
+            "payload": {
+              "erasureOperationId": "er-1",
+              "targets": 3
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
