@@ -30,7 +30,18 @@
     "throw becomes` cases in `tools-mapping.test.ts` were written to close",
     "exactly those, and the SECOND sweep is what the entries below record: 15",
     "killed, 1 survived, 0 vacuous, on a baseline of 57 green cases. The one",
-    "survivor is recorded under `unfalsifiable` rather than deleted."
+    "survivor is recorded under `unfalsifiable` rather than deleted.",
+    "",
+    "SWEPT A THIRD TIME AT THE HEAD THIS SHIPS AT, by a driver written from",
+    "this file alone rather than from the first driver, because a ledger that",
+    "has only ever been checked by the run that wrote it is a transcript and",
+    "not evidence. Same result, on a baseline that grew to 59 when the two",
+    "transaction cases in commit 12 landed: 15 killed by NAMED cases, M09",
+    "survived, 0 vacuous, 0 stale anchors, and every mutated run executed all",
+    "59 cases rather than failing to load. M01 now falls to TWO cases rather",
+    "than one — `a SCOPE refusal is a Result the surrounding unit of work",
+    "COMMITS around` reads the ancestry resolve too — which is the guard",
+    "getting harder to remove, not a new guard."
   ],
   "procedure": [
     "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills",
@@ -39,6 +50,7 @@
     "used here runs the suite set UNMUTATED and refuses to sweep unless it is",
     "green, and classifies a run in which NO CASE EXECUTED as VACUOUS rather",
     "than as a kill. The baseline for the run recorded here was 57 cases, 0",
+    "failing; for the third sweep, at the head this ships at, it was 59, 0",
     "failing.",
     "",
     "For one entry: build @platos/tenancy-database, @platos/context-tenancy,",
