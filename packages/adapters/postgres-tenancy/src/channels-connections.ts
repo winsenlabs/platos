@@ -46,6 +46,7 @@ import type {
 } from "@platos/context-channels/application/ports/index.js";
 import { err, ok, repositoryUnavailable } from "@platos/context-channels/application/ports/index.js";
 
+import { jsonList } from "./client.js";
 import type { AppRow, ConnectionRow } from "./channels-rows.js";
 import { readAppRow, readConnectionRow } from "./channels-rows.js";
 import {
@@ -207,7 +208,7 @@ export function createChannelConnectionStore(
             provider: connection.provider,
             displayName: connection.displayName,
             defaultAgentId: connection.defaultAgentId,
-            agentRouting: [...connection.agentRouting],
+            agentRouting: jsonList(connection.agentRouting),
             enabled: connection.enabled,
             credentialId: connection.credentialId,
             createdAt: connection.createdAt,
@@ -224,7 +225,7 @@ export function createChannelConnectionStore(
             provider: connection.provider,
             displayName: connection.displayName,
             defaultAgentId: connection.defaultAgentId,
-            agentRouting: [...connection.agentRouting],
+            agentRouting: jsonList(connection.agentRouting),
             enabled: connection.enabled,
             credentialId: connection.credentialId,
           },
@@ -274,7 +275,7 @@ export function createChannelConnectionStore(
             scopes: [...app.scopes],
             distribution: app.distribution,
             defaultAgentId: app.defaultAgentId,
-            agentRouting: [...app.agentRouting],
+            agentRouting: jsonList(app.agentRouting),
             createdAt: app.createdAt,
           },
           update: {
@@ -286,7 +287,7 @@ export function createChannelConnectionStore(
             scopes: [...app.scopes],
             distribution: app.distribution,
             defaultAgentId: app.defaultAgentId,
-            agentRouting: [...app.agentRouting],
+            agentRouting: jsonList(app.agentRouting),
           },
           select: { id: true },
         });

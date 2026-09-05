@@ -77,6 +77,26 @@ export function nullableJson(value: unknown): Prisma.InputJsonValue | typeof Pri
 }
 
 /**
+ * A list of domain values bound for a NON-nullable `Json` column.
+ *
+ * WIN-258 T5. `nullableJson` above is the wrong tool for these: it can answer
+ * `DbNull`, and a `Json` column declared without `?` does not accept that
+ * sentinel at all. `ChannelConnection.agentRouting`, `ChannelApp.agentRouting`
+ * and `ChannelInstallation.agentRouting` are all `JSONB NOT NULL DEFAULT '[]'`
+ * behind a CHECK that demands `jsonb_typeof = 'array'`, so the only thing that
+ * may reach them is an array — never a null of either kind.
+ *
+ * It is a function in THIS file rather than a cast at each of six call sites
+ * because the vendor type is what a call site would have to name, and this is
+ * the one file entitled to name it. The cast itself is unavoidable: a domain
+ * value's interface has no index signature, so the client's structural
+ * `InputJsonObject` cannot see it as JSON even though its every field is.
+ */
+export function jsonList(values: readonly unknown[]): Prisma.InputJsonValue {
+  return values as Prisma.InputJsonValue;
+}
+
+/**
  * Pool and timeout settings, all optional and all with a stated default.
  *
  * They are separate fields rather than a URL the caller pre-builds because a

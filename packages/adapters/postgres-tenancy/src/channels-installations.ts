@@ -41,6 +41,7 @@ import type {
 } from "@platos/context-channels/application/ports/index.js";
 import { err, ok } from "@platos/context-channels/application/ports/index.js";
 
+import { jsonList } from "./client.js";
 import type { InstallationRow } from "./channels-rows.js";
 import { readInstallationRow } from "./channels-rows.js";
 import {
@@ -213,7 +214,7 @@ export function createChannelInstallationStore(
             credentialId: installation.credentialId,
             grantedScopes: [...installation.grantedScopes],
             defaultAgentId: installation.defaultAgentId,
-            agentRouting: [...installation.agentRouting],
+            agentRouting: jsonList(installation.agentRouting),
             status: installation.status,
             revokedAt: installation.revokedAt,
             lastEventAt: installation.lastEventAt,
@@ -231,7 +232,7 @@ export function createChannelInstallationStore(
             credentialId: installation.credentialId,
             grantedScopes: [...installation.grantedScopes],
             defaultAgentId: installation.defaultAgentId,
-            agentRouting: [...installation.agentRouting],
+            agentRouting: jsonList(installation.agentRouting),
             status: installation.status,
             revokedAt: installation.revokedAt,
             lastEventAt: installation.lastEventAt,
