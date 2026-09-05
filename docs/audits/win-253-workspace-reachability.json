@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5166739b813b3a6ce866b7ef8cf437a2894e8f0cf272da4c0af11a3d4dd53e6f",
+  "evidenceSha256": "3decc6e48949b9d6d4bd39be4d895204d6c5b66733986ee8246cf344841635bd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c77de440f3e8d6e4f9879841e0b5800d0f8b4dcabcdf2d66d96ffbc7d49e6550",
+    "aggregateSha256": "dec6df681978f8499a28a1211d608ea04fd1400d320ba7485db911eb0af43594",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "5aa0a26971b19c79f59d1a2dbb272093502d5fb18d1aae340c31e616a500397f"
+        "sha256": "8dd788871ec4e848c9b213a31adc4004331fb3084a1f8ec08244a5f81cae8f8e"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -18069,7 +18069,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "d3bef0ece00d05db1bcf79e2fbe88acd33c2b5a451653644b749dfa14ec141b4"
+        "sha256": "8745b8001d743df45a6becafdc41726cab6f9d91b6a422ab3d381ff082c4832c"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -18121,7 +18121,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "4cd9a00f533a5e1c647e4406b02b46e72541286df9d2d0b1d65341dbc4b67d8f"
+        "sha256": "f075736def6806264a972e823edc7a500387c60fd0a08c3a4ba3982fc85576ce"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -18429,7 +18429,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "9e996572548f1cfed665073d4441a9273170f73cd8e41f7b643618f2a28f1651"
+        "sha256": "f0b406aecc5296410f56cb299648998ec5ab371cb81d33d1acbb02b6483d5493"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -46020,6 +46020,11 @@
               "line": 723
             },
             {
+              "from": "scripts/vocabulary-boundary.test.mjs",
+              "kind": "reference",
+              "line": 632
+            },
+            {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
               "line": 519
@@ -46179,6 +46184,10 @@
               "scripts/v1-ledger.test.mjs"
             ],
             [
+              "scripts/vocabulary-boundary.test.mjs",
+              "scripts/vocabulary-boundary.test.mjs"
+            ],
+            [
               "scripts/workspace-reachability.test.mjs",
               "scripts/workspace-reachability.test.mjs"
             ]
@@ -46222,6 +46231,7 @@
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/v1-ledger.test.mjs",
+            "scripts/vocabulary-boundary.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
         }
@@ -46281,7 +46291,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "4f2483ae1eefe9b76b580ba576c8d1f6376aba9e047a19b146054864102dd8d5",
+      "evidenceSha256": "21a95513e8bcfc22447e25346688d9b366eba96c34d971c10a0cfd22b4008d77",
       "manifestSha256": "655333847a5e778909f0dc67091685066a6050f0a249d3a7575074652d537efb",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
