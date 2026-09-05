@@ -25,7 +25,7 @@
 // EXPAND/CONTRACT. This column was ADDED by
 // `migrations/20260825070000_access_key_revocation_fence`, not by the frozen
 // baseline, and it landed NOT NULL DEFAULT 0 after a backfill. So a row written
-// by a deployment older than that migration reads back as generation 0 rather
+// by a release older than that migration reads back as generation 0 rather
 // than as null, and `read` must not confuse "this environment has never been
 // revoked" with "this environment does not exist". Only the second is null.
 

@@ -90,7 +90,7 @@ async function raceForLock(
 
   await acquired.wait;
   const second = harness.adapter.unitOfWork.run(async (transaction) => {
-    trace.push("second-attempted");
+    trace.push("second-queued");
     await take(transaction);
     trace.push("second-acquired");
   });
@@ -156,10 +156,10 @@ describe("lockOrganizationForUpdate", () => {
     const trace = await raceForLock((transaction) =>
       harness.ports.locks.lockOrganizationForUpdate(orgId(organizationId), transaction),
     );
-    expect(trace.whileHeld).toEqual(["first-acquired", "second-attempted"]);
+    expect(trace.whileHeld).toEqual(["first-acquired", "second-queued"]);
     expect(trace.afterRelease).toEqual([
       "first-acquired",
-      "second-attempted",
+      "second-queued",
       "first-committed",
       "second-acquired",
     ]);
@@ -244,10 +244,10 @@ describe("lockInvitationSlot", () => {
         transaction,
       ),
     );
-    expect(trace.whileHeld).toEqual(["first-acquired", "second-attempted"]);
+    expect(trace.whileHeld).toEqual(["first-acquired", "second-queued"]);
     expect(trace.afterRelease).toEqual([
       "first-acquired",
-      "second-attempted",
+      "second-queued",
       "first-committed",
       "second-acquired",
     ]);
@@ -323,10 +323,10 @@ describe("lockEnvironmentForUpdate and the access-key revocation fence", () => {
     const trace = await raceForLock((transaction) =>
       harness.ports.locks.lockEnvironmentForUpdate(envId(environmentId), transaction),
     );
-    expect(trace.whileHeld).toEqual(["first-acquired", "second-attempted"]);
+    expect(trace.whileHeld).toEqual(["first-acquired", "second-queued"]);
     expect(trace.afterRelease).toEqual([
       "first-acquired",
-      "second-attempted",
+      "second-queued",
       "first-committed",
       "second-acquired",
     ]);

@@ -21,7 +21,7 @@ const DIGEST = /^[0-9a-f]{64}$/u;
 describe("the invitation token issuer", () => {
   test("mints a digest of the shape OrganizationInvitation_tokenHash_check demands", () => {
     const issuer = createInvitationTokenIssuer();
-    for (let attempt = 0; attempt < 64; attempt += 1) {
+    for (let round = 0; round < 64; round += 1) {
       // SIXTY-FOUR MINTS, not one. The output is random, and a hex rendering is
       // exactly the encoding whose length is constant — but `base64url` of the
       // same bytes is not, and a single sample would pass under either. This is
@@ -60,7 +60,7 @@ describe("the invitation token issuer", () => {
     const issuer = createInvitationTokenIssuer();
     const tokens = new Set<string>();
     const digests = new Set<string>();
-    for (let attempt = 0; attempt < 256; attempt += 1) {
+    for (let round = 0; round < 256; round += 1) {
       const minted = issuer.mint();
       tokens.add(minted.token);
       digests.add(String(minted.digest));

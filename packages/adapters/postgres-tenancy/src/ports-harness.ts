@@ -7,7 +7,7 @@
 // measuring an arrangement that does not ship. It adds exactly the rows the five
 // ports need and that the ports themselves cannot create: an ARCHIVED
 // organization, live `OperatorSession` rows, and an `Environment` row written
-// the way a deployment older than the fence migration wrote one.
+// the way a release older than the fence migration wrote one.
 //
 // THE THIRD OF THOSE IS THE EXPAND/CONTRACT FIXTURE, and it is raw SQL for a
 // reason that is not convenience. `accessKeyRevocationVersion` arrived in
