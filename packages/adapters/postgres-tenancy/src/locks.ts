@@ -82,8 +82,18 @@ export function createTenancyLocks(transactions: TenancyTransactions): TenancyLo
       // lock outlives the transaction and is released only by an explicit
       // unlock or by the connection closing, which on a pooled connection is a
       // lock leaked into whichever caller is handed that connection next.
-      await transactions.writer(transaction).$queryRaw`
-        SELECT pg_advisory_xact_lock(
+      //
+      // THE FUNCTION IS IN `FROM`, NOT IN THE SELECT LIST, AND THAT IS FORCED.
+      // `pg_advisory_xact_lock` returns `void`, and the client cannot
+      // deserialize a `void` column: `SELECT pg_advisory_xact_lock(...)` fails
+      // with "Failed to deserialize column of type 'void'". This is a real
+      // PostgreSQL fact that no in-memory double could have surfaced — the first
+      // integration run of this tranche found it — so the call is a one-row
+      // function scan and the projection is a constant. The lock is taken all
+      // the same: `pg_locks` shows one `advisory` row inside the transaction.
+      await transactions.writer(transaction).$queryRaw<readonly { locked: number }[]>`
+        SELECT 1 AS locked
+        FROM pg_advisory_xact_lock(
           hashtextextended(${invitationSlotKey(organizationId, email)}::text, 0)
         )
       `;
