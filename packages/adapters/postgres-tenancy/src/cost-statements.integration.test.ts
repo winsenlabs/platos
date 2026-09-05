@@ -240,20 +240,48 @@ const READS: readonly {
   },
 ];
 
-describe("every read costs the same over a small environment and a large one", () => {
+/** Every read measured over one fixture, as a map from name to count. */
+async function measureReads(fixture: Fixture): Promise<Record<string, Measurement>> {
+  const measured: Record<string, Measurement> = {};
   for (const read of READS) {
-    test(`${read.name} is ${read.pin} statement(s), both sizes`, async () => {
-      const overSmall = await measure(() => read.run(small));
-      const overLarge = await measure(() => read.run(large));
-      expect(overSmall.counted).toBe(read.pin);
-      expect(overLarge.counted).toBe(read.pin);
-      // AND NOTHING WAS DISCARDED BY THE FILTER. A read outside a transaction
-      // sends no frame, so the filtered and unfiltered counts must agree — which
-      // is what stops the measurement from hiding the statement it measures.
-      expect(overSmall.total).toBe(overSmall.counted);
-      expect(overLarge.total).toBe(overLarge.counted);
-    });
+    measured[read.name] = await measure(() => read.run(fixture));
   }
+  return measured;
+}
+
+describe("every read costs the same over a small environment and a large one", () => {
+  test("each read's statement count matches its pin, over BOTH sizes", async () => {
+    // ONE case over the whole map rather than one per read — the census refuses
+    // a `test()` declared in a loop, and the map is the better instrument
+    // anyway: a divergence names the read and shows both counts, and a read
+    // somebody forgot to measure cannot exist.
+    const overSmall = await measureReads(small);
+    const overLarge = await measureReads(large);
+    const pins = Object.fromEntries(READS.map((read) => [read.name, read.pin]));
+    expect(Object.fromEntries(Object.entries(overSmall).map(([n, m]) => [n, m.counted]))).toEqual(
+      pins,
+    );
+    expect(Object.fromEntries(Object.entries(overLarge).map(([n, m]) => [n, m.counted]))).toEqual(
+      pins,
+    );
+  });
+
+  test("nothing the reads sent was discarded by the filter that counts them", async () => {
+    // THE ANCHOR. Tranche 3's advisory lock projected `SELECT 1`, which is the
+    // shape these suites strip to discard the driver's connection probe, so the
+    // lock measured ZERO statements and the mutation that removed it survived.
+    // A read outside a transaction sends no frame either, so for every read the
+    // filtered and unfiltered counts must be EQUAL — which is what stops the
+    // measurement from hiding the thing it measures.
+    const overSmall = await measureReads(small);
+    const overLarge = await measureReads(large);
+    for (const [name, measured] of Object.entries(overSmall)) {
+      expect({ name, ...measured }).toEqual({ name, counted: measured.counted, total: measured.counted });
+    }
+    for (const [name, measured] of Object.entries(overLarge)) {
+      expect({ name, ...measured }).toEqual({ name, counted: measured.counted, total: measured.counted });
+    }
+  });
 
   test("the large fixture really is larger", async () => {
     // NON-VACUITY. Two empty environments would agree on every count above.

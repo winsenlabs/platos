@@ -195,7 +195,14 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/identity-access",
     "packages/adapters/postgres-tenancy",
   ]);
-  for (const owner of ["memory", "cost-monitoring", "secrets", "governance", "files"]) {
+  // WIN-258 T5. `cost-monitoring` moved from the undelegated list below to this
+  // one; the list it left still has to contain somebody, or the case stops
+  // saying anything.
+  assert.deepEqual(ownerDirectories("cost-monitoring"), [
+    "packages/contexts/cost-monitoring",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  for (const owner of ["memory", "secrets", "governance", "files"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
 });
@@ -206,6 +213,83 @@ test("the outbox adapter is the only package that may write Event", () => {
 
   const good = fixture({ "packages/adapters/outbox/src/x.ts": write("event", "create") });
   assert.deepEqual(checkWriteEnforcement(good).violations, []);
+});
+
+test("only cost-monitoring's own two directories may write its six rows", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // Every one of the six rows is checked, not a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise
+  // sit here unnoticed behind a green case for `Budget`.
+  const SIX = [
+    ["budget", "Budget"],
+    ["budgetThresholdEvent", "BudgetThresholdEvent"],
+    ["alertChannel", "AlertChannel"],
+    ["alertChannelConfiguration", "AlertChannelConfiguration"],
+    ["alertDelivery", "AlertDelivery"],
+    ["alertDeliveryRetry", "AlertDeliveryRetry"],
+  ];
+
+  for (const [delegate, model] of SIX) {
+    // The delegate directory: legal, and the reason the repositories can exist.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/postgres-tenancy/src/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree, because ADR M0.3 §2 forbids that package from holding the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({
+          [`packages/contexts/cost-monitoring/application/x.ts`]: write(delegate, "create"),
+        }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `observability` is the pointed choice — it is
+    // the context that reads cost data and would most plausibly write a
+    // threshold event, and it is exactly as refused as anything else.
+    const trespass = checkWriteEnforcement(
+      fixture({ [`packages/contexts/observability/application/x.ts`]: write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/observability");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/cost-monitoring",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And a SIBLING canonical-store adapter is not a loophole either: being an
+    // adapter is not the qualification, being THIS owner's declared store is.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/outbox/src/x.ts`]: write(delegate, "create") }),
+      ).violations.length,
+      1,
+      `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+});
+
+test("the shared directory is not a blanket licence over the whole schema", () => {
+  // The converse of the case above, and the one that would catch a delegation
+  // written as "this directory may write anything". `Memory` and `Turn` live in
+  // the same PostgreSQL database, behind the same client, in reach of the same
+  // file — and are refused from the directory that legally writes 106 rows.
+  for (const [delegate, model] of [
+    ["memory", "Memory"],
+    ["turn", "Turn"],
+  ]) {
+    const result = checkWriteEnforcement(
+      fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
+    );
+    assert.equal(result.violations.length, 1, `${model} must be refused from the shared directory`);
+    assert.equal(result.violations[0].model, model);
+  }
 });
 
 test("the gate is not foolable by a delegate name in a string, a comment or a type", () => {
@@ -532,7 +616,51 @@ test("an element-access member that is not a delegate is still not a write", () 
 // conflict at all and would have shipped three writes short of the tree. The
 // second and third assertions below say the writes are all legal and all
 // attributable, so the pin cannot be satisfied by 69 mutations somewhere else.
-const LIVE_TREE_WRITE_COUNT = 69;
+//
+// WIN-258 TRANCHE 5 adds 37, all from the SAME directory, and — unlike every
+// tranche before it — EVERY ONE of them is on a row this tranche's own owner
+// holds. There is no borrowed `Environment` write here, because none of
+// `cost-monitoring`'s six rows carries a fence on somebody else's table. Each
+// line below was read back from the enforcer rather than counted by eye:
+//
+//   src/cost-budgets.ts        budget.createMany, .updateMany x2,
+//                              budgetThresholdEvent.createMany                  4
+//   src/cost-channels.ts       alertChannel.createMany + .updateMany,
+//                              alertChannelConfiguration.create + .updateMany   4
+//   src/cost-deliveries.ts     alertDelivery.createMany x2, .updateMany x2,
+//                              .updateManyAndReturn, alertDeliveryRetry.create
+//                              x2                                              7
+//   src/cost-constraints.integration.test.ts
+//                              14 raw seeds standing each guard beside the
+//                              CHECK it restates — 6 Budget, 3 AlertChannel,
+//                              2 AlertDelivery, 2 BudgetThresholdEvent,
+//                              1 AlertDeliveryRetry                            14
+//   src/cost-rules.integration.test.ts
+//                              7 writes proving the database rules NO port
+//                              method restates: two immutability triggers, the
+//                              ancestry rule firing on UPDATE, and the
+//                              tombstone this port cannot write                  7
+//   src/cost-transaction.integration.test.ts
+//                              alertDeliveryRetry.create — the second statement
+//                              of the pair failure injection forces to fail      1
+//                                                                       total = 37
+//
+// `src/cost-harness.ts` contributes ZERO, and that is the line worth reading
+// rather than a silence, because the fixture needs four rows this package may
+// not write and gets them two different ways. `Organization`, `Project` and
+// `Environment` it obtains by CALLING the tenancy repositories already in this
+// directory, so those statements are counted once, at their own source, among
+// the 69. `Agent` and `Credential` it cannot obtain that way at all: `agents`
+// and `secrets` have NO entry in `CANONICAL_STORE_ADAPTERS`, so this gate
+// refuses a write to either from this directory — and rather than route around
+// the refusal, the harness seeds them out of band through the ORM's own CLI
+// (`prisma db execute`), which is runtime and therefore out of this scanner's
+// scope by construction. Both rows are real foreign keys the six under test
+// point at, so the fixture needs them; the gate is why it gets them from
+// somewhere else.
+//
+// 69 + 37 = 106.
+const LIVE_TREE_WRITE_COUNT = 106;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -564,14 +692,42 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "packages/adapters/postgres-tenancy",
   ]);
   assert.equal(CANONICAL_STORE_ADAPTERS["identity-access"], "packages/adapters/postgres-tenancy");
+  // WIN-258 T5: cost-monitoring is the THIRD context delegated to that same
+  // directory, for the same §15 reason.
+  assert.deepEqual(ownerDirectories("cost-monitoring"), [
+    "packages/contexts/cost-monitoring",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], "packages/adapters/postgres-tenancy");
+  // And that grant is exactly SIX rows wide. This is the assertion that keeps
+  // three owners sharing one directory from quietly becoming one directory that
+  // may write anything: the boundary is the owner TAG on the row, and the tag is
+  // read per write.
+  const costRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "cost-monitoring")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(costRows, [
+    "AlertChannel",
+    "AlertChannelConfiguration",
+    "AlertDelivery",
+    "AlertDeliveryRetry",
+    "Budget",
+    "BudgetThresholdEvent",
+  ]);
   // The delegation is granted PER OWNER and never derived from the adapter
-  // table's owner column. `redis-ratelimit` is also owned by identity-access
-  // and `notifier-email` by cost-monitoring; neither is a canonical store, and
-  // an owner with no entry here still has exactly one permitted directory —
-  // which is what stops the shared directory from becoming a blanket licence.
-  assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], undefined);
+  // table's owner column. `redis-ratelimit` is also owned by identity-access and
+  // `notifier-email` by cost-monitoring; neither is a canonical store, and an
+  // owner with no entry here still has exactly one permitted directory — which
+  // is what stops the shared directory from becoming a blanket licence.
+  //
+  // `memory` carries that negative now that cost-monitoring has been delegated.
+  // It is not a decorative example: `packages/adapters/postgres-tenancy` holds
+  // repositories for THREE owners, and `Memory` is a row in the very same
+  // PostgreSQL database, reachable through the very same client, whose write
+  // from this directory is still refused.
+  assert.equal(CANONICAL_STORE_ADAPTERS.memory, undefined);
   assert.deepEqual(ownerDirectories("memory"), ["packages/contexts/memory"]);
-  assert.deepEqual(ownerDirectories("cost-monitoring"), ["packages/contexts/cost-monitoring"]);
   // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
   // Its primary directory is an ADAPTER rather than a context — the one owner in
   // the map for which that is true — and the note that used to sit beside this
