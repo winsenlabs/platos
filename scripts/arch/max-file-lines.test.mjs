@@ -370,15 +370,25 @@ test("the live selectors scan an exact nonzero source census", () => {
   // The conformance scenario was split for the same reason at 428, into the
   // person-keyed half and the tenant-scoped half. Nothing this tranche adds is
   // now inside the 400-line warning band, so the finding list below is unchanged.
-  assert.equal(result.fileCount, 1174);
+  //
+  // WIN-258 TRANCHE 3 adds 11 more under `packages/adapters/**`, 1174 -> 1185,
+  // and no subtraction for the same reason. THIS GATE DID NOT BITE, and that is
+  // worth stating rather than passing over: the largest file the tranche adds is
+  // `locks.integration.test.ts` at 322 effective lines, well inside the 400-line
+  // warning band, because the five ports were split by PORT rather than gathered
+  // into one module and the suites by QUESTION -- whether the locks block, what
+  // the two stores answer, what a wrong transaction scope does, what the
+  // statements cost. The finding list below is therefore unchanged at the same
+  // four contexts files it already named.
+  assert.equal(result.fileCount, 1185);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11
   );
-  assert.equal(result.fileCount, 20 + 1060 + 88 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 99 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

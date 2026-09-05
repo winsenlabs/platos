@@ -65,3 +65,13 @@ export {
   BEARER_CREDENTIAL_ABSENT,
   UNKNOWN_BEARER_CREDENTIAL_KIND,
 } from "./identity-bearer.js";
+
+// WIN-258 T3 — tenancy's other five ports add NOTHING to this entry point, and
+// that is the decision rather than an omission. All five leave through
+// `PostgresTenancyAdapter`'s own properties, because a composition root that
+// built one of them itself would give it a second `TenancyTransactions` and get
+// a lock on one ambient frame with the write it serializes on another. Nothing
+// else about them is anyone else's: the advisory-lock key, the token prefix and
+// the two narrow peer-port aliases are used by their own siblings and by this
+// package's suites, and `apps/core-api/src/app.module.ts` says why an entry
+// point nothing imports is dead surface rather than optionality.

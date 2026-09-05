@@ -669,8 +669,25 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               rule at all. ADR M0.3 §15 records that as the deciding
     //               argument for many ports per DIRECTORY, and `src/client.ts`
     //               is still the only file in the layout that imports the ORM.
-    assert.equal(result.fileCount, 1199, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22);
+    //  1199 -> 1210 +11: WIN-258 TRANCHE 3 adds tenancy's OTHER FIVE PORTS to
+    //               the SAME package. Eleven .ts files -- six source and five
+    //               suites -- and again no subtraction, because the directory
+    //               has had no placeholders left to release since tranche 1. Its
+    //               `mutations-ports.json` is not source and is not counted
+    //               here; the v1 ledger counts it and the total there is 12.
+    //               The rule to watch here is NOT `tenancy-prisma-only` -- the
+    //               ORM still has one home and `src/client.ts` is still the only
+    //               file that imports it -- but `cross-context-contracts-only`,
+    //               which is the one this tranche comes closest to. Two of the
+    //               five ports are tenancy's edges INTO identity-access, and
+    //               both are satisfied by taking a narrow `Pick<>` of
+    //               identity-access's own published port rather than by reaching
+    //               for `User` or `OperatorSession` directly. The rule does not
+    //               fire on an adapter (it needs a from-CONTEXT, and an adapter
+    //               is not one), so it is the DESIGN and not the gate that keeps
+    //               that true, which is why it is written down here.
+    assert.equal(result.fileCount, 1210, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

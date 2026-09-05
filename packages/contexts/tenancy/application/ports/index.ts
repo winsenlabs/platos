@@ -57,6 +57,14 @@ export type {
   ProjectMembershipId,
   ProjectMembershipRecord,
   ProjectRecord,
+  // WIN-258 T3. `OperatorSessionRevoker.revoke` takes a `SessionRevocationOrder`
+  // and that type was declared in `domain/`, named on the port, and never
+  // re-exported here — so the one parameter of the one method of that port was
+  // unnameable by the only kind of package entitled to implement it. It is the
+  // same defect tranche 2 found on `EndUserStore` in identity-access's ports
+  // entry point, found the same way: by an implementation of the port failing
+  // to compile.
+  SessionRevocationOrder,
   Slug,
   TokenDigest,
   UserId,
