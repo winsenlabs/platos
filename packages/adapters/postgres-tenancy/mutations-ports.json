@@ -1,0 +1,301 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 3 — tenancy's five driven ports that",
+    "are not the repository. One entry per lock, per transaction-scope check, per",
+    "compare-and-set precondition, per projection and per cryptographic property,",
+    "each carrying the file it lives in, the EXACT text that implements it",
+    "(`from`), the edit that removes it (`to`), and the NAMED cases that were seen",
+    "to go red (`kills`).",
+    "",
+    "IT IS A THIRD FILE BESIDE mutations.json AND mutations-identity.json rather",
+    "than an extension of either, because the three tranches are three separate",
+    "claims about three separate port surfaces and a reader checking one should",
+    "not have to read past the other two. The three are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP MORE THAN THE OTHER TWO. Four of these",
+    "five ports return a boolean, a small number, or nothing at all. Every one of",
+    "them is trivially correct in memory and the interesting half — whether the",
+    "lock BLOCKS, whether the counter's read-modify-write is atomic, whether the",
+    "digest is a shape PostgreSQL will accept — is invisible to any assertion on a",
+    "returned value. A guard nothing can turn red is a guard that is not there,",
+    "and in this tranche most of the guards are of exactly that kind."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero test count, and classifies a run with no",
+    "executed cases as VACUOUS rather than as a kill.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file (the driver",
+    "requires the `from` to occur EXACTLY ONCE, so a stale entry is an error and",
+    "not a silent no-op), run the named suites against a real PostgreSQL container,",
+    "and confirm a NAMED case in `kills` is among the failures. Then revert and",
+    "confirm green again.",
+    "",
+    "SEVENTEEN OF THE TWENTY NEED A REAL POSTGRESQL, and none of those seventeen",
+    "could have been written against a double: M-P01, M-P05 and M-P08 are about",
+    "whether a statement BLOCKS, which is not a value; M-P02, M-P03 and M-P09 are",
+    "about a WHERE clause that has to be the thing doing the filtering; M-P04,",
+    "M-P07, M-P12 and M-P14 are about a client resolved through the caller's named",
+    "transaction rather than the pool; M-P10 is a null the schema cannot express;",
+    "M-P11 is a statement COUNT; and M-P21 is what happens when two halves of one",
+    "adapter are given two ambient frames.",
+    "",
+    "THREE FINDINGS CAME OUT OF WRITING THIS SWEEP AND ARE RECORDED IN THE",
+    "ENTRIES THEMSELVES rather than only in prose: `pg_advisory_xact_lock` returns",
+    "`void` and the client cannot deserialize a `void` column (the first",
+    "integration run refused); the constant a lock statement naturally projects,",
+    "`SELECT 1`, is the pattern the sibling statement-count suites use to discard",
+    "the driver's connection probe, so the advisory lock was measured at ZERO",
+    "statements until the projection changed; and the in-memory",
+    "`InvitationTokenIssuer` the context ships mints a digest",
+    "`OrganizationInvitation_tokenHash_check` refuses, which every use-case suite",
+    "in the tree passes with."
+  ],
+  "mutations": [
+    {
+      "name": "M-P01 locks: the organization row lock is a plain SELECT",
+      "file": "src/locks.ts",
+      "from": "        WHERE id = ${organizationId}::uuid AND \"archivedAt\" IS NULL\n        FOR UPDATE\n      `;",
+      "to": "        WHERE id = ${organizationId}::uuid AND \"archivedAt\" IS NULL\n      `;",
+      "suites": ["src/locks.integration.test.ts"],
+      "kills": ["lockOrganizationForUpdate > serializes two transactions over one organization"]
+    },
+    {
+      "name": "M-P02 locks: the organization lock ignores archival",
+      "file": "src/locks.ts",
+      "from": "        WHERE id = ${organizationId}::uuid AND \"archivedAt\" IS NULL",
+      "to": "        WHERE id = ${organizationId}::uuid",
+      "suites": [
+        "src/locks.integration.test.ts",
+        "src/ports-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "lockOrganizationForUpdate > refuses an archived organization, and locks nothing while doing it",
+        "the five tenancy ports against both stores > answer the shared scenario identically"
+      ]
+    },
+    {
+      "name": "M-P03 locks: 'locked' becomes a truthiness test rather than a row count",
+      "file": "src/locks.ts",
+      "from": "      // `organization.length !== 1` and not a truthiness test that would also\n      // accept a future query returning several.\n      return rows.length === 1;",
+      "to": "      // `organization.length !== 1` and not a truthiness test that would also\n      // accept a future query returning several.\n      return rows.length >= 0;",
+      "suites": [
+        "src/locks.integration.test.ts",
+        "src/ports-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "lockOrganizationForUpdate > refuses an organization that does not exist",
+        "the five tenancy ports against both stores > and the scenario is not vacuous: every recorded step has a value"
+      ]
+    },
+    {
+      "name": "M-P04 locks: the organization lock is taken on whatever client is ambient",
+      "file": "src/locks.ts",
+      "from": "      const rows = await transactions.writer(transaction).$queryRaw<readonly { id: string }[]>`",
+      "to": "      const rows = await transactions.reader().$queryRaw<readonly { id: string }[]>`",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "the scope refusals, on every port method that takes a scope > outside any transaction, all five refuse with not_open",
+        "the scope refusals, on every port method that takes a scope > with another LIVE transaction's token, all five refuse with scope_foreign"
+      ]
+    },
+    {
+      "name": "M-P05 locks: the invitation slot takes a SHARED advisory lock",
+      "file": "src/locks.ts",
+      "from": "        FROM pg_advisory_xact_lock(",
+      "to": "        FROM pg_advisory_xact_lock_shared(",
+      "suites": ["src/locks.integration.test.ts"],
+      "kills": [
+        "lockInvitationSlot > serializes two transactions over one (organization, email) slot"
+      ]
+    },
+    {
+      "name": "M-P06 locks: the advisory key drops the address and locks the whole tenant",
+      "file": "src/locks.ts",
+      "from": "  return `organization-invitation:${organizationId}:${email}`;",
+      "to": "  return `organization-invitation:${organizationId}:${String(email).slice(0, 0)}`;",
+      "suites": ["src/locks.integration.test.ts"],
+      "kills": [
+        "lockInvitationSlot > does NOT serialize two different addresses in one organization"
+      ]
+    },
+    {
+      "name": "M-P07 locks: the advisory lock is taken on whatever client is ambient",
+      "file": "src/locks.ts",
+      "from": "      await transactions.writer(transaction).$queryRaw<readonly { locked: boolean }[]>`",
+      "to": "      await transactions.reader().$queryRaw<readonly { locked: boolean }[]>`",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "the scope refusals, on every port method that takes a scope > outside any transaction, all five refuse with not_open"
+      ]
+    },
+    {
+      "name": "M-P08 locks: the environment row lock is a plain SELECT, and the fence opens",
+      "file": "src/locks.ts",
+      "from": "        SELECT id, \"accessKeyRevocationVersion\" FROM \"Environment\"\n        WHERE id = ${environmentId}::uuid\n        FOR UPDATE\n      `;",
+      "to": "        SELECT id, \"accessKeyRevocationVersion\" FROM \"Environment\"\n        WHERE id = ${environmentId}::uuid\n      `;",
+      "suites": ["src/locks.integration.test.ts"],
+      "kills": [
+        "lockEnvironmentForUpdate and the access-key revocation fence > serializes two transactions over one environment",
+        "lockEnvironmentForUpdate and the access-key revocation fence > the fence holds: two rotations on one snapshot, exactly one commits"
+      ]
+    },
+    {
+      "name": "M-P09 locks: the environment lock reports success for an absent environment",
+      "file": "src/locks.ts",
+      "from": "        FOR UPDATE\n      `;\n      return rows.length === 1;\n    },\n  };\n}",
+      "to": "        FOR UPDATE\n      `;\n      return rows.length >= 0;\n    },\n  };\n}",
+      "suites": ["src/ports-conformance.integration.test.ts"],
+      "kills": [
+        "the five tenancy ports against both stores > answer the shared scenario identically",
+        "the five tenancy ports against both stores > and the scenario is not vacuous: every recorded step has a value"
+      ]
+    },
+    {
+      "name": "M-P10 counter: an absent environment reads as generation 0",
+      "file": "src/access-key-revocation.ts",
+      "from": "      return row?.accessKeyRevocationVersion ?? null;",
+      "to": "      return row?.accessKeyRevocationVersion ?? 0;",
+      "suites": [
+        "src/locks.integration.test.ts",
+        "src/ports-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "lockEnvironmentForUpdate and the access-key revocation fence > reads a row written before the fence migration as generation 0, not null",
+        "the five tenancy ports against both stores > answer the shared scenario identically"
+      ]
+    },
+    {
+      "name": "M-P11 counter: the increment becomes a read-modify-write in this process",
+      "file": "src/access-key-revocation.ts",
+      "from": "      const row = await transactions.writer(transaction).environment.update({\n        where: { id: environmentId },\n        data: { accessKeyRevocationVersion: { increment: 1 } },\n        select: { accessKeyRevocationVersion: true },\n      });\n      return row.accessKeyRevocationVersion;",
+      "to": "      const client = transactions.writer(transaction);\n      const current = await client.environment.findUnique({\n        where: { id: environmentId },\n        select: { accessKeyRevocationVersion: true },\n      });\n      const row = await client.environment.update({\n        where: { id: environmentId },\n        data: { accessKeyRevocationVersion: (current?.accessKeyRevocationVersion ?? 0) + 1 },\n        select: { accessKeyRevocationVersion: true },\n      });\n      return row.accessKeyRevocationVersion;",
+      "suites": [
+        "src/ports-statements.integration.test.ts",
+        "src/locks.integration.test.ts"
+      ],
+      "kills": [
+        "statement counts > read and bump cost one statement each, and the bump does not read first",
+        "lockEnvironmentForUpdate and the access-key revocation fence > the increment is monotonic under concurrency even with no snapshot"
+      ]
+    },
+    {
+      "name": "M-P12 counter: the bump is written on whatever client is ambient",
+      "file": "src/access-key-revocation.ts",
+      "from": "      const row = await transactions.writer(transaction).environment.update({",
+      "to": "      const row = await transactions.reader().environment.update({",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "the scope refusals, on every port method that takes a scope > outside any transaction, all five refuse with not_open",
+        "the scope refusals, on every port method that takes a scope > with a FINISHED transaction's token, all five refuse with scope_unknown"
+      ]
+    },
+    {
+      "name": "M-P13 directory: identity-access's record is spread through unprojected",
+      "file": "src/operator-peers.ts",
+      "from": "      return {\n        userId: account.userId,\n        email: account.email,\n        disabledAt: account.disabledAt,\n      };",
+      "to": "      return { ...account };",
+      "suites": ["src/ports-conformance.integration.test.ts"],
+      "kills": [
+        "what the shared scenario cannot reach > the operator directory does not carry identity-access's impersonation flag"
+      ]
+    },
+    {
+      "name": "M-P14 revoker: the transaction scope is never checked",
+      "file": "src/operator-peers.ts",
+      "from": "      transactions.writer(transaction);\n",
+      "to": "",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "the scope refusals, on every port method that takes a scope > outside any transaction, all five refuse with not_open",
+        "the scope refusals, on every port method that takes a scope > with another LIVE transaction's token, all five refuse with scope_foreign"
+      ]
+    },
+    {
+      "name": "M-P15 revoker: the order's instant is replaced by the wall clock",
+      "file": "src/operator-peers.ts",
+      "from": "      return sessions.revokeAllForUser(order.userId, order.revokedAt);",
+      "to": "      return sessions.revokeAllForUser(order.userId, new Date());",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "the OperatorSession rules the in-memory double does not carry > revocation matches impersonatedUserId, not only userId",
+        "the OperatorSession rules the in-memory double does not carry > the database CASCADES to child sessions, and the returned count does not include them"
+      ]
+    },
+    {
+      "name": "M-P16 directory: a disabled account is reported as no account at all",
+      "file": "src/operator-peers.ts",
+      "from": "      const account = await users.findById(userId);\n      if (account === null) return null;",
+      "to": "      const account = await users.findById(userId);\n      if (account === null || account.disabledAt !== null) return null;",
+      "suites": ["src/ports-conformance.integration.test.ts"],
+      "kills": [
+        "what the shared scenario cannot reach > the operator directory reads a disabled account rather than hiding it"
+      ]
+    },
+    {
+      "name": "M-P17 token: the digest is rendered base64url instead of hex",
+      "file": "src/invitation-token.ts",
+      "from": "    asIdentifier<TokenDigest>(createHash(\"sha256\").update(token, \"utf8\").digest(\"hex\"));",
+      "to": "    asIdentifier<TokenDigest>(createHash(\"sha256\").update(token, \"utf8\").digest(\"base64url\"));",
+      "suites": [
+        "src/invitation-token.test.ts",
+        "src/ports-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the invitation token issuer > mints a digest of the shape OrganizationInvitation_tokenHash_check demands",
+        "what the shared scenario cannot reach > the in-memory token issuer mints a digest PostgreSQL refuses"
+      ]
+    },
+    {
+      "name": "M-P18 token: the secret becomes a counter, as the in-memory double's is",
+      "file": "src/invitation-token.ts",
+      "from": "      const token = `${INVITATION_TOKEN_PREFIX}${randomBytes(TOKEN_BYTES).toString(\"base64url\")}`;",
+      "to": "      counter += 1;\n      const token = `${INVITATION_TOKEN_PREFIX}${String(counter)}`;",
+      "prelude": {
+        "from": "  const digest = (token: string): TokenDigest =>",
+        "to": "  let counter = 0;\n  const digest = (token: string): TokenDigest =>"
+      },
+      "suites": ["src/invitation-token.test.ts"],
+      "kills": [
+        "the invitation token issuer > each issuer is independent, so two processes do not repeat each other"
+      ]
+    },
+    {
+      "name": "M-P19 token: digest normalises its input, so no issued invitation is acceptable",
+      "file": "src/invitation-token.ts",
+      "from": "    asIdentifier<TokenDigest>(createHash(\"sha256\").update(token, \"utf8\").digest(\"hex\"));",
+      "to": "    asIdentifier<TokenDigest>(\n      createHash(\"sha256\").update(token.toLowerCase(), \"utf8\").digest(\"hex\"),\n    );",
+      "suites": [
+        "src/invitation-token.test.ts",
+        "src/ports-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the invitation token issuer > the digest is sha256 of the token, so acceptance can look the row up"
+      ]
+    },
+    {
+      "name": "M-P20 token: the prefix drifts from identity-access's published one",
+      "file": "src/invitation-token.ts",
+      "from": "export const INVITATION_TOKEN_PREFIX = \"plt_inv_\";",
+      "to": "export const INVITATION_TOKEN_PREFIX = \"plt_invite_\";",
+      "suites": ["src/invitation-token.test.ts"],
+      "kills": ["the invitation token issuer > the prefix is identity-access's published one"]
+    },
+    {
+      "name": "M-P21 adapter: the two halves are given two ambient frames over one pool",
+      "file": "src/adapter.ts",
+      "from": "  const identity = createIdentityAccessRepository(transactions);",
+      "to": "  const identity = createIdentityAccessRepository(createTenancyTransactions(client, timeouts));",
+      "suites": ["src/ports-transaction.integration.test.ts"],
+      "kills": [
+        "transaction boundaries, proven by failure injection > a bump and a revocation are ONE unit: when the second fails, neither survives",
+        "the scope refusals, on every port method that takes a scope > outside any transaction, all five refuse with not_open"
+      ]
+    }
+  ]
+}
