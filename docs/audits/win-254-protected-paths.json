@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "8b8daa4cf4418efd9d1957341df78e2e22d6c3c837a8ed0c9777325261b0da55"
+      "sha256": "a44e005567d1c769ea98e9d87cc7f08694e0f42188289af39ddcff09c00accf9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "65b758d7cca2b0a0f3ae3b8f2a29379e1f06dc3b4eb4c6075226bc4bff94be08"
+      "sha256": "865179df31118538f300df97b3133fcaf6bee9b246c3e531d86a0e7bdafad9f6"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
