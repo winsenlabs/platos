@@ -36,6 +36,31 @@
     "unless it is green with a non-zero executed case count, and classifies a run",
     "with no executed cases as VACUOUS rather than as a kill.",
     "",
+    "",
+    "A SECOND SWEEP WIDENED SIX ENTRIES, AND THE SEVENTH SUITE IS ITS RESULT.",
+    "Re-running all forty scored SIX of them with zero executed cases -- M-C06,",
+    "M-C13, M-C15, M-C17, M-C18 and M-C20. None was a module-load failure: each",
+    "edit compiled and collected, and then broke `cost-conformance.integration.",
+    "test.ts` while it was BUILDING its transcript, in a `beforeAll`, so vitest",
+    "reported every case in the file SKIPPED and no named case went red. A suite",
+    "set that turns red only through a setup crash names no promise, and it is the",
+    "same signal a cleaned `dist` produces, so the driver scored all six VACUOUS",
+    "rather than counting them as kills.",
+    "",
+    "Widening the sweep to the WHOLE cost suite set found a named case for two of",
+    "them already in the tree -- M-C15 in the statement-count suite and M-C18 in",
+    "the transaction suite -- and none at all for the other four. Those four are",
+    "why `cost-idempotency.integration.test.ts` exists: one named case each for the",
+    "insert form that does not raise, the uuid shape test the vault's question",
+    "depends on, the terminal status that stops a second send, and the count test",
+    "that keeps a stale dispatcher's send record out of the history. All six now",
+    "name the suite that carries their case rather than the conformance run, and",
+    "all forty are KILLED by a NAMED case with none vacuous.",
+    "",
+    "THE NEW SUITE'S OWN FIXTURE WAS REFUSED BY A GUARD ON ITS FIRST RUN.",
+    "`requireRetryRecord` (M-C35) rejected a SUCCEEDED send record that still",
+    "carried `upstream_500`, which is the guard doing exactly what its entry",
+    "claims for it.",
     "That failure mode was LIVE on this branch and is what the fifth commit",
     "closed: the `postgres-tenancy-repository` CI job built `tenancy` and",
     "`identity-access` and not `cost-monitoring`, and these six suites resolve",
@@ -51,7 +76,7 @@
     "revert and confirm green again.",
     "",
     "ALL FORTY ARE RUN AGAINST A REAL POSTGRESQL. Three of them -- M-C25, M-C37",
-    "and M-C38 -- are ALSO killed by `cost-rows.test.ts`, the one suite of the six",
+    "and M-C38 -- are ALSO killed by `cost-rows.test.ts`, the one suite of the seven",
     "that `pnpm test:v1-packages` runs; every other entry is about something only",
     "the database can answer: which rows a predicate matched, whether two",
     "statements rolled back together, whether a claim was refused while a lease",
@@ -179,12 +204,12 @@
       "file": "src/cost-budgets.ts",
       "from": "        data: [{ ...writeBudget(budget), alertThresholds: [...budget.alertThresholds] }],\n        skipDuplicates: true,",
       "to": "        data: [{ ...writeBudget(budget), alertThresholds: [...budget.alertThresholds] }],\n        skipDuplicates: false,",
-      "note": "THE FINDING THAT SHAPED ALL THREE INSERTS IN THIS FILE. A raised 23505 aborts the caller's whole transaction with 25P02, so a duplicate would be reported correctly and every later write in that unit of work would fail. The port hands the caller a `Result` it is entitled to act on.",
+      "note": "THE FINDING THAT SHAPED ALL THREE INSERTS IN THIS FILE. A raised 23505 aborts the caller's whole transaction with 25P02, so a duplicate would be reported correctly and every later write in that unit of work would fail. The port hands the caller a `Result` it is entitled to act on. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-idempotency.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "the writes that must not happen twice > a cap whose identifier is taken is a REFUSAL, not a raise"
       ]
     },
     {
@@ -272,12 +297,12 @@
       "file": "src/cost-channels.ts",
       "from": "      if (!UUID.test(credential)) return ok(0);",
       "to": "      if (false) return ok(0);",
-      "note": "`AlertChannelConfiguration.credentialId` is `@db.Uuid`. A reference that is not a uuid names no row, so zero is the TRUE count; sending it raises 22P02 and turns a question with an answer into a driver error the port has no channel for.",
+      "note": "`AlertChannelConfiguration.credentialId` is `@db.Uuid`. A reference that is not a uuid names no row, so zero is the TRUE count; sending it raises 22P02 and turns a question with an answer into a driver error the port has no channel for. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-idempotency.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "the writes that must not happen twice > a credential reference that is not a uuid is ANSWERED zero, not sent"
       ]
     },
     {
@@ -298,12 +323,12 @@
       "file": "src/cost-deliveries.ts",
       "from": "      const outcome = await client.alertDelivery.createMany({\n        data: deliveries.map(writeDelivery),\n        skipDuplicates: true,\n      });",
       "to": "      const outcome = await client.alertDelivery.createMany({\n        data: deliveries.map(writeDelivery),\n        skipDuplicates: false,\n      });",
-      "note": "`@@unique([environmentId, idempotencyKey])` is what makes the re-fan-out of one crossing a no-op, and the skip is the DATABASE's. Deciding it in application code needs a read per recipient and still races two dispatchers; raising instead aborts the transaction the fan-out is in.",
+      "note": "`@@unique([environmentId, idempotencyKey])` is what makes the re-fan-out of one crossing a no-op, and the skip is the DATABASE's. Deciding it in application code needs a read per recipient and still races two dispatchers; raising instead aborts the transaction the fan-out is in. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-statements.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "the writes that must be one statement, and the ones that must be two > a fan-out of twenty-five recipients is ONE statement"
       ]
     },
     {
@@ -325,12 +350,12 @@
       "file": "src/cost-deliveries.ts",
       "from": "            status: { not: \"SUCCEEDED\" },\n            availableAt: { lte: at },\n          },\n          data: {\n            status: \"PROCESSING\",",
       "to": "            availableAt: { lte: at },\n          },\n          data: {\n            status: \"PROCESSING\",",
-      "note": "SUCCEEDED is terminal. Re-claiming one moves a delivered alert back to PROCESSING and sends it a second time — the exact defect the whole claim protocol exists to prevent.",
+      "note": "SUCCEEDED is terminal. Re-claiming one moves a delivered alert back to PROCESSING and sends it a second time — the exact defect the whole claim protocol exists to prevent. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-idempotency.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "the writes that must not happen twice > a delivered alert is never claimed again"
       ]
     },
     {
@@ -338,12 +363,13 @@
       "file": "src/cost-deliveries.ts",
       "from": "            retryCount: { increment: 1 },\n            availableAt: leaseUntil,",
       "to": "            availableAt: leaseUntil,",
-      "note": "A dispatcher that claims and then vanishes has still consumed a retry. Incrementing at finalisation instead lets a channel whose transport hangs be retried without limit while appearing never to have been tried at all.",
+      "note": "A dispatcher that claims and then vanishes has still consumed a retry. Incrementing at finalisation instead lets a channel whose transport hangs be retried without limit while appearing never to have been tried at all. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-transaction.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "a finalisation and its send record are one transaction or neither > the send record fails and the delivery stays claimable",
+        "a finalisation and its send record are one transaction or neither > and a finalisation that is not interfered with COMMITS both rows"
       ]
     },
     {
@@ -364,12 +390,12 @@
       "file": "src/cost-deliveries.ts",
       "from": "      if (outcome.count === 0) return ok(null);\n      await client.alertDeliveryRetry.create({ data: record });",
       "to": "      await client.alertDeliveryRetry.create({ data: record });",
-      "note": "`AlertDeliveryRetry` is append-only and immutable — the database revokes UPDATE and DELETE on it. A send record appended for a finalisation that lost leaves a permanent history entry for a result that was discarded.",
+      "note": "`AlertDeliveryRetry` is append-only and immutable — the database revokes UPDATE and DELETE on it. A send record appended for a finalisation that lost leaves a permanent history entry for a result that was discarded. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
       "suites": [
-        "src/cost-conformance.integration.test.ts"
+        "src/cost-idempotency.integration.test.ts"
       ],
       "kills": [
-        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+        "the writes that must not happen twice > a stale claim writes NOTHING — not the row, and not the send record"
       ]
     },
     {
