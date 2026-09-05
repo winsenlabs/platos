@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "df9965535d33fe3201544ba3fff9438abc1278f12fd249ea92eacb6b5682a5f8",
+  "evidenceSha256": "dcb58bf843b1feaf9f607f16f24b9acc1cc917319d2168c3e42e9301a9a6b5cf",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "367be273525193e2d085a753b51305eafb44645828a77d63daece80ca8888cf8",
+    "aggregateSha256": "b081aa5952b70bdab3c16ca662dc9465f2cb94249ba751b590fb60ffd9f5134a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "5aa0a26971b19c79f59d1a2dbb272093502d5fb18d1aae340c31e616a500397f"
+        "sha256": "704a2cff6085e570831b49d2bdf9d730aa26ec22350741352426a1f1dd03a195"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -11465,7 +11465,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/tools-scope.ts",
-        "sha256": "734e67aa17ddaf5b0e052a56a398faf1c43e171ac7e14fba848c943be8af9c24"
+        "sha256": "5681e0a311ba2021a1130ffbe6d6b61fc543b89c944a2a858feeb5eae01f7886"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/tools-statements.integration.test.ts",
@@ -18077,7 +18077,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "d3bef0ece00d05db1bcf79e2fbe88acd33c2b5a451653644b749dfa14ec141b4"
+        "sha256": "32b8db7830e4368bdf9ecf71dafad83db1f93800eac3095dd35f1d4642b808ce"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -18097,7 +18097,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "0bfcf7945fa924fdf29ded71ced7711f27488b67f3cebf1997b5dc417f0edc60"
+        "sha256": "4575a6095e6837f86d7e5e582463a0057b448f6ba4768c4c511db94ef89a0e1e"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -18113,7 +18113,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "eca64c1db22f6d06ff677ebeefa66885aab52515769b67845d4d280f1dff04aa"
+        "sha256": "1b017710d54ce3dc845895fb3a38bbe477e61a6d3cd41f317c5165484c739070"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -18129,7 +18129,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "4cd9a00f533a5e1c647e4406b02b46e72541286df9d2d0b1d65341dbc4b67d8f"
+        "sha256": "bf4ebf857dcef3b159213e0b5cfb0807e1593c53a513ab66486b7be333316088"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
