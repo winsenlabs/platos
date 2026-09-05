@@ -84,6 +84,7 @@ export const ADAPTERS = [
       { port: "AgentsRepository", owner: "agents" },
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
+      { port: "ChannelsRepository", owner: "channels" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -194,8 +195,14 @@ export function adapterOwnerPackages(adapter) {
 // `tenancy` was already an owner of this directory and the project reference it
 // needs is already there. What they add is JUDGEABILITY — five ports this
 // layout depends on that `reportAdapterSupply` could not previously see.
+//
+// 22 -> 23 (WIN-258 T5). `channels:ChannelsRepository`, the SEVENTH
+// canonical-store binding and the sixth CONTEXT owner of the one directory §15
+// gives the ORM. The DIRECTORY count is deliberately unmoved a fourth time, and
+// for the fourth time that is the point: another owner is a row on an existing
+// directory, not a thirteenth package holding a second PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 22;
+export const EXPECTED_BINDING_COUNT = 23;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -257,7 +264,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `BudgetRepository`. `cost-monitoring` depends on `tenancy` and `providers`
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a fourth time). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/channels`. A SIXTH owner edge, for that context's
+// `ChannelsRepository`. `channels` depends on `tenancy` and `identity-access`
+// and nothing depends on it, so the 17-context DAG is again unchanged and no
+// cycle is possible.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -377,6 +390,7 @@ export const APPLICATION_ENTRY_PROJECTS = [
 export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/tools", // WIN-258 T5 — compared against the PostgreSQL ToolsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
+  "packages/contexts/channels", // WIN-258 T5 — measured against InMemoryChannelsRepository by packages/adapters/postgres-tenancy
 ];
 
 // BOTH TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

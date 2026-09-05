@@ -71,7 +71,24 @@
 // expiring counter keyspace, `BudgetCapCache` is the cache ADR M0.3 §7 chose so
 // the pre-spend guard would not read the canonical store on the hot path, and
 // `Notifier` is a transport bound to the two notifier packages.
+//
+// AND SO DOES `channels`' `ChannelsRepository` (WIN-258 T5). The six rows of ADR
+// M0.3 §1 row 9 are in that same database behind that same client — the SIXTH
+// owner delegated to this directory — so Amendment 15 puts them here rather than
+// in a thirteenth package holding a second client. Its fourteen method names
+// collide with nothing above, so it is spread in like the rest and
+// `PORT_SATISFACTION` can resolve
+// `Satisfies<PostgresTenancyAdapter, ChannelsRepository>` at compile time. The
+// context's four OTHER ports are deliberately not here and
+// `channels-repository.ts` says why for each: `ChannelAdapter` and
+// `ChannelAdapterRegistry` are the provider seam §5.1(h) pins to
+// `packages/adapters/channel-slack`, `ChannelCredentialReader` reads a vault
+// this directory holds no grant for, `AgentDirectory` is a peer read across an
+// edge the §1 DAG does not grant, and `ChannelEventCipher` is the key that opens
+// every inbox row — which is the one thing the process that stores them must not
+// hold.
 
+import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type {
   AgentsRepository,
   ScaffoldingRepository,
@@ -94,6 +111,7 @@ import { createAgentsRepository } from "./agents-repository.js";
 import { createScaffoldingRepository } from "./agents-scaffolding.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
+import { createChannelsRepository } from "./channels-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
@@ -115,6 +133,7 @@ export interface PostgresTenancyAdapter
     AgentsRepository,
     ScaffoldingRepository,
     BudgetRepository,
+    ChannelsRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -223,6 +242,18 @@ export function buildPostgresTenancyAdapter(
     // store properties, or the outbox's two.
     ...createAgentsRepository(transactions),
     ...createScaffoldingRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The SIXTH owner in this directory, on the same
+    // argument every owner above it stands on: `channels`' six rows are in the
+    // one PostgreSQL database, behind the one client, so a thirteenth adapter
+    // package holding only its repository would be a second home for that client
+    // and would make `tenancy-prisma-only` unwritable as a single-home rule. Its
+    // fourteen method names are disjoint from tenancy's thirty-one,
+    // identity-access's ten store properties, tools' twenty-five, agents'
+    // thirty-five, cost-monitoring's twenty-two and the outbox's two, so there is
+    // nothing to arbitrate; the spread is what lets `PORT_SATISFACTION` in the
+    // composition root resolve `PostgresTenancyAdapter extends ChannelsRepository`
+    // at compile time, which a nested property could not.
+    ...createChannelsRepository(transactions),
   };
 }
 

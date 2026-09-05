@@ -30,6 +30,9 @@
     },
     {
       "path": "../../contexts/cost-monitoring"
+    },
+    {
+      "path": "../../contexts/channels"
     }
   ]
 }

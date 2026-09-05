@@ -59,7 +59,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // same PostgreSQL database. `cost-monitoring` depends on `tenancy` and
 // `providers` and nothing depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below
 // is again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a fourth time). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/channels`. A SIXTH owner edge, for that context's
+// `ChannelsRepository`. `channels` depends on `tenancy` and `identity-access`
+// and nothing depends on it, so the 17-context DAG is again unchanged and no
+// cycle is possible.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -176,7 +182,7 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring"],
+  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring", "channels"],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -198,7 +204,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 5 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 6 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

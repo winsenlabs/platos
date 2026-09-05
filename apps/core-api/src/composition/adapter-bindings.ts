@@ -46,7 +46,10 @@ import type { ObjectStore } from "@platos/context-files/application/ports/index.
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
 import type { ModelRouter } from "@platos/context-providers/application/ports/index.js";
-import type { ChannelAdapter } from "@platos/context-channels/application/ports/index.js";
+import type {
+  ChannelAdapter,
+  ChannelsRepository,
+} from "@platos/context-channels/application/ports/index.js";
 import type {
   BudgetRepository,
   Notifier,
@@ -135,6 +138,10 @@ interface PortSatisfaction {
     ScaffoldingRepository
   >;
   readonly "postgres-tenancy:BudgetRepository": Satisfies<PostgresTenancyAdapter, BudgetRepository>;
+  readonly "postgres-tenancy:ChannelsRepository": Satisfies<
+    PostgresTenancyAdapter,
+    ChannelsRepository
+  >;
   // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
   // PROPERTY that carries each one rather than through the adapter itself.
   //
@@ -184,6 +191,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:AgentsRepository": true,
   "postgres-tenancy:ScaffoldingRepository": true,
   "postgres-tenancy:BudgetRepository": true,
+  "postgres-tenancy:ChannelsRepository": true,
   "postgres-tenancy:TenancyLocks": true,
   "postgres-tenancy:OperatorSessionRevoker": true,
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
@@ -298,6 +306,17 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // silently narrowed the completeness property to the ports that happened to be
   // listed. `reportAdapterSupply` can now say an install has not wired the
   // session revoker, which before this it could not.
+  // WIN-258 T5 (ADR M0.3 §15). The SEVENTH canonical-store binding of the same
+  // directory, and the sixth CONTEXT owner of the one PostgreSQL client.
+  // `channels` is sole writer of six rows in the same database as tenancy's,
+  // identity-access's, tools', agents' and cost-monitoring's, so a separate
+  // adapter package for them would be a second home for a client the
+  // architecture gives exactly one.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "ChannelsRepository",
+    owner: "channels",
+  }),
   Object.freeze({ adapter: "postgres-tenancy", port: "TenancyLocks", owner: "tenancy" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "OperatorSessionRevoker", owner: "tenancy" }),
   Object.freeze({
@@ -323,9 +342,9 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds twenty-two rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds twenty-three rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` ELEVEN times and open eleven
+ * adapters would otherwise build `postgres-tenancy` TWELVE times and open twelve
  * pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
