@@ -42,7 +42,15 @@
 //   `InMemoryGoldenSetsRepository.update` performs no uniqueness check at all
 //   and would leave two rows `@@unique([environmentId, agentId, name])` forbids.
 //
-// Both are pinned against the real database instead, and both are reported.
+//   READING BACK `AgentEval.rawResponseTruncated`. The double keeps the flag it
+//   was handed; the canonical model has no column for it, so the real store
+//   answers `false` on every read. This one was found BY this scenario on its
+//   first integration run — the observation below records the fields around it
+//   and no longer the flag — and it is the third of the three.
+//
+// All three are pinned against the real database instead, and all three are
+// reported. `append` still records the flag on BOTH sides, because there the
+// writer's own knowledge is what is being compared and the two agree.
 
 import type {
   AdmittedCriterion,
@@ -673,10 +681,11 @@ export async function runGovernanceConformance(
         ? null
         : {
             score: row.score,
-            // FALSE on every read: no column carries it. See the header of
-            // `governance-evals.ts`.
-            rawResponseTruncated: row.rawResponseTruncated,
             rawResponse: row.rawResponse,
+            // `rawResponseTruncated` is NOT observed here: no column carries it,
+            // so the real store answers false and the double answers what it was
+            // handed. `governance-rules.integration.test.ts` pins both halves.
+            passed: row.passed,
           },
     );
     observed["evals.sampleByIds"] = outcome(
