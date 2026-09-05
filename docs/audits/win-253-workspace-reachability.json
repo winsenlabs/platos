@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "58eaae8ab3e1dc4d2f73dcd2df82619aa438fd734a00033a594370f0f3f3c9ad",
+  "evidenceSha256": "5166739b813b3a6ce866b7ef8cf437a2894e8f0cf272da4c0af11a3d4dd53e6f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9a327d941aa84780e9eee18f4f83e453d0c5c0c63575b216a3ad015332b323f0",
+    "aggregateSha256": "c77de440f3e8d6e4f9879841e0b5800d0f8b4dcabcdf2d66d96ffbc7d49e6550",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11185,7 +11185,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-agents.json",
-        "sha256": "1f6a2cca2ddc65b580ac5fc000dfb5c37cf193068fca179e0893c67476852d93"
+        "sha256": "458ae904536cd1600cf7e99fcbbf8745a92aae2cd848e0263070e59fa9e8cdda"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-identity.json",
@@ -18141,11 +18141,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "42743d1956b607d7e42ccd9850aa3ef1089a2d961bf9a2618f7e9c01d6a132b2"
+        "sha256": "8eb68f04433c0fe69686e89f10d089b2f2a57762c81c1ac3a7557135167c93bf"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "82cc7e54929ea507d003a5e972476178eb92c38acae386b8b47389b4649d75d7"
+        "sha256": "bae3d7b0bf9c49b2899af1695d63786bede5b3f1ec3ac937967857b148815ba5"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -45370,7 +45370,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 961
+              "line": 963
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -45509,7 +45509,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "0751487c960cf9d800933761ba55d16ef8ab4e7a868df336eaffa18fa40ea11a",
+      "evidenceSha256": "98074c4982742ec28609397f66440bd4babecba20fe8968490105d89833bfa38",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
