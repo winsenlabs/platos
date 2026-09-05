@@ -314,6 +314,30 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // a context whose store does not exist yet, rather than reaching for a
   // permission the map deliberately withholds.
   agents: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The FIFTH context to resolve to this directory, and the reason
+  // is unchanged from T2's: one PostgreSQL database is one client is one adapter
+  // DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  // A thirteenth adapter package holding `cost-monitoring`'s repositories would
+  // have to import the client too, and the single-home rule would stop being
+  // writable as a single-home rule.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the SIX rows `cost-monitoring` owns — `Budget`,
+  // `BudgetThresholdEvent`, `AlertChannel`, `AlertChannelConfiguration`,
+  // `AlertDelivery` and `AlertDeliveryRetry`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these six from anywhere else
+  // still fails. Three owners resolving to one directory is not one owner losing
+  // its boundary: the boundary is the owner TAG on the row.
+  //
+  // IT IS ALSO WHAT MAKES `BudgetRepository` IMPLEMENTABLE AT ALL. Without this
+  // entry `ownerDirectories("cost-monitoring")` is `packages/contexts/cost-monitoring`
+  // alone — and ADR M0.3 §2 forbids that package's `domain/` and `application/`
+  // from importing the ORM, so the one package permitted to write these six rows
+  // would be the one package unable to.
+  "cost-monitoring": "packages/adapters/postgres-tenancy",
 });
 
 /**

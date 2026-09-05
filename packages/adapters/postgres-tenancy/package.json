@@ -2,7 +2,7 @@
   "name": "@platos/adapter-postgres-tenancy",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the tenancy TenancyRepository port, the identity-access IdentityAccessRepository port, the tools ToolsRepository port, the agents AgentsRepository port and the agents ScaffoldingRepository port.",
+  "description": "Implements the tenancy TenancyRepository port, the identity-access IdentityAccessRepository port, the tools ToolsRepository port, the agents AgentsRepository port, the agents ScaffoldingRepository port and the cost-monitoring BudgetRepository port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,6 +23,7 @@
     "@platos/context-identity-access": "workspace:*",
     "@platos/context-tools": "workspace:*",
     "@platos/context-agents": "workspace:*",
+    "@platos/context-cost-monitoring": "workspace:*",
     "@platos/tenancy-database": "workspace:*"
   },
   "devDependencies": {

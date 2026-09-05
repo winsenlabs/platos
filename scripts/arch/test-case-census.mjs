@@ -1477,16 +1477,98 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * falsifiable.
  *
  *
- * BOTH TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the two blocks above SUM
- * rather than either one standing alone. Neither branch's arithmetic is right
- * merged, and side-picking one would under-count the other by six files:
+ * WIN-258 TRANCHE 5 - COST-MONITORING'S CANONICAL STORE. The SAME package moves
+ * a SIXTH time, for the sixth reading of ADR M0.3 §15: `cost-monitoring` is
+ * sole writer of six rows in the same PostgreSQL database, so its repositories
+ * are the same client, the same transaction and the same directory.
  *
- *   packages/adapters/postgres-tenancy   20 -> 32 files,  199 -> 318 cases
+ * WHAT THE 61 ARE, file by file, so the total cannot absorb a loss elsewhere:
  *
- * 20 + 6 + 6 = 32 files and 199 + 59 + 60 = 318 cases. The tree total is
- * 391 + 12 = 403 files and 6115 + 119 = 6234 cases. The adapters term of the
- * three-way identity carries all twelve, because every added file is an
- * adapter's: 39 + 12 = 51, and 349 + 3 + 51 = 403.
+ *   cost-rows.test.ts                         22  the mapping in both
+ *                                                 directions and every guard,
+ *                                                 PURE — the only one of the six
+ *                                                 that `pnpm test:v1-packages`
+ *                                                 actually runs
+ *   cost-constraints.integration.test.ts      13  each guard against the CHECK it
+ *                                                 restates, in two halves, plus
+ *                                                 the three guards that have no
+ *                                                 constraint behind them
+ *   cost-rules.integration.test.ts             8  the database rules NO port
+ *                                                 method restates: immutability,
+ *                                                 the ancestry rule firing on
+ *                                                 UPDATE, the credential rule,
+ *                                                 the tombstone this port cannot
+ *                                                 write, and cross-scope denial
+ *   cost-transaction.integration.test.ts       7  failure injection on both
+ *                                                 two-statement operations, each
+ *                                                 with a negative control, and
+ *                                                 the three scope refusals
+ *   cost-statements.integration.test.ts        6  measured statement counts over
+ *                                                 two fixture sizes, the probe
+ *                                                 anchor, and the three writes
+ *                                                 whose count is the contract
+ *   cost-conformance.integration.test.ts       5  the scenario against the fake
+ *                                                 and the real store, compared
+ *                                                 verbatim, plus non-vacuity
+ *
+ * 22 + 13 + 8 + 7 + 6 + 5 = 61. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job, not by
+ * `pnpm test:v1-packages`; they are counted here because this census measures
+ * the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 5 in the conformance suite. It is
+ * small because it is ONE scenario of forty-five observations compared verbatim
+ * against `InMemoryBudgetRepository`; adding an observation strengthens the
+ * differential and moves NO count here, which is why `mutations-cost.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ * THE 6 IN THE STATEMENTS SUITE IS ALSO SMALL ON PURPOSE, and for a reason this
+ * census enforced: it began as ten cases generated in a `for` loop over a table
+ * of reads, which this script REFUSES to count. The loop became two cases over a
+ * map of every read, which is the better instrument anyway — a divergence names
+ * the read and shows both counts, and a read somebody forgot to measure cannot
+ * exist.
+ *
+ * WIN-258 TRANCHE 5, SECOND SWEEP — THE SEVENTH SUITE. The same package moves a
+ * FIFTH time, and the mutation ledger is what moved it:
+ *
+ *   packages/adapters/postgres-tenancy   26 -> 27 files,  260 -> 264 cases
+ *
+ * 397 + 1 = 398 files and 6176 + 4 = 6180 cases. The adapters term of the
+ * three-way identity moves with it: 349 + 3 + 46 = 398.
+ *
+ * WHAT THE 4 ARE, and why they are not in any file above:
+ *
+ *   cost-idempotency.integration.test.ts   4  the insert form that does not
+ *                                             raise, the uuid shape test the
+ *                                             vault's revoke depends on, the
+ *                                             terminal status that stops a
+ *                                             second send, and the count test
+ *                                             that keeps a stale dispatcher's
+ *                                             send record out of the history
+ *
+ * THE REASON IT IS A SEVENTH FILE rather than four more cases in the conformance
+ * suite is the one this census exists to make visible. Re-running all forty
+ * ledger entries scored SIX with zero executed cases: the edits compiled and
+ * collected, then broke `cost-conformance.integration.test.ts` while it was
+ * BUILDING its transcript, in a `beforeAll`, so vitest reported every case in
+ * the file SKIPPED and the file's pin of 5 did not move. Two of the six had a
+ * named case elsewhere in the tree; the four above had none anywhere, and a
+ * guard whose only witness is a crashed hook is a guard this census cannot see.
+ * The conformance suite's own 5 is unchanged, which is the point: these four
+ * observations could not have been added there without being invisible.
+ *
+ * ALL THREE TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the three blocks
+ * above SUM rather than any one standing alone. No branch's arithmetic is right
+ * merged, and side-picking one would under-count the others by their whole
+ * tranche:
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 39 files,  199 -> 383 cases
+ *
+ * 20 + 6 + 6 + 7 = 39 files and 199 + 59 + 60 + 65 = 383 cases. The tree total
+ * is 391 + 19 = 410 files and 6115 + 184 = 6299 cases. The adapters term of the
+ * three-way identity carries all nineteen, because every added file is an
+ * adapter's: 39 + 19 = 58, and 349 + 3 + 58 = 410.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1497,7 +1579,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 32, cases: 318 },
+  "packages/adapters/postgres-tenancy": { files: 39, cases: 383 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1659,7 +1741,7 @@ export const EXPECTED = Object.freeze({
  * `agents-rows.test.ts`) run in the ordinary package test script, because
  * neither module has a database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6234;
+export const EXPECTED_RUNTIME_TOTAL = 6299;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -27,6 +27,9 @@
     },
     {
       "path": "../../contexts/agents"
+    },
+    {
+      "path": "../../contexts/cost-monitoring"
     }
   ]
 }

@@ -53,7 +53,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // port. The edge cannot create a cycle and does not widen the context DAG:
 // `agents` does not depend on `tenancy`'s, `identity-access`'s or `tools`'s
 // internals and none of them depends on it; they simply share a directory.
-export const EXPECTED_EDGE_COUNT = 98;
+//
+// 98 -> 99 (WIN-258 T5, a fifth time). The directory gained a FIFTH owner edge,
+// to `packages/contexts/cost-monitoring`, whose six canonical rows are in that
+// same PostgreSQL database. `cost-monitoring` depends on `tenancy` and
+// `providers` and nothing depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below
+// is again unchanged and no cycle is possible.
+export const EXPECTED_EDGE_COUNT = 99;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -159,8 +165,9 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // EACH VALUE IS A LIST OF OWNERS, IN ORDER (ADR M0.3 §15). It was a single
 // owner string until WIN-258 T2, which is the same shape as a one-element list
 // and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
-// the repositories of both contexts whose canonical rows live in the one
-// PostgreSQL database it has the client for.
+// the repositories of EVERY context whose canonical rows live in the one
+// PostgreSQL database it has the client for — two at T2, three since T5 bound
+// `cost-monitoring`, and the shape has not had to change to say so.
 //
 // The widening is exactly "one or more", not "any". The list is still compared
 // as an EXACT, ORDERED expectation against the tsconfig references and manifest
@@ -169,7 +176,7 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents"],
+  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring"],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -191,7 +198,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 4 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 5 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

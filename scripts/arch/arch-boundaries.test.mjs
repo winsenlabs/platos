@@ -745,12 +745,29 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `src/client.ts` is still the only file in the layout that
     //               imports the ORM -- it gained `Prisma.DbNull` and nothing
     //               else.
-    // BOTH TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the two entries above
-    //               SUM: 1225 + 18 + 16 = 1259. Neither branch's figure is right
-    //               merged, and taking either alone under-counts the other by
-    //               its whole tranche.
-    assert.equal(result.fileCount, 1259, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16);
+    //  1259 -> 1275 +16: WIN-258 TRANCHE 5, `cost-monitoring`'s canonical store, in
+    //               that SAME one ORM home. Sixteen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ten source (the
+    //               three stores, their row mapping, their guards, the pending
+    //               projection, the composite, the two conformance halves and
+    //               the fixture harness) and six suites. The rule they are
+    //               measured against is the one this whole chain exists for --
+    //               `tenancy-prisma-only` -- and a thirteenth adapter package
+    //               for a third owner would have broken it exactly as a second
+    //               ORM home for the outbox would have.
+    //  1275 -> 1276 +1: THE SEVENTEENTH FILE IN THAT SAME HOME, and it is a suite
+    //               rather than a module: `cost-idempotency.integration.test.ts`
+    //               carries the four guards the mutation sweep found had no
+    //               named case anywhere, each of which had been falsifiable only
+    //               through a crashed `beforeAll`. It imports what every other
+    //               suite in the directory imports, so `tenancy-prisma-only` is
+    //               measured against one more file and still holds.
+    // ALL THREE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
+    //               SUM: 1225 + 18 + 16 + 16 + 1 = 1276. No branch's own figure
+    //               is right merged, and taking any one alone under-counts the
+    //               others by their whole tranche.
+    assert.equal(result.fileCount, 1276, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -60,11 +60,23 @@
 // and a nested property could satisfy neither. The two ports are disjoint from
 // each other by construction and share no method name with tenancy's,
 // identity-access's, tools' or the outbox's.
+//
+// AND SO DOES `cost-monitoring`'s `BudgetRepository` (WIN-258 T5). Its six rows
+// are in that same database behind that same client, so by Amendment 15 they
+// are written from this directory too — the FIFTH owner delegated to it. Its
+// twenty-two method names collide with nothing above, so it is spread in like
+// the rest and `PORT_SATISFACTION` can resolve
+// `Satisfies<PostgresTenancyAdapter, BudgetRepository>` at compile time. The
+// context's three OTHER ports are deliberately not here: `SpendLedger` is an
+// expiring counter keyspace, `BudgetCapCache` is the cache ADR M0.3 §7 chose so
+// the pre-spend guard would not read the canonical store on the hot path, and
+// `Notifier` is a transport bound to the two notifier packages.
 
 import type {
   AgentsRepository,
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
+import type { BudgetRepository } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
@@ -82,6 +94,7 @@ import { createAgentsRepository } from "./agents-repository.js";
 import { createScaffoldingRepository } from "./agents-scaffolding.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
+import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
@@ -101,6 +114,7 @@ export interface PostgresTenancyAdapter
     ToolsRepository,
     AgentsRepository,
     ScaffoldingRepository,
+    BudgetRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -176,6 +190,18 @@ export function buildPostgresTenancyAdapter(
     // `transactions` as everything else here, so a use case that registers an
     // entity's tools and bumps its environment's fence is ONE transaction.
     ...createToolsRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The FIFTH owner in this directory, on the same
+    // argument the second was: `cost-monitoring`'s six rows are in the one
+    // PostgreSQL database, behind the one client, so a thirteenth adapter
+    // package holding only its repositories would be a second home for that
+    // client and would make `tenancy-prisma-only` unwritable as a single-home
+    // rule. Its twenty-two method names are disjoint from tenancy's thirty-one,
+    // identity-access's ten store properties, tools' twenty-five and agents'
+    // thirty-five, so there is nothing to arbitrate; the spread is what lets
+    // `PORT_SATISFACTION` in the composition root resolve
+    // `PostgresTenancyAdapter extends BudgetRepository` at compile time, which a
+    // nested property could not.
+    ...createCostMonitoringRepository(transactions),
     // WIN-258 T4. The canonical `Event` row, written on the kernel outbox
     // adapter's behalf. It is spread in here rather than exposed as a separate
     // object for the reason the identity-access composite is: the composition

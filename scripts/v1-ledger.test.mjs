@@ -855,10 +855,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // more ports from files that already existed, so `packages/contexts/agents`
     // adds none.
     //
-    // 1109 + 20 + 18 = 1147. BOTH tranche-5 stores land in `packages`, so this
-    // slice is the SUM; either branch's own figure — 1129 or 1127 — is short by
-    // the other tranche.
-    packages: 1147,
+    // WIN-258 TRANCHE 5 adds 17 to the SAME area and to no other:
+    // `cost-monitoring`'s canonical store, in the SAME adapter directory, on
+    // ADR M0.3 s15's rule that one PostgreSQL database behind one client is one
+    // adapter DIRECTORY. Ten source, six suites and `mutations-cost.json`, the
+    // guard ledger, under the config rule that already carries four siblings.
+    // a third slice of 17 on the same area.
+    //
+    // ITS SECOND SWEEP adds ONE more to the same area and to no other:
+    // `cost-idempotency.integration.test.ts`. Re-running all forty ledger
+    // entries scored six with zero executed cases -- each edit compiled and
+    // collected, then broke the conformance suite while it was BUILDING its
+    // transcript, so vitest reported every case in that file SKIPPED and no
+    // named case went red. Two of the six had a named case elsewhere in the
+    // tree; this file is the four that had none anywhere.
+    // 1109 + 20 + 18 + 17 + 1 = 1165. ALL THREE tranche-5 stores land in
+    // `packages` and nowhere else, so this slice is the SUM; no branch's own
+    // figure — 1129, 1127 or 1127 again — is right merged.
+    packages: 1165,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1023,16 +1037,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   adapter directories) = 1185, + 20 (WIN-258 tranche 5, the `tools`
     //   canonical store, every one of them in the ONE adapter directory) = 1205,
     //   + 18 (WIN-258 tranche 5, the `agents` canonical store, in that SAME
-    //   directory) = 1223.
+    //   directory) = 1223, + 17 (WIN-258 tranche 5, the `cost-monitoring`
+    //   canonical store, in that SAME directory) = 1240, + 1 (that tranche's
+    //   second sweep, the four guards whose only witness was a crashed hook)
+    //   = 1241.
     //
-    // BOTH TRANCHE-5 SLICES ARE ALL `packages`, all of them under
+    // ALL THREE TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
-    // three apps areas are untouched — which is why the two slices compose with
+    // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1223);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1241);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1052,11 +1069,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
     // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
-    // TWO adapter directories, and WIN-258 tranche 5's TWO canonical stores,
-    // `tools` +20 and `agents` +18, both in ONE); this one re-derives it by
-    // summing the per-area counts independently, so the two can DISAGREE and be
-    // caught.
-    rulesDocument.baseline.totalFiles + 1223
+    // TWO adapter directories, and WIN-258 tranche 5's THREE canonical stores,
+    // `tools` +20, `agents` +18 and `cost-monitoring` +17, all in ONE, plus that
+    // tranche's second sweep +1); this one re-derives it by summing the per-area
+    // counts independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1241
   );
 });
 

@@ -1071,6 +1071,9 @@ importers:
       '@platos/context-agents':
         specifier: workspace:*
         version: link:../../contexts/agents
+      '@platos/context-cost-monitoring':
+        specifier: workspace:*
+        version: link:../../contexts/cost-monitoring
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../../contexts/identity-access

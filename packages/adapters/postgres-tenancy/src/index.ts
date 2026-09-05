@@ -94,3 +94,37 @@ export {
   EVENT_ID_TAKEN,
   OutboxStoreError,
 } from "./outbox-store.js";
+
+// WIN-258 T5 — `cost-monitoring`'s canonical store. The factory and the refusal
+// codes leave the package for the reason tranche 2's do: a composition root has
+// to be able to recognise a refusal without matching on a message, and a
+// composition root that wanted this repository WITHOUT tenancy's — a background
+// dispatcher, say — has to be able to build one over the same transactions.
+//
+// The three store composites behind it add nothing here, deliberately. Building
+// one alone would give it a `TenancyTransactions` of its own, and a claim issued
+// on one ambient frame would then be invisible to a fan-out serialised on
+// another; `createCostMonitoringRepository` is the only door, and it takes the
+// transactions rather than a client so there is no second one to build.
+export { createCostMonitoringRepository } from "./cost-repository.js";
+export {
+  BUDGET_LIMIT_OUT_OF_RANGE,
+  BUDGET_THRESHOLDS_INVALID,
+  CHANNEL_DEDUPE_SHAPE_INVALID,
+  CHANNEL_NAME_INVALID,
+  CHANNEL_TOPICS_EMPTY,
+  CROSSING_SPEND_NOT_REPRESENTABLE,
+  CROSSING_VALUES_INVALID,
+  CostWriteRefused,
+  DELIVERY_KIND_SHAPE_INVALID,
+  DELIVERY_STATE_INCOHERENT,
+  IDENTIFIER_NOT_UUID,
+  RETRY_RECORD_INVALID,
+} from "./cost-guards.js";
+export {
+  CHANNEL_CONFIGURATION_ABSENT,
+  CHANNEL_CONFIGURATION_INCOHERENT,
+  UNKNOWN_BUDGET_PERIOD,
+  UNREADABLE_ALERT_THRESHOLDS,
+  UNREADABLE_CROSSING_SPEND,
+} from "./cost-rows.js";

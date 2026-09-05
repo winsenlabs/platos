@@ -1,0 +1,668 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `cost-monitoring`'s canonical store,",
+    "the THIRD owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM.",
+    "One entry per guard: per scope predicate, per conditional-write precondition,",
+    "per statement the port's contract says must be one statement, per property",
+    "only hand-written SQL can express, and per shape check that stands where a",
+    "migration-only CHECK stands. Each carries the file it lives in, the EXACT",
+    "text that implements it (`from`), the edit that removes it (`to`), and the",
+    "NAMED cases that were seen to go red (`kills`).",
+    "",
+    "IT IS A FIFTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json and mutations-outbox.json rather than an extension of",
+    "any of them, for the reason the fourth was: five tranches are five separate",
+    "claims about five separate port surfaces, and a reader checking one should",
+    "not have to read past the other four. All five are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. Two of the six rows are IMMUTABLE —",
+    "the database revokes UPDATE, DELETE and TRUNCATE on `BudgetThresholdEvent`",
+    "and on `AlertDeliveryRetry` — so a defect written into either cannot be",
+    "corrected afterwards. And the port's two hardest promises are both about",
+    "what does NOT happen: `claimDelivery` must be ONE conditional write (a read",
+    "then a write sends the alert twice) and `insertThresholdEvent` must surface a",
+    "duplicate as `null` rather than as an error (an error sends it twice too, or",
+    "aborts the transaction the fan-out is in). Neither is visible in a returned",
+    "value on a store with one caller, which is exactly the shape of guard a",
+    "green suite hides."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero executed case count, and classifies a run",
+    "with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "",
+    "A SECOND SWEEP WIDENED SIX ENTRIES, AND THE SEVENTH SUITE IS ITS RESULT.",
+    "Re-running all forty scored SIX of them with zero executed cases -- M-C06,",
+    "M-C13, M-C15, M-C17, M-C18 and M-C20. None was a module-load failure: each",
+    "edit compiled and collected, and then broke `cost-conformance.integration.",
+    "test.ts` while it was BUILDING its transcript, in a `beforeAll`, so vitest",
+    "reported every case in the file SKIPPED and no named case went red. A suite",
+    "set that turns red only through a setup crash names no promise, and it is the",
+    "same signal a cleaned `dist` produces, so the driver scored all six VACUOUS",
+    "rather than counting them as kills.",
+    "",
+    "Widening the sweep to the WHOLE cost suite set found a named case for two of",
+    "them already in the tree -- M-C15 in the statement-count suite and M-C18 in",
+    "the transaction suite -- and none at all for the other four. Those four are",
+    "why `cost-idempotency.integration.test.ts` exists: one named case each for the",
+    "insert form that does not raise, the uuid shape test the vault's question",
+    "depends on, the terminal status that stops a second send, and the count test",
+    "that keeps a stale dispatcher's send record out of the history. All six now",
+    "name the suite that carries their case rather than the conformance run, and",
+    "all forty are KILLED by a NAMED case with none vacuous.",
+    "",
+    "THE NEW SUITE'S OWN FIXTURE WAS REFUSED BY A GUARD ON ITS FIRST RUN.",
+    "`requireRetryRecord` (M-C35) rejected a SUCCEEDED send record that still",
+    "carried `upstream_500`, which is the guard doing exactly what its entry",
+    "claims for it.",
+    "That failure mode was LIVE on this branch and is what the fifth commit",
+    "closed: the `postgres-tenancy-repository` CI job built `tenancy` and",
+    "`identity-access` and not `cost-monitoring`, and these six suites resolve",
+    "that context through two published subpaths, both of which are `dist/`. The",
+    "classifier earned its keep a second time in this sweep, on M-C14's first",
+    "form: the edit left unbalanced parentheses, the module did not load, and the",
+    "run was scored VACUOUS rather than as forty-one kills.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file (the driver",
+    "requires the `from` to occur EXACTLY ONCE, so a stale entry is an error and",
+    "not a silent no-op), run the named suites against a real PostgreSQL",
+    "container, and confirm a NAMED case in `kills` is among the failures. Then",
+    "revert and confirm green again.",
+    "",
+    "ALL FORTY ARE RUN AGAINST A REAL POSTGRESQL. Three of them -- M-C25, M-C37",
+    "and M-C38 -- are ALSO killed by `cost-rows.test.ts`, the one suite of the seven",
+    "that `pnpm test:v1-packages` runs; every other entry is about something only",
+    "the database can answer: which rows a predicate matched, whether two",
+    "statements rolled back together, whether a claim was refused while a lease",
+    "was live, how many statements a read cost, and whether a CHECK a migration",
+    "added agrees with the guard that restates it.",
+    "",
+    "FOUR FINDINGS CAME OUT OF WRITING THIS SWEEP and are recorded in the entries",
+    "themselves rather than only here.",
+    "",
+    "  1. `insertBudget`, `insertAlertChannel` and both delivery inserts use",
+    "     `createMany` + `skipDuplicates` -- `ON CONFLICT DO NOTHING` -- rather",
+    "     than `create`, because on PostgreSQL a raised constraint ABORTS the",
+    "     caller's whole transaction and the port's callers keep writing in it",
+    "     (M-C06, M-C15).",
+    "",
+    "  2. `countChannelsUsingCredential` must refuse a non-uuid reference in",
+    "     JavaScript, because sending it to a `@db.Uuid` comparison raises 22P02",
+    "     and turns a question with an answer into a driver error (M-C13).",
+    "",
+    "  3. `claimDelivery`'s predicate is deliberately SCALAR-ONLY: the tenant",
+    "     chain is a relation filter everywhere else in that file, and on the",
+    "     claim it would be a subquery the connector may satisfy with a second",
+    "     statement -- which would make the claim a read and a write again",
+    "     (M-C40, measured rather than argued).",
+    "",
+    "  4. A STORE IN THIS PACKAGE CANNOT WRITE OUTSIDE THE CALLER'S TRANSACTION,",
+    "     and that is why M-C14 and M-C21 are shaped the way they are.",
+    "     `TenancyTransactions` exposes `writer`, `reader` and `atomic` and",
+    "     nothing else; `reader()` returns the ambient frame's client when one is",
+    "     open, and `atomic` resolves through `unitOfWork.run`, which JOINS an",
+    "     open frame. Both escapes were tried and both left every case green,",
+    "     because neither is reachable. Atomicity is a property of the seam and",
+    "     is falsified in mutations-ports.json where the seam lives; what these",
+    "     two entries falsify is that the second write is ISSUED, which is what",
+    "     lets the failure injection reach the first.",
+    "",
+    "FOUR SUITES WERE WIDENED BECAUSE A GUARD SURVIVED, and the widenings added no",
+    "test case at all -- each is an assertion or an observation inside a case that",
+    "already existed, which is why the census did not move:",
+    "",
+    "  M-C10  `updateAlertChannel`'s `deletedAt: null` term had nothing that could",
+    "         turn red: the tombstone case exercised the two READS and no write.",
+    "         It now edits the tombstoned channel and requires the refusal.",
+    "  M-C13  every credential the conformance scenario named was a well-formed",
+    "         uuid, including the deliberately-missing one, so the guard that",
+    "         refuses a malformed reference was unreachable. The scenario now",
+    "         asks with `not-a-uuid`.",
+    "  M-C24  the two crossing identifiers were numbered in deadline order, so",
+    "         the outer `ORDER BY picked.\"dueAt\"` and the id tie-break agreed and",
+    "         removing the former changed nothing. They are now numbered against",
+    "         the deadline order.",
+    "  M-C38  the constraints suite plants an OBJECT threshold, which the type",
+    "         test refuses before the whole-number test is reached, so only the",
+    "         pure suite's non-whole NUMBER can see that mutation. The entry",
+    "         claims only the case that was seen to go red."
+  ],
+  "mutations": [
+    {
+      "name": "M-C01 budgets: the tombstone filter every cap read carries",
+      "file": "src/cost-budgets.ts",
+      "from": "      where: { ...scopedWhere(scope), deletedAt: null },\n      select: BUDGET_COLUMNS,",
+      "to": "      where: { ...scopedWhere(scope) },\n      select: BUDGET_COLUMNS,",
+      "note": "A retired cap reappears in every listing. `retireBudget` is the only writer of `deletedAt` and the row is deliberately kept for the crossings that point at it, so the filter IS the retirement.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C02 budgets: the domain's total listing order, applied after the read",
+      "file": "src/cost-budgets.ts",
+      "from": "    return rows.map(readBudget).sort(byListingOrder);",
+      "to": "    return rows.map(readBudget);",
+      "note": "`byListingOrder` sorts on `target.subject`, which is not a column — it is one field inside the TEXT `scope` column. A paged listing whose order is not total drops and repeats rows across pages, which is what `firstPage`/`secondPage` measure.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C03 budgets: findBudget's tenant chain",
+      "file": "src/cost-budgets.ts",
+      "from": "      const row = await transactions.reader().budget.findFirst({\n        where: { id: budgetId, ...scopedWhere(scope), deletedAt: null },",
+      "to": "      const row = await transactions.reader().budget.findFirst({\n        where: { id: budgetId, deletedAt: null },",
+      "note": "The port: an implementation MUST return null, never a row from another environment, when an id exists elsewhere. Keying on the id alone reads another tenant's cap.",
+      "suites": [
+        "src/cost-rules.integration.test.ts"
+      ],
+      "kills": [
+        "cross-scope denial is decided by the tenant chain, not by an id a cap is invisible to a scope whose organization does not own it"
+      ]
+    },
+    {
+      "name": "M-C04 budgets: updateBudget keyed on BOTH id and environmentId",
+      "file": "src/cost-budgets.ts",
+      "from": "        where: { id, environmentId },",
+      "to": "        where: { id },",
+      "note": "`Budget` is the one row of the six with no `reject_canonical_owner_change` rule behind it, so the predicate is the whole of the fence: an update by id alone lets a caller holding another tenant's cap move it into this one.",
+      "suites": [
+        "src/cost-rules.integration.test.ts"
+      ],
+      "kills": [
+        "cross-scope denial is decided by the tenant chain, not by an id a cap cannot be moved between environments by updating it"
+      ]
+    },
+    {
+      "name": "M-C05 budgets: a retirement writes deletedAt, not enabled alone",
+      "file": "src/cost-budgets.ts",
+      "from": "        data: { deletedAt: at, enabled: false, updatedAt: at },",
+      "to": "        data: { enabled: false, updatedAt: at },",
+      "note": "The second `retireBudget` on one cap must answer false. A store that tombstoned by `enabled` alone answers true forever, and the caller reads the answer as 'was there a cap to retire'.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C06 budgets: the insert that does not raise",
+      "file": "src/cost-budgets.ts",
+      "from": "        data: [{ ...writeBudget(budget), alertThresholds: [...budget.alertThresholds] }],\n        skipDuplicates: true,",
+      "to": "        data: [{ ...writeBudget(budget), alertThresholds: [...budget.alertThresholds] }],\n        skipDuplicates: false,",
+      "note": "THE FINDING THAT SHAPED ALL THREE INSERTS IN THIS FILE. A raised 23505 aborts the caller's whole transaction with 25P02, so a duplicate would be reported correctly and every later write in that unit of work would fail. The port hands the caller a `Result` it is entitled to act on. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must not happen twice > a cap whose identifier is taken is a REFUSAL, not a raise"
+      ]
+    },
+    {
+      "name": "M-C07 budgets: a duplicate crossing is null, an id clash is not",
+      "file": "src/cost-budgets.ts",
+      "from": "      if (recorded !== null) return ok(null);\n      return err(repositoryUnavailable(\"threshold event id already exists\"));",
+      "to": "      return err(repositoryUnavailable(\"threshold event id already exists\"));",
+      "note": "The port is explicit: a duplicate is the NORMAL outcome of two evaluators racing on one crossing and is the mechanism by which an alert fires exactly once. Reporting it as an error makes the caller retry, and the alert goes out twice.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C08 budgets: the write resolves the caller's transaction, not the pool",
+      "file": "src/cost-budgets.ts",
+      "from": "    async insertBudget(budget: Budget, transaction: TransactionScope): Promise<Result<Budget>> {\n      const client = transactions.writer(transaction);",
+      "to": "    async insertBudget(budget: Budget, transaction: TransactionScope): Promise<Result<Budget>> {\n      const client = transactions.reader() as ReturnType<typeof transactions.writer>;",
+      "note": "The three refusals with three DISTINCT codes all hang off this one call. `reader()` accepts any token, so all three become silent successes on a connection holding no transaction.",
+      "suites": [
+        "src/cost-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the three transaction-scope refusals, on this context's writes a write with NO open transaction is refused with not_open",
+        "the three transaction-scope refusals, on this context's writes a write carrying a FINISHED transaction's token is refused with scope_unknown",
+        "the three transaction-scope refusals, on this context's writes a write carrying ANOTHER live transaction's token is refused with scope_foreign"
+      ]
+    },
+    {
+      "name": "M-C09 budgets: listRecordedThresholds is per WINDOW, not per cap",
+      "file": "src/cost-budgets.ts",
+      "from": "        where: { budgetId, windowKey, ...scopedWhere(scope) },",
+      "to": "        where: { budgetId, ...scopedWhere(scope) },",
+      "note": "The evaluator asks which lines have already fired IN THIS WINDOW. Dropping the window key reports last period's crossings as this period's, and every threshold is suppressed forever after it first fires.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C10 channels: an edit cannot reach a tombstoned channel",
+      "file": "src/cost-channels.ts",
+      "from": "        where: { id: written.id, environmentId: written.environmentId, deletedAt: null },",
+      "to": "        where: { id: written.id, environmentId: written.environmentId },",
+      "note": "`AlertChannel.deletedAt` is written by an OLDER surface and by nothing in this port. The filter is the only thing that keeps a channel that surface deleted from being edited back into service through a `BudgetRepository` that cannot see it.",
+      "suites": [
+        "src/cost-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a channel's owner columns, its credential, and its tombstone a tombstoned channel is invisible, and this port cannot tombstone one"
+      ]
+    },
+    {
+      "name": "M-C11 channels: only a LIVE channel holds its credential",
+      "file": "src/cost-channels.ts",
+      "from": "          deletedAt: null,\n          enabled: true,\n          configuration: { credentialId: credential },",
+      "to": "          deletedAt: null,\n          configuration: { credentialId: credential },",
+      "note": "This count is what the delete path asks BEFORE it tells the vault to revoke. Counting a disabled channel makes the answer 'somebody still needs this secret' when nobody does, and the credential is never revoked.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C12 channels: the listing's per-field filters are applied",
+      "file": "src/cost-channels.ts",
+      "from": "          ...(query.enabled === null ? {} : { enabled: query.enabled }),",
+      "to": "          ...(query.enabled === null ? {} : {}),",
+      "note": "Null means 'do not filter' and is the port's own spelling; a filter that silently widens to everything is indistinguishable from one that was asked for nothing.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C13 channels: a credential reference that is not a uuid is answered, not sent",
+      "file": "src/cost-channels.ts",
+      "from": "      if (!UUID.test(credential)) return ok(0);",
+      "to": "      if (false) return ok(0);",
+      "note": "`AlertChannelConfiguration.credentialId` is `@db.Uuid`. A reference that is not a uuid names no row, so zero is the TRUE count; sending it raises 22P02 and turns a question with an answer into a driver error the port has no channel for. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must not happen twice > a credential reference that is not a uuid is ANSWERED zero, not sent"
+      ]
+    },
+    {
+      "name": "M-C14 channels: the configuration row is written, which is what the injection fails",
+      "file": "src/cost-channels.ts",
+      "from": "      await client.alertChannelConfiguration.create({\n        data: {\n          channelId: written.id,\n          environmentId: written.environmentId,\n          type: written.type,\n          ...configuration,\n        },\n      });\n",
+      "to": "",
+      "note": "FAILURE INJECTION, and the failure is the adapter's OWN second statement: a webhook channel whose credential has been REVOKED passes the channel INSERT and is refused by the configuration INSERT, because `enforce_win124_credential_kind` demands a live CHANNEL_SECRET with an active secret version. Nothing about the failure is simulated -- so a store that never issues the second statement never fails, the channel commits alone, and `readChannel` then refuses the row it left behind: a channel an operator can neither read nor deliver through. THE FINDING BEHIND THIS ENTRY'S SHAPE: a store in this package CANNOT obtain a client outside the caller's transaction. `TenancyTransactions` exposes `writer`, `reader` and `atomic` and nothing else; `reader()` returns `ambient.getStore()?.client ?? client`, so inside an open unit of work it hands back the TRANSACTION's client, and `atomic` resolves through `unitOfWork.run`, which JOINS an open frame. Two sweeps confirmed it: resolving the pool and wrapping the second write in `atomic` both left every case green, because neither is reachable. 'Both writes are the caller's transaction' is therefore a property of the seam, falsified in mutations-ports.json where the seam lives, not of a line here that could be removed. What IS falsifiable here -- and what makes the failure injection reach the first write at all -- is that the second write is ISSUED.",
+      "suites": [
+        "src/cost-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "a channel and its configuration are one transaction or neither the configuration write fails and the channel row does not survive it"
+      ]
+    },
+    {
+      "name": "M-C15 deliveries: a fan-out re-run writes nothing",
+      "file": "src/cost-deliveries.ts",
+      "from": "      const outcome = await client.alertDelivery.createMany({\n        data: deliveries.map(writeDelivery),\n        skipDuplicates: true,\n      });",
+      "to": "      const outcome = await client.alertDelivery.createMany({\n        data: deliveries.map(writeDelivery),\n        skipDuplicates: false,\n      });",
+      "note": "`@@unique([environmentId, idempotencyKey])` is what makes the re-fan-out of one crossing a no-op, and the skip is the DATABASE's. Deciding it in application code needs a read per recipient and still races two dispatchers; raising instead aborts the transaction the fan-out is in. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must be one statement, and the ones that must be two > a fan-out of twenty-five recipients is ONE statement"
+      ]
+    },
+    {
+      "name": "M-C16 deliveries: a claim is refused while the lease is live",
+      "file": "src/cost-deliveries.ts",
+      "from": "            status: { not: \"SUCCEEDED\" },\n            availableAt: { lte: at },",
+      "to": "            status: { not: \"SUCCEEDED\" },",
+      "note": "`availableAt` carries the lease expiry AND the retry backoff in one column, so this single term is both 'nobody holds it' and 'it is due'. Without it two dispatchers claim the same row and both send.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double the claim was a real lease, not a flag",
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C17 deliveries: a delivered alert is never claimed again",
+      "file": "src/cost-deliveries.ts",
+      "from": "            status: { not: \"SUCCEEDED\" },\n            availableAt: { lte: at },\n          },\n          data: {\n            status: \"PROCESSING\",",
+      "to": "            availableAt: { lte: at },\n          },\n          data: {\n            status: \"PROCESSING\",",
+      "note": "SUCCEEDED is terminal. Re-claiming one moves a delivered alert back to PROCESSING and sends it a second time — the exact defect the whole claim protocol exists to prevent. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must not happen twice > a delivered alert is never claimed again"
+      ]
+    },
+    {
+      "name": "M-C18 deliveries: the retry is consumed AT CLAIM TIME",
+      "file": "src/cost-deliveries.ts",
+      "from": "            retryCount: { increment: 1 },\n            availableAt: leaseUntil,",
+      "to": "            availableAt: leaseUntil,",
+      "note": "A dispatcher that claims and then vanishes has still consumed a retry. Incrementing at finalisation instead lets a channel whose transport hangs be retried without limit while appearing never to have been tried at all. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "a finalisation and its send record are one transaction or neither > the send record fails and the delivery stays claimable",
+        "a finalisation and its send record are one transaction or neither > and a finalisation that is not interfered with COMMITS both rows"
+      ]
+    },
+    {
+      "name": "M-C19 deliveries: a finalisation names the exact claim it holds",
+      "file": "src/cost-deliveries.ts",
+      "from": "          claimToken: requireUuid(\"AlertDelivery.claimToken\", expected.token),\n          claimGeneration: expected.generation,",
+      "to": "          claimGeneration: expected.generation,",
+      "note": "The whole proof is in the predicate. Without the token a stale dispatcher's FAILED overwrites a fresh one's SUCCEEDED, the row becomes claimable again, and the alert goes out a third time.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C20 deliveries: a stale claim writes NOTHING and says so",
+      "file": "src/cost-deliveries.ts",
+      "from": "      if (outcome.count === 0) return ok(null);\n      await client.alertDeliveryRetry.create({ data: record });",
+      "to": "      await client.alertDeliveryRetry.create({ data: record });",
+      "note": "`AlertDeliveryRetry` is append-only and immutable — the database revokes UPDATE and DELETE on it. A send record appended for a finalisation that lost leaves a permanent history entry for a result that was discarded. WIN-258 T5's second sweep scored this entry with ZERO executed cases: removing the guard broke `cost-conformance.integration.test.ts` while it was BUILDING its transcript, in a `beforeAll`, so every case in the file was reported SKIPPED and none of them went red. The suite named here is the one that carries a NAMED case for it.",
+      "suites": [
+        "src/cost-idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must not happen twice > a stale claim writes NOTHING — not the row, and not the send record"
+      ]
+    },
+    {
+      "name": "M-C21 deliveries: the send record is written, which is what the injection fails",
+      "file": "src/cost-deliveries.ts",
+      "from": "      if (outcome.count === 0) return ok(null);\n      await client.alertDeliveryRetry.create({ data: record });\n      return ok(delivery);",
+      "to": "      if (outcome.count === 0) return ok(null);\n      return ok(delivery);",
+      "note": "FAILURE INJECTION on the second statement, and the failure is again the adapter's own: the send record it is about to append is planted in the table first, outside the transaction under test, so `@@unique([deliveryId, retryNumber])` refuses the adapter's insert and takes the settlement with it. A finalisation that appends no record never fails, so the delivery settles alone -- which is the half the port names: 'a finalised row with no retry record loses the failure reason an operator needs'. THE FINDING BEHIND THIS ENTRY'S SHAPE: a store in this package CANNOT obtain a client outside the caller's transaction. `TenancyTransactions` exposes `writer`, `reader` and `atomic` and nothing else; `reader()` returns `ambient.getStore()?.client ?? client`, so inside an open unit of work it hands back the TRANSACTION's client, and `atomic` resolves through `unitOfWork.run`, which JOINS an open frame. Two sweeps confirmed it: resolving the pool and wrapping the second write in `atomic` both left every case green, because neither is reachable. 'Both writes are the caller's transaction' is therefore a property of the seam, falsified in mutations-ports.json where the seam lives, not of a line here that could be removed. What IS falsifiable here -- and what makes the failure injection reach the first write at all -- is that the second write is ISSUED.",
+      "suites": [
+        "src/cost-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "a finalisation and its send record are one transaction or neither the send record fails and the delivery stays claimable"
+      ]
+    },
+    {
+      "name": "M-C22 pending: DISTINCT ON the crossing, not on the row",
+      "file": "src/cost-pending.ts",
+      "from": "      SELECT DISTINCT ON (outstanding.\"budgetThresholdEventId\")",
+      "to": "      SELECT",
+      "note": "The port: the dispatcher's unit of work is a whole crossing, and four rows for one crossing has four dispatchers race over the same four deliveries instead of one handling them in order. `distinct` in the query builder de-duplicates rows it already selected; only `DISTINCT ON` picks ONE per crossing under a chosen ordering.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C23 pending: the tenant chain is RE-DERIVED by the join",
+      "file": "src/cost-pending.ts",
+      "from": "      project.\"organizationId\"  AS \"organizationId\",",
+      "to": "      environment.\"projectId\"   AS \"organizationId\",",
+      "note": "`PendingCrossing.scope` is the re-derived ancestry, not three ids the caller supplied: this sweep runs installation-wide and has no request scope at all. Reconstructing it from anything but the joins is how a crossing is handed to a caller under the wrong organization.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double the sweep RE-DERIVED the tenant chain rather than being told it",
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C24 pending: oldest deadline first, ACROSS crossings",
+      "file": "src/cost-pending.ts",
+      "from": "    ORDER BY picked.\"dueAt\" ASC, crossing.\"id\" ASC",
+      "to": "    ORDER BY crossing.\"id\" ASC",
+      "note": "`DISTINCT ON` demands its own key lead the INNER order, so the deadline order has to be applied to the collapsed set — a second ordering over a subquery, which is why this statement is hand-written at all.",
+      "suites": [
+        "src/cost-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the PostgreSQL cost-monitoring store against the in-memory double their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-C25 rows: the scope predicate names the WHOLE tenant chain",
+      "file": "src/cost-rows.ts",
+      "from": "    environmentId: scope.environmentId,\n    environment: {\n      projectId: scope.projectId,\n      project: { organizationId: scope.organizationId },\n    },",
+      "to": "    environmentId: scope.environmentId,",
+      "note": "Every scoped read in this half of the adapter spreads this predicate, and it is the ONE place the organization and the project are named. An environment id is a uuid: keying on it alone is not wrong until two tenants' ids are guessed or leaked, and then it is wrong everywhere at once. The pure suite reads the shape and the rules suite proves the effect against a second tenant chain.",
+      "suites": [
+        "src/cost-rows.test.ts",
+        "src/cost-rules.integration.test.ts"
+      ],
+      "kills": [
+        "the scope predicate every read carries it names the whole tenant chain, not the environment alone",
+        "cross-scope denial is decided by the tenant chain, not by an id a cap is invisible to a scope whose organization does not own it"
+      ]
+    },
+    {
+      "name": "M-C26 guards: a readable placeholder is not a uuid",
+      "file": "src/cost-guards.ts",
+      "from": "export function requireUuid(column: string, value: string): string {\n  if (!UUID.test(value)) {",
+      "to": "export function requireUuid(column: string, value: string): string {\n  if (false) {",
+      "note": "THE TRAP THAT SPRUNG ON TRANCHE 3, in this context's own fixtures: `testBudget` mints `budget-1` and `SequenceIdGenerator` mints `id-0001`, both of which every use-case suite in the tree passes with, and both of which `@db.Uuid` refuses.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "identifiers, limits and thresholds on a cap a readable placeholder is refused by the guard and by the uuid column"
+      ]
+    },
+    {
+      "name": "M-C27 guards: a cap larger than an INTEGER column",
+      "file": "src/cost-guards.ts",
+      "from": "  if (!Number.isInteger(value) || value < 0 || value > INTEGER_MAX) {",
+      "to": "  if (!Number.isInteger(value) || value < 0) {",
+      "note": "`domain/budget.ts`'s `admitLimit` checks `Number.isInteger(value) && value >= 0` and stops, so a ten-trillion-cent cap passes admission and satisfies the double. The column answers 22003, which arrives naming neither the cap nor the field.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "identifiers, limits and thresholds on a cap a cap larger than an INTEGER is refused by the guard and by the column"
+      ]
+    },
+    {
+      "name": "M-C28 guards: the thresholds the JSON root check does not constrain",
+      "file": "src/cost-guards.ts",
+      "from": "    if (!Number.isInteger(value) || value <= 0 || value > 200) {",
+      "to": "    if (!Number.isInteger(value) || value < 0 || value > 200) {",
+      "note": "`Budget_alertThresholds_json_root` constrains only the ROOT — the column must hold an array and nothing more is asserted. A 0% threshold satisfies the CHECK, lands in the column, and crosses the instant the window opens, on every window, forever.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "identifiers, limits and thresholds on a cap a zero threshold is refused HERE and accepted by the database"
+      ]
+    },
+    {
+      "name": "M-C29 guards: a crossing's threshold is above zero",
+      "file": "src/cost-guards.ts",
+      "from": "  if (!Number.isInteger(crossing.threshold) || crossing.threshold <= 0) {",
+      "to": "  if (!Number.isInteger(crossing.threshold)) {",
+      "note": "`BudgetThresholdEvent` is IMMUTABLE — UPDATE, DELETE and TRUNCATE are all revoked — so a crossing written with a threshold the CHECK refuses cannot be corrected, and one written with a nonsense threshold cannot be corrected either.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a crossing's values, and the amount its column cannot carry a non-positive threshold is refused by the guard and by the check"
+      ]
+    },
+    {
+      "name": "M-C30 guards: the spend the DOUBLE PRECISION column cannot carry",
+      "file": "src/cost-guards.ts",
+      "from": "  const roundTripped = BigInt(Math.round(asDouble * Number(MICRO_CENTS_PER_CENT)));\n  if (roundTripped !== microCents) {",
+      "to": "  const roundTripped = BigInt(Math.round(asDouble * Number(MICRO_CENTS_PER_CENT)));\n  if (false) {",
+      "note": "THE ONE PLACE THIS ADAPTER REFUSES BECAUSE A COLUMN TYPE IS NARROWER THAN THE DOMAIN TYPE. `Money` is an exact bigint count of micro-cents; the column is a binary float carrying about fifteen significant digits. The alert an operator reads would state a spend that is not the spend that was measured, on a row nothing can correct.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a crossing's values, and the amount its column cannot carry an exact amount the DOUBLE PRECISION column cannot hold is refused"
+      ]
+    },
+    {
+      "name": "M-C31 guards: a channel's name, on the stricter of two readings",
+      "file": "src/cost-guards.ts",
+      "from": "  const trimmed = value.trim();\n  if (trimmed.length === 0 || value.length > 200) {",
+      "to": "  const trimmed = value.trim();\n  if (value.length > 200) {",
+      "note": "`AlertChannel_name_check` is `length(btrim(name)) BETWEEN 1 AND 200`, and PostgreSQL's `btrim` strips the ASCII space only — not every character JavaScript's `trim` strips. The guard takes the stricter reading, because a name that survives `btrim` and vanishes under `trim` is a channel an operator cannot pick out of a list.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a channel's name, topics and deduplication shape a blank name is refused by the guard and by AlertChannel_name_check"
+      ]
+    },
+    {
+      "name": "M-C32 guards: the topics column's own DEFAULT is refused",
+      "file": "src/cost-guards.ts",
+      "from": "  if (values.length === 0) {\n    throw new CostWriteRefused(\n      CHANNEL_TOPICS_EMPTY,",
+      "to": "  if (false) {\n    throw new CostWriteRefused(\n      CHANNEL_TOPICS_EMPTY,",
+      "note": "The column defaults to an empty array and its own CHECK refuses one, so the DEFAULT is unusable. A guard that let it through writes a channel subscribed to nothing, which is a channel that never fires.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a channel's name, topics and deduplication shape the topics column's own DEFAULT violates the check that guards it"
+      ]
+    },
+    {
+      "name": "M-C33 guards: no key means no operator-supplied claim",
+      "file": "src/cost-guards.ts",
+      "from": "  if (key === null) {\n    if (operatorSupplied) {",
+      "to": "  if (key === null) {\n    if (false) {",
+      "note": "`AlertChannel_dedupe_check`'s first clause. `admitAlertChannel` sets the pair together and `retireChannel` clears it together, so the two are only separable by a caller assembling an `AlertChannel` by hand — which the in-memory double accepts and the database does not.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a channel's name, topics and deduplication shape a channel with no key may not claim an operator supplied one"
+      ]
+    },
+    {
+      "name": "M-C34 guards: a BUDGET delivery belongs to exactly one crossing",
+      "file": "src/cost-guards.ts",
+      "from": "  const coherent = kind === \"TEST\" ? eventId === null : eventId !== null;",
+      "to": "  const coherent = true;",
+      "note": "The port carries `kind` and `eventId` as independent fields, so all four combinations type-check and two of them are rows the table will not hold. The pair refused is exactly the pair that makes the ledger unreadable.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a delivery's kind, its state, and its send record a BUDGET delivery belonging to no crossing is refused both ways"
+      ]
+    },
+    {
+      "name": "M-C35 guards: a SUCCEEDED delivery carries no failure token",
+      "file": "src/cost-guards.ts",
+      "from": "    if (delivery.lastErrorCode !== null) {\n      throw new CostWriteRefused(\n        DELIVERY_STATE_INCOHERENT,\n        \"AlertDelivery.lastErrorCode\",",
+      "to": "    if (false) {\n      throw new CostWriteRefused(\n        DELIVERY_STATE_INCOHERENT,\n        \"AlertDelivery.lastErrorCode\",",
+      "note": "`AlertDelivery_state_check`. A row that says it succeeded and still names why it failed is one an operator reads as both, and the double writes it without comment.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a delivery's kind, its state, and its send record a SUCCEEDED delivery still carrying a failure token is refused both ways"
+      ]
+    },
+    {
+      "name": "M-C36 guards: a send record is numbered from one",
+      "file": "src/cost-guards.ts",
+      "from": "  if (!Number.isInteger(retry.retryNumber) || retry.retryNumber <= 0) {",
+      "to": "  if (!Number.isInteger(retry.retryNumber)) {",
+      "note": "The column demands a positive number, which is what the claim's 'increment at claim time, not at finalisation' ordering guarantees — and what an unclaimed synchronous send has to remember to do for itself. `AlertDeliveryRetry` is append-only, so a record written wrong stays wrong.",
+      "suites": [
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a delivery's kind, its state, and its send record a send record numbered from zero is refused both ways"
+      ]
+    },
+    {
+      "name": "M-C37 rows: a period this binary has no arithmetic for is refused, not defaulted",
+      "file": "src/cost-rows.ts",
+      "from": "  if (!PERIODS.includes(value)) {\n    throw new UnreadableRowError(UNKNOWN_BUDGET_PERIOD, \"Budget.period\", value);\n  }",
+      "to": "  if (false) {\n    throw new UnreadableRowError(UNKNOWN_BUDGET_PERIOD, \"Budget.period\", value);\n  }",
+      "note": "`Budget.period` is a TEXT column with no enum behind it. A row holding `quarter` reads back as a cap whose window this binary cannot compute, and a silent default would enforce a DIFFERENT window than the one an operator configured.",
+      "suites": [
+        "src/cost-rows.test.ts",
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a cap, read from its columns a period this binary has no arithmetic for is refused, not defaulted",
+        "identifiers, limits and thresholds on a cap a period this binary has no arithmetic for is refused on the way OUT"
+      ]
+    },
+    {
+      "name": "M-C38 rows: the thresholds column's ELEMENTS are read exactly",
+      "file": "src/cost-rows.ts",
+      "from": "    if (typeof element !== \"number\" || !Number.isInteger(element)) {",
+      "to": "    if (typeof element !== \"number\") {",
+      "note": "The JSON root check guarantees an array and says nothing about the elements, so a row written by a migration or by hand can hold `[50, \"80\", null]` and satisfy every constraint the table has. Reading that as `[50, NaN, 0]` fires a cap at a percentage no operator asked for. The constraints suite plants `[{ percent: 50 }]` -- an OBJECT -- so it is refused on the type test and cannot see this mutation; only the pure suite's non-whole NUMBER reaches it, and only that case is claimed as the kill.",
+      "suites": [
+        "src/cost-rows.test.ts",
+        "src/cost-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a cap, read from its columns thresholds that are not whole numbers are refused, not coerced"
+      ]
+    },
+    {
+      "name": "M-C39 budgets: a page and its total are ONE read, not two",
+      "file": "src/cost-budgets.ts",
+      "from": "      const all = await liveBudgets(scope);\n      return ok({\n        items: all.slice(query.offset, query.offset + query.limit),\n        total: all.length,\n      });",
+      "to": "      const all = await liveBudgets(scope);\n      return ok({\n        items: all.slice(query.offset, query.offset + query.limit),\n        total: (await liveBudgets(scope)).length,\n      });",
+      "note": "A separate count is a second statement AND a second snapshot: the page and the total rendered beside it would then be able to disagree about which rows exist. The pin is per read and holds over a 3-cap and a 30-cap environment, so this is caught by the COUNT rather than by any returned value.",
+      "suites": [
+        "src/cost-statements.integration.test.ts"
+      ],
+      "kills": [
+        "every read costs the same over a small environment and a large one each read's statement count matches its pin, over BOTH sizes"
+      ]
+    },
+    {
+      "name": "M-C40 deliveries: the claim is one statement, not a read and a write",
+      "file": "src/cost-deliveries.ts",
+      "from": "      const rows = await transactions.atomic((client) =>",
+      "to": "      await transactions.reader().alertDelivery.findFirst({ where: { id: deliveryId } });\n      const rows = await transactions.atomic((client) =>",
+      "note": "THE EXACT SHAPE THE PORT FORBIDS, added back: an implementation that reads the row, decides in application code and then writes has a window between the read and the write in which a second dispatcher can claim the same row, and both will send. The extra read changes no returned value at all - only the statement count sees it, which is why the count is the contract.",
+      "suites": [
+        "src/cost-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the writes that must be one statement, and the ones that must be two a claim is ONE conditional write"
+      ]
+    }
+  ]
+}

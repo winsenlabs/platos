@@ -69,11 +69,21 @@ export const ADAPTERS = [
     // `AgentsRepository` for the version/binding invariant and
     // `ScaffoldingRepository` for the two rows a SURFACE writes on its own
     // behalf — so it contributes two bindings to one directory.
+    //
+    // WIN-258 T5 adds the SIXTH. `cost-monitoring`'s six rows — Budget,
+    // BudgetThresholdEvent, AlertChannel, AlertChannelConfiguration,
+    // AlertDelivery and its send records — live in the SAME PostgreSQL
+    // database, so they are behind the same client and in the same directory.
+    // Adding an owner here is what gives this adapter its project reference and
+    // workspace dependency on the context whose port it satisfies; §15 records
+    // why the body's "per-context repositories, owner-tagged" wins over the
+    // header's narrower "implements ONE port".
     additional: [
       { port: "IdentityAccessRepository", owner: "identity-access" },
       { port: "ToolsRepository", owner: "tools" },
       { port: "AgentsRepository", owner: "agents" },
       { port: "ScaffoldingRepository", owner: "agents" },
+      { port: "BudgetRepository", owner: "cost-monitoring" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -93,7 +103,7 @@ export const ADAPTERS = [
 /**
  * Every (adapter directory, port, owner) triple the layout declares, flattened.
  *
- * ONE entry per BINDING, not per directory. `postgres-tenancy` appears three
+ * ONE entry per BINDING, not per directory. `postgres-tenancy` appears SIX
  * times because it satisfies three ports; every other directory appears once.
  * This is the list the composition root's table is compared against, the list
  * the project graph derives its owner edges from, and the list `selfCheck`
@@ -134,16 +144,26 @@ export function adapterOwnerPackages(adapter) {
 }
 
 // ADR M0.3 §4 names twelve concrete adapter DIRECTORIES and, after the §15
-// amendment, thirteen BINDINGS across them. Both are pinned: a thirteenth
-// directory and a fourteenth binding are each a reviewed line rather than a
+// amendment, FOURTEEN BINDINGS across them. Both are pinned: a thirteenth
+// directory and a fifteenth binding are each a reviewed line rather than a
 // silent consequence of editing a table.
 // 13 -> 14 (WIN-258 T5, ADR M0.3 s15). `postgres-tenancy` gains a THIRD
 // binding, `tools:ToolsRepository`. The directory count is UNCHANGED at twelve
 // and that is the point of pinning the two separately: a new binding inside an
 // existing directory is a different reviewed decision from a new directory, and
 // a single pin could not have told them apart.
+//
+// 14 -> 16 (WIN-258 T5). `agents` publishes TWO canonical-store ports and the
+// same directory satisfies both, so one tranche moves this pin by two while
+// leaving EXPECTED_ADAPTER_COUNT alone.
+//
+// 16 -> 17 (WIN-258 T5). `cost-monitoring:BudgetRepository`, the SIXTH binding
+// and the fifth owner of the one directory §15 gives the ORM. The DIRECTORY
+// count is deliberately unmoved a third time: the whole point of the amendment
+// is that another owner is a row on an existing directory rather than a
+// thirteenth package holding a second PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 16;
+export const EXPECTED_BINDING_COUNT = 17;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -199,7 +219,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // repositories are in the one adapter directory. Two bindings, one edge — a
 // project reference is per PACKAGE, not per port. It cannot create a cycle, and
 // it does not widen the 17-context DAG.
-export const EXPECTED_EDGE_COUNT = 98;
+//
+// 98 -> 99 (WIN-258 T5, a third time). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/cost-monitoring`. A FIFTH owner edge, for that context's
+// `BudgetRepository`. `cost-monitoring` depends on `tenancy` and `providers`
+// and nothing depends on it, so the 17-context DAG is again unchanged and no
+// cycle is possible.
+export const EXPECTED_EDGE_COUNT = 99;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -318,7 +344,18 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // ---------------------------------------------------------------------------
 export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/tools", // WIN-258 T5 — compared against the PostgreSQL ToolsRepository by packages/adapters/postgres-tenancy
+  "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
 ];
+
+// BOTH TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
+// which merged as TWO declarations of the same constant — a duplicate the
+// module loader rejects outright, and the one kind of silent merge damage that
+// cannot ship. The two entries are one list here. `agents` is absent on purpose:
+// it publishes its doubles from `application/index.js`, so it is on
+// APPLICATION_ENTRY_PROJECTS above instead.
+//
+// Every entry must be an adopted project: an unadopted one's `application/`
+// tree is generated placeholders, so `selfCheck` fails on it.
 
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
@@ -553,9 +590,12 @@ function describeAdapter(adapter) {
  * The adapter README.
  *
  * A directory with ONE binding reads exactly as it did before the §15
- * amendment. A directory with TWO names both, and says which sentence of ADR
- * M0.3 §4 it is standing on, because "an adapter implements ONE port" is the
- * line a reader would otherwise measure it against and find it wanting.
+ * amendment. A directory with SEVERAL names each of them, and says which
+ * sentence of ADR M0.3 §4 it is standing on, because "an adapter implements ONE
+ * port" is the line a reader would otherwise measure it against and find it
+ * wanting. The count is spelled from the bindings rather than written into the
+ * sentence: this template said "TWO" while emitting three items the day
+ * `cost-monitoring` was bound, which is the drift the whole file exists to stop.
  */
 /**
  * The count, spelled.
@@ -1068,9 +1108,11 @@ export function selfCheck(
     seenEntries.add(project);
   }
 
-  // The same three conditions on the doubles list, and for the same reasons: an
-  // unadopted project's `application/testing/index.ts` is a generated
-  // placeholder, so publishing it would name a file nothing wrote.
+  // The same three rules for the doubles barrel, judged separately rather than
+  // folded into the loop above: the two lists answer different questions — one
+  // publishes a context's use cases to the composition root, the other publishes
+  // its in-memory doubles to the adapter measured against them — and a shared
+  // loop would report a mistake in either under the other's name.
   const seenTestingEntries = new Set();
   for (const project of testingEntries) {
     if (!project.startsWith("packages/contexts/")) {

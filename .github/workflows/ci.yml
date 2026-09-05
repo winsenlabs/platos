@@ -363,6 +363,16 @@ jobs:
         # which is where the in-memory doubles the conformance differential is
         # measured against live — and both are dist/.
         run: pnpm --filter "@platos/context-agents..." build
+      - name: Build the cost-monitoring context
+        # WIN-258 T5. The same directory also implements `BudgetRepository`, and
+        # its suites resolve that context through TWO published subpaths, both of
+        # which are dist/: `application/ports/index.js` for the port and the
+        # domain values its signatures name, and `application/testing/index.js`
+        # for `InMemoryBudgetRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-cost-monitoring..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
