@@ -66,6 +66,16 @@ export const projectMembershipIdOf = (value: string): ProjectMembershipId =>
 
 export interface TenancyHarness {
   readonly client: TenancyDatabaseClient;
+  /**
+   * The container's connection URI.
+   *
+   * WIN-258 T4. Exposed so a suite can open a SECOND client over the same
+   * database. Durability is not "the row is there when the writer looks again" —
+   * a writer can see its own uncommitted rows — it is "the row is there when
+   * somebody else looks", and proving that needs a connection this adapter's
+   * pool never touched.
+   */
+  readonly databaseUrl: string;
   readonly adapter: PostgresTenancyAdapter;
   /** Every statement the client has sent since `resetStatements`. */
   statements(): readonly string[];
@@ -124,6 +134,7 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
 
   const harness: TenancyHarness = {
     client,
+    databaseUrl,
     adapter,
     statements: () => statements,
     resetStatements: () => {
