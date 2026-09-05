@@ -90,8 +90,12 @@ export async function startCostHarness(): Promise<CostHarness> {
     repository,
 
     async freshScope(): Promise<EnvironmentScope> {
-      const organizationId = await base.seedOrganization(`cost-${base.freshId("0005").slice(9, 13)}`);
-      const projectId = await base.seedProject(organizationId, `proj-${base.freshId("0006").slice(9, 13)}`);
+      // The WHOLE fresh identifier, not a slice of it. `Organization.slug` is
+      // UNIQUE installation-wide, and `freshId` varies only in its LAST group —
+      // a slice of the middle is the same string on every call, so two scopes in
+      // one suite collided on the second.
+      const organizationId = await base.seedOrganization(`cost-${base.freshId("0005")}`);
+      const projectId = await base.seedProject(organizationId, `proj-${base.freshId("0006")}`);
       const environmentId = asTenancyIdentifier<EnvironmentId>(base.freshId("0007"));
       await base.adapter.unitOfWork.run((transaction) =>
         base.adapter.saveEnvironment(
@@ -134,9 +138,12 @@ export async function startCostHarness(): Promise<CostHarness> {
       const kind = shape.kind ?? "CHANNEL_SECRET";
       const revokedAt = shape.revoked === true ? `'2026-05-02T09:00:00Z'` : "NULL";
       const statements = [
+        // The NAME varies per credential because `Credential` is unique on
+        // `(environmentId, kind, name)` — a suite that seeded two channel
+        // secrets in one environment collided on the second.
         `INSERT INTO "Credential" ("id", "environmentId", "kind", "name", "revokedAt", "createdAt", "updatedAt")
-         VALUES ('${credentialId}', '${scope.environmentId}', '${kind}', 'channel secret', ${revokedAt},
-                 '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
+         VALUES ('${credentialId}', '${scope.environmentId}', '${kind}', 'channel secret ${credentialId}',
+                 ${revokedAt}, '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
       ];
       if (shape.withoutSecretVersion !== true) {
         statements.push(
