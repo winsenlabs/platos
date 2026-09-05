@@ -338,6 +338,30 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // from importing the ORM, so the one package permitted to write these six rows
   // would be the one package unable to.
   "cost-monitoring": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The SIXTH context to resolve to this directory, on the sentence
+  // that has not changed since T2: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FIVE rows `governance` owns — `SafetyEvent`,
+  // `MessageRating`, `EvalCriterion`, `AgentEval` and `GoldenSet`. Nothing else.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Turn` or to `Thread` from
+  // this package still fails — and those two matter here, because three of these
+  // five rows hang off a `Thread` and `governance` reads all three through the
+  // inverted read-seam ports in `application/ports/read-seams.ts` rather than
+  // through a store of its own. The entry moves no owner TAG.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC. `governance-erasure-target.ts`
+  // counts a subject's safety events and ratings, then ANONYMISES the first and
+  // DESTROYS the second, and the port signatures put both mutations in the
+  // caller's `TransactionScope`. Those two tables are written by the same client
+  // in the same transaction only because they resolve to the same directory; a
+  // thirteenth adapter package holding `governance`'s five repositories would
+  // have had its own pool, and an erasure that failed between the two halves
+  // would have left the ledger anonymised and the votes intact.
+  governance: "packages/adapters/postgres-tenancy",
 });
 
 /**
