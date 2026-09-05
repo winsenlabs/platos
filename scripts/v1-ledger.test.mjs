@@ -816,7 +816,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // adapter DIRECTORY. Ten source, six suites and `mutations-cost.json`, the
     // guard ledger, under the config rule that already carries four siblings.
     // 1109 + 17 = 1126.
-    packages: 1126,
+    //
+    // ITS SECOND SWEEP adds ONE more to the same area and to no other:
+    // `cost-idempotency.integration.test.ts`. Re-running all forty ledger
+    // entries scored six with zero executed cases -- each edit compiled and
+    // collected, then broke the conformance suite while it was BUILDING its
+    // transcript, so vitest reported every case in that file SKIPPED and no
+    // named case went red. Two of the six had a named case elsewhere in the
+    // tree; this file is the four that had none anywhere. 1126 + 1 = 1127.
+    packages: 1127,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -979,11 +987,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
     //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
     //   adapter directories) = 1185, + 17 (WIN-258 tranche 5, back in the ONE
-    //   directory) = 1202.
+    //   directory) = 1202, + 1 (tranche 5's second sweep, the four guards whose
+    //   only witness was a crashed hook) = 1203.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1202);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1203);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1003,10 +1012,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
     // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across TWO
-    // adapter directories, and WIN-258 tranche 5's cost-monitoring canonical
-    // store +17 back in the ONE); this one re-derives it by summing the per-area
-    // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1202
+    // adapter directories, WIN-258 tranche 5's cost-monitoring canonical store
+    // +17 back in the ONE, and that tranche's second sweep +1); this one
+    // re-derives it by summing the per-area counts independently, so the two can
+    // DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1203
   );
 });
 
