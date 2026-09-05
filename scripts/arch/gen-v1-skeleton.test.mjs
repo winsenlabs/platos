@@ -65,7 +65,7 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // implements the three kernel ports that have no adapter (Clock, IdGenerator,
   // Logger), so it must be able to name them. Reasoned in full on
   // EXPECTED_EDGE_COUNT in the generator.
-  assert.match(output, /32 V1 projects and 96 project edges/u);
+  assert.match(output, /32 V1 projects and 97 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -205,12 +205,12 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  assert.deepEqual(selfCheck([], []), [], "an empty registry is valid");
+  assert.deepEqual(selfCheck([], [], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], []), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], [], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], []), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], [], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
 });
@@ -223,19 +223,19 @@ test("selfCheck rejects an application entry that is not an adopted context", ()
   const adopted = ["packages/contexts/identity-access"];
 
   assert.deepEqual(
-    selfCheck(adopted, ["packages/contexts/agents"]),
+    selfCheck(adopted, ["packages/contexts/agents"], []),
     ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
     "an unadopted context's application/index.ts is a generated placeholder",
   );
   assert.deepEqual(
-    selfCheck(adopted, ["apps/core-api"]),
+    selfCheck(adopted, ["apps/core-api"], []),
     [
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
     ],
     "apps/core-api is adopted but is not a context; both clauses fire",
   );
-  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted]), [
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted], []), [
     "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
   ]);
 });
@@ -343,7 +343,11 @@ test("every published application entry point is imported by the composition roo
 
 const LIVE_ADAPTERS = [
   { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy",
-    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }], note: "n" },
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      // WIN-258 T5. The THIRD binding on the one shared directory.
+      { port: "ToolsRepository", owner: "tools" },
+    ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
   { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "n" },
@@ -372,14 +376,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a FOURTEENTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTEENTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 13 adapter bindings; ADAPTERS flattens to 14")));
+  assert.ok(errors.some((error) => error.includes("declares 14 adapter bindings; ADAPTERS flattens to 15")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
