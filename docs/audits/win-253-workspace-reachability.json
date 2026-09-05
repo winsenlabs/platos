@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "3decc6e48949b9d6d4bd39be4d895204d6c5b66733986ee8246cf344841635bd",
+  "evidenceSha256": "6b6fe92c3d4009ad7c318cee3f35391f80e1973d98876c05c96c1ef0bd2e5a6d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "dec6df681978f8499a28a1211d608ea04fd1400d320ba7485db911eb0af43594",
+    "aggregateSha256": "be8a17c22a78adc16ae4460e41406205fa3c973c04e1eeb6cdfa66561b1b6656",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11185,7 +11185,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-agents.json",
-        "sha256": "458ae904536cd1600cf7e99fcbbf8745a92aae2cd848e0263070e59fa9e8cdda"
+        "sha256": "08872fb6f8fb835539d4012b05b730bdec0e6b28b8f56b77b45084c193312b90"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-identity.json",
