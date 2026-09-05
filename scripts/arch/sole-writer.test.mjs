@@ -485,10 +485,38 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                               2 differential-login, 1 transaction            17
 //                                                                      total = 51
 //
-// 12 + 51 = 63. The second and third assertions below say the writes are all
-// legal and all attributable, so the pin cannot be satisfied by 63 mutations
+// WIN-258 TRANCHE 3 adds 3, again all from the SAME directory, and they are
+// worth writing out individually because three is small enough that a reader
+// would otherwise wonder what five new ports could possibly write:
+//
+//   src/access-key-revocation.ts  environment.update — the ONE tenancy-owned
+//                                 write the whole tranche makes, and the fence
+//                                 ADR M0.3 §15 was argued on                    1
+//   src/ports-harness.ts          a raw INSERT of an `Environment` row with no
+//                                 `accessKeyRevocationVersion` column, which is
+//                                 the expand/contract fixture: the generated
+//                                 client cannot express a write that omits a
+//                                 non-optional column                           1
+//   src/ports-conformance.integration.test.ts
+//                                 a raw UPDATE disabling a `User`, so the
+//                                 operator directory can be asked about a
+//                                 disabled account. identity-access's row,
+//                                 legal from this directory for the same reason
+//                                 the 51 above are                              1
+//                                                                       total = 3
+//
+// FOUR OF THE FIVE PORTS WRITE NOTHING AT ALL, and that is the property to hold
+// on to rather than the number. Both locks are `SELECT ... FOR UPDATE` and an
+// advisory-lock function call, which the `(?<!\bfor )` lookbehind in
+// `MUTATING_SQL_STATEMENT` correctly declines to read as an UPDATE; the session
+// revoker delegates to identity-access's own store rather than issuing its own
+// statement, so its write is already counted among the 51; the operator
+// directory only reads; and the token issuer touches no database.
+//
+// 12 + 51 + 3 = 66. The second and third assertions below say the writes are all
+// legal and all attributable, so the pin cannot be satisfied by 66 mutations
 // somewhere else.
-const LIVE_TREE_WRITE_COUNT = 63;
+const LIVE_TREE_WRITE_COUNT = 66;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();

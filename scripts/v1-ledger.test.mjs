@@ -758,7 +758,30 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // composition-root binding table, the census and sole-writer pins, the CI
     // job and the regenerated evidence are all edits to files that already
     // existed. 1056 + 23 = 1079.
-    packages: 1079,
+    //
+    // WIN-258 TRANCHE 3 — tenancy's OTHER FIVE PORTS — adds 12 more to the SAME
+    // directory, 1079 -> 1091, and again to no other area at all. The five ports
+    // are a row lock and an advisory lock, a session revoker, an access-key
+    // revocation counter, an invitation token issuer and an operator directory;
+    // five of the six ports on `TenancyDependencies` that are not the
+    // repository, and they are here because a lock a use case takes has to be
+    // held by the transaction its writes are in.
+    //
+    //   +6  source  locks, access-key-revocation, operator-peers,
+    //               invitation-token, the shared ports-conformance scenario and
+    //               ports-harness
+    //   +5  test    invitation-token.test and the four integration suites
+    //               (locks, ports-conformance, ports-transaction,
+    //               ports-statements)
+    //   +1  config  mutations-ports.json, the 21-entry guard ledger, under the
+    //               same packages.adapters.config rule as the other two
+    //
+    // 6 + 5 + 1 = 12. NOTHING is released — the directory has had no placeholder
+    // left since tranche 1 — so the 12 additions ARE the whole delta. The one
+    // re-export added to tenancy's ports entry point, the adapter assembly, the
+    // census, arch, line-budget and sole-writer pins and the regenerated
+    // evidence are all edits to files that already existed. 1079 + 12 = 1091.
+    packages: 1091,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -919,11 +942,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
-    //   = 1155.
+    //   = 1155, + 12 (WIN-258 tranche 3) = 1167.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1155);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1167);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -941,10 +964,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
-    // tranche 2's identity-access canonical store +23); this one re-derives it
+    // tranche 2's identity-access canonical store +23, and WIN-258 tranche 3's
+    // other five tenancy ports +12); this one re-derives it
     // by summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1155
+    rulesDocument.baseline.totalFiles + 1167
   );
 });
 
