@@ -591,10 +591,17 @@ export async function runGovernanceConformance(
       (page) => ({ total: page.total, names: page.items.map((item) => item.name) }),
     );
     observed["criteria.update.outOfScope"] = outcome(
+      // The name is one ANOTHER criterion in this environment already holds, so
+      // the row is both out of scope AND clashing. Which refusal comes back is
+      // the ORDER the checks run in, and the double checks scope first.
       await environment.run((transaction) =>
         stores.criteria.update(
           scope,
-          { ...created.value, evalCriterionId: asGovernanceIdentifier(ids.absentId) },
+          {
+            ...created.value,
+            evalCriterionId: asGovernanceIdentifier(ids.absentId),
+            name: "grounding",
+          },
           transaction,
         ),
       ),
