@@ -721,8 +721,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `tenancy-prisma-only` -- and a thirteenth adapter package
     //               for a third owner would have broken it exactly as a second
     //               ORM home for the outbox would have.
-    assert.equal(result.fileCount, 1241, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16);
+    //  1241 -> 1242: THE SEVENTEENTH FILE IN THAT SAME HOME, and it is a suite
+    //               rather than a module: `cost-idempotency.integration.test.ts`
+    //               carries the four guards the mutation sweep found had no
+    //               named case anywhere, each of which had been falsifiable only
+    //               through a crashed `beforeAll`. It imports what every other
+    //               suite in the directory imports, so `tenancy-prisma-only` is
+    //               measured against one more file and still holds.
+    assert.equal(result.fileCount, 1242, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

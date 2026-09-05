@@ -410,19 +410,27 @@ test("the live selectors scan an exact nonzero source census", () => {
   // unchanged by it. It is the closest any file in this package has come, and
   // that is the reason the three stores were split by lifecycle rather than
   // left as one.
-  assert.equal(result.fileCount, 1216);
+  //
+  // 1216 -> 1217 (WIN-258 T5, second sweep): the SEVENTEENTH file in the same
+  // directory, `cost-idempotency.integration.test.ts`, the four guards the
+  // mutation sweep found had no named case anywhere. It is a suite, not a
+  // source module, and at well under 400 effective lines it leaves the finding
+  // list below unchanged too.
+  assert.equal(result.fileCount, 1217);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16 + 1
   );
   // The adapters row of the four-way disjoint scan carries all three tranches:
-  // 88 + 11 (tranche 3) + 15 (tranche 4) + 16 (tranche 5) = 130. The contexts,
-  // kernel and app rows are untouched, which is the claim worth making: tranche
-  // 5 added no file to `packages/contexts/cost-monitoring` at all.
-  assert.equal(result.fileCount, 20 + 1060 + 130 + 6);
+  // 88 + 11 (tranche 3) + 15 (tranche 4) + 16 (tranche 5) + 1 (tranche 5's
+  // second sweep) = 131. The contexts, kernel and app rows are untouched, which
+  // is the claim worth making: tranche 5 added no file to
+  // `packages/contexts/cost-monitoring` at all, and its second sweep added none
+  // either -- the four cases it needed are about the ADAPTER's writes.
+  assert.equal(result.fileCount, 20 + 1060 + 131 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

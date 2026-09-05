@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "74e5765b94371e0e694fc48a56d4d0f6c674cbf8534400f9c1f8ad81c8f88a23",
+  "evidenceSha256": "85d14c16ceaccfe69d7ad235f97e74563a0b4c7b1374f2a2f3e395a7fe9a5dd4",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f9f18afdf6865fbc170b41c60fee6145b349dd963c446eddc4ae47cd0ae78282",
+    "aggregateSha256": "3bbd51b2b8305a2e0a106d34143c8ffebfcd9bce9a61673649328f2fe7bf2c63",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "8412a348c99c3221c502efa9cb1ffda71d2a02f2f0abafdebda99f05a81eea6e"
+        "sha256": "4763fee2088ac5f833af04fec1d7b6b4c143f70e8f70f526fa99f0d6f8020bbc"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -18069,7 +18069,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "79569e9e7816ba31e16b60a77eee07f7af38d283d835c71bc2e960d1d449e131"
+        "sha256": "f651c1eee930afd64f19881d5c40122ba20cec1730b9869e1b1d962980743cbc"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -18121,7 +18121,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "90d6187c2f1dd8da9773ebecdaa18cc7dea4a9ba860ded10f44fcef583edcf8d"
+        "sha256": "b973cc176ab85e64efe213704efd8fe55384932e6ab43ff49962796e8d675c53"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -18381,7 +18381,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "99a65df4a0bcd44bceb835e96280e3bd710223e83af562cdbda8b867546f492d"
+        "sha256": "9633e5692000508db5b06bca08111850476debd5d9042236a69728be22f0a860"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -35639,7 +35639,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1039
+              "line": 1049
             }
           ],
           "reversePaths": [
@@ -35664,7 +35664,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1e286c5e67508382537a937f9ce030bcbbcb3e67215404f1e508e271ca0d6d62",
+      "evidenceSha256": "e1dafe3e7dcf65bb5e3a17bb26a018bb512506c8244b392186d7208e1fb7b200",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -36795,7 +36795,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1038
+              "line": 1048
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -37020,7 +37020,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5e6bfe091f3f265bc64f1a7235cbaf3e03d65ee3c077cc67f2018e961ae1fb8f",
+      "evidenceSha256": "28b720644e725ebc6c35b17014147ca595724e5ea4cffe47af98ca69f1d318ab",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -50242,7 +50242,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 424
+              "line": 431
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -50569,7 +50569,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "2bdf89012530145843c0d8b5fcd99c82c2d4ea65b358e10b244ca9dcf46239fb",
+      "evidenceSha256": "f28ad19246afc2b487115c02df27b5c37529aa6904dfbefb47f93cd66087972d",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -64392,7 +64392,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 883
+              "line": 891
             }
           ],
           "reversePaths": [
@@ -64634,7 +64634,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "fb03ce5c528a1dfec323ac9c5d27b55822dd30e262786637cd687c14c558f9d1",
+      "evidenceSha256": "7d45e1293d39be7081de74897458eada181fc920b45a30e835f43ed06918769e",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
