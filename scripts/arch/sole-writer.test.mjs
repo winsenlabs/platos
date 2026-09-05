@@ -637,7 +637,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                              1 AlertDeliveryRetry                            14
 //   src/cost-rules.integration.test.ts
 //                              7 writes proving the database rules NO port
-//                              method restates: two immutability triggers, the
+//                              method restates: two immutability rules, the
 //                              ancestry rule firing on UPDATE, and the
 //                              tombstone this port cannot write                  7
 //   src/cost-transaction.integration.test.ts

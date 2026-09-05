@@ -711,8 +711,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               extended by BOTH tails, `+ 11` for tranche 3 and `+ 9 + 6`
     //               for tranche 4's two directories, so a term that went missing
     //               would move the total and be caught rather than absorbed.
-    assert.equal(result.fileCount, 1225, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6);
+    //  1225 -> 1241: WIN-258 TRANCHE 5, `cost-monitoring`'s canonical store, in
+    //               that SAME one ORM home. Sixteen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ten source (the
+    //               three stores, their row mapping, their guards, the pending
+    //               projection, the composite, the two conformance halves and
+    //               the fixture harness) and six suites. The rule they are
+    //               measured against is the one this whole chain exists for --
+    //               `tenancy-prisma-only` -- and a thirteenth adapter package
+    //               for a third owner would have broken it exactly as a second
+    //               ORM home for the outbox would have.
+    assert.equal(result.fileCount, 1241, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

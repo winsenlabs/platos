@@ -12,6 +12,7 @@ import {
   EXPECTED_PLACEHOLDER_FILE_COUNT,
   EXPECTED_SCAFFOLDING_FILE_COUNT,
   SCAFFOLDING_BASENAMES,
+  TESTING_ENTRY_PROJECTS,
   checkSkeleton,
   isScaffoldingPath,
   projectPaths,
@@ -65,7 +66,12 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // implements the three kernel ports that have no adapter (Clock, IdGenerator,
   // Logger), so it must be able to name them. Reasoned in full on
   // EXPECTED_EDGE_COUNT in the generator.
-  assert.match(output, /32 V1 projects and 96 project edges/u);
+  //
+  // 96 -> 97 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/cost-monitoring, the third owner of the one PostgreSQL
+  // client (ADR M0.3 §15). The count is READ BACK from the generator here
+  // rather than computed, which is the whole point of this case.
+  assert.match(output, /32 V1 projects and 97 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -205,12 +211,17 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  assert.deepEqual(selfCheck([], []), [], "an empty registry is valid");
+  // WIN-258 T5. All THREE registries are supplied empty. `selfCheck` judges the
+  // testing-entry list against the SAME adoption argument, so leaving it to
+  // default would import the live list into a case about an empty one and
+  // report `cost-monitoring` unadopted — a true statement about a registry this
+  // case is not describing.
+  assert.deepEqual(selfCheck([], [], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], []), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], [], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], []), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], [], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
 });
@@ -223,21 +234,89 @@ test("selfCheck rejects an application entry that is not an adopted context", ()
   const adopted = ["packages/contexts/identity-access"];
 
   assert.deepEqual(
-    selfCheck(adopted, ["packages/contexts/agents"]),
+    selfCheck(adopted, ["packages/contexts/agents"], []),
     ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
     "an unadopted context's application/index.ts is a generated placeholder",
   );
   assert.deepEqual(
-    selfCheck(adopted, ["apps/core-api"]),
+    selfCheck(adopted, ["apps/core-api"], []),
     [
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
     ],
     "apps/core-api is adopted but is not a context; both clauses fire",
   );
-  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted]), [
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted], []), [
     "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T5: a context may publish its in-memory doubles only when the adapter
+// measured against them can actually import them.
+// ---------------------------------------------------------------------------
+
+test("selfCheck rejects a testing entry that is not an adopted context", () => {
+  const adopted = ["packages/contexts/identity-access"];
+
+  assert.deepEqual(
+    selfCheck(adopted, [], ["packages/contexts/agents"]),
+    ["TESTING_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
+    "an unadopted context's application/testing/ tree is generated placeholders",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, [], ["apps/core-api"]),
+    [
+      "TESTING_ENTRY_PROJECTS names apps/core-api, which is not a context",
+      "TESTING_ENTRY_PROJECTS names apps/core-api, which is not adopted",
+    ],
+    "apps/core-api is adopted but is not a context; both clauses fire",
+  );
+  assert.deepEqual(selfCheck(adopted, [], [...adopted, ...adopted]), [
+    "TESTING_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
+  ]);
+  // And the two lists are judged SEPARATELY: naming a project on one says
+  // nothing about the other, which is the property that keeps a mistake in
+  // either from being reported under the other's name.
+  assert.deepEqual(
+    selfCheck(adopted, ["packages/contexts/agents"], ["packages/contexts/skills"]),
+    [
+      "APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted",
+      "TESTING_ENTRY_PROJECTS names packages/contexts/skills, which is not adopted",
+    ],
+  );
+});
+
+test("publishing the doubles entry point is what the list decides, nothing else", () => {
+  const withoutEntry = renderSkeleton(ADOPTED_PROJECTS, [], []);
+  const withEntry = renderSkeleton(ADOPTED_PROJECTS, [], ["packages/contexts/identity-access"]);
+  const manifest = "packages/contexts/identity-access/package.json";
+
+  assert.ok(!withoutEntry.get(manifest).includes("./application/testing/index.js"));
+  assert.ok(withEntry.get(manifest).includes('"./application/testing/index.js"'));
+  assert.equal(
+    withoutEntry.size,
+    withEntry.size,
+    "publishing a subpath adds no file; it edits one manifest",
+  );
+
+  for (const path of withEntry.keys()) {
+    if (path === manifest) continue;
+    assert.equal(withEntry.get(path), withoutEntry.get(path), `${path} must not move`);
+  }
+});
+
+test("the live testing registry is adopted, is a context, and is named once", () => {
+  const known = new Set(projectPaths());
+  for (const project of TESTING_ENTRY_PROJECTS) {
+    assert.ok(known.has(project), `${project} is not a V1 project`);
+    assert.ok(ADOPTED_PROJECTS.includes(project), `${project} is not adopted`);
+  }
+  assert.equal(
+    new Set(TESTING_ENTRY_PROJECTS).size,
+    TESTING_ENTRY_PROJECTS.length,
+    "no duplicate testing entries",
+  );
 });
 
 test("publishing the application entry point is what the list decides, nothing else", () => {
@@ -342,8 +421,15 @@ test("every published application entry point is imported by the composition roo
 // ---------------------------------------------------------------------------
 
 const LIVE_ADAPTERS = [
+  // WIN-258 T5 added the third binding, `cost-monitoring:BudgetRepository`. The
+  // fixture copy has to carry it or the first case below — the non-vacuity
+  // anchor every refusal here stands on — is comparing the refusals against a
+  // table the tree no longer has.
   { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy",
-    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }], note: "n" },
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      { port: "BudgetRepository", owner: "cost-monitoring" },
+    ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
   { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "n" },
@@ -372,14 +458,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a FOURTEENTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTEENTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 13 adapter bindings; ADAPTERS flattens to 14")));
+  assert.ok(errors.some((error) => error.includes("declares 14 adapter bindings; ADAPTERS flattens to 15")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
