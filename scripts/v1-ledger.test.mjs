@@ -809,7 +809,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 1109. Each branch pinned 1079 + its own addition and each was right
     // alone; taking either merged would understate the packages area by the
     // other's twelve or eighteen files.
-    packages: 1109,
+    //
+    // WIN-258 TRANCHE 5 adds 17 to the SAME area and to no other:
+    // `cost-monitoring`'s canonical store, in the SAME adapter directory, on
+    // ADR M0.3 s15's rule that one PostgreSQL database behind one client is one
+    // adapter DIRECTORY. Ten source, six suites and `mutations-cost.json`, the
+    // guard ledger, under the config rule that already carries four siblings.
+    // 1109 + 17 = 1126.
+    packages: 1126,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -971,11 +978,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
     //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
-    //   adapter directories) = 1185.
+    //   adapter directories) = 1185, + 17 (WIN-258 tranche 5, back in the ONE
+    //   directory) = 1202.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1185);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1202);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -994,10 +1002,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
-    // five tenancy ports +12, and WIN-258 tranche 4's kernel outbox +18 across
-    // TWO adapter directories); this one re-derives it by summing the per-area
+    // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across TWO
+    // adapter directories, and WIN-258 tranche 5's cost-monitoring canonical
+    // store +17 back in the ONE); this one re-derives it by summing the per-area
     // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1185
+    rulesDocument.baseline.totalFiles + 1202
   );
 });
 
