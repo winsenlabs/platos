@@ -3938,7 +3938,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "9e996572548f1cfed665073d4441a9273170f73cd8e41f7b643618f2a28f1651"
+      "sha256": "99f6af42277a19b56de6554ebba5ee47867a549ff8fd3e624ce7b612514dcd5b"
     },
     {
       "path": "scripts/workspace-reachability.mjs",
