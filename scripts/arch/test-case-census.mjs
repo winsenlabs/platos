@@ -1428,6 +1428,35 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * map of every read, which is the better instrument anyway — a divergence names
  * the read and shows both counts, and a read somebody forgot to measure cannot
  * exist.
+ *
+ * WIN-258 TRANCHE 5, SECOND SWEEP — THE SEVENTH SUITE. The same package moves a
+ * FIFTH time, and the mutation ledger is what moved it:
+ *
+ *   packages/adapters/postgres-tenancy   26 -> 27 files,  260 -> 264 cases
+ *
+ * 397 + 1 = 398 files and 6176 + 4 = 6180 cases. The adapters term of the
+ * three-way identity moves with it: 349 + 3 + 46 = 398.
+ *
+ * WHAT THE 4 ARE, and why they are not in any file above:
+ *
+ *   cost-idempotency.integration.test.ts   4  the insert form that does not
+ *                                             raise, the uuid shape test the
+ *                                             vault's revoke depends on, the
+ *                                             terminal status that stops a
+ *                                             second send, and the count test
+ *                                             that keeps a stale dispatcher's
+ *                                             send record out of the history
+ *
+ * THE REASON IT IS A SEVENTH FILE rather than four more cases in the conformance
+ * suite is the one this census exists to make visible. Re-running all forty
+ * ledger entries scored SIX with zero executed cases: the edits compiled and
+ * collected, then broke `cost-conformance.integration.test.ts` while it was
+ * BUILDING its transcript, in a `beforeAll`, so vitest reported every case in
+ * the file SKIPPED and the file's pin of 5 did not move. Two of the six had a
+ * named case elsewhere in the tree; the four above had none anywhere, and a
+ * guard whose only witness is a crashed hook is a guard this census cannot see.
+ * The conformance suite's own 5 is unchanged, which is the point: these four
+ * observations could not have been added there without being invisible.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1438,7 +1467,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 26, cases: 260 },
+  "packages/adapters/postgres-tenancy": { files: 27, cases: 264 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1586,7 +1615,7 @@ export const EXPECTED = Object.freeze({
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6176;
+export const EXPECTED_RUNTIME_TOTAL = 6180;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
