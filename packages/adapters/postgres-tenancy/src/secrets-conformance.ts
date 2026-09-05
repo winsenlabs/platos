@@ -32,12 +32,10 @@
 
 import type {
   CredentialKind,
-  EnvironmentId,
-  RetiredSecretVersionCandidate,
-  SecretsRepository,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
 
+import { runLifecycleConformance } from "./secrets-conformance-lifecycle.js";
 import { runVariableConformance } from "./secrets-conformance-variables.js";
 import type {
   SecretsConformanceEnvironment,
@@ -45,13 +43,11 @@ import type {
 } from "./secrets-conformance-variables.js";
 import {
   AT,
-  CUTOFF,
   LATER,
   auditDraft,
   credentialDraft,
   credentialIdOf,
-  revisionOf,
-  rootKeyOf,
+  sortedRootKeyUsage,
   versionDraft,
   versionIdOf,
 } from "./secrets-harness.js";
@@ -74,32 +70,6 @@ export interface SecretsConformanceIds {
   readonly bravoVariableId: string;
   readonly charlieVariableId: string;
   readonly auditIds: readonly string[];
-}
-
-function candidateFor(
-  environmentId: EnvironmentId,
-  credentialId: string,
-  secretVersionId: string,
-  secretRevision: number,
-  rootKeyVersion: number,
-): RetiredSecretVersionCandidate {
-  return {
-    secretVersionId: versionIdOf(secretVersionId),
-    credentialId: credentialIdOf(credentialId),
-    environmentId,
-    secretRevision: revisionOf(secretRevision),
-    rootKeyVersion: rootKeyOf(rootKeyVersion),
-  };
-}
-
-/** Root-key usage, sorted, because a `GROUP BY` answers in no order at all. */
-async function usage(repository: SecretsRepository): Promise<unknown> {
-  const counted = await repository.countVersionsByRootKey();
-  if (!counted.ok) return counted;
-  return {
-    ok: true,
-    value: [...counted.value].sort((left, right) => left.rootKeyVersion - right.rootKeyVersion),
-  };
 }
 
 async function seedLiveCredential(
@@ -233,7 +203,7 @@ export async function runSecretsConformance(
     await repository.findCredential({ environmentId, credentialId: credential(ids.missingCredentialId) }),
   );
   record("listAfterCreate", await repository.listCredentials(environmentId));
-  record("usageAfterCreate", await usage(repository));
+  record("usageAfterCreate", await sortedRootKeyUsage(repository));
 
   // ---- the two refusals, each alone in its transaction --------------------
   record(
@@ -266,201 +236,7 @@ export async function runSecretsConformance(
     ),
   );
 
-  // ---- rotate, then rewrap ------------------------------------------------
-  await environment.run(async (transaction) => {
-    record(
-      "loadAlphaForUpdate",
-      await repository.loadForUpdate(environmentId, credential(ids.alphaCredentialId), transaction),
-    );
-    record(
-      "loadMissingForUpdate",
-      await repository.loadForUpdate(environmentId, credential(ids.missingCredentialId), transaction),
-    );
-    record(
-      "insertAlphaSecondVersion",
-      await repository.insertSecretVersion(
-        versionDraft({
-          id: ids.alphaSecondVersionId,
-          credentialId: ids.alphaCredentialId,
-          secretRevision: 2,
-          rootKeyVersion: 1,
-          fill: 0x20,
-          at: AT,
-        }),
-        transaction,
-      ),
-    );
-    record(
-      "retireAlphaFirstVersion",
-      await repository.retireSecretVersion(version(ids.alphaFirstVersionId), LATER, null, transaction),
-    );
-    record(
-      "pointAlphaAtSecondVersion",
-      await repository.setActiveSecretVersion(
-        credential(ids.alphaCredentialId),
-        version(ids.alphaSecondVersionId),
-        LATER,
-        transaction,
-      ),
-    );
-    record(
-      "auditRotate",
-      await repository.appendAudit(
-        auditDraft({
-          id: ids.auditIds[1] as string,
-          environmentId,
-          credentialId: ids.alphaCredentialId,
-          action: "ROTATE",
-          secretRevision: 2,
-          fromRootKeyVersion: 1,
-          toRootKeyVersion: 1,
-          at: LATER,
-        }),
-        transaction,
-      ),
-    );
-  });
-
-  await environment.run(async (transaction) => {
-    // THE SAME REVISION UNDER A NEW ROOT KEY. This is the one write the store's
-    // `[credentialId, secretRevision, rootKeyVersion]` unique key exists to
-    // ALLOW, and it is why the refusal above is a duplicate rather than a
-    // re-encryption.
-    record(
-      "rewrapAlphaSecondVersion",
-      await repository.insertSecretVersion(
-        versionDraft({
-          id: ids.alphaRewrappedVersionId,
-          credentialId: ids.alphaCredentialId,
-          secretRevision: 2,
-          rootKeyVersion: 2,
-          fill: 0x30,
-          at: LATER,
-        }),
-        transaction,
-      ),
-    );
-    record(
-      "retireAlphaSecondVersion",
-      await repository.retireSecretVersion(version(ids.alphaSecondVersionId), LATER, null, transaction),
-    );
-    record(
-      "pointAlphaAtRewrappedVersion",
-      await repository.setActiveSecretVersion(
-        credential(ids.alphaCredentialId),
-        version(ids.alphaRewrappedVersionId),
-        LATER,
-        transaction,
-      ),
-    );
-    record(
-      "retireMissingVersion",
-      await repository.retireSecretVersion(version(ids.missingVersionId), LATER, null, transaction),
-    );
-    record(
-      "pointMissingCredential",
-      await repository.setActiveSecretVersion(
-        credential(ids.missingCredentialId),
-        null,
-        LATER,
-        transaction,
-      ),
-    );
-  });
-  record("usageAfterRewrap", await usage(repository));
-
-  // ---- purge --------------------------------------------------------------
-  await environment.run(async (transaction) => {
-    const candidates = await repository.listPurgeCandidates(CUTOFF, 10, transaction);
-    record("purgeCandidates", candidates);
-    record(
-      "purgeSecondVersion",
-      await repository.purgeSecretVersion(
-        candidateFor(environmentId, ids.alphaCredentialId, ids.alphaSecondVersionId, 2, 1),
-        CUTOFF,
-        transaction,
-      ),
-    );
-    record(
-      "purgeSecondVersionAgain",
-      await repository.purgeSecretVersion(
-        candidateFor(environmentId, ids.alphaCredentialId, ids.alphaSecondVersionId, 2, 1),
-        CUTOFF,
-        transaction,
-      ),
-    );
-    // The ACTIVE version, offered to the purge as if it were a candidate. Every
-    // eligibility clause is re-checked inside the delete, so the answer is ZERO
-    // rows rather than a foreign-key exception that would poison the batch.
-    record(
-      "purgeActiveVersion",
-      await repository.purgeSecretVersion(
-        candidateFor(environmentId, ids.alphaCredentialId, ids.alphaRewrappedVersionId, 2, 2),
-        CUTOFF,
-        transaction,
-      ),
-    );
-    record(
-      "auditPurge",
-      await repository.appendAudit(
-        auditDraft({
-          id: ids.auditIds[2] as string,
-          environmentId,
-          credentialId: ids.alphaCredentialId,
-          action: "PURGE",
-          secretRevision: 2,
-          fromRootKeyVersion: 1,
-          at: CUTOFF,
-        }),
-        transaction,
-      ),
-    );
-  });
-  record("usageAfterPurge", await usage(repository));
-
-  // ---- revoke -------------------------------------------------------------
-  await environment.run(async (transaction) => {
-    record(
-      "retireAlphaRewrappedVersion",
-      await repository.retireSecretVersion(
-        version(ids.alphaRewrappedVersionId),
-        LATER,
-        CUTOFF,
-        transaction,
-      ),
-    );
-    record(
-      "clearAlphaActiveVersion",
-      await repository.setActiveSecretVersion(credential(ids.alphaCredentialId), null, LATER, transaction),
-    );
-    record(
-      "revokeAlpha",
-      await repository.revokeCredential(credential(ids.alphaCredentialId), LATER, transaction),
-    );
-    record(
-      "revokeMissing",
-      await repository.revokeCredential(credential(ids.missingCredentialId), LATER, transaction),
-    );
-    record(
-      "auditRevoke",
-      await repository.appendAudit(
-        auditDraft({
-          id: ids.auditIds[3] as string,
-          environmentId,
-          credentialId: ids.alphaCredentialId,
-          action: "REVOKE",
-          at: LATER,
-        }),
-        transaction,
-      ),
-    );
-  });
-  record(
-    "findAlphaAfterRevoke",
-    await repository.findCredential({ environmentId, credentialId: credential(ids.alphaCredentialId) }),
-  );
-  record("listAfterRevoke", await repository.listCredentials(environmentId));
-
+  await runLifecycleConformance(environment, record);
   await runVariableConformance(environment, record);
   return observed;
 }

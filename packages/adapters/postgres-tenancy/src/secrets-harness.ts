@@ -69,6 +69,23 @@ export const variableIdOf = (value: string): EnvironmentVariableId =>
 export const revisionOf = (value: number): SecretRevision => value as SecretRevision;
 export const rootKeyOf = (value: number): RootKeyVersion => value as RootKeyVersion;
 
+/**
+ * Root-key usage, SORTED, because a `GROUP BY` answers in no order at all.
+ *
+ * It lives beside the fixtures rather than inside either conformance half
+ * because both halves ask for it and neither owns it — and because the sort is a
+ * property of the MEASUREMENT, not of the store: `rootKeyReport` in the domain
+ * sorts the list itself, so a store that sorted too would be doing it twice.
+ */
+export async function sortedRootKeyUsage(repository: SecretsRepository): Promise<unknown> {
+  const counted = await repository.countVersionsByRootKey();
+  if (!counted.ok) return counted;
+  return {
+    ok: true,
+    value: [...counted.value].sort((left, right) => left.rootKeyVersion - right.rootKeyVersion),
+  };
+}
+
 /** An hour after `AT`. Rotations and retirements land here. */
 export const LATER = new Date("2026-05-01T10:00:00.000Z");
 

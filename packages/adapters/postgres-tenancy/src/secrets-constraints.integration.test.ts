@@ -7,11 +7,12 @@
 // second half; one that drifted tighter fails the conformance run, which uses
 // values both stores accept.
 //
-// TWO GUARDS HAVE NO CONSTRAINT BEHIND THEM AND SAY SO. `requirePurgeLimit`
-// bounds a value that reaches raw SQL rather than a column, and
-// `requireInstant` stands where the driver would otherwise serialise `NaN`;
-// neither has a CHECK to be measured against, so each has a case below showing
-// what the database actually does instead of a claim that it agrees.
+// IT IS THE VAULT'S THREE ROWS ONLY. `EnvironmentVariable`'s three CHECKs, and
+// the two guards that have no constraint behind them at all, are in
+// `secrets-variable-constraints.integration.test.ts` — ADR M0.3 §6's budget
+// pointed at that seam and the seam is real: this file is about the shapes a
+// CREDENTIAL and its envelope admit, and that one is about the configuration row
+// that points at one.
 //
 // AND ONE GUARD IS DELIBERATELY LOOSER THAN ITS SIBLING. `requireAuditOrdinal`
 // bounds the INTEGER and stops: `CredentialAudit` carries no `> 0` CHECK, unlike
@@ -35,30 +36,23 @@ import {
   ENVELOPE_BYTES_MISWIDTH,
   ENVELOPE_ORDINAL_OUT_OF_RANGE,
   IDENTIFIER_NOT_UUID,
-  INSTANT_NOT_REPRESENTABLE,
-  PURGE_LIMIT_INVALID,
-  VARIABLE_KEY_INVALID,
-  VARIABLE_SHAPE_INCOHERENT,
-  VARIABLE_VALUE_TOO_LONG,
 } from "./secrets-guards.js";
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
   AT,
-  CUTOFF,
   auditDraft,
   bytes,
   credentialDraft,
   credentialIdOf,
   envelope,
   startSecretsHarness,
-  variableIdOf,
   versionDraft,
   versionIdOf,
 } from "./secrets-harness.js";
 
 let harness: SecretsHarness;
 let environmentId: EnvironmentId;
-/** The live `SECRET_REFERENCE` every variable case points at. */
+/** The live credential every envelope case in this file hangs off. */
 let liveCredentialId: string;
 let sequence = 0;
 
@@ -144,23 +138,6 @@ function rawVersion(overrides: Record<string, unknown>): Record<string, unknown>
     rootKeyVersion: 9,
     ...envelope(0x55),
     createdAt: AT,
-    ...overrides,
-  };
-}
-
-/** A variable row written straight to the client, past every guard. */
-function rawVariable(overrides: Record<string, unknown>): Record<string, unknown> {
-  return {
-    id: fresh(),
-    environmentId,
-    key: "RAW_KEY",
-    kind: "PLAIN",
-    value: "raw",
-    credentialId: null,
-    version: 1,
-    lastUpdatedBy: null,
-    createdAt: AT,
-    updatedAt: AT,
     ...overrides,
   };
 }
@@ -392,165 +369,5 @@ describe("the audit row is looser than the envelope, and the guard says so", () 
       select: { secretRevision: true },
     });
     expect(row).toEqual({ secretRevision: -1 });
-  });
-});
-
-describe("the environment variable's three CHECKs", () => {
-  test("a lowercase key is refused by the guard and by the key CHECK", async () => {
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.variables.upsert(
-            {
-              id: variableIdOf(fresh()),
-              environmentId,
-              key: "lowercase",
-              kind: "PLAIN",
-              value: "x",
-              credentialId: null,
-              lastUpdatedBy: null,
-              at: AT,
-            },
-            transaction,
-          ),
-        ),
-      ),
-    ).toBe(VARIABLE_KEY_INVALID);
-    await expect(
-      harness.base.client.environmentVariable.create({
-        data: rawVariable({ key: "lowercase" }) as never,
-      }),
-    ).rejects.toThrow();
-  });
-
-  test("a SECRET carrying a value is refused by the guard and by the shape CHECK", async () => {
-    // THE SHAPE THAT WOULD PUT PLAINTEXT IN A COLUMN A TABLE DUMP READS. The
-    // double stores it without complaint, and the port's type admits it: `value`
-    // is `string | null` and `kind` is a separate field.
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.variables.upsert(
-            {
-              id: variableIdOf(fresh()),
-              environmentId,
-              key: "LEAKY",
-              kind: "SECRET",
-              value: "plaintext",
-              credentialId: credentialIdOf(liveCredentialId),
-              lastUpdatedBy: null,
-              at: AT,
-            },
-            transaction,
-          ),
-        ),
-      ),
-    ).toBe(VARIABLE_SHAPE_INCOHERENT);
-    await expect(
-      harness.base.client.environmentVariable.create({
-        data: rawVariable({
-          key: "LEAKY",
-          kind: "SECRET",
-          value: "plaintext",
-          credentialId: liveCredentialId,
-        }) as never,
-      }),
-    ).rejects.toThrow();
-  });
-
-  test("a PLAIN with no value is refused by the guard and by the same CHECK", async () => {
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.variables.upsert(
-            {
-              id: variableIdOf(fresh()),
-              environmentId,
-              key: "EMPTY",
-              kind: "PLAIN",
-              value: null,
-              credentialId: null,
-              lastUpdatedBy: null,
-              at: AT,
-            },
-            transaction,
-          ),
-        ),
-      ),
-    ).toBe(VARIABLE_SHAPE_INCOHERENT);
-    await expect(
-      harness.base.client.environmentVariable.create({
-        data: rawVariable({ key: "EMPTY", value: null }) as never,
-      }),
-    ).rejects.toThrow();
-  });
-
-  test("a value past 8192 characters is refused by the guard and by the length CHECK", async () => {
-    const long = "x".repeat(8193);
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.variables.upsert(
-            {
-              id: variableIdOf(fresh()),
-              environmentId,
-              key: "LONG",
-              kind: "PLAIN",
-              value: long,
-              credentialId: null,
-              lastUpdatedBy: null,
-              at: AT,
-            },
-            transaction,
-          ),
-        ),
-      ),
-    ).toBe(VARIABLE_VALUE_TOO_LONG);
-    await expect(
-      harness.base.client.environmentVariable.create({
-        data: rawVariable({ key: "LONG", value: long }) as never,
-      }),
-    ).rejects.toThrow();
-  });
-});
-
-describe("the two guards that stand where no CHECK does", () => {
-  test("a zero purge bound is refused before it reaches a raw LIMIT", async () => {
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.repository.listPurgeCandidates(CUTOFF, 0, transaction),
-        ),
-      ),
-    ).toBe(PURGE_LIMIT_INVALID);
-    // There is no constraint to hold this against: `LIMIT` is a clause, not a
-    // column. What the database does with a NEGATIVE bound is return every row,
-    // which is why an unbounded sweep must be unrepresentable here.
-    const rows = await harness.base.client.$queryRaw<readonly unknown[]>`
-      SELECT "id" FROM "public"."CredentialSecretVersion" LIMIT ALL
-    `;
-    expect(Array.isArray(rows)).toBe(true);
-  });
-
-  test("an Invalid Date is refused before the driver serialises NaN", async () => {
-    expect(
-      await refusalOf(() =>
-        inTransaction((transaction) =>
-          harness.repository.revokeCredential(
-            credentialIdOf(liveCredentialId),
-            new Date("not an instant"),
-            transaction,
-          ),
-        ),
-      ),
-    ).toBe(INSTANT_NOT_REPRESENTABLE);
-    // Past the guard, the DRIVER refuses it rather than the column: the value
-    // never becomes SQL at all, so there is no SQLSTATE to compare against.
-    await expect(
-      harness.base.client.credential.update({
-        where: { id: liveCredentialId },
-        data: { revokedAt: new Date("not an instant") },
-      }),
-    ).rejects.toThrow();
   });
 });

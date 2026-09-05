@@ -762,12 +762,29 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               through a crashed `beforeAll`. It imports what every other
     //               suite in the directory imports, so `tenancy-prisma-only` is
     //               measured against one more file and still holds.
-    // ALL THREE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 = 1276. No branch's own figure
-    //               is right merged, and taking any one alone under-counts the
-    //               others by their whole tranche.
-    assert.equal(result.fileCount, 1276, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1);
+    //  1276 -> 1293 +17: WIN-258 TRANCHE 5, `secrets`' canonical store, in that
+    //               SAME one ORM home. Fifteen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: nine source (the
+    //               guards, the row readers, the credential store, the envelope
+    //               and evidence store, the variable store, the composite, the
+    //               harness and the two conformance halves) and six suites.
+    //               `packages/contexts/secrets` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FOURTH time,
+    //               and this tranche is where it decided the SHAPE rather than
+    //               only the home: `secrets` owns four rows in the same
+    //               database, and its two ports could not be spread into
+    //               `PostgresTenancyAdapter` at all — `SecretsRepository` and
+    //               `ToolsRepository` both declare `appendAudit` — so they are
+    //               named properties on the one adapter rather than a thirteenth
+    //               package with a second client.
+    // ALL FOUR TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 17 = 1293. No branch's own
+    //               figure is right merged, and taking any one alone
+    //               under-counts the others by their whole tranche.
+    assert.equal(result.fileCount, 1293, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 17);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

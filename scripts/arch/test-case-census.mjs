@@ -1558,17 +1558,55 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The conformance suite's own 5 is unchanged, which is the point: these four
  * observations could not have been added there without being invisible.
  *
- * ALL THREE TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the three blocks
- * above SUM rather than any one standing alone. No branch's arithmetic is right
+ * WIN-258 TRANCHE 5 AGAIN — `secrets`' canonical store, the FOURTH in the same
+ * package. SEVEN files, 69 cases, and not one of them anywhere else:
+ *
+ *   secrets-rows.test.ts                        18  the three closed unions a
+ *                                                   row is read back through,
+ *                                                   the readers' copying, and
+ *                                                   each of the nine guards on
+ *                                                   BOTH sides of its boundary.
+ *                                                   It runs under the default
+ *                                                   `test` script; the six below
+ *                                                   do not.
+ *   secrets-rules.integration.test.ts           11  the database rules NO port
+ *                                                   method restates: four
+ *                                                   immutability rules, the five
+ *                                                   clauses `enforce_win124_
+ *                                                   credential_kind` re-reads,
+ *                                                   the ON DELETE RESTRICT on an
+ *                                                   ACTIVE envelope, and the one
+ *                                                   place the double and the
+ *                                                   database disagree about what
+ *                                                   a row IS
+ *   secrets-statements.integration.test.ts      10  every read measured twice,
+ *                                                   over one row and over twelve
+ *   secrets-conformance.integration.test.ts      8  the differential against
+ *                                                   `inMemorySecretsStore`
+ *   secrets-constraints.integration.test.ts      8  each vault guard beside the
+ *                                                   migration CHECK it restates
+ *   secrets-transaction.integration.test.ts      7  failure injection, the three
+ *                                                   scope refusals, the ambient
+ *                                                   read and the row lock
+ *   secrets-variable-constraints.integration     7  the variable's three CHECKs
+ *     .test.ts                                      and the two guards standing
+ *                                                   where no CHECK does
+ *
+ * SIX OF THE SEVEN ARE EXCLUDED from the package's default `test` script by
+ * filename and run by the `postgres-tenancy-repository` CI job, exactly as the
+ * other three tranche-5 stores' suites are.
+ *
+ * ALL FOUR TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the four blocks above
+ * SUM rather than any one standing alone. No branch's arithmetic is right
  * merged, and side-picking one would under-count the others by their whole
  * tranche:
  *
- *   packages/adapters/postgres-tenancy   20 -> 39 files,  199 -> 383 cases
+ *   packages/adapters/postgres-tenancy   20 -> 46 files,  199 -> 452 cases
  *
- * 20 + 6 + 6 + 7 = 39 files and 199 + 59 + 60 + 65 = 383 cases. The tree total
- * is 391 + 19 = 410 files and 6115 + 184 = 6299 cases. The adapters term of the
- * three-way identity carries all nineteen, because every added file is an
- * adapter's: 39 + 19 = 58, and 349 + 3 + 58 = 410.
+ * 20 + 6 + 6 + 7 + 7 = 46 files and 199 + 59 + 60 + 65 + 69 = 452 cases. The
+ * tree total is 391 + 26 = 417 files and 6115 + 253 = 6368 cases. The adapters
+ * term of the three-way identity carries all twenty-six, because every added
+ * file is an adapter's: 46 + 19 = 65, and 349 + 3 + 65 = 417.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1579,7 +1617,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 39, cases: 383 },
+  "packages/adapters/postgres-tenancy": { files: 46, cases: 452 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1740,8 +1778,14 @@ export const EXPECTED = Object.freeze({
  * of those over four suites; its remaining 21 (`agents-guards.test.ts` and
  * `agents-rows.test.ts`) run in the ordinary package test script, because
  * neither module has a database in it.
+ *
+ * 6299 -> 6368: the 69 `secrets` cases of WIN-258 tranche 5, enumerated file by
+ * file in the block beside the postgres-tenancy row. 51 of the 69 are in the six
+ * suites the package's default `test` script excludes by filename; the other 18
+ * (`secrets-rows.test.ts`) run in it, because the row readers and the nine write
+ * guards are pure and need no database at all.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6299;
+export const EXPECTED_RUNTIME_TOTAL = 6368;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
