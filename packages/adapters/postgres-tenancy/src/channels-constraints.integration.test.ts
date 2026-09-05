@@ -29,6 +29,7 @@ import type {
   ChannelInstallationId,
   EnvironmentScope,
   ExternalInstallationId,
+  LeaseOwner,
 } from "@platos/context-channels/application/ports/index.js";
 import { asIdentifier } from "@platos/context-channels/application/ports/index.js";
 
@@ -332,6 +333,78 @@ describe("the guards that are the only line of defence", () => {
                  'REFRESHING', '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
       ),
     ).toBeNull();
+  });
+});
+
+describe("the guards on the READ side, which no constraint can help with", () => {
+  test("a read keyed on something that is not a uuid is refused before the cast", async () => {
+    // The cast raises SQLSTATE 22P02 inside a RAW statement, whose refusal names
+    // the driver rather than the parameter. The guard names the parameter.
+    const connection = await harness.repository.findConnectionById(
+      asIdentifier<ChannelConnectionId>("conn-1"),
+    );
+    expect(reasonOf(connection)).toContain("findConnectionById:identifier_not_uuid:connectionId");
+    const application = await harness.repository.findApp(scope, asIdentifier<ChannelAppId>("app-1"));
+    expect(reasonOf(application)).toContain("findApp:identifier_not_uuid:appId");
+  });
+
+  test("an empty string in a TEXT[] is refused before the column takes it", async () => {
+    const refused = await write((transaction) =>
+      harness.repository.saveApp(app({ scopes: ["chat:write", ""] }), transaction),
+    );
+    expect(reasonOf(refused)).toContain("text_list_invalid:scopes");
+  });
+
+  test("a sealed payload missing a version is refused before the INTEGER column takes it", async () => {
+    const refused = await write((transaction) =>
+      harness.repository.insertEvent(
+        {
+          inboxId: asIdentifier(harness.base.freshId("0312")),
+          appId: asIdentifier(appId),
+          eventId: asIdentifier("Ev-payload-shape"),
+          payload: { formatVersion: 0, keyVersion: 1, ciphertext: "sealed" },
+          status: "PENDING",
+          retryCount: 0,
+          availableAt: CONFORMANCE_AT,
+          leaseOwner: null,
+          leaseExpiresAt: null,
+          leaseGeneration: 0,
+          turnId: null,
+          deliveryCompletedAt: null,
+          lastErrorCode: null,
+          completedAt: null,
+          createdAt: CONFORMANCE_AT,
+        },
+        transaction,
+      ),
+    );
+    expect(reasonOf(refused)).toContain("sealed_payload_invalid:payloadFormatVersion");
+  });
+
+  test("a terminal row that kept its lease is refused before it can look claimable", async () => {
+    const refused = await write((transaction) =>
+      harness.repository.insertEvent(
+        {
+          inboxId: asIdentifier(harness.base.freshId("0313")),
+          appId: asIdentifier(appId),
+          eventId: asIdentifier("Ev-lease-shape"),
+          payload: { formatVersion: 1, keyVersion: 1, ciphertext: "sealed" },
+          status: "COMPLETED",
+          retryCount: 1,
+          availableAt: CONFORMANCE_AT,
+          leaseOwner: asIdentifier<LeaseOwner>("worker-zombie"),
+          leaseExpiresAt: CONFORMANCE_AT,
+          leaseGeneration: 1,
+          turnId: null,
+          deliveryCompletedAt: CONFORMANCE_AT,
+          lastErrorCode: null,
+          completedAt: CONFORMANCE_AT,
+          createdAt: CONFORMANCE_AT,
+        },
+        transaction,
+      ),
+    );
+    expect(reasonOf(refused)).toContain("COMPLETED holding a lease");
   });
 });
 

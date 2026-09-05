@@ -475,6 +475,19 @@ export async function runChannelsConformance(
     ? bounded.value.map((event) => event.eventId)
     : { error: bounded.error.code });
 
+  // THE FIRST OF THE TWO BOUNDARIES THE DOMAIN FIXES. `isClaimable` admits a
+  // waiting row when `availableAt <= now`, INCLUSIVE, so the third event — whose
+  // availability is exactly this instant — is claimable. An exclusive comparison
+  // would leave a row unclaimable for as long as the clock read that value.
+  const atAvailability = await repository.findClaimableEvents(
+    world.appId,
+    new Date(CONFORMANCE_AT.getTime() + 2000),
+    10,
+  );
+  record("findClaimableEvents(at the exact availability)", atAvailability.ok
+    ? atAvailability.value.map((event) => event.eventId)
+    : { error: atAvailability.error.code });
+
   // The claim, as a save of the row `claimEvent` returned.
   await runInTransaction((transaction) =>
     repository.saveEvent(
@@ -497,6 +510,14 @@ export async function runChannelsConformance(
   record("findClaimableEvents(lease still held)", whileHeld.ok
     ? whileHeld.value.map((event) => event.eventId)
     : { error: whileHeld.error.code });
+  // THE SECOND BOUNDARY, and it is the opposite one. `isClaimable` admits a held
+  // row only when `leaseExpiresAt < now`, STRICTLY, because "a lease that expires
+  // exactly now is still held" — the claim predicate and the fence must agree on
+  // that instant or a row is briefly claimable by two workers at once.
+  const atExpiry = await repository.findClaimableEvents(world.appId, CONFORMANCE_LATER, 10);
+  record("findClaimableEvents(at the exact expiry)", atExpiry.ok
+    ? atExpiry.value.map((event) => event.eventId)
+    : { error: atExpiry.error.code });
   const afterExpiry = await repository.findClaimableEvents(
     world.appId,
     new Date(CONFORMANCE_LATER.getTime() + 1),

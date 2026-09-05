@@ -103,7 +103,7 @@ describe("the PostgreSQL channels store and the in-memory double answer the same
   test("the transcript is long enough to be evidence", () => {
     // NON-VACUITY. Two empty runs are equal, and so are two runs that refused
     // everything. This pins the shape of the scenario itself.
-    expect(real).toHaveLength(33);
+    expect(real).toHaveLength(35);
     expect(real.filter((line) => line.includes(`"error"`))).toHaveLength(2);
   });
 

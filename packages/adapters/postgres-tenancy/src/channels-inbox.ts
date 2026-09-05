@@ -114,6 +114,26 @@ function collidedOnEventId(error: unknown): boolean {
   return text.includes("eventId");
 }
 
+/**
+ * The refusal a unique violation on this table becomes.
+ *
+ * ONE function for both writers, deliberately. The two collisions mean
+ * different things — a redelivery of an event already admitted, and a second
+ * event pointed at a turn that already has one — and a store that mapped them
+ * at two call sites would be two places for the second to be forgotten. It has
+ * been forgotten once already: the in-memory double has no `turnId` index at
+ * all and takes the second row silently.
+ */
+function uniqueRefusal<Value>(
+  operation: string,
+  eventId: ProviderEventId,
+  error: unknown,
+): Result<Value> {
+  return collidedOnEventId(error)
+    ? err(eventDuplicate(eventId))
+    : err(repositoryUnavailable(`${operation}:${TURN_ALREADY_LINKED}`));
+}
+
 export function createChannelEventInboxStore(
   transactions: TenancyTransactions,
 ): ChannelEventInboxStore {
@@ -207,9 +227,7 @@ export function createChannelEventInboxStore(
           return ok(event);
         } catch (error) {
           if (!isUniqueViolation(error)) throw error;
-          return collidedOnEventId(error)
-            ? err(eventDuplicate(event.eventId))
-            : err(repositoryUnavailable(`${operation}:${TURN_ALREADY_LINKED}`));
+          return uniqueRefusal<ChannelEvent>(operation, event.eventId, error);
         }
       });
     },
@@ -258,9 +276,7 @@ export function createChannelEventInboxStore(
           return ok(event);
         } catch (error) {
           if (!isUniqueViolation(error)) throw error;
-          return collidedOnEventId(error)
-            ? err(eventDuplicate(event.eventId))
-            : err(repositoryUnavailable(`${operation}:${TURN_ALREADY_LINKED}`));
+          return uniqueRefusal<ChannelEvent>(operation, event.eventId, error);
         }
       });
     },
