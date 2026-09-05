@@ -84,6 +84,8 @@ import { createTreeRepository } from "./tree.js";
 export interface PostgresTenancyAdapter
   extends TenancyRepository,
     IdentityAccessRepository,
+    AgentsRepository,
+    ScaffoldingRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -103,20 +105,6 @@ export interface PostgresTenancyAdapter
   readonly accessKeyRevocation: EnvironmentAccessKeyRevocationCounter;
   readonly invitationTokens: InvitationTokenIssuer;
   readonly operators: OperatorDirectory;
-  /**
-   * WIN-258 T5 — `agents`' two canonical-store ports, under the exact names
-   * `AgentsDependencies` gives them.
-   *
-   * Nested so the bundle a composition root builds is this object, and one port
-   * cannot be assembled into the other's slot: `repository` reads and writes
-   * `Agent`, `AgentBinding`, `AgentVersion`, `AgentSkill` and `AgentCluster`;
-   * `scaffolding` writes `Macro` and `PostmanTemplate`, which are the two rows a
-   * surface writes on its own behalf rather than as part of a version history.
-   */
-  readonly agents: {
-    readonly repository: AgentsRepository;
-    readonly scaffolding: ScaffoldingRepository;
-  };
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -153,10 +141,6 @@ export function buildPostgresTenancyAdapter(
     accessKeyRevocation: createAccessKeyRevocationCounter(transactions),
     invitationTokens: createInvitationTokenIssuer(),
     operators: createOperatorDirectory(identity.users),
-    agents: {
-      repository: createAgentsRepository(transactions),
-      scaffolding: createScaffoldingRepository(transactions),
-    },
     async close(): Promise<void> {
       await client.$disconnect();
     },
@@ -179,6 +163,18 @@ export function buildPostgresTenancyAdapter(
     // are the only members any of the three spread-in composites has that begin
     // with those words.
     ...createOutboxEventStore(transactions),
+    // WIN-258 T5. `agents`' two canonical-store ports, SPREAD IN for the reason
+    // the identity-access composite is: `PORT_SATISFACTION` in the composition
+    // root resolves `Satisfies<PostgresTenancyAdapter, AgentsRepository>` and
+    // `Satisfies<PostgresTenancyAdapter, ScaffoldingRepository>` at compile time,
+    // and a nested property could not satisfy either. Their method names collide
+    // with nothing: the two ports are disjoint from each other by construction —
+    // `Macro` and `PostmanTemplate` are the rows a SURFACE writes on its own
+    // behalf, and they share no invariant with a version history — and neither
+    // has a name in common with tenancy's thirty-one, identity-access's ten
+    // store properties, or the outbox's two.
+    ...createAgentsRepository(transactions),
+    ...createScaffoldingRepository(transactions),
   };
 }
 

@@ -347,6 +347,14 @@ jobs:
         # context through its package `main`, which is dist/.
         run: pnpm --filter "@platos/context-identity-access..." build
 
+      - name: Build the agents context
+        # WIN-258 T5. The same directory a third time, for the seven rows of ADR
+        # M0.3 §1 row 5. The agents suites resolve the context through TWO
+        # published entry points — its driven ports and its `application/index.js`,
+        # which is where the in-memory doubles the conformance differential is
+        # measured against live — and both are dist/.
+        run: pnpm --filter "@platos/context-agents..." build
+
       - name: PostgreSQL repository integration suites
         # All THREE halves of the one directory (ADR M0.3 §15): the tenancy
         # repository, the identity-access canonical store, and — WIN-258 tranche

@@ -60,7 +60,16 @@ export const ADAPTERS = [
     // ADR M0.3 §4's body already spells this directory "per-context
     // repositories, owner-tagged"; §15 records why the body wins over the
     // header's narrower "implements ONE port".
-    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }],
+    // WIN-258 T5. The same argument a second time, for the seven rows of §1
+    // row 5. `agents` publishes TWO canonical-store ports rather than one —
+    // `AgentsRepository` for the version/binding invariant and
+    // `ScaffoldingRepository` for the two rows a SURFACE writes on its own
+    // behalf — so it contributes two bindings to one directory.
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      { port: "AgentsRepository", owner: "agents" },
+      { port: "ScaffoldingRepository", owner: "agents" },
+    ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "THE single writer of the Event/outbox table" },
@@ -123,7 +132,7 @@ export function adapterOwnerPackages(adapter) {
 // directory and a fourteenth binding are each a reviewed line rather than a
 // silent consequence of editing a table.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 13;
+export const EXPECTED_BINDING_COUNT = 15;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -154,6 +163,14 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // this edge cannot create a cycle, and the 17-context DAG is unchanged. The
 // independent expectation in scripts/arch/v1-project-graph.mjs carries the same
 // delta and is maintained separately on purpose.
+// 96 -> 97 (WIN-258 T5, ADR M0.3 §15). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/agents`. The directory satisfies that context's two
+// canonical-store ports for the same reason it satisfies identity-access's: the
+// seven rows of §1 row 5 are in the one PostgreSQL database, behind the one
+// client, so their repositories are in the one adapter directory. The edge
+// cannot create a cycle — nothing imports an adapter but the composition root —
+// and it does not widen the 17-context DAG.
+//
 // 95 -> 96 (WIN-258 T2, ADR M0.3 §15). `packages/adapters/postgres-tenancy` ->
 // `packages/contexts/identity-access`. The directory satisfies that context's
 // `IdentityAccessRepository` as well as tenancy's `TenancyRepository`, so it
@@ -162,7 +179,7 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` already depends on `identity-access`, so the 17-context DAG is
 // untouched. The independent expectation in scripts/arch/v1-project-graph.mjs
 // carries the same delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 96;
+export const EXPECTED_EDGE_COUNT = 97;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -239,6 +256,18 @@ export const ADOPTED_PROJECTS = [
 export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
   "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
+  // WIN-258 T5 — imported by `packages/adapters/postgres-tenancy`, not by
+  // apps/core-api, and that WIDENS the rule stated above rather than breaking
+  // it. The list is "the contexts whose `application/index.js` a V1 project
+  // actually imports"; the composition root was simply the only importer there
+  // had ever been. `agents` publishes its in-memory `AgentsRepository` and
+  // `ScaffoldingRepository` from there as the contract fixtures the adapter is
+  // measured against, and the adapter's conformance differential runs ONE
+  // scenario through the double and through PostgreSQL and compares the two
+  // observation lists. Without this entry that differential cannot name the
+  // doubles, and the claim in their own headers — "it enforces what the store
+  // enforces" — is unchecked.
+  "packages/contexts/agents",
 ];
 
 // Every entry point below takes an optional `adopted` override so the adoption

@@ -147,8 +147,12 @@ export async function startAgentsHarness(): Promise<AgentsHarness> {
     { cwd: databasePackage, env: { ...process.env, DATABASE_URL: base.databaseUrl }, stdio: "pipe" },
   );
 
-  const repository = base.adapter.agents.repository;
-  const scaffolding = base.adapter.agents.scaffolding;
+  // The two ports come OFF THE ADAPTER rather than being rebuilt here. A
+  // harness that called the two factories itself would give them a second
+  // `TenancyTransactions` — a lock taken on one ambient frame and the write it
+  // serialises issued on another.
+  const repository: AgentsRepository = base.adapter;
+  const scaffolding: ScaffoldingRepository = base.adapter;
   const defaults = DEFAULT_AGENTS_POLICY.defaults;
 
   const harness: AgentsHarness = {

@@ -1,0 +1,447 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — the `agents` canonical store. One",
+    "entry per scope filter, per refusal mapping, per lock, per ordering and per",
+    "null-handling decision, each carrying the file it lives in, the EXACT text",
+    "that implements it (`from`), the edit that removes it (`to`), and the NAMED",
+    "cases that were seen to go red (`kills`).",
+    "",
+    "IT IS A FIFTH FILE BESIDE mutations.json, mutations-identity.json,",
+    "mutations-ports.json AND mutations-outbox.json rather than an extension of",
+    "any of them, because the five tranches are five separate claims about five",
+    "separate port surfaces and a reader checking one should not have to read past",
+    "the other four. All five are hashed by the same packages.adapters.config rule",
+    "and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. Almost every guard here is a WHERE",
+    "clause or an error mapping, and both are invisible to an assertion on a happy",
+    "path: a scope filter that has been deleted returns MORE rows, which no test",
+    "that asks for the row it just wrote will ever notice, and a refusal mapping",
+    "that has been deleted turns a business outcome into a rejected promise, which",
+    "a test that only reads `result.ok` on the success path will never see. The",
+    "one guard that is not of that kind — the savepoint — changes no returned",
+    "value at all and can only be seen from a SECOND connection."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero test count, and classifies a run with no",
+    "executed cases as VACUOUS rather than as a kill.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file (the driver",
+    "requires the `from` to occur EXACTLY ONCE, so a stale entry is an error and",
+    "not a silent no-op), run the named suites against a real PostgreSQL container,",
+    "and confirm a NAMED case in `kills` is among the failures. Then revert and",
+    "confirm green again.",
+    "",
+    "ALL BUT SEVEN NEED A REAL POSTGRESQL, and none of those could have been written",
+    "against a double. The seven that do not are M-A07, M-A08 and M-A30, M-A31 on",
+    "the two modules here with no database in them, `agents-guards.ts` and\n`agents-rows.ts`.",
+    "",
+    "TWO GUARDS ARE DELIBERATELY ABSENT FROM THIS LEDGER, and saying so is the",
+    "point of this paragraph rather than a footnote. `updateAgent` writes",
+    "`projectId` and `updateCluster` writes `environmentId` so that the",
+    "`reject_canonical_owner_change` rules can refuse a moved record; removing",
+    "either column from the write does not make a test fail, it makes the write",
+    "SUCCEED where it used to be refused — which is a change in behaviour a",
+    "mutation of the guard cannot express, because the guard IS the extra column.",
+    "The refusal each one produces is pinned instead, in",
+    "`agents-constraints.integration.test.ts`, from the store's own answer."
+  ],
+  "mutations": [
+    {
+      "name": "M-A01 guards: the savepoint around a refusable write",
+      "file": "src/agents-guards.ts",
+      "from": "  await client.$executeRawUnsafe(`SAVEPOINT ${name}`);\n  try {\n    const value = await work();\n    await client.$executeRawUnsafe(`RELEASE SAVEPOINT ${name}`);\n    return ok(value);\n  } catch (error) {\n    await client.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${name}`);",
+      "to": "  try {\n    const value = await work();\n    return ok(value);\n  } catch (error) {",
+      "suites": [
+        "src/agents-transaction.integration.test.ts",
+        "src/agents-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > a RETURNED refusal commits what came before it, and the savepoint is why",
+        "statement counts > a refusable write is three statements, and the savepoint is two of them"
+      ]
+    },
+    {
+      "name": "M-A02 guards: an unrecognised refusal is rethrown as a defect",
+      "file": "src/agents-guards.ts",
+      "from": "    if (refusal === null) throw error;\n    return err(refusal);",
+      "to": "    return err(refusal ?? refused(\"unrecognised\"));",
+      "suites": [
+        "src/agents-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > a THROWN refusal rolls the whole transaction back"
+      ]
+    },
+    {
+      "name": "M-A03 guards: the uuid shape test before an id filter",
+      "file": "src/agents-guards.ts",
+      "from": "export function looksLikeUuid(value: string): boolean {\n  return UUID_SHAPE.test(value);\n}",
+      "to": "export function looksLikeUuid(value: string): boolean {\n  return value.length > 0;\n}",
+      "suites": [
+        "src/agents-constraints.integration.test.ts",
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > a search term that is not an identifier is a page, not a failed read",
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A04 guards: the ancestry rule is recognised by the text it raises",
+      "file": "src/agents-guards.ts",
+      "from": "  if (raised.includes(\"crosses its canonical owner ancestry\")) return CROSSES_OWNER_ANCESTRY;",
+      "to": "",
+      "suites": [
+        "src/agents-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > enforce_domain_ancestry refuses a binding whose agent belongs to another project",
+        "constraints only the migrations carry > enforce_domain_ancestry refuses a template for an agent in another project"
+      ]
+    },
+    {
+      "name": "M-A05 guards: the owner-immutable rule is recognised by the text it raises",
+      "file": "src/agents-guards.ts",
+      "from": "  if (raised.includes(\"is immutable\")) return OWNER_KEY_IMMUTABLE;",
+      "to": "",
+      "suites": [
+        "src/agents-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > Agent_owner_immutable refuses a save that moves an agent between projects",
+        "constraints only the migrations carry > AgentCluster_owner_immutable refuses a save that moves a cluster between environments"
+      ]
+    },
+    {
+      "name": "M-A06 guards: the canary-percent CHECK is told apart from the rules",
+      "file": "src/agents-guards.ts",
+      "from": "  if (namesConstraint(error, \"AgentBinding_canaryPercent_check\")) return CANARY_PERCENT_OUT_OF_RANGE;",
+      "to": "",
+      "suites": [
+        "src/agents-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > AgentBinding_canaryPercent_check refuses a percentage above one hundred"
+      ]
+    },
+    {
+      "name": "M-A07 guards: a RAW statement's SQLSTATE is read from meta, not from the text",
+      "file": "src/agents-guards.ts",
+      "from": "  const raw = metaOf(error)[\"code\"];\n  if (typeof raw === \"string\") return raw;",
+      "to": "",
+      "suites": [
+        "src/agents-guards.test.ts"
+      ],
+      "kills": [
+        "sqlstateOf > reads the code a RAW statement carries in meta"
+      ]
+    },
+    {
+      "name": "M-A08 guards: a RAW statement's raised message is read from meta too",
+      "file": "src/agents-guards.ts",
+      "from": "  const raw = metaOf(error)[\"message\"];\n  if (typeof raw === \"string\") return raw;",
+      "to": "",
+      "suites": [
+        "src/agents-guards.test.ts"
+      ],
+      "kills": [
+        "raisedMessageOf > reads the message a RAW statement carries in meta",
+        "namesConstraint > matches a constraint named in a RAW statement's meta message"
+      ]
+    },
+    {
+      "name": "M-A09 catalog: the PROJECT half of the environment scope",
+      "file": "src/agents-catalog.ts",
+      "from": "  return { environmentId: scope.environmentId, agent: { projectId: scope.projectId } };",
+      "to": "  return { environmentId: scope.environmentId };",
+      "suites": [
+        "src/agents-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > the PROJECT half of the scope filter is not decoration"
+      ]
+    },
+    {
+      "name": "M-A10 catalog: the ENVIRONMENT half, on the slug lookup",
+      "file": "src/agents-catalog.ts",
+      "from": "        where: { environmentId: scope.environmentId, agent: { projectId: scope.projectId, slug } },",
+      "to": "        where: { agent: { slug } },",
+      "suites": [
+        "src/agents-constraints.integration.test.ts",
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > the PROJECT half of the scope filter is not decoration"
+      ]
+    },
+    {
+      "name": "M-A11 catalog: updateBinding refuses a row that is no longer there",
+      "file": "src/agents-catalog.ts",
+      "from": "      return row === undefined ? err(refused(BINDING_MOVED)) : ok(toBinding(row));",
+      "to": "      return row === undefined ? ok(binding) : ok(toBinding(row));",
+      "suites": [
+        "src/agents-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > a binding that is no longer there is REFUSED, not re-created"
+      ]
+    },
+    {
+      "name": "M-A12 catalog: deleteBinding is scoped to the caller's environment",
+      "file": "src/agents-catalog.ts",
+      "from": "        where: { id: binding.agentBindingId, environmentId: scope.environmentId },",
+      "to": "        where: { id: binding.agentBindingId },",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A13 catalog: countBindings reads INSIDE the caller's transaction",
+      "file": "src/agents-catalog.ts",
+      "from": "      return ok(await transactions.writer(transaction).agentBinding.count({ where: { agentId } }));",
+      "to": "      return ok(await transactions.reader().agentBinding.count({ where: { agentId } }));",
+      "suites": [
+        "src/agents-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > a READ that takes a scope validates it too"
+      ]
+    },
+    {
+      "name": "M-A14 catalog: a page's total is COUNTED, not taken from the window",
+      "file": "src/agents-catalog.ts",
+      "from": "        transactions.reader().agentBinding.count({ where }),\n      ]);\n      return ok({ items: rows.map(bound), total });",
+      "to": "        Promise.resolve(0),\n      ]);\n      return ok({ items: rows.map(bound), total: rows.length });",
+      "suites": [
+        "src/agents-conformance.integration.test.ts",
+        "src/agents-statements.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically",
+        "statement counts > a page costs the listing plus exactly one count"
+      ]
+    },
+    {
+      "name": "M-A15 catalog: byListingOrder, applied by the STORE",
+      "file": "src/agents-catalog.ts",
+      "from": "const LISTING_ORDER = [\n  { agent: { createdAt: \"desc\" } },\n  { agent: { id: \"desc\" } },\n] as const;",
+      "to": "const LISTING_ORDER = [\n  { agent: { createdAt: \"asc\" } },\n  { agent: { id: \"asc\" } },\n] as const;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A16 versions: the parent row lock",
+      "file": "src/agents-versions.ts",
+      "from": "         ORDER BY version.\"versionNumber\" DESC\n        FOR UPDATE OF agent\n      `;",
+      "to": "         ORDER BY version.\"versionNumber\" DESC\n      `;",
+      "suites": [
+        "src/agents-transaction.integration.test.ts",
+        "src/agents-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > two saves against one agent serialise on the parent row lock",
+        "the transaction boundary > the lock is taken for an agent that has NO versions yet",
+        "statement counts > the version-number read that takes the lock is ONE statement"
+      ]
+    },
+    {
+      "name": "M-A17 versions: the LEFT JOIN that makes the lock reach a version-less agent",
+      "file": "src/agents-versions.ts",
+      "from": "          LEFT JOIN \"AgentVersion\" version ON version.\"agentId\" = agent.id",
+      "to": "          JOIN \"AgentVersion\" version ON version.\"agentId\" = agent.id",
+      "suites": [
+        "src/agents-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the transaction boundary > the lock is taken for an agent that has NO versions yet"
+      ]
+    },
+    {
+      "name": "M-A18 versions: findVersion is scoped by the AGENT as well as the id",
+      "file": "src/agents-versions.ts",
+      "from": "        .agentVersion.findFirst({ where: { id: versionId, agentId } })) as AgentVersionRowShape | null;",
+      "to": "        .agentVersion.findFirst({ where: { id: versionId } })) as AgentVersionRowShape | null;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A19 versions: the extra row that decides whether there is another page",
+      "file": "src/agents-versions.ts",
+      "from": "          take: window.take + 1,",
+      "to": "          take: window.take,",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A20 versions: a loadout is REPLACED, not appended to",
+      "file": "src/agents-versions.ts",
+      "from": "          await client.agentSkill.deleteMany({ where: { agentVersionId } });",
+      "to": "",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A21 versions: a re-used version number is an OUTCOME, not a defect",
+      "file": "src/agents-versions.ts",
+      "from": "    if (sqlstateOf(error) === UNIQUE_VIOLATION && namesConstraint(error, \"agentId,versionNumber\")) {",
+      "to": "    if (false) {",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A22 clusters: findCluster is scoped to the caller's environment",
+      "file": "src/agents-clusters.ts",
+      "from": "        where: { id: clusterId, environmentId: scope.environmentId },\n      })) as AgentClusterRow | null;",
+      "to": "        where: { id: clusterId },\n      })) as AgentClusterRow | null;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A23 clusters: detachClusterMembers reports how many it moved",
+      "file": "src/agents-clusters.ts",
+      "from": "      return ok(detached.count);",
+      "to": "      return ok(0);",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A24 scaffolding: the macro visibility gate's SHARED half",
+      "file": "src/agents-scaffolding.ts",
+      "from": "          : { OR: [{ createdBy: query.actorId as string }, { sharedWithOrganization: true }] };",
+      "to": "          : { createdBy: query.actorId as string };",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A25 scaffolding: an unattributed caller sees SHARED macros only",
+      "file": "src/agents-scaffolding.ts",
+      "from": "          ? { sharedWithOrganization: true }",
+      "to": "          ? {}",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A26 scaffolding: findMacro stays UNGATED, and stays scoped",
+      "file": "src/agents-scaffolding.ts",
+      "from": "        .macro.findFirst({ where: { id: macroId, environmentId: scope.environmentId } })) as MacroRow | null;",
+      "to": "        .macro.findFirst({ where: { id: macroId, environmentId: scope.environmentId, sharedWithOrganization: true } })) as MacroRow | null;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A27 scaffolding: byTemplateOrder puts defaults FIRST",
+      "file": "src/agents-scaffolding.ts",
+      "from": "const TEMPLATE_ORDER = [{ isDefault: \"desc\" }, { updatedAt: \"desc\" }, { id: \"desc\" }] as const;",
+      "to": "const TEMPLATE_ORDER = [{ updatedAt: \"desc\" }, { id: \"desc\" }] as const;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A28 scaffolding: the macro name index is an OUTCOME, not a defect",
+      "file": "src/agents-scaffolding.ts",
+      "from": "const macroRefusal = named(MACRO_NAME_TAKEN, \"environmentId,name\");",
+      "to": "const macroRefusal = named(MACRO_NAME_TAKEN, \"no,such,constraint\");",
+      "suites": [
+        "src/agents-constraints.integration.test.ts",
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "constraints only the migrations carry > Macro is unique per environment and name, which the double does not know",
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A29 client: a nullable JSONB column takes the SQL NULL, not JSON null",
+      "file": "src/client.ts",
+      "from": "  return value === null || value === undefined\n    ? Prisma.DbNull\n    : (value as Prisma.InputJsonValue);",
+      "to": "  return value as Prisma.InputJsonValue;",
+      "suites": [
+        "src/agents-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "AgentsRepository conformance > the double and PostgreSQL answer the same scenario identically",
+        "ScaffoldingRepository conformance > the double and PostgreSQL answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-A30 rows: an unnamed tool default policy is refused, not defaulted",
+      "file": "src/agents-rows.ts",
+      "from": "  if (!TOOL_DEFAULT_POLICIES.has(row.toolDefaultPolicy)) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/agents-rows.test.ts"
+      ],
+      "kills": [
+        "toVersion > REFUSES a tool default policy the domain does not name"
+      ]
+    },
+    {
+      "name": "M-A31 rows: a macro step with no tool is refused, not coerced",
+      "file": "src/agents-rows.ts",
+      "from": "    if (typeof tool !== \"string\" || tool === \"\") {",
+      "to": "    if (typeof tool === \"number\") {",
+      "suites": [
+        "src/agents-rows.test.ts"
+      ],
+      "kills": [
+        "toMacroSteps > REFUSES a step that names no tool"
+      ]
+    }
+  ],
+  "result": [
+    "Filled in by the sweep. See the report on the branch."
+  ]
+}

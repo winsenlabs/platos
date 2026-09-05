@@ -198,6 +198,24 @@ describe("the transaction boundary", () => {
     expect(await agentCount("foreign-token")).toBe(0);
   });
 
+  test("a READ that takes a scope validates it too", async () => {
+    // `countBindings` is the one READ on this port that takes a transaction,
+    // because the caller counts AFTER its own delete and inside the same
+    // transaction. Resolving it through `reader()` would answer correctly —
+    // `reader()` prefers the ambient frame — and would accept a token from a
+    // transaction that has already finished, which is the difference this case
+    // exists for. The count is not the guard; the refusal is.
+    let stale = { transactionId: "" as never };
+    await harness.adapter.unitOfWork.run(async (transaction) => {
+      stale = transaction as never;
+    });
+    await expect(
+      harness.adapter.unitOfWork.run(async () =>
+        harness.repository.countBindings(host.agent.agentId, stale),
+      ),
+    ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
+  });
+
   test("a nested run JOINS the outer transaction rather than opening a second", async () => {
     const inner = agentNamed(harness, "nested");
     await expect(
@@ -241,6 +259,57 @@ describe("the transaction boundary", () => {
     releaseFirst();
     await Promise.all([first, second]);
     expect(order).toEqual(["first took the lock", "first releases", "second took the lock"]);
+  });
+
+  test("the lock is taken for an agent that has NO versions yet", async () => {
+    // THE CASE THE INNER JOIN WOULD HAVE MISSED, and the one that matters most:
+    // the first save is where two callers race hardest, and it is the only save
+    // where the agent has no versions at all. `FOR UPDATE OF` locks the rows the
+    // statement RETURNS, so a join that returned none would have taken no lock —
+    // on every save except this one, with every other case in this file still
+    // green.
+    const bare = agentNamed(harness, "no-versions-yet");
+    await harness.adapter.unitOfWork.run((transaction) =>
+      harness.repository.insertAgent(bare, transaction),
+    );
+
+    const order: string[] = [];
+    let releaseFirst: () => void = () => {};
+    const firstHolds = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const first = harness.adapter.unitOfWork.run(async (transaction) => {
+      const numbers = await harness.repository.observedVersionNumbers(bare.agentId, transaction);
+      expect(numbers.ok && numbers.value).toEqual([]);
+      order.push("first took the lock");
+      await firstHolds;
+      order.push("first releases");
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const second = harness.adapter.unitOfWork.run(async (transaction) => {
+      await harness.repository.observedVersionNumbers(bare.agentId, transaction);
+      order.push("second took the lock");
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(order).toEqual(["first took the lock"]);
+    releaseFirst();
+    await Promise.all([first, second]);
+    expect(order).toEqual(["first took the lock", "first releases", "second took the lock"]);
+  });
+
+  test("a binding that is no longer there is REFUSED, not re-created", async () => {
+    // The half of `updateBinding`'s compare-and-move this port CAN honour: the
+    // row's identity. A binding whose row has gone matches nothing, and the
+    // store answers `binding_moved_underneath` rather than inserting it again.
+    const removed = await harness.seedAgent({ slug: "binding-gone" });
+    await harness.adapter.unitOfWork.run((transaction) =>
+      harness.repository.deleteBinding(HOME, removed.binding, transaction),
+    );
+    const moved = await harness.adapter.unitOfWork.run((transaction) =>
+      harness.repository.updateBinding({ ...removed.binding, canaryPercent: 5 }, transaction),
+    );
+    expect(moved.ok).toBe(false);
+    expect(moved.ok === false && moved.error.details["reason"]).toBe("binding_moved_underneath");
   });
 
   test("a committed agent is visible from a connection this pool never touched", async () => {

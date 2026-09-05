@@ -55,9 +55,25 @@ function queries(): readonly string[] {
     );
 }
 
+/**
+ * Let the client's `query` events arrive.
+ *
+ * THE EVENT IS EMITTED ASYNCHRONOUSLY, AFTER THE CALL HAS RESOLVED, and a count
+ * taken in the same tick can miss the last statement. That is not merely a
+ * measurement that reads low: the missed event lands in the NEXT measurement's
+ * array, so one pin reads one short and the pin after it reads one long. Both
+ * halves were observed on a real container — `pageTemplates` measured 1 instead
+ * of 2 and `observedVersionNumbers` measured 2 instead of 1, in the same run —
+ * which is what a statement-count suite looks like when it is measuring the
+ * event loop rather than the database.
+ */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 25));
+
 async function measure(work: () => Promise<unknown>): Promise<number> {
+  await settle();
   harness.resetStatements();
   await work();
+  await settle();
   return queries().length;
 }
 
@@ -124,9 +140,16 @@ describe("statement counts", () => {
   });
 
   test("a page costs the listing plus exactly one count", async () => {
+    // OVER THE SAME ROWS, and the first draft of this case was not — it took a
+    // page of five off a scope of twenty-three and compared it with the whole
+    // listing. The page happened to contain only agents with no canary and no
+    // cluster, so it cost two statements FEWER, and the pin read as though
+    // paging were cheaper than listing. It is not: the difference was the shape
+    // of the rows that fell in the window. A page wide enough to hold every row
+    // costs the listing plus the count, and nothing else.
     const listed = await measure(() => harness.repository.listBoundAgents(HOME));
     const paged = await measure(() =>
-      harness.repository.pageBoundAgents(HOME, { limit: 5, offset: 0, search: null, active: null }),
+      harness.repository.pageBoundAgents(HOME, { limit: 500, offset: 0, search: null, active: null }),
     );
     expect(paged).toBe(listed + 1);
   });

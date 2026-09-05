@@ -60,11 +60,19 @@ function reasonOf(result: { readonly ok: boolean; readonly error?: { readonly co
   return `${result.error!.code}:${String(result.error!.details["reason"] ?? "")}`;
 }
 
-async function raw(sql: string, ...args: unknown[]): Promise<unknown> {
-  const client = harness.client as never as {
+/**
+ * The client, for the three statements below that name a table literally.
+ *
+ * Each `$executeRawUnsafe` call spells its own SQL AT THE CALL SITE rather than
+ * taking it as a parameter, and that is not style. `scripts/arch/sole-writer.mjs`
+ * attributes a raw statement to the table its SQL names; SQL that arrives as an
+ * argument cannot be attributed at all, and the gate fails CLOSED on it. A
+ * one-line helper here made all three unattributable, and the audit said so.
+ */
+function db(): { $executeRawUnsafe(text: string, ...values: unknown[]): Promise<number> } {
+  return harness.client as never as {
     $executeRawUnsafe(text: string, ...values: unknown[]): Promise<number>;
   };
-  return client.$executeRawUnsafe(sql, ...args);
 }
 
 beforeAll(async () => {
@@ -288,7 +296,7 @@ describe("constraints only the migrations carry", () => {
     // The column may not carry `enabledTools`. Proved directly, because no path
     // through the port can produce it — which is the claim being made.
     await expect(
-      raw(
+      db().$executeRawUnsafe(
         `INSERT INTO "AgentVersion" ("id","agentId","versionNumber","model","toolsBlockConfig","createdBy","createdAt") VALUES ($1::uuid,$2::uuid,9001,'m','{"enabledTools":[]}'::jsonb,'op',now())`,
         harness.freshId("0306"),
         home.agent.agentId,
@@ -314,7 +322,10 @@ describe("constraints only the migrations carry", () => {
 
   test("a version a binding still serves cannot be deleted", async () => {
     await expect(
-      raw(`DELETE FROM "AgentVersion" WHERE id = $1::uuid`, home.version.agentVersionId),
+      db().$executeRawUnsafe(
+        `DELETE FROM "AgentVersion" WHERE id = $1::uuid`,
+        home.version.agentVersionId,
+      ),
     ).rejects.toThrow(/AgentBinding_activeAgentVersionId_fkey/u);
   });
 
@@ -338,12 +349,46 @@ describe("constraints only the migrations carry", () => {
 
   test("a macro whose steps are not an array is refused by the column, not by the reader", async () => {
     await expect(
-      raw(
+      db().$executeRawUnsafe(
         `INSERT INTO "Macro" ("id","environmentId","name","steps","sharedWithOrganization","createdBy","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,'bad-steps','{}'::jsonb,false,'op',now(),now())`,
         harness.freshId("0307"),
         HOME_ENVIRONMENT,
       ),
     ).rejects.toThrow(/Macro_steps_json_root/u);
+  });
+
+  test("the PROJECT half of the scope filter is not decoration", async () => {
+    // IT IS UNREACHABLE WHILE THE ANCESTRY RULE HOLDS, and that is exactly why it
+    // is proved this way rather than left as a comment. `AgentBinding_ancestry`
+    // guarantees `agent.projectId = environment.projectId`, so no row a caller
+    // can write makes the environment filter and the project filter disagree —
+    // and a store that dropped the project filter would pass every other case in
+    // this tree. The rule is switched off for ONE statement, the crossed row is
+    // planted, and the two reads must still answer null.
+    await db().$executeRawUnsafe(`ALTER TABLE "AgentBinding" DISABLE TRIGGER "AgentBinding_ancestry"`);
+    const planted = harness.freshId("0308");
+    try {
+      await db().$executeRawUnsafe(
+        `INSERT INTO "AgentBinding" ("id","environmentId","agentId","activeAgentVersionId","canaryPercent","createdAt","updatedAt") VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,0,now(),now())`,
+        planted,
+        HOME_ENVIRONMENT,
+        neighbour.agent.agentId,
+        neighbour.version.agentVersionId,
+      );
+    } finally {
+      await db().$executeRawUnsafe(`ALTER TABLE "AgentBinding" ENABLE TRIGGER "AgentBinding_ancestry"`);
+    }
+
+    const byId = await harness.repository.findBoundAgent(HOME, neighbour.agent.agentId);
+    expect(byId.ok && byId.value).toBeNull();
+    const bySlug = await harness.repository.findBoundAgentBySlug(HOME, neighbour.agent.slug);
+    expect(bySlug.ok && bySlug.value).toBeNull();
+    const listed = await harness.repository.listBoundAgents(HOME);
+    expect(
+      listed.ok && listed.value.some((bound) => bound.agent.agentId === neighbour.agent.agentId),
+    ).toBe(false);
+
+    await db().$executeRawUnsafe(`DELETE FROM "AgentBinding" WHERE id = $1::uuid`, planted);
   });
 
   test("an agent in another project is invisible, not refused", async () => {

@@ -147,11 +147,17 @@ export function createAgentVersions(
       transaction: TransactionScope,
     ): Promise<Result<readonly number[]>> {
       const client = transactions.writer(transaction);
+      // ORDERED, though the port asks for a set. `nextVersionNumber` takes the
+      // maximum and could not care, but the in-memory double answers in
+      // `byVersionOrder` and the conformance differential compares the two lists
+      // verbatim — so an unordered read here would report a divergence that is
+      // about the planner rather than about behaviour.
       const rows = await client.$queryRaw<ObservedRow[]>`
         SELECT version."versionNumber"
           FROM "Agent" agent
           LEFT JOIN "AgentVersion" version ON version."agentId" = agent.id
          WHERE agent.id = ${agentId}::uuid
+         ORDER BY version."versionNumber" DESC
         FOR UPDATE OF agent
       `;
       const numbers: number[] = [];
@@ -203,9 +209,15 @@ export function createAgentVersions(
     },
 
     async listLoadout(agentVersionId: AgentVersionId): Promise<Result<readonly AgentSkill[]>> {
+      // ORDERED BY THE SKILL, not by `createdAt`. A whole loadout is written in
+      // ONE statement, so every row of it carries the same `now()` and the
+      // tie-break would be the uuid the database minted — an order that changes
+      // between two runs of the same fixture. The port specifies no order at all
+      // (`carryForward` treats a loadout as a set), so this is the store picking
+      // a TOTAL one rather than inheriting a random one.
       const rows = (await transactions.reader().agentSkill.findMany({
         where: { agentVersionId },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        orderBy: [{ environmentSkillId: "asc" }],
       })) as AgentSkillRow[];
       return ok(rows.map(toSkill));
     },

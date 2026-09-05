@@ -88,15 +88,28 @@ function tag<Id extends string>(value: string): Id {
   return value as unknown as Id;
 }
 
-/** A loadout row, with the two values the STORE mints replaced by their shape. */
+/**
+ * A loadout row, with the two values the STORE mints replaced by their shape,
+ * and the list put in a total order neither store guarantees.
+ *
+ * The port specifies no order for a loadout — `carryForward` treats it as a set
+ * — and the two stores genuinely differ: the double preserves the order it was
+ * handed, and PostgreSQL writes a whole loadout in ONE statement, so every row
+ * carries the same `now()` and any tie-break falls to the uuid the database
+ * minted, which changes between two runs of the same fixture. Sorting here says
+ * that the CONTENT is compared and the order is not, rather than pretending an
+ * unspecified order agreed.
+ */
 function loadoutShape(skills: readonly { readonly agentSkillId: string; readonly environmentSkillId: string; readonly enabled: boolean; readonly config: unknown; readonly agentVersionId: string }[]) {
-  return skills.map((skill) => ({
-    agentVersionId: skill.agentVersionId,
-    environmentSkillId: skill.environmentSkillId,
-    enabled: skill.enabled,
-    config: skill.config,
-    hasMintedId: skill.agentSkillId.length > 0,
-  }));
+  return [...skills]
+    .sort((left, right) => (left.environmentSkillId < right.environmentSkillId ? -1 : 1))
+    .map((skill) => ({
+      agentVersionId: skill.agentVersionId,
+      environmentSkillId: skill.environmentSkillId,
+      enabled: skill.enabled,
+      config: skill.config,
+      hasMintedId: skill.agentSkillId.length > 0,
+    }));
 }
 
 /** A `Result`, recorded so a refusal compares by code and details, not by class. */

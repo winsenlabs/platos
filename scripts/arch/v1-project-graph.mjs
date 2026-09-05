@@ -36,7 +36,17 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // The edge cannot create a cycle: nothing imports an adapter except the
 // composition root, and `tenancy` already depends on `identity-access`, so
 // `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged.
-export const EXPECTED_EDGE_COUNT = 96;
+// 96 -> 97 (WIN-258 T5, ADR M0.3 §15). `packages/adapters/postgres-tenancy`
+// gained a THIRD owner edge, to `packages/contexts/agents`.
+//
+// Same reason as the second: the seven rows of ADR M0.3 §1 row 5 live in the one
+// PostgreSQL database, behind the one client, so their repositories are in the
+// one adapter directory. The edge cannot create a cycle — nothing imports an
+// adapter except the composition root — and it does not widen the context DAG,
+// so `EXPECTED_CONTEXT_DEPENDS_ON` below is again unchanged. `agents` does not
+// depend on `tenancy`'s or `identity-access`'s internals and neither of them
+// depends on it; the three simply share a directory.
+export const EXPECTED_EDGE_COUNT = 97;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -152,7 +162,7 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access"],
+  "postgres-tenancy": ["tenancy", "identity-access", "agents"],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -174,7 +184,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 2 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 3 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

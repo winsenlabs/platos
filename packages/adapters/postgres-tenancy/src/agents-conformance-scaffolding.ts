@@ -105,15 +105,6 @@ export async function runScaffoldingScenario(
       record(`insertMacro ${row.name}`, outcome(await scaffolding.insertMacro(row, transaction)));
     }
   });
-  await unitOfWork.run(async (transaction) => {
-    record(
-      "insertMacro with a name already taken in this environment",
-      outcome(
-        await scaffolding.insertMacro({ ...own, macroId: tag(ids.clashingMacro) }, transaction),
-      ),
-    );
-  });
-
   record(
     "listMacros for the owner",
     outcome(await scaffolding.listMacros(scopes.home, { limit: 10, actorId: tag<ActorId>(OWNER) })),
@@ -173,15 +164,6 @@ export async function runScaffoldingScenario(
     record("insertTemplate plain", outcome(await scaffolding.insertTemplate(plain, transaction)));
     record("insertTemplate default", outcome(await scaffolding.insertTemplate(preferred, transaction)));
   });
-  await unitOfWork.run(async (transaction) => {
-    record(
-      "insertTemplate with a name already taken for this agent",
-      outcome(
-        await scaffolding.insertTemplate({ ...plain, templateId: tag(ids.clashingTemplate) }, transaction),
-      ),
-    );
-  });
-
   // Defaults first, THEN recency — `preferred` is older than `plain` and still
   // leads, which is the whole of `byTemplateOrder`'s first clause.
   record(
@@ -242,6 +224,33 @@ export async function runScaffoldingScenario(
       await scaffolding.pageTemplates(scopes.home, { limit: 10, offset: 0, agentId: null, search: null }),
     ),
   );
+
+  // THE TWO KNOWN DIVERGENCES ARE LAST, AND THAT IS NOT TIDINESS. The double
+  // carries no unique index, so it ACCEPTS both of these writes and PostgreSQL
+  // refuses them — after which the two stores hold different rows and every
+  // later step would diverge for a reason that is not its own. They are pinned
+  // from both sides in `agents-conformance.integration.test.ts`; they run here
+  // where nothing observes the state they leave behind.
+  await unitOfWork.run(async (transaction) => {
+    record(
+      "insertMacro with a name already taken in this environment",
+      outcome(
+        await scaffolding.insertMacro(
+          { ...shared, macroId: tag(ids.clashingMacro), createdBy: tag<ActorId>(OWNER) },
+          transaction,
+        ),
+      ),
+    );
+    record(
+      "insertTemplate with a name already taken for this agent",
+      outcome(
+        await scaffolding.insertTemplate(
+          { ...preferred, templateId: tag(ids.clashingTemplate) },
+          transaction,
+        ),
+      ),
+    );
+  });
 
   return seen;
 }

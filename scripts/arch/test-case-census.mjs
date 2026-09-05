@@ -1371,6 +1371,43 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 3's 16/166 would have dropped the outbox's four suites and 33 cases; taking
  * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
  * their own branch's arithmetic and neither is the tree.
+ *
+ * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 5 files and 45
+ * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
+ *
+ *   agents-rows.test.ts                        7  the two readers that REFUSE
+ *                                                 rather than inventing a value,
+ *                                                 neither of them reachable
+ *                                                 through PostgreSQL today
+ *   agents-conformance.integration.test.ts     2  the two halves of the shared
+ *                                                 scenario, run against the
+ *                                                 double and against PostgreSQL
+ *                                                 and compared step by step
+ *   agents-constraints.integration.test.ts    16  what the MIGRATIONS refuse and
+ *                                                 `schema.prisma` does not say
+ *   agents-transaction.integration.test.ts    11  failure injection, the three
+ *                                                 transaction-scope refusals,
+ *                                                 the savepoint measured from a
+ *                                                 SECOND connection, and the
+ *                                                 parent row lock
+ *   agents-statements.integration.test.ts      9  measured statement counts
+ *
+ * 7 + 2 + 16 + 11 + 9 = 45, over 5 files. Four of the five are excluded from the
+ * package's default `test` script by filename and run by the
+ * `postgres-tenancy-repository` CI job; `agents-rows.test.ts` is not, because it
+ * has no database in it.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite. It is two
+ * because it is TWO scenarios of ninety-odd observations compared verbatim;
+ * adding an observation strengthens the differential and moves no count here,
+ * which is why `mutations-agents.json` is where those guards are held
+ * falsifiable.
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 25 files,  199 -> 244 cases
+ *
+ * The tree total is 391 + 5 = 396 files and 6115 + 45 = 6160 cases. The adapters
+ * term of the three-way identity carries all five: 39 + 5 = 44, and 349 + 3 + 44
+ * = 396.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1381,7 +1418,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 20, cases: 199 },
+  "packages/adapters/postgres-tenancy": { files: 25, cases: 244 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1528,8 +1565,17 @@ export const EXPECTED = Object.freeze({
  * this census records and `pnpm test:v1-packages` does not execute from 92 to
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
+ *
+ * 6041 -> 6115: the outbox's 41 and the 33 of tranche 4.
+ *
+ * 6115 -> 6160: the 45 cases of WIN-258 tranche 5 — the `agents` canonical store
+ * — enumerated file by file in the block beside the postgres-tenancy row. That
+ * takes the count of cases this census records and `pnpm test:v1-packages` does
+ * not execute from 128 to 166: 38 of the 45 are integration suites, and the
+ * remaining 7 (`agents-rows.test.ts`) run in the ordinary package test script
+ * because that module has no database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6115;
+export const EXPECTED_RUNTIME_TOTAL = 6160;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

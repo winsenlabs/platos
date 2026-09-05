@@ -82,12 +82,47 @@ afterAll(async () => {
   await harness?.stop();
 });
 
+/**
+ * The steps where the two stores are KNOWN to disagree, and what the database
+ * answers instead.
+ *
+ * A divergence deleted from the scenario is a divergence hidden, so each one is
+ * kept as a step and pinned from BOTH sides: the double must still accept, and
+ * PostgreSQL must still refuse with this exact reason. A double that later grew
+ * the missing index breaks this pin rather than silently passing, and so does a
+ * store that stopped refusing.
+ *
+ * Both entries are the same defect in the double: `InMemoryScaffolding` carries
+ * no unique index at all, while `Macro` is unique on `[environmentId, name]` and
+ * `PostmanTemplate` on `[environmentId, agentId, name]`. A use case that writes a
+ * second macro under a name already taken therefore passes every suite in the
+ * tree and is refused in production.
+ */
+const KNOWN_DIVERGENCES = new Map<string, string>([
+  ["insertMacro with a name already taken in this environment", "macro_name_taken"],
+  ["insertTemplate with a name already taken for this agent", "template_name_taken"],
+]);
+
 function compare(fake: readonly Observation[], real: readonly Observation[]): void {
   expect(real.map((observation) => observation.step)).toEqual(
     fake.map((observation) => observation.step),
   );
+  let divergences = 0;
   for (const [index, expected] of fake.entries()) {
     const actual = real[index]!;
+    const known = KNOWN_DIVERGENCES.get(expected.step);
+    if (known !== undefined) {
+      divergences += 1;
+      expect(expected.value, `the double no longer accepts "${expected.step}"`).toMatchObject({
+        ok: true,
+      });
+      expect(actual.value, `PostgreSQL no longer refuses "${expected.step}"`).toMatchObject({
+        ok: false,
+        code: "AGENTS_REPOSITORY_UNAVAILABLE",
+        details: { reason: known },
+      });
+      continue;
+    }
     expect(
       { step: actual.step, value: actual.value },
       `step ${index + 1} "${expected.step}" diverged`,
@@ -95,6 +130,12 @@ function compare(fake: readonly Observation[], real: readonly Observation[]): vo
   }
   expect(real.length).toBe(fake.length);
   expect(real.length).toBeGreaterThan(0);
+  // Every declared divergence must have been REACHED. A step renamed out of the
+  // scenario would otherwise leave a pin that can never fail.
+  const declared = [...KNOWN_DIVERGENCES.keys()].filter((step) =>
+    fake.some((observation) => observation.step === step),
+  ).length;
+  expect(divergences).toBe(declared);
 }
 
 describe("AgentsRepository conformance", () => {

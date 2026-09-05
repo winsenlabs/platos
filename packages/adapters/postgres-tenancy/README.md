@@ -4,6 +4,8 @@ Implements TWO owner-supplied ports — the tenancy-database client; per-context
 
 - the tenancy `TenancyRepository` port
 - the identity-access `IdentityAccessRepository` port
+- the agents `AgentsRepository` port
+- the agents `ScaffoldingRepository` port
 
 ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 directory may satisfy more than one port when the ports sit behind the same
