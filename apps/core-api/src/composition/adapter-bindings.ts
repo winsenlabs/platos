@@ -29,7 +29,14 @@ import type {
   IdentityAccessRepository,
   RateLimiter,
 } from "@platos/context-identity-access/application/ports/index.js";
-import type { TenancyRepository } from "@platos/context-tenancy/application/ports/index.js";
+import type {
+  EnvironmentAccessKeyRevocationCounter,
+  InvitationTokenIssuer,
+  OperatorDirectory,
+  OperatorSessionRevoker,
+  TenancyLocks,
+  TenancyRepository,
+} from "@platos/context-tenancy/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
   AgentsRepository,
@@ -66,7 +73,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTEEN BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, TWENTY-TWO BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -128,6 +135,32 @@ interface PortSatisfaction {
     ScaffoldingRepository
   >;
   readonly "postgres-tenancy:BudgetRepository": Satisfies<PostgresTenancyAdapter, BudgetRepository>;
+  // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
+  // PROPERTY that carries each one rather than through the adapter itself.
+  //
+  // `Satisfies<PostgresTenancyAdapter, TenancyLocks>` would resolve to `never`
+  // and fail a binding that holds: these five are named properties of the
+  // adapter, not methods spread into it, because a composition root has to hand
+  // each to `TenancyDependencies` under its own name. Indexing the property is
+  // what makes the obligation the true one — that `locks` is a `TenancyLocks` —
+  // so the day the adapter renames or re-types one, `pnpm build:v1` fails here.
+  readonly "postgres-tenancy:TenancyLocks": Satisfies<PostgresTenancyAdapter["locks"], TenancyLocks>;
+  readonly "postgres-tenancy:OperatorSessionRevoker": Satisfies<
+    PostgresTenancyAdapter["sessionRevoker"],
+    OperatorSessionRevoker
+  >;
+  readonly "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": Satisfies<
+    PostgresTenancyAdapter["accessKeyRevocation"],
+    EnvironmentAccessKeyRevocationCounter
+  >;
+  readonly "postgres-tenancy:InvitationTokenIssuer": Satisfies<
+    PostgresTenancyAdapter["invitationTokens"],
+    InvitationTokenIssuer
+  >;
+  readonly "postgres-tenancy:OperatorDirectory": Satisfies<
+    PostgresTenancyAdapter["operators"],
+    OperatorDirectory
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -151,6 +184,11 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:AgentsRepository": true,
   "postgres-tenancy:ScaffoldingRepository": true,
   "postgres-tenancy:BudgetRepository": true,
+  "postgres-tenancy:TenancyLocks": true,
+  "postgres-tenancy:OperatorSessionRevoker": true,
+  "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
+  "postgres-tenancy:InvitationTokenIssuer": true,
+  "postgres-tenancy:OperatorDirectory": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -184,7 +222,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
  * against `ADAPTER_BINDINGS` in both directions by
  * `scripts/arch/composition-root.mjs`, and `OutboxEventStore` is not a bound
  * PORT: no context and not the kernel owns it, nothing is wired to it by name,
- * and adding a row for it would claim a fourteenth binding the ADR does not
+ * and adding a row for it would claim a twenty-third binding the ADR does not
  * declare. It is an obligation between two adapters, so it is stated as one.
  */
 export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
@@ -243,6 +281,32 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "BudgetRepository",
     owner: "cost-monitoring",
   }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the SEVENTH through
+  // ELEVENTH bindings of the same directory.
+  //
+  // They are a different KIND of binding from the six above and that is why they
+  // sit together at the end rather than beside `TenancyRepository`: each of the
+  // six above is a whole repository composite SPREAD INTO the adapter, and each
+  // of these five is a single named PROPERTY on it. The ordinals above stay true
+  // because nothing was inserted before them.
+  //
+  // WHY THEY GET SLOTS AT ALL. This table is the surface that proves every port
+  // has a satisfying adapter — `composition-root.mjs` compares it against the
+  // generator's table in BOTH directions and against `PORT_SATISFACTION` in both
+  // directions. A port that is satisfied but not declared is invisible to all
+  // four comparisons, so leaving these five out did not make a smaller claim: it
+  // silently narrowed the completeness property to the ports that happened to be
+  // listed. `reportAdapterSupply` can now say an install has not wired the
+  // session revoker, which before this it could not.
+  Object.freeze({ adapter: "postgres-tenancy", port: "TenancyLocks", owner: "tenancy" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "OperatorSessionRevoker", owner: "tenancy" }),
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "EnvironmentAccessKeyRevocationCounter",
+    owner: "tenancy",
+  }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "InvitationTokenIssuer", owner: "tenancy" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "OperatorDirectory", owner: "tenancy" }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -259,9 +323,9 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds fourteen rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds twenty-two rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` three times and open three
+ * adapters would otherwise build `postgres-tenancy` ELEVEN times and open eleven
  * pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([

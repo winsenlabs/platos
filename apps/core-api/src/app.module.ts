@@ -44,26 +44,35 @@
 //
 // WHAT IS NO LONGER TRUE. `postgres-tenancy` is not a generated placeholder: it
 // holds a real `TenancyRepository` (tranche 1) and it also satisfies
-// `IdentityAccessRepository` (tranche 2), which is a DECLARED binding — the
-// second row of the same directory, so there are thirteen bindings across twelve
-// directories and an identity store is among them. Tenancy's five other ports
-// are not missing either: locks, a session revoker, an access-key revocation
-// counter, an invitation token issuer and an operator directory are named
-// properties of `PostgresTenancyAdapter` (tranche 3), and the kernel outbox has
-// both its binding row and its write (tranche 4).
+// `IdentityAccessRepository` (tranche 2), `ToolsRepository`, `agents`' two
+// canonical-store ports and `cost-monitoring`'s `BudgetRepository` (tranche 5).
+// Each of those is a DECLARED binding — rows on the same directory — so there
+// are TWENTY-TWO bindings across twelve directories and an identity store is
+// among them. Tenancy's five other ports are not missing either: locks, a
+// session revoker, an access-key revocation counter, an invitation token issuer
+// and an operator directory are named properties of `PostgresTenancyAdapter`
+// (tranche 3), and the kernel outbox has both its binding row and its write
+// (tranche 4).
 //
-// WHAT REMAINS TRUE, and is the whole of what is open. FIRST, this root
-// CONSTRUCTS no adapter: nothing here calls `createPostgresTenancyAdapter`, so
-// the wiring is proven by TYPE — `PORT_SATISFACTION` and
-// `OUTBOX_STORE_SATISFACTION` resolve at compile time — and by nothing at
-// runtime. SECOND, the five non-repository tenancy ports have no binding SLOTS:
-// they exist on the adapter and `ADAPTER_BINDINGS` does not name them, so
-// `reportAdapterSupply` cannot judge them. Closing that is a decision, not a
-// comment fix — either ADR M0.3 §4 gains five slots, or this root builds
-// `TenancyDependencies` from the adapter's own properties — and it is left to
-// whoever takes it rather than settled here in passing. Until then an install
-// supplies each bundle itself and readiness stays honest about every binding
-// that is unsatisfied.
+// AND THE FIVE NOW HAVE BINDING SLOTS TOO (WIN-258 M2.3). The clause that used
+// to stand here said they did not, and that was the last true half of the three:
+// they were satisfied by the adapter and unnamed by `ADAPTER_BINDINGS`, so
+// `reportAdapterSupply` could not judge them. The decision it was left for is
+// taken — ADR M0.3 §4 gains the five slots, on the SAME directory, because
+// Amendment 15 already allows many bindings per directory and the binding table
+// is the surface that proves every port has a satisfying adapter. Leaving five
+// out did not make a smaller claim; it silently narrowed that completeness
+// property to the ports that happened to be listed. They are proven through the
+// PROPERTY that carries each — `PostgresTenancyAdapter["locks"]` and its four
+// siblings — because asking whether the whole adapter extends `TenancyLocks`
+// would resolve to `never` and fail a binding that holds.
+//
+// WHAT REMAINS TRUE, and is now the whole of what is open: this root CONSTRUCTS
+// no adapter. Nothing here calls `createPostgresTenancyAdapter`, so the wiring is
+// proven by TYPE — `PORT_SATISFACTION` and `OUTBOX_STORE_SATISFACTION` resolve
+// at compile time — and by nothing at runtime. An install supplies each bundle
+// itself, and readiness is now honest about every binding that is unsatisfied,
+// the five included.
 // ---------------------------------------------------------------------------
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
@@ -138,7 +147,7 @@ export interface AppModule {
  * The driven ports an install supplies for a context this root can compose.
  *
  * It is separate from `SuppliedAdapters` because these are not adapters: an
- * adapter fills ONE declared binding and is validated against the thirteen-slot
+ * adapter fills ONE declared binding and is validated against the twenty-two-slot
  * table, whereas a context takes a whole bundle — a repository, a hasher, a
  * minter — several of which have no declared adapter yet. Merging the two would
  * mean either inventing binding slots that ADR M0.3 §4 does not declare, or

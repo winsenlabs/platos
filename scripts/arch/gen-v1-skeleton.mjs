@@ -84,6 +84,31 @@ export const ADAPTERS = [
       { port: "AgentsRepository", owner: "agents" },
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
+      // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
+      //
+      // `TenancyDependencies` names six driven ports and only one of them is
+      // the repository. The other five have been SATISFIED by this directory
+      // since tranche 3 — they are named properties of
+      // `PostgresTenancyAdapter` — and had no rows here, so
+      // `reportAdapterSupply` could not judge them and readiness answered for
+      // twelve directories while five ports it needs went unchecked.
+      //
+      // THE BINDING TABLE IS THE SURFACE THAT PROVES EVERY PORT HAS A
+      // SATISFYING ADAPTER, so a port left out of it is not a smaller claim —
+      // it silently narrows the gate's completeness property. Amendment 15
+      // already allows many bindings per directory, so the five are rows on the
+      // directory that holds them rather than a thirteenth package.
+      //
+      // They are PROPERTIES rather than spread-in methods, which is why the
+      // composition root proves them as `PostgresTenancyAdapter["locks"]` and
+      // not as `PostgresTenancyAdapter`: a nested port is satisfied by the
+      // property's type, and asking whether the whole adapter extends
+      // `TenancyLocks` would resolve to `never` and fail a binding that holds.
+      { port: "TenancyLocks", owner: "tenancy" },
+      { port: "OperatorSessionRevoker", owner: "tenancy" },
+      { port: "EnvironmentAccessKeyRevocationCounter", owner: "tenancy" },
+      { port: "InvitationTokenIssuer", owner: "tenancy" },
+      { port: "OperatorDirectory", owner: "tenancy" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -162,8 +187,15 @@ export function adapterOwnerPackages(adapter) {
 // count is deliberately unmoved a third time: the whole point of the amendment
 // is that another owner is a row on an existing directory rather than a
 // thirteenth package holding a second PostgreSQL client.
+//
+// 17 -> 22 (WIN-258 M2.3). Tenancy's five NON-REPOSITORY driven ports get slots
+// — locks, a session revoker, an access-key revocation counter, an invitation
+// token issuer and an operator directory. They add no owner and no edge:
+// `tenancy` was already an owner of this directory and the project reference it
+// needs is already there. What they add is JUDGEABILITY — five ports this
+// layout depends on that `reportAdapterSupply` could not previously see.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 17;
+export const EXPECTED_BINDING_COUNT = 22;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
