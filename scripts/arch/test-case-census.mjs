@@ -1389,7 +1389,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   tools-constraints.integration.test.ts    12  rules that live ONLY in the
  *                                                migrations — the json-root
  *                                                CHECK, the four ancestry
- *                                                triggers, the NULL-distinct
+ *                                                rules, the NULL-distinct
  *                                                unique index
  *   tools-isolation.integration.test.ts       8  which rows a statement may
  *                                                reach, and which columns a

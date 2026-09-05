@@ -244,7 +244,7 @@ describe("the transaction boundary, proved by failure injection", () => {
 
   test("a refused write commits NOTHING, which is the cost-monitoring trap", async () => {
     // The narrowest form of the trap: `saveMcpClient` resolves the entity, then
-    // writes. The write is refused by the ancestry trigger. If the refusal were
+    // writes. The write is refused by the ancestry rule. If the refusal were
     // reported from outside a transaction — or if a partial write had escaped —
     // a row would be here.
     const before = await harness.onlooker.entityMcpClient.count({

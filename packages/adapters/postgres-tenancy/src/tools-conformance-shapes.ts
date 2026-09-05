@@ -15,7 +15,7 @@
 //
 //   Every instant the STORE chooses. `createdAt` on a `Tool`, `updatedAt` on an
 //   `EntityMcpConfig` or a `ToolHealth` — column defaults and `@updatedAt`
-//   triggers. An instant the CALLER supplies is recorded, because both stores
+//   maintenance. An instant the CALLER supplies is recorded, because both stores
 //   owe it back unchanged.
 //
 //   `ToolExposure.externalEntityId`, `environmentId` and `entityId`. The first

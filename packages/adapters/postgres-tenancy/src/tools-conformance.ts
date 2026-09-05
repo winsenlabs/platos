@@ -19,7 +19,7 @@
 //
 //   INSTANTS THE STORE CHOOSES. `Tool.createdAt`, `EntityMcpConfig.updatedAt`
 //   and `OrganizationMcpPolicy.createdAt` are column defaults and `@updatedAt`
-//   triggers, so the database picks them and the double picks 2026-01-01. An
+//   maintenance, so the database picks them and the double picks 2026-01-01. An
 //   instant the CALLER supplies — `ToolCall.createdAt`, `AuditEntry.createdAt`,
 //   `EntityToolPolicy.addedAt` — is recorded, because both stores must keep it.
 //

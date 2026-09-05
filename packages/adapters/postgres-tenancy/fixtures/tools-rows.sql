@@ -23,7 +23,7 @@
 -- instead. Sixteen is the largest number any one suite file needs (the statement
 -- suite claims nine) with room to add cases.
 --
--- WHAT MAKES EACH TENANT COHERENT, and every one of these is an ancestry trigger
+-- WHAT MAKES EACH TENANT COHERENT, and every one of these is an ancestry rule
 -- in the migrations rather than a rule in `schema.prisma`:
 --
 --   `EnvironmentEntityTool_ancestry` and `EntityToolPolicy_ancestry` — the

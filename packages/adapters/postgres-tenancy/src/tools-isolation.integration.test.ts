@@ -13,7 +13,7 @@
 // ADR M0.3 §6 budget rather than taste: appending them took that file to 467
 // effective lines, inside the warning band and heading for the 500 hard limit,
 // and the seam the budget was pointing at is real. That file is about rules
-// that live ONLY IN THE MIGRATIONS — a CHECK, an ancestry trigger, a
+// that live ONLY IN THE MIGRATIONS — a CHECK, an ancestry rule, a
 // NULL-distinct index. This one is about what the STORE decides: which rows a
 // statement may reach, and which columns a second write may not move.
 //
@@ -32,6 +32,7 @@ import type {
   ToolCallId,
   ToolId,
   ToolHealthId,
+  EnvironmentId,
   SchemaHash,
 } from "@platos/context-tools/application/ports/index.js";
 import { asToolsIdentifier } from "@platos/context-tools/application/ports/index.js";
@@ -92,14 +93,14 @@ describe("the ancestry the scope claims, resolved against the real tree", () => 
     // another tenant's. A `where` clause keyed on the leaf alone — or on the
     // leaf and its project — answers this happily, which is why the resolve
     // compares all three.
-    const forged = { ...tenant.scope, organizationId: asToolsIdentifier(other.organizationId) };
+    const forged = { ...tenant.scope, organizationId: other.scope.organizationId };
     const refused = await harness.repository.listExposures(forged);
     expect(refused.ok).toBe(false);
     expect(reason(refused)).toBe("out_of_scope:listExposures");
   }, 120_000);
 
   test("an environment under ANOTHER project is refused the same way", async () => {
-    const forged = { ...tenant.scope, projectId: asToolsIdentifier(other.projectId) };
+    const forged = { ...tenant.scope, projectId: other.scope.projectId };
     const refused = await harness.repository.listAgentPolicyBindings(forged);
     expect(refused.ok).toBe(false);
     expect(reason(refused)).toBe("out_of_scope:listAgentPolicyBindings");
@@ -112,7 +113,7 @@ describe("the ancestry the scope claims, resolved against the real tree", () => 
     // no tree, which is exactly why it is minted here.
     const absent = {
       ...tenant.scope,
-      environmentId: asToolsIdentifier("eeeeeeee-0000-4000-8000-eeeeeeeeeeee"),
+      environmentId: asToolsIdentifier<EnvironmentId>("eeeeeeee-0000-4000-8000-eeeeeeeeeeee"),
     };
     const missing = await harness.repository.listExposures(absent);
     expect(missing.ok).toBe(false);
@@ -120,7 +121,7 @@ describe("the ancestry the scope claims, resolved against the real tree", () => 
 
     const forged = await harness.repository.listExposures({
       ...tenant.scope,
-      organizationId: asToolsIdentifier(other.organizationId),
+      organizationId: other.scope.organizationId,
     });
     expect(reason(forged)).not.toBe(reason(missing));
   }, 120_000);
@@ -293,6 +294,7 @@ describe("the health row a NULL entity may hold twice", () => {
         totalFailures: 0,
         avgLatencyMs: 5,
         p95LatencyMs: null,
+        updatedAt: TOOLS_AT,
       });
       expect(saved.ok).toBe(true);
     }

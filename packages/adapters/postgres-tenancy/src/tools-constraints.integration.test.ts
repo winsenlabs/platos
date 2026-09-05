@@ -3,11 +3,11 @@
 // The double `packages/contexts/tools` ships enforces four store constraints on
 // purpose and names them in its own header. Every case below is a constraint it
 // does NOT have, and each one is either a rule that exists ONLY in the
-// migrations — a CHECK, an ancestry trigger, a NULL-distinct unique index — or a
+// migrations — a CHECK, an ancestry rule, a NULL-distinct unique index — or a
 // column that holds less than the record does. A use case that met any of them
 // by accident passes against the double and fails on the first real write.
 //
-// THE MIGRATIONS ARE THE SOURCE, NOT `schema.prisma`. Four ancestry triggers
+// THE MIGRATIONS ARE THE SOURCE, NOT `schema.prisma`. Four ancestry rules
 // touch this context's rows and not one of them is expressible in the schema
 // file: `EnvironmentEntityTool_ancestry`, `EntityToolPolicy_ancestry` (replaced
 // by `enforce_m4_forward_upgrade_ancestry` in a later migration),
@@ -134,7 +134,7 @@ describe("constraints that exist only in the migrations", () => {
       entityId: toolsEntityId(tenant.mcpEntityId),
       transport: "http",
       url: "https://mcp.example.test",
-      // The OTHER tenant's credential. The trigger joins the credential's
+      // The OTHER tenant's credential. The rule joins the credential's
       // environment to its project and compares that to the entity's project.
       credentialId: toolsCredentialId(other.credentialId),
       credentialName: toolsCredentialName(other.credentialName),

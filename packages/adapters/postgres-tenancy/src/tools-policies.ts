@@ -6,7 +6,7 @@
 // `upsertEntityToolPolicy(policy)` takes the record alone — whose
 // `environmentId` is a LEAF. So this adapter cannot resolve the ancestry for
 // that one call, and the only thing standing between a caller and another
-// tenant's policy row is the migrations' `EntityToolPolicy_ancestry` trigger,
+// tenant's policy row is the migrations' `EntityToolPolicy_ancestry` rule,
 // which checks the entity against the environment's project and says nothing
 // about whether the caller was entitled to either. It is implemented as the port
 // declares it and reported rather than quietly widened: changing the signature

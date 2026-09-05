@@ -14,7 +14,7 @@
     "could have been written against the in-memory double. The double compares",
     "`resolvePath(scope)` against the one scope it was constructed with, so it",
     "cannot tell a forged ancestry from a deleted environment; it has no",
-    "json-root CHECK, no NULL-distinct unique index, no ancestry trigger and no",
+    "json-root CHECK, no NULL-distinct unique index, no ancestry rule and no",
     "planner to return rows in an order nothing pinned.",
     "",
     "TEN OF THE SIXTEEN SURVIVED WHEN THE SWEEP FIRST RAN, AND THAT IS THE",
