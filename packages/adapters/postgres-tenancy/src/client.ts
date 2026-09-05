@@ -12,7 +12,7 @@
 // The URL is built here too, because connection limits and timeouts are the
 // adapter's business: a context asked for a repository, not for a pool.
 
-import { PrismaClient, type Prisma } from "@platos/tenancy-database";
+import { Prisma, PrismaClient } from "@platos/tenancy-database";
 
 /** The pooled client. One per process; the composition root owns its lifetime. */
 export type TenancyDatabaseClient = PrismaClient;
@@ -42,6 +42,21 @@ export type TenancyReader = TenancyDatabaseClient | TenancyTransactionClient;
  * and a driver error.
  */
 export type TenancyJsonInput = Prisma.InputJsonValue;
+
+/**
+ * What a NULLABLE `Json` column needs in order to hold SQL NULL.
+ *
+ * WIN-258 T5. Passing a plain `null` to a nullable `Json` field is a client
+ * VALIDATION error, not a stored null — the client demands one of its two
+ * sentinels and will not choose. The two are not interchangeable and only one is
+ * correct here: `JsonNull` stores the JSON scalar `null`, whose `jsonb_typeof`
+ * is `'null'`, and both `ToolCall_result_json_root` and
+ * `ToolCallAudit_result_json_root` admit only `IS NULL`, `'object'` or
+ * `'array'`. So a caller reaching for the other sentinel writes a value the
+ * CHECK refuses — which is how this constant came to exist: `saveCall` with a
+ * null result failed against a real database and passed against every double.
+ */
+export const TENANCY_JSON_DB_NULL = Prisma.DbNull;
 
 /**
  * Pool and timeout settings, all optional and all with a stated default.

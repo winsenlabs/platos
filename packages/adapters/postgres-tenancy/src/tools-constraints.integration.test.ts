@@ -200,7 +200,7 @@ describe("constraints that exist only in the migrations", () => {
       completedAt: null,
       createdAt: TOOLS_AT,
     };
-    expect((await harness.repository.saveCall(tenant.scope, base)).ok).toBe(true);
+    expect(reason(await harness.repository.saveCall(tenant.scope, base))).toBe("<accepted>");
     const clash = await harness.repository.saveCall(tenant.scope, {
       ...base,
       toolCallId: asToolsIdentifier<ToolCallId>("66666666-2222-4222-8222-222222222222"),

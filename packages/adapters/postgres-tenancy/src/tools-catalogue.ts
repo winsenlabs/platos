@@ -50,6 +50,17 @@ export interface ToolsCatalogue {
     scope: EnvironmentScope,
     agentId: string,
   ): Promise<Result<AgentPolicyBinding | null>>;
+  /**
+   * The binding fold WITHOUT the scope resolve, for a caller that has already
+   * done it.
+   *
+   * NOT part of `ToolsRepository` and never reachable through it: it skips the
+   * tenant clause, which is only safe because `./tools-exposures.ts` calls it
+   * strictly inside its own `inScope`. It exists because resolving one scope
+   * twice per `listExposures` is one wasted round trip on the hot path of every
+   * turn, and `tools-statements.integration.test.ts` measured exactly that.
+   */
+  readBindings(scope: EnvironmentScope): Promise<readonly AgentPolicyBinding[]>;
 }
 
 /** The shape a binding is read in. Named once; both reads select it. */
@@ -107,7 +118,10 @@ function toBinding(row: BindingRow): AgentPolicyBinding {
 }
 
 export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCatalogue {
-  return {
+  // Named through `catalogue` rather than `this`: every store in this package is
+  // destructured by `./tools-repository.ts`, and a `this`-bound method would
+  // lose its receiver on the way in.
+  const catalogue: ToolsCatalogue = {
     async findToolByFingerprint(name, schemaHash) {
       return guarded("findToolByFingerprint", async () => {
         const row = await transactions.reader().tool.findUnique({
@@ -164,15 +178,19 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
       });
     },
 
-    async listAgentPolicyBindings(scope) {
-      return inScope(transactions, scope, "listAgentPolicyBindings", async () => {
-        const rows = await transactions.reader().agentBinding.findMany({
-          where: { environmentId: scope.environmentId },
-          select: BINDING_SELECT,
-          orderBy: { agentId: "asc" },
-        });
-        return ok(rows.map(toBinding));
+    async readBindings(scope) {
+      const rows = await transactions.reader().agentBinding.findMany({
+        where: { environmentId: scope.environmentId },
+        select: BINDING_SELECT,
+        orderBy: { agentId: "asc" },
       });
+      return rows.map(toBinding);
+    },
+
+    async listAgentPolicyBindings(scope) {
+      return inScope(transactions, scope, "listAgentPolicyBindings", async () =>
+        ok(await catalogue.readBindings(scope)),
+      );
     },
 
     async findAgentPolicyBinding(scope, agentId) {
@@ -185,4 +203,5 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
       });
     },
   };
+  return catalogue;
 }

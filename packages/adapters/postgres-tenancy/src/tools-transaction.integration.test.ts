@@ -116,6 +116,12 @@ describe("the transaction boundary, proved by failure injection", () => {
       toolIds: [alpha, ABSENT_TOOL],
     });
     expect(refused.ok).toBe(false);
+    // THE NON-VACUITY CONTROL, and it is not decoration. If the method had
+    // refused BEFORE the delete — on the scope, on a validation error, on
+    // anything — the rows would also be unchanged and the case below would pass
+    // over an injection that never happened. `P2003` is the foreign key, which
+    // only the CREATE can raise, so reaching it proves the DELETE already ran.
+    expect(refused.ok ? null : refused.error.details.reason).toBe("replaceExposures:P2003");
 
     // BOTH HALVES. The refusal is not the test; the rows are. `beta` was deleted
     // inside the transaction and must be back, because the transaction is gone.

@@ -120,10 +120,16 @@ export function createToolsExposures(
   transactions: TenancyTransactions,
   catalogue: ToolsCatalogue,
 ): ToolsExposures {
-  /** The bindings, or an empty fold when the scope has none. */
+  /**
+   * The bindings, read WITHOUT a second scope resolve.
+   *
+   * Every caller below is already inside its own `inScope`, so the tenant clause
+   * has been checked once for the whole call. Reaching for the public
+   * `listAgentPolicyBindings` here would resolve it a second time — one extra
+   * round trip on the hot path of every turn, measured at exactly that.
+   */
   async function foldBindings(scope: EnvironmentScope): Promise<readonly AgentPolicyBinding[]> {
-    const bindings = await catalogue.listAgentPolicyBindings(scope);
-    return bindings.ok ? bindings.value : [];
+    return catalogue.readBindings(scope);
   }
 
   async function readExposures(

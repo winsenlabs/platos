@@ -38,25 +38,45 @@ export const TOOLS_SCOPE_FOREIGN = "out_of_scope";
 /** The scope names an environment that does not exist at all. */
 export const TOOLS_SCOPE_UNKNOWN = "unknown_environment";
 
-/** Resolve a scope against the tree, or refuse. Costs exactly one statement. */
+/** One row: the environment's parent, and its parent's parent. */
+interface ResolvedAncestry {
+  readonly projectId: string;
+  readonly organizationId: string;
+}
+
+/**
+ * Resolve a scope against the tree, or refuse. ONE statement.
+ *
+ * A JOIN WRITTEN OUT, AND THAT IS THE POINT OF THE RAW READ. The obvious
+ * spelling — `environment.findUnique` selecting `project: { organizationId }` —
+ * is two round trips, because the client loads a relation as a separate query.
+ * This is on the front of EVERY scoped method of a twenty-four-method port, so
+ * that is one extra round trip per repository call, measured at exactly that by
+ * `tools-statements.integration.test.ts` before this was written out. The SQL is
+ * a static tagged template with one interpolated VALUE, so it stays attributable
+ * to `scripts/arch/sole-writer.mjs` and names no table it does not read.
+ *
+ * The PROJECT's organization, not the environment's: the environment has no
+ * organization column, which is exactly why a leaf-keyed method cannot notice a
+ * re-parent.
+ */
 export async function requireScope(
   transactions: TenancyTransactions,
   scope: EnvironmentScope,
   operation: string,
 ): Promise<Result<true>> {
-  const environment = await transactions.reader().environment.findUnique({
-    where: { id: scope.environmentId },
-    // The PROJECT's organization, not the environment's — the environment has
-    // no organization column, and that is exactly why a leaf-keyed method
-    // cannot notice a re-parent.
-    select: { projectId: true, project: { select: { organizationId: true } } },
-  });
-  if (environment === null) {
+  const rows = await transactions.reader().$queryRaw<readonly ResolvedAncestry[]>`
+    SELECT environment."projectId" AS "projectId", project."organizationId" AS "organizationId"
+    FROM "public"."Environment" environment
+    JOIN "public"."Project" project ON project."id" = environment."projectId"
+    WHERE environment."id" = ${scope.environmentId}::uuid`;
+  const resolved = rows[0];
+  if (resolved === undefined) {
     return err(repositoryUnavailable(`${TOOLS_SCOPE_UNKNOWN}:${operation}`));
   }
   if (
-    environment.projectId !== scope.projectId ||
-    environment.project.organizationId !== scope.organizationId
+    resolved.projectId !== scope.projectId ||
+    resolved.organizationId !== scope.organizationId
   ) {
     return err(repositoryUnavailable(`${TOOLS_SCOPE_FOREIGN}:${operation}`));
   }
@@ -101,9 +121,21 @@ export async function guarded<Value>(
   }
 }
 
-/** The driver's own code, so a refusal names the failure it came from. */
+/**
+ * The driver's own code, so a refusal names the failure it came from.
+ *
+ * A CLIENT-SIDE VALIDATION ERROR CARRIES NO CODE, and falling back to the
+ * literal `unknown` made two very different failures — a constraint the database
+ * refused and a value the client would not send — read identically. The class
+ * NAME is the fallback instead, because it is the only thing that separates
+ * them: `saveCall:P2002` is a unique violation and
+ * `saveCall:PrismaClientValidationError` is a bug in this file. That distinction
+ * cost an hour on the first real run of `tools-constraints.integration.test.ts`.
+ */
 function driverCode(error: unknown): string {
   if (typeof error !== "object" || error === null) return "unknown";
   const code = (error as { readonly code?: unknown }).code;
-  return typeof code === "string" ? code : "unknown";
+  if (typeof code === "string") return code;
+  const name = (error as { readonly name?: unknown }).name;
+  return typeof name === "string" ? name : "unknown";
 }

@@ -49,6 +49,7 @@ import {
   repositoryUnavailable,
 } from "@platos/context-tools/application/ports/index.js";
 
+import { TENANCY_JSON_DB_NULL } from "./client.js";
 import {
   toAuditEntry,
   toToolCall,
@@ -75,6 +76,17 @@ export interface ToolsTranscript {
   saveHealth(scope: EnvironmentScope, health: ToolHealth): Promise<Result<ToolHealth>>;
   appendAudit(scope: EnvironmentScope, entry: AuditEntry): Promise<Result<AuditEntry>>;
   pageAudit(scope: EnvironmentScope, query: AuditQuery): Promise<Result<readonly AuditEntry[]>>;
+}
+
+/**
+ * A value the client will accept for a NULLABLE `Json` column.
+ *
+ * `null` is not one: the client refuses it as a validation error rather than
+ * storing SQL NULL, and its OTHER sentinel would store the JSON scalar `null`,
+ * which the json-root CHECK refuses. See `./client.ts`.
+ */
+function writeJson(value: unknown): never {
+  return (value === null || value === undefined ? TENANCY_JSON_DB_NULL : value) as never;
 }
 
 export function createToolsTranscript(transactions: TenancyTransactions): ToolsTranscript {
@@ -108,7 +120,7 @@ export function createToolsTranscript(transactions: TenancyTransactions): ToolsT
           arguments: { ...call.arguments } as never,
           // The json-root CHECK admits only an object or an array, and the
           // record's `result` is `unknown`. See `./tools-audit-rows.ts`.
-          result: writeResult(call.result) as never,
+          result: writeJson(writeResult(call.result)),
           status: call.status,
           retryCount: call.retryCount,
           error: call.error,
@@ -187,7 +199,7 @@ export function createToolsTranscript(transactions: TenancyTransactions): ToolsT
               endUserId: entry.endUserId,
               traceId: entry.traceId,
               arguments: writeAuditArguments(entry) as never,
-              result: writeResult(entry.result) as never,
+              result: writeJson(writeResult(entry.result)),
               error: entry.error,
               status: entry.status,
               latencyMs: entry.latencyMs,
