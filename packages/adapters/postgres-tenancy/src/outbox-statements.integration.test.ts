@@ -22,8 +22,11 @@ const AT = new Date("2026-05-01T09:00:00.000Z");
 
 function eventId(): string {
   sequence += 1;
-  const tail = sequence.toString(16).padStart(6, "0");
-  return `01926f9e-${tail.slice(0, 4)}-7000-8000-00000000${tail}`;
+  const tail = sequence.toString(16).padStart(4, "0");
+  // 8-4-4-4-12, version nibble 7, variant 8. A group of the wrong length is
+  // refused by the UUID column rather than stored, which is how the first draft
+  // of this helper was found.
+  return `01926f9e-${tail}-7000-8000-${tail.padStart(12, "0")}`;
 }
 
 function row(environmentId: string, offset: number): OutboxInsertRow {
