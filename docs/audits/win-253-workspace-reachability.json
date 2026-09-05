@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "1366bb64f30bee9839e77e72ce1173a2e4d4d3e1fb6d0ccce61fdc4ad9af0c6f",
+  "evidenceSha256": "d8d8f4df0e7ca1811e40305502d01e89dd153f17a613b060fe458e142bcda3a7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3ed44dc8bc1fe516ede8b91bafc4b5a2fe37ddc0ed85637b827b45df8e1de850",
+    "aggregateSha256": "22a9e42d008884b63306bb49972f6228ad0565f2a231064353ed363b05bdf5ae",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -17949,7 +17949,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "fbe18bd348de65443395a6cd87ea6fb6daf9b9f43aa0806f883a53ec486b190b"
+        "sha256": "658e9aeba24456cac2568f5476cbf873b71216da034331e9887b3b41df85d2f9"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -17969,7 +17969,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "17f16c62a8beb54ef1d4194f710017d76fd08ce75bee94e97847cd4b70c1cd56"
+        "sha256": "0bfcf7945fa924fdf29ded71ced7711f27488b67f3cebf1997b5dc417f0edc60"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -18001,7 +18001,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "86b81592889b33aa37113873cf3a42e61b14e16c832ef266d86a722357fc72e0"
+        "sha256": "bd48fbb3714614c0257e74f671eebde2b60610973c23e93685f37b6a5b128aa8"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -18369,7 +18369,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "f24c9c8e2cdd745693d6c2a4c26286495ae5adbb61cb3fb6bd3b6edece8828cd"
+        "sha256": "5ecc09c20dbe7e5dbd906524e9741ab0bac3013f292b92113291f6289131a7d3"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -43137,7 +43137,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 666
+              "line": 676
             }
           ],
           "reversePaths": [
@@ -43221,7 +43221,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "8f498f267d610747ecc4972544d71bab75d6cfb87e7be61d4c260ef3aba9f34f",
+      "evidenceSha256": "57fa53cb7978d784aabffff8f8a1ca5568573aab4074e08c73ef901030f35701",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -45218,9 +45218,19 @@
               "line": 3
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 673
+            },
+            {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 390
+              "line": 395
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 374
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -45236,6 +45246,11 @@
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
               "line": 768
+            },
+            {
+              "from": "scripts/workspace-reachability.test.mjs",
+              "kind": "reference",
+              "line": 624
             }
           ],
           "reversePaths": [
@@ -45264,8 +45279,16 @@
               "packages/adapters/postgres-tenancy/src/outbox-conformance.integration.test.ts"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
               "scripts/arch/composition-root.test.mjs",
               "scripts/arch/composition-root.test.mjs"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
             ],
             [
               "scripts/arch/sole-writer.test.mjs",
@@ -45278,6 +45301,10 @@
             [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
+            ],
+            [
+              "scripts/workspace-reachability.test.mjs",
+              "scripts/workspace-reachability.test.mjs"
             ]
           ],
           "roots": [
@@ -45287,10 +45314,13 @@
             "packages/adapters/outbox/src/envelope.test.ts",
             "packages/adapters/outbox/src/event-id.test.ts",
             "packages/adapters/postgres-tenancy/src/outbox-conformance.integration.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/composition-root.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
-            "scripts/v1-ledger.test.mjs"
+            "scripts/v1-ledger.test.mjs",
+            "scripts/workspace-reachability.test.mjs"
           ]
         }
       },
@@ -45349,7 +45379,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "ae236c4909b0806df5b3dcc4e4fef9c9ad2877e50000e7e49d3165bd0f0e1b69",
+      "evidenceSha256": "87297991e3563073c30b4affcfddc33db76efa0ddbdac7fae09624df7eb48e36",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -45770,6 +45800,11 @@
               "line": 639
             },
             {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 376
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 155
@@ -45877,6 +45912,10 @@
               "scripts/arch/arch-boundaries.test.mjs"
             ],
             [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
             ],
@@ -45918,6 +45957,7 @@
             "packages/adapters/postgres-tenancy/src/repository.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/transaction.integration.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
@@ -45981,7 +46021,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "eb20bc8ebf37ae69c4d85869ad26a2793b0804502775d455062257cca29e3543",
+      "evidenceSha256": "da98c79f9b1aaa059cbfb0702b46636656a1e5e4dcfd1303b4c479dc44518e4b",
       "manifestSha256": "fdadd25374dd9fe10175698879fbbf24aa22acea5003b38595d32444e35b1c83",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -73693,7 +73733,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 414
+              "line": 419
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -75606,7 +75646,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "a7edf0f2eda2dd356fcd1770d31761a358591071f92ac2c19e176f3d689cf4c8",
+      "evidenceSha256": "d645a5d00761cdeb7e2317589717bd3faad15251cdc8d18ce087fa9dac642742",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

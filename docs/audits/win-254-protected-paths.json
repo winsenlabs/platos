@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "51756dc74d7e9660bdffdf8594c74dee00218ed4d4ad3f2919d3f919b3265caf"
+      "sha256": "9310c07c0e4ecace4a34a0e2a161f5f057affe01dff219b578b6b5549286bafc"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0418eb42645cae53659f98d51336dc739fa7f2d203c1b3e8bcd02202fa2f86a1"
+      "sha256": "50f6a24a6f2ff8bedfa9a8c3209870990609b2834f64a352474ab2ad351f13bd"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "f24c9c8e2cdd745693d6c2a4c26286495ae5adbb61cb3fb6bd3b6edece8828cd"
+      "sha256": "5ecc09c20dbe7e5dbd906524e9741ab0bac3013f292b92113291f6289131a7d3"
     }
   ]
 }
