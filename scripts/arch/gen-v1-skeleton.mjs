@@ -87,9 +87,9 @@ export const ADAPTERS = [
  *
  * ONE entry per BINDING, not per directory. `postgres-tenancy` appears three
  * times because it satisfies three ports; every other directory appears once.
- * This is
- * the list the composition root's table is compared against, the list the
- * project graph derives its owner edges from, and the list `selfCheck` counts.
+ * This is the list the composition root's table is compared against, the list
+ * the project graph derives its owner edges from, and the list `selfCheck`
+ * counts.
  */
 export function adapterBindings(adapters = ADAPTERS) {
   const bindings = [];
@@ -262,6 +262,36 @@ export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
 ];
 
+// ---------------------------------------------------------------------------
+// CONTEXTS THAT PUBLISH THEIR IN-MEMORY DOUBLES (WIN-258 T5). Append-only, one
+// project path per entry, each with the issue that needed it.
+//
+// A SECOND LIST RATHER THAN A SECOND USE OF THE ONE ABOVE, because the two
+// publish different things for different readers and the honesty check that
+// keeps each list true is a different check. `APPLICATION_ENTRY_PROJECTS`
+// publishes the factory that BUILDS a context and is true when
+// `apps/core-api/src/app.module.ts` imports it. This list publishes
+// `application/testing/index.js` — the in-memory doubles a context already
+// writes for its own suites — and is true when a CANONICAL-STORE ADAPTER
+// imports it.
+//
+// WHY AN ADAPTER NEEDS THEM. WIN-258's whole instrument is the conformance
+// DIFFERENTIAL: one scenario, asked of the in-memory double and of the real
+// PostgreSQL store, with the two observation maps compared verbatim. That is how
+// tranche 2 found `operatorIdentities.upsert` keyed on the wrong unique index,
+// and it is the only test shape that can find a divergence rather than assert an
+// author's belief. `identity-access` and `tenancy` were reachable because they
+// were already on the list above; `tools` was not, so the differential could not
+// have been written for it at all.
+//
+// A double that cannot be reached from outside its own package is a double the
+// adapter implementing its port cannot be compared against — which is the same
+// dead-surface argument WIN-297 made, pointing the other way.
+// ---------------------------------------------------------------------------
+export const TESTING_ENTRY_PROJECTS = [
+  "packages/contexts/tools", // WIN-258 T5 — compared against the PostgreSQL ToolsRepository by packages/adapters/postgres-tenancy
+];
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -385,7 +415,12 @@ function kernelManifest(adopted) {
   });
 }
 
-function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+function contextManifest(
+  name,
+  adopted,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const dependencies = workspaceDependencies([
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
@@ -401,6 +436,12 @@ function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_P
     exports["./application/index.js"] = {
       types: "./dist/application/index.d.ts",
       import: "./dist/application/index.js",
+    };
+  }
+  if (testingEntries.includes(`packages/contexts/${name}`)) {
+    exports["./application/testing/index.js"] = {
+      types: "./dist/application/testing/index.d.ts",
+      import: "./dist/application/testing/index.js",
     };
   }
   return packageManifest({
@@ -695,7 +736,11 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+export function renderSkeleton(
+  adopted,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
@@ -735,7 +780,7 @@ export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_P
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries, testingEntries));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
@@ -939,7 +984,11 @@ export function checkAdapterTable(adapters = ADAPTERS, contextNames = CONTEXT_NA
   return errors;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+export function selfCheck(
+  adopted = ADOPTED_PROJECTS,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -991,9 +1040,30 @@ export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLI
     seenEntries.add(project);
   }
 
+  // The same three conditions on the doubles list, and for the same reasons: an
+  // unadopted project's `application/testing/index.ts` is a generated
+  // placeholder, so publishing it would name a file nothing wrote.
+  const seenTestingEntries = new Set();
+  for (const project of testingEntries) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenTestingEntries.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    seenTestingEntries.add(project);
+  }
+
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
-  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted, applicationEntries));
+  const { scaffolding, placeholders } = tierCounts(
+    renderSkeleton(adopted, applicationEntries, testingEntries),
+  );
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
   }
