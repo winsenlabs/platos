@@ -1372,13 +1372,13 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
  * their own branch's arithmetic and neither is the tree.
  *
- * TRANCHE 5 — THE `tools` CANONICAL STORE — adds 6 files and 57 cases to
+ * TRANCHE 5 — THE `tools` CANONICAL STORE — adds 6 files and 59 cases to
  * `packages/adapters/postgres-tenancy`, and to no other package at all. The
  * `tools` CONTEXT gains no test file: the port and its in-memory double already
  * existed and already had suites, and this tranche implements the port rather
  * than widening it.
  *
- * WHAT THE 57 ARE, and 37 of them need a real PostgreSQL:
+ * WHAT THE 59 ARE, and 39 of them need a real PostgreSQL:
  *
  *   tools-mapping.test.ts                    20  row -> domain mapping, the
  *                                                audit envelope's layout, and
@@ -1401,11 +1401,16 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                real database, compared
  *                                                observation for observation
  *                                                with the in-memory double's
- *   tools-transaction.integration.test.ts     5  failure injection, and a
- *                                                returned error `Result` that
- *                                                must COMMIT NOTHING
+ *   tools-transaction.integration.test.ts     7  failure injection; a returned
+ *                                                error `Result` that must COMMIT
+ *                                                NOTHING; and the converse pair
+ *                                                — a GUARD refusal the unit of
+ *                                                work commits around, and a
+ *                                                refusal POSTGRESQL raised,
+ *                                                which takes the unit of work
+ *                                                with it and still resolves
  *
- * 20 + 12 + 8 + 7 + 5 + 5 = 57. Five of the six are excluded from the package's
+ * 20 + 12 + 8 + 7 + 5 + 7 = 59. Five of the six are excluded from the package's
  * default `test` script by filename and run by the `postgres-tenancy-repository`
  * CI job.
  *
@@ -1427,10 +1432,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * So `packages/adapters/postgres-tenancy` moves a third time:
  *
- *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 256 cases
+ *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 258 cases
  *
- * 20 + 6 = 26 files and 199 + 57 = 256 cases. The tree total is 391 + 6 = 397
- * files and 6115 + 57 = 6172 cases. The adapters term of the three-way identity
+ * 20 + 6 = 26 files and 199 + 59 = 258 cases. The tree total is 391 + 6 = 397
+ * files and 6115 + 59 = 6174 cases. The adapters term of the three-way identity
  * carries all of it, because every added file is an adapter's: 39 + 6 = 45, and
  * 349 + 3 + 45 = 397.
  */
@@ -1443,7 +1448,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 26, cases: 256 },
+  "packages/adapters/postgres-tenancy": { files: 26, cases: 258 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1591,7 +1596,7 @@ export const EXPECTED = Object.freeze({
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6172;
+export const EXPECTED_RUNTIME_TOTAL = 6174;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

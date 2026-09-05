@@ -11,6 +11,16 @@
 // would prove nothing at all inside a transaction, because a session sees its
 // own uncommitted rows.
 //
+// AND THE CONVERSE, WHICH THE FIRST FIVE CASES DO NOT REACH. A refusal must not
+// take a caller's OTHER rows with it either, or a use case that reads a `Result`
+// and carries on cannot commit the work it already did. The last two cases are
+// that pair, and the real database splits them: a refusal raised by the GUARD is
+// a `Result` the surrounding unit of work commits around, and a refusal raised
+// by POSTGRESQL aborts the transaction — which then answers COMMIT with ROLLBACK
+// and no error, so the unit of work RESOLVES over a transaction that wrote
+// nothing. The second is a limit of the port's contract against a real store and
+// is pinned as a named case rather than smoothed over.
+//
 // `replaceExposures` IS THE ONE WORTH INJECTING INTO. It is three statements —
 // a DELETE of what the entity no longer declares, an UPDATE of what it still
 // does, and a CREATE of what it now adds — and the port's contract is "One
@@ -267,5 +277,108 @@ describe("the transaction boundary, proved by failure injection", () => {
       where: { entityId: harness.second.mcpEntityId },
     });
     expect(after).toBe(before);
+  }, 120_000);
+
+  test("a SCOPE refusal is a Result the surrounding unit of work COMMITS around", async () => {
+    // THE CONVERSE OF EVERY CASE ABOVE, and the half none of them proves. The
+    // four before this say a refusal must not leave rows behind. This one says a
+    // refusal must not take a caller's OTHER rows with it: `Result` is a
+    // business outcome, and a use case that reads a refusal and carries on has
+    // to be able to commit the work it already did. Without this case the suite
+    // is satisfied by a store that aborts the unit of work on every refusal,
+    // which would be indistinguishable from correct here and catastrophic in a
+    // use case that treats a missing row as a branch rather than as an error.
+    //
+    // THE REFUSAL IS CHOSEN SO NO STATEMENT FAILS. `requireScope` is a SELECT
+    // that returns a row which does not match; nothing raises, so nothing can
+    // poison the transaction. That is a PROPERTY of where the guard sits, not an
+    // accident — the case below pins the other shape, where the DATABASE is what
+    // refuses, and the two answers are different.
+    const zeta = await mintTool("txn.zeta");
+    const target = await harness.seedToolsTenant("txn-commit-around");
+    const forged = { ...target.scope, organizationId: tenant.scope.organizationId };
+
+    await harness.adapter.unitOfWork.run(async () => {
+      const written = await harness.repository.replaceExposures({
+        scope: target.scope,
+        entityId: toolsEntityId(target.wireEntityId),
+        callbackUrl: "https://backend.example.test/hooks",
+        toolIds: [zeta],
+      });
+      expect(written.ok).toBe(true);
+      const refused = await harness.repository.listExposures(forged);
+      expect(refused.ok).toBe(false);
+      expect(refused.ok ? null : refused.error.details.reason).toBe("out_of_scope:listExposures");
+    });
+
+    // Read by the ONLOOKER. The write COMMITTED, with a refusal in the middle of
+    // the same unit of work.
+    const durable = await harness.durableExposures(target.scope.environmentId);
+    expect(durable.map((row) => row.toolId)).toEqual([zeta]);
+  }, 120_000);
+
+  test("a refusal the DATABASE raised takes the whole unit of work with it, SILENTLY", async () => {
+    // THE CONTRACT THE REAL DATABASE WILL NOT HONOUR, pinned rather than
+    // invented. The case above holds because the refusal never reached
+    // PostgreSQL: `requireScope` is a SELECT that returns a row which does not
+    // match, so no statement fails and the surrounding transaction is intact.
+    //
+    // When the refusal IS PostgreSQL — here `EnvironmentEntityTool_toolId_fkey`
+    // on a tool no row carries — the statement aborts the whole transaction. No
+    // savepoint is taken around a repository call, so from that instant the
+    // earlier write in the same unit of work is lost.
+    //
+    // AND THE UNIT OF WORK STILL RESOLVES. PostgreSQL answers COMMIT on an
+    // aborted transaction with ROLLBACK and no error, so `unitOfWork.run` returns
+    // NORMALLY over a transaction that wrote nothing. Both halves are asserted,
+    // because the dangerous one is the first: a caller that treats a store
+    // `Result` as recoverable, carries on, and lets the block return gets a
+    // silent total rollback — no exception to catch and no row to find.
+    //
+    // THIS IS A LIMIT OF THE PORT'S CONTRACT AGAINST A REAL STORE, NOT A DEFECT
+    // IN THIS ADAPTER. `Result` means "handle this outcome" on every method, and
+    // it is honestly recoverable only when the GUARD refused. A caller that
+    // means to continue past a refusal the database raised must open a unit of
+    // work per call. Closing it inside the adapter would mean a SAVEPOINT
+    // around every repository call — a statement per call on a twenty-five-method
+    // port, and a change to `TenancyTransactions`, which four owners share. That
+    // is a decision for whoever owns that seam; it is recorded here rather than
+    // made in passing.
+    const eta = await mintTool("txn.eta");
+    const target = await harness.seedToolsTenant("txn-poisoned");
+    const entityId = toolsEntityId(target.wireEntityId);
+
+    let threw: unknown = null;
+    try {
+      await harness.adapter.unitOfWork.run(async () => {
+        const written = await harness.repository.replaceExposures({
+          scope: target.scope,
+          entityId,
+          callbackUrl: "https://backend.example.test/hooks",
+          toolIds: [eta],
+        });
+        expect(written.ok).toBe(true);
+        const refused = await harness.repository.replaceExposures({
+          scope: target.scope,
+          entityId: toolsEntityId(target.mcpEntityId),
+          callbackUrl: null,
+          toolIds: [ABSENT_TOOL],
+        });
+        // The caller sees a `Result`, not a throw. The transaction is already
+        // lost and nothing in this frame can tell.
+        expect(refused.ok).toBe(false);
+        expect(refused.ok ? null : refused.error.details.reason).toBe("replaceExposures:P2003");
+      });
+    } catch (error) {
+      threw = error;
+    }
+
+    // HALF ONE: it did not throw. That is the surprising half, and the one a
+    // caller has to be told about.
+    expect(threw).toBe(null);
+    // HALF TWO: and it wrote nothing, read by the ONLOOKER. The `eta` exposure
+    // was accepted, the caller was told so, and it is not there.
+    const durable = await harness.durableExposures(target.scope.environmentId);
+    expect(durable).toEqual([]);
   }, 120_000);
 });
