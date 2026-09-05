@@ -102,28 +102,42 @@ function sendRecord(deliveryId: string, retryNumber: number): AlertDeliveryRetry
 describe("the writes that must not happen twice", () => {
   test("a cap whose identifier is taken is a REFUSAL, not a raise", async () => {
     const capId = "ff000000-0e01-4000-8000-000000000001";
+    const nextId = "ff000000-0e07-4000-8000-000000000001";
     const first = await harness.base.adapter.unitOfWork.run((transaction) =>
       harness.repository.insertBudget(conformanceBudget(scope, capId, "scope"), transaction),
     );
     expect(first.ok).toBe(true);
 
-    // THE WHOLE POINT IS THAT THIS RESOLVES. `insertBudget` writes through
-    // `createMany` with the database's own skip, so a second insert of the same
-    // identifier returns `ok: false` and leaves the caller's transaction usable.
-    // An `INSERT` that raised would abort it, and a use case that inserts a cap
-    // and then appends a crossing in one unit of work would lose the crossing to
-    // a duplicate it was prepared to handle.
-    const second = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.insertBudget(
+    // THE WHOLE POINT IS THAT THIS RESOLVES, AND THAT THE TRANSACTION SURVIVES
+    // IT. `insertBudget` writes through `createMany` with the database's own
+    // skip, so a second insert of the same identifier returns `ok: false`
+    // instead of raising. All three writes below are in ONE unit of work: the
+    // refusal sits BETWEEN two writes that must both commit. An `INSERT` that
+    // raised would have poisoned the transaction, and the cap written after the
+    // refusal would be gone — which is exactly what a use case that inserts a
+    // cap and then appends a crossing would lose to a duplicate it was prepared
+    // to handle.
+    const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+      const refused = await harness.repository.insertBudget(
         conformanceBudget(scope, capId, "scope", { limitCents: 999_000 }),
         transaction,
-      ),
-    );
-    expect(second.ok).toBe(false);
+      );
+      const after = await harness.repository.insertBudget(
+        conformanceBudget(scope, nextId, "scope", { limitCents: 300_000 }),
+        transaction,
+      );
+      return { refused, after };
+    });
+    expect(outcome.refused.ok).toBe(false);
+    expect(outcome.after.ok).toBe(true);
 
-    // And the FIRST row is the one that survived, so the refusal wrote nothing.
+    // The FIRST row is the one that survived, so the refusal wrote nothing...
     const held = await harness.repository.findBudget(scope, asCostIdentifier(capId));
     expect(held.ok && held.value?.limitCents).toBe(100_000);
+    // ...and the write that FOLLOWED the returned refusal COMMITTED, which is
+    // the half a rollback would have taken with it.
+    const next = await harness.repository.findBudget(scope, asCostIdentifier(nextId));
+    expect(next.ok && next.value?.limitCents).toBe(300_000);
   });
 
   test("a credential reference that is not a uuid is ANSWERED zero, not sent", async () => {
