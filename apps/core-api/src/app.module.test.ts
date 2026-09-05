@@ -89,22 +89,34 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares THIRTEEN bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+  it("declares FIFTEEN bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies both `TenancyRepository` and
     // `IdentityAccessRepository` because there is one PostgreSQL database
     // behind one client. Both are asserted, and the gap between them is
     // asserted too, so a change that collapsed them back into one count fails.
-    expect(ADAPTER_BINDINGS).toHaveLength(13);
-    expect(DECLARED_BINDING_COUNT).toBe(13);
+    //
+    // 13 -> 15 (WIN-258 tranche 5). The same directory now also satisfies
+    // `agents`' TWO canonical-store ports, for the same reason and over the same
+    // client. The gap is four now, not one, and it is still a gap between
+    // BINDINGS and DIRECTORIES rather than a new directory.
+    expect(ADAPTER_BINDINGS).toHaveLength(15);
+    expect(DECLARED_BINDING_COUNT).toBe(15);
     expect(ADAPTER_NAMES).toHaveLength(12);
     const twoPort = ADAPTER_BINDINGS.filter((binding) => binding.adapter === "postgres-tenancy");
     expect(twoPort.map((binding) => binding.port)).toEqual([
       "TenancyRepository",
       "IdentityAccessRepository",
+      "AgentsRepository",
+      "ScaffoldingRepository",
     ]);
-    expect(twoPort.map((binding) => binding.owner)).toEqual(["tenancy", "identity-access"]);
+    expect(twoPort.map((binding) => binding.owner)).toEqual([
+      "tenancy",
+      "identity-access",
+      "agents",
+      "agents",
+    ]);
   });
 
   it("names each adapter DIRECTORY exactly once, even though one has two bindings", () => {
@@ -139,20 +151,23 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(13);
+    expect(report.unsatisfied).toHaveLength(15);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/13 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/15 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
-    // list `postgres-tenancy` twice and say 13/13 while twelve objects were
-    // wired, which is a readiness endpoint that lies about what is serving.
+    // list `postgres-tenancy` once and say 12/12 while four of the ports it
+    // carries were unserved, which is a readiness endpoint that lies about what
+    // is serving.
     expect(report.unsatisfied).toContain("postgres-tenancy:TenancyRepository");
     expect(report.unsatisfied).toContain("postgres-tenancy:IdentityAccessRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:AgentsRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ScaffoldingRepository");
   });
 
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(12);
+    expect(report.unsatisfied).toHaveLength(14);
     expect(report.faults).toEqual([]);
   });
 
@@ -181,7 +196,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(13);
+    expect(app.bindings.unsatisfied).toHaveLength(15);
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
     expect(Object.isFrozen(app)).toBe(true);
@@ -210,7 +225,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(12);
+    expect(app.bindings.unsatisfied).toHaveLength(14);
   });
 
   it("does not compose a context from an adapter supply alone", () => {

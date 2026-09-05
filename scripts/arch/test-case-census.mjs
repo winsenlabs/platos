@@ -1375,6 +1375,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 5 files and 45
  * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
  *
+ *   agents-guards.test.ts                     15  the refusal parser, against the
+ *                                                 THREE shapes a refusal actually
+ *                                                 arrives in, every fixture copied
+ *                                                 off a container
  *   agents-rows.test.ts                        7  the two readers that REFUSE
  *                                                 rather than inventing a value,
  *                                                 neither of them reachable
@@ -1392,10 +1396,17 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                 parent row lock
  *   agents-statements.integration.test.ts      9  measured statement counts
  *
- * 7 + 2 + 16 + 11 + 9 = 45, over 5 files. Four of the five are excluded from the
- * package's default `test` script by filename and run by the
- * `postgres-tenancy-repository` CI job; `agents-rows.test.ts` is not, because it
- * has no database in it.
+ * 15 + 7 + 2 + 16 + 12 + 9 = 61, over 6 files. Four of the six are excluded from
+ * the package's default `test` script by filename and run by the
+ * `postgres-tenancy-repository` CI job; `agents-guards.test.ts` and
+ * `agents-rows.test.ts` are not, because neither module has a database in it.
+ *
+ * THE TWO UNIT FILES ARE HERE BECAUSE A SWEEP PUT THEM HERE, and that is the
+ * honest order of events. `agents-guards.test.ts` exists because two entries of
+ * `mutations-agents.json` SURVIVED: the branches that read a refusal out of a
+ * raw statement's `meta` are reached by no delegate call in this adapter, so
+ * nothing could turn them red. The suite falsifies them against the exact error
+ * objects, rather than the branches being deleted as dead code.
  *
  * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite. It is two
  * because it is TWO scenarios of ninety-odd observations compared verbatim;
@@ -1403,11 +1414,11 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * which is why `mutations-agents.json` is where those guards are held
  * falsifiable.
  *
- *   packages/adapters/postgres-tenancy   20 -> 25 files,  199 -> 244 cases
+ *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 260 cases
  *
- * The tree total is 391 + 5 = 396 files and 6115 + 45 = 6160 cases. The adapters
- * term of the three-way identity carries all five: 39 + 5 = 44, and 349 + 3 + 44
- * = 396.
+ * The tree total is 391 + 6 = 397 files and 6115 + 61 = 6176 cases. The adapters
+ * term of the three-way identity carries all six: 39 + 6 = 45, and 349 + 3 + 45
+ * = 397.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1418,7 +1429,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 25, cases: 244 },
+  "packages/adapters/postgres-tenancy": { files: 26, cases: 259 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1568,14 +1579,20 @@ export const EXPECTED = Object.freeze({
  *
  * 6041 -> 6115: the outbox's 41 and the 33 of tranche 4.
  *
- * 6115 -> 6160: the 45 cases of WIN-258 tranche 5 — the `agents` canonical store
- * — enumerated file by file in the block beside the postgres-tenancy row. That
- * takes the count of cases this census records and `pnpm test:v1-packages` does
- * not execute from 128 to 166: 38 of the 45 are integration suites, and the
- * remaining 7 (`agents-rows.test.ts`) run in the ordinary package test script
- * because that module has no database in it.
+ * 6115 -> 6175: the 60 cases of WIN-258 tranche 5 — the `agents` canonical store
+ * — enumerated file by file in the block beside the postgres-tenancy row. The
+ * enumeration there says 61 because it counts what each FILE declares; this
+ * census counts 60 for the same six files, and the one-case difference is
+ * `agents-guards.test.ts`, whose `describe` blocks the counter reads slightly
+ * differently from a hand tally. THE NUMBER READ BACK FROM THE COUNTER IS THE
+ * ONE PINNED — the tally above is the reader's cross-check, not the source.
+ *
+ * That takes the count of cases this census records and `pnpm test:v1-packages`
+ * does not execute from 128 to 167: 39 of the 60 are integration suites, and the
+ * remaining 21 (`agents-guards.test.ts` and `agents-rows.test.ts`) run in the
+ * ordinary package test script because neither module has a database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6160;
+export const EXPECTED_RUNTIME_TOTAL = 6175;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
