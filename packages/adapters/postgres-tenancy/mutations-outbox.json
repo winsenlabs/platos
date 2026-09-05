@@ -55,7 +55,12 @@
         "src/outbox-transaction.integration.test.ts",
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append with NO open transaction is refused with not_open",
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append carrying a FINISHED transaction's token is refused with scope_unknown",
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append carrying ANOTHER LIVE transaction's token is refused with scope_foreign",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N02 store: a taken identifier is reported with the driver's own code",
@@ -66,7 +71,10 @@
         "src/outbox-transaction.integration.test.ts",
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > a repeated event identifier is refused with its own code",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N03 store: an unknown environment is reported with the driver's own code",
@@ -77,7 +85,10 @@
         "src/outbox-transaction.integration.test.ts",
         "src/outbox-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-constraints.integration.test.ts > constraints that live only in the migrations > Event_environmentId_fkey refuses an event whose environment does not exist",
+        "src/outbox-transaction.integration.test.ts > the transaction boundary, proved by failure injection > when a LATER write of the transaction fails, the appended event is gone"
+      ]
     },
     {
       "name": "N04 store: the page cursor drops its second arm and compares the instant alone",
@@ -88,7 +99,9 @@
         "src/outbox-conformance.integration.test.ts",
         "src/outbox-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-statements.integration.test.ts > drain > no page is ever re-read and none is skipped"
+      ]
     },
     {
       "name": "N05 store: the page is ordered by instant then identifier DESCENDING",
@@ -98,7 +111,9 @@
       "suites": [
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N06 store: the page size is not applied",
@@ -108,7 +123,9 @@
       "suites": [
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N07 store: the row takes the database's clock instead of the minted instant",
@@ -119,7 +136,10 @@
         "src/outbox-conformance.integration.test.ts",
         "src/outbox-transaction.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the transaction boundary, proved by failure injection > a COMMITTED append is durable on a connection the writer never used",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N08 store: the subject is dropped on the way in",
@@ -129,7 +149,9 @@
       "suites": [
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N09 store: the envelope is dropped on the way in",
@@ -139,7 +161,9 @@
       "suites": [
         "src/outbox-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
     },
     {
       "name": "N10 store: the seam's nullable subject is narrowed, and only the composition root can see it",
@@ -170,8 +194,9 @@
       "to": "",
       "suites": [],
       "kills": [
-        "packages/adapters/postgres-tenancy/src/outbox-harness.ts:85 — Event.$executeRaw: insert into() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer",
-        "packages/adapters/postgres-tenancy/src/outbox-store.ts:112 — Event.create() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer"
+        "audit:sole-writer > packages/adapters/postgres-tenancy/src/outbox-store.ts:112 - Event.create() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer",
+        "audit:sole-writer > packages/adapters/postgres-tenancy/src/outbox-harness.ts:85 - Event.$executeRaw: insert into() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer",
+        "test:sole-writer > the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows"
       ],
       "command": [
         "node",
