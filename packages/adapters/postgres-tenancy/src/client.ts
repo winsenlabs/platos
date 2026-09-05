@@ -31,6 +31,19 @@ export type TenancyTransactionClient = Prisma.TransactionClient;
 export type TenancyReader = TenancyDatabaseClient | TenancyTransactionClient;
 
 /**
+ * JSON the client will accept for a JSONB column.
+ *
+ * Aliased HERE for the same reason the two client types are: this is the one
+ * file that names the vendor namespace, and `outbox-store.ts` needs the type to
+ * hand an envelope to `Event.payload` without importing it. The alias is not
+ * `unknown` with a cast at the call site — a cast there would be a place where a
+ * value the driver cannot carry passes unexamined, and the envelope's own
+ * serialisation guard would then be the only thing standing between a producer
+ * and a driver error.
+ */
+export type TenancyJsonInput = Prisma.InputJsonValue;
+
+/**
  * Pool and timeout settings, all optional and all with a stated default.
  *
  * They are separate fields rather than a URL the caller pre-builds because a

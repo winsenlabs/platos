@@ -34,11 +34,16 @@ import { createTenancyDatabaseClient } from "./client.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createMembershipRepository } from "./membership.js";
+import type { OutboxEventStorePort } from "./outbox-store.js";
+import { createOutboxEventStore } from "./outbox-store.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createTreeRepository } from "./tree.js";
 
-export interface PostgresTenancyAdapter extends TenancyRepository, IdentityAccessRepository {
+export interface PostgresTenancyAdapter
+  extends TenancyRepository,
+    IdentityAccessRepository,
+    OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
   readonly unitOfWork: UnitOfWork;
@@ -77,6 +82,14 @@ export function buildPostgresTenancyAdapter(
     // named store properties, so there is no name collision to arbitrate: its
     // ten keys and tenancy's thirty-one are disjoint.
     ...createIdentityAccessRepository(transactions),
+    // WIN-258 T4. The canonical `Event` row, written on the kernel outbox
+    // adapter's behalf. It is spread in here rather than exposed as a separate
+    // object for the reason the identity-access composite is: the composition
+    // root proves `PostgresTenancyAdapter extends OutboxEventStore` at compile
+    // time, and a nested property could not satisfy that. Its two method names
+    // collide with nothing — `insertOutboxEvent` and `readOutboxEventsAfter`
+    // are the only members either port has that begin with those words.
+    ...createOutboxEventStore(transactions),
   };
 }
 

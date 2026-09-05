@@ -220,8 +220,16 @@ export const UNOWNED_ADR_ROWS = Object.freeze({
  * listed, and it is listed by hand, so granting one is a decision somebody made
  * rather than a consequence of an unrelated table.
  *
- * The outbox pseudo-owner is absent because it is already an adapter: it
- * resolves through `ownerDirectory` and needs no delegation.
+ * THE OUTBOX PSEUDO-OWNER IS PRESENT, and it was not until WIN-258 T4. The note
+ * that used to sit here said it needed no delegation "because it is already an
+ * adapter: it resolves through `ownerDirectory`". That was true of the DIRECTORY
+ * and false of the WRITE. `packages/adapters/outbox` may not hold the ORM — ADR
+ * M0.3 §15 gives the client exactly one home and `tenancy-prisma-only` in
+ * scripts/arch/boundary-rules.mjs enforces it — so the directory the pseudo-owner
+ * resolves to is a directory that cannot issue an INSERT, and `Event` was in
+ * exactly the position every other canonical row was in before this map existed:
+ * owned by a package unable to write it. The delegation below is that same
+ * amendment applied to the one owner that is an adapter rather than a context.
  */
 export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // WIN-258. The PostgreSQL TenancyRepository. `tenancy-prisma-only` in
@@ -248,6 +256,21 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // could not have bumped it without writing a row it does not own; the shared
   // directory can, because it is already `tenancy`'s delegate.
   "identity-access": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T4. The kernel outbox adapter's canonical store — the SAME
+  // directory again, and for the same reason: `Event` lives in the one
+  // PostgreSQL database, behind the one client, in the one file that imports it.
+  //
+  // WHAT THIS GRANTS, EXACTLY. `ownerDirectories("<kernel-outbox-adapter>")` now
+  // returns the outbox adapter's own directory AND this one, and nothing else.
+  // The outbox adapter keeps every decision that makes an event an event — the
+  // ordered identifier, the instant, the envelope, the refusals — and this
+  // directory holds the statement. A write to `Event` from any third place still
+  // fails, and a write to any row this owner does not own still fails from here:
+  // ownership is carried by the owner TAG on the row and `checkSoleWriter` asks
+  // per WRITE, so this entry grants exactly the two rows the pseudo-owner owns,
+  // `Event` and the superseded `ObservabilityOutbox`.
+  "<kernel-outbox-adapter>": "packages/adapters/postgres-tenancy",
 });
 
 /**

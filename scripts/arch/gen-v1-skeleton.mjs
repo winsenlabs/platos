@@ -212,6 +212,7 @@ export const ADOPTED_PROJECTS = [
   "packages/contexts/conversations", // WIN-256 — the turn-execution engine: Thread, Turn, Step, PostmanExecution, and the DAG sink nothing imports
   "packages/adapters/model-router-providers", // WIN-256 — the ModelRouter implementation and THE sole holder of the inference SDK
   "packages/adapters/postgres-tenancy", // WIN-258 — the TenancyRepository over PostgreSQL and THE sole holder of the tenancy-database client
+  "packages/adapters/outbox", // WIN-258 T4 — the kernel OutboxWriter: the envelope, the ordered identifier, every refusal, and the store seam the one ORM home implements
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
 ];
