@@ -35,7 +35,10 @@ import type { ObservabilitySink } from "@platos/context-observability/applicatio
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
 import type { ModelRouter } from "@platos/context-providers/application/ports/index.js";
 import type { ChannelAdapter } from "@platos/context-channels/application/ports/index.js";
-import type { Notifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import type {
+  BudgetRepository,
+  Notifier,
+} from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
 import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
@@ -110,6 +113,7 @@ interface PortSatisfaction {
     PostgresTenancyAdapter,
     IdentityAccessRepository
   >;
+  readonly "postgres-tenancy:BudgetRepository": Satisfies<PostgresTenancyAdapter, BudgetRepository>;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -129,6 +133,7 @@ interface PortSatisfaction {
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:TenancyRepository": true,
   "postgres-tenancy:IdentityAccessRepository": true,
+  "postgres-tenancy:BudgetRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -195,6 +200,16 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "IdentityAccessRepository",
     owner: "identity-access",
   }),
+  // WIN-258 T5 (ADR M0.3 §15). The THIRD binding of the same directory, and the
+  // third owner of the one PostgreSQL client. `cost-monitoring` is sole writer
+  // of six rows in the same database as tenancy's and identity-access's, so a
+  // separate adapter package for them would be a second home for a client the
+  // architecture gives exactly one.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "BudgetRepository",
+    owner: "cost-monitoring",
+  }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -211,10 +226,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirteen rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds fourteen rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` twice and open two pools
- * over the one database.
+ * adapters would otherwise build `postgres-tenancy` three times and open three
+ * pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

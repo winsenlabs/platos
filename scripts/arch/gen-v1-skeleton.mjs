@@ -60,7 +60,18 @@ export const ADAPTERS = [
     // ADR M0.3 §4's body already spells this directory "per-context
     // repositories, owner-tagged"; §15 records why the body wins over the
     // header's narrower "implements ONE port".
-    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }],
+    // WIN-258 T5. The THIRD owner, on the same sentence. `cost-monitoring`'s six
+    // rows — Budget, BudgetThresholdEvent, AlertChannel,
+    // AlertChannelConfiguration, AlertDelivery and its send records — live in
+    // the SAME PostgreSQL database, so they are behind the same client and in
+    // the same directory. Adding an owner here is what gives this adapter its
+    // project reference and workspace dependency on the context whose port it
+    // satisfies; §15 records why the body's "per-context repositories,
+    // owner-tagged" wins over the header's narrower "implements ONE port".
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      { port: "BudgetRepository", owner: "cost-monitoring" },
+    ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "THE single writer of the Event/outbox table" },
@@ -79,10 +90,11 @@ export const ADAPTERS = [
 /**
  * Every (adapter directory, port, owner) triple the layout declares, flattened.
  *
- * ONE entry per BINDING, not per directory. `postgres-tenancy` appears twice
- * because it satisfies two ports; every other directory appears once. This is
- * the list the composition root's table is compared against, the list the
- * project graph derives its owner edges from, and the list `selfCheck` counts.
+ * ONE entry per BINDING, not per directory. `postgres-tenancy` appears THREE
+ * times because it satisfies three ports; every other directory appears once.
+ * This is the list the composition root's table is compared against, the list
+ * the project graph derives its owner edges from, and the list `selfCheck`
+ * counts.
  */
 export function adapterBindings(adapters = ADAPTERS) {
   const bindings = [];
@@ -119,11 +131,18 @@ export function adapterOwnerPackages(adapter) {
 }
 
 // ADR M0.3 §4 names twelve concrete adapter DIRECTORIES and, after the §15
-// amendment, thirteen BINDINGS across them. Both are pinned: a thirteenth
-// directory and a fourteenth binding are each a reviewed line rather than a
+// amendment, FOURTEEN BINDINGS across them. Both are pinned: a thirteenth
+// directory and a fifteenth binding are each a reviewed line rather than a
 // silent consequence of editing a table.
+//
+// 13 -> 14 (WIN-258 T5). `packages/adapters/postgres-tenancy` gains
+// `cost-monitoring:BudgetRepository`, its THIRD binding and the third owner of
+// the one directory §15 gives the ORM. The DIRECTORY count is deliberately
+// unmoved: the whole point of the amendment is that a third owner is a row on
+// an existing directory rather than a thirteenth package holding a second
+// PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 13;
+export const EXPECTED_BINDING_COUNT = 14;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -162,7 +181,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` already depends on `identity-access`, so the 17-context DAG is
 // untouched. The independent expectation in scripts/arch/v1-project-graph.mjs
 // carries the same delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 96;
+// 96 -> 97 (WIN-258 T5, ADR M0.3 §15). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/cost-monitoring`. The directory satisfies that context's
+// `BudgetRepository` as well as the two ports it already had, so it names a
+// third context's port types and needs a third project reference. The edge
+// cannot create a cycle for the same reason the last one could not: contexts
+// are leaves relative to adapters. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 97;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -463,9 +490,12 @@ function describeAdapter(adapter) {
  * The adapter README.
  *
  * A directory with ONE binding reads exactly as it did before the §15
- * amendment. A directory with TWO names both, and says which sentence of ADR
- * M0.3 §4 it is standing on, because "an adapter implements ONE port" is the
- * line a reader would otherwise measure it against and find it wanting.
+ * amendment. A directory with SEVERAL names each of them, and says which
+ * sentence of ADR M0.3 §4 it is standing on, because "an adapter implements ONE
+ * port" is the line a reader would otherwise measure it against and find it
+ * wanting. The count is spelled from the bindings rather than written into the
+ * sentence: this template said "TWO" while emitting three items the day
+ * `cost-monitoring` was bound, which is the drift the whole file exists to stop.
  */
 function adapterReadme(adapter) {
   const bindings = adapterBindings([adapter]);
@@ -474,7 +504,7 @@ function adapterReadme(adapter) {
   if (bindings.length > 1) {
     const list = bindings.map((binding) => `- the ${binding.owner} \`${binding.port}\` port`).join("\n");
     return (
-      `${title}Implements TWO owner-supplied ports — ${adapter.note}:\n\n${list}\n\n` +
+      `${title}Implements ${bindings.length} owner-supplied ports — ${adapter.note}:\n\n${list}\n\n` +
       "ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a\n" +
       "directory may satisfy more than one port when the ports sit behind the same\n" +
       "client. §4's body already spells this directory \"per-context repositories,\n" +

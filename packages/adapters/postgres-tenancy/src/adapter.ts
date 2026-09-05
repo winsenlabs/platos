@@ -41,6 +41,7 @@
 // primitives across the `OutboxEventStore` seam; the two statements that satisfy
 // that seam are `./outbox-store.js`, spread in below.
 
+import type { BudgetRepository } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -55,6 +56,7 @@ import type {
 import { createAccessKeyRevocationCounter } from "./access-key-revocation.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
+import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
@@ -70,6 +72,7 @@ import { createTreeRepository } from "./tree.js";
 export interface PostgresTenancyAdapter
   extends TenancyRepository,
     IdentityAccessRepository,
+    BudgetRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -138,6 +141,17 @@ export function buildPostgresTenancyAdapter(
     // named store properties, so there is no name collision to arbitrate: its
     // ten keys and tenancy's thirty-one are disjoint.
     ...identity,
+    // WIN-258 T5 (ADR M0.3 §15). The THIRD owner in this directory, on the same
+    // argument the second was: `cost-monitoring`'s six rows are in the one
+    // PostgreSQL database, behind the one client, so a thirteenth adapter
+    // package holding only its repositories would be a second home for that
+    // client and would make `tenancy-prisma-only` unwritable as a single-home
+    // rule. Its twenty-two method names are disjoint from tenancy's thirty-one
+    // and identity-access's ten store properties, so there is nothing to
+    // arbitrate; the spread is what lets `PORT_SATISFACTION` in the composition
+    // root resolve `PostgresTenancyAdapter extends BudgetRepository` at compile
+    // time, which a nested property could not.
+    ...createCostMonitoringRepository(transactions),
     // WIN-258 T4. The canonical `Event` row, written on the kernel outbox
     // adapter's behalf. It is spread in here rather than exposed as a separate
     // object for the reason the identity-access composite is: the composition
