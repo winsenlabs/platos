@@ -205,7 +205,16 @@ export function createAlertDeliveryStore(transactions: TenancyTransactions): Ale
       transaction: TransactionScope,
     ): Promise<Result<AlertDelivery>> {
       const client = transactions.writer(transaction);
-      await client.alertDelivery.create({ data: writeDelivery(delivery) });
+      // `createMany` again, and for the same reason `insertDeliveries` uses it:
+      // a raised uniqueness violation would abort the caller's transaction, and
+      // a test send is issued inside one that goes on to record its result.
+      const created = await client.alertDelivery.createMany({
+        data: [writeDelivery(delivery)],
+        skipDuplicates: true,
+      });
+      if (created.count === 0) {
+        return err(repositoryUnavailable("delivery idempotency key already used"));
+      }
       return ok(delivery);
     },
 

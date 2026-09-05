@@ -43,7 +43,6 @@ import type {
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { err, ok, repositoryUnavailable } from "@platos/context-cost-monitoring/application/ports/index.js";
 
-import { isUniqueViolation } from "./client.js";
 import { readChannel, scopedWhere, writeChannel, writeConfiguration } from "./cost-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
@@ -149,23 +148,29 @@ export function createAlertChannelStore(transactions: TenancyTransactions): Aler
       const client = transactions.writer(transaction);
       const written = writeChannel(channel);
       const configuration = writeConfiguration(channel.configuration);
-      try {
-        await client.alertChannel.create({
-          // `alertTypes` is copied into a mutable array because the generated
-          // input type asks for one; the guard that proved it non-empty ran in
-          // `writeChannel`, so the copy cannot smuggle an empty list past it.
-          data: { ...written, alertTypes: [...written.alertTypes] },
-        });
-      } catch (error) {
-        // BOTH unique indexes on this table arrive as 23505 and they are
-        // different facts, but the port has one failure channel and the
-        // in-memory double reports only the deduplication clash. The message
-        // therefore names the constraint the caller can act on; the identifier
-        // clash is a minted-id defect and is left to surface as itself.
-        if (isUniqueViolation(error)) {
-          return err(repositoryUnavailable("deduplication key already used"));
-        }
-        throw error;
+      // `createMany` with `skipDuplicates` — `ON CONFLICT DO NOTHING` — rather
+      // than `create`. A raised 23505 would ABORT the caller's transaction, and
+      // the port answers a clash with a `Result` the caller is entitled to act
+      // on; handing back a refusal and a transaction in which nothing further
+      // can be written is not an answer. `cost-budgets.ts`'s header carries the
+      // whole finding.
+      //
+      // `alertTypes` is copied into a mutable array because the generated input
+      // type asks for one. The guard that proved it non-empty ran in
+      // `writeChannel`, so the copy cannot smuggle an empty list past it.
+      const created = await client.alertChannel.createMany({
+        data: [{ ...written, alertTypes: [...written.alertTypes] }],
+        skipDuplicates: true,
+      });
+      if (created.count === 0) {
+        // THREE unique indexes on this table can refuse, and they are different
+        // facts: the primary key, `(id, environmentId, type)` and
+        // `(environmentId, deduplicationKey)`. The port has one failure channel
+        // and the in-memory double reports only the deduplication clash, so the
+        // message names the constraint an operator can act on. A minted-id clash
+        // is a caller defect and reads the same here, which is a genuine loss of
+        // resolution and is recorded rather than papered over.
+        return err(repositoryUnavailable("deduplication key already used"));
       }
       await client.alertChannelConfiguration.create({
         data: {

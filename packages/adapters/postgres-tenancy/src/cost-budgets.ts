@@ -10,14 +10,28 @@
 // racing, and a row that could be updated could be re-used, which would send the
 // alert twice.
 //
-// SO A DUPLICATE IS `ok(null)` AND AN IDENTIFIER CLASH IS NOT. Both arrive as
-// SQLSTATE 23505, and the port's contract distinguishes them: `null` means "the
-// alert has already fired for this cap, window and threshold", which is a normal
-// outcome. A crossing whose `id` was already taken is a caller minting a
-// duplicate identifier, which is not, and answering `null` to it would tell an
-// evaluator its alert had already been sent when a different alert entirely is
-// on the row. The driver names the index it refused on, so the two are told
-// apart by the constraint rather than by guessing.
+// SO A DUPLICATE IS `ok(null)` AND AN IDENTIFIER CLASH IS NOT. The port's
+// contract distinguishes them: `null` means "the alert has already fired for
+// this cap, window and threshold", which is a normal outcome. A crossing whose
+// `id` was already taken is a caller minting a duplicate identifier, which is
+// not, and answering `null` to it would tell an evaluator its alert had already
+// been sent when a different alert entirely is on the row.
+//
+// AND NEITHER MAY BE LEARNED FROM A RAISED CONSTRAINT. This is the finding that
+// shaped all three inserts in this file. On PostgreSQL a statement that violates
+// a constraint ABORTS the whole transaction: every later statement in it fails
+// with 25P02 until the block ends. The port says a duplicate crossing is a
+// normal outcome and `detect-crossings.ts` acts on that — it appends the
+// crossing and fans the deliveries out IN THE SAME transaction — so an
+// implementation that let the unique index raise would hand the caller
+// `ok(null)` and a transaction in which nothing further can be written. The
+// duplicate would be reported correctly and the fan-out would fail.
+//
+// Every insert below therefore goes through `createMany` with `skipDuplicates`,
+// which is `ON CONFLICT DO NOTHING` and raises nothing at all. A refused row
+// comes back as a count of zero, the transaction is untouched, and WHICH index
+// refused is then established by a read rather than by a driver error — one
+// extra statement, only on the path that was already exceptional.
 //
 // THE LISTING ORDER IS COMPUTED HERE AND NOT IN SQL, AND THAT IS A FINDING
 // RATHER THAN A SHORTCUT. `byListingOrder` sorts by `target.subject` first, and
@@ -51,7 +65,6 @@ import {
   repositoryUnavailable,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 
-import { isUniqueViolation } from "./client.js";
 import { readBudget, readCrossing, scopedWhere, writeBudget, writeCrossing } from "./cost-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
@@ -81,27 +94,6 @@ const CROSSING_COLUMNS = {
   runs: true,
   createdAt: true,
 } as const;
-
-/**
- * Did the driver refuse on the crossing's uniqueness rule, or on its identifier?
- *
- * Prisma reports the refused index in `meta.target`, as either the column list
- * or the index name depending on the connector's version. Both forms are checked
- * because a mapper that recognised only one would silently take the OTHER
- * branch, and the two branches are "the alert already fired" and "this caller
- * minted a duplicate identifier".
- */
-function isCrossingDuplicate(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const meta = (error as { readonly meta?: { readonly target?: unknown } }).meta;
-  const target = meta?.target;
-  const columns = Array.isArray(target) ? target.map(String) : [String(target ?? "")];
-  const joined = columns.join(",");
-  return (
-    joined.includes("windowKey") ||
-    joined.includes("BudgetThresholdEvent_budgetId_windowKey_threshold_key")
-  );
-}
 
 export interface BudgetStore {
   listBudgets(scope: EnvironmentScope): Promise<Result<readonly Budget[]>>;
@@ -172,12 +164,16 @@ export function createBudgetStore(transactions: TenancyTransactions): BudgetStor
 
     async insertBudget(budget: Budget, transaction: TransactionScope): Promise<Result<Budget>> {
       const client = transactions.writer(transaction);
-      try {
-        await client.budget.create({ data: writeBudget(budget) });
-      } catch (error) {
-        if (isUniqueViolation(error)) return err(repositoryUnavailable("budget id already exists"));
-        throw error;
-      }
+      // `createMany` for ONE row, because it is the insert form that does not
+      // raise. `Budget` carries two unique indexes — its primary key and
+      // `(id, environmentId)` — and the second cannot be violated without the
+      // first, so a count of zero means the identifier is taken and nothing
+      // else. No follow-up read is needed to say which.
+      const outcome = await client.budget.createMany({
+        data: [{ ...writeBudget(budget), alertThresholds: [...budget.alertThresholds] }],
+        skipDuplicates: true,
+      });
+      if (outcome.count === 0) return err(repositoryUnavailable("budget id already exists"));
       return ok(budget);
     },
 
@@ -222,16 +218,23 @@ export function createBudgetStore(transactions: TenancyTransactions): BudgetStor
       transaction: TransactionScope,
     ): Promise<Result<ThresholdEvent | null>> {
       const client = transactions.writer(transaction);
-      try {
-        await client.budgetThresholdEvent.create({ data: writeCrossing(event) });
-      } catch (error) {
-        if (isUniqueViolation(error) && isCrossingDuplicate(error)) return ok(null);
-        if (isUniqueViolation(error)) {
-          return err(repositoryUnavailable("threshold event id already exists"));
-        }
-        throw error;
-      }
-      return ok(event);
+      const outcome = await client.budgetThresholdEvent.createMany({
+        data: [writeCrossing(event)],
+        skipDuplicates: true,
+      });
+      if (outcome.count === 1) return ok(event);
+      // ZERO means one of the two unique indexes refused, and they mean
+      // opposite things. The tuple is read back rather than guessed at: if a
+      // crossing for this cap, window and threshold exists, the alert has
+      // already fired and `null` is the port's answer. If it does not, the
+      // caller minted an identifier that is already in use, which is a defect
+      // and must not be reported as a suppressed duplicate.
+      const recorded = await client.budgetThresholdEvent.findFirst({
+        where: { budgetId: event.budgetId, windowKey: event.windowKey, threshold: event.threshold },
+        select: { id: true },
+      });
+      if (recorded !== null) return ok(null);
+      return err(repositoryUnavailable("threshold event id already exists"));
     },
 
     async findThresholdEvent(

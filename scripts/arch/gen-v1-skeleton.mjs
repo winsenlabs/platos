@@ -268,6 +268,32 @@ export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
 ];
 
+// CONTEXTS THAT PUBLISH THEIR IN-MEMORY DOUBLES (WIN-258 T5). Append-only, one
+// project path per entry, each with the issue that needed it.
+//
+// A context's `application/testing/` barrel is already a PUBLISHED part of the
+// layout — `cost-monitoring`'s own header says it is "published from
+// `application/testing/` rather than hidden in a test file" so the context
+// downstream of it can exercise a real contract without a database. It simply
+// had no entry in the manifest's export map, so the only kind of package that
+// could use it that way could not import it.
+//
+// WHY THE LIST IS NOT "EVERY ADOPTED CONTEXT". The rule is the same one
+// WIN-297 wrote for `APPLICATION_ENTRY_PROJECTS`: publishing an entry point
+// nothing imports is dead surface. An entry belongs here when a context's
+// canonical-store adapter is measured AGAINST that context's double — the
+// conformance differential ADR M0.3 §5.2's evidence asks for, which runs ONE
+// scenario against the fake and the real store and compares the observations
+// verbatim. Without the entry the differential cannot be written at all, and the
+// alternative — a second double living in the adapter — would measure the
+// adapter against a copy of itself.
+//
+// Every entry must be an adopted project: an unadopted one's `application/`
+// tree is generated placeholders, so `selfCheck` fails on it.
+export const TESTING_ENTRY_PROJECTS = [
+  "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
+];
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -391,7 +417,12 @@ function kernelManifest(adopted) {
   });
 }
 
-function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+function contextManifest(
+  name,
+  adopted,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const dependencies = workspaceDependencies([
     "@platos/kernel",
     ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
@@ -407,6 +438,12 @@ function contextManifest(name, adopted, applicationEntries = APPLICATION_ENTRY_P
     exports["./application/index.js"] = {
       types: "./dist/application/index.d.ts",
       import: "./dist/application/index.js",
+    };
+  }
+  if (testingEntries.includes(`packages/contexts/${name}`)) {
+    exports["./application/testing/index.js"] = {
+      types: "./dist/application/testing/index.d.ts",
+      import: "./dist/application/testing/index.js",
     };
   }
   return packageManifest({
@@ -689,7 +726,11 @@ function contextAdapterPorts(name) {
   return ports;
 }
 
-export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+export function renderSkeleton(
+  adopted,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const files = new Map();
   const references = projectReferences();
   const put = (path, text) => {
@@ -729,7 +770,7 @@ export function renderSkeleton(adopted, applicationEntries = APPLICATION_ENTRY_P
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries, testingEntries));
     put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
     put(
       `${base}/README.md`,
@@ -933,7 +974,11 @@ export function checkAdapterTable(adapters = ADAPTERS, contextNames = CONTEXT_NA
   return errors;
 }
 
-export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLICATION_ENTRY_PROJECTS) {
+export function selfCheck(
+  adopted = ADOPTED_PROJECTS,
+  applicationEntries = APPLICATION_ENTRY_PROJECTS,
+  testingEntries = TESTING_ENTRY_PROJECTS,
+) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
   const references = projectReferences();
@@ -985,9 +1030,32 @@ export function selfCheck(adopted = ADOPTED_PROJECTS, applicationEntries = APPLI
     seenEntries.add(project);
   }
 
+  // The same three rules for the doubles barrel, judged separately rather than
+  // folded into the loop above: the two lists answer different questions — one
+  // publishes a context's use cases to the composition root, the other publishes
+  // its in-memory doubles to the adapter measured against them — and a shared
+  // loop would report a mistake in either under the other's name.
+  const seenTestingEntries = new Set();
+  for (const project of testingEntries) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenTestingEntries.has(project)) {
+      errors.push(`TESTING_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    seenTestingEntries.add(project);
+  }
+
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
-  const { scaffolding, placeholders } = tierCounts(renderSkeleton(adopted, applicationEntries));
+  const { scaffolding, placeholders } = tierCounts(
+    renderSkeleton(adopted, applicationEntries, testingEntries),
+  );
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);
   }
