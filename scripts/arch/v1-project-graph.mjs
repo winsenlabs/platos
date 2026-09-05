@@ -59,7 +59,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // same PostgreSQL database. `cost-monitoring` depends on `tenancy` and
 // `providers` and nothing depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below
 // is again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a sixth time). The directory gained a SIXTH owner edge,
+// to `packages/contexts/secrets`, whose four canonical rows are in that same
+// PostgreSQL database. ONE edge carrying TWO bindings — `SecretsRepository` and
+// `EnvironmentVariableRepository` — because a project reference is per PACKAGE,
+// not per port, exactly as `agents`' pair was. `secrets` depends on the kernel
+// alone, and `tools`, `providers` and `conversations` already depend on it, so
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is again unchanged and no cycle is
+// possible.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -176,7 +185,7 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring"],
+  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring", "secrets"],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -198,7 +207,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 5 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 6 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

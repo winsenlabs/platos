@@ -84,6 +84,19 @@ export const ADAPTERS = [
       { port: "AgentsRepository", owner: "agents" },
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
+      // WIN-258 T5 adds the SEVENTH and EIGHTH. `secrets` owns four canonical
+      // rows in that same database and publishes TWO canonical-store ports over
+      // them, because `environment-variable-repository.ts` keeps the vault and
+      // the configuration row in separate vocabularies on purpose.
+      //
+      // BOTH ARE SATISFIED BY PROPERTIES rather than by spread-in methods, and
+      // unlike tenancy's five below that was FORCED. `SecretsRepository` and
+      // `ToolsRepository` both declare a top-level `appendAudit`, with different
+      // signatures, so one interface cannot extend both — the composition root
+      // therefore proves these two as `PostgresTenancyAdapter["secrets"]` and
+      // `PostgresTenancyAdapter["secretsVariables"]`.
+      { port: "SecretsRepository", owner: "secrets" },
+      { port: "EnvironmentVariableRepository", owner: "secrets" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -194,8 +207,17 @@ export function adapterOwnerPackages(adapter) {
 // `tenancy` was already an owner of this directory and the project reference it
 // needs is already there. What they add is JUDGEABILITY — five ports this
 // layout depends on that `reportAdapterSupply` could not previously see.
+//
+// 22 -> 24 (WIN-258 T5). `secrets` publishes TWO canonical-store ports over its
+// four rows — `SecretsRepository` for the credential, its envelopes and its
+// evidence, `EnvironmentVariableRepository` for the configuration row that
+// points at one — so one tranche moves this pin by two while leaving
+// EXPECTED_ADAPTER_COUNT alone for the fourth time. The DIRECTORY count is
+// unmoved on purpose: the whole point of Amendment 15 is that another owner is a
+// row on an existing directory rather than a thirteenth package holding a second
+// PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 22;
+export const EXPECTED_BINDING_COUNT = 24;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -257,7 +279,19 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `BudgetRepository`. `cost-monitoring` depends on `tenancy` and `providers`
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a fourth time). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/secrets`. A SIXTH owner edge out of the one directory, for
+// that context's TWO canonical-store ports over the four rows of §1 row 3. Two
+// bindings, ONE edge — a project reference is per PACKAGE, not per port, exactly
+// as `agents`' pair was. It cannot create a cycle for the reason none of the
+// others could: contexts are leaves relative to adapters, and nothing in
+// `secrets` names an adapter. The 17-context DAG is untouched — `secrets`
+// depends on the kernel alone, and `tools`, `providers` and `conversations`
+// already depend on `secrets`. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -346,6 +380,17 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // doubles, and the claim in their own headers — "it enforces what the store
   // enforces" — is unchecked.
   "packages/contexts/agents",
+  // WIN-258 T5 — imported by `packages/adapters/postgres-tenancy` for the same
+  // reason `agents` is, and it is the same fact about where a context keeps its
+  // doubles rather than a second rule. `secrets` publishes `inMemorySecretsStore`
+  // from `application/index.js` — its own header says the doubles "ship with the
+  // package on purpose" — and that store is the fake half of this tranche's
+  // conformance differential: ONE scenario, asked of the double and of
+  // PostgreSQL, with the two observation maps compared verbatim. Without this
+  // entry the differential cannot name the double at all, and the only
+  // alternative — a second double living in the adapter — would measure the
+  // adapter against a copy of itself.
+  "packages/contexts/secrets",
 ];
 
 // ---------------------------------------------------------------------------
@@ -642,9 +687,16 @@ function describeAdapter(adapter) {
  */
 function countWord(count) {
   return (
-    ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"][
-      count
-    ] ?? String(count)
+    // WIN-258 T5 extended the list past TWELVE. `secrets`' two ports took the
+    // one shared directory to thirteen, and the fallback would have rendered
+    // "Implements 13 owner-supplied ports" in a sentence whose other numbers are
+    // words — the drift this helper was written to remove, arriving as a
+    // formatting inconsistency instead of a wrong count.
+    [
+      "ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT",
+      "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN",
+      "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN", "TWENTY",
+    ][count] ?? String(count)
   );
 }
 
