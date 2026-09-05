@@ -641,7 +641,11 @@ function describeAdapter(adapter) {
  * prevent. It is derived now.
  */
 function countWord(count) {
-  return ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX"][count] ?? String(count);
+  return (
+    ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"][
+      count
+    ] ?? String(count)
+  );
 }
 
 function adapterReadme(adapter) {
