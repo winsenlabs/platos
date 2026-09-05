@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d8d8f4df0e7ca1811e40305502d01e89dd153f17a613b060fe458e142bcda3a7",
+  "evidenceSha256": "f7cc29a0e062038b46e12439dcf44dfb45cf4530a55a2e91bc67f429eb68eb57",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "22a9e42d008884b63306bb49972f6228ad0565f2a231064353ed363b05bdf5ae",
+    "aggregateSha256": "6faae04f9e7bc170218463a30dcc39cd9574179e431f579dd7c46164211728b7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "20a07695a667c337fef6bd3d4b47a3c1816fbe198e74cc4943a192fa54c51e50"
+        "sha256": "70817c62fcd82c8bbd3e53e8f43e3265fe3c529f9cb15690d0d6ce20f190e01e"
       },
       {
         "path": ".github/workflows/publish-images.yml",
