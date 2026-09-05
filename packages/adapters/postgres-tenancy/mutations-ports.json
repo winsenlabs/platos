@@ -305,7 +305,7 @@
     "TWENTY-ONE ENTRIES, TWENTY-ONE KILLS, NONE VACUOUS, on a real PostgreSQL",
     "container at branch head. Each kill is a NAMED case in the `kills` list of",
     "its entry. The driver proved all SEVEN distinct suite sets green before it",
-    "mutated anything -- 12, 19, 10, 7, 18, 14 and 7 executed cases -- and",
+    "mutated anything -- 12, 20, 10, 8, 18, 15 and 7 executed cases -- and",
     "classified nothing as vacuous, because a run that executes no cases is",
     "reported as VACUOUS rather than as a kill.",
     "",

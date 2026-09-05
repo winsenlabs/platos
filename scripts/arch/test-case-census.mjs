@@ -1254,9 +1254,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * needs BESIDE the repository, and they are the same connection as the
  * repository.
  *
- *   packages/adapters/postgres-tenancy   11 -> 16 files,   123 -> 165 cases
+ *   packages/adapters/postgres-tenancy   11 -> 16 files,   123 -> 166 cases
  *
- * 378 + 5 = 383 files and 5998 + 42 = 6040 cases. The adapters term of the
+ * 378 + 5 = 383 files and 5998 + 43 = 6041 cases. The adapters term of the
  * identity moves with it: 349 + 3 + 31 = 383.
  *
  * WHAT THE 42 ARE, file by file, so the total cannot absorb a loss elsewhere:
@@ -1268,17 +1268,20 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   locks.integration.test.ts                  12  whether the locks BLOCK,
  *                                                  and the access-key fence
  *                                                  with its negative control
- *   ports-conformance.integration.test.ts       7  the fake and the adapter
+ *   ports-conformance.integration.test.ts       8  the fake and the adapter
  *                                                  asked the SAME questions,
- *                                                  plus five cases the shared
- *                                                  scenario cannot reach
+ *                                                  plus six cases the shared
+ *                                                  scenario cannot reach — one
+ *                                                  of which is the only place
+ *                                                  the two stores' advisory-lock
+ *                                                  KEYS are compared
  *   ports-transaction.integration.test.ts      10  the three scope refusals on
  *                                                  all five methods, failure
  *                                                  injection, and the
  *                                                  OperatorSession rules
  *   ports-statements.integration.test.ts        6  measured statement counts
  *
- * 7 + 12 + 7 + 10 + 6 = 42. Four of the five are integration suites and do not
+ * 7 + 12 + 8 + 10 + 6 = 43. Four of the five are integration suites and do not
  * run in `pnpm test:v1-packages`, for the reason stated above; the
  * `postgres-tenancy-repository` CI job runs them.
  *
@@ -1298,7 +1301,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 16, cases: 165 },
+  "packages/adapters/postgres-tenancy": { files: 16, cases: 166 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1440,13 +1443,13 @@ export const EXPECTED = Object.freeze({
  * 5931 -> 5998: the 67 identity-access cases of WIN-258 tranche 2, enumerated
  * file by file in the block beside the postgres-tenancy row.
  *
- * 5998 -> 6040: the 42 cases of WIN-258 tranche 3 — tenancy's other five ports
+ * 5998 -> 6041: the 43 cases of WIN-258 tranche 3 — tenancy's other five ports
  * — enumerated file by file in the same block. That takes the count of cases
  * this census records and `pnpm test:v1-packages` does not execute from 92 to
- * 127, all of them in the one adapter the `postgres-tenancy-repository` job
+ * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6040;
+export const EXPECTED_RUNTIME_TOTAL = 6041;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

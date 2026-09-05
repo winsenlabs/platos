@@ -39,6 +39,7 @@ import type {
 import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
 
 import { digestOf, emailOf, envId, inviteId, orgId, projId, slugOf } from "./harness.js";
+import { invitationSlotKey } from "./locks.js";
 import {
   PORTS_AT,
   SEEDED_LIVE_SESSIONS,
@@ -292,6 +293,34 @@ describe("what the shared scenario cannot reach", () => {
         harness.adapter.invitationTokens.digest("plt_inv_not-a-real-token"),
       ),
     ).toBeNull();
+  });
+
+  test("both stores lock the SAME invitation slot, spelled the same way", async () => {
+    // TWO LOCKS ARE NOT ONE LOCK. The adapter hashes a string into the advisory
+    // lock space and the in-memory double records that string, so if the two
+    // spelled the key differently nothing would fail anywhere: the fake would
+    // record its key, the adapter would take its own, and the shared scenario
+    // above would still compare equal, because neither store returns the key.
+    // This is the one case that compares them, and it is the reason
+    // `invitationSlotKey` is a named pure function rather than a template
+    // literal inline in the statement.
+    const store = createTenancyStore();
+    const organizationId = orgId(harness.freshId("0120"));
+    store.organizations.push({
+      id: organizationId,
+      slug: slugOf("slot-key"),
+      name: "slot-key",
+      archivedAt: null,
+      createdAt: PORTS_AT,
+      updatedAt: PORTS_AT,
+    });
+    const recording = createRecordingLocks(store);
+    await createUnitOfWork(store).run((transaction) =>
+      recording.lockInvitationSlot(organizationId, emailOf("slot@ports.test"), transaction),
+    );
+    expect([...recording.invitationSlots]).toEqual([
+      invitationSlotKey(organizationId, "slot@ports.test"),
+    ]);
   });
 
   test("the operator directory does not carry identity-access's impersonation flag", async () => {
