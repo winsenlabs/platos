@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -65,7 +65,14 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // implements the three kernel ports that have no adapter (Clock, IdGenerator,
   // Logger), so it must be able to name them. Reasoned in full on
   // EXPECTED_EDGE_COUNT in the generator.
-  assert.match(output, /32 V1 projects and 97 project edges/u);
+  // 96 -> 97 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/tools, the reference the adapter needs to name the port it
+  // satisfies. Reasoned in full on EXPECTED_EDGE_COUNT in the generator.
+  // 97 -> 98 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/agents, the reference the adapter needs to name the two
+  // canonical-store ports it satisfies. ONE edge for TWO bindings, because a
+  // project reference is per package.
+  assert.match(output, /32 V1 projects and 98 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -291,27 +298,65 @@ test("gitignored build artifacts are never reported as EXTRA", () => {
 // ---------------------------------------------------------------------------
 // WIN-257 T2: the published entry list must stay HONEST.
 //
-// `APPLICATION_ENTRY_PROJECTS` is documented as "the contexts apps/core-api
-// ACTUALLY composes", and until now nothing checked that sentence. selfCheck
-// can see that an entry is an adopted context; it cannot see whether anything
-// imports the subpath the entry publishes, which is the exact dead surface
-// WIN-297 declined to create. This closes the loop from the other end by
-// reading the composition root.
+// `APPLICATION_ENTRY_PROJECTS` is documented as the contexts whose
+// `application/index.js` a V1 project actually imports, and until now nothing
+// checked that sentence. selfCheck can see that an entry is an adopted context;
+// it cannot see whether anything imports the subpath the entry publishes, which
+// is the exact dead surface WIN-297 declined to create. This closes the loop
+// from the other end by reading the importers.
+//
+// WIN-258 T5 WIDENED WHAT COUNTS AS AN IMPORTER, and the widening is the point
+// rather than an accommodation. Until this tranche the composition root was the
+// only V1 project that had ever imported a use-case entry, so "imported" and
+// "imported by apps/core-api" were the same set and this test read one file.
+// They are not the same set any more: `packages/adapters/postgres-tenancy`
+// imports `@platos/context-agents/application/index.js` for the in-memory
+// `AgentsRepository` and `ScaffoldingRepository`, because the conformance
+// differential runs ONE scenario through the double and through PostgreSQL and
+// compares the two observation lists verbatim. That import is a real consumer of
+// a real published subpath, so the entry is not dead surface — and the property
+// this test exists to keep, that nothing is published which nothing imports, is
+// unchanged. What would break it is narrowing the search back to one file and
+// deleting the entry, which is why the scan is over every V1 source file.
 // ---------------------------------------------------------------------------
 
 const COMPOSITION_ROOT = "apps/core-api/src/app.module.ts";
 
-/** Which contexts the composition root imports a use-case entry point from. */
-function entryPointsImportedByCompositionRoot(source) {
+/** Which contexts a source file imports a use-case entry point from. */
+function entryPointsImportedBy(source) {
   const specifier = /from "@platos\/context-([a-z-]+)\/application\/index\.js"/gu;
   const imported = new Set();
   for (const match of source.matchAll(specifier)) imported.add(`packages/contexts/${match[1]}`);
   return imported;
 }
 
-test("every published application entry point is imported by the composition root", () => {
-  const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT), "utf8");
-  const imported = entryPointsImportedByCompositionRoot(source);
+/** Every V1 source file that could import one: the composition root and the packages. */
+function v1SourceFiles() {
+  const files = [join(repositoryRoot, COMPOSITION_ROOT)];
+  const roots = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api/src", "apps/mcp-stdio"];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(?:ts|mts|tsx)$/u.test(entry.name)) files.push(full);
+    }
+  };
+  for (const root of roots) walk(join(repositoryRoot, root));
+  return files;
+}
+
+test("every published application entry point is imported by a V1 project", () => {
+  const imported = new Set();
+  for (const file of v1SourceFiles()) {
+    for (const entry of entryPointsImportedBy(readFileSync(file, "utf8"))) imported.add(entry);
+  }
 
   assert.deepEqual(
     [...imported].sort(),
@@ -319,14 +364,23 @@ test("every published application entry point is imported by the composition roo
     "an entry nobody imports is dead surface, and an import with no entry cannot resolve",
   );
 
+  // The composition root is still an importer, and still the only one for the
+  // two WIN-257 entries. Asserted separately so a change that stopped composing
+  // them and left the adapter's import standing cannot pass on the union alone.
+  const byRoot = entryPointsImportedBy(readFileSync(join(repositoryRoot, COMPOSITION_ROOT), "utf8"));
+  assert.deepEqual(
+    [...byRoot].sort(),
+    ["packages/contexts/identity-access", "packages/contexts/tenancy"],
+  );
+
   // The negative control: the extractor must be able to SEE an absence. A list
-  // naming a context the root does not import has to disagree with the tree.
+  // naming a context nothing imports the entry of has to disagree with the tree.
   assert.notDeepEqual(
     [...imported].sort(),
-    [...APPLICATION_ENTRY_PROJECTS, "packages/contexts/agents"].sort(),
+    [...APPLICATION_ENTRY_PROJECTS, "packages/contexts/memory"].sort(),
   );
   assert.equal(
-    entryPointsImportedByCompositionRoot('import { x } from "@platos/context-tenancy";').size,
+    entryPointsImportedBy('import { x } from "@platos/context-tenancy";').size,
     0,
     "importing a context's CONTRACTS is not importing its use-case entry point",
   );
@@ -347,6 +401,12 @@ const LIVE_ADAPTERS = [
       { port: "IdentityAccessRepository", owner: "identity-access" },
       // WIN-258 T5. The THIRD binding on the one shared directory.
       { port: "ToolsRepository", owner: "tools" },
+      // WIN-258 T5: `agents` publishes TWO canonical-store ports and one
+      // directory satisfies both, so the fixture carries five bindings on one
+      // row. A copy that stopped short would make every refusal below assert
+      // against a table the live one no longer looks like.
+      { port: "AgentsRepository", owner: "agents" },
+      { port: "ScaffoldingRepository", owner: "agents" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -376,14 +436,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a FIFTEENTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a SEVENTEENTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 14 adapter bindings; ADAPTERS flattens to 15")));
+  assert.ok(errors.some((error) => error.includes("declares 16 adapter bindings; ADAPTERS flattens to 17")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

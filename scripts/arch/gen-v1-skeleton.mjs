@@ -63,9 +63,17 @@ export const ADAPTERS = [
     // WIN-258 T5 adds the THIRD, and the argument does not change with the
     // count: `tools` owns ten canonical rows in that same database, so its
     // repository is the same client, the same pool and the same transaction.
+    //
+    // WIN-258 T5 adds the FOURTH and FIFTH, for the seven rows of §1 row 5.
+    // `agents` publishes TWO canonical-store ports rather than one —
+    // `AgentsRepository` for the version/binding invariant and
+    // `ScaffoldingRepository` for the two rows a SURFACE writes on its own
+    // behalf — so it contributes two bindings to one directory.
     additional: [
       { port: "IdentityAccessRepository", owner: "identity-access" },
       { port: "ToolsRepository", owner: "tools" },
+      { port: "AgentsRepository", owner: "agents" },
+      { port: "ScaffoldingRepository", owner: "agents" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -135,7 +143,7 @@ export function adapterOwnerPackages(adapter) {
 // existing directory is a different reviewed decision from a new directory, and
 // a single pin could not have told them apart.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 14;
+export const EXPECTED_BINDING_COUNT = 16;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -183,7 +191,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `identity-access`, `secrets` and `providers`, and this edge adds none of
 // those. The independent expectation in scripts/arch/v1-project-graph.mjs
 // carries the same delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 97;
+//
+// 97 -> 98 (WIN-258 T5, the same amendment again). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/agents`. A FOURTH owner edge out of the one directory,
+// carrying that context's TWO canonical-store ports: the seven rows of §1 row 5
+// are in the one PostgreSQL database, behind the one client, so their
+// repositories are in the one adapter directory. Two bindings, one edge — a
+// project reference is per PACKAGE, not per port. It cannot create a cycle, and
+// it does not widen the 17-context DAG.
+export const EXPECTED_EDGE_COUNT = 98;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -260,6 +276,18 @@ export const ADOPTED_PROJECTS = [
 export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
   "packages/contexts/tenancy", // WIN-257 — composed by apps/core-api as the tenant-tree and authorization owner
+  // WIN-258 T5 — imported by `packages/adapters/postgres-tenancy`, not by
+  // apps/core-api, and that WIDENS the rule stated above rather than breaking
+  // it. The list is "the contexts whose `application/index.js` a V1 project
+  // actually imports"; the composition root was simply the only importer there
+  // had ever been. `agents` publishes its in-memory `AgentsRepository` and
+  // `ScaffoldingRepository` from there as the contract fixtures the adapter is
+  // measured against, and the adapter's conformance differential runs ONE
+  // scenario through the double and through PostgreSQL and compares the two
+  // observation lists. Without this entry that differential cannot name the
+  // doubles, and the claim in their own headers — "it enforces what the store
+  // enforces" — is unchecked.
+  "packages/contexts/agents",
 ];
 
 // ---------------------------------------------------------------------------

@@ -1430,14 +1430,63 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * file. `packages/adapters/postgres-tenancy/mutations-tools.json` is where those
  * guards are held falsifiable instead.
  *
- * So `packages/adapters/postgres-tenancy` moves a third time:
  *
- *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 258 cases
+ * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 6 files and 60
+ * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
  *
- * 20 + 6 = 26 files and 199 + 59 = 258 cases. The tree total is 391 + 6 = 397
- * files and 6115 + 59 = 6174 cases. The adapters term of the three-way identity
- * carries all of it, because every added file is an adapter's: 39 + 6 = 45, and
- * 349 + 3 + 45 = 397.
+ *   agents-guards.test.ts                     14  the refusal parser, against the
+ *                                                 THREE shapes a refusal actually
+ *                                                 arrives in, every fixture copied
+ *                                                 off a container
+ *   agents-rows.test.ts                        7  the two readers that REFUSE
+ *                                                 rather than inventing a value,
+ *                                                 neither of them reachable
+ *                                                 through PostgreSQL today
+ *   agents-conformance.integration.test.ts     2  the two halves of the shared
+ *                                                 scenario, run against the
+ *                                                 double and against PostgreSQL
+ *                                                 and compared step by step
+ *   agents-constraints.integration.test.ts    16  what the MIGRATIONS refuse and
+ *                                                 `schema.prisma` does not say
+ *   agents-transaction.integration.test.ts    12  failure injection, the three
+ *                                                 transaction-scope refusals,
+ *                                                 the savepoint measured from a
+ *                                                 SECOND connection, and the
+ *                                                 parent row lock
+ *   agents-statements.integration.test.ts      9  measured statement counts
+ *
+ * 14 + 7 + 2 + 16 + 12 + 9 = 60, over 6 files, and every one of the six numbers
+ * is READ BACK from the counter in this file rather than tallied by hand. Four
+ * of the six are excluded from the package's default `test` script by filename
+ * and run by the `postgres-tenancy-repository` CI job; `agents-guards.test.ts`
+ * and `agents-rows.test.ts` are not, because neither module has a database in
+ * it.
+ *
+ * THE TWO UNIT FILES ARE HERE BECAUSE A SWEEP PUT THEM HERE, and that is the
+ * honest order of events. `agents-guards.test.ts` exists because two entries of
+ * `mutations-agents.json` SURVIVED: the branches that read a refusal out of a
+ * raw statement's `meta` are reached by no delegate call in this adapter, so
+ * nothing could turn them red. The suite falsifies them against the exact error
+ * objects, rather than the branches being deleted as dead code.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite. It is two
+ * because it is TWO scenarios compared verbatim -- 47 observations over
+ * `AgentsRepository` and 29 over `ScaffoldingRepository`, both READ OFF a run.
+ * Adding an observation strengthens the differential and moves no count here,
+ * which is why `mutations-agents.json` is where those guards are held
+ * falsifiable.
+ *
+ *
+ * BOTH TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the two blocks above SUM
+ * rather than either one standing alone. Neither branch's arithmetic is right
+ * merged, and side-picking one would under-count the other by six files:
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 32 files,  199 -> 318 cases
+ *
+ * 20 + 6 + 6 = 32 files and 199 + 59 + 60 = 318 cases. The tree total is
+ * 391 + 12 = 403 files and 6115 + 119 = 6234 cases. The adapters term of the
+ * three-way identity carries all twelve, because every added file is an
+ * adapter's: 39 + 12 = 51, and 349 + 3 + 51 = 403.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1448,7 +1497,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 26, cases: 258 },
+  "packages/adapters/postgres-tenancy": { files: 32, cases: 318 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1595,8 +1644,22 @@ export const EXPECTED = Object.freeze({
  * this census records and `pnpm test:v1-packages` does not execute from 92 to
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
+ *
+ * 6041 -> 6115: the outbox's 41 and the 33 of tranche 4.
+ *
+ * 6115 -> 6175: the 60 cases of WIN-258 tranche 5 — the `agents` canonical store
+ * — enumerated file by file in the block beside the postgres-tenancy row, every
+ * number there read back from the counter in this file.
+ *
+ * The cases this census records that `pnpm test:v1-packages` does not execute
+ * are the ones whose file name carries `.integration.`, which the package's own
+ * `test` script excludes. MEASURED over this tree: 183 cases across 20 files,
+ * all of them in `packages/adapters/postgres-tenancy`. Tranche 5 contributes 39
+ * of those over four suites; its remaining 21 (`agents-guards.test.ts` and
+ * `agents-rows.test.ts`) run in the ordinary package test script, because
+ * neither module has a database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6174;
+export const EXPECTED_RUNTIME_TOTAL = 6234;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -170,6 +170,48 @@ test("§15: the shared directory may write BOTH owners' rows and NOTHING else", 
   assert.match(violations[0].message, /memory is its sole writer/u);
 });
 
+test("WIN-258 T5: an `agents` row written from any OTHER directory FAILS", () => {
+  // The refusal the delegation has to keep. Each of the seven rows is written
+  // from a directory that is neither `packages/contexts/agents` nor the adapter,
+  // and each must be reported — a permission nothing refuses is not a permission.
+  for (const delegate of [
+    "agent",
+    "agentBinding",
+    "agentCluster",
+    "agentSkill",
+    "agentVersion",
+    "macro",
+    "postmanTemplate",
+  ]) {
+    const root = fixture({
+      "packages/contexts/tools/application/rogue.ts": write(delegate, "create"),
+    });
+    const violations = checkWriteEnforcement(root).violations;
+    assert.equal(violations.length, 1, `${delegate} must be refused from tools`);
+    assert.equal(violations[0].expected, "packages/contexts/agents");
+    assert.match(violations[0].message, /agents is its sole writer/u);
+  }
+
+  // From the adapter it is permitted, and the write is SEEN rather than merely
+  // un-flagged.
+  const permitted = fixture({
+    "packages/adapters/postgres-tenancy/src/agents-x.ts": write("agent", "create"),
+  });
+  const allowed = checkWriteEnforcement(permitted);
+  assert.deepEqual(allowed.violations, []);
+  assert.equal(allowed.writeCount, 1);
+
+  // And the widening did not licence the directory over rows `agents` does not
+  // own: `EnvironmentSkill` is `skills`', and is still refused from here.
+  const refused = fixture({
+    "packages/adapters/postgres-tenancy/src/agents-y.ts": write("environmentSkill", "create"),
+  });
+  const violations = checkWriteEnforcement(refused).violations;
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].model, "EnvironmentSkill");
+  assert.equal(violations[0].expected, "packages/contexts/skills");
+});
+
 test("§15: the delegation is per OWNER, not per adapter that happens to serve one", () => {
   // `redis-ratelimit` is also owned by identity-access (it implements that
   // context's `RateLimiter`). It is not a canonical store and may not write a
@@ -565,8 +607,58 @@ test("an element-access member that is not a delegate is still not a write", () 
 // and each was right alone — which is why this line merged with no textual
 // conflict at all and would have shipped three writes short of the tree. The
 // second and third assertions below say the writes are all legal and all
-// attributable, so the pin cannot be satisfied by 86 mutations somewhere else.
-const LIVE_TREE_WRITE_COUNT = 86;
+// attributable, so the pin cannot be satisfied by 113 mutations somewhere else.
+//
+// WIN-258 TRANCHE 5 adds 27, again all from the SAME directory, on the SEVEN
+// rows `agents` owns. Written out so a deletion cannot hide inside an addition:
+//
+//   src/agents-catalog.ts       agent.create, agent.updateManyAndReturn,
+//                               agentBinding.create + .updateManyAndReturn +
+//                               .deleteMany                                     5
+//   src/agents-versions.ts      agentVersion.create, agentSkill.deleteMany,
+//                               agentSkill.createManyAndReturn                  3
+//   src/agents-clusters.ts      agentCluster.create + .updateManyAndReturn +
+//                               .deleteMany, AND agentBinding.updateMany --
+//                               detaching a cluster's members is a BINDING
+//                               write, which is why the port keeps it separate
+//                               from the delete                                 4
+//   src/agents-scaffolding.ts   macro.create + .updateManyAndReturn +
+//                               .deleteMany, postmanTemplate.create +
+//                               .updateManyAndReturn + .deleteMany              6
+//   src/agents-constraints.integration.test.ts
+//                               SEVEN raw statements naming their table
+//                               LITERALLY: an `AgentVersion` INSERT carrying
+//                               `enabledTools`, a `DELETE FROM "AgentVersion"`
+//                               a binding still serves, a `Macro` INSERT whose
+//                               steps are not an array, and the FOUR that plant
+//                               a project-crossed binding -- the DDL that puts
+//                               the ancestry rule to sleep, the INSERT it would
+//                               otherwise have refused, the DDL that wakes it
+//                               again, and the DELETE that removes the row       7
+//   src/agents-transaction.integration.test.ts
+//                               two agent.create calls issued through the
+//                               CLIENT rather than the port, which is the
+//                               measurement of what a caught refusal costs
+//                               without a savepoint                             2
+//                                                                       total = 27
+//
+// THE TWO `ALTER TABLE` STATEMENTS ARE WRITES HERE AND SHOULD BE. This gate
+// attributes a raw statement to the table its SQL names, and a statement that
+// switches a table's ancestry rule off is exactly the kind of reach into another
+// context's rows the gate exists to see -- it is legal only because the file
+// sits in the delegated directory. The count was pinned at 23 by a draft written
+// before that case existed, which is what a re-derivation catches and a
+// carried-forward number does not.
+//
+// EVERY RAW STATEMENT SPELLS ITS SQL AT THE CALL SITE, and the first draft did
+// not: a one-line `raw(sql, ...args)` helper made them all UNATTRIBUTABLE,
+// because SQL arriving as an argument names no table. The audit reported it; the
+// helper now returns the client and each call carries its own literal.
+//
+// 12 + 51 + 3 + 3 + 17 + 27 = 113. The two tranche-5 stores landed in the one
+// directory, so the pin is the SUM of both enumerations above and neither
+// branch's own figure — 86 or 96 — survives the merge.
+const LIVE_TREE_WRITE_COUNT = 113;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -606,6 +698,32 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], undefined);
   assert.deepEqual(ownerDirectories("memory"), ["packages/contexts/memory"]);
   assert.deepEqual(ownerDirectories("cost-monitoring"), ["packages/contexts/cost-monitoring"]);
+  // WIN-258 T5: `agents` is delegated to the SAME directory a fourth time, and
+  // the grant is exactly the SEVEN rows ADR M0.3 §1 row 5 gives it.
+  assert.deepEqual(ownerDirectories("agents"), [
+    "packages/contexts/agents",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.agents, "packages/adapters/postgres-tenancy");
+  const agentRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "agents")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(agentRows, [
+    "Agent",
+    "AgentBinding",
+    "AgentCluster",
+    "AgentSkill",
+    "AgentVersion",
+    "Macro",
+    "PostmanTemplate",
+  ]);
+  // And `skills` is NOT delegated, which is why the adapter cannot seed the
+  // `EnvironmentSkill` row its own `AgentSkill` foreign key needs and the
+  // integration fixture applies that chain as SQL instead.
+  assert.equal(CANONICAL_STORE_ADAPTERS.skills, undefined);
+  assert.deepEqual(ownerDirectories("skills"), ["packages/contexts/skills"]);
+
   // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
   // Its primary directory is an ADAPTER rather than a context — the one owner in
   // the map for which that is true — and the note that used to sit beside this

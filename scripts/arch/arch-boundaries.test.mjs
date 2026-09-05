@@ -729,8 +729,28 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               to implement the port can name what the port says. The rule
     //               does not fire on an adapter, so it is the DESIGN and not the
     //               gate that keeps that true, which is why it is written here.
-    assert.equal(result.fileCount, 1243, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18);
+    //  1243 -> 1259 +16: WIN-258 TRANCHE 5, the `agents` canonical store, and every
+    //               one of the sixteen is a `.ts` file in the SAME adapter
+    //               directory -- the two stores split across five modules, the
+    //               row readers, the refusal parser, the harness, the shared
+    //               conformance scenario in two halves, and six suites. The
+    //               `fixtures/agents-rows.sql` and `mutations-agents.json`
+    //               beside them are not source and are not counted here; the v1
+    //               ledger counts all eighteen and its own delta says 18.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` AGAIN, and this
+    //               tranche is the third time it decided the shape. `agents`
+    //               owns seven rows in the same database, so a per-context
+    //               adapter package would have been a second ORM home; the two
+    //               ports went to the one home instead, owner-tagged, and
+    //               `src/client.ts` is still the only file in the layout that
+    //               imports the ORM -- it gained `Prisma.DbNull` and nothing
+    //               else.
+    // BOTH TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the two entries above
+    //               SUM: 1225 + 18 + 16 = 1259. Neither branch's figure is right
+    //               merged, and taking either alone under-counts the other by
+    //               its whole tranche.
+    assert.equal(result.fileCount, 1259, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

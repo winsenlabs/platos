@@ -24,6 +24,9 @@
     },
     {
       "path": "../../contexts/tools"
+    },
+    {
+      "path": "../../contexts/agents"
     }
   ]
 }

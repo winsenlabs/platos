@@ -356,6 +356,13 @@ jobs:
         # RESOLVE rather than fail to pass, which reads as a broken job rather
         # than as a broken adapter.
         run: pnpm --filter "@platos/context-tools..." build
+      - name: Build the agents context
+        # WIN-258 T5. The same directory a fourth time, for the seven rows of ADR
+        # M0.3 §1 row 5. The agents suites resolve the context through TWO
+        # published entry points — its driven ports and its `application/index.js`,
+        # which is where the in-memory doubles the conformance differential is
+        # measured against live — and both are dist/.
+        run: pnpm --filter "@platos/context-agents..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy

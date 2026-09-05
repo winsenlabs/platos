@@ -89,20 +89,22 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FOURTEEN bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+  it("declares SIXTEEN bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
-    // `IdentityAccessRepository` and — WIN-258 tranche 5 — `ToolsRepository`,
-    // because there is one PostgreSQL database behind one client. All three are
-    // asserted, and the gap between the two counts is asserted too, so a change
-    // that collapsed them back into one count fails.
+    // `IdentityAccessRepository` and — WIN-258 tranche 5, twice over —
+    // `ToolsRepository`, `AgentsRepository` and `ScaffoldingRepository`, because
+    // there is one PostgreSQL database behind one client. All five are asserted,
+    // and the gap between the two counts is asserted too, so a change that
+    // collapsed them back into one count fails.
     //
-    // 12 directories + 2 extra ports on the one shared directory = 14 bindings.
-    // The directory count does NOT move when a fourth owner is delegated to it,
-    // which is the whole property this pair of numbers exists to state.
-    expect(ADAPTER_BINDINGS).toHaveLength(14);
-    expect(DECLARED_BINDING_COUNT).toBe(14);
+    // 12 directories + 4 extra ports on the one shared directory = 16 bindings.
+    // The directory count does NOT move when a fourth and fifth owner are
+    // delegated to it, which is the whole property this pair of numbers exists
+    // to state.
+    expect(ADAPTER_BINDINGS).toHaveLength(16);
+    expect(DECLARED_BINDING_COUNT).toBe(16);
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -111,15 +113,19 @@ describe("the declared binding table", () => {
       "TenancyRepository",
       "IdentityAccessRepository",
       "ToolsRepository",
+      "AgentsRepository",
+      "ScaffoldingRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
       "identity-access",
       "tools",
+      "agents",
+      "agents",
     ]);
   });
 
-  it("names each adapter DIRECTORY exactly once, even though one has THREE bindings", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has FIVE bindings", () => {
     // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
     // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
@@ -151,21 +157,24 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(14);
+    expect(report.unsatisfied).toHaveLength(16);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/14 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/16 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
-    // list `postgres-tenancy` once and say 12/12 while three ports on it were
-    // unwired, which is a readiness endpoint that lies about what is serving.
+    // list `postgres-tenancy` once and say 12/12 while five of the ports it
+    // carries were unserved, which is a readiness endpoint that lies about what
+    // is serving.
     expect(report.unsatisfied).toContain("postgres-tenancy:TenancyRepository");
     expect(report.unsatisfied).toContain("postgres-tenancy:IdentityAccessRepository");
     expect(report.unsatisfied).toContain("postgres-tenancy:ToolsRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:AgentsRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ScaffoldingRepository");
   });
 
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(13);
+    expect(report.unsatisfied).toHaveLength(15);
     expect(report.faults).toEqual([]);
   });
 
@@ -194,7 +203,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(14);
+    expect(app.bindings.unsatisfied).toHaveLength(16);
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
     expect(Object.isFrozen(app)).toBe(true);
@@ -223,7 +232,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(13);
+    expect(app.bindings.unsatisfied).toHaveLength(15);
   });
 
   it("does not compose a context from an adapter supply alone", () => {

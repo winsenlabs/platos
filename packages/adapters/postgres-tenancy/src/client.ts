@@ -46,17 +46,35 @@ export type TenancyJsonInput = Prisma.InputJsonValue;
 /**
  * What a NULLABLE `Json` column needs in order to hold SQL NULL.
  *
- * WIN-258 T5. Passing a plain `null` to a nullable `Json` field is a client
+ * WIN-258 T5, and it cost an integration run in two separate tranches to find.
+ * A `Json?` column has two nulls: the SQL NULL, and the JSONB value `null`.
+ * Passing a plain JavaScript `null` to a nullable `Json` field is a client
  * VALIDATION error, not a stored null — the client demands one of its two
- * sentinels and will not choose. The two are not interchangeable and only one is
- * correct here: `JsonNull` stores the JSON scalar `null`, whose `jsonb_typeof`
- * is `'null'`, and both `ToolCall_result_json_root` and
- * `ToolCallAudit_result_json_root` admit only `IS NULL`, `'object'` or
- * `'array'`. So a caller reaching for the other sentinel writes a value the
- * CHECK refuses — which is how this constant came to exist: `saveCall` with a
- * null result failed against a real database and passed against every double.
+ * sentinels and will not choose — and reaching for the other one, `JsonNull`,
+ * writes the JSON scalar `null`, whose `jsonb_typeof` is `'null'`.
+ *
+ * Every `*_json_root` CHECK the migrations install is written as
+ * `"column" IS NULL OR jsonb_typeof("column") IN ('object', 'array')`, so the
+ * second sentinel is refused by a constraint whose first clause looks like it
+ * should have allowed it. `ToolCall.result`, `ToolCallAudit.result`,
+ * `AgentCluster.metadata`, `Macro.paramSchema` and
+ * `PostmanTemplate.sessionContext` are all in that shape; the in-memory doubles
+ * hold `null` and cannot see any of it.
  */
 export const TENANCY_JSON_DB_NULL = Prisma.DbNull;
+
+/**
+ * A nullable JSONB value, written as the SQL NULL rather than as JSON `null`.
+ *
+ * Lives HERE because this is the one file entitled to name the vendor
+ * namespace, and a store that reached for `Prisma.DbNull` itself would be a
+ * second import of the client.
+ */
+export function nullableJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  return value === null || value === undefined
+    ? Prisma.DbNull
+    : (value as Prisma.InputJsonValue);
+}
 
 /**
  * Pool and timeout settings, all optional and all with a stated default.

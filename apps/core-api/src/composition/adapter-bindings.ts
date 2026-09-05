@@ -31,6 +31,10 @@ import type {
 } from "@platos/context-identity-access/application/ports/index.js";
 import type { TenancyRepository } from "@platos/context-tenancy/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
+import type {
+  AgentsRepository,
+  ScaffoldingRepository,
+} from "@platos/context-agents/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
@@ -112,6 +116,14 @@ interface PortSatisfaction {
     IdentityAccessRepository
   >;
   readonly "postgres-tenancy:ToolsRepository": Satisfies<PostgresTenancyAdapter, ToolsRepository>;
+  // WIN-258 T5 (ADR M0.3 §15). `agents` publishes TWO canonical-store ports and
+  // both are satisfied by the same directory, for the reason the rows above are:
+  // one PostgreSQL database, one client, one adapter directory.
+  readonly "postgres-tenancy:AgentsRepository": Satisfies<PostgresTenancyAdapter, AgentsRepository>;
+  readonly "postgres-tenancy:ScaffoldingRepository": Satisfies<
+    PostgresTenancyAdapter,
+    ScaffoldingRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -132,6 +144,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:TenancyRepository": true,
   "postgres-tenancy:IdentityAccessRepository": true,
   "postgres-tenancy:ToolsRepository": true,
+  "postgres-tenancy:AgentsRepository": true,
+  "postgres-tenancy:ScaffoldingRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -204,6 +218,16 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // the one transaction. `CANONICAL_STORE_ADAPTERS` in
   // scripts/arch/table-ownership.mjs grants exactly those ten rows and no more.
   Object.freeze({ adapter: "postgres-tenancy", port: "ToolsRepository", owner: "tools" }),
+  // WIN-258 T5 (ADR M0.3 §15). The FOURTH and FIFTH bindings of the same
+  // directory. They are two rows and not one because `agents` publishes two
+  // ports: `AgentsRepository` carries the version/binding invariant that every
+  // one of its methods has to respect, and `ScaffoldingRepository` carries the
+  // two rows a SURFACE writes on its own behalf — a macro that outlives every
+  // version of every agent, and a saved request that is not part of an agent's
+  // configuration. Folding them into one port is what would let a future method
+  // acquire an invariant it has no business having.
+  Object.freeze({ adapter: "postgres-tenancy", port: "AgentsRepository", owner: "agents" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "ScaffoldingRepository", owner: "agents" }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),

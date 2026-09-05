@@ -50,7 +50,21 @@
 // every decision that makes an event an event and hands a prepared row of
 // primitives across the `OutboxEventStore` seam; the two statements that satisfy
 // that seam are `./outbox-store.js`, spread in below.
+//
+// AND SO DO `agents`' TWO CANONICAL-STORE PORTS (WIN-258 T5). The seven rows of
+// ADR M0.3 §1 row 5 are in the same PostgreSQL database as the other thirty-one,
+// so by Amendment 15 they are written from the same directory behind the same
+// client. Both are SPREAD IN, for the reason every composite above is: the
+// composition root resolves `Satisfies<PostgresTenancyAdapter, AgentsRepository>`
+// and `Satisfies<PostgresTenancyAdapter, ScaffoldingRepository>` at compile time,
+// and a nested property could satisfy neither. The two ports are disjoint from
+// each other by construction and share no method name with tenancy's,
+// identity-access's, tools' or the outbox's.
 
+import type {
+  AgentsRepository,
+  ScaffoldingRepository,
+} from "@platos/context-agents/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
@@ -64,6 +78,8 @@ import type {
 } from "@platos/context-tenancy/application/ports/index.js";
 
 import { createAccessKeyRevocationCounter } from "./access-key-revocation.js";
+import { createAgentsRepository } from "./agents-repository.js";
+import { createScaffoldingRepository } from "./agents-scaffolding.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
@@ -83,6 +99,8 @@ export interface PostgresTenancyAdapter
   extends TenancyRepository,
     IdentityAccessRepository,
     ToolsRepository,
+    AgentsRepository,
+    ScaffoldingRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -167,6 +185,18 @@ export function buildPostgresTenancyAdapter(
     // are the only members any of the three spread-in composites has that begin
     // with those words.
     ...createOutboxEventStore(transactions),
+    // WIN-258 T5. `agents`' two canonical-store ports, SPREAD IN for the reason
+    // the identity-access composite is: `PORT_SATISFACTION` in the composition
+    // root resolves `Satisfies<PostgresTenancyAdapter, AgentsRepository>` and
+    // `Satisfies<PostgresTenancyAdapter, ScaffoldingRepository>` at compile time,
+    // and a nested property could not satisfy either. Their method names collide
+    // with nothing: the two ports are disjoint from each other by construction —
+    // `Macro` and `PostmanTemplate` are the rows a SURFACE writes on its own
+    // behalf, and they share no invariant with a version history — and neither
+    // has a name in common with tenancy's thirty-one, identity-access's ten
+    // store properties, or the outbox's two.
+    ...createAgentsRepository(transactions),
+    ...createScaffoldingRepository(transactions),
   };
 }
 

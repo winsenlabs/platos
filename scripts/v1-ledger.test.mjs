@@ -844,8 +844,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the census pins, the project-graph edge count and owner map, the
     // composition-root binding, the CI job's new build step and the ports
     // barrel's re-export block are all edits to files that already existed.
-    // 1109 + 20 = 1129.
-    packages: 1129,
+    //
+    // WIN-258 TRANCHE 5 — the `agents` canonical store — adds 18 MORE, into the
+    // SAME directory, and none of them is a new ledger rule: sixteen `src/*.ts`
+    // modules and suites under the existing packages.adapters source and test
+    // rules, `fixtures/agents-rows.sql` under the fixture rule that
+    // `fixtures/identity-access-rows.sql` already uses, and
+    // `mutations-agents.json` under the packages.adapters config rule that
+    // already carries the other five mutation ledgers. `agents` publishes two
+    // more ports from files that already existed, so `packages/contexts/agents`
+    // adds none.
+    //
+    // 1109 + 20 + 18 = 1147. BOTH tranche-5 stores land in `packages`, so this
+    // slice is the SUM; either branch's own figure — 1129 or 1127 — is short by
+    // the other tranche.
+    packages: 1147,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1008,11 +1021,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
     //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
     //   adapter directories) = 1185, + 20 (WIN-258 tranche 5, the `tools`
-    //   canonical store, every one of them in the ONE adapter directory) = 1205.
+    //   canonical store, every one of them in the ONE adapter directory) = 1205,
+    //   + 18 (WIN-258 tranche 5, the `agents` canonical store, in that SAME
+    //   directory) = 1223.
+    //
+    // BOTH TRANCHE-5 SLICES ARE ALL `packages`, all of them under
+    // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
+    // three apps areas are untouched — which is why the two slices compose with
+    // every one above, and with each other, by addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1205);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1223);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1032,10 +1052,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
     // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
-    // TWO adapter directories, and WIN-258 tranche 5's `tools` canonical store
-    // +20 in ONE); this one re-derives it by summing the per-area counts
-    // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1205
+    // TWO adapter directories, and WIN-258 tranche 5's TWO canonical stores,
+    // `tools` +20 and `agents` +18, both in ONE); this one re-derives it by
+    // summing the per-area counts independently, so the two can DISAGREE and be
+    // caught.
+    rulesDocument.baseline.totalFiles + 1223
   );
 });
 

@@ -292,6 +292,28 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // registered an entity's tools and bumped its environment's access-key fence
   // would have been two transactions with a window between them.
   tools: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The PostgreSQL `AgentsRepository` and `ScaffoldingRepository` —
+  // the SAME directory a fifth time, and for the fourth time for the same
+  // reason: one PostgreSQL database behind one client is one adapter directory
+  // (ADR M0.3 §15), not one directory per context.
+  //
+  // WHAT THIS GRANTS, EXACTLY. The seven rows of ADR M0.3 §1 row 5 — `Agent`,
+  // `AgentBinding`, `AgentCluster`, `AgentSkill`, `AgentVersion`, `Macro` and
+  // `PostmanTemplate` — and nothing else. `ownerDirectories("agents")` now
+  // returns `packages/contexts/agents` AND this one; every other owner is
+  // unmoved, so a write to `Tool` or `Memory` from here still fails, and a write
+  // to `Agent` from any third directory still fails.
+  //
+  // IT DOES NOT GRANT WHAT `agents` NEEDS AND DOES NOT OWN, and that turned out
+  // to matter. `AgentSkill.environmentSkillId` is a foreign key into
+  // `EnvironmentSkill`, which ADR M0.3 §1 row 6 gives to `skills`; `skills` has
+  // no entry here, so this directory cannot create the row its own loadout write
+  // depends on. The integration fixture seeds that chain as SQL applied by
+  // `prisma db execute`, which is honest about the fact that the row belongs to
+  // a context whose store does not exist yet, rather than reaching for a
+  // permission the map deliberately withholds.
+  agents: "packages/adapters/postgres-tenancy",
 });
 
 /**
