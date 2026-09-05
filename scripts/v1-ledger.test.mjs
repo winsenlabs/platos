@@ -809,7 +809,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 1109. Each branch pinned 1079 + its own addition and each was right
     // alone; taking either merged would understate the packages area by the
     // other's twelve or eighteen files.
-    packages: 1109,
+    packages: 1127,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -971,11 +971,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
     //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
-    //   adapter directories) = 1185.
+    //   adapter directories) = 1185, + 18 (WIN-258 tranche 5) = 1203.
+    //
+    // TRANCHE 5's 18 ARE ALL `packages`, all eighteen of them under
+    // `packages/adapters/postgres-tenancy`, and none is a new ledger rule: the
+    // sixteen `src/*.ts` modules and suites fall under the existing
+    // packages.adapters source and test rules, `fixtures/agents-rows.sql` under
+    // the fixture rule that `fixtures/identity-access-rows.sql` already uses,
+    // and `mutations-agents.json` under the packages.adapters config rule that
+    // already carries the other four mutation ledgers. `agents` publishes two
+    // more ports from files that already existed, so `packages/contexts/agents`
+    // adds none. docs-content, root-infra and all three apps areas are
+    // untouched, which is why this slice composes with every one above by
+    // addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1185);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1203);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -994,10 +1006,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
-    // five tenancy ports +12, and WIN-258 tranche 4's kernel outbox +18 across
-    // TWO adapter directories); this one re-derives it by summing the per-area
-    // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1185
+    // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
+    // TWO adapter directories, and WIN-258 tranche 5's `agents` canonical store
+    // +18 in ONE); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1203
   );
 });
 

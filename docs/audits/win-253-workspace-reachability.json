@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0d4781ef2a64c1911ec7539c6b2fd136e874dff6923d8316061e60000c72489b",
+  "evidenceSha256": "58eaae8ab3e1dc4d2f73dcd2df82619aa438fd734a00033a594370f0f3f3c9ad",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "289fe1d6b0ab09d9c006811a0dde372f32db07a27d6075e46f66e043e5181c9d",
+    "aggregateSha256": "9a327d941aa84780e9eee18f4f83e453d0c5c0c63575b216a3ad015332b323f0",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "70817c62fcd82c8bbd3e53e8f43e3265fe3c529f9cb15690d0d6ce20f190e01e"
+        "sha256": "6b3689fec85ae45cb37e16a9824715f9b17096b09552f617037997c47a11927c"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "d53bf814c03abc5e749a587cf521d8a4c7ad51bc6507c5cb959525b60a008f95"
+        "sha256": "525d2a67b931c1bbf9054192355a10e6932fdff63a111896cb43242de75efe5b"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2449,7 +2449,7 @@
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
-        "sha256": "1ba76c88d9e7de4b997c3a1c48b972c2c4c06e9215cb6322ecc5ee19c3eb61b0"
+        "sha256": "ba1d561945168e59a83924889e2cc9f7619f6fdd503e6abd286b743ff72eedab"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -2509,7 +2509,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "34e7a8e5af18622e298da6857b335eea16e3f74c8484c778099ab41ccce44c20"
+        "sha256": "72f020d4e5510792a54c3408c35cb38b386942ebfbbb7aac9a794967fc02f27d"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -4049,7 +4049,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "3654e76d2eb8fcb2aee2d6679d870940c941872b427c18de71b552b66acec6fc"
+        "sha256": "7a8bd462ccd2f4f85b46d384d01c3e68952b731694b65331039c774a869252a0"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "f1d32fc0c7da09c13b8637778b163aa7a870a5dc4edb42de54bbaf3c43afd589"
+        "sha256": "d8b0132686920618852994e284b2fac0db19d3891a8ec0e1ed273648f9497f2a"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "e6929a221cc23bf1bddb64d64d19fbde2bd8807c08a300858e2a00a1ef907d44"
+        "sha256": "0081943d6becf5f89a70a46f59b320c841ad4b01ff9adbabc6604b1b0ff057f4"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6065,7 +6065,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "aa8e86ef57ccbb07022c4ef57c38a9acf383fe1efc198cdeaa77f0d66c1e91c0"
+        "sha256": "8362f1c530b80ee1dd775174ad1e3d606556c38c72a066332ccf4162d38891c4"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11173,11 +11173,19 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/README.md",
-        "sha256": "bd8986c324ad2786029191140bf025db1a08909881fffb77e52fbb70691b0972"
+        "sha256": "d84362221cd88ea3415c73377451966606616eddb0db38b023b07c61234f3ac3"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql",
+        "sha256": "6c300e030d06348dcffb41ec8454382fd4f0c82ff2c0612e7a5193495cb5575f"
       },
       {
         "path": "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
         "sha256": "36051e7e63427b8d774b1395a2f7a67f36591ad497a61667950651fd27d732db"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/mutations-agents.json",
+        "sha256": "1f6a2cca2ddc65b580ac5fc000dfb5c37cf193068fca179e0893c67476852d93"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-identity.json",
@@ -11197,7 +11205,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/package.json",
-        "sha256": "fdadd25374dd9fe10175698879fbbf24aa22acea5003b38595d32444e35b1c83"
+        "sha256": "655333847a5e778909f0dc67091685066a6050f0a249d3a7575074652d537efb"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/access-key-revocation.ts",
@@ -11205,7 +11213,71 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/adapter.ts",
-        "sha256": "36c11c97ab08fe16fe920e5b6d95894d5f1938f2362dcc1bf80e79cd8c622402"
+        "sha256": "d6b2e435991fcf691a666f796bc941828d84dc07882b2b1b67847159e5e33b3a"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-catalog.ts",
+        "sha256": "f3f7c6a9e51f8e2d0ac38133bce62ee3e0327af8d3866c6c379f920746f11290"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-clusters.ts",
+        "sha256": "262c3944e5e0e5c7f0e5da7084dea89235e1b42f6e91c8e0b29419cb2ab10922"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-conformance-scaffolding.ts",
+        "sha256": "62475e3c74d765ecb2a06b9cc8f65441e144f5da2fe272282d31065937b57a50"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+        "sha256": "6c71d4ace2be03a5961f40fa3f93bb0a6d95ad480e66123eaa1ce4c9d8b0efa1"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-conformance.ts",
+        "sha256": "feb9e01e20f560b1e4c7b05527054bef48aefd09d4f38573a959afd5e234a659"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+        "sha256": "0d328c46e4772cf98e2488c1dc5b9efda36872dd0282fcb29ad434ac77f7af25"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-guards.test.ts",
+        "sha256": "24a4ad475ad9a80e46b2685848d51cc5e6fdec24c80d6f73123836d53a65e555"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-guards.ts",
+        "sha256": "e019f52f1ebef8ee0f315a7e86708bfbc88bf74f50d001538883ca8a56a19078"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-harness.ts",
+        "sha256": "9c585a8b2f480d1f3cc687d6323ec11f1c5aeffff5733018b4aea9d4bed72f66"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-repository.ts",
+        "sha256": "afc05713af91c5fcc95982df2be283e2e4a38cad1b14956907179f4cb1771c56"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+        "sha256": "9912a4841e878d0e27bea4550356e7d98c9d87bc375ffe736808cb2a9431d7b9"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-rows.ts",
+        "sha256": "94e64301ea0889eff3bf12935580f0b63d2b14dc59e8a68aabf05d8b73aa0c32"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-scaffolding.ts",
+        "sha256": "fa0c5987938d5cc72f21bcc7da7621aad91e3abfc222db5d07f30a63ea094188"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-statements.integration.test.ts",
+        "sha256": "30beae0e741f74938c0d160a4b449f9f46c4632ba02eb51b901181ade10b06af"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+        "sha256": "b69cbc3947b0f165814fd311ed41a13ee325932d1e868df02aab947146896ef2"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/agents-versions.ts",
+        "sha256": "b5128019098c17f555bb75fef049f8af66e2055482604d9d8df9aa95df137439"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/client.test.ts",
@@ -11213,7 +11285,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/client.ts",
-        "sha256": "7a708083226e0246b576b04f22772626e8936db46686d51b6d40b881bb7bcc24"
+        "sha256": "58a3040b2bc34909963aad04e2e7f96529c63da66b041a106c7072d1392c38b4"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/conformance.ts",
@@ -11413,7 +11485,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/tsconfig.json",
-        "sha256": "142f31f0f531a64d1a205568e82e11316b1c4a04ec36eef01d761e9ecddd23bc"
+        "sha256": "14452ab66bfcef5f2cf86a1880eaf6fec4c97d3bf6f5846cd693540a34e30cc9"
       },
       {
         "path": "packages/adapters/redis-cache/README.md",
@@ -11529,7 +11601,7 @@
       },
       {
         "path": "packages/contexts/agents/application/index.ts",
-        "sha256": "0709964cdfd58559c8ea226fa5f432420c978b0b2d1b9e141b052b8b8863c892"
+        "sha256": "56d6f539fa93542bca20fa0418dbd24dd2debc9828b6ac11485a53fd6c47bcdc"
       },
       {
         "path": "packages/contexts/agents/application/loadout.test.ts",
@@ -11553,7 +11625,7 @@
       },
       {
         "path": "packages/contexts/agents/application/ports/index.ts",
-        "sha256": "03f188d4c103c820cab130ea8fd929d0a3d839fc45df6b3ea125d16a27157c7e"
+        "sha256": "c1fd8cb3e8afb2ed4f40e9ea4327d448022556bef6f90de36618ff4864276c7e"
       },
       {
         "path": "packages/contexts/agents/application/ports/macro-recorder.ts",
@@ -11765,7 +11837,7 @@
       },
       {
         "path": "packages/contexts/agents/package.json",
-        "sha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3"
+        "sha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3"
       },
       {
         "path": "packages/contexts/agents/tsconfig.json",
@@ -17853,7 +17925,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "18d32716ed2dfc0388a897514dbfaa8816db89ab20645f85623e7b89df8a9ba6"
+        "sha256": "aae33325f1b13e44bef1b69ed0077f412594dab3263a79940963696c2824dc64"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -18017,7 +18089,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "0bfcf7945fa924fdf29ded71ced7711f27488b67f3cebf1997b5dc417f0edc60"
+        "sha256": "8bcc6b29985d6cd0c53acc7416b94acae20b0f9b8da10b5a356fa8ca09e9334d"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -18029,11 +18101,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "dff15a78a52d76003ea0dece9687ecbc42476c86a286fb1a7dc74b1af019fbdd"
+        "sha256": "e25cbf304ac350daa0db3fe55c99e73967ef6e2e5d5872008d453dd0a3bff395"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "eca64c1db22f6d06ff677ebeefa66885aab52515769b67845d4d280f1dff04aa"
+        "sha256": "2145dfbb15ec00f44745e545a46ad8b3145f9b90874728e605dcb4e428a54ce4"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -18061,27 +18133,27 @@
       },
       {
         "path": "scripts/arch/sole-writer.test.mjs",
-        "sha256": "8e7f0dab296fc723711ec9c7dca3032424209ec7ffdddf47ff79ee869632194c"
+        "sha256": "aa414b7cc32779f6a90d29f6ab0a3e2bf46dae0d02465dfada6ee8d761089ab9"
       },
       {
         "path": "scripts/arch/table-ownership.mjs",
-        "sha256": "7d34bf53259891af61e7076efcd114c14c0264146542cda898ef16c1c035819d"
+        "sha256": "35d03164a6dbe9e84cb60af310cca61781378aa8613ddf7befcb9c6d9fd3a3a7"
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "edbf8426ca7e87f1715c3a2b0de5f2f2979401601856b8aea8a45c967b7d1fe5"
+        "sha256": "42743d1956b607d7e42ccd9850aa3ef1089a2d961bf9a2618f7e9c01d6a132b2"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "524d8663eaff5b817780cfc7732dd863210f91ef2de00115011ba03a65ef0786"
+        "sha256": "82cc7e54929ea507d003a5e972476178eb92c38acae386b8b47389b4649d75d7"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "91e9fc8fd1a7355b5bee1459184f05731c32334dbacb937076908216606fe256"
+        "sha256": "bbdba7d12c9f5a4aa733aae88acecc0c837126e55b93db77f327dc230c675188"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "b88304f64d14981767408c3c1e1a8b625fa2db7ac2e927e07f7fa2d6770664e1"
+        "sha256": "8b961b4ad8c8084c8529678d5cce3aba5edc69550d88ee0ab376bf3517ae9b3d"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -18309,7 +18381,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "ebecf771186aea91118af752eb1cd91f972aed625df56462ea548f8804a22e09"
+        "sha256": "c0cf3777fd2364817040a6e40c379616bb31ecb6e3fbe36deeecb119a1308f62"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -23314,7 +23386,7 @@
             {
               "from": "packages/adapters/postgres-tenancy/README.md",
               "kind": "reference",
-              "line": 13
+              "line": 15
             },
             {
               "from": "packages/adapters/redis-cache/README.md",
@@ -23681,7 +23753,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 246
+              "line": 288
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -23843,7 +23915,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "19509207de2b8a8d5fe93551d5a53db11a6e31a2b7e65a7cc237fd72e67a94af",
+      "evidenceSha256": "a9f9851f38016198456c122b0dc1b2f20798eb9fec40228f505740d26568736c",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -24166,7 +24238,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 93
+              "line": 97
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -24268,7 +24340,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "9f0bacbbb038b03dff9cf2cc9fedafaec14aed4c56cbe75728b3c1c939f30a68",
+      "evidenceSha256": "50075bc7a7b9ff3f2fae2dbc5ec1d263dba3d459d62cd50c767040e877b10edd",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -25678,7 +25750,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 515
+              "line": 530
             },
             {
               "from": "apps/webapp/package.json",
@@ -26489,7 +26561,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "45668f42f9288b4cbd4e23ec6f3f8b5e885a1d8a3d894ee2dcaface82a04ff3f",
+      "evidenceSha256": "515228d74cf753c92b9f73d3b5fea13c18070a5c91058ae2f8eb5c6f0308d126",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -35567,7 +35639,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1030
+              "line": 1043
             }
           ],
           "reversePaths": [
@@ -35592,7 +35664,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b7966f330f1092566f47bf04497a73484bf0a44caf92ed7bac4607da60d5c8df",
+      "evidenceSha256": "21e67e6f9b0975b809e232db02718a5b96cd65f48e6bf0a032c9e5521b2182bb",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -36723,7 +36795,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1029
+              "line": 1042
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -36948,7 +37020,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "43d1a3f138ba165e0e9285e9950b690c8d01ca5ca5c047b2bdb23271614528cc",
+      "evidenceSha256": "9e26034b6059d7556491032f0f9f3c5f8deb6dc3d7878c7579b7dd068946f98a",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -38643,6 +38715,11 @@
               "line": 1
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "kind": "reference",
+              "line": 50
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
               "kind": "reference",
               "line": 4
@@ -38665,7 +38742,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 606
+              "line": 721
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -38942,6 +39019,10 @@
               "internal-packages/tenancy-database/src/win124.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts"
+            ],
+            [
               "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts"
             ],
@@ -39075,6 +39156,7 @@
             "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
             "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
             "internal-packages/tenancy-database/src/win124.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-differential.integration.test.ts",
             "packages/contexts/secrets/contracts/index.test.ts",
@@ -39252,7 +39334,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "915551bc9cf4c1e8d0f7ee4c65e3109f50565d9a09acd70b0dcb48ee02075752",
+      "evidenceSha256": "ae8d91e862a3fe6278b2ee1f4c443f55dcdc0015e0226375bed639009ba8adec",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -42380,7 +42462,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 49,
+              "line": 53,
               "specifier": "@platos/adapter-channel-slack"
             }
           ],
@@ -42469,7 +42551,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "65bd807b7b22dbbf60286ce208692c993666a1e3af39f52559302e9982d29b82",
+      "evidenceSha256": "f988f539443821b93a2a85ac9d8db6be62baafafc62c44dfb4eeee6624543af7",
       "manifestSha256": "1a96d65bdf3ef715636b959dbc9e51bd4cb1340b7339539dca003fe7a18fb41e",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -42765,7 +42847,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 43,
+              "line": 47,
               "specifier": "@platos/adapter-clickhouse-observability"
             }
           ],
@@ -42854,7 +42936,7 @@
           "packages/adapters/clickhouse-observability"
         ]
       },
-      "evidenceSha256": "cf4c6e03c215ca0f8db11eec9859a33be9c66163182baec497b9a6ce9ce06de5",
+      "evidenceSha256": "4f32630460f9fb13d836d9b62431ca4b33e6d17221f4db9db2cff8c7eb2ded08",
       "manifestSha256": "40bd79d6088e4c71073e849ecff745f0dfa79e7add5ff2ae33406f67a3f01acf",
       "name": "@platos/adapter-clickhouse-observability",
       "ociImageClosure": {
@@ -43150,7 +43232,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 42,
+              "line": 46,
               "specifier": "@platos/adapter-durable-runtime"
             }
           ],
@@ -43175,7 +43257,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 107
+              "line": 111
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -43269,7 +43351,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "57fa53cb7978d784aabffff8f8a1ca5568573aab4074e08c73ef901030f35701",
+      "evidenceSha256": "da14665d5559593201475fdf39c2ce509e01b2265d149614e2b623d3ad1f5b69",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -43556,7 +43638,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 48,
+              "line": 52,
               "specifier": "@platos/adapter-model-router-providers"
             }
           ],
@@ -43661,7 +43743,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 780
+              "line": 796
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -43845,7 +43927,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "169732fb330955ab90e75a85dab150745fd9ba4960ed5b3d63d8a4edc81b47b6",
+      "evidenceSha256": "8720a44cacb8d8f3e9f7433e3d30af10c3c5bf1de42549d9a67e6518868e3423",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -44131,7 +44213,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 50,
+              "line": 54,
               "specifier": "@platos/adapter-notifier-email"
             }
           ],
@@ -44207,7 +44289,7 @@
           "packages/adapters/notifier-email"
         ]
       },
-      "evidenceSha256": "994d9204a494b6743772f57755c9757b8dcbb57bd9581bdf24508ff33efad6f2",
+      "evidenceSha256": "3e36d115fe2be2d9fe72bf2ea4025f3e12f138e3b802888eca6292e5a64a0df4",
       "manifestSha256": "d588b586308cc20ed7e78f71ca261ad5de04772b80eaf54ce1d0601908361f66",
       "name": "@platos/adapter-notifier-email",
       "ociImageClosure": {
@@ -44493,7 +44575,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 51,
+              "line": 55,
               "specifier": "@platos/adapter-notifier-webhook"
             }
           ],
@@ -44569,7 +44651,7 @@
           "packages/adapters/notifier-webhook"
         ]
       },
-      "evidenceSha256": "e5ec078def83650bdbe3bf48f61dcdffb047cc28c9954d23f0d8d32f4c41c71a",
+      "evidenceSha256": "dc317253b570666af3146ba4445e8646adfd42b405e4b87cc8bfe108050e8503",
       "manifestSha256": "a5c1fd70b86c907c02a4fc57d582bc8c3b654208fedc056c2761b248ea1683cd",
       "name": "@platos/adapter-notifier-webhook",
       "ociImageClosure": {
@@ -44865,7 +44947,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 44,
+              "line": 48,
               "specifier": "@platos/adapter-objectstore-minio"
             }
           ],
@@ -44941,7 +45023,7 @@
           "packages/adapters/objectstore-minio"
         ]
       },
-      "evidenceSha256": "562dd1899022f8b894aa11212bfe63ced809fdefe038483c83ec4ffe0567074a",
+      "evidenceSha256": "f577347a693015f2cd3d5e47b289592220f2b27153cfa8c8cd6c962bf634871b",
       "manifestSha256": "8e1920de7ae2081a0fdd6854c321467200fa8b07d67b3503449c10ec385c6077",
       "name": "@platos/adapter-objectstore-minio",
       "ociImageClosure": {
@@ -45218,7 +45300,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 41,
+              "line": 45,
               "specifier": "@platos/adapter-outbox"
             }
           ],
@@ -45273,7 +45355,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 395
+              "line": 400
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -45288,7 +45370,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 929
+              "line": 961
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -45427,7 +45509,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "ab7ef6b8f18056a01bd03262437cf5719a3255e4e3e11561acee90335825e246",
+      "evidenceSha256": "0751487c960cf9d800933761ba55d16ef8ab4e7a868df336eaffa18fa40ea11a",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -45730,7 +45812,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 40,
+              "line": 44,
               "specifier": "@platos/adapter-postgres-tenancy"
             }
           ],
@@ -45758,6 +45840,11 @@
               "line": 5
             },
             {
+              "from": "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
               "kind": "workspace-owned-file",
               "line": 1
@@ -45766,6 +45853,36 @@
               "from": "packages/adapters/postgres-tenancy/package.json",
               "kind": "test-script",
               "script": "test"
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-guards.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-statements.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/client.test.ts",
@@ -45873,6 +45990,11 @@
               "line": 639
             },
             {
+              "from": "scripts/arch/gen-v1-skeleton.test.mjs",
+              "kind": "reference",
+              "line": 68
+            },
+            {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
               "line": 387
@@ -45885,7 +46007,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 902
+              "line": 887
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -45913,12 +46035,40 @@
               "packages/adapters/outbox/src/conformance.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql",
+              "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql"
+            ],
+            [
               "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
               "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql"
             ],
             [
               "packages/adapters/postgres-tenancy/package.json",
               "packages/adapters/postgres-tenancy/package.json"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-guards.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-guards.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-rows.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-statements.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-statements.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/client.test.ts",
@@ -46005,6 +46155,10 @@
               "scripts/arch/arch-boundaries.test.mjs"
             ],
             [
+              "scripts/arch/gen-v1-skeleton.test.mjs",
+              "scripts/arch/gen-v1-skeleton.test.mjs"
+            ],
+            [
               "scripts/arch/max-file-lines.test.mjs",
               "scripts/arch/max-file-lines.test.mjs"
             ],
@@ -46032,8 +46186,15 @@
           "roots": [
             "apps/core-api/src/app.module.test.ts",
             "packages/adapters/outbox/src/conformance.test.ts",
+            "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql",
             "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
             "packages/adapters/postgres-tenancy/package.json",
+            "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-guards.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-statements.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/client.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
@@ -46055,6 +46216,7 @@
             "packages/adapters/postgres-tenancy/src/repository.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/transaction.integration.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
@@ -46119,8 +46281,8 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "230f4fdfc3c2552c095cf7a2f1f2e7a9506113cf963f282c86c22b7876eb1f99",
-      "manifestSha256": "fdadd25374dd9fe10175698879fbbf24aa22acea5003b38595d32444e35b1c83",
+      "evidenceSha256": "4f2483ae1eefe9b76b580ba576c8d1f6376aba9e047a19b146054864102dd8d5",
+      "manifestSha256": "655333847a5e778909f0dc67091685066a6050f0a249d3a7575074652d537efb",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
         "reachable": false,
@@ -46405,7 +46567,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 46,
+              "line": 50,
               "specifier": "@platos/adapter-redis-cache"
             }
           ],
@@ -46430,7 +46592,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 165
+              "line": 167
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -46514,7 +46676,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "ec1fc0d0be13d039791989c8d50e1841a4131b1733f2290c514a2614c3e77deb",
+      "evidenceSha256": "ca294643df9087489d29bb7cb4b07ae683db9481bb9fa4b0c4b4bc1a0fc75d70",
       "manifestSha256": "aac45cec450579897470f8a1710290c96f5cd6139631eb189394fee7c9b41c8c",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -46800,7 +46962,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 45,
+              "line": 49,
               "specifier": "@platos/adapter-redis-ratelimit"
             }
           ],
@@ -46825,7 +46987,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 179
+              "line": 221
             }
           ],
           "reversePaths": [
@@ -46899,7 +47061,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "6e50b2ad9eb07881ee8aa3176770b73d8cee3e6c5634e50f53f0142a73e723eb",
+      "evidenceSha256": "e530b27e27ba4450f24666af38be43f54d347e594bc6a6ea2e2aa1a69b42c764",
       "manifestSha256": "1876f004322992388473664a1891d884af26ad344b16e50b76f2cbd68598226b",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -47185,7 +47347,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 47,
+              "line": 51,
               "specifier": "@platos/adapter-redis-streams"
             }
           ],
@@ -47261,7 +47423,7 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "425bd2bdc5c4a47c8c847abe5a0940368fc930a9a3ee426ee0720bf277366c2d",
+      "evidenceSha256": "046e169fb8c1a81719f8340fb8b1bed2bf43f5f43f766931c9a185380c19e44c",
       "manifestSha256": "2508c7fb6e2fe960f0795eee57be18935e7d22a76cc0dbc56eaed36e5b64ad3e",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
@@ -47298,6 +47460,23 @@
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -47361,6 +47540,10 @@
             "packages/contexts/agents"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents"
+          ],
+          [
             "packages/contexts/agents"
           ],
           [
@@ -47374,6 +47557,7 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/governance"
@@ -47403,6 +47587,11 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/ci.yml",
+              "kind": "reference",
+              "line": 356
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -47596,6 +47785,132 @@
               "specifier": "@platos/context-agents"
             },
             {
+              "file": "apps/core-api/src/composition/adapter-bindings.ts",
+              "from": "apps/core-api",
+              "line": 33,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/adapter.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 52,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-catalog.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 24,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-catalog.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 38,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-clusters.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 20,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-clusters.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 28,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-conformance-scaffolding.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 17,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-conformance.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 24,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-conformance.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 37,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-guards.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 35,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-guards.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 36,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 26,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 50,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-repository.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 32,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-repository.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 36,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-rows.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 21,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-rows.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 46,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-scaffolding.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 27,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-scaffolding.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 41,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-versions.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 29,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/agents-versions.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 40,
+              "specifier": "@platos/context-agents/application/ports/index.js"
+            },
+            {
               "file": "packages/contexts/conversations/application/dependencies.ts",
               "from": "packages/contexts/conversations",
               "line": 40,
@@ -47626,6 +47941,54 @@
               "apps/core-api/src/app.module.ts"
             ],
             [
+              "apps/core-api",
+              "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-catalog.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-clusters.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-conformance-scaffolding.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-conformance.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-guards.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-harness.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-repository.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-rows.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-scaffolding.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/agents-versions.ts"
+            ],
+            [
               "packages/contexts/conversations",
               "packages/contexts/conversations/application/dependencies.ts"
             ],
@@ -47644,6 +48007,7 @@
           ],
           "roots": [
             "apps/core-api",
+            "packages/adapters/postgres-tenancy",
             "packages/contexts/conversations",
             "packages/contexts/governance"
           ]
@@ -47651,6 +48015,26 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+              "kind": "reference",
+              "line": 23
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+              "kind": "reference",
+              "line": 17
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+              "kind": "reference",
+              "line": 20
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "kind": "reference",
+              "line": 24
+            },
             {
               "from": "packages/contexts/agents/application/agent-read.test.ts",
               "kind": "workspace-owned-file",
@@ -47784,20 +48168,46 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 226
+              "line": 310
+            },
+            {
+              "from": "scripts/arch/sole-writer.test.mjs",
+              "kind": "reference",
+              "line": 175
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 663
+              "line": 679
             },
             {
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 295
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 983
             }
           ],
           "reversePaths": [
+            [
+              "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-rows.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts"
+            ],
             [
               "packages/contexts/agents/application/agent-read.test.ts",
               "packages/contexts/agents/application/agent-read.test.ts"
@@ -47907,15 +48317,27 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/sole-writer.test.mjs",
+              "scripts/arch/sole-writer.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ],
             [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
+            "packages/adapters/postgres-tenancy/src/agents-conformance.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-rows.test.ts",
+            "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
             "packages/contexts/agents/application/agent-read.test.ts",
             "packages/contexts/agents/application/agent-write.test.ts",
             "packages/contexts/agents/application/authorization.test.ts",
@@ -47943,8 +48365,10 @@
             "packages/contexts/agents/domain/version.test.ts",
             "packages/contexts/agents/package.json",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
-            "scripts/license-distribution.test.mjs"
+            "scripts/license-distribution.test.mjs",
+            "scripts/v1-ledger.test.mjs"
           ]
         }
       },
@@ -47966,6 +48390,23 @@
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -48029,6 +48470,10 @@
             "packages/contexts/agents"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents"
+          ],
+          [
             "packages/contexts/agents"
           ],
           [
@@ -48042,13 +48487,14 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "e7b8f3c2970f3bc09ec29119621d04faedf6c77271bed37a2aa70aa16b653cee",
-      "manifestSha256": "ead9549a299b218e04385d4ed72d1ede6098dfdcdf3b0170fa0bc7e8a37a10e3",
+      "evidenceSha256": "b21d2ba3f2bb918bf79a752461123348d568b18d8bf7b7a1785fc5cff1f1ac17",
+      "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
         "reachable": false,
@@ -48361,7 +48807,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 37,
+              "line": 41,
               "specifier": "@platos/context-channels/application/ports/index.js"
             }
           ],
@@ -48465,7 +48911,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 727
+              "line": 743
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -48646,7 +49092,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "cb4a4e2f3adaab29e7a966be65cfcf84437bf8b55b1f5ea01397c4472a750aa7",
+      "evidenceSha256": "683403fe106bf24bafe36089986ba8f00bcd66776d9059791cd65b5a8a279036",
       "manifestSha256": "f730d3dae4a01c286db678b29bc1dd47a16621613359455e0370048e6826b762",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -49108,7 +49554,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 856
+              "line": 872
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -49352,7 +49798,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "8e1aefb0fc736c11614448f67cd7e30f905cdce2d300d496ea559380a2161ec4",
+      "evidenceSha256": "75387f07a4631e6150b24311b17f026e6ae85008c5caf0c285f82c3bfc89b3a7",
       "manifestSha256": "8b353ef5a31c369c3f31d462104027d9a32a9cff44162118c5775df82df9c025",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -49719,7 +50165,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 38,
+              "line": 42,
               "specifier": "@platos/context-cost-monitoring/application/ports/index.js"
             },
             {
@@ -49864,12 +50310,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 574
+              "line": 663
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 550
+              "line": 566
             }
           ],
           "reversePaths": [
@@ -50119,7 +50565,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "efc8f843cfa7d06b72f78159068f9cab0b704817ea88833be96c19c65200b65b",
+      "evidenceSha256": "8d52e3ce84c96729cdc5c21d0d72f788efd9ea2d819f46bd2f85bb01b963be71",
       "manifestSha256": "a0b876fc1e0239ef82ae4416eae655ed61e4747785e61e09e9563c28b2e190e6",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -50491,7 +50937,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 381
+              "line": 395
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -50645,7 +51091,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "f4261800f62ffa9173524ba653e92bd548a9c6a68e2ff03e49a88d716233486c",
+      "evidenceSha256": "b6077824b2fd0a3118b7769599d4fdbff59a1bc48104b5af901faff74f4369d1",
       "manifestSha256": "cc7a805b19d14dfb9db0eaccc17e4d832a04cf2732882a1bfc4ba20c361f434d",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -50698,6 +51144,25 @@
               "packages/contexts/files"
             ],
             "root": "packages/adapters/objectstore-minio",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/skills",
+              "packages/contexts/files"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -50803,6 +51268,12 @@
             "packages/contexts/files"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/skills",
+            "packages/contexts/files"
+          ],
+          [
             "packages/contexts/agents",
             "packages/contexts/skills",
             "packages/contexts/files"
@@ -50828,6 +51299,7 @@
         "roots": [
           "apps/core-api",
           "packages/adapters/objectstore-minio",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/files",
@@ -51053,7 +51525,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 33,
+              "line": 37,
               "specifier": "@platos/context-files/application/ports/index.js"
             },
             {
@@ -51189,7 +51661,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 127
+              "line": 129
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -51350,6 +51822,25 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/skills",
+              "packages/contexts/files"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/contexts/agents",
               "packages/contexts/skills",
               "packages/contexts/files"
@@ -51442,6 +51933,12 @@
             "packages/contexts/files"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/skills",
+            "packages/contexts/files"
+          ],
+          [
             "packages/contexts/agents",
             "packages/contexts/skills",
             "packages/contexts/files"
@@ -51467,6 +51964,7 @@
         "roots": [
           "apps/core-api",
           "packages/adapters/objectstore-minio",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/files",
@@ -51474,7 +51972,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "ce080fc2afd0390f481e4980131efee5f915a5f55252e6778fc1f7c18c93f4fd",
+      "evidenceSha256": "7a207abf3b46bc0e416e6c0b54968c31d5a991897e4daa8a10625b8dff75f062",
       "manifestSha256": "3ae6fd2ca3fccb75bada2d46933a092278e87ad0089deb376a7b97424c223a51",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -51931,7 +52429,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 753
+              "line": 769
             }
           ],
           "reversePaths": [
@@ -52160,7 +52658,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "0180e0bd70fae7403100c06cf54deddcab49f58be6feb74950522306ff150b8c",
+      "evidenceSha256": "572bcd0a2da60bf5aead936f8342f00d1f3fc23ffddbb2c3316dc6298ce86b32",
       "manifestSha256": "7f01ae0c9a93216de7d3e6eb4059d1c72cbfca917fcc3af4c73c2cc7fe551ed7",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -53101,7 +53599,7 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/adapter.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 44,
+              "line": 56,
               "specifier": "@platos/context-identity-access/application/ports/index.js"
             },
             {
@@ -53629,12 +54127,12 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 119
+              "line": 121
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 142
+              "line": 146
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -53644,7 +54142,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 361
+              "line": 375
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -54514,7 +55012,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d3bbe1cf9f98c86d5761cf2c9a0fa92b786ccfc00c5b1975be9d3ab0a24ca601",
+      "evidenceSha256": "49d6726c5262b8bf53cac521901a9ab8935a43af9f2dfc8e3c12508480620f5e",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -55451,7 +55949,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 35,
+              "line": 39,
               "specifier": "@platos/context-memory/application/ports/index.js"
             },
             {
@@ -55629,6 +56127,11 @@
               "script": "test"
             },
             {
+              "from": "scripts/arch/gen-v1-skeleton.test.mjs",
+              "kind": "reference",
+              "line": 377
+            },
+            {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
               "line": 212
@@ -55636,12 +56139,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 573
+              "line": 662
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 520
+              "line": 536
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55767,6 +56270,10 @@
               "packages/contexts/memory/package.json"
             ],
             [
+              "scripts/arch/gen-v1-skeleton.test.mjs",
+              "scripts/arch/gen-v1-skeleton.test.mjs"
+            ],
+            [
               "scripts/arch/max-file-lines.test.mjs",
               "scripts/arch/max-file-lines.test.mjs"
             ],
@@ -55813,6 +56320,7 @@
             "packages/contexts/memory/domain/traversal.test.ts",
             "packages/contexts/memory/domain/working-set.test.ts",
             "packages/contexts/memory/package.json",
+            "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
@@ -55919,7 +56427,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "db3b50a253cab2405536e39ff959d44af3944db4c3785439051576f844debeb4",
+      "evidenceSha256": "3f878680f0c128e4c6c3061bc032cfa05923b4a01d35dd15257773d225f286d5",
       "manifestSha256": "7e04d10346fdcaccdd740e9b84d2149278bef96665a11a295cf9101cc7bf26a7",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -56233,7 +56741,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 34,
+              "line": 38,
               "specifier": "@platos/context-observability/application/ports/index.js"
             }
           ],
@@ -56342,12 +56850,12 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 204
+              "line": 246
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 621
+              "line": 637
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -56538,7 +57046,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "2eda0120887c74cd8ae47f9a56eb45eb0a5f39a23c15e4aa706a15ecc4eebdc6",
+      "evidenceSha256": "2d94b8415579d3e5101a7a7f94165e24496fb9e914a70231852a972e6dd22c45",
       "manifestSha256": "27591394809fe44c82333dd5dc1024c4958a0c5afd0bae17a125627b93df8bb4",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -56920,7 +57428,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 588
+              "line": 604
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -57084,7 +57592,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "01d2156813d7e2d9e33e822a5e035a8425919594006b957ade9311c873503924",
+      "evidenceSha256": "cc4f074a0ef476da2327889d57600e5e482bb93fb34b4dbcbc5798ec905658a5",
       "manifestSha256": "cbe7957b353de59025dd78a769023d087afd2c1ab2a5647b6c810a311564f2f2",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -57195,6 +57703,24 @@
               "packages/contexts/providers"
             ],
             "root": "packages/adapters/notifier-webhook",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/providers"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -57365,6 +57891,11 @@
             "packages/contexts/providers"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/providers"
+          ],
+          [
             "packages/adapters/redis-cache",
             "packages/contexts/memory",
             "packages/contexts/providers"
@@ -57404,6 +57935,7 @@
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
+          "packages/adapters/postgres-tenancy",
           "packages/adapters/redis-cache",
           "packages/contexts/agents",
           "packages/contexts/conversations",
@@ -57633,7 +58165,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 36,
+              "line": 40,
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
@@ -58169,7 +58701,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 419
+              "line": 433
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -58498,6 +59030,24 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/providers"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/redis-cache",
               "packages/contexts/memory",
               "packages/contexts/providers"
@@ -58655,6 +59205,11 @@
             "packages/contexts/providers"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/providers"
+          ],
+          [
             "packages/adapters/redis-cache",
             "packages/contexts/memory",
             "packages/contexts/providers"
@@ -58694,6 +59249,7 @@
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
+          "packages/adapters/postgres-tenancy",
           "packages/adapters/redis-cache",
           "packages/contexts/agents",
           "packages/contexts/conversations",
@@ -58704,7 +59260,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "99c04b608b36c372dda866ecaf9e29a4bf8534dcad6e7816e2e8b60e64c52bde",
+      "evidenceSha256": "1cc99bf745fc5329a96eace617dc867fdcd22385d9fa16e14cf64e4fe59b0eda",
       "manifestSha256": "f69f275893c2df7b1675a002178d65268c5080b201149e03af0fd3cce65a072c",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -58818,6 +59374,25 @@
               "packages/contexts/secrets"
             ],
             "root": "packages/adapters/notifier-webhook",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/providers",
+              "packages/contexts/secrets"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -59013,6 +59588,12 @@
             "packages/contexts/secrets"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/providers",
+            "packages/contexts/secrets"
+          ],
+          [
             "packages/adapters/redis-cache",
             "packages/contexts/memory",
             "packages/contexts/providers",
@@ -59061,6 +59642,7 @@
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
+          "packages/adapters/postgres-tenancy",
           "packages/adapters/redis-cache",
           "packages/contexts/agents",
           "packages/contexts/conversations",
@@ -59543,17 +60125,17 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 168
+              "line": 172
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 558
+              "line": 647
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 362
+              "line": 376
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -59790,6 +60372,25 @@
               "optionalDependencies"
             ],
             "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/providers",
+              "packages/contexts/secrets"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
               "packages/adapters/redis-cache",
               "packages/contexts/memory",
               "packages/contexts/providers",
@@ -59972,6 +60573,12 @@
             "packages/contexts/secrets"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/providers",
+            "packages/contexts/secrets"
+          ],
+          [
             "packages/adapters/redis-cache",
             "packages/contexts/memory",
             "packages/contexts/providers",
@@ -60020,6 +60627,7 @@
           "packages/adapters/model-router-providers",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
+          "packages/adapters/postgres-tenancy",
           "packages/adapters/redis-cache",
           "packages/contexts/agents",
           "packages/contexts/conversations",
@@ -60031,7 +60639,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "cd9935ab728faf504abca7735d79db5cd9bcd2b4c2203886aa53ef9cef017395",
+      "evidenceSha256": "7ba4f39eeb03877f5408049aec78981d3dd33c2cd504b06fb81bfe9ff022d33d",
       "manifestSha256": "49544f74e2e4c857cfcd0cbfccb6be2aa97fcbbab8333311cb1ee45175b0c3e8",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -60068,6 +60676,24 @@
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/skills"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -60149,6 +60775,11 @@
             "packages/contexts/skills"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/skills"
+          ],
+          [
             "packages/contexts/agents",
             "packages/contexts/skills"
           ],
@@ -60167,6 +60798,7 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/governance",
@@ -60521,9 +61153,14 @@
               "script": "test"
             },
             {
+              "from": "scripts/arch/sole-writer.test.mjs",
+              "kind": "reference",
+              "line": 212
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 445
+              "line": 459
             }
           ],
           "reversePaths": [
@@ -60612,6 +61249,10 @@
               "packages/contexts/skills/package.json"
             ],
             [
+              "scripts/arch/sole-writer.test.mjs",
+              "scripts/arch/sole-writer.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ]
@@ -60638,6 +61279,7 @@
             "packages/contexts/skills/domain/tool-namespace.test.ts",
             "packages/contexts/skills/domain/visibility.test.ts",
             "packages/contexts/skills/package.json",
+            "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs"
           ]
         }
@@ -60660,6 +61302,24 @@
                 "from": "apps/core-api/package.json",
                 "kind": "executable-manifest"
               },
+              {
+                "from": "tsconfig.json",
+                "kind": "root-typescript-reference"
+              }
+            ]
+          },
+          {
+            "groups": [
+              "dependencies",
+              "optionalDependencies"
+            ],
+            "path": [
+              "packages/adapters/postgres-tenancy",
+              "packages/contexts/agents",
+              "packages/contexts/skills"
+            ],
+            "root": "packages/adapters/postgres-tenancy",
+            "rootReasons": [
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -60741,6 +61401,11 @@
             "packages/contexts/skills"
           ],
           [
+            "packages/adapters/postgres-tenancy",
+            "packages/contexts/agents",
+            "packages/contexts/skills"
+          ],
+          [
             "packages/contexts/agents",
             "packages/contexts/skills"
           ],
@@ -60759,13 +61424,14 @@
         ],
         "roots": [
           "apps/core-api",
+          "packages/adapters/postgres-tenancy",
           "packages/contexts/agents",
           "packages/contexts/conversations",
           "packages/contexts/governance",
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "2dd78846a2aa8b19ba7f12bbcbed29938b20b10c312be830270714f1e0dc2e80",
+      "evidenceSha256": "a978f74a124afd7dc918dda5369000a9cf93b18825700bb219685c711d1d719a",
       "manifestSha256": "541ccf8dfce63a7f7788f816dfa3a8be40533e9290f8ec5606183314bc64814b",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -61603,7 +62269,7 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/adapter.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 45,
+              "line": 57,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
@@ -62428,12 +63094,12 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 87
+              "line": 89
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 329
+              "line": 380
             },
             {
               "from": "scripts/arch/kernel-content.test.mjs",
@@ -62448,7 +63114,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 363
+              "line": 377
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -63263,7 +63929,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "0dd7531aed456b38b907334e4b13d0ce978b2e59494114c22c41dd18560a2adb",
+      "evidenceSha256": "bea424f2cf27726273b5a585f47fac2d93b11845a1c72659d335949566b19a47",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -63638,7 +64304,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 825,
+              "line": 854,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -63786,7 +64452,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 91
+              "line": 95
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -63794,9 +64460,14 @@
               "line": 64
             },
             {
+              "from": "scripts/arch/sole-writer.test.mjs",
+              "kind": "reference",
+              "line": 187
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 692
+              "line": 708
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -63903,6 +64574,10 @@
               "scripts/arch/max-file-lines.test.mjs"
             ],
             [
+              "scripts/arch/sole-writer.test.mjs",
+              "scripts/arch/sole-writer.test.mjs"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ],
@@ -63939,6 +64614,7 @@
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
+            "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/v1-ledger.test.mjs"
@@ -64048,7 +64724,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "bf89fc01298d7227d4a0874961322d72d14cd0da62ea85f07e01147850260037",
+      "evidenceSha256": "50065374a36bd8b783122982ba3e3c65fb7bb69830e15712fecad9a07de6baeb",
       "manifestSha256": "1c6c733ab3d8cc97a3d406df35a4fac17df0ff938e7510566bbe75808074d083",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -65919,7 +66595,7 @@
             ],
             "path": [
               "packages/adapters/postgres-tenancy",
-              "packages/contexts/identity-access",
+              "packages/contexts/agents",
               "packages/kernel"
             ],
             "root": "packages/adapters/postgres-tenancy",
@@ -66339,7 +67015,7 @@
           ],
           [
             "packages/adapters/postgres-tenancy",
-            "packages/contexts/identity-access",
+            "packages/contexts/agents",
             "packages/kernel"
           ],
           [
@@ -66847,6 +67523,18 @@
               "file": "packages/contexts/agents/application/ports/agents-repository.ts",
               "from": "packages/contexts/agents",
               "line": 43,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/index.ts",
+              "from": "packages/contexts/agents",
+              "line": 41,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/agents/application/ports/index.ts",
+              "from": "packages/contexts/agents",
+              "line": 42,
               "specifier": "@platos/kernel"
             },
             {
@@ -70548,7 +71236,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 710,
+              "line": 739,
               "specifier": "@platos/kernel"
             }
           ],
@@ -70624,6 +71312,10 @@
             [
               "packages/contexts/agents",
               "packages/contexts/agents/application/ports/agents-repository.ts"
+            ],
+            [
+              "packages/contexts/agents",
+              "packages/contexts/agents/application/ports/index.ts"
             ],
             [
               "packages/contexts/agents",
@@ -73969,7 +74661,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 419
+              "line": 424
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -73984,7 +74676,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 289
+              "line": 294
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -75338,7 +76030,7 @@
             ],
             "path": [
               "packages/adapters/postgres-tenancy",
-              "packages/contexts/identity-access",
+              "packages/contexts/agents",
               "packages/kernel"
             ],
             "root": "packages/adapters/postgres-tenancy",
@@ -75758,7 +76450,7 @@
           ],
           [
             "packages/adapters/postgres-tenancy",
-            "packages/contexts/identity-access",
+            "packages/contexts/agents",
             "packages/kernel"
           ],
           [
@@ -75882,7 +76574,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "a313963417dc2e7704bfc3fe357dab7371c0b979c35e9b5bb600f952fdfd0c40",
+      "evidenceSha256": "3214820823c7a93bf23d327e6321841112cf6f5853b4548a826dd678e329baa5",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

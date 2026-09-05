@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "70817c62fcd82c8bbd3e53e8f43e3265fe3c529f9cb15690d0d6ce20f190e01e"
+      "sha256": "6b3689fec85ae45cb37e16a9824715f9b17096b09552f617037997c47a11927c"
     },
     {
       "path": "LICENSE",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "3654e76d2eb8fcb2aee2d6679d870940c941872b427c18de71b552b66acec6fc"
+      "sha256": "7a8bd462ccd2f4f85b46d384d01c3e68952b731694b65331039c774a869252a0"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e47029195af13cbd9c6b9bc6f10030943d6584cfcbf599805f99160438ceeb9f"
+      "sha256": "3d3c040c4e50b53aa110e9e141b4f59b59de312f8f0ebe2531e7384e289de8e9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "f0ea5a94fe216769215ee6180f836f91a0fd7ffe0f91d41a3ed9ad03c142e7a7"
+      "sha256": "c11dfffabee3d078b6bfba89d313a66d9f529ee6bfdcf2e8e683b26799d3337d"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "f1d32fc0c7da09c13b8637778b163aa7a870a5dc4edb42de54bbaf3c43afd589"
+      "sha256": "d8b0132686920618852994e284b2fac0db19d3891a8ec0e1ed273648f9497f2a"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "e6929a221cc23bf1bddb64d64d19fbde2bd8807c08a300858e2a00a1ef907d44"
+      "sha256": "0081943d6becf5f89a70a46f59b320c841ad4b01ff9adbabc6604b1b0ff057f4"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "aa8e86ef57ccbb07022c4ef57c38a9acf383fe1efc198cdeaa77f0d66c1e91c0"
+      "sha256": "8362f1c530b80ee1dd775174ad1e3d606556c38c72a066332ccf4162d38891c4"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3643,7 +3643,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "18d32716ed2dfc0388a897514dbfaa8816db89ab20645f85623e7b89df8a9ba6"
+      "sha256": "aae33325f1b13e44bef1b69ed0077f412594dab3263a79940963696c2824dc64"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "ebecf771186aea91118af752eb1cd91f972aed625df56462ea548f8804a22e09"
+      "sha256": "c0cf3777fd2364817040a6e40c379616bb31ecb6e3fbe36deeecb119a1308f62"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
