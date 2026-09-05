@@ -1372,10 +1372,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
  * their own branch's arithmetic and neither is the tree.
  *
- * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 5 files and 45
+ * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 6 files and 60
  * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
  *
- *   agents-guards.test.ts                     15  the refusal parser, against the
+ *   agents-guards.test.ts                     14  the refusal parser, against the
  *                                                 THREE shapes a refusal actually
  *                                                 arrives in, every fixture copied
  *                                                 off a container
@@ -1389,17 +1389,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                 and compared step by step
  *   agents-constraints.integration.test.ts    16  what the MIGRATIONS refuse and
  *                                                 `schema.prisma` does not say
- *   agents-transaction.integration.test.ts    11  failure injection, the three
+ *   agents-transaction.integration.test.ts    12  failure injection, the three
  *                                                 transaction-scope refusals,
  *                                                 the savepoint measured from a
  *                                                 SECOND connection, and the
  *                                                 parent row lock
  *   agents-statements.integration.test.ts      9  measured statement counts
  *
- * 15 + 7 + 2 + 16 + 12 + 9 = 61, over 6 files. Four of the six are excluded from
- * the package's default `test` script by filename and run by the
- * `postgres-tenancy-repository` CI job; `agents-guards.test.ts` and
- * `agents-rows.test.ts` are not, because neither module has a database in it.
+ * 14 + 7 + 2 + 16 + 12 + 9 = 60, over 6 files, and every one of the six numbers
+ * is READ BACK from the counter in this file rather than tallied by hand. Four
+ * of the six are excluded from the package's default `test` script by filename
+ * and run by the `postgres-tenancy-repository` CI job; `agents-guards.test.ts`
+ * and `agents-rows.test.ts` are not, because neither module has a database in
+ * it.
  *
  * THE TWO UNIT FILES ARE HERE BECAUSE A SWEEP PUT THEM HERE, and that is the
  * honest order of events. `agents-guards.test.ts` exists because two entries of
@@ -1414,9 +1416,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * which is why `mutations-agents.json` is where those guards are held
  * falsifiable.
  *
- *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 260 cases
+ *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 259 cases
  *
- * The tree total is 391 + 6 = 397 files and 6115 + 61 = 6176 cases. The adapters
+ * The tree total is 391 + 6 = 397 files and 6115 + 60 = 6175 cases. The adapters
  * term of the three-way identity carries all six: 39 + 6 = 45, and 349 + 3 + 45
  * = 397.
  */
@@ -1580,17 +1582,16 @@ export const EXPECTED = Object.freeze({
  * 6041 -> 6115: the outbox's 41 and the 33 of tranche 4.
  *
  * 6115 -> 6175: the 60 cases of WIN-258 tranche 5 — the `agents` canonical store
- * — enumerated file by file in the block beside the postgres-tenancy row. The
- * enumeration there says 61 because it counts what each FILE declares; this
- * census counts 60 for the same six files, and the one-case difference is
- * `agents-guards.test.ts`, whose `describe` blocks the counter reads slightly
- * differently from a hand tally. THE NUMBER READ BACK FROM THE COUNTER IS THE
- * ONE PINNED — the tally above is the reader's cross-check, not the source.
+ * — enumerated file by file in the block beside the postgres-tenancy row, every
+ * number there read back from the counter in this file.
  *
- * That takes the count of cases this census records and `pnpm test:v1-packages`
- * does not execute from 128 to 167: 39 of the 60 are integration suites, and the
- * remaining 21 (`agents-guards.test.ts` and `agents-rows.test.ts`) run in the
- * ordinary package test script because neither module has a database in it.
+ * The cases this census records that `pnpm test:v1-packages` does not execute
+ * are the ones whose file name carries `.integration.`, which the package's own
+ * `test` script excludes. MEASURED over this tree: 183 cases across 20 files,
+ * all of them in `packages/adapters/postgres-tenancy`. Tranche 5 contributes 39
+ * of those over four suites; its remaining 21 (`agents-guards.test.ts` and
+ * `agents-rows.test.ts`) run in the ordinary package test script, because
+ * neither module has a database in it.
  */
 export const EXPECTED_RUNTIME_TOTAL = 6175;
 
