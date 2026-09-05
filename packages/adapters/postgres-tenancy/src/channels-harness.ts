@@ -99,6 +99,7 @@ export interface ChannelsHarness {
 export async function startChannelsHarness(): Promise<ChannelsHarness> {
   const base = await startTenancyHarness();
   const repository = base.adapter as unknown as ChannelsRepository;
+  let versionNumber = 0;
 
   function applyPeerRows(sql: string): void {
     execFileSync(prismaBinary, ["db", "execute", "--url", base.databaseUrl, "--stdin"], {
@@ -224,13 +225,21 @@ export async function startChannelsHarness(): Promise<ChannelsHarness> {
     async seedTurn(thread): Promise<string> {
       const versionId = base.freshId("010e");
       const turnId = base.freshId("010f");
+      // TWO UNIQUES, ONE COUNTER. `AgentVersion` is UNIQUE on
+      // `(agentId, versionNumber)` and `Turn` on `(threadId, sequence)`, so a
+      // SECOND turn on the same thread collides on both unless each call moves.
+      // The counter varies per call rather than per agent because two turns on
+      // one thread is the case that found this, and a per-agent map would have
+      // hidden it behind a lookup.
+      versionNumber += 1;
       applyPeerRows(
         [
           `INSERT INTO "AgentVersion" ("id", "agentId", "versionNumber", "model", "createdBy", "createdAt")
-           VALUES ('${versionId}', '${thread.agentId}', 1, 'model-x', 'suite', '2026-05-01T09:00:00Z');`,
-          `INSERT INTO "Turn" ("id", "threadId", "agentVersionId", "versionBucket", "sequence", "createdAt")
-           VALUES ('${turnId}', '${thread.threadId}', '${versionId}', 'CURRENT', 1,
+           VALUES ('${versionId}', '${thread.agentId}', ${String(versionNumber)}, 'model-x', 'suite',
                    '2026-05-01T09:00:00Z');`,
+          `INSERT INTO "Turn" ("id", "threadId", "agentVersionId", "versionBucket", "sequence", "createdAt")
+           VALUES ('${turnId}', '${thread.threadId}', '${versionId}', 'CURRENT',
+                   ${String(versionNumber)}, '2026-05-01T09:00:00Z');`,
         ].join("\n"),
       );
       return turnId;
