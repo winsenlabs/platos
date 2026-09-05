@@ -711,8 +711,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               extended by BOTH tails, `+ 11` for tranche 3 and `+ 9 + 6`
     //               for tranche 4's two directories, so a term that went missing
     //               would move the total and be caught rather than absorbed.
-    assert.equal(result.fileCount, 1225, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6);
+    //  1225 -> 1241: WIN-258 TRANCHE 5, the `agents` canonical store, and every
+    //               one of the sixteen is a `.ts` file in the SAME adapter
+    //               directory -- the two stores split across five modules, the
+    //               row readers, the refusal parser, the harness, the shared
+    //               conformance scenario in two halves, and six suites. The
+    //               `fixtures/agents-rows.sql` and `mutations-agents.json`
+    //               beside them are not source and are not counted here; the v1
+    //               ledger counts all eighteen and its own delta says 18.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` AGAIN, and this
+    //               tranche is the third time it decided the shape. `agents`
+    //               owns seven rows in the same database, so a per-context
+    //               adapter package would have been a second ORM home; the two
+    //               ports went to the one home instead, owner-tagged, and
+    //               `src/client.ts` is still the only file in the layout that
+    //               imports the ORM -- it gained `Prisma.DbNull` and nothing
+    //               else.
+    assert.equal(result.fileCount, 1241, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 16);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
