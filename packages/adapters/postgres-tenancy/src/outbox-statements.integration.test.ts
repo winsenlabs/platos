@@ -133,25 +133,31 @@ describe("drain", () => {
   });
 
   test("draining the WHOLE outbox in pages of 50 is one statement per page", async () => {
-    let cursor: { readonly createdAt: Date; readonly eventId: string } | null = null;
-    let pages = 0;
+    // A HOLDER rather than a `let`: the cursor is assigned inside the measured
+    // callback, and a narrowed `let` would be read back as null on the next lap.
+    const state: {
+      cursor: { readonly createdAt: Date; readonly eventId: string } | null;
+      batch: number;
+      seen: number;
+    } = { cursor: null, batch: -1, seen: 0 };
+    let reads = 0;
     let statements = 0;
-    let seen = 0;
-    for (;;) {
-      const page = await measure(async () => {
-        const rows = await harness.adapter.readOutboxEventsAfter(cursor, 50);
+    while (state.batch !== 0) {
+      statements += await measure(async () => {
+        const rows = await harness.adapter.readOutboxEventsAfter(state.cursor, 50);
+        state.batch = rows.length;
+        state.seen += rows.length;
         const last = rows.at(-1);
-        cursor = last === undefined ? cursor : { createdAt: last.createdAt, eventId: last.eventId };
-        seen += rows.length;
-        if (rows.length === 0) pages = -1;
+        if (last !== undefined) state.cursor = { createdAt: last.createdAt, eventId: last.eventId };
       });
-      statements += page;
-      if (pages === -1) break;
-      pages += 1;
+      reads += 1;
     }
-    expect(seen).toBeGreaterThanOrEqual(205);
-    // One page-read per loop, including the final empty one.
-    expect(statements).toBe(pages + 1);
+    expect(state.seen).toBeGreaterThanOrEqual(205);
+    expect(reads).toBeGreaterThan(4);
+    // Exactly one statement per read, including the final empty page. A store
+    // that resolved its client with a round trip, or counted rows first, would
+    // show two here and would still pass every value assertion in this file.
+    expect(statements).toBe(reads);
   });
 
   test("no page is ever re-read and none is skipped", async () => {
