@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `dcb58bf843b1feaf9f607f16f24b9acc1cc917319d2168c3e42e9301a9a6b5cf`
+Evidence SHA-256: `6dad5b4c6b46848fd00da4df6e837a36c83d8b6471ff0c7af4833aaab4ee6e20`
 
 ## Baseline
 
@@ -89,7 +89,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/contexts/secrets` | `@platos/context-secrets` | no | yes | yes | no | retain-application-deployable | no | no | `3efe74febaa359c2…` |
 | `packages/contexts/skills` | `@platos/context-skills` | no | yes | yes | no | retain-application-deployable | no | no | `678e7c3cfce60d1b…` |
 | `packages/contexts/tenancy` | `@platos/context-tenancy` | no | yes | yes | no | retain-application-deployable | no | no | `389e59f73a406059…` |
-| `packages/contexts/tools` | `@platos/context-tools` | no | yes | yes | no | retain-application-deployable | no | no | `1707fc46b282c2fd…` |
+| `packages/contexts/tools` | `@platos/context-tools` | no | yes | yes | no | retain-application-deployable | no | no | `473ae336aeaaaea0…` |
 | `packages/core` | `@platos/core` | no | no | no | yes | owner-review-public-boundary | yes | yes | `cff2a903852338f3…` |
 | `packages/kernel` | `@platos/kernel` | no | yes | yes | no | retain-application-deployable | no | no | `95b8a46b411794e8…` |
 | `packages/platools-js` | `@platosdev/platools-sdk` | no | no | no | no | owner-review-public-boundary | yes | yes | `9a50f2e6623f2307…` |

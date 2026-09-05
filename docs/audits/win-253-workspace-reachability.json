@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "dcb58bf843b1feaf9f607f16f24b9acc1cc917319d2168c3e42e9301a9a6b5cf",
+  "evidenceSha256": "6dad5b4c6b46848fd00da4df6e837a36c83d8b6471ff0c7af4833aaab4ee6e20",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b081aa5952b70bdab3c16ca662dc9465f2cb94249ba751b590fb60ffd9f5134a",
+    "aggregateSha256": "d0b764d409be5f5a8a19572aefc0a97290f82bd2f507f66be4ab09ded9c97bd1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11473,7 +11473,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts",
-        "sha256": "90b84048eaaa570216999c13920991442178d5ec990487bfac3f88a31a388798"
+        "sha256": "4ceae6d25e546bca562f814b7e1162c38aa74ac5dbc96764e6e71690d3fae786"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/tools-transcript.ts",
@@ -18149,11 +18149,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b9a0b57b0ea39b0a2758dfff7255afab06101e98bc46eacdcec43917ad51e6f4"
+        "sha256": "a45545026e6bc38d7586a2fd9c3ec9c87c62d4f3270815a7f768856b545b89cf"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "b9c6bd2a728409c0a777512600982c675bbf794c507b0c47cf68e71464441456"
+        "sha256": "4ed8a6032406869feea06f9282a69e34c0fc5bf2681a4b67b9d690eaa57ce37a"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -64206,7 +64206,7 @@
             {
               "from": "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts",
               "kind": "reference",
-              "line": 39
+              "line": 49
             },
             {
               "from": "packages/contexts/tools/application/execution.test.ts",
@@ -64640,7 +64640,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1707fc46b282c2fdc9ab9c5aaeb7ea9f0ce160b450bc050fadf4c46f1b74a618",
+      "evidenceSha256": "473ae336aeaaaea03a0fdb0c33ba570ec1b1a4477ea6e9595166f76d6eadc176",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
