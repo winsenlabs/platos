@@ -223,7 +223,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 12 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 14 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -293,10 +293,13 @@ test("the binding-table parser reads all FIFTEEN bindings, across twelve directo
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with two bindings appears TWICE in the flattening and once in
-  // the directory set. Both halves are asserted so a change that collapsed the
-  // table back to one row per directory cannot pass here.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 2);
+  // A directory with four bindings appears FOUR TIMES in the flattening and once
+  // in the directory set. Both halves are asserted so a change that collapsed the
+  // table back to one row per directory cannot pass here. It is four rather than
+  // two from WIN-258 T5: `agents` publishes TWO canonical-store ports and this
+  // one directory satisfies both, over the same client as tenancy's and
+  // identity-access's.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 4);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
 });
 
@@ -373,7 +376,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 12 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 14 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

@@ -574,7 +574,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 // conflict at all and would have shipped three writes short of the tree. The
 // second and third assertions below say the writes are all legal and all
 // attributable, so the pin cannot be satisfied by 69 mutations somewhere else.
-// WIN-258 TRANCHE 5 adds 23, again all from the SAME directory, on the SEVEN
+// WIN-258 TRANCHE 5 adds 27, again all from the SAME directory, on the SEVEN
 // rows `agents` owns. Written out so a deletion cannot hide inside an addition:
 //
 //   src/agents-catalog.ts       agent.create, agent.updateManyAndReturn,
@@ -591,26 +591,37 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                               .deleteMany, postmanTemplate.create +
 //                               .updateManyAndReturn + .deleteMany              6
 //   src/agents-constraints.integration.test.ts
-//                               three raw statements naming their table
+//                               SEVEN raw statements naming their table
 //                               LITERALLY: an `AgentVersion` INSERT carrying
 //                               `enabledTools`, a `DELETE FROM "AgentVersion"`
-//                               a binding still serves, and a `Macro` INSERT
-//                               whose steps are not an array                    3
+//                               a binding still serves, a `Macro` INSERT whose
+//                               steps are not an array, and the FOUR that plant
+//                               a project-crossed binding -- the DDL that puts
+//                               the ancestry rule to sleep, the INSERT it would
+//                               otherwise have refused, the DDL that wakes it
+//                               again, and the DELETE that removes the row       7
 //   src/agents-transaction.integration.test.ts
 //                               two agent.create calls issued through the
 //                               CLIENT rather than the port, which is the
 //                               measurement of what a caught refusal costs
 //                               without a savepoint                             2
-//                                                                       total = 23
+//                                                                       total = 27
 //
-// THE THREE RAW STATEMENTS SPELL THEIR SQL AT THE CALL SITE, and the first draft
-// did not: a one-line `raw(sql, ...args)` helper made all three UNATTRIBUTABLE,
-// because this gate attributes a raw statement to the table its SQL names and
-// SQL arriving as an argument names nothing. The audit reported it; the helper
-// now returns the client and each call carries its own literal.
+// THE TWO `ALTER TABLE` STATEMENTS ARE WRITES HERE AND SHOULD BE. This gate
+// attributes a raw statement to the table its SQL names, and a statement that
+// switches a table's ancestry rule off is exactly the kind of reach into another
+// context's rows the gate exists to see -- it is legal only because the file
+// sits in the delegated directory. The count was pinned at 23 by a draft written
+// before that case existed, which is what a re-derivation catches and a
+// carried-forward number does not.
 //
-// 12 + 51 + 3 + 3 + 23 = 92.
-const LIVE_TREE_WRITE_COUNT = 92;
+// EVERY RAW STATEMENT SPELLS ITS SQL AT THE CALL SITE, and the first draft did
+// not: a one-line `raw(sql, ...args)` helper made them all UNATTRIBUTABLE,
+// because SQL arriving as an argument names no table. The audit reported it; the
+// helper now returns the client and each call carries its own literal.
+//
+// 12 + 51 + 3 + 3 + 27 = 96.
+const LIVE_TREE_WRITE_COUNT = 96;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
