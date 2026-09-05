@@ -176,9 +176,14 @@ test("C1: the composition root importing NO adapter fails as vacuous", () => {
 });
 
 test("C6: dropping one adapter import fails", () => {
+  // The specifier is matched rather than the whole import line. WIN-258 T4 added
+  // a second name to it — `OutboxEventStore`, the seam the composition root
+  // proves `postgres-tenancy` satisfies — and a control anchored on the exact
+  // one-name line stopped matching and started passing vacuously. Anchoring on
+  // the specifier is what the audit itself looks for.
   const root = realTreeCopy();
   edit(root, COMPOSITION_ROOT_FILE, (source) =>
-    source.replace('import type { OutboxAdapter } from "@platos/adapter-outbox";\n', "")
+    source.replace(/^import type \{[^}]*\} from "@platos\/adapter-outbox";\n/mu, "")
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) => problem.includes("does not import @platos/adapter-outbox"))

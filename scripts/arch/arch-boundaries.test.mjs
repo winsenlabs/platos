@@ -669,8 +669,26 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               rule at all. ADR M0.3 §15 records that as the deciding
     //               argument for many ports per DIRECTORY, and `src/client.ts`
     //               is still the only file in the layout that imports the ORM.
-    assert.equal(result.fileCount, 1199, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22);
+    //  1199 -> 1214 +15: WIN-258 TRANCHE 4 adds the kernel outbox, in TWO
+    //               directories. `packages/adapters/outbox` gains nine .ts files
+    //               -- five source modules and four suites -- with NO
+    //               subtraction, because its two generated placeholders
+    //               (adapter.ts, index.ts) were already counted and are edited
+    //               in place by adoption; `packages/adapters/postgres-tenancy`
+    //               gains six, the store and its harness plus four
+    //               real-PostgreSQL suites. Its two JSON documents are not
+    //               source and are not counted here; the v1 ledger counts them
+    //               and the total there is 18.
+    //               THE RULE TO WATCH IS STILL `tenancy-prisma-only`, and this
+    //               tranche is the one that shows what it costs. `Event` is the
+    //               one canonical row whose owner is an ADAPTER rather than a
+    //               context, so the obvious shape -- the outbox adapter holding
+    //               its own client -- is exactly the second ORM home the rule
+    //               forbids. The write went to the one home instead, owner-
+    //               tagged, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
+    assert.equal(result.fileCount, 1214, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 9 + 6);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

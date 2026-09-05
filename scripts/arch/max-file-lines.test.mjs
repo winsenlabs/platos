@@ -370,15 +370,29 @@ test("the live selectors scan an exact nonzero source census", () => {
   // The conformance scenario was split for the same reason at 428, into the
   // person-keyed half and the tenant-scoped half. Nothing this tranche adds is
   // now inside the 400-line warning band, so the finding list below is unchanged.
-  assert.equal(result.fileCount, 1174);
+  // WIN-258 TRANCHE 4 adds 15 more under `packages/adapters/**`, 1174 -> 1189,
+  // across TWO directories: nine in `packages/adapters/outbox` (five source
+  // modules and four suites, with no subtraction because adoption edits its two
+  // placeholders in place) and six in `packages/adapters/postgres-tenancy` (the
+  // store, its harness, and four real-PostgreSQL suites).
+  //
+  // THE BUDGET SHAPED THE SPLIT AGAIN, and again it was pointing at a real seam.
+  // The outbox's four integration concerns are four files rather than one --
+  // failure injection, migration-only constraints, statement counts and the
+  // conformance replay -- because as one suite they would have been well over
+  // the 500-line ERROR threshold, and because each has its own harness needs.
+  // Nothing this tranche adds is inside the 400-line warning band; the largest
+  // is `outbox-transaction.integration.test.ts` at 221, so the finding list
+  // below is unchanged by it.
+  assert.equal(result.fileCount, 1189);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 9 + 6
   );
-  assert.equal(result.fileCount, 20 + 1060 + 88 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 103 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
