@@ -781,7 +781,35 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // re-export added to tenancy's ports entry point, the adapter assembly, the
     // census, arch, line-budget and sole-writer pins and the regenerated
     // evidence are all edits to files that already existed. 1079 + 12 = 1091.
-    packages: 1091,
+    //
+    // WIN-258 TRANCHE 4 — the kernel outbox — adds 18, and this is the FIRST
+    // WIN-258 delta that lands in TWO adapter directories, because the outbox is
+    // two packages. `Event` has an owner that is an adapter rather than a
+    // context, and ADR M0.3 §15 gives the ORM one home, so the package that owns
+    // the port cannot be the package that issues its INSERT.
+    //
+    //   packages/adapters/outbox              +11  five source modules (store,
+    //               event-id, envelope, in-memory, conformance), four suites,
+    //               conformance-scenario.json and mutations.json. Its two
+    //               generated placeholders — adapter.ts and index.ts — are
+    //               EDITED in place by adoption, not added, which is why 11 and
+    //               not 13.
+    //   packages/adapters/postgres-tenancy     +7  outbox-store and
+    //               outbox-harness, four real-PostgreSQL suites, and
+    //               mutations-outbox.json.
+    //
+    // On the kind axis the same 18 is +7 source, +8 test and +3 config; both
+    // JSON documents land on the existing packages.adapters.config rule and
+    // needed no rule of their own. Nothing outside those two directories moves:
+    // the generator adoption, the sole-writer delegation, the composition root's
+    // cross-adapter assertion and every census pin are edits to files that
+    // already existed. 1079 + 18 = 1097.
+    //
+    // BOTH TRANCHES LAND, so this area carries BOTH tails: 1079 + 12 + 18 =
+    // 1109. Each branch pinned 1079 + its own addition and each was right
+    // alone; taking either merged would understate the packages area by the
+    // other's twelve or eighteen files.
+    packages: 1109,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -942,11 +970,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
-    //   = 1155, + 12 (WIN-258 tranche 3) = 1167.
+    //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
+    //   adapter directories) = 1185.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1167);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1185);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -964,11 +993,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
-    // tranche 2's identity-access canonical store +23, and WIN-258 tranche 3's
-    // other five tenancy ports +12); this one re-derives it
-    // by summing the per-area counts independently, so the two can DISAGREE and
-    // be caught.
-    rulesDocument.baseline.totalFiles + 1167
+    // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
+    // five tenancy ports +12, and WIN-258 tranche 4's kernel outbox +18 across
+    // TWO adapter directories); this one re-derives it by summing the per-area
+    // counts independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1185
   );
 });
 

@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "20a07695a667c337fef6bd3d4b47a3c1816fbe198e74cc4943a192fa54c51e50"
+      "sha256": "70817c62fcd82c8bbd3e53e8f43e3265fe3c529f9cb15690d0d6ce20f190e01e"
     },
     {
       "path": "LICENSE",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "70676e1eb118b8e4fb519627a4c86f7f24ac27e50ad8e695561ae0ba1f6c6ee9"
+      "sha256": "04f1d93d3ae7c42ba0239b54665775a3518f04266d5681a2ae0d437a4d7c0e09"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "61cbe689c4cda60a61798084dfb7b9d7a130dc46d4a54c208117032933835289"
+      "sha256": "a901cb6a1cb0fd4500b7049fdc4ef0c613eb9b8fb03fdda15d5e7a422f252ae6"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "4ba839290fc60ad33706ec873d48737e500459df14b3ee4c36343e715d830349"
+      "sha256": "33529efd5228cbd677cb5db994dda51fb96918804f50bf852d43ede6da08573e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "0110f036ed2e7ed8688d064c226661c3e832c1db2efcb090199b8adcdfb073ff"
+      "sha256": "2beb63d4d8f34a246c962386d1e2e277a988657c68493b073051d0c068c1e869"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "c0b24ac81b0fd812eaf347a429e00349c6ad32b5f97c814f76457a60a645776a"
+      "sha256": "78816768189a9fd328e8e050c68fd263ae07221a2b8a0e320013d90519a2d7fc"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "f24c9c8e2cdd745693d6c2a4c26286495ae5adbb61cb3fb6bd3b6edece8828cd"
+      "sha256": "5ecc09c20dbe7e5dbd906524e9741ab0bac3013f292b92113291f6289131a7d3"
     }
   ]
 }

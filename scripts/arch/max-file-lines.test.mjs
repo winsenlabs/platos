@@ -380,15 +380,39 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the two stores answer, what a wrong transaction scope does, what the
   // statements cost. The finding list below is therefore unchanged at the same
   // four contexts files it already named.
-  assert.equal(result.fileCount, 1185);
+  //
+  // WIN-258 TRANCHE 4 adds 15 more under `packages/adapters/**`, 1174 -> 1189,
+  // across TWO directories: nine in `packages/adapters/outbox` (five source
+  // modules and four suites, with no subtraction because adoption edits its two
+  // placeholders in place) and six in `packages/adapters/postgres-tenancy` (the
+  // store, its harness, and four real-PostgreSQL suites).
+  //
+  // THE BUDGET SHAPED THE SPLIT AGAIN, and again it was pointing at a real seam.
+  // The outbox's four integration concerns are four files rather than one --
+  // failure injection, migration-only constraints, statement counts and the
+  // conformance replay -- because as one suite they would have been well over
+  // the 500-line ERROR threshold, and because each has its own harness needs.
+  // Nothing this tranche adds is inside the 400-line warning band; the largest
+  // is `outbox-transaction.integration.test.ts` at 221, so the finding list
+  // below is unchanged by it.
+  //
+  // MERGED, THE PIN IS THE SUM: 1174 + 11 + 15 = 1200. Each tranche pinned its
+  // own addition against the same base and each was right alone; taking either
+  // number here would have silently dropped the other's eleven or fifteen files
+  // out of a gate whose whole job is to see every file. The gate still does not
+  // bite: the largest file either tranche adds is `locks.integration.test.ts` at
+  // 322 effective lines, and the finding list below is unchanged by both.
+  assert.equal(result.fileCount, 1200);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6
   );
-  assert.equal(result.fileCount, 20 + 1060 + 99 + 6);
+  // The adapters row of the four-way disjoint scan carries both tranches:
+  // 88 + 11 (tranche 3) + 15 (tranche 4) = 114.
+  assert.equal(result.fileCount, 20 + 1060 + 114 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

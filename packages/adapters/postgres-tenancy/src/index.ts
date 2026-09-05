@@ -75,3 +75,22 @@ export {
 // the two narrow peer-port aliases are used by their own siblings and by this
 // package's suites, and `apps/core-api/src/app.module.ts` says why an entry
 // point nothing imports is dead surface rather than optionality.
+
+// WIN-258 T4 — the canonical `Event` row, written on the kernel outbox adapter's
+// behalf (ADR M0.3 §1 closing note, §15). The two refusal codes leave the
+// package because a composition root has to tell "already appended" from "no
+// such environment" without reading a message; the row types leave it because
+// the composition root proves, at compile time, that this adapter satisfies the
+// `OutboxEventStore` seam the outbox package declares.
+export type {
+  OutboxEventStorePort,
+  OutboxInsertRow,
+  OutboxReadCursor,
+  OutboxReadRow,
+} from "./outbox-store.js";
+export {
+  createOutboxEventStore,
+  ENVIRONMENT_UNKNOWN,
+  EVENT_ID_TAKEN,
+  OutboxStoreError,
+} from "./outbox-store.js";

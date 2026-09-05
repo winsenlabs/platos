@@ -32,6 +32,14 @@
 // by a role change has to commit or roll back with it. The token issuer is the
 // exception that proves the rule: it touches no database at all and is here only
 // because a context asked for a port and something has to satisfy it.
+//
+// AND SO DOES THE KERNEL OUTBOX'S `Event` WRITE (WIN-258 T4). `Event` is the one
+// canonical row whose owner is an adapter rather than a context, and Amendment
+// 15 gives the ORM a single home — so the package that owns the outbox port
+// cannot be the package that issues its INSERT. `packages/adapters/outbox` keeps
+// every decision that makes an event an event and hands a prepared row of
+// primitives across the `OutboxEventStore` seam; the two statements that satisfy
+// that seam are `./outbox-store.js`, spread in below.
 
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
@@ -53,11 +61,16 @@ import { createInvitationTokenIssuer } from "./invitation-token.js";
 import { createTenancyLocks } from "./locks.js";
 import { createMembershipRepository } from "./membership.js";
 import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
+import type { OutboxEventStorePort } from "./outbox-store.js";
+import { createOutboxEventStore } from "./outbox-store.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createTreeRepository } from "./tree.js";
 
-export interface PostgresTenancyAdapter extends TenancyRepository, IdentityAccessRepository {
+export interface PostgresTenancyAdapter
+  extends TenancyRepository,
+    IdentityAccessRepository,
+    OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
   readonly unitOfWork: UnitOfWork;
@@ -125,6 +138,15 @@ export function buildPostgresTenancyAdapter(
     // named store properties, so there is no name collision to arbitrate: its
     // ten keys and tenancy's thirty-one are disjoint.
     ...identity,
+    // WIN-258 T4. The canonical `Event` row, written on the kernel outbox
+    // adapter's behalf. It is spread in here rather than exposed as a separate
+    // object for the reason the identity-access composite is: the composition
+    // root proves `PostgresTenancyAdapter extends OutboxEventStore` at compile
+    // time, and a nested property could not satisfy that. Its two method names
+    // collide with nothing — `insertOutboxEvent` and `readOutboxEventsAfter`
+    // are the only members any of the three spread-in composites has that begin
+    // with those words.
+    ...createOutboxEventStore(transactions),
   };
 }
 

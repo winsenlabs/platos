@@ -686,8 +686,33 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               fire on an adapter (it needs a from-CONTEXT, and an adapter
     //               is not one), so it is the DESIGN and not the gate that keeps
     //               that true, which is why it is written down here.
-    assert.equal(result.fileCount, 1210, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11);
+    //  1199 -> 1214 +15: WIN-258 TRANCHE 4 adds the kernel outbox, in TWO
+    //               directories. `packages/adapters/outbox` gains nine .ts files
+    //               -- five source modules and four suites -- with NO
+    //               subtraction, because its two generated placeholders
+    //               (adapter.ts, index.ts) were already counted and are edited
+    //               in place by adoption; `packages/adapters/postgres-tenancy`
+    //               gains six, the store and its harness plus four
+    //               real-PostgreSQL suites. Its two JSON documents are not
+    //               source and are not counted here; the v1 ledger counts them
+    //               and the total there is 18.
+    //               THE RULE TO WATCH IS STILL `tenancy-prisma-only`, and this
+    //               tranche is the one that shows what it costs. `Event` is the
+    //               one canonical row whose owner is an ADAPTER rather than a
+    //               context, so the obvious shape -- the outbox adapter holding
+    //               its own client -- is exactly the second ORM home the rule
+    //               forbids. The write went to the one home instead, owner-
+    //               tagged, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
+    //  1210/1214 -> 1225: THE TWO TRANCHES LAND TOGETHER, and the pin is the
+    //               SUM of their deltas, not either one of them. Each branch
+    //               pinned 1199 + its own addition and each was right alone;
+    //               merged, the count is 1199 + 11 + 15. The chain below is
+    //               extended by BOTH tails, `+ 11` for tranche 3 and `+ 9 + 6`
+    //               for tranche 4's two directories, so a term that went missing
+    //               would move the total and be caught rather than absorbed.
+    assert.equal(result.fileCount, 1225, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

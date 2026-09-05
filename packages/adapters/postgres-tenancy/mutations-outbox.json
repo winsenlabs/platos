@@ -1,0 +1,207 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for the KERNEL OUTBOX half of this package — the",
+    "`Event` row, written here on the outbox adapter's behalf because ADR",
+    "M0.3 §15 gives the ORM one home and `packages/adapters/outbox` may not",
+    "hold it. One entry per transaction boundary, driver-error mapping,",
+    "cursor precondition and ordering rule, each carrying the file it lives",
+    "in, the EXACT text that implements it (`from`), the edit that removes it",
+    "(`to`), and the NAMED cases that were seen to go red (`kills`).",
+    "",
+    "The half ABOVE the store — the ordered identifier, the envelope, every",
+    "refusal a producer can hit — is falsifiable with no database at all and",
+    "is held in packages/adapters/outbox/mutations.json.",
+    "",
+    "NINE OF THE TWELVE NEED A REAL POSTGRESQL. None of them could have been",
+    "written against a double: N01 is about a write that has to disappear when",
+    "a later one fails, N02 and N03 about SQLSTATEs a double never raises, and",
+    "N04 to N09 about what a real index and a real TIMESTAMP(3) column do to a",
+    "page. TWO are KILLED-BY-COMPILER and are counted separately, because a",
+    "type error is a different kind of evidence from a failing assertion. The",
+    "last is killed by an AUDIT rather than by a suite."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills",
+    "and every one was VACUOUS: the context's dist/ had been cleaned, so every",
+    "suite failed to LOAD and would have 'died' against no mutation at all.",
+    "The driver runs each suite set UNMUTATED and refuses to sweep unless it",
+    "is green, and classifies a module-load failure with no named failing case",
+    "as VACUOUS rather than as a kill.",
+    "",
+    "For one entry: build @platos/tenancy-database, @platos/context-tenancy and",
+    "@platos/context-identity-access; replace its `from` with its `to` in the",
+    "named file; run `pnpm exec vitest run <suites>` from the package with",
+    "DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE set; confirm a NAMED",
+    "case goes red. Then revert and confirm green.",
+    "",
+    "N10 and N11 are run with `pnpm build:v1` instead, and are recorded as",
+    "KILLED-BY-COMPILER. N10 is the one that proves the composition root's",
+    "`OUTBOX_STORE_SATISFACTION` is doing work: the two adapters may not import",
+    "each other, so that assertion is the only thing standing between the two",
+    "halves of the seam and a silent disagreement.",
+    "",
+    "N12 is run with `node scripts/arch/sole-writer.mjs` and proves the",
+    "canonical-store delegation is load-bearing: without it, the single writer",
+    "of the Event row is a package that may not write it."
+  ],
+  "mutations": [
+    {
+      "name": "N01 store: the append resolves a READER instead of the transaction's writer",
+      "file": "src/outbox-store.ts",
+      "from": "      const client = transactions.writer(transaction);",
+      "to": "      const client = transactions.reader() as ReturnType<typeof transactions.writer>;",
+      "suites": [
+        "src/outbox-transaction.integration.test.ts",
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append with NO open transaction is refused with not_open",
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append carrying a FINISHED transaction's token is refused with scope_unknown",
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > an append carrying ANOTHER LIVE transaction's token is refused with scope_foreign",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N02 store: a taken identifier is reported with the driver's own code",
+      "file": "src/outbox-store.ts",
+      "from": "        if (isUniqueViolation(error)) {\n          throw new OutboxStoreError(EVENT_ID_TAKEN, `event ${row.eventId} is already in the outbox`);\n        }",
+      "to": "",
+      "suites": [
+        "src/outbox-transaction.integration.test.ts",
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the three transaction-scope refusals, and the two store refusals > a repeated event identifier is refused with its own code",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N03 store: an unknown environment is reported with the driver's own code",
+      "file": "src/outbox-store.ts",
+      "from": "        if (isForeignKeyViolation(error)) {\n          throw new OutboxStoreError(\n            ENVIRONMENT_UNKNOWN,\n            `event ${row.eventId} names environment ${row.environmentId}, which does not exist`,\n          );\n        }",
+      "to": "",
+      "suites": [
+        "src/outbox-transaction.integration.test.ts",
+        "src/outbox-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-constraints.integration.test.ts > constraints that live only in the migrations > Event_environmentId_fkey refuses an event whose environment does not exist",
+        "src/outbox-transaction.integration.test.ts > the transaction boundary, proved by failure injection > when a LATER write of the transaction fails, the appended event is gone"
+      ]
+    },
+    {
+      "name": "N04 store: the page cursor drops its second arm and compares the instant alone",
+      "file": "src/outbox-store.ts",
+      "from": "                OR: [\n                  { createdAt: { gt: cursor.createdAt } },\n                  { AND: [{ createdAt: cursor.createdAt }, { id: { gt: cursor.eventId } }] },\n                ],",
+      "to": "                createdAt: { gt: cursor.createdAt },",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts",
+        "src/outbox-statements.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-statements.integration.test.ts > drain > no page is ever re-read and none is skipped"
+      ]
+    },
+    {
+      "name": "N05 store: the page is ordered by instant then identifier DESCENDING",
+      "file": "src/outbox-store.ts",
+      "from": "        orderBy: [{ createdAt: \"asc\" }, { id: \"asc\" }],",
+      "to": "        orderBy: [{ createdAt: \"asc\" }, { id: \"desc\" }],",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N06 store: the page size is not applied",
+      "file": "src/outbox-store.ts",
+      "from": "        take: limit,",
+      "to": "        take: undefined,",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N07 store: the row takes the database's clock instead of the minted instant",
+      "file": "src/outbox-store.ts",
+      "from": "            createdAt: row.createdAt,",
+      "to": "",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts",
+        "src/outbox-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-transaction.integration.test.ts > the transaction boundary, proved by failure injection > a COMMITTED append is durable on a connection the writer never used",
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N08 store: the subject is dropped on the way in",
+      "file": "src/outbox-store.ts",
+      "from": "            subjectId: row.subjectId,",
+      "to": "            subjectId: null,",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N09 store: the envelope is dropped on the way in",
+      "file": "src/outbox-store.ts",
+      "from": "            payload: row.envelope as TenancyJsonInput,",
+      "to": "            payload: {} as TenancyJsonInput,",
+      "suites": [
+        "src/outbox-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "src/outbox-conformance.integration.test.ts > the PostgreSQL outbox store against the committed scenario > its transcript matches the in-memory double's, observation for observation"
+      ]
+    },
+    {
+      "name": "N10 store: the seam's nullable subject is narrowed, and only the composition root can see it",
+      "file": "src/outbox-store.ts",
+      "from": "export interface OutboxInsertRow {\n  readonly eventId: string;\n  readonly environmentId: string;\n  readonly eventType: string;\n  readonly subjectId: string | null;",
+      "to": "export interface OutboxInsertRow {\n  readonly eventId: string;\n  readonly environmentId: string;\n  readonly eventType: string;\n  readonly subjectId: string;",
+      "suites": [],
+      "kills": [
+        "KILLED-BY-COMPILER: error TS2322: Type 'string | null' is not assignable to type 'string'. | error TS2322: Type 'null' is not assignable to type 'string'."
+      ],
+      "compiler": true
+    },
+    {
+      "name": "N11 adapter: the outbox store is not composed into the adapter at all",
+      "file": "src/adapter.ts",
+      "from": "    ...createOutboxEventStore(transactions),",
+      "to": "",
+      "suites": [],
+      "kills": [
+        "KILLED-BY-COMPILER: error TS2739: Type '{ users: UserStore; operatorIdentities: OperatorIdentityStore; operatorSessions: OperatorSessionStore; magicLinks: MagicLinkStore; ... 39 more ...; close(): Promise<...>; }' is missing the following properties from type 'PostgresTenancyAdapter': insertOutboxEvent, readOutboxEventsAfter"
+      ],
+      "compiler": true
+    },
+    {
+      "name": "N12 ownership: the outbox owner loses its canonical-store delegation",
+      "file": "@scripts/arch/table-ownership.mjs",
+      "from": "  \"<kernel-outbox-adapter>\": \"packages/adapters/postgres-tenancy\",",
+      "to": "",
+      "suites": [],
+      "kills": [
+        "audit:sole-writer > packages/adapters/postgres-tenancy/src/outbox-store.ts:112 - Event.create() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer",
+        "audit:sole-writer > packages/adapters/postgres-tenancy/src/outbox-harness.ts:85 - Event.$executeRaw: insert into() may be called only from packages/adapters/outbox; <kernel-outbox-adapter> is its sole writer",
+        "test:sole-writer > the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows"
+      ],
+      "command": [
+        "node",
+        "scripts/arch/sole-writer.mjs"
+      ]
+    }
+  ]
+}

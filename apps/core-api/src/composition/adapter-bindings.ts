@@ -38,7 +38,7 @@ import type { ChannelAdapter } from "@platos/context-channels/application/ports/
 import type { Notifier } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
-import type { OutboxAdapter } from "@platos/adapter-outbox";
+import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
 import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
@@ -141,6 +141,31 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "notifier-email:Notifier": true,
   "notifier-webhook:Notifier": true,
 });
+
+/**
+ * WIN-258 T4 — the ONE cross-adapter obligation, proven where composition happens.
+ *
+ * The kernel outbox adapter is the single writer of the `Event` row and holds no
+ * vendor client: ADR M0.3 §15 gives the ORM one home, so the row's INSERT lives
+ * in `postgres-tenancy` and the outbox reaches it through the `OutboxEventStore`
+ * seam it declares. Rule (j2) `adapter-is-self-contained` forbids either package
+ * from importing the other, so the two halves of that seam agree STRUCTURALLY —
+ * and a structural agreement nothing checks is an agreement that drifts.
+ *
+ * This file is the one place entitled to name both packages, which makes it the
+ * one place the agreement can be checked. `never` is not assignable to `true`,
+ * so the day `postgres-tenancy` changes a parameter or a return type of either
+ * method, `pnpm build:v1` fails HERE — at the composition root, which is where
+ * the mistake would otherwise surface as a runtime type error in production.
+ *
+ * IT IS DELIBERATELY NOT AN ENTRY IN `PORT_SATISFACTION`. That table is checked
+ * against `ADAPTER_BINDINGS` in both directions by
+ * `scripts/arch/composition-root.mjs`, and `OutboxEventStore` is not a bound
+ * PORT: no context and not the kernel owns it, nothing is wired to it by name,
+ * and adding a row for it would claim a fourteenth binding the ADR does not
+ * declare. It is an obligation between two adapters, so it is stated as one.
+ */
+export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
 
 /** Who owns the port an adapter implements: a context, or the kernel itself. */
 export interface AdapterBinding {

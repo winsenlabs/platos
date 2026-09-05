@@ -34,6 +34,8 @@ export interface SeededTenant {
 
 export interface IdentityHarness {
   readonly client: TenancyDatabaseClient;
+  /** The container's connection URI, passed through from the base harness. */
+  readonly databaseUrl: string;
   readonly adapter: PostgresTenancyAdapter;
   readonly repository: IdentityAccessRepository;
   statements(): readonly string[];
@@ -90,6 +92,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
 
   const harness: IdentityHarness = {
     client,
+    databaseUrl: base.databaseUrl,
     adapter,
     repository: adapter,
     statements: base.statements,

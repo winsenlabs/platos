@@ -1247,6 +1247,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * against the in-memory fake, plus the two cases that assert the fake is wrong.
  * Adding an observation to that scenario strengthens it and moves no count here,
  * which is why `mutations-identity.json` is where those guards are falsifiable.
+ *
  * WIN-258 TRANCHE 3 — TENANCY'S OTHER FIVE PORTS. The SAME package moves a
  * third time, for the third reason ADR M0.3 §15 gives: the row lock, the
  * advisory lock, the session revoker, the access-key revocation counter, the
@@ -1259,7 +1260,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 378 + 5 = 383 files and 5998 + 43 = 6041 cases. The adapters term of the
  * identity moves with it: 349 + 3 + 31 = 383.
  *
- * WHAT THE 42 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ * WHAT THE 43 ARE, file by file, so the total cannot absorb a loss elsewhere:
  *
  *   invitation-token.test.ts                    7  the only one of the five
  *                                                  ports provable with no
@@ -1291,6 +1292,85 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * exactly what a lock that does returns. Weakening one of them to an assertion
  * on the boolean would move no count here, which is why `mutations-ports.json`
  * beside the package is where those guards are held falsifiable.
+ *
+ * WIN-258 TRANCHE 4 — THE KERNEL OUTBOX. TWO packages move, and they move for
+ * two different reasons, so the delta is written as two rows rather than one:
+ *
+ *   packages/adapters/outbox              0 -> 4 files,    0 -> 41 cases
+ *   packages/adapters/postgres-tenancy   11 -> 15 files, 123 -> 156 cases
+ *
+ * 378 + 4 + 4 = 386 files and 5998 + 41 + 33 = 6072 cases. The adapters term of
+ * the identity moves by the same eight: 349 + 3 + 34 = 386.
+ *
+ * WHY THE OUTBOX IS TWO PACKAGES AT ALL. `Event` has an owner that is an ADAPTER
+ * rather than a context, and ADR M0.3 §15 gives the ORM exactly one home — so
+ * the package that owns the port cannot be the package that issues its INSERT.
+ * `packages/adapters/outbox` keeps the identifier, the instant, the envelope and
+ * every refusal; `packages/adapters/postgres-tenancy` holds the statement.
+ *
+ * WHAT THE 39 ARE, file by file:
+ *
+ *   event-id.test.ts        11  the UUIDv7 that makes `ORDER BY createdAt, id`
+ *                               append order, and the five ways it could stop
+ *   envelope.test.ts        15  the seven refusal codes, the object-root
+ *                               constraint the double cannot see, and the
+ *                               pre-envelope row a drain must still read
+ *   adapter.test.ts         11  what `append` writes and what `drain` returns
+ *   conformance.test.ts      4  the committed scenario against the double, plus
+ *                               TWO negative controls: a store outside the
+ *                               snapshot set and a store that never refuses
+ *
+ * 11 + 15 + 11 + 4 = 41. None of them needs a database, so all 41 run in
+ * `pnpm test:v1-packages`.
+ *
+ * THE TWO ODD ONES OUT are the eleventh case in each of event-id and adapter,
+ * and both were written because the MUTATION SWEEP found a survivor rather than
+ * because a reviewer thought of them. `bytes[8] = tail[0]` — the variant bits
+ * left as drawn — survived every case in the file, because the fixed tail those
+ * cases use already carries the right two bits; and `createdAt: clock.now()` —
+ * the raw reading rather than the clamped one — survived because every case
+ * used a clock that stands still. A count that moved without that history is
+ * exactly what this block exists to prevent.
+ *
+ * WHAT THE 33 ARE, and all 33 need a real PostgreSQL:
+ *
+ *   outbox-transaction.integration.test.ts   11  failure injection, the returned
+ *                                                error value that COMMITS, and
+ *                                                the five refusal codes
+ *   outbox-constraints.integration.test.ts   12  rules and facts that live in
+ *                                                the migrations or the catalogue
+ *   outbox-statements.integration.test.ts     7  measured statement counts
+ *   outbox-conformance.integration.test.ts    3  the committed scenario against a
+ *                                                real database, and durability
+ *                                                read on a SECOND connection
+ *
+ * 11 + 12 + 7 + 3 = 33. They are excluded from the package's default `test`
+ * script by filename and run by the `postgres-tenancy-repository` CI job, and
+ * counted here because this census measures the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 3 in the conformance suite and the 4
+ * in the double's. Both are small because both are ONE scenario of twelve
+ * observations compared verbatim against a committed transcript; adding an
+ * observation strengthens the differential and moves no count here, which is why
+ * `packages/adapters/outbox/mutations.json` is where those guards are held
+ * falsifiable.
+ *
+ * TRANCHES 3 AND 4 LAND TOGETHER, AND THE PINS ARE THE SUM OF BOTH — never
+ * either one. Each block above is correct against the same base and about a
+ * DIFFERENT addition, so `packages/adapters/postgres-tenancy` moves twice:
+ *
+ *   packages/adapters/outbox              0 -> 4 files,     0 -> 41 cases
+ *   packages/adapters/postgres-tenancy   11 -> 20 files,  123 -> 199 cases
+ *
+ * 11 + 5 (tranche 3) + 4 (tranche 4) = 20 files, and 123 + 43 + 33 = 199 cases.
+ * The tree total is 378 + 5 + 4 + 4 = 391 files and 5998 + 43 + 41 + 33 = 6115
+ * cases. The adapters term of the three-way identity carries both: 26 + 5 + 8 =
+ * 39, and 349 + 3 + 39 = 391.
+ *
+ * THE FAILURE THIS PARAGRAPH EXISTS TO PREVENT is side-picking. Taking tranche
+ * 3's 16/166 would have dropped the outbox's four suites and 33 cases; taking
+ * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
+ * their own branch's arithmetic and neither is the tree.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1300,8 +1380,8 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 16, cases: 166 },
+  "packages/adapters/outbox": { files: 4, cases: 41 },
+  "packages/adapters/postgres-tenancy": { files: 20, cases: 199 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1449,7 +1529,7 @@ export const EXPECTED = Object.freeze({
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6041;
+export const EXPECTED_RUNTIME_TOTAL = 6115;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -620,15 +620,25 @@ test("generated ownership includes the generator's exact 117 outputs across 32 V
   // README.md. That is exactly what lets the generator carry this adapter's five
   // vendor specifiers, which a hand edit to a byte-compared manifest could not
   // have added.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 117);
+  //
+  // WIN-258 TRANCHE 4 adopts `packages/adapters/outbox` — the THIRD adapter —
+  // releasing its two declaration placeholders, so 117 - 2 = 115 and the project
+  // count stays 32 for the same reason. THE 115 WAS READ BACK from the
+  // regenerated report and from `gen-v1-skeleton.mjs --check`, which now print
+  // "97 scaffolding + 18 placeholder = 115 generated file(s) for 32 V1 projects
+  // and 96 project edges (23 project(s) adopted, 86 placeholder(s) released)".
+  // The EDGE count does not move: the outbox reaches its store through a seam
+  // declared in its own package and proven at the composition root, so it gained
+  // no project reference, and neither did `postgres-tenancy`.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 115);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 117 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 117);
+  // Same 115 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 115);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
