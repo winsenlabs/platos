@@ -22,18 +22,37 @@
 // owner's session is atomic across both without either context knowing the other
 // has a store — and a second adapter package would have made that two pools, two
 // transactions and a window in which one half is committed.
+//
+// AND SO DO TENANCY'S OTHER FIVE PORTS (WIN-258 T3). `TenancyDependencies` names
+// six driven ports and only ONE of them is the repository: a row lock and an
+// advisory lock, a session revoker, an access-key revocation counter, an
+// invitation token issuer and an operator directory. Five of the six are here
+// because they are the same connection as the sixth — the lock a use case takes
+// has to be held by the transaction its writes are in, and a revocation ordered
+// by a role change has to commit or roll back with it. The token issuer is the
+// exception that proves the rule: it touches no database at all and is here only
+// because a context asked for a port and something has to satisfy it.
 
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
+  EnvironmentAccessKeyRevocationCounter,
+  InvitationTokenIssuer,
+  OperatorDirectory,
+  OperatorSessionRevoker,
+  TenancyLocks,
   TenancyRepository,
   UnitOfWork,
 } from "@platos/context-tenancy/application/ports/index.js";
 
+import { createAccessKeyRevocationCounter } from "./access-key-revocation.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
+import { createInvitationTokenIssuer } from "./invitation-token.js";
+import { createTenancyLocks } from "./locks.js";
 import { createMembershipRepository } from "./membership.js";
+import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createTreeRepository } from "./tree.js";
@@ -42,6 +61,21 @@ export interface PostgresTenancyAdapter extends TenancyRepository, IdentityAcces
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
   readonly unitOfWork: UnitOfWork;
+  /**
+   * WIN-258 T3 — tenancy's five driven ports that are NOT the repository.
+   *
+   * They are properties rather than spread-in methods, because unlike
+   * `IdentityAccessRepository`'s ten stores they are five SEPARATE ports on
+   * `TenancyDependencies` and a composition root has to hand each one to the
+   * context under its own name. The names below are those names exactly, so the
+   * bundle a root builds is this adapter's own keys and cannot be assembled with
+   * one port in another's slot.
+   */
+  readonly locks: TenancyLocks;
+  readonly sessionRevoker: OperatorSessionRevoker;
+  readonly accessKeyRevocation: EnvironmentAccessKeyRevocationCounter;
+  readonly invitationTokens: InvitationTokenIssuer;
+  readonly operators: OperatorDirectory;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -61,9 +95,23 @@ export function buildPostgresTenancyAdapter(
   timeouts: TransactionTimeouts = {},
 ): PostgresTenancyAdapter {
   const transactions: TenancyTransactions = createTenancyTransactions(client, timeouts);
+  // WIN-258 T3. Built ONCE and referenced twice: `operators` and
+  // `sessionRevoker` below are handed narrow `Pick<>`s of these very stores, so
+  // tenancy's two edges into identity-access resolve to the SAME objects the
+  // identity-access half of this adapter publishes — one connection, one ambient
+  // transaction, and no second implementation of `User` or `OperatorSession` to
+  // keep in step. Building a second `createIdentityAccessRepository()` here
+  // would have been two of everything over one database, which is the arrangement
+  // ADR M0.3 §15 exists to refuse.
+  const identity = createIdentityAccessRepository(transactions);
   return {
     adapterName: "postgres-tenancy",
     unitOfWork: transactions.unitOfWork,
+    locks: createTenancyLocks(transactions),
+    sessionRevoker: createOperatorSessionRevoker(transactions, identity.operatorSessions),
+    accessKeyRevocation: createAccessKeyRevocationCounter(transactions),
+    invitationTokens: createInvitationTokenIssuer(),
+    operators: createOperatorDirectory(identity.users),
     async close(): Promise<void> {
       await client.$disconnect();
     },
@@ -76,7 +124,7 @@ export function buildPostgresTenancyAdapter(
     // composition root to resolve — and `IdentityAccessRepository` is itself ten
     // named store properties, so there is no name collision to arbitrate: its
     // ten keys and tenancy's thirty-one are disjoint.
-    ...createIdentityAccessRepository(transactions),
+    ...identity,
   };
 }
 

@@ -65,3 +65,18 @@ export {
   BEARER_CREDENTIAL_ABSENT,
   UNKNOWN_BEARER_CREDENTIAL_KIND,
 } from "./identity-bearer.js";
+
+// WIN-258 T3 — tenancy's other five ports. The five implementations themselves
+// leave through `PostgresTenancyAdapter`'s own properties rather than through
+// five more factories, because a composition root that built one of them from a
+// second `TenancyTransactions` would have a lock on one connection and the write
+// it serializes on another. What escapes here is only what a caller genuinely
+// cannot get from the adapter: the advisory-lock KEY, so the shape of the key is
+// checkable and comparable against the in-memory double, and the token PREFIX,
+// so the invitation secret this package mints is recognisable by kind.
+export { invitationSlotKey } from "./locks.js";
+export { INVITATION_TOKEN_PREFIX } from "./invitation-token.js";
+export type {
+  OperatorAccountReader,
+  OperatorSessionRevocationWriter,
+} from "./operator-peers.js";
