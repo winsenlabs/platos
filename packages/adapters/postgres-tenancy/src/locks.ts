@@ -91,8 +91,15 @@ export function createTenancyLocks(transactions: TenancyTransactions): TenancyLo
       // integration run of this tranche found it — so the call is a one-row
       // function scan and the projection is a constant. The lock is taken all
       // the same: `pg_locks` shows one `advisory` row inside the transaction.
-      await transactions.writer(transaction).$queryRaw<readonly { locked: number }[]>`
-        SELECT 1 AS locked
+      //
+      // THE CONSTANT IS `true` AND NOT `1` FOR A SECOND, SMALLER REASON. The
+      // statement-count suites in this package discard the driver's own health
+      // check by dropping any statement that begins `SELECT 1`, and the draft
+      // that projected `1` was therefore MEASURED AT ZERO STATEMENTS — a lock
+      // that looked free because a filter written for something else swallowed
+      // it. Found by the N+1 pin, which is the one control that could see it.
+      await transactions.writer(transaction).$queryRaw<readonly { locked: boolean }[]>`
+        SELECT true AS locked
         FROM pg_advisory_xact_lock(
           hashtextextended(${invitationSlotKey(organizationId, email)}::text, 0)
         )

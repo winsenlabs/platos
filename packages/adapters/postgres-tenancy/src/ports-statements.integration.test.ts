@@ -41,11 +41,23 @@ const HEAVY_SESSIONS = 20;
  * `BEGIN`/`COMMIT`/`ROLLBACK`/`DEALLOCATE` are the driver's bookkeeping and are
  * not what an N+1 is made of; counting them would make every pin depend on
  * whether the call happened to be inside a transaction.
+ *
+ * THE HEALTH CHECK IS MATCHED WHOLE, and the sibling suites' pattern is
+ * deliberately not copied. They drop anything BEGINNING `SELECT 1`, which is the
+ * driver's connection probe — and also, as this suite found, the shape a lock
+ * statement naturally takes. `lockInvitationSlot` projected a constant `1` in its
+ * first draft and was measured at ZERO statements: a lock that looked free
+ * because a filter written for something else had eaten it. The statement now
+ * projects `true` AND this filter anchors, so neither half can hide the other.
  */
 function queries(): readonly string[] {
   return harness
     .statements()
-    .filter((statement) => !/^\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE|SELECT 1)\b/iu.test(statement));
+    .filter(
+      (statement) =>
+        !/^\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE)\b/iu.test(statement) &&
+        !/^\s*SELECT 1\s*$/iu.test(statement),
+    );
 }
 
 async function measure(work: () => Promise<unknown>): Promise<number> {
