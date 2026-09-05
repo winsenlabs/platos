@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "25d1eabf706807c8200c735cf981ce3ee3cbc9fc8822496fc01c5dc9a0f4d085",
+  "evidenceSha256": "7b7b5c219c66bc8fec37346f2f59e9f8a2fc014012e00b880d16005ab40fe0b9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "249619dc8f9f7a3e7c4453b274accb6afb84a52060da18943c8d6e53e2869171",
+    "aggregateSha256": "b8a45a25e5922b2d8551ee0f8996fbc179be7a743ff7800e7c59c6db83facbb1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "1744c38f13cd3e8f8b7f7c6905a4a72094a59d59e9e6d9cf6eb05a1436129312"
+        "sha256": "361561d7eb1abf130fe7a32bb52fe23ed2a92fa387be61264ba95345f3b65204"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -34904,7 +34904,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 1107
+              "line": 1108
             },
             {
               "from": "docs/wait-until.mdx",
@@ -35195,7 +35195,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "04873ddddbd8ed1ebf859e0bc6d12462bdaddc27bca318959544ecb9d6d13256",
+      "evidenceSha256": "26084070c458a754accf66395f1d5e711536744c0a96b6636cf76edf0a25c1dc",
       "manifestSha256": "99df9851329461a6766ed5a1fbcb3a4da24ed2d061451fb1f446250e51984355",
       "name": "emails",
       "ociImageClosure": {
@@ -35605,7 +35605,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 939
+              "line": 940
             },
             {
               "from": "internal-packages/otlp-importer/CHANGELOG.md",
@@ -35816,7 +35816,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d5937a8bd28ad0ad401b96151114a115daaf1ec3f5b2e8b1d789372f4ce37563",
+      "evidenceSha256": "cc52761a7a5096c55be4d8a9066c7b74fedd700cd4b14c753fb6598ee5b65e63",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -54010,7 +54010,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 688
+              "line": 689
             },
             {
               "from": "packages/contexts/identity-access/README.md",
@@ -55612,7 +55612,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "a709806e2bea1ace44064cf7edb3171ceeb4641b1cfc0842785dc9dbfe40f611",
+      "evidenceSha256": "e19606b3c49a7ff39578d961f3be1206ac6439ef43e2317329032fc34faa9f76",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -68159,7 +68159,7 @@
             {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
-              "line": 603
+              "line": 604
             },
             {
               "from": "packages/kernel/README.md",
@@ -77554,7 +77554,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "92ab27ff38068664dbe84d84c405cfef85e3e40b6b0d72ab525a46a8f2aea3fb",
+      "evidenceSha256": "3a66f36a10cfdc6190b95ffb583644a5c3dfda23320628da8896b227eb80d7e1",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
