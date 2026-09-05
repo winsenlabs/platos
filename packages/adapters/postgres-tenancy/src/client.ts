@@ -12,7 +12,7 @@
 // The URL is built here too, because connection limits and timeouts are the
 // adapter's business: a context asked for a repository, not for a pool.
 
-import { PrismaClient, type Prisma } from "@platos/tenancy-database";
+import { Prisma, PrismaClient } from "@platos/tenancy-database";
 
 /** The pooled client. One per process; the composition root owns its lifetime. */
 export type TenancyDatabaseClient = PrismaClient;
@@ -42,6 +42,32 @@ export type TenancyReader = TenancyDatabaseClient | TenancyTransactionClient;
  * and a driver error.
  */
 export type TenancyJsonInput = Prisma.InputJsonValue;
+
+/**
+ * The SQL NULL a NULLABLE JSONB column needs — which is NOT JavaScript `null`.
+ *
+ * WIN-258 T5, and it cost a whole integration run to find. A `Json?` column has
+ * two nulls: the SQL NULL, and the JSONB value `null`. Handing the client a
+ * JavaScript `null` writes the SECOND — `jsonb_typeof` then answers `'null'` —
+ * and every `*_json_root` CHECK the migrations install is written as
+ * `"column" IS NULL OR jsonb_typeof("column") = 'object'`, so the write is
+ * refused by a constraint whose first clause looks like it should have allowed
+ * it. `AgentCluster.metadata`, `Macro.paramSchema` and
+ * `PostmanTemplate.sessionContext` are all in that shape; the in-memory doubles
+ * hold `null` and cannot see any of it.
+ *
+ * Aliased HERE because this is the one file entitled to name the vendor
+ * namespace, and a store that reached for `Prisma.DbNull` itself would be a
+ * second import of the client.
+ */
+export const TENANCY_DB_NULL = Prisma.DbNull;
+
+/** A nullable JSONB value, written as the SQL NULL rather than as JSON `null`. */
+export function nullableJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  return value === null || value === undefined
+    ? Prisma.DbNull
+    : (value as Prisma.InputJsonValue);
+}
 
 /**
  * Pool and timeout settings, all optional and all with a stated default.

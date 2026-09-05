@@ -21,6 +21,9 @@
     },
     {
       "path": "../../contexts/identity-access"
+    },
+    {
+      "path": "../../contexts/agents"
     }
   ]
 }

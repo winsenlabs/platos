@@ -40,7 +40,19 @@
 // every decision that makes an event an event and hands a prepared row of
 // primitives across the `OutboxEventStore` seam; the two statements that satisfy
 // that seam are `./outbox-store.js`, spread in below.
+//
+// AND SO DO `agents`' TWO CANONICAL-STORE PORTS (WIN-258 T5). The seven rows of
+// ADR M0.3 §1 row 5 are in the same PostgreSQL database as the other thirty-one,
+// so by Amendment 15 they are written from the same directory behind the same
+// client. They arrive as ONE nested property rather than two spread-in
+// composites, because `AgentsDependencies` names them `repository` and
+// `scaffolding` — two names an adapter that also holds `tenancy`'s repository
+// cannot own at its top level without saying which repository it means.
 
+import type {
+  AgentsRepository,
+  ScaffoldingRepository,
+} from "@platos/context-agents/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -53,6 +65,8 @@ import type {
 } from "@platos/context-tenancy/application/ports/index.js";
 
 import { createAccessKeyRevocationCounter } from "./access-key-revocation.js";
+import { createAgentsRepository } from "./agents-repository.js";
+import { createScaffoldingRepository } from "./agents-scaffolding.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
@@ -89,6 +103,20 @@ export interface PostgresTenancyAdapter
   readonly accessKeyRevocation: EnvironmentAccessKeyRevocationCounter;
   readonly invitationTokens: InvitationTokenIssuer;
   readonly operators: OperatorDirectory;
+  /**
+   * WIN-258 T5 — `agents`' two canonical-store ports, under the exact names
+   * `AgentsDependencies` gives them.
+   *
+   * Nested so the bundle a composition root builds is this object, and one port
+   * cannot be assembled into the other's slot: `repository` reads and writes
+   * `Agent`, `AgentBinding`, `AgentVersion`, `AgentSkill` and `AgentCluster`;
+   * `scaffolding` writes `Macro` and `PostmanTemplate`, which are the two rows a
+   * surface writes on its own behalf rather than as part of a version history.
+   */
+  readonly agents: {
+    readonly repository: AgentsRepository;
+    readonly scaffolding: ScaffoldingRepository;
+  };
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -125,6 +153,10 @@ export function buildPostgresTenancyAdapter(
     accessKeyRevocation: createAccessKeyRevocationCounter(transactions),
     invitationTokens: createInvitationTokenIssuer(),
     operators: createOperatorDirectory(identity.users),
+    agents: {
+      repository: createAgentsRepository(transactions),
+      scaffolding: createScaffoldingRepository(transactions),
+    },
     async close(): Promise<void> {
       await client.$disconnect();
     },
