@@ -485,10 +485,23 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                               2 differential-login, 1 transaction            17
 //                                                                      total = 51
 //
-// 12 + 51 = 63. The second and third assertions below say the writes are all
-// legal and all attributable, so the pin cannot be satisfied by 63 mutations
+// WIN-258 TRANCHE 4 adds 3, and they are the first writes in the tree that
+// belong to an owner which is not a context at all:
+//
+//   src/outbox-store.ts        event.create — THE single writer of the Event
+//                              row, on the `<kernel-outbox-adapter>` owner       1
+//   src/outbox-harness.ts      a raw INSERT INTO "public"."Event" seeding the
+//                              pre-envelope row the legacy producer writes and
+//                              the outbox store cannot                            1
+//   the outbox suites          environment.delete — the ON DELETE CASCADE case,
+//                              a TENANCY row, legal for the same reason the
+//                              revocation fence above is                          1
+//                                                                        total = 3
+//
+// 12 + 51 + 3 = 66. The second and third assertions below say the writes are all
+// legal and all attributable, so the pin cannot be satisfied by 66 mutations
 // somewhere else.
-const LIVE_TREE_WRITE_COUNT = 63;
+const LIVE_TREE_WRITE_COUNT = 66;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -504,7 +517,7 @@ test("the live tree's writes are exactly the postgres-tenancy adapter's, on tena
 });
 
 test("the canonical-store delegation is the ONLY reason those writes are legal", () => {
-  // Deleting `postgres-tenancy` from the permitted set must make all sixty-three
+  // Deleting `postgres-tenancy` from the permitted set must make all sixty-six
   // illegal. A permission nothing depends on is a permission that is not doing
   // anything, and this is the case that proves it is.
   assert.deepEqual(ownerDirectories("tenancy"), [
@@ -528,6 +541,29 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   assert.equal(CANONICAL_STORE_ADAPTERS["cost-monitoring"], undefined);
   assert.deepEqual(ownerDirectories("memory"), ["packages/contexts/memory"]);
   assert.deepEqual(ownerDirectories("cost-monitoring"), ["packages/contexts/cost-monitoring"]);
+  // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
+  // Its primary directory is an ADAPTER rather than a context — the one owner in
+  // the map for which that is true — and the note that used to sit beside this
+  // entry said it therefore needed no delegation. That was true of the directory
+  // and false of the write: `packages/adapters/outbox` may not hold the ORM, so
+  // without this grant the row owned by the outbox adapter was owned by a
+  // package unable to write it.
+  assert.deepEqual(ownerDirectories("<kernel-outbox-adapter>"), [
+    "packages/adapters/outbox",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(
+    CANONICAL_STORE_ADAPTERS["<kernel-outbox-adapter>"],
+    "packages/adapters/postgres-tenancy",
+  );
+  // And the grant is exactly TWO rows wide, not a licence over the schema:
+  // `Event` and the superseded `ObservabilityOutbox`. Every other row still
+  // resolves to its own owner's directories.
+  const outboxRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "<kernel-outbox-adapter>")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(outboxRows, ["Event", "ObservabilityOutbox"]);
 });
 
 // ---------------------------------------------------------------------------
