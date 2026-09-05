@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d83f9e5b7186bad3d3774d194907b887a14c16f566988854777a9415e09f51d6",
+  "evidenceSha256": "5dfc4b78830b74ac57a16381578e7f31b56aec22decf6f608541eed016476775",
   "generatedOwnership": {
     "explicitHeaderFileCount": 30,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "79563b576c8e6c86b23b1ee7c7bc5c4135a41de9a02fc855fdd0880c8b0c724f",
+    "aggregateSha256": "19def324f519625ccf87b5f0160976863d6cf5af9636e5f012392e0f7e10dea9",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11141,7 +11141,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-ports.json",
-        "sha256": "8345669becd58365fde17fbc57897a7b729baf1662f201f8a4e091b0d894177e"
+        "sha256": "278b1a3fd6a3ce8796e1462efecc1d03db4d862672f7bc546399f303b0ca2668"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations.json",
@@ -11265,7 +11265,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/index.ts",
-        "sha256": "80a5aa698af877abca1b54cd261c771b241cac986752ea1014c846b1346cdddf"
+        "sha256": "f09d9c904587b708ff1635d89b126a3fdddfd1416e14e7c20b2472ae48caaee3"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/invitation-token.test.ts",
@@ -11305,7 +11305,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/ports-conformance.integration.test.ts",
-        "sha256": "368d482e058f5be03d15c587e811361bfca27d7409d423c051cb97824dd8540d"
+        "sha256": "48b3b84520e2b30222e4e3e8134513e5f94c203599dd4974a640cbe14d8b6f95"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/ports-conformance.ts",
@@ -17997,11 +17997,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "2855a442a507b1d7e8ce584782995f6a09fb21e7f7d155df2894b3ed9caf6445"
+        "sha256": "af793c4d7605a471f9435e9dd337cd7f972d5baf9f5dd37730e167a0f3c6c9f0"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "d262df400c17cccc522125f97d3c682707d69eca2fddee97c7dbcfabc5d7b5c3"
+        "sha256": "1356d98db86b1425eb9f1352fd074cabbac8a8416933200a23a71b039d0b14de"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
