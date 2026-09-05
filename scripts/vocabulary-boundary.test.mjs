@@ -627,7 +627,20 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         disposition ADR M0.3 §12 argues for, applied to content rather than
   //         to a path segment. Disjoint from the +17 above (different files,
   //         different owners), so the merged count is the sum --> 19408.
-  assert.equal(manifest.exceptions.length, 19408);
+  //   +2    reviewed WIN-258 tranche 5 occurrences, both of them the PostgreSQL
+  //         DDL keyword `TRIGGER` in
+  //         `packages/adapters/postgres-tenancy/src/agents-constraints.integration.test.ts`.
+  //         The case they sit in proves the PROJECT half of the `agents` scope
+  //         filter is not decoration, and the only row that can make the
+  //         environment filter and the project filter disagree is one the
+  //         `AgentBinding` ancestry rule refuses to accept — so the rule is
+  //         switched off for one planted row and switched back on, and both
+  //         statements name the engine's keyword. Classified `technical` and
+  //         owned by Database Platform rather than `vendor`: this is the
+  //         database engine's vocabulary, not the external Trigger product's,
+  //         and it is bound to a removal EVENT (the suite stops planting a
+  //         project-crossed binding) rather than to a date --> 19410.
+  assert.equal(manifest.exceptions.length, 19410);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {
