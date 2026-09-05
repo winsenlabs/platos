@@ -71,10 +71,12 @@ test("the live repository satisfies both the boundary rules and the composition-
 
   const audit = auditCompositionRoot(repositoryRoot);
   assert.deepEqual(audit.problems, []);
-  // THIRTEEN bindings across TWELVE directories (ADR M0.3 §15). Both are
+  // FIFTEEN bindings across TWELVE directories (ADR M0.3 §15). Both are
   // asserted, so a change that collapsed them back to one number fails here.
+  // 13 -> 15 (WIN-258 T5): `agents` publishes TWO canonical-store ports and
+  // `postgres-tenancy` satisfies both, so one directory now carries four.
   assert.equal(audit.bindingCount, adapterBindings().length);
-  assert.equal(audit.bindingCount, 13);
+  assert.equal(audit.bindingCount, 15);
   assert.equal(ADAPTERS.length, 12);
 });
 
@@ -276,12 +278,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all THIRTEEN bindings, across twelve directories", () => {
+test("the binding-table parser reads all FIFTEEN bindings, across twelve directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 13);
+  assert.equal(bindings.length, 15);
   assert.equal(ADAPTERS.length, 12);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -340,7 +342,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 13 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 15 declared bindings")
     )
   );
 });
