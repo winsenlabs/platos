@@ -402,17 +402,35 @@ test("the live selectors scan an exact nonzero source census", () => {
   // out of a gate whose whole job is to see every file. The gate still does not
   // bite: the largest file either tranche adds is `locks.integration.test.ts` at
   // 322 effective lines, and the finding list below is unchanged by both.
-  assert.equal(result.fileCount, 1200);
+  // WIN-258 TRANCHE 5 adds 18 more under `packages/adapters/**`, 1200 -> 1218,
+  // all of them in `packages/adapters/postgres-tenancy`: twelve source modules
+  // and six suites. Its `.sql` fixture and its guard ledger are not source and
+  // are not scanned here.
+  //
+  // THE BUDGET BIT THIS TIME, AND THE SPLIT IS THE ANSWER. The eight
+  // tenant-isolation and transcript-integrity cases were first appended to
+  // `tools-constraints.integration.test.ts`, which took it to 467 effective
+  // lines -- inside the 400-line warning band and heading for the 500-line ERROR
+  // threshold. They live in `tools-isolation.integration.test.ts` instead,
+  // because the seam the budget was pointing at is real: that file is about
+  // rules that exist ONLY IN THE MIGRATIONS, and this one is about what the
+  // STORE decides. `tools-constraints.integration.test.ts` is back at 339
+  // effective lines and the new file is 222, so the finding list below is
+  // unchanged by this tranche too — nothing it adds reaches the warning band.
+  assert.equal(result.fileCount, 1218);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18
   );
-  // The adapters row of the four-way disjoint scan carries both tranches:
-  // 88 + 11 (tranche 3) + 15 (tranche 4) = 114.
-  assert.equal(result.fileCount, 20 + 1060 + 114 + 6);
+  // The adapters row of the four-way disjoint scan carries every tranche:
+  // 88 + 11 (tranche 3) + 15 (tranche 4) + 18 (tranche 5) = 132. Only the
+  // adapters term moves, because tranche 5 adds no file to a context, to the
+  // kernel or to the REST transports — it implements a port that already
+  // existed rather than widening one.
+  assert.equal(result.fileCount, 20 + 1060 + 132 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

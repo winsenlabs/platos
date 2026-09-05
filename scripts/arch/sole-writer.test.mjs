@@ -526,13 +526,47 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                              revocation fence above is                          1
 //                                                                        total = 3
 //
-// 12 + 51 + 3 + 3 = 69. BOTH tranches added three, to the same directory, and
-// merged the pin is the SUM. Each branch independently wrote `12 + 51 + 3 = 66`
+// WIN-258 TRANCHE 5 adds 17, from the SAME directory again, on the ten rows
+// `tools` owns. It is the largest single addition since tranche 2 because the
+// port is 25 methods wide, and it is written out per FILE so a deletion cannot
+// hide inside an addition:
+//
+//   src/tools-catalogue.ts    tool.create — the ONE catalogue write; the
+//                             fingerprint read that precedes it is a read       1
+//   src/tools-exposures.ts    environmentEntityTool.deleteMany, .updateMany,
+//                             .createMany, .updateMany — `replaceExposures` is
+//                             three of these in ONE transaction and
+//                             `setExposureEnabled` is the fourth               4
+//   src/tools-policies.ts     entityToolPolicy.upsert,
+//                             organizationMcpPolicy.upsert + .deleteMany        3
+//   src/tools-mcp.ts          entityMcpConfig.upsert, entityMcpClient.upsert    2
+//   src/tools-transcript.ts   toolCall.upsert, toolHealth.upsert,
+//                             toolCallAudit.create                              3
+//   src/tools-harness.ts      a raw INSERT of a `ToolCallAudit` row — the
+//                             append-only table the PORT may only append to,
+//                             seeded here so `pageAudit` has a window to page   1
+//   the tools suites          3 constraint proofs, all raw and all migrations-
+//                             only: a `ToolCall` status UPDATE, a `Tool`
+//                             INSERT, an `EntityMcpConfig` UPDATE               3
+//                                                                      total = 17
+//
+// `AgentToolPolicy` is one of the ten rows `tools` owns and NOTHING IN THE TREE
+// writes it — not this directory and not anywhere else, which the enumeration
+// above is the whole of the evidence for. `ToolsRepository` only READS it, as
+// the fold behind `listAgentPolicyBindings`/`findAgentPolicyBinding`, and no
+// port in this context declares a method that creates one. So nine of the ten
+// rows are written from here and the tenth is read-only for now. That is a
+// PORT-SURFACE gap rather than a sole-writer hole: whoever adds the writer must
+// add it to this directory, because `tools` owns the row and this map grants it
+// to exactly one place.
+//
+// 12 + 51 + 3 + 3 + 17 = 86. FOUR tranches have now added to the same directory,
+// and merged the pin is the SUM. Each branch independently wrote `12 + 51 + 3 = 66`
 // and each was right alone — which is why this line merged with no textual
 // conflict at all and would have shipped three writes short of the tree. The
 // second and third assertions below say the writes are all legal and all
-// attributable, so the pin cannot be satisfied by 69 mutations somewhere else.
-const LIVE_TREE_WRITE_COUNT = 69;
+// attributable, so the pin cannot be satisfied by 86 mutations somewhere else.
+const LIVE_TREE_WRITE_COUNT = 86;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -595,6 +629,87 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     .map(([model]) => model)
     .sort();
   assert.deepEqual(outboxRows, ["Event", "ObservabilityOutbox"]);
+  // WIN-258 T5: `tools` is delegated to that SAME directory, for the fourth
+  // time and on the same sentence — one PostgreSQL database behind one client
+  // is one adapter DIRECTORY (ADR M0.3 §15).
+  assert.deepEqual(ownerDirectories("tools"), [
+    "packages/contexts/tools",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.tools, "packages/adapters/postgres-tenancy");
+  // And the grant is exactly TEN rows wide — ADR M0.3 §1 row 7 — not a licence
+  // over the schema. Pinned as a SET rather than a count, because a count is
+  // satisfied by any ten rows and the point of the entry is WHICH ten.
+  const toolsRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "tools")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(toolsRows, [
+    "AgentToolPolicy",
+    "EntityMcpClient",
+    "EntityMcpConfig",
+    "EntityToolPolicy",
+    "EnvironmentEntityTool",
+    "OrganizationMcpPolicy",
+    "Tool",
+    "ToolCall",
+    "ToolCallAudit",
+    "ToolHealth",
+  ]);
+});
+
+test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {
+  // The delegation above is only meaningful if it is NARROW. This is the RED
+  // case for it: the same statement, on the same row, from a directory that is
+  // neither `packages/contexts/tools` nor its one delegate. Without this case
+  // the entry in `CANONICAL_STORE_ADAPTERS` is indistinguishable from a blanket
+  // licence, because every write the live tree makes is already legal.
+  const root = fixture({
+    // A context that is NOT tools, writing tools' row through the ORM.
+    "packages/contexts/agents/application/steal.ts":
+      `export async function run(db: any) {\n  await db.toolCall.create({ data: {} });\n}\n`,
+    // And an ADAPTER that is not the delegate, writing another of the ten raw.
+    "packages/adapters/redis-ratelimit/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.$executeRaw\`insert into "public"."Tool" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.violations.length, 2, "both writes must be refused, not just the ORM one");
+  const byModel = Object.fromEntries(result.violations.map((v) => [v.model, v]));
+  assert.deepEqual(Object.keys(byModel).sort(), ["Tool", "ToolCall"]);
+  // The refusal has to say WHERE the write may live, and both permitted
+  // directories are named — the context and its one delegate.
+  assert.deepEqual(byModel.ToolCall.permitted, [
+    "packages/contexts/tools",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.deepEqual(byModel.Tool.permitted, byModel.ToolCall.permitted);
+  assert.match(byModel.ToolCall.message, /tools is its sole writer/);
+  assert.match(byModel.Tool.message, /tools is its sole writer/);
+  // And it has to name the directory that actually wrote it, or a reader cannot
+  // find the offending line.
+  assert.equal(byModel.ToolCall.actual, "packages/contexts/agents");
+  assert.equal(byModel.Tool.actual, "packages/adapters/redis-ratelimit");
+});
+
+test("the SAME writes from the delegate directory are permitted", () => {
+  // The control for the case above. Same two statements, same two rows, moved
+  // into the one directory the map grants — and now there is no violation at
+  // all. Without this the RED case could be passing because the harness refuses
+  // everything rather than because the delegation is narrow.
+  const root = fixture({
+    "packages/adapters/postgres-tenancy/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.toolCall.create({ data: {} });\n` +
+      `  await db.$executeRaw\`insert into "public"."Tool" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 2);
 });
 
 // ---------------------------------------------------------------------------

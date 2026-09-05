@@ -347,13 +347,24 @@ jobs:
         # context through its package `main`, which is dist/.
         run: pnpm --filter "@platos/context-identity-access..." build
 
+      - name: Build the tools context
+        # WIN-258 T5. The same directory also implements `ToolsRepository`, and
+        # its suites resolve `@platos/context-tools` — and the in-memory double
+        # the conformance differential compares against, published from that
+        # package's `./application/testing/index.js` export — through the package
+        # `main`, which is dist/. Without this step the tools suites fail to
+        # RESOLVE rather than fail to pass, which reads as a broken job rather
+        # than as a broken adapter.
+        run: pnpm --filter "@platos/context-tools..." build
+
       - name: PostgreSQL repository integration suites
-        # All THREE halves of the one directory (ADR M0.3 §15): the tenancy
-        # repository, the identity-access canonical store, and — WIN-258 tranche
-        # 4 — the kernel outbox's `Event` row, which is written from here because
-        # its owner is an adapter that may not hold the ORM.
+        # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
+        # repository, the identity-access canonical store, the kernel outbox's
+        # `Event` row — WIN-258 tranche 4, written from here because its owner is
+        # an adapter that may not hold the ORM — and, tranche 5, the `tools`
+        # canonical store over the ten rows that context owns.
         #
-        # Between them: two conformance differentials against the doubles those
+        # Between them: three conformance differentials against the doubles those
         # ports ship, the differential against PlatosAuthService, the
         # migration-only constraint proofs, the failure-injection transaction
         # proofs and the measured statement counts. The suites are selected by

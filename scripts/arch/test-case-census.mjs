@@ -1371,6 +1371,73 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 3's 16/166 would have dropped the outbox's four suites and 33 cases; taking
  * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
  * their own branch's arithmetic and neither is the tree.
+ *
+ * TRANCHE 5 — THE `tools` CANONICAL STORE — adds 6 files and 59 cases to
+ * `packages/adapters/postgres-tenancy`, and to no other package at all. The
+ * `tools` CONTEXT gains no test file: the port and its in-memory double already
+ * existed and already had suites, and this tranche implements the port rather
+ * than widening it.
+ *
+ * WHAT THE 59 ARE, and 39 of them need a real PostgreSQL:
+ *
+ *   tools-mapping.test.ts                    20  row -> domain mapping, the
+ *                                                audit envelope's layout, and
+ *                                                what a THROW becomes on the way
+ *                                                out of the store; NO database,
+ *                                                which is why it is the one
+ *                                                countable unit suite of the six
+ *   tools-constraints.integration.test.ts    12  rules that live ONLY in the
+ *                                                migrations — the json-root
+ *                                                CHECK, the four ancestry
+ *                                                rules, the NULL-distinct
+ *                                                unique index
+ *   tools-isolation.integration.test.ts       8  which rows a statement may
+ *                                                reach, and which columns a
+ *                                                second write may not move
+ *   tools-statements.integration.test.ts      7  measured statement counts, each
+ *                                                pinned on a SMALL and a LARGE
+ *                                                fixture so an N+1 moves one
+ *   tools-conformance.integration.test.ts     5  the shared scenario against a
+ *                                                real database, compared
+ *                                                observation for observation
+ *                                                with the in-memory double's
+ *   tools-transaction.integration.test.ts     7  failure injection; a returned
+ *                                                error `Result` that must COMMIT
+ *                                                NOTHING; and the converse pair
+ *                                                — a GUARD refusal the unit of
+ *                                                work commits around, and a
+ *                                                refusal POSTGRESQL raised,
+ *                                                which takes the unit of work
+ *                                                with it and still resolves
+ *
+ * 20 + 12 + 8 + 7 + 5 + 7 = 59. Five of the six are excluded from the package's
+ * default `test` script by filename and run by the `postgres-tenancy-repository`
+ * CI job.
+ *
+ * THE SIXTH FILE IS THE INTERESTING ONE, and it is not here because the tranche
+ * grew. `tools-isolation.integration.test.ts` is eight cases that exist because
+ * a MUTATION SURVIVED: the sweep in `mutations-tools.json` removed the ancestry
+ * resolve's organization half, the replace's entity clause, the enable's tenant
+ * clause and three orderings, and the five suites above stayed green for every
+ * one. It is a separate file rather than an appendix to the constraints suite
+ * because appending took that file to 467 effective lines, and the ADR M0.3 §6
+ * budget was pointing at a real seam: migrations-only RULES on one side, what
+ * the STORE decides on the other.
+ *
+ * THE NUMBER TO WATCH HERE is the 5 in the conformance suite. It is small for
+ * the same reason the outbox's 3 is: it is ONE scenario compared verbatim, so
+ * adding an observation strengthens the differential and moves no count in this
+ * file. `packages/adapters/postgres-tenancy/mutations-tools.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * So `packages/adapters/postgres-tenancy` moves a third time:
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 26 files,  199 -> 258 cases
+ *
+ * 20 + 6 = 26 files and 199 + 59 = 258 cases. The tree total is 391 + 6 = 397
+ * files and 6115 + 59 = 6174 cases. The adapters term of the three-way identity
+ * carries all of it, because every added file is an adapter's: 39 + 6 = 45, and
+ * 349 + 3 + 45 = 397.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1381,7 +1448,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 20, cases: 199 },
+  "packages/adapters/postgres-tenancy": { files: 26, cases: 258 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1529,7 +1596,7 @@ export const EXPECTED = Object.freeze({
  * 128, all of them in the one adapter the `postgres-tenancy-repository` job
  * runs.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6115;
+export const EXPECTED_RUNTIME_TOTAL = 6174;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

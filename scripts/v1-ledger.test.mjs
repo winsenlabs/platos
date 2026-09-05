@@ -809,7 +809,43 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 1109. Each branch pinned 1079 + its own addition and each was right
     // alone; taking either merged would understate the packages area by the
     // other's twelve or eighteen files.
-    packages: 1109,
+    //
+    // WIN-258 TRANCHE 5 — the `tools` canonical store — adds 20, and unlike
+    // tranche 4 every one of them lands in ONE directory,
+    // `packages/adapters/postgres-tenancy`. There is no thirteenth adapter
+    // package for the same ADR M0.3 §15 reason there was none for tranches 2
+    // and 3: one PostgreSQL database behind one client is one adapter
+    // DIRECTORY. No file is deleted anywhere in the tree, so the 20 additions
+    // ARE the whole delta and no removal can hide inside them.
+    //
+    //   +12 source  the five store modules (catalogue, exposures, policies,
+    //               mcp, transcript) and the composite that assembles them;
+    //               the two row-mapping halves (tools-rows, tools-audit-rows);
+    //               the scope resolve and its driver-error boundary
+    //               (tools-scope); the shared conformance scenario and its
+    //               shapes (tools-conformance, tools-conformance-shapes); and
+    //               tools-harness.
+    //   +6  test    tools-mapping.test plus five real-PostgreSQL suites —
+    //               conformance, constraints, isolation, statements and
+    //               transaction.
+    //   +1  fixture fixtures/tools-rows.sql, the sixteen pre-seeded tenants.
+    //               It is a FIXTURE and not source because `prisma db execute`
+    //               applies it with no code path in any package — which is the
+    //               whole reason it exists: the seven rows it writes belong to
+    //               `agents`, `conversations` and `secrets`, and
+    //               scripts/arch/sole-writer.mjs refused all seven when an
+    //               earlier draft of the harness wrote them from TypeScript.
+    //   +1  config  mutations-tools.json, the 15-entry guard ledger, on the
+    //               same packages.adapters.config rule that already carries
+    //               mutations.json, mutations-identity.json, mutations-ports.json
+    //               and mutations-outbox.json.
+    //
+    // 12 + 6 + 1 + 1 = 20. The sole-writer delegation and its write-count pin,
+    // the census pins, the project-graph edge count and owner map, the
+    // composition-root binding, the CI job's new build step and the ports
+    // barrel's re-export block are all edits to files that already existed.
+    // 1109 + 20 = 1129.
+    packages: 1129,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -971,11 +1007,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
     //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
     //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
-    //   adapter directories) = 1185.
+    //   adapter directories) = 1185, + 20 (WIN-258 tranche 5, the `tools`
+    //   canonical store, every one of them in the ONE adapter directory) = 1205.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1185);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1205);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -994,10 +1031,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
     // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
     // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
-    // five tenancy ports +12, and WIN-258 tranche 4's kernel outbox +18 across
-    // TWO adapter directories); this one re-derives it by summing the per-area
-    // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1185
+    // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
+    // TWO adapter directories, and WIN-258 tranche 5's `tools` canonical store
+    // +20 in ONE); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1205
   );
 });
 

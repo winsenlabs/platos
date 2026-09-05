@@ -711,8 +711,26 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               extended by BOTH tails, `+ 11` for tranche 3 and `+ 9 + 6`
     //               for tranche 4's two directories, so a term that went missing
     //               would move the total and be caught rather than absorbed.
-    assert.equal(result.fileCount, 1225, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6);
+    //  1225 -> 1243 +18: WIN-258 TRANCHE 5 adds the `tools` canonical store, all
+    //               of it in ONE directory. `packages/adapters/postgres-tenancy`
+    //               gains eighteen .ts files -- twelve source (the five store
+    //               modules and their composite, the two row-mapping halves, the
+    //               scope resolve, the two conformance-scenario halves and the
+    //               harness) and six suites. Its `fixtures/tools-rows.sql` and
+    //               `mutations-tools.json` are NOT source and are not counted
+    //               here; the v1 ledger counts them and the total there is 20.
+    //               THE RULE TO WATCH IS `cross-context-contracts-only`, and this
+    //               tranche is the one that pays for it. Every parameter and
+    //               every return of the port's twenty-five methods is spelled in
+    //               `tools` domain vocabulary, and an adapter may not reach into
+    //               `../../domain/`. The context re-exports those names from its
+    //               `application/ports/index.ts` -- the same block tenancy and
+    //               identity-access already carry -- so the one package entitled
+    //               to implement the port can name what the port says. The rule
+    //               does not fire on an adapter, so it is the DESIGN and not the
+    //               gate that keeps that true, which is why it is written here.
+    assert.equal(result.fileCount, 1243, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

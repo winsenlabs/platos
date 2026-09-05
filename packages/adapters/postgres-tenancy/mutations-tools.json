@@ -1,0 +1,254 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for the `tools` half of this package — the ten canonical",
+    "rows ADR M0.3 §1 row 7 gives that context, written from here because ADR",
+    "M0.3 §15 gives the ORM one home and `CANONICAL_STORE_ADAPTERS` in",
+    "scripts/arch/table-ownership.mjs delegates them to this directory. One",
+    "entry per tenant clause, transaction boundary, driver-error mapping and",
+    "ordering rule, each carrying the file it lives in, the EXACT text that",
+    "implements it (`from`), the edit that removes it (`to`), why it is load-",
+    "bearing (`why`), and the NAMED cases that were SEEN to go red (`kills`).",
+    "",
+    "FIFTEEN OF THE FIFTEEN NEED A REAL POSTGRESQL OR A REAL DRIVER, and none",
+    "could have been written against the in-memory double. The double compares",
+    "`resolvePath(scope)` against the one scope it was constructed with, so it",
+    "cannot tell a forged ancestry from a deleted environment; it has no",
+    "json-root CHECK, no NULL-distinct unique index, no ancestry rule and no",
+    "planner to return rows in an order nothing pinned.",
+    "",
+    "TEN OF THE SIXTEEN SURVIVED WHEN THE SWEEP FIRST RAN, AND THAT IS THE",
+    "REASON THIS FILE EXISTS. M01, M02, M03, M04, M06, M08, M09, M13, M14 and",
+    "M16 all survived against the five suites this tranche shipped: the store",
+    "passed with its ancestry resolve blind to the organization, with an",
+    "unknown environment admitted, with `replaceExposures` deleting another",
+    "entity's rows, with the enable's tenant clause gone and with two orderings",
+    "reversed. Six kills out of sixteen is not a store that is well tested; it",
+    "is a store whose guards nothing could contradict.",
+    "",
+    "`tools-isolation.integration.test.ts` (eight cases) and the four `what a",
+    "throw becomes` cases in `tools-mapping.test.ts` were written to close",
+    "exactly those, and the SECOND sweep is what the entries below record: 15",
+    "killed, 1 survived, 0 vacuous, on a baseline of 57 green cases. The one",
+    "survivor is recorded under `unfalsifiable` rather than deleted.",
+    "",
+    "SWEPT A THIRD TIME AT THE HEAD THIS SHIPS AT, by a driver written from",
+    "this file alone rather than from the first driver, because a ledger that",
+    "has only ever been checked by the run that wrote it is a transcript and",
+    "not evidence. Same result, on a baseline that grew to 59 when the two",
+    "transaction cases in commit 12 landed: 15 killed by NAMED cases, M09",
+    "survived, 0 vacuous, 0 stale anchors, and every mutated run executed all",
+    "59 cases rather than failing to load. M01 now falls to TWO cases rather",
+    "than one — `a SCOPE refusal is a Result the surrounding unit of work",
+    "COMMITS around` reads the ancestry resolve too — which is the guard",
+    "getting harder to remove, not a new guard."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills",
+    "and every one was VACUOUS: the context's dist/ had been cleaned, so every",
+    "suite failed to LOAD and 'died' against no mutation at all. The driver",
+    "used here runs the suite set UNMUTATED and refuses to sweep unless it is",
+    "green, and classifies a run in which NO CASE EXECUTED as VACUOUS rather",
+    "than as a kill. The baseline for the run recorded here was 57 cases, 0",
+    "failing; for the third sweep, at the head this ships at, it was 59, 0",
+    "failing.",
+    "",
+    "For one entry: build @platos/tenancy-database, @platos/context-tenancy,",
+    "@platos/context-identity-access and @platos/context-tools; replace its",
+    "`from` with its `to` in the named file; run `pnpm exec vitest run tools-`",
+    "from this package with DOCKER_HOST and",
+    "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE set; confirm a NAMED case in `kills`",
+    "fails; restore the file. An anchor that matches zero times or more than",
+    "once is a stale entry, not a kill — the driver refuses those rather than",
+    "reporting them either way."
+  ],
+  "unfalsifiable": [
+    {
+      "name": "M09 exposures: the exposure ordering stops being TOTAL",
+      "file": "src/tools-exposures.ts",
+      "from": "      orderBy: [...EXPOSURE_ORDER],",
+      "to": "      orderBy: [EXPOSURE_ORDER[0]],",
+      "verdict": "SURVIVED — recorded rather than hidden, and NOT counted as a guard",
+      "why": [
+        "The exposure order is guarded TWICE and either guard alone is enough,",
+        "so removing one is not observable. `readExposures` orders in SQL and",
+        "`listExposures`, `listEntityExposures` and `replaceExposures` then",
+        "`.sort(byExposureOrder)` the rows again in JS. Truncating the SQL",
+        "`ORDER BY` to its first term leaves every one of those three answering",
+        "identically, because the JS sort is total.",
+        "",
+        "The one method that CAN see it is `pageExposures`, which sorts after",
+        "the database has already chosen the page — so a non-total SQL order",
+        "decides WHICH rows are on it. Ties are needed to expose that, and on",
+        "this fixture PostgreSQL returns tied rows in a stable order anyway, so",
+        "a case written against it would assert planner behaviour rather than a",
+        "property of this store and would pass for the wrong reason.",
+        "",
+        "REPORTED AS A REDUNDANCY, NOT CLOSED WITH A CASE THAT WOULD NOT MEAN",
+        "WHAT IT SAID. The honest statement is that the SQL ordering is load-",
+        "bearing for `pageExposures` alone and is not independently falsifiable",
+        "here; a paging determinism proof needs a fixture built to produce ties",
+        "across a page boundary, which is a change to the harness rather than a",
+        "case."
+      ]
+    }
+  ],
+  "mutations": [
+    {
+      "name": "M01 scope: the ancestry check drops its ORGANIZATION half",
+      "file": "src/tools-scope.ts",
+      "from": "    resolved.projectId !== scope.projectId ||\n    resolved.organizationId !== scope.organizationId",
+      "to": "    resolved.projectId !== scope.projectId",
+      "why": "The port note the double cannot honour: a scope is an organization, a project AND a leaf, so a `where` built on the leaf alone reads an environment that has since been re-parented. Only a real tree can state it.",
+      "kills": [
+        "tools-isolation.integration.test.ts > the ancestry the scope claims, resolved against the real tree an environment under ANOTHER organization is refused, and the leaf is real"
+      ]
+    },
+    {
+      "name": "M02 scope: an environment that does not exist is PERMITTED",
+      "file": "src/tools-scope.ts",
+      "from": "  if (resolved === undefined) {\n    return err(repositoryUnavailable(`${TOOLS_SCOPE_UNKNOWN}:${operation}`));\n  }",
+      "to": "  if (resolved === undefined) {\n    return ok(true);\n  }",
+      "why": "A forged ancestry and a deleted environment are two different operator problems. The double holds no tree and raises one refusal for both; this store mints two, and the pair is only meaningful if each is reachable.",
+      "kills": [
+        "tools-isolation.integration.test.ts > the ancestry the scope claims, resolved against the real tree an environment that does not exist is a DIFFERENT refusal from a forged one"
+      ]
+    },
+    {
+      "name": "M03 scope: a TransactionScopeError is swallowed into a Result",
+      "file": "src/tools-scope.ts",
+      "from": "    if (error instanceof Error && error.name === \"TransactionScopeError\") throw error;\n",
+      "to": "",
+      "why": "A `TransactionScopeError` means a write ran outside its unit of work. Folding it into a `Result` would let a write that never ran read as a store that was busy.",
+      "kills": [
+        "tools-mapping.test.ts > what a throw becomes on the way out of the store a TransactionScopeError is RE-THROWN, never folded into a Result"
+      ]
+    },
+    {
+      "name": "M04 scope: driverCode loses the class-name fallback",
+      "file": "src/tools-scope.ts",
+      "from": "  const name = (error as { readonly name?: unknown }).name;\n  return typeof name === \"string\" ? name : \"unknown\";",
+      "to": "  return \"unknown\";",
+      "why": "A client-side validation error carries no `code`. Falling back to the literal `unknown` made a constraint the database refused and a bug in this package read identically.",
+      "kills": [
+        "tools-mapping.test.ts > what a throw becomes on the way out of the store a CLIENT-SIDE validation error carries no code, so the refusal names its CLASS"
+      ]
+    },
+    {
+      "name": "M05 exposures: the bindings fold resolves the scope a SECOND time",
+      "file": "src/tools-exposures.ts",
+      "from": "    return catalogue.readBindings(scope);",
+      "to": "    const bound = await catalogue.listAgentPolicyBindings(scope);\n    return bound.ok ? bound.value : [];",
+      "why": "`requireScope` is one statement on the front of every scoped method. Reaching for the public reader inside a fold already inside `inScope` pays it twice, on the hot path of every turn.",
+      "kills": [
+        "tools-statements.integration.test.ts > statement counts the whole exposure matrix costs the same for 2 tools and for 20"
+      ]
+    },
+    {
+      "name": "M06 exposures: the replace DELETE loses its entity clause",
+      "file": "src/tools-exposures.ts",
+      "from": "              entityId: replacement.entityId,\n              toolId: { notIn: wanted },",
+      "to": "              toolId: { notIn: wanted },",
+      "why": "`replaceExposures` deletes anything absent from the declaration. Keyed on the environment and the tool set alone it takes ANOTHER entity's rows with it, and every value it returns is still correct.",
+      "kills": [
+        "tools-isolation.integration.test.ts > what one entity's registration may reach re-registering ONE entity leaves the other entity's exposures alone"
+      ]
+    },
+    {
+      "name": "M07 exposures: the createMany stops skipping duplicates",
+      "file": "src/tools-exposures.ts",
+      "from": "            skipDuplicates: true,",
+      "to": "            skipDuplicates: false,",
+      "why": "The update-then-create pair is only safe because the unique key lets the create skip a row the update already touched.",
+      "kills": [
+        "tools-conformance.integration.test.ts > the shared conformance scenario the postgres adapter and the in-memory double answer it identically",
+        "tools-transaction.integration.test.ts > the transaction boundary, proved by failure injection when the CREATE of replaceExposures fails, the DELETE it already made is gone too"
+      ]
+    },
+    {
+      "name": "M08 exposures: setExposureEnabled loses its tenant clause",
+      "file": "src/tools-exposures.ts",
+      "from": "            where: { id: exposureId, environmentId: scope.environmentId },",
+      "to": "            where: { id: exposureId },",
+      "why": "`updateMany` rather than `update`, because the tenant clause has to be IN the statement: `update` addresses the primary key alone, so an exposure id from another environment would be switched off by whoever guessed it.",
+      "kills": [
+        "tools-isolation.integration.test.ts > what one entity's registration may reach an exposure id from another environment cannot be switched off"
+      ]
+    },
+    {
+      "name": "M10 transcript: saveCall stops checking the step is in scope",
+      "file": "src/tools-transcript.ts",
+      "from": "          where: { id: call.stepId, ...stepInScope(scope) },",
+      "to": "          where: { id: call.stepId },",
+      "why": "`ToolCall` has no tenant column at all — its ancestry is Step -> Turn -> Thread — so the step-in-scope read is the only thing standing between a caller and another environment's transcript.",
+      "kills": [
+        "tools-constraints.integration.test.ts > constraints that exist only in the migrations a step in another environment is refused, and it is not the same refusal"
+      ]
+    },
+    {
+      "name": "M11 transcript: writeJson stops mapping null to the DB-NULL sentinel",
+      "file": "src/tools-transcript.ts",
+      "from": "  return (value === null || value === undefined ? TENANCY_JSON_DB_NULL : value) as never;",
+      "to": "  return value as never;",
+      "why": "A plain `null` for a nullable `Json` column is a client validation error, and the client's other sentinel stores the JSON scalar `null`, which the json-root CHECK refuses. Both are invisible against the double.",
+      "kills": [
+        "tools-constraints.integration.test.ts > constraints that exist only in the migrations ToolCall_stepId_sequence_key refuses a second call at one sequence",
+        "tools-isolation.integration.test.ts > orders and instants a transcript may not lose a step's calls come back in SEQUENCE order, whatever order they were written",
+        "tools-isolation.integration.test.ts > orders and instants a transcript may not lose re-saving a call may not move it to another step or another instant",
+        "tools-transaction.integration.test.ts > the transaction boundary, proved by failure injection an audit row appended inside a rolled-back transaction does not survive"
+      ]
+    },
+    {
+      "name": "M12 audit-rows: writeResult stops wrapping a SCALAR result",
+      "file": "src/tools-audit-rows.ts",
+      "from": "  return { [SCALAR_RESULT_KEY]: result };",
+      "to": "  return result;",
+      "why": "The json-root CHECK admits only an object or an array, and a call's `result` is `unknown`. A scalar has to be wrapped on the way in and unwrapped on the way out, or it cannot be stored at all.",
+      "kills": [
+        "tools-conformance.integration.test.ts > the shared conformance scenario the postgres adapter and the in-memory double answer it identically",
+        "tools-constraints.integration.test.ts > constraints that exist only in the migrations the json-root CHECK refuses a scalar result and this adapter navigates it",
+        "tools-mapping.test.ts > the audit envelope's layout a scalar result is wrapped on the way in and unwrapped on the way out"
+      ]
+    },
+    {
+      "name": "M13 transcript: listStepCalls returns the transcript BACKWARDS",
+      "file": "src/tools-transcript.ts",
+      "from": "          orderBy: { sequence: \"asc\" },",
+      "to": "          orderBy: { sequence: \"desc\" },",
+      "why": "A transcript read out of order is a transcript. Nothing about the values says which way round they should be.",
+      "kills": [
+        "tools-isolation.integration.test.ts > orders and instants a transcript may not lose a step's calls come back in SEQUENCE order, whatever order they were written"
+      ]
+    },
+    {
+      "name": "M14 transcript: saveCall's update REWRITES the step and the instant",
+      "file": "src/tools-transcript.ts",
+      "from": "            update: mutable,\n          }),\n        )) as unknown as ToolCallRow;",
+      "to": "            update: { ...mutable, stepId: call.stepId, createdAt: call.createdAt },\n          }),\n        )) as unknown as ToolCallRow;",
+      "why": "A call belongs to the step it was made in. Letting a later write move `stepId` or `createdAt` rewrites history, and the status update it rides on still lands, so no returned value looks wrong.",
+      "kills": [
+        "tools-isolation.integration.test.ts > orders and instants a transcript may not lose re-saving a call may not move it to another step or another instant"
+      ]
+    },
+    {
+      "name": "M15 exposures: the DELETE runs AFTER the writes, not before",
+      "file": "src/tools-exposures.ts",
+      "from": "          await client.environmentEntityTool.deleteMany({\n            where: {\n              environmentId: scope.environmentId,\n              entityId: replacement.entityId,\n              toolId: { notIn: wanted },\n            },\n          });\n          if (wanted.length === 0) return;",
+      "to": "          if (wanted.length === 0) {\n            await client.environmentEntityTool.deleteMany({\n              where: {\n                environmentId: scope.environmentId,\n                entityId: replacement.entityId,\n                toolId: { notIn: wanted },\n              },\n            });\n            return;\n          }",
+      "why": "The delete runs FIRST so a re-registration that drops one tool and adds another cannot transiently hold both.",
+      "kills": [
+        "tools-conformance.integration.test.ts > the shared conformance scenario the postgres adapter and the in-memory double answer it identically"
+      ]
+    },
+    {
+      "name": "M16 transcript: findHealth stops pinning a deterministic row",
+      "file": "src/tools-transcript.ts",
+      "from": "          orderBy: { id: \"asc\" },",
+      "to": "          orderBy: { id: \"desc\" },",
+      "why": "`entityExternalId` is nullable and the unique index is NULL-DISTINCT, so two health rows for one (environment, tool) both stand. Without an ORDER BY the row a fold reads is whichever the planner returned.",
+      "kills": [
+        "tools-isolation.integration.test.ts > the health row a NULL entity may hold twice findHealth pins the LOWEST id when two rows match, not an arbitrary one"
+      ]
+    }
+  ]
+}
