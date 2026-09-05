@@ -53,9 +53,18 @@ beforeAll(async () => {
     agentCapId: uuid("0002"),
     userCapId: uuid("0003"),
     missingCapId: uuid("0004"),
-    firstCrossingId: uuid("0005"),
+    // THE TWO CROSSING IDENTIFIERS ARE DELIBERATELY OUT OF DEADLINE ORDER.
+    // `listPendingCrossings` returns oldest deadline first ACROSS crossings and
+    // tie-breaks on the crossing id, and the first crossing's earliest
+    // outstanding delivery is due at `AT` while the second's is due at `LATER`.
+    // Numbered in the obvious order the two orderings would AGREE, and WIN-258
+    // T5's mutation sweep proved that: replacing the outer `ORDER BY
+    // picked."dueAt"` with the id tie-break alone left every observation
+    // identical. Numbered this way the deadline order and the id order disagree,
+    // so only a store that actually sorts on the deadline matches the double.
+    firstCrossingId: uuid("0007"),
     duplicateCrossingId: uuid("0006"),
-    secondCrossingId: uuid("0007"),
+    secondCrossingId: uuid("0005"),
     missingCrossingId: uuid("0008"),
     emailChannelId: uuid("0009"),
     slackChannelId: uuid("000a"),

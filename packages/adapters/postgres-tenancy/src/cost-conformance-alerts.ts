@@ -198,6 +198,18 @@ async function runChannels(
     scope,
     ids.missingChannelId,
   );
+  // A reference that is not a uuid AT ALL, which the line above is not:
+  // `ids.missingChannelId` is a well-formed uuid that names no row.
+  // `AlertChannelConfiguration.credentialId` is `@db.Uuid`, so the real store
+  // has to ANSWER zero rather than send it — the comparison raises 22P02, and a
+  // driver error is not one of the outcomes this port publishes. The double
+  // answers zero because nothing matches. WIN-258 T5's mutation sweep added this
+  // observation: the guard that refuses the value had nothing that could turn
+  // red, because every credential named anywhere in this scenario was a uuid.
+  observed.countMalformedCredentialHolders = await repository.countChannelsUsingCredential(
+    scope,
+    "not-a-uuid",
+  );
   observed.updateMissingChannel = await environment.run((transaction) =>
     repository.updateAlertChannel(
       conformanceChannel(scope, ids.missingChannelId),

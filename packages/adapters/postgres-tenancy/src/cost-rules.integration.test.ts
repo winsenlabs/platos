@@ -320,6 +320,24 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
       ok: true,
       value: 0,
     });
+
+    // AND IT CANNOT BE EDITED BACK INTO SERVICE. `updateAlertChannel` carries
+    // the same `deletedAt: null` term the reads carry, so no method this port
+    // publishes can reach a row an older surface deleted — which is what makes
+    // "this port cannot tombstone one" a statement about the whole surface
+    // rather than about the reads alone. WIN-258 T5's mutation sweep added this
+    // half: removing that term from the predicate left every assertion above
+    // green, because until now nothing here wrote to a tombstoned channel.
+    const edited = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.updateAlertChannel(
+        { ...webhookChannel(channelId, live), name: "edited back into service" },
+        transaction,
+      ),
+    );
+    expect(edited.ok).toBe(false);
+    expect(
+      (await harness.base.client.alertChannel.findFirst({ where: { id: channelId } }))?.name,
+    ).not.toBe("edited back into service");
   });
 });
 
