@@ -60,7 +60,13 @@ export const ADAPTERS = [
     // ADR M0.3 §4's body already spells this directory "per-context
     // repositories, owner-tagged"; §15 records why the body wins over the
     // header's narrower "implements ONE port".
-    additional: [{ port: "IdentityAccessRepository", owner: "identity-access" }],
+    // WIN-258 T5 adds the THIRD, and the argument does not change with the
+    // count: `tools` owns ten canonical rows in that same database, so its
+    // repository is the same client, the same pool and the same transaction.
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      { port: "ToolsRepository", owner: "tools" },
+    ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "THE single writer of the Event/outbox table" },
@@ -79,8 +85,9 @@ export const ADAPTERS = [
 /**
  * Every (adapter directory, port, owner) triple the layout declares, flattened.
  *
- * ONE entry per BINDING, not per directory. `postgres-tenancy` appears twice
- * because it satisfies two ports; every other directory appears once. This is
+ * ONE entry per BINDING, not per directory. `postgres-tenancy` appears three
+ * times because it satisfies three ports; every other directory appears once.
+ * This is
  * the list the composition root's table is compared against, the list the
  * project graph derives its owner edges from, and the list `selfCheck` counts.
  */
@@ -122,8 +129,13 @@ export function adapterOwnerPackages(adapter) {
 // amendment, thirteen BINDINGS across them. Both are pinned: a thirteenth
 // directory and a fourteenth binding are each a reviewed line rather than a
 // silent consequence of editing a table.
+// 13 -> 14 (WIN-258 T5, ADR M0.3 s15). `postgres-tenancy` gains a THIRD
+// binding, `tools:ToolsRepository`. The directory count is UNCHANGED at twelve
+// and that is the point of pinning the two separately: a new binding inside an
+// existing directory is a different reviewed decision from a new directory, and
+// a single pin could not have told them apart.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 13;
+export const EXPECTED_BINDING_COUNT = 14;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -162,7 +174,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` already depends on `identity-access`, so the 17-context DAG is
 // untouched. The independent expectation in scripts/arch/v1-project-graph.mjs
 // carries the same delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 96;
+// 96 -> 97 (WIN-258 T5, ADR M0.3 s15). `packages/adapters/postgres-tenancy` ->
+// `packages/contexts/tools`. A THIRD owner edge out of the one directory, for
+// the third context whose canonical rows live in the one PostgreSQL database.
+// It cannot create a cycle for the same reason the second could not: contexts
+// are leaves relative to adapters, and nothing in `tools` names an adapter. The
+// 17-context DAG is untouched -- `tools` depends on `tenancy`,
+// `identity-access`, `secrets` and `providers`, and this edge adds none of
+// those. The independent expectation in scripts/arch/v1-project-graph.mjs
+// carries the same delta and is maintained separately on purpose.
+export const EXPECTED_EDGE_COUNT = 97;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -467,6 +488,21 @@ function describeAdapter(adapter) {
  * M0.3 §4 it is standing on, because "an adapter implements ONE port" is the
  * line a reader would otherwise measure it against and find it wanting.
  */
+/**
+ * The count, spelled.
+ *
+ * WIN-258 T5. This sentence used to read "Implements TWO owner-supplied ports"
+ * with the word as a literal, which was true while two was the only value
+ * `bindings.length > 1` could take. The day `postgres-tenancy` gained a third
+ * binding the generated README said TWO and listed three, which is a
+ * generator-owned file stating a number the generator itself could refute — the
+ * exact failure `packages/**\/README.md` being generator-owned exists to
+ * prevent. It is derived now.
+ */
+function countWord(count) {
+  return ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX"][count] ?? String(count);
+}
+
 function adapterReadme(adapter) {
   const bindings = adapterBindings([adapter]);
   const title = `# @platos/adapter-${adapter.dir}\n\n`;
@@ -474,7 +510,7 @@ function adapterReadme(adapter) {
   if (bindings.length > 1) {
     const list = bindings.map((binding) => `- the ${binding.owner} \`${binding.port}\` port`).join("\n");
     return (
-      `${title}Implements TWO owner-supplied ports — ${adapter.note}:\n\n${list}\n\n` +
+      `${title}Implements ${countWord(bindings.length)} owner-supplied ports — ${adapter.note}:\n\n${list}\n\n` +
       "ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a\n" +
       "directory may satisfy more than one port when the ports sit behind the same\n" +
       "client. §4's body already spells this directory \"per-context repositories,\n" +

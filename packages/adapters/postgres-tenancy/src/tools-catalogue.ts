@@ -1,0 +1,188 @@
+// `Tool`, and the `AgentToolPolicy` bindings that decide who may see one.
+//
+// TWO SURFACES THAT LOOK UNRELATED AND ARE NOT. The `Tool` row is
+// installation-global and content-addressed; the agent bindings are the
+// environment's opinion about which agents may call it. They are together
+// because `listExposures` needs BOTH and because folding the bindings per
+// exposure is the N+1 the statement suite pins against — the fold is over the
+// environment's whole binding set, read once.
+//
+// `upsertTool` IS FIND-THEN-CREATE AND NEVER AN UPDATE. The port says so and the
+// reason is the `@updatedAt` column: a Prisma `upsert` with an empty `update`
+// still issues the UPDATE, which moves `updatedAt` on a row that by construction
+// did not change. A second writer racing the create loses on
+// `Tool_name_schemaHash_key` and is answered from the row that won, so the
+// find-or-create is idempotent under concurrency rather than merely under
+// sequence.
+//
+// THE `Tool` METHODS TAKE NO SCOPE, and that is the port's decision, not an
+// omission: the row has no tenancy column at all, so two organizations declaring
+// an identical tool share one row. Nothing here may therefore refuse on scope,
+// and pretending otherwise would invent an ancestry the table does not have.
+
+import type {
+  AgentPolicyBinding,
+  AgentToolPolicy,
+  AgentVersionId,
+  AgentToolPolicyId,
+  EnvironmentScope,
+  Result,
+  SchemaHash,
+  Tool,
+  ToolId,
+  ToolName,
+} from "@platos/context-tools/application/ports/index.js";
+import { asToolsIdentifier, ok } from "@platos/context-tools/application/ports/index.js";
+import type { ToolUpsert } from "@platos/context-tools/application/ports/index.js";
+
+import { isUniqueViolation } from "./client.js";
+import { readDefaultPolicy, readEffect, toTool } from "./tools-rows.js";
+import { guarded, inScope } from "./tools-scope.js";
+import type { TenancyTransactions } from "./transaction.js";
+
+/** The three `Tool` methods and the two binding reads, as one object. */
+export interface ToolsCatalogue {
+  findToolByFingerprint(name: ToolName, schemaHash: SchemaHash): Promise<Result<Tool | null>>;
+  upsertTool(tool: ToolUpsert): Promise<Result<Tool>>;
+  findTools(toolIds: readonly ToolId[]): Promise<Result<readonly Tool[]>>;
+  listAgentPolicyBindings(scope: EnvironmentScope): Promise<Result<readonly AgentPolicyBinding[]>>;
+  findAgentPolicyBinding(
+    scope: EnvironmentScope,
+    agentId: string,
+  ): Promise<Result<AgentPolicyBinding | null>>;
+}
+
+/** The shape a binding is read in. Named once; both reads select it. */
+const BINDING_SELECT = {
+  agentId: true,
+  activeAgentVersion: {
+    select: {
+      id: true,
+      toolDefaultPolicy: true,
+      toolPolicies: {
+        select: { id: true, agentVersionId: true, toolId: true, effect: true, priority: true, createdAt: true },
+        orderBy: { toolId: "asc" },
+      },
+    },
+  },
+} as const;
+
+interface BindingRow {
+  readonly agentId: string;
+  readonly activeAgentVersion: {
+    readonly id: string;
+    readonly toolDefaultPolicy: string;
+    readonly toolPolicies: readonly {
+      readonly id: string;
+      readonly agentVersionId: string;
+      readonly toolId: string;
+      readonly effect: string;
+      readonly priority: number;
+      readonly createdAt: Date;
+    }[];
+  };
+}
+
+function toPolicy(row: BindingRow["activeAgentVersion"]["toolPolicies"][number]): AgentToolPolicy {
+  return {
+    agentToolPolicyId: asToolsIdentifier<AgentToolPolicyId>(row.id),
+    agentVersionId: asToolsIdentifier<AgentVersionId>(row.agentVersionId),
+    toolId: asToolsIdentifier<ToolId>(row.toolId),
+    effect: readEffect("AgentToolPolicy.effect", row.effect),
+    priority: row.priority,
+    createdAt: row.createdAt,
+  };
+}
+
+function toBinding(row: BindingRow): AgentPolicyBinding {
+  return {
+    agentId: asToolsIdentifier(row.agentId),
+    // The ACTIVE version, never the canary. A binding's canary is a rollout
+    // fraction, and a tool an operator has not yet promoted must not become
+    // visible to the fraction of turns that happen to land on it.
+    agentVersionId: asToolsIdentifier<AgentVersionId>(row.activeAgentVersion.id),
+    defaultPolicy: readDefaultPolicy(row.activeAgentVersion.toolDefaultPolicy),
+    policies: row.activeAgentVersion.toolPolicies.map(toPolicy),
+  };
+}
+
+export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCatalogue {
+  return {
+    async findToolByFingerprint(name, schemaHash) {
+      return guarded("findToolByFingerprint", async () => {
+        const row = await transactions.reader().tool.findUnique({
+          where: { name_schemaHash: { name, schemaHash } },
+        });
+        return ok(row === null ? null : toTool(row));
+      });
+    },
+
+    async upsertTool(tool) {
+      return guarded("upsertTool", async () => {
+        const fingerprint = { name: tool.name, schemaHash: tool.schemaHash };
+        const held = await transactions.reader().tool.findUnique({
+          where: { name_schemaHash: fingerprint },
+        });
+        if (held !== null) return ok(toTool(held));
+        try {
+          const minted = await transactions.atomic((client) =>
+            client.tool.create({
+              data: {
+                name: tool.name,
+                description: tool.description,
+                // ENTITY and only ENTITY. Registration mints no other kind, and
+                // the column's default says the same thing — written out anyway,
+                // because a default is the schema's opinion and this is ours.
+                kind: "ENTITY",
+                paramSchema: tool.paramSchema as never,
+                category: tool.category,
+                schemaHash: tool.schemaHash,
+              },
+            }),
+          );
+          return ok(toTool(minted));
+        } catch (error) {
+          if (!isUniqueViolation(error)) throw error;
+          // Somebody else minted the same fingerprint between the read and the
+          // write. Their row IS this row: the key is the content.
+          const won = await transactions.reader().tool.findUniqueOrThrow({
+            where: { name_schemaHash: fingerprint },
+          });
+          return ok(toTool(won));
+        }
+      });
+    },
+
+    async findTools(toolIds) {
+      return guarded("findTools", async () => {
+        if (toolIds.length === 0) return ok([]);
+        const rows = await transactions.reader().tool.findMany({
+          where: { id: { in: [...toolIds] } },
+          orderBy: { id: "asc" },
+        });
+        return ok(rows.map(toTool));
+      });
+    },
+
+    async listAgentPolicyBindings(scope) {
+      return inScope(transactions, scope, "listAgentPolicyBindings", async () => {
+        const rows = await transactions.reader().agentBinding.findMany({
+          where: { environmentId: scope.environmentId },
+          select: BINDING_SELECT,
+          orderBy: { agentId: "asc" },
+        });
+        return ok(rows.map(toBinding));
+      });
+    },
+
+    async findAgentPolicyBinding(scope, agentId) {
+      return inScope(transactions, scope, "findAgentPolicyBinding", async () => {
+        const row = await transactions.reader().agentBinding.findUnique({
+          where: { environmentId_agentId: { environmentId: scope.environmentId, agentId } },
+          select: BINDING_SELECT,
+        });
+        return ok(row === null ? null : toBinding(row));
+      });
+    },
+  };
+}

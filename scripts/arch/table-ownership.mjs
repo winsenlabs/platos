@@ -271,6 +271,27 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // per WRITE, so this entry grants exactly the two rows the pseudo-owner owns,
   // `Event` and the superseded `ObservabilityOutbox`.
   "<kernel-outbox-adapter>": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The PostgreSQL `ToolsRepository` — the SAME directory for the
+  // fourth time, and for the same sentence: one PostgreSQL database behind one
+  // client is one adapter DIRECTORY (ADR M0.3 §15), not one package per context.
+  //
+  // WHAT THIS GRANTS, EXACTLY. The ten rows ADR M0.3 §1 row 7 gives `tools`:
+  // `Tool`, `EnvironmentEntityTool`, `ToolHealth`, `ToolCall`, `ToolCallAudit`,
+  // `AgentToolPolicy`, `EntityToolPolicy`, `EntityMcpConfig`, `EntityMcpClient`
+  // and `OrganizationMcpPolicy`. Nothing wider. `checkSoleWriter` still asks, per
+  // WRITE, whether the file's directory is one of `ownerDirectories(OWNER[model])`,
+  // so a write to `Memory` or to `Budget` from this package still fails — the
+  // ownership is carried by the owner TAG on the row and this entry moves no tag.
+  //
+  // IT IS ALSO WHAT MAKES `replaceExposures` IMPLEMENTABLE. That method is a
+  // DELETE and two set-writes on `EnvironmentEntityTool` that must commit or roll
+  // back together, and the transaction they run in is `TenancyTransactions` — the
+  // one this directory already holds. A thirteenth adapter package holding only
+  // this context's repository would have had its own pool, so a use case that
+  // registered an entity's tools and bumped its environment's access-key fence
+  // would have been two transactions with a window between them.
+  tools: "packages/adapters/postgres-tenancy",
 });
 
 /**

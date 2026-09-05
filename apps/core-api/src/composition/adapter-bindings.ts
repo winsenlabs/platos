@@ -30,6 +30,7 @@ import type {
   RateLimiter,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type { TenancyRepository } from "@platos/context-tenancy/application/ports/index.js";
+import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
@@ -110,6 +111,7 @@ interface PortSatisfaction {
     PostgresTenancyAdapter,
     IdentityAccessRepository
   >;
+  readonly "postgres-tenancy:ToolsRepository": Satisfies<PostgresTenancyAdapter, ToolsRepository>;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -129,6 +131,7 @@ interface PortSatisfaction {
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:TenancyRepository": true,
   "postgres-tenancy:IdentityAccessRepository": true,
+  "postgres-tenancy:ToolsRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -195,6 +198,12 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "IdentityAccessRepository",
     owner: "identity-access",
   }),
+  // WIN-258 T5. The THIRD binding of the same directory, and the argument is
+  // unchanged by the count: `tools` owns ten canonical rows in the one
+  // PostgreSQL database, so its repository is the one client, the one pool and
+  // the one transaction. `CANONICAL_STORE_ADAPTERS` in
+  // scripts/arch/table-ownership.mjs grants exactly those ten rows and no more.
+  Object.freeze({ adapter: "postgres-tenancy", port: "ToolsRepository", owner: "tools" }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),

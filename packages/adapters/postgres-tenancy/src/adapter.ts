@@ -33,6 +33,16 @@
 // exception that proves the rule: it touches no database at all and is here only
 // because a context asked for a port and something has to satisfy it.
 //
+// AND SO DOES THE `tools` REPOSITORY (WIN-258 T5), for the third time and for
+// the same one sentence: `Tool`, `EnvironmentEntityTool`, `ToolHealth`,
+// `ToolCall`, `ToolCallAudit`, `AgentToolPolicy`, `EntityToolPolicy`,
+// `EntityMcpConfig`, `EntityMcpClient` and `OrganizationMcpPolicy` live in the
+// SAME PostgreSQL database behind the SAME client. Its twenty-five names —
+// twenty-four methods, no properties — collide with nothing tenancy or
+// identity-access publishes, which is what lets the composite be SPREAD in and
+// therefore lets `PORT_SATISFACTION` resolve `PostgresTenancyAdapter extends
+// ToolsRepository` at compile time. A nested property could not satisfy that.
+//
 // AND SO DOES THE KERNEL OUTBOX'S `Event` WRITE (WIN-258 T4). `Event` is the one
 // canonical row whose owner is an adapter rather than a context, and Amendment
 // 15 gives the ORM a single home — so the package that owns the outbox port
@@ -42,6 +52,7 @@
 // that seam are `./outbox-store.js`, spread in below.
 
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
+import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
   InvitationTokenIssuer,
@@ -65,11 +76,13 @@ import type { OutboxEventStorePort } from "./outbox-store.js";
 import { createOutboxEventStore } from "./outbox-store.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
+import { createToolsRepository } from "./tools-repository.js";
 import { createTreeRepository } from "./tree.js";
 
 export interface PostgresTenancyAdapter
   extends TenancyRepository,
     IdentityAccessRepository,
+    ToolsRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -138,6 +151,13 @@ export function buildPostgresTenancyAdapter(
     // named store properties, so there is no name collision to arbitrate: its
     // ten keys and tenancy's thirty-one are disjoint.
     ...identity,
+    // WIN-258 T5. The `tools` repository, spread in for the reason the
+    // identity-access composite is: the composition root proves
+    // `PostgresTenancyAdapter extends ToolsRepository` at compile time, and a
+    // nested property could not satisfy that. It is built from the same
+    // `transactions` as everything else here, so a use case that registers an
+    // entity's tools and bumps its environment's fence is ONE transaction.
+    ...createToolsRepository(transactions),
     // WIN-258 T4. The canonical `Event` row, written on the kernel outbox
     // adapter's behalf. It is spread in here rather than exposed as a separate
     // object for the reason the identity-access composite is: the composition
