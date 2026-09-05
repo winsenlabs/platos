@@ -1411,8 +1411,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * objects, rather than the branches being deleted as dead code.
  *
  * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite. It is two
- * because it is TWO scenarios of ninety-odd observations compared verbatim;
- * adding an observation strengthens the differential and moves no count here,
+ * because it is TWO scenarios compared verbatim -- 47 observations over
+ * `AgentsRepository` and 29 over `ScaffoldingRepository`, both READ OFF a run.
+ * Adding an observation strengthens the differential and moves no count here,
  * which is why `mutations-agents.json` is where those guards are held
  * falsifiable.
  *

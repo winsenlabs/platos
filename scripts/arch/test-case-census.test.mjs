@@ -922,10 +922,12 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // statement counts (9), and the shared conformance scenario run against the
   // in-memory double and against PostgreSQL and compared verbatim (2).
   //
-  // THE 2 IS THE NUMBER TO WATCH. It is two because it is TWO scenarios of
-  // ninety-odd observations compared step by step; adding an observation
-  // strengthens the differential and moves no count here, which is why the
-  // guards behind it are held falsifiable in `mutations-agents.json` instead.
+  // THE 2 IS THE NUMBER TO WATCH. It is two because it is TWO scenarios --
+  // 47 observations over `AgentsRepository` and 29 over `ScaffoldingRepository`,
+  // both counts READ OFF a run rather than tallied from the source -- compared
+  // step by step. Adding an observation strengthens the differential and moves
+  // no count here, which is why the guards behind it are held falsifiable in
+  // `mutations-agents.json` instead.
   //
   // ALL FIVE tranches move THIS row, so it carries every tail: 11 + 5 + 4 + 6 =
   // 26 files and 123 + 43 + 33 + 60 = 259 cases. Neither branch's own 16/166 nor
