@@ -109,7 +109,14 @@ test("`@@unique([environmentId, name])` is per ENVIRONMENT, not per name", async
     .then(() => "WROTE")
     .catch((error: unknown) => (error instanceof Error ? error.message : String(error)));
   expect(duplicate).not.toBe("WROTE");
-  expect(String(duplicate)).toContain("NotificationRule_environmentId_name_key");
+  // THE DRIVER NAMES THE KEY COLUMNS AND NOT THE INDEX, which is worth pinning
+  // rather than working around: a raw statement's 23505 comes back as
+  // `Key ("environmentId", name)=(...) already exists`, with no constraint name
+  // anywhere in it. That is why `eventing-refusal.ts` recognises a name clash by
+  // the ORM's `P2002` code rather than by matching the message — the message an
+  // operator would grep for is not in it.
+  expect(String(duplicate)).toContain("23505");
+  expect(String(duplicate)).toContain(`("environmentId", name)`);
 }, 300_000);
 
 test("`ON DELETE CASCADE` takes the rules with the environment, and no port says so", async () => {
