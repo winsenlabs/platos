@@ -698,7 +698,7 @@
       "file": "src/conversations-turns.ts",
       "from": "    inputRateSourceRef: step.rates.input?.sourceRef ?? null,",
       "to": "    inputRateSourceRef: null,",
-      "note": "`ModelPrice_rate_check` demands a reference for any rate whose source is not UNAVAILABLE, and `Step_price_snapshot` compares the step's four references to the card's — so dropping one is refused by a trigger, for a value the caller had.",
+      "note": "`ModelPrice_rate_check` demands a reference for any rate whose source is not UNAVAILABLE, and `Step_price_snapshot` compares the step's four references to the card's — so dropping one is refused by a rule, for a value the caller had.",
       "suites": [
         "src/conversations-conformance.integration.test.ts"
       ],

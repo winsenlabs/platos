@@ -1739,7 +1739,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                   the file passed the 500-line
  *                                                   hard error
  *   conversations-isolation.integration.test.ts 11  the three immutability
- *                                                   triggers and the tenant
+ *                                                   rules and the tenant
  *                                                   boundary — four rows unique
  *                                                   INSTALLATION-WIDE, one of
  *                                                   them a capability

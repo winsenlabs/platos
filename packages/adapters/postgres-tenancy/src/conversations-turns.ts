@@ -214,7 +214,7 @@ function stepInsert(step: Step): StepInsertRow {
     // `Decimal(24, 12)` both exceed what a binary float holds exactly, and
     // `Step_price_snapshot` compares the four rates to `ModelPrice`'s own
     // columns — a rate that drifted in its last digits on the way through a
-    // `Number` is refused by that trigger, correctly, for a value that was right
+    // `Number` is refused by that rule, correctly, for a value that was right
     // when the caller had it.
     costCents: step.cost === null ? null : moneyToCentsString(step.cost),
     modelPriceId: step.modelPriceId,
@@ -444,7 +444,7 @@ export function createTurnRepository(transactions: TenancyTransactions): TurnRep
           // survive into a rollup it was never part of.
           //
           // DELETE-THEN-INSERT RATHER THAN UPSERT, and `Step_price_snapshot` is
-          // the reason. That trigger makes a PRICED step's billing evidence
+          // the reason. That rule makes a PRICED step's billing evidence
           // immutable on UPDATE — `RAISE EXCEPTION 'priced Step billing evidence
           // is immutable'` — so an upsert that touched a re-priced row would be
           // refused by the database. A delete is not an update, so a settlement

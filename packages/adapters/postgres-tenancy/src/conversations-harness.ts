@@ -271,7 +271,7 @@ export async function startConversationsHarness(): Promise<ConversationsHarness>
           // thread to it satisfies `Thread_ancestry` — which checks the ORG —
           // so the only rule left to refuse the write is
           // `Thread_subject_immutable`, and the case that sends it is measuring
-          // that trigger rather than the ancestry rule in front of it.
+          // that rule rather than the ancestry rule in front of it.
           `INSERT INTO "EndUser" ("id", "organizationId", "displayName", "createdAt", "updatedAt")
            VALUES ('${secondEndUserId}', '${scope.organizationId}', 'another subject', ${STAMP}, ${STAMP});`,
           `INSERT INTO "PostmanTemplate"

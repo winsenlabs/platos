@@ -1131,7 +1131,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // AND `conversations` ADDS EIGHT AND 97: the turn rollup and the driver's
   // exponential decimal in a PURE suite (24), each Thread and Turn guard beside
   // its migration CHECK (14), the same over a bill and an operator's audit row
-  // (12), the three immutability triggers with the tenant boundary (11), the
+  // (12), the three immutability rules with the tenant boundary (11), the
   // deletion rules and the transcript filter the double does not implement (11),
   // the failure injection with the three scope refusals and the blocking row
   // lock (8), the measured statement counts (16), and the differential against

@@ -167,7 +167,7 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
   test("the store refuses a lineage that names one turn twice, under its OWN code", async () => {
     // A SEPARATE CODE from the boundary mismatch, because they are separate
     // mistakes: one is a caller that lost track of the order, the other a caller
-    // that appended the same ancestor twice. The trigger's own clause is
+    // that appended the same ancestor twice. The rule's own clause is
     // `cardinality(...) = (SELECT count(DISTINCT ...))`.
     const message = await refusedByStore(() =>
       harness.stores.threads.createThread(

@@ -44,7 +44,7 @@
 // engineer has ever reproduced a bug for. Clearing BOTH columns in ONE update
 // first satisfies the rule, because both of its clauses are
 // `NEW."x" IS NULL OR …`. The in-memory double sees none of it: it has no
-// cascade, no trigger and no statement order.
+// cascade, no rule and no statement order.
 //
 // ---------------------------------------------------------------------------
 // FINDING 2 — THE FORK RESTRICT BLOCKS A LOOP AND NOT A SINGLE STATEMENT
@@ -101,7 +101,7 @@
 // `Thread_subject_immutable` forbids moving a thread to another subject
 // afterwards — so every fork of a subject's thread belongs to that same subject
 // and is inside the erasure. The query is therefore a live check of an invariant
-// two triggers maintain, not a stub: if a migration relaxed either one, this
+// two rules maintain, not a stub: if a migration relaxed either one, this
 // would start naming threads and the plan would start reporting a block.
 // `conversations-rules.integration.test.ts` seeds a real fork and pins the EMPTY
 // answer, so a mutation that drops the "outside the erasure" clause turns red.
@@ -275,7 +275,7 @@ export function createConversationsErasureStore(
       return refuse(async () => {
         // SEVERS `simulatedEndUserId`, NOT `actorUserId`. See FINDING 3 in the
         // header: the column the port's comment names cannot be written at all —
-        // NOT NULL, `onDelete: Restrict`, and immutable under a trigger that
+        // NOT NULL, `onDelete: Restrict`, and immutable under a rule that
         // raises SQLSTATE 55000 — and the erasure target's own header, and the
         // in-memory double, both already do it this way.
         const outcome = await transactions.writer(transaction).postmanExecution.updateMany({

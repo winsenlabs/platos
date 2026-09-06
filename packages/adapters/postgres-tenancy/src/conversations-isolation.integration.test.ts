@@ -1,4 +1,4 @@
-// The TENANT BOUNDARY, and the three triggers that freeze a row once it exists.
+// The TENANT BOUNDARY, and the three rules that freeze a row once it exists.
 //
 // SPLIT OUT OF `conversations-rules.integration.test.ts` BECAUSE `max-file-lines`
 // BIT AT THE HARD ERROR, and the seam it pointed at is real: that file is about
@@ -135,10 +135,10 @@ describe("PostmanExecution's forensic attribution is immutable", () => {
   });
 
   test("`saveExecution` writes none of the seven frozen columns", async () => {
-    // The store's update names EIGHT columns and the trigger freezes SEVEN. A
+    // The store's update names EIGHT columns and the rule freezes SEVEN. A
     // caller handing back an execution with a different fingerprint gets the
     // STORED one, because the store never sends the column — proved here by
-    // asking for a change the trigger would have raised on.
+    // asking for a change the rule would have raised on.
     const settled = await harness.stores.postman.saveExecution(scope, {
       ...executionOf(chain, executionIds("1")),
       requestFingerprint: "d".repeat(64),
@@ -164,7 +164,7 @@ describe("Thread_owner_immutable and Thread_subject_immutable", () => {
       scope,
       threadOf(chain, threadId, {
         // A DIFFERENT SUBJECT AND A DIFFERENT LINEAGE, both of which the two
-        // triggers would refuse. The store does not send those columns at all,
+        // rules would refuse. The store does not send those columns at all,
         // so the write succeeds and the stored row is unchanged in both.
         endUserId: asConversationsIdentifier<EndUserId>(foreign.endUserId),
         parentThreadId: asConversationsIdentifier<ThreadId>(uuid("41")),
@@ -183,7 +183,7 @@ describe("Thread_owner_immutable and Thread_subject_immutable", () => {
     // BOTH TARGETS ARE CHOSEN SO THAT `Thread_ancestry` PASSES, and that is the
     // whole care in this case. The second subject shares this ORGANIZATION and
     // the sibling thread shares this environment, agent and subject, so the
-    // ancestry rule — which runs BEFORE the immutability triggers and refuses
+    // ancestry rule — which runs BEFORE the immutability rules and refuses
     // first when it can — has nothing to object to. What is left is
     // `Thread_subject_immutable` and `Thread_owner_immutable`, which is what this
     // case is about. Pointing either at a foreign row would have measured the
@@ -254,7 +254,7 @@ describe("Step_price_snapshot — a priced step's billing evidence is immutable"
     expect(message).toContain("Step price snapshot does not match ModelPrice");
   });
 
-  test("a settlement REPLACES its steps rather than updating them, which the trigger requires", async () => {
+  test("a settlement REPLACES its steps rather than updating them, which the rule requires", async () => {
     // `enforce_step_price_snapshot` raises "priced Step billing evidence is
     // immutable" on any UPDATE that changes a priced step's twenty-three billing
     // columns. The store deletes and re-inserts, so a settlement that supersedes

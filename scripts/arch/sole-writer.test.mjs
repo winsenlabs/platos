@@ -1215,7 +1215,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                                  UPDATE                                     4
 //   src/conversations-postman.ts   postmanExecution.create + .updateMany, the
 //                                  second naming only the EIGHT columns the
-//                                  forensic-attribution trigger leaves alone   2
+//                                  forensic-attribution rule leaves alone     2
 //   src/conversations-erasure.ts   the postmanExecution.updateMany that clears
 //                                  the thread and turn links BEFORE the delete —
 //                                  without it the SetNull cascade is refused by
@@ -1234,7 +1234,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                                  nulling the two rules refuse, and the foreign
 //                                  fork `enforce_domain_ancestry` forbids       3
 //   src/conversations-isolation.integration.test.ts
-//                                  5 proving the three immutability triggers:
+//                                  5 proving the three immutability rules:
 //                                  two on `PostmanExecution.actorUserId`, one
 //                                  over `Thread`'s frozen columns, and two on a
 //                                  priced `Step`'s billing evidence            5

@@ -3,7 +3,7 @@
 //
 // `conversations-constraints.integration.test.ts` stands each write guard beside
 // the CHECK it restates, and `conversations-isolation.integration.test.ts`
-// carries the immutability triggers and the tenant boundary. This file is about
+// carries the immutability rules and the tenant boundary. This file is about
 // what happens when rows are DESTROYED — which is where the real database
 // contradicted this store twice — and about the one read whose contract the
 // double does not implement.
@@ -321,7 +321,7 @@ describe("findHeldThreads names what the database would refuse, and nothing else
     // A FORK BELONGING TO ANOTHER SUBJECT IS THE ONLY WAY TO POPULATE IT, and
     // the Thread branch of `enforce_domain_ancestry` refuses one: it requires
     // `parent."endUserId" = u.id`, where `u` is the NEW row's own end user. So
-    // this store's answer is a live check of an invariant a trigger maintains
+    // this store's answer is a live check of an invariant a rule maintains
     // rather than a stub — if a migration relaxed the rule, the query would start
     // naming threads and the plan would start reporting a block.
     const foreign = await harness.foreignChain();

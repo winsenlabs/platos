@@ -108,8 +108,8 @@ const THREAD_COLUMNS = {
  * absent, and that is `Thread_owner_immutable` rather than a choice:
  * `reject_canonical_owner_change` fires BEFORE UPDATE over exactly those four
  * and raises 23514 if any of them differs. `endUserId` is absent for the same
- * reason under a second trigger, `Thread_subject_immutable`. Writing them back
- * unchanged would pass — the trigger compares OLD to NEW — but it would also
+ * reason under a second rule, `Thread_subject_immutable`. Writing them back
+ * unchanged would pass — the rule compares OLD to NEW — but it would also
  * make a caller that DID change one look like a caller that did not, and the
  * refusal would arrive from the database instead of from the store.
  */

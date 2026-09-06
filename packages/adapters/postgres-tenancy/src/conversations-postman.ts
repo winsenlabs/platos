@@ -24,7 +24,7 @@
 // raises SQLSTATE 55000 — not 23514, which every CHECK in this schema raises —
 // if `environmentId`, `agentId`, `requestId`, `requestFingerprint`,
 // `actorUserId`, `contextHandle` or `createdAt` differs from the stored row. It
-// is a FORENSIC record of who ran what against which agent, and the trigger says
+// is a FORENSIC record of who ran what against which agent, and the rule says
 // so in its own message. So the update names the eight columns a settlement may move
 // and nothing else, and `conversations-rules.integration.test.ts` proves the
 // database refuses a write to one of the seven.
@@ -195,10 +195,10 @@ export function createPostmanRepository(transactions: TenancyTransactions): Post
         return transactions.atomic(async (client) => {
           const updated = await client.postmanExecution.updateMany({
             where: { id: execution.executionId, ...scopedWhere(scope) },
-            // EIGHT COLUMNS, and they are exactly the ones the trigger leaves
+            // EIGHT COLUMNS, and they are exactly the ones the rule leaves
             // alone. The other seven — `environmentId`, `agentId`, `requestId`,
             // `requestFingerprint`, `actorUserId`, `contextHandle`, `createdAt`
-            // — are the forensic attribution, immutable under a trigger of their
+            // — are the forensic attribution, immutable under a rule of their
             // own; see the header.
             data: {
               templateId: execution.templateId,

@@ -10,7 +10,7 @@
 // IT VALIDATES RATHER THAN CASTS, and the expand/contract rule (ADR M0.3 §7) is
 // why. `Thread.status`, `Turn.status`, `Step.status` and `PostmanExecution.status`
 // are all the same PostgreSQL enum, `Thread.compactionState` is another and
-// `Turn.versionBucket` a third; a deployment that rolls back to a binary older
+// `Turn.versionBucket` a third; a release that rolls back to a binary older
 // than a migration that ADDED a member reads a value it has never heard of. A
 // cast would make that a `"SUPERSEDED" as WorkStatus` flowing into a transition
 // table that has no row for it. A refusal names the column and the value.
