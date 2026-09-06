@@ -2353,7 +2353,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
-  "packages/kernel": { files: 3, cases: 44 },
+  "packages/kernel": { files: 4, cases: 60 },
 });
 
 /*
@@ -2625,7 +2625,27 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+/*
+ * WIN-259 (M2.4) SECRET PROJECTION, +16 and one new FILE, all in
+ * `packages/kernel`: 44 -> 60 cases, 3 -> 4 files, and 7399 -> 7415.
+ *
+ * The file is `src/vo/redaction.test.ts`, the colocated suite for the redactor
+ * `ports/logger.ts` has always described and never had. Its sixteen cases are
+ * TWO-SIDED by design and that is why there are sixteen rather than six: every
+ * case that pins a hidden field is paired with one that pins a field which must
+ * SURVIVE, because a redactor that hides everything passes a one-sided suite
+ * and deletes the log.
+ *
+ * Measured with `pnpm --filter @platos/kernel exec vitest run` — "Test Files 4
+ * passed (4) / Tests 60 passed (60)" — and the file on its own prints 16.
+ *
+ * `apps/core-api` gained 9 cases (116 -> 125) in
+ * `src/runtime/log-redaction.test.ts`, the suite that joins the classifier to
+ * the canonical Prisma schema, and is outside PACKAGE_ROOTS so it moves no pin
+ * here. It is named because it is the half of the evidence that is NOT in this
+ * census, and a reader counting 16 should know 9 more exist.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7415;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

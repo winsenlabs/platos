@@ -26,6 +26,7 @@ import {
   type LogFields,
   type LogLevel,
   type Logger,
+  redactLogFields,
   type Ulid,
   type Uuid,
 } from "@platos/kernel";
@@ -115,6 +116,16 @@ export interface ProcessLoggerOptions {
  * The correlation id is stamped from the ambient request rather than passed by
  * every caller. A caller that must remember to attach it is a caller that will
  * eventually forget, and one unattributed line breaks a trace.
+ *
+ * WIN-259 — REDACTION IS APPLIED HERE, AT THE LAST POSSIBLE MOMENT.
+ * `ports/logger.ts` states that "redaction is the adapter's contract, not the
+ * caller's discipline"; until now this implementation of that port stringified
+ * whatever it was handed, so the sentence described nobody's behaviour. It runs
+ * on the MERGED payload rather than on `fields` alone, because a material field
+ * stamped onto a child logger once is repeated on every line that logger writes
+ * — which is the larger of the two leaks, not the smaller. The correlation id
+ * is added afterwards: it is minted by this process and is the one field a
+ * redactor must never be able to remove.
  */
 export function createProcessLogger(options: ProcessLoggerOptions): Logger {
   const clock = options.clock ?? systemClock();
@@ -126,8 +137,7 @@ export function createProcessLogger(options: ProcessLoggerOptions): Logger {
         at: clock.now().toISOString(),
         level,
         message,
-        ...base,
-        ...(fields ?? {}),
+        ...redactLogFields({ ...base, ...(fields ?? {}) }),
       };
       if (correlation !== null) payload["requestId"] = correlation.requestId;
       options.write(`${JSON.stringify(payload)}\n`);
