@@ -875,7 +875,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1313,
+    packages: 1378,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1065,21 +1065,36 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `conversations`' 21 are 20 — twelve source and eight suites — plus
     // `mutations-conversations.json`, and `skills`' 18 are 17 — eleven source
     // and six suites — plus `mutations-skills.json`, and `memory`'s 22 are 21 — fourteen source
-    // and seven suites — plus `mutations-memory.json`, and `privacy`'s 15 are
-    // 14 — EIGHT source and SIX suites — plus `mutations-privacy.json`. The
-    // existing `packages.adapters.config`
-    // rule already classifies all eight, so no ledger rule changed for any of
-    // them: a guard ledger is DATA beside the package rather than a module in
-    // it.
+    // and seven suites — plus `mutations-memory.json`. THE FIVE STORES OF THIS
+    // WAVE ADD 80 MORE: `privacy`'s 15 are 14 — EIGHT source and SIX suites —
+    // plus `mutations-privacy.json`; `jobs`' 18 are 17 — TEN source and SEVEN
+    // suites — plus `mutations-jobs.json`; `files`' 19 are 18 — ELEVEN source
+    // and SEVEN suites — plus `mutations-files.json`; `observability`'s 13 are
+    // 12 — SEVEN source and FIVE suites — plus `mutations-observability.json`;
+    // and `eventing`'s 15 are 14 — EIGHT source and SIX suites — plus
+    // `mutations-eventing.json`. The existing `packages.adapters.config` rule
+    // already classifies every one of those ledgers, so no ledger rule changed
+    // for any of them: a guard ledger is DATA beside the package rather than a
+    // module in it. None of `packages/contexts/secrets`,
+    // `packages/contexts/providers`, `packages/contexts/conversations`,
+    // `packages/contexts/jobs`, `packages/contexts/privacy`,
+    // `packages/contexts/files`, `packages/contexts/observability` or
+    // `packages/contexts/eventing` gains a file — each had its port entry point
+    // widened IN PLACE, and a widened file is not a new one.
     //
-    // `privacy` IS THE SMALLEST SLICE OF THE THIRTEEN AND ITS SPLIT IS THE MOST
+    // `privacy` IS THE SMALLEST SLICE OF THE SEVENTEEN AND ITS SPLIT IS THE MOST
     // LOPSIDED: SIX suites over EIGHT source modules, and five of the six need a
     // real PostgreSQL. That is a fact about the guards rather than about the
     // coverage — four of them cannot be exercised without TWO OPEN TRANSACTIONS
     // and two are about a statement that must NOT be sent, and a map in a
-    // single-threaded process can exhibit neither. None of `packages/contexts/secrets`, `packages/contexts/providers` or
-    // `packages/contexts/conversations` gains a file — each had its port entry
-    // point widened IN PLACE, and a widened file is not a new one.
+    // single-threaded process can exhibit neither.
+    //
+    // ONE OF `jobs`' SEVENTEEN EXISTS BECAUSE `max-file-lines` BIT IN THE
+    // WARNING BAND: the constraints proof reached 414 effective lines, and the
+    // three describes that left it had no guard beside them at all —
+    // `enforce_domain_ancestry`, the two unique indexes and the scoped reads are
+    // rules the store does not restate, so they are
+    // `jobs-isolation.integration.test.ts`.
     //
     // THREE OF `conversations`' TWENTY EXIST BECAUSE `max-file-lines` BIT AT THE
     // HARD ERROR: the shared conformance scenario, the constraints suite and the
@@ -1095,7 +1110,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1389);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1454);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1118,10 +1133,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // TWO adapter directories, and WIN-258 tranche 5's SIX canonical stores,
     // `tools` +20, `agents` +18, `cost-monitoring` +17, `channels` +16,
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
-    // `skills` +18, `memory` +22 and `privacy` +15, all in ONE, plus that
-    // tranche's second sweep +1); this one re-derives it by summing the
-    // per-area counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1389
+    // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
+    // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
+    // second sweep +1); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1454
   );
 });
 

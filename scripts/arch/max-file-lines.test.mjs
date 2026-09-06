@@ -555,18 +555,38 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was written from; splitting them would separate the pair that is the
   // evidence.
   //
+  //
+  // 1303 -> 1320 (WIN-258 T5, `jobs`): SEVENTEEN more files in the same ORM home
+  // — ten source modules and seven suites. Its guard ledger is not source and is
+  // not scanned here.
+  //
+  // THE BUDGET SHAPED TWO SPLITS AND BOTH SEAMS ARE ONES THE WORK ALREADY HAD.
+  // `ApprovalsRepository` is eleven methods, and its erasure PAIR spans a
+  // question nothing else in the port asks — "whose rows are these" rather than
+  // "what is this approval" — so `jobs-erasure.ts` is its own module for the
+  // reason `memory-erasure.ts` is. And the constraints suite reached 414
+  // effective lines as one file: every case there is a PAIR, a TypeScript guard
+  // stood beside the raw statement it was written from, and three of its
+  // describes had no guard at all — `enforce_domain_ancestry`, the two unique
+  // indexes and the scoped reads are rules this store does not restate. Those
+  // three are `jobs-isolation.integration.test.ts`, which is why this tranche
+  // adds seventeen files rather than sixteen, and the finding list below is
+  // unchanged by any of it.
+  //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
-  // + 17 + 21 + 14 = 1391. All the stores are in the one adapter directory, so
-  // no branch's own figure survives the merge — 1266 for `channels`, 1269 for
-  // `governance`, 1270 for `secrets`, 1319 for `providers`, 1323 for
-  // `conversations`, 1320 for `skills`, 1324 for `memory`, 1330 for `privacy`.
-  assert.equal(result.fileCount, 1391);
+  // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452. All the stores are in the one
+  // adapter directory, so no branch's own figure survives the merge — 1266 for
+  // `channels`, 1269 for `governance`, 1270 for `secrets`, 1319 for `providers`,
+  // 1323 for `conversations`, 1320 for `skills`, 1324 for `memory`, 1391 for
+  // `privacy`, 1394 for `jobs`, 1395 for `files`, 1389 for `observability` and
+  // 1391 for `eventing`.
+  assert.equal(result.fileCount, 1452);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -574,12 +594,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
   // (secrets) + 16 (providers) + 20 (conversations) + 17 (skills) + 21
-  // (memory) + 14 (privacy) = 305. The contexts, kernel and app rows are
-  // untouched, which is the claim worth making: no tranche-5 store adds a file to
-  // a context at all — each implements a port that already existed rather than
-  // widening one. `secrets`, `providers`, `conversations`, `skills`, `memory` and
-  // `privacy` are the sharpest cases: each had its port entry point widened, in
-  // place, and a widened file is not a new one.
+  // (memory) + 14 (privacy) + 17 (jobs) + 18 (files) + 12 (observability) + 14
+  // (eventing) = 366. The contexts, kernel and app rows are untouched, which is
+  // the claim worth making: no tranche-5 store adds a file to a context at all —
+  // each implements a port that already existed rather than widening one.
+  // `secrets`, `providers`, `conversations`, `skills`, `memory`, `privacy`,
+  // `jobs`, `files`, `observability` and `eventing` are the sharpest cases: each
+  // had its port entry point widened, in place, and a widened file is not a new
+  // one.
   //
   // `privacy` CONTRIBUTES 14 AND NOT ONE OF THEM IS OVER THE WARNING BAND, which
   // is worth stating for a store whose six source modules carry the longest
@@ -589,7 +611,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // WHAT THEY DO — the guards, the row mapping, the refusal adapter, the
   // operation half, the register half and the composite — and the eight others
   // are the harness, the shared conformance scenario and the six suites.
-  assert.equal(result.fileCount, 20 + 1060 + 305 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 366 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

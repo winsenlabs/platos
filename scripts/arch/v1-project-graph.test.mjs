@@ -387,10 +387,11 @@ test("NodeNext consumers resolve bare roots and the explicit exported adapter-po
 test("the live owner map passes its own check", () => {
   // Non-vacuity for everything below.
   assert.deepEqual(checkAdapterOwnerCounts(), []);
-  // 2 -> 12 (WIN-258 T5, ten times). `tools` is the THIRD owner delegated to
+  // 2 -> 13 (WIN-258 T5, eleven times). `tools` is the THIRD owner delegated to
   // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH,
   // `channels` the SIXTH, `governance` the SEVENTH, `secrets` the EIGHTH,
-  // `providers` the NINTH, `conversations` the TENTH, `skills` the ELEVENTH and `memory` the TWELFTH.
+  // `providers` the NINTH, `conversations` the TENTH, `skills` the ELEVENTH,
+  // `memory` the TWELFTH and `jobs` the THIRTEENTH.
   // None of `agents`, `governance`, `secrets` or `conversations` is more than one
   // owner edge even though they publish two ports, five, two and four, and
   // neither is `skills`, whose ONE port covers three tables: this map counts
@@ -410,7 +411,11 @@ test("the live owner map passes its own check", () => {
   // entitled to — `SubjectHasher` is a synchronous salted digest with a secret in
   // it, and `LegalHoldRegister` is installation configuration with no canonical
   // row in the schema at all.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 13 });
+  // 13 -> 14 (WIN-258 T5). `jobs` is a FOURTH: it publishes FOUR ports and gets
+  // ONE edge, because only two of the four are canonical stores —
+  // `IdempotencyStore` is a reserve-once keyspace and `JobHandlerRuntime` is an
+  // isolate, and neither writes a row.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -433,7 +438,7 @@ test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails 
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 13 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 17 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

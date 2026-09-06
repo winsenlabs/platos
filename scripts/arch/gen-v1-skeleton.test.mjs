@@ -538,6 +538,8 @@ const LIVE_ADAPTERS = [
       { port: "MemoryRepository", owner: "memory" },
       { port: "KnowledgeGraphRepository", owner: "memory" },
       { port: "PrivacyRepository", owner: "privacy" },
+      { port: "JobsRepository", owner: "jobs" },
+      { port: "ApprovalsRepository", owner: "jobs" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -567,18 +569,18 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a FORTIETH binding fails, even though a directory may hold more than one", () => {
-  // WIN-258 T5 moved this from thirty-one to thirty-nine across four tranches —
-  // `providers`' one, `conversations`' four, `skills`' one and `memory`'s two
-  // canonical-store bindings all landed in the one directory — and then to forty
-  // with `privacy`'s one, the THIRTEENTH owner of that same client.
+test("§15 refusal: a FORTY-FIFTH binding fails, even though a directory may hold more than one", () => {
+  // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
+  // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
+  // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
+  // `eventing`'s one canonical-store binding all landed in the one directory.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 39 adapter bindings; ADAPTERS flattens to 40")));
+  assert.ok(errors.some((error) => error.includes("declares 44 adapter bindings; ADAPTERS flattens to 45")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

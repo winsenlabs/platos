@@ -2062,24 +2062,77 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * guards are held falsifiable instead.
  *
  * ALL FIVE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
- * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 = 94
- * files and
- * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 = 1005 cases.
+ * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7
+ * + 5 + 6 = 119 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56
+ * = 1310 cases.
  * `providers` contributes 7 files / 77 cases, `conversations` 8 / 97, `skills`
  * 6 / 62 and `memory` 7 / 89, and no branch's own figure — 67/681, 68/701,
- * 66/666 or 67/693 — survives the merge. The tree total is 431 + 28 + 6 = 465
- * files and 6520 + 325 + 76 = 6921 cases. The adapters term of the three-way
- * identity carries all thirty-four, because every added file is an adapter's:
- * 79 + 34 = 113, and 349 + 3 + 113 = 465.
+ * 66/666 or 67/693 — survives the merge. The tree total is 431 + 28 + 31 = 490
+ * files and 6520 + 325 + 381 = 7226 cases. The adapters term of the three-way
+ * identity carries all fifty-nine, because every added file is an adapter's:
+ * 79 + 59 = 138, and 349 + 3 + 138 = 490.
  *
- * THE INTEGRATION/RUNNABLE SPLIT IS MEASURED, NOT CARRIED: 714 integration cases
- * across 78 files, 291 pure across 16, 714 + 291 = 1005.
+ * THE INTEGRATION/RUNNABLE SPLIT IS MEASURED, NOT CARRIED: 944 integration cases
+ * across 99 files, 366 pure across 20, 944 + 366 = 1310.
  *
  * THE 25th CASE IN privacy-rows.test.ts EXISTS BECAUSE A MUTATION SURVIVED.
  * `mutations-privacy.json` M-P14 deletes the stored-scope LEVEL check and the
  * case that was there stayed green, because its witness had no `projectId` and
  * the NEXT clause refused it under the SAME code. The new case carries every id
  * a scope of any level could want, so only the level check can refuse it.
+ *
+ * WIN-258 T5, `jobs` — THE FOURTEENTH OWNER, in that SAME package a thirteenth
+ * time. `Job` and `AgentApproval` are the two rows of ADR M0.3 §1 row 15, and
+ * the store that writes them adds SEVEN suites and 97 cases:
+ *
+ *   jobs-rows.test.ts                       22 — the only one that runs without
+ *                                                a container, and the only one
+ *                                                that can reach the branches a
+ *                                                container cannot: a container
+ *                                                reads only rows THIS binary
+ *                                                wrote
+ *   jobs-rules.integration.test.ts          16 — rows an older binary wrote,
+ *                                                planted by the ORM's CLI
+ *   jobs-constraints.integration.test.ts    15 — a guard beside the raw
+ *                                                statement it was written from
+ *   jobs-statements.integration.test.ts     14 — the N+1 controls, each taken
+ *                                                over a small fixture and one an
+ *                                                order of magnitude larger
+ *   jobs-transaction.integration.test.ts    13 — failure injection, the three
+ *                                                scope refusals, and the
+ *                                                `cost-monitoring` trap
+ *   jobs-isolation.integration.test.ts      16 — what the DATABASE decides with
+ *                                                no guard beside it
+ *   jobs-conformance.integration.test.ts     1 — one scenario, two stores, one
+ *                                                comparison
+ *
+ * THE 1 IN THE CONFORMANCE SUITE IS THE NUMBER TO WATCH, for the reason every
+ * tranche before it gives: it is ONE scenario of eighty-odd observations
+ * compared verbatim, so adding an observation strengthens the differential and
+ * moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-jobs.json` is where those guards
+ * are held falsifiable instead.
+ *
+ * FIVE OF THE ISOLATION SUITE'S SIXTEEN EXIST BECAUSE THE MUTATION SWEEP ASKED
+ * FOR THEM — the three predicates of the dedupe lookup, the default thirty-day
+ * listing window the conformance differential cannot ask for, the platform-wide
+ * enumeration's `distinct` and its pending filter, the writes that must miss
+ * another tenant's row, and the erasure's tenant narrowing. Every one closed a
+ * guard the first sweep left standing with nothing red.
+ *
+ * ONE VOCABULARY BOUNDARY MOVED A CASE FROM THE CONTAINER SUITE TO THE PURE ONE.
+ * `Job`'s invocation-type COLUMN carries the pre-cutover vendor name behind an
+ * `@map`, `domain/invocation.ts` deliberately does not spell it and
+ * `scripts/vocabulary-boundary.mjs` will not have this package spell it either —
+ * so a row holding an unknown invocation type cannot be planted by raw SQL here,
+ * and `readInvocationType` is proven in `jobs-rows.test.ts`, where the value goes
+ * straight to the reader and no column is named at all.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 94 -> 101 FILES and 1005 -> 1102 CASES on this
+ * step, and the tree total 465 -> 472 files and 6921 -> 7018 cases. The adapters
+ * term of the three-way identity carries all seven, because every added file is
+ * an adapter's: 113 + 7 = 120, and 349 + 3 + 120 = 472.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2090,7 +2143,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 94, cases: 1005 },
+  "packages/adapters/postgres-tenancy": { files: 119, cases: 1310 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2276,7 +2329,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6921;
+export const EXPECTED_RUNTIME_TOTAL = 7226;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

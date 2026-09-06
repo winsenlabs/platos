@@ -230,6 +230,28 @@ export const ADAPTERS = [
       // secret has no business behind a database client; and `LegalHoldRegister`
       // is installation configuration with no canonical row in the schema at all.
       { port: "PrivacyRepository", owner: "privacy" },
+      // WIN-258 T5 adds the FOURTEENTH. `jobs` owns two canonical rows in that
+      // same database — `Job` and `AgentApproval` — and publishes ONE port over
+      // each, because `domain/index.ts` argues they are two aggregates rather
+      // than one: "A `Job` outlives every run of it; an `Approval` is born and
+      // dies inside a single turn."
+      //
+      // BOTH ARE SATISFIED BY PROPERTIES rather than by spread-in methods, and
+      // like `secrets`' pair and `memory`'s that was FORCED. `ApprovalsRepository`
+      // and `ConversationsErasureStore` both declare a top-level `erase` with
+      // different signatures, so one interface cannot extend both — the
+      // composition root therefore proves these two as
+      // `PostgresTenancyAdapter["jobs"]` and `PostgresTenancyAdapter["approvals"]`.
+      //
+      // The context's two OTHER ports get no row here, and that is a claim
+      // rather than an omission. `IdempotencyStore` is a reserve-once keyspace —
+      // an atomic claim-or-report, a TTL the store enforces, an update that must
+      // not resurrect an expired key — which `redis-cache` below has and
+      // PostgreSQL does not; and `JobHandlerRuntime` is the isolate that runs
+      // untrusted handler source, which §7 decision 10 puts behind
+      // `durable-runtime`. Neither writes a canonical row.
+      { port: "JobsRepository", owner: "jobs" },
+      { port: "ApprovalsRepository", owner: "jobs" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -375,8 +397,19 @@ export function adapterOwnerPackages(adapter) {
 // method names collide with nothing the other twelve owners publish, so nothing
 // forces the indirection. EXPECTED_ADAPTER_COUNT is deliberately unmoved a
 // THIRTEENTH time, which is the point of pinning the two separately.
+// 39 -> 41 (WIN-258 T5). `jobs` adds TWO canonical-store bindings,
+// `JobsRepository` and `ApprovalsRepository`, over the two rows of ADR M0.3 §1
+// row 15, and is the FOURTEENTH owner of the one PostgreSQL client. Two ports
+// and not one because they are two lifetimes: a `Job` is a definition of
+// automation that outlives every run of it, and an `Approval` is a human
+// decision born and killed inside a single turn. BOTH are PROPERTIES rather than
+// spread-in methods, forced the way `secrets`' pair and `memory`'s were:
+// `ApprovalsRepository` and `ConversationsErasureStore` both declare a top-level
+// `erase` of a different signature, so one interface cannot extend both.
+// EXPECTED_ADAPTER_COUNT is deliberately unmoved a FOURTEENTH time, which is the
+// point of pinning the two separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 39;
+export const EXPECTED_BINDING_COUNT = 44;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -506,7 +539,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `privacy`. The one adapter edge is a leaf edge like the twelve before it. The
 // independent expectation in scripts/arch/v1-project-graph.mjs carries the same
 // delta and is maintained separately on purpose.
-export const EXPECTED_EDGE_COUNT = 107;
+// 107 -> 108 (WIN-258 T5). `packages/adapters/postgres-tenancy` -> `packages/contexts/jobs`. A
+// FOURTEENTH owner edge, carrying that context's TWO canonical-store ports —
+// one edge, two bindings, for the same reason. It cannot create a cycle:
+// contexts are leaves relative to adapters, `jobs` depends on `tenancy` alone,
+// and the one context that depends on `jobs` is `conversations`, which the
+// 17-context DAG already carries.
+export const EXPECTED_EDGE_COUNT = 111;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -655,6 +694,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
   "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/privacy", // WIN-258 T5 — InMemoryPrivacyRepository is the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/jobs", // WIN-258 T5 — InMemoryJobsRepository and InMemoryApprovalsRepository are the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
