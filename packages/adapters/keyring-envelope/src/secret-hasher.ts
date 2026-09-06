@@ -15,7 +15,7 @@
 // token, a password-equivalent — and the digest lands in a row an operator can
 // read. A bare digest of a low-entropy secret is a dictionary away from the
 // plaintext. scrypt is memory-hard and its cost is pinned below, so an offline
-// attempt costs the attacker what it costs the verifier.
+// search costs the attacker what one derivation costs the verifier.
 //
 // WHY `verify` DOES NOT RE-DERIVE AND COMPARE STRINGS. `timingSafeEqual` over the
 // raw digest bytes is the only comparison here. `===` on hex strings leaks the

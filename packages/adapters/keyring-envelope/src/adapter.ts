@@ -14,8 +14,8 @@
 // with the cipher — it is one-way and the cipher is not, which is why `crypto.ts`
 // keeps them as separate ports "so a hash can never be mistaken for a reversible
 // envelope" — but the cost parameter that decides how expensive an offline
-// attempt on `Credential.secretHash` is belongs with the keys, not with the store
-// that holds the digest.
+// search against `Credential.secretHash` is belongs with the keys, not with the
+// store that holds the digest.
 //
 // WHY IT IS SPREAD FLAT RATHER THAN CARRIED ON PROPERTIES. `state`/`handle`,
 // `seal`/`open` and `hash`/`verify` are six names with no collision, so one

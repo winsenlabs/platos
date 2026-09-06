@@ -242,7 +242,7 @@ describe("an eviction that failed is reported and not swallowed", () => {
       }),
     );
     expect(linked.ok).toBe(true);
-    // The eviction was still ATTEMPTED. A site that stopped calling at all would
+    // The eviction was still CALLED. A site that stopped calling at all would
     // pass the assertion above and lose the "first key for a provider" case the
     // port's header names.
     expect(context.probeCache.forgotten).toEqual([OPENAI]);
