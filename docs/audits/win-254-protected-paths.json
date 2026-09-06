@@ -3883,7 +3883,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "01be0087ccd5e16d439ed1cbdd1e1f441d2568d56abbbe8b5cb203b01afd2fc2"
+      "sha256": "a427a7ca9afafb7e8e5169bb2380a498a50709acaf467d0187bd5bd1e047880d"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
