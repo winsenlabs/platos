@@ -391,7 +391,9 @@ test("the live owner map passes its own check", () => {
   // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH,
   // `channels` the SIXTH, `governance` the SEVENTH, `secrets` the EIGHTH,
   // `providers` the NINTH, `conversations` the TENTH, `skills` the ELEVENTH,
-  // `memory` the TWELFTH and `jobs` the THIRTEENTH.
+  // `memory` the TWELFTH, `privacy` the THIRTEENTH, `jobs` the FOURTEENTH,
+  // `files` the FIFTEENTH, `observability` the SIXTEENTH and `eventing` the
+  // SEVENTEENTH — which is every context ADR M0.3 §1 names.
   // None of `agents`, `governance`, `secrets` or `conversations` is more than one
   // owner edge even though they publish two ports, five, two and four, and
   // neither is `skills`, whose ONE port covers three tables: this map counts

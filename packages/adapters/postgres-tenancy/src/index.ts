@@ -598,7 +598,7 @@ export {
   UNREADABLE_TOTAL_BYTES,
   UNRESOLVED_SCOPE_ANCESTRY as FILES_UNRESOLVED_SCOPE_ANCESTRY,
 } from "./files-rows.js";
-// WIN-258 T5 — `observability`'s one canonical store, the THIRTEENTH owner in
+// WIN-258 T5 — `observability`'s one canonical store, the SIXTEENTH owner in
 // this directory. The factory leaves the package for the reason
 // `createMemoryStores` does: a composition root that wanted this repository
 // WITHOUT tenancy's — an admin surface, say — has to be able to build it over

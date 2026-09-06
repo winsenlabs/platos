@@ -58,7 +58,7 @@ export interface ObservabilityStores {
  *
  * A named property rather than a spread, and forced rather than chosen:
  * `ObservabilityDependencies`' slot is called `repository`, and `repository`
- * alone is not a name a directory serving thirteen owners can give to one of
+ * alone is not a name a directory serving seventeen owners can give to one of
  * them. Spelling the owner in front is what lets a composition root hand this
  * port to the context under its own name without a bundle assembled from key
  * order putting one owner's store in another's slot.

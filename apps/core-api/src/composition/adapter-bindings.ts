@@ -266,7 +266,7 @@ interface PortSatisfaction {
   // WIN-258 T5. `eventing`'s ONE canonical-store port, proven through the
   // ADAPTER rather than through a property, like `ProvidersRepository` above:
   // its nine method names collide with nothing this adapter already publishes
-  // across twelve owners, so it is spread in and
+  // across the sixteen owners above it, so it is spread in and
   // `PostgresTenancyAdapter extends NotificationRuleRepository` resolves
   // directly. The day the adapter drops `anonymizeRulesForSubject` or re-types
   // `findRule`, `pnpm build:v1` fails HERE — at the composition root, which is
@@ -770,7 +770,7 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // WIN-258 T5 (ADR M0.3 §15). The SEVENTEENTH and LAST owner of the one
   // PostgreSQL client, which completes ADR M0.3 §1. ONE row —
   // `NotificationRule` — which is the smallest grant this table has made, and
-  // the argument for it is the same as for the twelve owners above: without the
+  // the argument for it is the same as for the sixteen owners above: without the
   // delegation the one package permitted to write the row is the one package §2
   // forbids from importing the ORM.
   //

@@ -127,7 +127,7 @@
 // channel and no row.
 //
 // AND SO DOES `files`' `FilesRepository` (WIN-258 T5). `MessageAttachment` and
-// `Artifact` are in that same database behind that same client — the THIRTEENTH
+// `Artifact` are in that same database behind that same client — the FIFTEENTH
 // owner delegated to this directory — so Amendment 15 puts them here rather than
 // in a fourteenth package holding a second client. Its fifteen method names
 // collide with nothing above, so it is SPREAD IN like the six repository
@@ -144,7 +144,7 @@
 // implementation detail it could optimise away.
 
 // AND SO DOES `observability`'s `ObservabilityRepository` (WIN-258 T5) — the
-// THIRTEENTH owner delegated here, and the one whose port the real database
+// SIXTEENTH owner delegated here, and the one whose port the real database
 // proves it cannot fully honour. `AdminAudit` is ADR M0.3 §1 row 12's single
 // Prisma row, in the same database behind the same client, so Amendment 15 puts
 // it here; but the initial migration makes that table APPEND-ONLY — a rule on
@@ -222,7 +222,7 @@
 // which §1 row 3 gives to `secrets` — a row this directory can physically read
 // and this port is not entitled to.
 
-// AND SO DO `jobs`' TWO CANONICAL-STORE PORTS (WIN-258 T5) — the THIRTEENTH
+// AND SO DO `jobs`' TWO CANONICAL-STORE PORTS (WIN-258 T5) — the FOURTEENTH
 // owner delegated to this directory, and the THIRD whose ports are PROPERTIES
 // because a name collided. `Job` and `AgentApproval` are in the same PostgreSQL
 // database behind the same client, so Amendment 15 puts them here; but
@@ -419,7 +419,7 @@ export interface PostgresTenancyAdapter
    * guessing which method belongs to which slot.
    *
    * `conversationsErasure` is the one rename. `erasureStore` is not a name a
-   * directory serving twelve owners can give to one of them; see
+   * directory serving seventeen owners can give to one of them; see
    * `conversations-repository.ts`.
    */
   readonly threads: ThreadRepository;
@@ -438,7 +438,7 @@ export interface PostgresTenancyAdapter
    * channel installation resolved out of `EnvironmentSkill`, or the reverse,
    * with every type in the file still checking. The name is
    * `SkillsDependencies`' own slot spelled with its owner in front, because
-   * `repository` alone is not a name a directory serving twelve owners can give to
+   * `repository` alone is not a name a directory serving seventeen owners can give to
    * one of them.
    */
   readonly skills: SkillsRepository;
@@ -454,7 +454,7 @@ export interface PostgresTenancyAdapter
    * simultaneously extend" — and a spread would have let whichever composite
    * came last silently answer both. The names below are `MemoryDependencies`'
    * own two slots — `repository` and `graph` — spelled with the owner in front,
-   * because `repository` alone is not a name a directory serving twelve owners can
+   * because `repository` alone is not a name a directory serving seventeen owners can
    * give to one of them.
    */
   readonly memory: MemoryRepository;
@@ -467,7 +467,7 @@ export interface PostgresTenancyAdapter
    * file has had to arbitrate. `ApprovalsRepository.erase(selector, transaction)`
    * and `ConversationsErasureStore.erase(...)` are both top-level members with
    * different signatures, and `ApprovalsRepository.list` and `.resolve` are two
-   * more names a directory serving thirteen owners cannot give away once — so
+   * more names a directory serving seventeen owners cannot give away once — so
    * `PostgresTenancyAdapter` cannot extend this port and a spread would have let
    * whichever composite came last answer both. The second half is the reason
    * `conversations`' four are properties: `JobsDependencies` names TWO SLOTS and
@@ -556,7 +556,7 @@ export function buildPostgresTenancyAdapter(
     // memories, nodes and edges and then destroys all three cannot leave the
     // graph standing over a person whose memories are gone.
     ...createMemoryStores(transactions),
-    // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH owner delegated to this
+    // WIN-258 T5 (ADR M0.3 §15). The FOURTEENTH owner delegated to this
     // directory. Built from the same `transactions` as everything above, so
     // `resolve-approval.ts` — which records a human's decision and then resumes
     // the run parked on a `DurableRuntime` suspension — is ONE transaction, and

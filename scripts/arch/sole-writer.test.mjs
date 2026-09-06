@@ -2125,7 +2125,7 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     .map(([model]) => model)
     .sort();
   assert.deepEqual(conversationRows, ["PostmanExecution", "Step", "Thread", "Turn"]);
-  // WIN-258 T5: `files` is the THIRTEENTH context delegated to that same
+  // WIN-258 T5: `files` is the FIFTEENTH context delegated to that same
   // directory, and the grant is exactly the TWO rows ADR M0.3 §1 row 10 gives
   // it. Pinned as a SET rather than a count, for the reason `tools`' ten are.
   assert.equal(CANONICAL_STORE_ADAPTERS.files, "packages/adapters/postgres-tenancy");
@@ -2171,7 +2171,7 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     .map(([model]) => model)
     .sort();
   assert.deepEqual(outboxRows, ["Event", "ObservabilityOutbox"]);
-  // WIN-258 T5: `eventing` is the THIRTEENTH owner delegated to that directory,
+  // WIN-258 T5: `eventing` is the SEVENTEENTH and LAST owner delegated to that directory,
   // and the grant is exactly the ONE row ADR M0.3 §1 row 17 gives it that exists
   // in the canonical schema. It is the SMALLEST grant in the map, and the set is
   // pinned rather than the count for the same reason every other one is: a count
@@ -2401,7 +2401,7 @@ test("the SAME privacy writes from the delegate directory are permitted, and the
 });
 
 test("§15: `jobs` is delegated to that same directory, and the grant is TWO rows wide", () => {
-  // The THIRTEENTH owner. `Job` and `AgentApproval` are in the one PostgreSQL
+  // The FOURTEENTH owner. `Job` and `AgentApproval` are in the one PostgreSQL
   // database behind the one client, so ADR M0.3 §15 puts them in this directory
   // rather than in a thirteenth adapter package holding a second client.
   assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");

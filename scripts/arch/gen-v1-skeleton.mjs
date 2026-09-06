@@ -85,7 +85,7 @@ export const ADAPTERS = [
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
       { port: "ChannelsRepository", owner: "channels" },
-      // WIN-258 T5 — `files`' one canonical-store port, the THIRTEENTH owner of
+      // WIN-258 T5 — `files`' one canonical-store port, the FIFTEENTH owner of
       // the one PostgreSQL client. `MessageAttachment` and `Artifact` live in
       // that same database, so by s15 they are written from the same directory.
       // The context's OTHER port is deliberately absent and stays where it is:
@@ -284,7 +284,7 @@ export const ADAPTERS = [
       // `ErasedSubjectRegister` and `SubjectLocatorSource` read `privacy`'s
       // tombstones and `conversations`' threads.
       { port: "ObservabilityRepository", owner: "observability" },
-      // WIN-258 T5 adds the THIRTEENTH owner. `eventing` owns ONE canonical row
+      // WIN-258 T5 adds the SEVENTEENTH and LAST owner. `eventing` owns ONE canonical row
       // in that same database — `NotificationRule`, the only member of ADR M0.3
       // §1 row 17 that exists in the canonical schema at all — and publishes ONE
       // canonical-store port over it.
@@ -473,7 +473,7 @@ export function adapterOwnerPackages(adapter) {
 // been wrong twice over: `files` ALREADY has an adapter directory of its own,
 // `objectstore-minio`, for the OTHER port it owns. A row and a blob are two
 // technologies behind two ports, and this pin counts DIRECTORIES.
-// AND 38 -> 39 (WIN-258 T5, a THIRTEENTH owner). `observability` adds ONE
+// AND 42 -> 43 (WIN-258 T5, a SIXTEENTH owner). `observability` adds ONE
 // canonical-store binding, `ObservabilityRepository`, over the ONE Prisma row of
 // ADR M0.3 §1 row 12. ONE and not five: that row credits the context with four
 // analytical tables as well, and none of them is a Prisma row — they are already
@@ -482,9 +482,9 @@ export function adapterOwnerPackages(adapter) {
 // collides with nothing and is blocked from nothing, but
 // `ObservabilityDependencies` names the slot `repository`, and a root has to hand
 // the port over under that name. EXPECTED_ADAPTER_COUNT is deliberately unmoved a
-// THIRTEENTH time, which is the point of pinning the two separately.
+// SIXTEENTH time, which is the point of pinning the two separately.
 // AND `eventing` adds ONE, `NotificationRuleRepository`, over the ONE canonical
-// row of ADR M0.3 §1 row 17 — the THIRTEENTH owner of the one PostgreSQL client.
+// row of ADR M0.3 §1 row 17 — the SEVENTEENTH owner of the one PostgreSQL client.
 // One row is the smallest grant this table has made and it changes nothing about
 // the argument: without it `ownerDirectories("eventing")` is the context alone,
 // and §2 forbids that package from importing the ORM, so the one package
@@ -638,7 +638,7 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // way. `files` is now the only context reached from TWO adapter directories,
 // this one for its rows and `objectstore-minio` for its bucket; that is two
 // edges from two directories, not two edges from one.
-// AND 106 -> 107 (WIN-258 T5, a THIRTEENTH owner). `packages/adapters/postgres-tenancy`
+// AND 109 -> 110 (WIN-258 T5, a SIXTEENTH owner). `packages/adapters/postgres-tenancy`
 // -> `packages/contexts/observability`, carrying that context's ONE
 // canonical-store port. It cannot create a cycle: contexts are leaves relative to
 // adapters, and ADR M0.3 §1 gives `observability` exactly two dependencies,
@@ -646,8 +646,8 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // expectation in scripts/arch/v1-project-graph.mjs carries the same delta and is
 // maintained separately on purpose.
 // AND `packages/adapters/postgres-tenancy` -> `packages/contexts/eventing`.
-// A THIRTEENTH owner edge, carrying that context's ONE canonical-store port over
-// its ONE canonical row. 106 -> 107, and the arithmetic is the whole delta: one
+// A SEVENTEENTH owner edge, carrying that context's ONE canonical-store port over
+// its ONE canonical row. 110 -> 111, and the arithmetic is the whole delta: one
 // new project REFERENCE, because a reference is per PACKAGE and not per port and
 // this owner brings exactly one package.
 //

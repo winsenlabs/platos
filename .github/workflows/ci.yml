@@ -565,6 +565,16 @@ jobs:
         # `Thread` and its `Turn` from inside its own INSERT, and all three
         # belong to other contexts. They are seeded through the ORM's own CLI.
         #
+        # AND THE LAST THREE OF THE SEVENTEEN. `files`' two rows, whose BYTES
+        # live behind `objectstore-minio` and whose blob-before-row ordering
+        # is fixed precisely because no transaction spans a bucket and a
+        # database; `observability`'s single `AdminAudit` row, which the
+        # initial migration makes APPEND-ONLY, so one clause of its port can
+        # only ever return zero or refuse and three named cases say which;
+        # and `eventing`'s single `NotificationRule`, the narrowest grant the
+        # map has made. With them every context in ADR M0.3 §1 has a
+        # canonical store behind this one client.
+        #
         # They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration
 

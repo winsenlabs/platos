@@ -15,7 +15,7 @@
 // `findRule`, `findRuleByName`, `listRules`, `listEnabledRules`,
 // `countRulesForSubject`, `anonymizeRulesForSubject` — and not one of them
 // collides with anything `PostgresTenancyAdapter` already publishes across
-// twelve owners. So the adapter EXTENDS `NotificationRuleRepository` and the
+// sixteen owners. So the adapter EXTENDS `NotificationRuleRepository` and the
 // composition root proves it against the adapter itself, exactly as it does for
 // `ProvidersRepository`. `governance`'s five, `secrets`' two, `skills`' one,
 // `conversations`' four and `memory`'s two are properties because they collide;

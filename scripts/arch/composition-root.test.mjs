@@ -102,7 +102,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // over under its own name.
   // 38 -> 40 (WIN-258 T5, a fifth time): `jobs` adds `JobsRepository` and
   // `ApprovalsRepository` over the two rows of §1 row 15, so that directory
-  // carries TWENTY-NINE and the thirteenth owner arrives without a thirteenth
+  // carries THIRTY-THREE and the seventeenth owner arrives without a thirteenth
   // directory. Both are proven through the property that carries them, and there
   // too it was FORCED: `ApprovalsRepository` and `ConversationsErasureStore`
   // both declare a top-level `erase` with different signatures, so one interface

@@ -931,7 +931,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `src/client.ts` is still the only file in the layout that
     //               imports the ORM.
     //  1328 -> 1345 +17: WIN-258 TRANCHE 5, `jobs`' canonical store, in that
-    //               SAME one ORM home for the THIRTEENTH owner. SEVENTEEN files,
+    //               SAME one ORM home for the FOURTEENTH owner. SEVENTEEN files,
     //               all under `packages/adapters/postgres-tenancy/src/`: ten
     //               source (the guards, the row mapping and its two envelopes,
     //               the refusal adapter, the seven `Job` methods, the nine
