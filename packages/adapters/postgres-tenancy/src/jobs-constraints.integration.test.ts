@@ -128,6 +128,24 @@ function databaseRefuses(sql: string): boolean {
   }
 }
 
+/**
+ * Put `assignment` on a `Job` row this store wrote, out of band.
+ *
+ * AN UPDATE ON A ROW THE PORT CREATED, NOT A RAW INSERT, and that is a decision
+ * rather than a convenience. A raw INSERT has to name every NOT NULL column,
+ * and one of `Job`'s carries the pre-cutover vendor name behind an `@map` —
+ * `domain/invocation.ts` records it and deliberately does not spell it, and
+ * `scripts/vocabulary-boundary.mjs` will not have this package spell it either.
+ * An UPDATE names only the column under test, which is also the narrower
+ * statement: the row it changes is one this store built and can read back.
+ */
+async function jobHolding(tag: string, assignment: string): Promise<boolean> {
+  const id = harness.base.freshId(tag);
+  const created = await insertJob(jobIn(id));
+  expect(created.ok).toBe(true);
+  return databaseRefuses(`UPDATE "Job" SET ${assignment} WHERE "id" = '${id}';`);
+}
+
 function insertJob(job: Job, where: EnvironmentScope = scope): Promise<Result<Job>> {
   return harness.base.adapter.unitOfWork.run((transaction) =>
     harness.stores.jobs.insertJob(where, job, transaction),
@@ -143,12 +161,7 @@ function insertApproval(approval: Approval, where: EnvironmentScope = scope): Pr
 describe("@db.Uuid on both primary keys and every foreign key they carry", () => {
   test("the id the context's own builder mints is refused, and PostgreSQL refuses it too", async () => {
     expect(refusal(await insertJob(jobIn("job-0001")))).toBe(JOBS_IDENTIFIER_NOT_UUID);
-    expect(
-      databaseRefuses(
-        `INSERT INTO "Job" ("id", "environmentId", "displayName", "triggerType", "handler", "createdBy", "updatedAt")
-         VALUES ('job-0001', '${scope.environmentId}', 'x', 'manual', 'x', 'x', now());`,
-      ),
-    ).toBe(true);
+    expect(await jobHolding("0730", `"id" = 'job-0001'`)).toBe(true);
   });
 
   test("an approval row id that is not a uuid is refused on both sides", async () => {
@@ -194,12 +207,7 @@ describe("Job_payloadSchema_json_root", () => {
       jobIn(harness.base.freshId("0703"), { payloadSchema: [{ type: "object" }] as JsonValue }),
     );
     expect(refusal(refused)).toBe(PAYLOAD_SCHEMA_NOT_OBJECT);
-    expect(
-      databaseRefuses(
-        `INSERT INTO "Job" ("id", "environmentId", "displayName", "triggerType", "handler", "createdBy", "payloadSchema", "updatedAt")
-         VALUES ('${harness.base.freshId("0704")}', '${scope.environmentId}', 'x', 'manual', 'x', 'x', '[]'::jsonb, now());`,
-      ),
-    ).toBe(true);
+    expect(await jobHolding("0704", `"payloadSchema" = '[]'::jsonb`)).toBe(true);
   });
 
   test("an OBJECT schema is accepted by both, which is the control", async () => {
@@ -207,12 +215,7 @@ describe("Job_payloadSchema_json_root", () => {
       jobIn(harness.base.freshId("0705"), { payloadSchema: { type: "object" } }),
     );
     expect(accepted.ok).toBe(true);
-    expect(
-      databaseRefuses(
-        `INSERT INTO "Job" ("id", "environmentId", "displayName", "triggerType", "handler", "createdBy", "payloadSchema", "updatedAt")
-         VALUES ('${harness.base.freshId("0706")}', '${scope.environmentId}', 'x', 'manual', 'x', 'x', '{}'::jsonb, now());`,
-      ),
-    ).toBe(false);
+    expect(await jobHolding("0706", `"payloadSchema" = '{}'::jsonb`)).toBe(false);
   });
 });
 
@@ -281,12 +284,7 @@ describe("Int is int4, and TIMESTAMP(3) is not every Date", () => {
       jobIn(harness.base.freshId("070b"), { budget: { timeoutSeconds: 2 ** 40, maxRetries: 0 } }),
     );
     expect(refusal(refused)).toBe(JOB_BUDGET_NOT_STORABLE);
-    expect(
-      databaseRefuses(
-        `INSERT INTO "Job" ("id", "environmentId", "displayName", "triggerType", "handler", "createdBy", "timeoutSeconds", "updatedAt")
-         VALUES ('${harness.base.freshId("070c")}', '${scope.environmentId}', 'x', 'manual', 'x', 'x', 1099511627776, now());`,
-      ),
-    ).toBe(true);
+    expect(await jobHolding("070c", `"timeoutSeconds" = 1099511627776`)).toBe(true);
   });
 
   test("a retry count beyond int4 is refused under the SAME code, and that is deliberate", async () => {

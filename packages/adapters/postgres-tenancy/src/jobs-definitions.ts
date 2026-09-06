@@ -98,12 +98,13 @@ const JOB_COLUMNS = {
 /**
  * The row a `Job` becomes, minus its identity and its scope.
  *
- * `invocationType` is the CLIENT PROPERTY and `triggerType` is the column behind
- * it. `domain/invocation.ts` carries a note for whoever wrote this adapter:
- * `apps/agent`'s `agent-runtime/job-persistence.ts` assembles the pre-cutover
- * column name at runtime from string fragments and addresses a field the
- * generated client does not have, because `@map` renames the COLUMN and not the
- * property. That helper is not copied. This is the property.
+ * `invocationType` is the CLIENT PROPERTY, and the column behind it still
+ * carries the pre-cutover vendor name behind an `@map`. `domain/invocation.ts`
+ * carries a note for whoever wrote this adapter: `apps/agent`'s
+ * `agent-runtime/job-persistence.ts` assembles that column name at runtime from
+ * string fragments and addresses a field the generated client does not have,
+ * because `@map` renames the COLUMN and not the property. That helper is not
+ * copied. This is the property.
  */
 function jobColumns(job: Job) {
   return {

@@ -149,7 +149,7 @@ describe("the three stored vocabularies are validated, not cast", () => {
     }
   });
 
-  test("Job.triggerType admits the four stored types and refuses `agent`, which is CLAIMED", () => {
+  test("Job.invocationType admits the four stored types and refuses `agent`, which is CLAIMED", () => {
     // `agent` is a CLAIMED invoker and never a STORED type — `domain/invocation.ts`
     // makes that asymmetry the whole content of the module — so a row holding it
     // is a row this binary cannot describe.

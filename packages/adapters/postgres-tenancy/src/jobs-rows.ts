@@ -33,7 +33,7 @@
 //
 // THREE STORED VOCABULARIES ARE VALIDATED, NOT CAST. `Job.status` is the
 // FIVE-member `WorkStatus` enum of which a `Job` row only ever holds two,
-// `Job.triggerType` is a plain `TEXT` column whose closed set lives only in
+// `Job.invocationType` is a plain `TEXT` column whose closed set lives only in
 // `domain/invocation.ts`, and `AgentApproval.status` is a four-member enum whose
 // `EXPIRED` member is the one pair in the whole vocabulary that does not match
 // its domain name. A store that cast any of the three would put a value outside
@@ -72,7 +72,7 @@ import { UnreadableRowError } from "./mapping.js";
 /** `Job.status` holds a `WorkStatus` member a `Job` row never takes. */
 export const JOBS_UNKNOWN_WORK_STATUS = "jobs.row.unknown_work_status";
 
-/** `Job.triggerType` holds an invocation type this binary does not know. */
+/** `Job.invocationType` holds an invocation type this binary does not know. */
 export const UNKNOWN_INVOCATION_TYPE = "jobs.row.unknown_invocation_type";
 
 /** `AgentApproval.status` holds a value outside the four-member vocabulary. */
@@ -161,9 +161,18 @@ export function readJobStatus(value: string): "active" | "registration-failed" {
   throw new UnreadableRowError(JOBS_UNKNOWN_WORK_STATUS, "Job.status", value);
 }
 
+/**
+ * The refusal names the CLIENT property, not the column behind it.
+ *
+ * `domain/invocation.ts` records that the persisted Prisma field is
+ * `invocationType` while its database column still carries the pre-cutover
+ * vendor name behind an `@map`. An operator reading this refusal is holding a
+ * generated client, so the property is the name that helps them; the column is
+ * recoverable from `schema.prisma` and is not this package's vocabulary.
+ */
 export function readInvocationType(value: string): StoredInvocationType {
   if (!isStoredInvocationType(value)) {
-    throw new UnreadableRowError(UNKNOWN_INVOCATION_TYPE, "Job.triggerType", value);
+    throw new UnreadableRowError(UNKNOWN_INVOCATION_TYPE, "Job.invocationType", value);
   }
   return value;
 }

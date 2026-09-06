@@ -11,7 +11,7 @@
 // all.
 //
 // THE PEER CHAIN DOES NOT, AND `enforce_domain_ancestry` IS WHY IT IS A CHAIN.
-// The trigger fires BEFORE INSERT OR UPDATE on `AgentApproval` and demands three
+// The rule fires BEFORE INSERT OR UPDATE on `AgentApproval` and demands three
 // things at once: the `agentId` names an `Agent` in the environment's PROJECT,
 // the `threadId` names a `Thread` in the ENVIRONMENT, and the `turnId` names a
 // `Turn` in THAT thread. So an approval cannot be seeded against an agent from

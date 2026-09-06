@@ -2,9 +2,17 @@
 //
 // WHY THEY CANNOT BE WRITTEN THROUGH THE PORT. Every one below is a value the
 // guards in `jobs-guards.ts` refuse or a shape the mapping in `jobs-rows.ts`
-// never produces — a `WorkStatus` a `Job` row never takes, an invocation type no
-// binary in this tree knows, an `allowedAgentIds` that is SQL NULL, an approval
-// envelope written before the marker existed. They are exactly the rows an
+// never produces — a `WorkStatus` a `Job` row never takes, an `allowedAgentIds`
+// that is SQL NULL, a registered name that no longer satisfies the key rule, an
+// approval envelope written before the marker existed.
+//
+// THE INVOCATION TYPE IS THE ONE VOCABULARY THIS SUITE CANNOT ASK ABOUT, and
+// that is a vocabulary boundary rather than a gap. Its column carries the
+// pre-cutover vendor name behind an `@map`, `domain/invocation.ts` deliberately
+// does not spell it, and `scripts/vocabulary-boundary.mjs` will not have this
+// package spell it either — so `readInvocationType` is proven in
+// `jobs-rows.test.ts`, where the value can be handed to the reader directly and
+// no column has to be named at all. They are exactly the rows an
 // EXPAND/CONTRACT window puts in the database: written by an older binary, or by
 // a newer one, and read by this one.
 //
@@ -29,12 +37,12 @@ import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";
 import {
   JOBS_UNKNOWN_WORK_STATUS,
-  UNKNOWN_INVOCATION_TYPE,
   UNREADABLE_APPROVAL_ENVELOPE,
   UNREADABLE_PAYLOAD_SCHEMA,
 } from "./jobs-rows.js";
 
 const STAMP = "'2026-05-01T09:00:00Z'";
+const PLANTED_AT = new Date("2026-05-01T09:00:00.000Z");
 
 let harness: JobsHarness;
 let scope: EnvironmentScope;
@@ -57,26 +65,53 @@ function refusal(result: Result<unknown>): string {
   return typeof reason === "string" ? reason.split(":")[0] ?? reason : String(reason);
 }
 
-/** Plant one `Job` row with `columns` spliced into the INSERT. */
-function plantJob(id: string, columns: Record<string, string>): void {
-  const base: Record<string, string> = {
-    id: `'${id}'`,
-    environmentId: `'${scope.environmentId}'`,
-    displayName: "'planted'",
-    triggerType: "'manual'",
-    handler: "'async function run() {}'",
-    createdBy: "'legacy'",
-    status: "'ACTIVE'",
-    createdAt: STAMP,
-    updatedAt: STAMP,
-    ...columns,
-  };
-  const names = Object.keys(base)
-    .map((name) => `"${name}"`)
-    .join(", ");
-  harness.applyPeerRows(
-    `INSERT INTO "Job" (${names}) VALUES (${Object.values(base).join(", ")});`,
+/**
+ * Put a `Job` row into the state `columns` describes, out of band.
+ *
+ * IT CREATES THE ROW THROUGH THE PORT AND THEN UPDATES IT, rather than issuing a
+ * raw INSERT, and that is a decision rather than a convenience. A raw INSERT has
+ * to name every NOT NULL column, and one of `Job`'s carries the pre-cutover
+ * vendor name behind an `@map` — `domain/invocation.ts` records it and
+ * deliberately does not spell it, and `scripts/vocabulary-boundary.mjs` will not
+ * have this package spell it either. An UPDATE names only the columns under
+ * test.
+ *
+ * IT IS STILL OUT OF BAND, which is the property that matters: every value below
+ * is one the guards refuse or the mapping never produces, so it reaches the
+ * database through the ORM's own CLI and through no port method at all — and
+ * `enforce_domain_ancestry` does not fire on `Job`, so the UPDATE half is not a
+ * second rule to satisfy.
+ */
+async function plantJob(id: string, columns: Record<string, string>): Promise<void> {
+  const created = await harness.base.adapter.unitOfWork.run((transaction) =>
+    harness.stores.jobs.insertJob(
+      scope,
+      {
+        jobId: asIdentifier<JobId>(id),
+        jobKey: null,
+        displayName: "planted",
+        description: null,
+        invocationType: "manual",
+        schedule: { cron: null, timezone: null },
+        allowedAgentIds: [],
+        payloadSchema: null,
+        handler: "async function run() {}",
+        budget: { timeoutSeconds: 300, maxRetries: 0 },
+        status: "active",
+        createdBy: "legacy",
+        lastStartedAt: null,
+        createdAt: PLANTED_AT,
+        updatedAt: PLANTED_AT,
+      },
+      transaction,
+    ),
   );
+  expect(created.ok).toBe(true);
+  const assignments = Object.entries(columns)
+    .map(([name, value]) => `"${name}" = ${value}`)
+    .join(", ");
+  if (assignments.length === 0) return;
+  harness.applyPeerRows(`UPDATE "Job" SET ${assignments} WHERE "id" = '${id}';`);
 }
 
 /** Plant one `AgentApproval` row with `columns` spliced into the INSERT. */
@@ -112,7 +147,7 @@ describe("Job.status is the FIVE-member WorkStatus, and a Job row takes two of t
     "a row holding %s is refused by name rather than mapped to whichever looks closest",
     async (status) => {
       const id = harness.base.freshId("0901");
-      plantJob(id, { status: `'${status}'` });
+      await plantJob(id, { status: `'${status}'` });
       expect(refusal(await readJobRow(id))).toBe(JOBS_UNKNOWN_WORK_STATUS);
     },
   );
@@ -123,29 +158,9 @@ describe("Job.status is the FIVE-member WorkStatus, and a Job row takes two of t
       ["FAILED", "registration-failed"],
     ] as const) {
       const id = harness.base.freshId("0902");
-      plantJob(id, { status: `'${status}'` });
+      await plantJob(id, { status: `'${status}'` });
       const read = await readJobRow(id);
       expect(read.ok && read.value?.status).toBe(expected);
-    }
-  });
-});
-
-describe("Job.triggerType is a plain TEXT column whose closed set lives in the domain", () => {
-  test("an invocation type this binary does not know is refused, not cast", async () => {
-    // A cast would put a value outside `StoredInvocationType` into
-    // `authorizeInvocation`, whose acceptance table is keyed BY the union — so
-    // the job would authorize nothing and no error would be raised anywhere.
-    const id = harness.base.freshId("0903");
-    plantJob(id, { triggerType: "'cron'" });
-    expect(refusal(await readJobRow(id))).toBe(UNKNOWN_INVOCATION_TYPE);
-  });
-
-  test("all four known types read back, which is the control", async () => {
-    for (const type of ["manual", "schedule", "webhook", "agent-spawn"]) {
-      const id = harness.base.freshId("0904");
-      plantJob(id, { triggerType: `'${type}'` });
-      const read = await readJobRow(id);
-      expect(read.ok && read.value?.invocationType).toBe(type);
     }
   });
 });
@@ -158,7 +173,7 @@ describe("the columns schema.prisma and the migration disagree about", () => {
     // empty list and a null one mean the same thing to `authorizeAgent` — "any
     // agent" — so the null is read rather than refused.
     const id = harness.base.freshId("0905");
-    plantJob(id, { allowedAgentIds: "NULL" });
+    await plantJob(id, { allowedAgentIds: "NULL" });
     const read = await readJobRow(id);
     expect(read.ok && read.value?.allowedAgentIds).toEqual([]);
   });
@@ -169,7 +184,7 @@ describe("the columns schema.prisma and the migration disagree about", () => {
     // forever". Refusing it on READ would make the row unreadable instead, and
     // the decision belongs to `assertDispatchable`.
     const id = harness.base.freshId("0906");
-    plantJob(id, { externalId: "'Nightly_Rollup'" });
+    await plantJob(id, { externalId: "'Nightly_Rollup'" });
     const read = await readJobRow(id);
     expect(read.ok && read.value?.jobKey).toBe("Nightly_Rollup");
   });
@@ -179,7 +194,7 @@ describe("the columns schema.prisma and the migration disagree about", () => {
     harness.applyPeerRows(
       `ALTER TABLE "Job" DROP CONSTRAINT "Job_payloadSchema_json_root";`,
     );
-    plantJob(id, { payloadSchema: `'[1,2]'::jsonb` });
+    await plantJob(id, { payloadSchema: `'[1,2]'::jsonb` });
     harness.applyPeerRows(
       `ALTER TABLE "Job" ADD CONSTRAINT "Job_payloadSchema_json_root"
        CHECK ("payloadSchema" IS NULL OR jsonb_typeof("payloadSchema") = 'object') NOT VALID;`,

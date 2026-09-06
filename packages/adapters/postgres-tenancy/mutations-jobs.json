@@ -30,11 +30,18 @@
     "",
     "AND TWO COLUMNS CARRY VOCABULARIES THE DATABASE DOES NOT HOLD. `Job.status` is",
     "the FIVE-member `WorkStatus` enum of which a `Job` row only ever takes two, and",
-    "`Job.triggerType` is a plain TEXT column whose closed set lives only in",
+    "`Job.invocationType` is a plain TEXT column whose closed set lives only in",
     "`domain/invocation.ts`. A store that CAST either would put a value outside its",
     "union into `assertDispatchable` or `authorizeInvocation`, whose tables are keyed",
     "BY the union — and an unknown invocation type would then authorize nothing",
     "while reporting no error at all.",
+    "",
+    "M-J15 IS THE ONE ENTRY PROVEN IN THE PURE SUITE ALONE, and that is a vocabulary",
+    "boundary rather than a weaker claim. The invocation type's COLUMN carries the",
+    "pre-cutover vendor name behind an `@map`; `domain/invocation.ts` deliberately",
+    "does not spell it and `scripts/vocabulary-boundary.mjs` will not have this",
+    "package spell it either, so a container suite could not plant such a row without",
+    "naming it. `jobs-rows.test.ts` hands the value straight to the reader instead.",
     "",
     "AND ONE COLUMN'S CONSTRAINT IS WHY THE OUTCOME RIDES IN AN ENVELOPE OF ITS OWN.",
     "`AgentApproval_resolution_json_root` admits an OBJECT or SQL NULL, and",
@@ -275,18 +282,16 @@
       ]
     },
     {
-      "name": "M-J15 rows: Job.triggerType is validated, not cast",
+      "name": "M-J15 rows: the invocation type is validated, not cast",
       "file": "src/jobs-rows.ts",
-      "from": "  if (!isStoredInvocationType(value)) {\n    throw new UnreadableRowError(UNKNOWN_INVOCATION_TYPE, \"Job.triggerType\", value);\n  }\n  return value;",
+      "from": "  if (!isStoredInvocationType(value)) {\n    throw new UnreadableRowError(UNKNOWN_INVOCATION_TYPE, \"Job.invocationType\", value);\n  }\n  return value;",
       "to": "  return value as StoredInvocationType;",
-      "note": "The closed set lives only in `domain/invocation.ts`. A cast puts a value outside the union into `authorizeInvocation`, whose acceptance table is keyed BY the union — so the job authorizes nothing and no error is raised anywhere.",
+      "note": "The closed set lives only in `domain/invocation.ts`. A cast puts a value outside the union into `authorizeInvocation`, whose acceptance table is keyed BY the union — so the job authorizes nothing and no error is raised anywhere. It is proven in the PURE suite alone: the column carries the pre-cutover vendor name behind an `@map`, this package may not spell it, and a container suite would have to in order to plant such a row.",
       "suites": [
-        "src/jobs-rows.test.ts",
-        "src/jobs-rules.integration.test.ts"
+        "src/jobs-rows.test.ts"
       ],
       "kills": [
-        "Job.triggerType admits the four stored types and refuses `agent`, which is CLAIMED",
-        "an invocation type this binary does not know is refused, not cast"
+        "Job.invocationType admits the four stored types and refuses `agent`, which is CLAIMED"
       ]
     },
     {
@@ -694,7 +699,7 @@
       "file": "src/jobs-definitions.ts",
       "from": "    invocationType: job.invocationType,",
       "to": "    invocationType: \"manual\" as const,",
-      "note": "`invocationType` is the CLIENT property behind the pre-cutover `triggerType` column, and `authorizeInvocation` is keyed by it — a schedule stored as manual is a job an agent may no longer start.",
+      "note": "`invocationType` is the CLIENT property; the column behind it carries the pre-cutover vendor name behind an `@map`. `authorizeInvocation` is keyed by the property, so a schedule stored as manual is a job an agent may no longer start.",
       "suites": [
         "src/jobs-conformance.integration.test.ts"
       ],

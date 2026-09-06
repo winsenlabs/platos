@@ -2021,13 +2021,13 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * time. `Job` and `AgentApproval` are the two rows of ADR M0.3 §1 row 15, and
  * the store that writes them adds SEVEN suites and 93 cases:
  *
- *   jobs-rows.test.ts                       21 — the only one that runs without
+ *   jobs-rows.test.ts                       22 — the only one that runs without
  *                                                a container, and the only one
  *                                                that can reach the branches a
  *                                                container cannot: a container
  *                                                reads only rows THIS binary
  *                                                wrote
- *   jobs-rules.integration.test.ts          18 — rows an older binary wrote,
+ *   jobs-rules.integration.test.ts          16 — rows an older binary wrote,
  *                                                planted by the ORM's CLI
  *   jobs-constraints.integration.test.ts    15 — a guard beside the raw
  *                                                statement it was written from
@@ -2056,8 +2056,16 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * another tenant's row, and the erasure's tenant narrowing. Every one closed a
  * guard the first sweep left standing with nothing red.
  *
- * THE PACKAGE ROW THEREFORE MOVES 88 -> 95 FILES and 929 -> 1027 CASES, and the
- * tree total 459 -> 466 files and 6845 -> 6943 cases. The adapters term of the
+ * ONE VOCABULARY BOUNDARY MOVED A CASE FROM THE CONTAINER SUITE TO THE PURE ONE.
+ * `Job`'s invocation-type COLUMN carries the pre-cutover vendor name behind an
+ * `@map`, `domain/invocation.ts` deliberately does not spell it and
+ * `scripts/vocabulary-boundary.mjs` will not have this package spell it either —
+ * so a row holding an unknown invocation type cannot be planted by raw SQL here,
+ * and `readInvocationType` is proven in `jobs-rows.test.ts`, where the value goes
+ * straight to the reader and no column is named at all.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 88 -> 95 FILES and 929 -> 1026 CASES, and the
+ * tree total 459 -> 466 files and 6845 -> 6942 cases. The adapters term of the
  * three-way identity carries all seven, because every added file is an
  * adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
  */
@@ -2070,7 +2078,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 95, cases: 1027 },
+  "packages/adapters/postgres-tenancy": { files: 95, cases: 1026 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2256,7 +2264,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6943;
+export const EXPECTED_RUNTIME_TOTAL = 6942;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

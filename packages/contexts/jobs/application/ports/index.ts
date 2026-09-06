@@ -34,10 +34,12 @@ export * from "./job-handler-runtime.js";
 // port signatures use, and nothing more.
 //
 // THE TWO STORED-VOCABULARY TABLES ARE HERE FOR A STRONGER REASON THAN THE
-// TYPES. `Job.triggerType` is a plain `TEXT` column and `Job.status` is the
-// FIVE-member `WorkStatus` enum of which a `Job` row only ever holds two
-// (`domain/job.ts`), so in both cases the closed set an adapter must hold a row
-// to lives HERE and nowhere in the database. A store that CAST either would put
+// TYPES. `Job.invocationType` is a plain `TEXT` column — its database column
+// still carries the pre-cutover vendor name behind an `@map`, which
+// `domain/invocation.ts` records — and `Job.status` is the FIVE-member
+// `WorkStatus` enum of which a `Job` row only ever holds two (`domain/job.ts`),
+// so in both cases the closed set an adapter must hold a row to lives HERE and
+// nowhere in the database. A store that CAST either would put
 // a value outside the union into `assertDispatchable`, whose authorization table
 // is keyed BY the union — and an unknown invocation type would then authorize
 // nothing while reporting no error at all. `isStoredInvocationType`,
