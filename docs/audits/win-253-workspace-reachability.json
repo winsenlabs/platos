@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "106078b1f5040f0ccfc4910d3d99a17b5b07aa35cff2a22809e08ee96247b9db",
+  "evidenceSha256": "aaac6242ae4634df2abcdd0975f5ac7166cb6407c66f0517e24ab50da09f407d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6c9ec9808ea442d819de293739e0f75c77bfce568cc27687eefb7c73d6427565",
+    "aggregateSha256": "ca0fcef257bd212e0de9e865c6bfccb17b2953911d2ee8ebfdab6ff6f608c3f3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -294,42 +294,6 @@
       {
         "path": ".gstack/claude-available.json",
         "sha256": "53f4fdc2cae6e716dc9ffa6bfaa7a363aacf6801b457f05fbd2a05dd361ee47c"
-      },
-      {
-        "path": ".mini/all-files.sh",
-        "sha256": "9d934ad28c23dabbf93d7715a00927c35e1a961ce8bb11db914d148732535707"
-      },
-      {
-        "path": ".mini/conformance.sh",
-        "sha256": "91c22fefb39379f3fba8e6fb14839f8c6049db90dfc545874a3e929d80bcfb69"
-      },
-      {
-        "path": ".mini/install.sh",
-        "sha256": "51e570b9640e0fc88203d53c49f2c0842c767e00e1ab6dec5d908cb279f97e06"
-      },
-      {
-        "path": ".mini/mutate.mjs",
-        "sha256": "4ed37c387f1565e72aa508623a927a6dbaed4f3fecca5bf9cdb95be399b89eb4"
-      },
-      {
-        "path": ".mini/probe.sh",
-        "sha256": "7dedf8fdc605c6cda302a7b403187ac971d1525220059f6569d3e06f124af6dc"
-      },
-      {
-        "path": ".mini/run-mutate.sh",
-        "sha256": "83f2ed4bf14d88e84e245063dced902c2e8450dac187149524341d514ec874b1"
-      },
-      {
-        "path": ".mini/setup.sh",
-        "sha256": "18e0be3a6f8f1c80e6785eb5e4e1d482b2a29dfe816ecb4856bdbba8f8eca176"
-      },
-      {
-        "path": ".mini/suites.sh",
-        "sha256": "8707fdf8521d637d4e86163090fad02c5d17b13049a1718b37ba53eb4846138a"
-      },
-      {
-        "path": ".mini/sync.sh",
-        "sha256": "8358855f9b8dd50b17d8f80df60f17b046fc538d309fce838c0b9073d42b360c"
       },
       {
         "path": ".nvmrc",
@@ -4077,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "743fa0f290150221ab8cde474b2ae928ad0b49e79781a33e37080e6b9436974b"
+        "sha256": "bada2a3802846c0e2d23d17c3f971ccf3b0e6834795a45d7234fba23bbba5f27"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4097,7 +4061,7 @@
       },
       {
         "path": "docs/audits/sbom/license-index.json",
-        "sha256": "757f2954ccd96a268c3da679f6ba02d15f0537940fe28545382f84c2e0b3b5f4"
+        "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6"
       },
       {
         "path": "docs/audits/sbom/license-overlay.json",
@@ -18933,7 +18897,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "922a23ffd6d66b22013caca266dd17fed4232c02473572eb9b699dab6b1678c8"
+        "sha256": "951a7eca55a121dfe7490d02c6bfacab298505030fcebad089105d301ffd00a5"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
