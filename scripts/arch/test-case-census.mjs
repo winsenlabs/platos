@@ -2014,7 +2014,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * CONCURRENCY and about the ABSENCE of a statement, and neither is observable
  * without a real database.
  *
- *   privacy-rows.test.ts                        24  the mapping and the guards,
+ *   privacy-rows.test.ts                        25  the mapping and the guards,
  *                                                   with NO database — the only
  *                                                   place the unreadable-row
  *                                                   branches are reachable at
@@ -2052,7 +2052,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                   three scope refusals
  *   privacy-conformance.integration.test.ts      2  the differential against
  *                                                   `InMemoryPrivacyRepository`
- *                                                                    total = 75
+ *                                                                    total = 76
  *
  * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
  * reason every tranche before it gives: it is ONE scenario of forty-odd
@@ -2064,16 +2064,22 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * ALL FIVE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
  * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 = 94
  * files and
- * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 75 = 1004 cases.
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 = 1005 cases.
  * `providers` contributes 7 files / 77 cases, `conversations` 8 / 97, `skills`
  * 6 / 62 and `memory` 7 / 89, and no branch's own figure — 67/681, 68/701,
  * 66/666 or 67/693 — survives the merge. The tree total is 431 + 28 + 6 = 465
- * files and 6520 + 325 + 75 = 6920 cases. The adapters term of the three-way
+ * files and 6520 + 325 + 76 = 6921 cases. The adapters term of the three-way
  * identity carries all thirty-four, because every added file is an adapter's:
  * 79 + 34 = 113, and 349 + 3 + 113 = 465.
  *
  * THE INTEGRATION/RUNNABLE SPLIT IS MEASURED, NOT CARRIED: 714 integration cases
- * across 78 files, 290 pure across 16, 714 + 290 = 1004.
+ * across 78 files, 291 pure across 16, 714 + 291 = 1005.
+ *
+ * THE 25th CASE IN privacy-rows.test.ts EXISTS BECAUSE A MUTATION SURVIVED.
+ * `mutations-privacy.json` M-P14 deletes the stored-scope LEVEL check and the
+ * case that was there stayed green, because its witness had no `projectId` and
+ * the NEXT clause refused it under the SAME code. The new case carries every id
+ * a scope of any level could want, so only the level check can refuse it.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2084,7 +2090,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 94, cases: 1004 },
+  "packages/adapters/postgres-tenancy": { files: 94, cases: 1005 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2270,7 +2276,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6920;
+export const EXPECTED_RUNTIME_TOTAL = 6921;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

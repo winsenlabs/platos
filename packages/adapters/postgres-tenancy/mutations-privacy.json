@@ -175,8 +175,8 @@
     {
       "name": "M-P12 rows: a stored WorkStatus this binary has never heard of",
       "file": "src/privacy-rows.ts",
-      "from": "  if (!isStorableWorkStatus(value)) {",
-      "to": "  if (false) {",
+      "from": "  if (!isStorableWorkStatus(value)) {\n    unreadable(UNKNOWN_WORK_STATUS, \"ErasureOperation.status\", `holds ${value}`);\n  }\n  return value;",
+      "to": "  return value as WorkStatus;",
       "note": "The expand/contract branch, and the one where a cast is worst. `receiptStatusFor` has four branches and a fifth label matches none of them, so a cast reports a FINISHED operation as `pending` — a receipt saying an erasure has not started when it has.",
       "suites": ["src/privacy-rows.test.ts"],
       "kills": ["a status label this binary has never heard of is REFUSED, not cast past"]
@@ -184,8 +184,8 @@
     {
       "name": "M-P13 rows: a stored scopes or stores column whose root is not an array",
       "file": "src/privacy-rows.ts",
-      "from": "  if (!Array.isArray(value)) unreadable(UNREADABLE_JSON_ARRAY, column, \"is not a JSON array\");",
-      "to": "  if (false) unreadable(UNREADABLE_JSON_ARRAY, column, \"is not a JSON array\");",
+      "from": "  if (!Array.isArray(value)) unreadable(UNREADABLE_JSON_ARRAY, column, \"is not a JSON array\");\n  return value;",
+      "to": "  return value as readonly unknown[];",
       "note": "The READ side of M-P05. A CHECK the migration installs can be dropped by a later one, and `.map` on a non-array is a TypeError inside a read path rather than a reported outcome.",
       "suites": ["src/privacy-rows.test.ts"],
       "kills": ["a scopes column whose root is not an array is refused"]
@@ -195,9 +195,11 @@
       "file": "src/privacy-rows.ts",
       "from": "  if (typeof level !== \"string\" || !Object.hasOwn(SCOPE_LEVELS, level)) {",
       "to": "  if (false) {",
-      "note": "Every kernel consumer switches on the discriminant, so a stored fourth level reaches `resolvePath` and produces a key that silently addresses the wrong subtree — a cache namespace, a rate-limit bucket or an object-storage prefix for a tenant that does not exist.",
+      "note": "Every kernel consumer switches on the discriminant, so a stored fourth level reaches `resolvePath` and produces a key that silently addresses the wrong subtree — a cache namespace, a rate-limit bucket or an object-storage prefix for a tenant that does not exist. IT SURVIVED THE FIRST SWEEP, and the reason was the CASE rather than the guard: the original witness was `{ level: \"entity\", organizationId }` with no `projectId`, so the NEXT clause refused it under the SAME code and the case could not tell which clause had fired. The case named below plants a level outside the three with EVERY id present, so only this clause can refuse it.",
       "suites": ["src/privacy-rows.test.ts"],
-      "kills": ["a scope level outside the kernel's three is refused"]
+      "kills": [
+        "a scope level outside the kernel's three is refused EVEN WHEN every id it would need is present"
+      ]
     },
     {
       "name": "M-P15 rows: a stored scope missing the id its level requires",
@@ -314,7 +316,7 @@
       "name": "M-P25 operations: the unique violation becomes an IDEMPOTENCY CONFLICT",
       "file": "src/privacy-operations.ts",
       "from": "          if (!isUniqueViolation(error)) throw error;",
-      "to": "          throw error;",
+      "to": "          if (error !== null) throw error;",
       "note": "The port REQUIRES the conflict to surface as `PRIVACY_IDEMPOTENCY_KEY_CONFLICT`. Rethrown instead, it leaves the port's contract — every method returns a `Result`, a rejected promise is a defect — and a caller racing its own retry sees a driver error rather than the first answer.",
       "suites": ["src/privacy-constraints.integration.test.ts"],
       "kills": [
@@ -380,7 +382,7 @@
       "name": "M-P31 tombstones: the EXTEND half of insert-then-extend",
       "file": "src/privacy-tombstones.ts",
       "from": "        for (const group of extendGroups(extends_).values()) {",
-      "to": "        for (const group of [].values()) {",
+      "to": "        for (const group of extendGroups([]).values()) {",
       "note": "A re-seal on retry legitimately creates nothing and must still push the expiry out. Without the extend, a subject sealed on the first pass has their barrier lapse on the ORIGINAL schedule however many times the erasure is retried.",
       "suites": [
         "src/privacy-rules.integration.test.ts",

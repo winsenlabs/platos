@@ -201,6 +201,26 @@ describe("reading an ErasureOperation row", () => {
     ).toBe(UNREADABLE_TENANT_SCOPE);
   });
 
+  test("a scope level outside the kernel's three is refused EVEN WHEN every id it would need is present", () => {
+    // THE CASE ABOVE COULD NOT TELL WHICH CLAUSE FIRED, and the mutation sweep
+    // said so. `mutations-privacy.json` M-P14 deletes the level check and that
+    // case stayed GREEN, because `{ level: "entity", organizationId }` has no
+    // `projectId` and the NEXT clause refuses it under the same code. A guard
+    // that another guard's refusal covers is a guard nothing is holding.
+    //
+    // This witness carries every id a scope of any level could want, so the
+    // level check is the only thing left that can refuse it.
+    expect(
+      refusalOf(() =>
+        readOperationRow(
+          row({
+            scopes: [{ level: "entity", organizationId: ORG, projectId: "p", environmentId: "e" }],
+          }),
+        ),
+      ),
+    ).toBe(UNREADABLE_TENANT_SCOPE);
+  });
+
   test("a project scope with no projectId is refused, and so is an environment scope with no environmentId", () => {
     expect(
       refusalOf(() => readOperationRow(row({ scopes: [{ level: "project", organizationId: ORG }] }))),
