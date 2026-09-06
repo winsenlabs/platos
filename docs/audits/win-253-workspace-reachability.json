@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "255e3cc7c32a2704a6f2636d16488f5dc40813d2b7a573e56c6a9eabd6f9ccc5",
+  "evidenceSha256": "ff8849ebb1cbdce0ea002c3e70d5f0c80dd74c5d89ea801a29bf7a09ad915ffd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f22c73ea66fcd5d38191d944e41f4708cbf59adffc5f9e76a4ee021755e542e2",
+    "aggregateSha256": "1129669d41052ba9da1e62dbc189dc5d9c98e35b32e056c9974cd09f3dd6700a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "4353059e87582c199078e218a402ad52ee0695f2a45b29bbf83d08da20f025c6"
+        "sha256": "ce71df723d789040bb0f410010b8f0394e900f3a7697546df8b0fa1a376db8d5"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "743fa0f290150221ab8cde474b2ae928ad0b49e79781a33e37080e6b9436974b"
+        "sha256": "4fd9f8fafef247cf237a1c3e508a5515188cc18f964a77f80af1b3082ea9e7c7"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -11213,7 +11213,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-jobs.json",
-        "sha256": "3b74978ba7995804cdf19300e62c05f4fa9ede3c32307ab019da0d94f830ee1a"
+        "sha256": "c09bcc0b05d8181688c051461500a6bbb47eecb6630205f5a08860a71ea2cdae"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-memory.json",
@@ -11781,7 +11781,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/jobs-rules.integration.test.ts",
-        "sha256": "cf1cd4f6b20265d3463f0703f7a518d1132629fc6e998c2723e5aba2d8891511"
+        "sha256": "630df1ea4f9f2ff67e5485c65f3efbadd7e690ca000667015f1be2f745e0d161"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/jobs-statements.integration.test.ts",
@@ -58342,7 +58342,7 @@
             {
               "from": "packages/adapters/postgres-tenancy/src/jobs-rules.integration.test.ts",
               "kind": "reference",
-              "line": 33
+              "line": 41
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/jobs-statements.integration.test.ts",
@@ -58715,7 +58715,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "e955b0be607109e2935af6ca30a68b323da06a7689112a3fcd677125e30b9c61",
+      "evidenceSha256": "47dc975d10758da76d9d72134d29045472b5516e77b6a7a8ab662c7df0c08636",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
