@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "69ecc6eb79de1381c8ab40090eafadfa200a3b424f814a90685605e9e0daecd4"
+      "sha256": "3aa6f41dfbdc7f9e9ad0fe933680fb1e81bc870e58eb841ed1e32eb1a85b9eeb"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "625ccbc05070e05bffdb4978387d8cb2a054881d969c8ee560ea042fdaf80bdf"
+      "sha256": "093147da4ff5d21c33bf8c20199ed08c7e5eae291455027b542748846c9cabb3"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "301e9b58b17964dc9377b4eaffd9ccf558230f1b0bee1a695b4b25ac11ac45d9"
+      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "0702f2dbe4e08655bcf5e872efce22b84c83580cf496214beb6ca9c363e6d9b1"
+      "sha256": "24be2ddae87f9220781b17d48be269b142ce2cbbb589c0ca53e6d6da940cb03d"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "8362f1c530b80ee1dd775174ad1e3d606556c38c72a066332ccf4162d38891c4"
+      "sha256": "e7e5387f0563f28360f1eda048bb9200e210d865ddacb8148feb3fcaf4b3599d"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "ef5e4f7659f5f37d6ecb6834c96a472d93029fb720b439ce0787a8d693d20f61"
+      "sha256": "c7ee653431a3ec053cbb3db8d17e5be7ef4487ae42fa42919e2a64f90e3bd76e"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
