@@ -2217,6 +2217,63 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The tree total is 490 + 3 = 493 files and 7226 + 48 = 7274 cases. The adapters
  * term of the three-way identity carries all three, because every added file is
  * an adapter's: 138 + 3 = 141, and 349 + 3 + 141 = 493.
+ * WIN-258 T7 — INDEXES, QUERY PLANS, PAGINATION AND COUNT TRUTH. Not a store:
+ * every row this dimension touches already had one. What it adds is the
+ * measurement no returned value can carry — the statements a read sent, the plan
+ * PostgreSQL chose for one of them, and the rows that plan actually touched —
+ * over fixtures of HUNDREDS of rows rather than two.
+ *
+ *   packages/adapters/postgres-tenancy   119 -> 125 files, 1310 -> 1393 cases
+ *
+ *   plans-probe.test.ts                         23  the measurement kit, measured,
+ *                                                   and WITHOUT a container: a
+ *                                                   defect in the kit is a defect
+ *                                                   in every number the other
+ *                                                   four report, and the failure
+ *                                                   mode is silent — a filter
+ *                                                   that discards too much reads
+ *                                                   as a better statement count
+ *   plans-agents.integration.test.ts            10  `pageBoundAgents` over 300
+ *                                                   bindings, with the count
+ *                                                   decoy in a SIBLING
+ *                                                   environment of the same
+ *                                                   project
+ *   plans-conversations.integration.test.ts     13  `pageThreads` and `pageTurns`
+ *                                                   over 300 rows each, and the
+ *                                                   before/after of the index
+ *                                                   this tranche added
+ *   plans-cost.integration.test.ts               10  `pageBudgets`, the full
+ *                                                   hydration that is deliberate,
+ *                                                   pinned as a cost
+ *   plans-tools.integration.test.ts              13  `pageExposures` over a
+ *                                                   fixture built to TIE four
+ *                                                   ways, which is what tranche
+ *                                                   5's `mutations-tools.json`
+ *                                                   M09 said it needed and did
+ *                                                   not have
+ *   plans-jobs.integration.test.ts               14  the approvals page, the ONE
+ *                                                   read in the tree returning
+ *                                                   TWO counts under TWO scopes
+ *                                                   on purpose — and the
+ *                                                   POSITIVE control, the one
+ *                                                   hot read whose index was
+ *                                                   already right
+ *                                                                    total = 83
+ *
+ * THE 13th CASE IN plans-conversations EXISTS BECAUSE A MUTATION SURVIVED.
+ * `mutations-plans.json` M-Q16 reverses the thread listing's direction, and the
+ * case that was there proved the pages PARTITION the listing — which a reversed
+ * order satisfies exactly as well as the right one. The added case walks every
+ * page and demands the stamps come back non-increasing.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 23 in `plans-probe.test.ts`: it is
+ * the only file here that needs no container, and it is deliberately the largest.
+ * Four of the five suites report numbers the kit produced, so the kit is the one
+ * thing in the dimension that cannot be checked by another part of it.
+ *
+ * The tree total is 490 + 6 = 496 files and 7226 + 83 = 7309 cases. The adapters
+ * term of the three-way identity carries all six, because every added file is an
+ * adapter's: 138 + 6 = 144, and 349 + 3 + 144 = 496.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2227,7 +2284,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 122, cases: 1358 },
+  "packages/adapters/postgres-tenancy": { files: 128, cases: 1441 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2412,8 +2469,19 @@ export const EXPECTED = Object.freeze({
  * package test script for the reason the other three row suites do — it has no
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
+ *
+ * 7226 -> 7309: the 83 cases of WIN-258 tranche 7, the indexes/query-plans/
+ * pagination/count-truth dimension, enumerated file by file in the block beside
+ * the postgres-tenancy row. FIVE of its six suites carry `.integration.` in the
+ * name and need a real PostgreSQL, so the cases this census records and
+ * `pnpm test:v1-packages` does not execute go from 598 over 67 files to 658
+ * over 72. The sixth, `plans-probe.test.ts`, runs in the ordinary package test
+ * script and is deliberately the LARGEST single file of the six: it is the
+ * measurement kit every other suite in the dimension reports numbers from, so it
+ * is the one part that cannot be checked by another part of it, and a container
+ * is exactly what it must not need in order to be skippable.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7274;
+export const EXPECTED_RUNTIME_TOTAL = 7357;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

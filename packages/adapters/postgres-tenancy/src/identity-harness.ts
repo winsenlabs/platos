@@ -22,7 +22,14 @@ import type { IdentityAccessRepository } from "@platos/context-identity-access/a
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { PostgresTenancyAdapter } from "./adapter.js";
-import { envId, projId, slugOf, startTenancyHarness, type TenancyHarness } from "./harness.js";
+import {
+  envId,
+  projId,
+  slugOf,
+  startTenancyHarness,
+  type CapturedStatement,
+  type TenancyHarness,
+} from "./harness.js";
 import type { OrganizationId } from "@platos/context-tenancy/application/ports/index.js";
 
 /** The tenant node every scoped identity row in these suites hangs off. */
@@ -39,6 +46,8 @@ export interface IdentityHarness {
   readonly adapter: PostgresTenancyAdapter;
   readonly repository: IdentityAccessRepository;
   statements(): readonly string[];
+  /** The same statements with the values bound to them. WIN-258 T7. */
+  events(): readonly CapturedStatement[];
   resetStatements(): void;
   freshId(kind: string): string;
   /** An organization, a project and an environment, all fresh. */
@@ -96,6 +105,7 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
     adapter,
     repository: adapter,
     statements: base.statements,
+    events: base.events,
     resetStatements: base.resetStatements,
     freshId: base.freshId,
 

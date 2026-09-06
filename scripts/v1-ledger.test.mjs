@@ -895,8 +895,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //             rule that already carries nineteen siblings
     // 1378 + 5 = 1383. No ledger rule changed: all five land on rules that
     // already existed.
-    packages: 1383,
-    "internal-packages": 0,
+    // WIN-258 TRANCHE 7 adds EIGHT more to `packages` and, for the first time
+    // since the M2 integration began, ONE to `internal-packages`. The eight are
+    // all in `packages/adapters/postgres-tenancy`: the shared statement-count
+    // and EXPLAIN kit (`src/plans-probe.ts`), its own unit suite, five
+    // dense-fixture plan suites — agents, conversations, cost-monitoring, tools
+    // and jobs — and `mutations-plans.json` beside them, on the same config rule
+    // that already carries eighteen sibling ledgers.
+    //
+    // THE ONE IN `internal-packages` IS AN INDEX, AND IT IS THE POINT OF THAT
+    // TRANCHE.
+    // `prisma/migrations/20260906120000_win258_thread_listing_index/migration.sql`
+    // adds `Thread_environmentId_updatedAt_id_idx`. The operator thread listing
+    // passes no end user, so `Thread_environmentId_endUserId_updatedAt_idx` —
+    // which the store's own prose named as the index its order exists for —
+    // could find the environment's rows and not order them. MEASURED on a real
+    // PostgreSQL 16 at three hundred threads: an index scan feeding a full
+    // `Sort`, 241 rows read to return a page of 25, at every window.
+    // 1378 + 8 = 1386, and internal-packages 0 -> 1.
+    // MERGED: `packages` 1378 + 5 (the JSON-column census) + 8 (the plan
+    // suites and their kit) = 1391; `internal-packages` 0 + 1 (the thread
+    // listing index). Neither branch's own figure is right merged.
+    packages: 1391,
+    "internal-packages": 1,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1145,7 +1166,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1459);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1468);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1170,10 +1191,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
     // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
     // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
-    // second sweep +1, and WIN-258 tranche 7's JSON-column census +5); this one
-    // re-derives it by summing the per-area counts
+    // second sweep +1, WIN-258 tranche 7's JSON-column census +5, and that
+    // tranche's indexes/query-plans/pagination dimension +9 — eight under
+    // `packages/adapters/postgres-tenancy` and the ONE migration under
+    // `internal-packages` that gives the operator thread listing the index it
+    // was said to have); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1459
+    rulesDocument.baseline.totalFiles + 1468
   );
 });
 

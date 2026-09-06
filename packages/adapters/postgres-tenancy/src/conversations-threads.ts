@@ -174,11 +174,23 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
         const rows = await reader.thread.findMany({
           where,
           select: THREAD_COLUMNS,
-          // `updatedAt` descending is the order `Thread_environmentId_endUserId_updatedAt_idx`
-          // exists for, and `id` breaks the tie so the order is TOTAL. The column
-          // is `timestamp(3)`, so two threads touched in the same millisecond tie
-          // — and a paged listing whose order is not total repeats rows on one
-          // page and drops them from the next.
+          // `updatedAt` descending, and `id` breaks the tie so the order is
+          // TOTAL. The column is `timestamp(3)`, so two threads touched in the
+          // same millisecond tie — and a paged listing whose order is not total
+          // repeats rows on one page and drops them from the next.
+          //
+          // THE INDEX THIS ORDER IS SERVED BY IS
+          // `Thread_environmentId_updatedAt_id_idx`, and WIN-258 T7 added it
+          // because the sentence that used to stand here named the wrong one.
+          // `Thread_environmentId_endUserId_updatedAt_idx` serves the read that
+          // NAMES an end user; the operator listing passes null — the port's own
+          // words are "Null reads every end user's threads" — and for that read
+          // `endUserId` sits between the equality column and the order column,
+          // so the index can find the environment's rows but not order them.
+          // MEASURED at three hundred threads before the new index existed: an
+          // index scan feeding a full `Sort`, 241 rows read to return 25, at
+          // every window. `plans-conversations.integration.test.ts` holds both
+          // halves.
           orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
           skip: query.offset,
           take: query.limit,
@@ -349,8 +361,10 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
         // supplies a value, and this method has none to supply. Taking a
         // compaction lock is not a user-visible change to a conversation, and
         // `Thread_environmentId_endUserId_updatedAt_idx` is the index a user's
-        // thread list is ordered by — so a background sweep that touched the
-        // column would silently reorder every list it passed over. This
+        // thread list is ordered by — and since WIN-258 T7,
+        // `Thread_environmentId_updatedAt_id_idx` is the one an OPERATOR's list
+        // is ordered by, so a background sweep that touched the column would
+        // silently reorder every list it passed over, on either surface. This
         // statement names the two columns it means to write and no others, and
         // `conversations-conformance.integration.test.ts` caught the bump the
         // first time round.

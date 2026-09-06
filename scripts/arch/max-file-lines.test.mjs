@@ -644,19 +644,31 @@ test("the live selectors scan an exact nonzero source census", () => {
   // scenario and it is under 400 effective lines, because one table's scenario
   // is one table's scenario.
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
-  // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452. All the stores are in the one
+  // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452, and tranche 7 adds 7 for 1459. All the stores are in the one
   // adapter directory, so no branch's own figure survives the merge — 1266 for
   // `channels`, 1269 for `governance`, 1270 for `secrets`, 1319 for `providers`,
   // 1323 for `conversations`, 1320 for `skills`, 1324 for `memory`, 1391 for
   // `privacy`, 1394 for `jobs`, 1395 for `files`, 1389 for `observability` and
   // 1391 for `eventing`.
-  assert.equal(result.fileCount, 1452);
+  //
+  // WIN-258 TRANCHE 7 ADDS SEVEN, all in the same adapter directory: the plan
+  // probe (`src/plans-probe.ts`), its unit suite, and the five dense-fixture
+  // plan suites for agents, conversations, cost-monitoring, tools and jobs.
+  // 1452 + 7 = 1459.
+  //
+  // NONE OF THE SEVEN IS IN THE WARNING BAND EITHER, and the largest is the
+  // conversations suite at 350 effective lines. That is worth stating because
+  // this tranche's files are the most heavily COMMENTED in the directory —
+  // every pin carries the measurement it came from — and effective lines
+  // exclude comments, so a reader comparing raw line counts with this figure
+  // will find them very different and should.
+  assert.equal(result.fileCount, 1459);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -681,7 +693,10 @@ test("the live selectors scan an exact nonzero source census", () => {
   // WHAT THEY DO — the guards, the row mapping, the refusal adapter, the
   // operation half, the register half and the composite — and the eight others
   // are the harness, the shared conformance scenario and the six suites.
-  assert.equal(result.fileCount, 20 + 1060 + 366 + 6);
+  // WIN-258 TRANCHE 7 lands its seven in the ADAPTERS term of this split, and
+  // nowhere else: the plan dimension implements no port, so neither the kernel
+  // nor the contexts term moves. 366 + 7 = 373.
+  assert.equal(result.fileCount, 20 + 1060 + 373 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -1003,8 +1003,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is
     //               right merged — 1416, 1419, 1420, 1414 and 1416 each under-count
     //               the others by their whole tranche.
-    assert.equal(result.fileCount, 1477, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14);
+    // WIN-258 TRANCHE 7 ADDS SEVEN, all in `packages/adapters/postgres-tenancy`:
+    //               the plan probe, its unit suite, and the five dense-fixture
+    //               plan suites. 1477 + 7 = 1484. The dimension implements NO
+    //               port, so no context directory moves and the boundary rules
+    //               it has to satisfy are the ones every file in that directory
+    //               already does — `tenancy-prisma-only` above all, and the
+    //               probe names the client type in the one file entitled to.
+    assert.equal(result.fileCount, 1484, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

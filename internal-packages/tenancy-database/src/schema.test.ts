@@ -297,6 +297,7 @@ describe("clean-slate domain schema", () => {
       "20260824233000_m4_forward_upgrade_contract",
       "20260825070000_access_key_revocation_fence",
       "20260828120000_win296_access_key_bootstrap_grant",
+      "20260906120000_win258_thread_listing_index",
     ]);
 
     const observabilityVocabularyMigration = readFileSync(
