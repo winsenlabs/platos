@@ -122,6 +122,11 @@ const v1ReleaseGateCommands = [
   // See the note on the same pair in expectedV1EvidenceCommands below.
   "pnpm audit:env-access",
   "pnpm test:env-access",
+  // WIN-260 (M2.5, outbox/clock/retry): the transaction-outcome refusal, made
+  // FALSIFIABLE. See the note on the same pair in expectedV1EvidenceCommands
+  // below.
+  "pnpm audit:transaction-outcome",
+  "pnpm test:transaction-outcome",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -297,6 +302,18 @@ const expectedV1EvidenceCommands = [
   // code, are in the test beside it.
   "pnpm audit:env-access",
   "pnpm test:env-access",
+  // WIN-260 (M2.5, outbox/clock/retry). `UnitOfWork.run` REFUSES a callback
+  // whose answer is a `Result`, because such a callback RESOLVES and a resolved
+  // callback COMMITS -- the defect `cost-monitoring` shipped. `tsc` enforces
+  // that on every build, and NOTHING WOULD GO RED IF IT WERE LOST: dropping
+  // `NotResult<Value>` back to `Value` makes the tree compile again and leaves
+  // every suite green. This gate compiles eight probes against the committed
+  // port and asserts what the compiler answered, so the type guard has a named
+  // case that turns red. Its second rule refuses a cast of the receiver of
+  // `.run(`, which is how a call site would walk around a refusal that still
+  // holds; two rules, two codes, because they are two different failures.
+  "pnpm audit:transaction-outcome",
+  "pnpm test:transaction-outcome",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -2230,10 +2247,15 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      does not read process.env" into a counted, pinned property — the same
   //      containment shape ADR M0.3 §15 gave the ORM, on the one input nothing
   //      in the repository had ever looked at.
+  //   +2 WIN-260 (M2.5, outbox/clock/retry): transaction-outcome (audit +
+  //      test), which gives the type-level transaction-outcome refusal a named
+  //      case that can go red. A guard nothing can turn red is a guard that is
+  //      not there, and a TYPE guard is the easiest kind to lose that way.
+  // 26 + 2 = 28.
   assert.equal(
     v1ReleaseGateCommands.length,
-    26,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, and the env-access gate"
+    28,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate and the transaction-outcome gate"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4412,12 +4434,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   gate that could be neutralised by appending `|| true` is a gate that runs
   //   and cannot fail.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 = 361. The count is pinned rather than derived
-  // so that a control silently disappearing is a failure rather than a smaller
-  // number nobody reads.
+  //   WIN-260 (M2.5, outbox/clock/retry), +2. audit/test:transaction-outcome
+  //   join the same V1 release gate list, so each gains the same `|| true`
+  //   control -- the same shape as the typed-configuration +2 immediately above,
+  //   and for the same reason.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 = 363. The count is pinned rather than
+  // derived so that a control silently disappearing is a failure rather than a
+  // smaller number nobody reads.
   assert.equal(
     controls.length,
-    361,
+    363,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

@@ -155,6 +155,8 @@ jobs:
           pnpm test:composition-root
           pnpm audit:env-access
           pnpm test:env-access
+          pnpm audit:transaction-outcome
+          pnpm test:transaction-outcome
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory

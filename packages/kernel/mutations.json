@@ -11,8 +11,19 @@
     "",
     "THE KERNEL HAD NO LEDGER BEFORE THIS. Its three original suites cover value",
     "objects whose guards are their own assertions; the two modules added here",
-    "are the first kernel code with BEHAVIOUR \u2014 a rollback and a bound \u2014 and",
+    "are the first kernel code with BEHAVIOUR — a rollback and a bound — and",
     "behaviour is what a mutation ledger is for.",
+    "",
+    "K15–K17 GUARD A TYPE, WHICH IS THE HARDEST KIND OF GUARD TO KEEP. `run`'s",
+    "signature refuses a `Result`-valued callback, and `tsc` enforces it on every",
+    "build — but if the refusal were dropped, NOTHING IN THIS REPOSITORY WOULD GO",
+    "RED. The tree would compile again and every suite would stay green, because a",
+    "type that has stopped refusing looks exactly like a type that had nothing to",
+    "refuse. So the three sweep `scripts/arch/transaction-outcome.mjs`, which",
+    "compiles probes against the committed port and asserts what the compiler",
+    "answered. K17 mutates the GATE rather than the port, and its file is under",
+    "scripts/ for that reason: all three guard one invariant and one invariant",
+    "belongs in one ledger.",
     "",
     "This lives here rather than in README.md because that file is emitted by",
     "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
@@ -33,15 +44,23 @@
     "kernel's own suite drives `runResult` against a double this dimension wrote.",
     "`packages/contexts/cost-monitoring/application/detect-crossings.test.ts`",
     "drives it through a use case, against a double an EARLIER tranche wrote, in",
-    "a suite this dimension did not touch \u2014 so the second kill is by a case this",
+    "a suite this dimension did not touch — so the second kill is by a case this",
     "dimension does not control. It needs `pnpm --filter @platos/kernel exec tsc",
     "-b` between the mutation and the run, because a context resolves the kernel",
     "through dist/ and a sweep without the rebuild would be vacuous in the other",
-    "direction: green against a mutation that never reached the code."
+    "direction: green against a mutation that never reached the code.",
+    "",
+    "K15–K17 ARE SWEPT AGAINST `node --test",
+    "scripts/arch/transaction-outcome.test.mjs` FROM THE REPOSITORY ROOT, not",
+    "against a package's vitest. They need NO rebuild: the gate reads",
+    "packages/kernel/src/ports/unit-of-work.ts from disk and compiles it, so the",
+    "mutation is seen without dist/ being touched — which is also why a sweep of",
+    "them cannot be vacuous in the direction the kernel's other entries have to",
+    "guard against."
   ],
   "mutations": [
     {
-      "name": "K01 runResult RESOLVES an error Result instead of aborting \u2014 the cost-monitoring defect, restored",
+      "name": "K01 runResult RESOLVES an error Result instead of aborting — the cost-monitoring defect, restored",
       "file": "src/ports/unit-of-work.ts",
       "from": "      if (outcome.ok) return outcome.value;\n      throw Object.freeze({ brand: TRANSACTION_ABORT_BRAND, error: outcome.error });",
       "to": "      if (outcome.ok) return outcome.value;\n      return outcome.error as never;",
@@ -250,6 +269,47 @@
       "kills": [
         "defineRetryPolicy refuses five different mistakes with five codes > freezes the policy it returns"
       ]
+    },
+    {
+      "name": "K15 run accepts a Result-valued callback again — all 112 call sites become writable",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;",
+      "to": "  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;",
+      "suites": [
+        "scripts/arch/transaction-outcome.test.mjs"
+      ],
+      "kills": [
+        "X1 — the committed port REFUSES a callback whose answer is a Result",
+        "the committed tree passes both rules"
+      ],
+      "note": "THIS IS THE ONE-CHARACTER-CLASS DIFF THAT PUTS THE DEFECT BACK. Under it the whole tree still compiles and all 1,690-odd suites still pass, because every migrated call site now spells `runResult` and would keep working; what returns is the ABILITY to write `return err(...)` inside `run` and have it COMMIT. Nothing but this gate notices."
+    },
+    {
+      "name": "K16 the refusal becomes total, so `run` refuses every callback and is unusable",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "export type NotResult<Value> = Value extends { readonly ok: boolean } ? never : Value;",
+      "to": "export type NotResult<Value> = Value extends unknown ? never : Value;",
+      "suites": [
+        "scripts/arch/transaction-outcome.test.mjs"
+      ],
+      "kills": [
+        "X1 — the committed port ACCEPTS every shape that is not a Result",
+        "the committed tree passes both rules"
+      ],
+      "note": "THE OTHER DIRECTION, AND IT IS NOT PADDING. A gate that pinned only the refusal would pass happily here — a port that refuses EVERYTHING refuses a Result too. The six accepting probes (void, undefined, a record-or-null union, an array, an ordinary record, and a value read off the transaction scope) are what make the discrimination exact, and they are what would otherwise let a too-wide refusal push honest callbacks back towards the bespoke carriers this dimension removed."
+    },
+    {
+      "name": "K17 the cast scan stops seeing an assertion, so a call site can walk around a refusal that still holds",
+      "file": "../../scripts/arch/transaction-outcome.mjs",
+      "from": "      if (ts.isAsExpression(receiver) || ts.isTypeAssertionExpression(receiver)) {",
+      "to": "      if (false && (ts.isAsExpression(receiver) || ts.isTypeAssertionExpression(receiver))) {",
+      "suites": [
+        "scripts/arch/transaction-outcome.test.mjs"
+      ],
+      "kills": [
+        "X2 — an assertion on the receiver of .run( is refused"
+      ],
+      "note": "X1 AND X2 ARE TWO CODES BECAUSE THEY ARE TWO FAILURES. X1 says the type has stopped meaning anything; X2 says it still means something and one call site wrote `(unitOfWork as Loose).run(...)` to get past it. This mutation leaves X1 green, which is the proof the two are told apart — the mistake two earlier guards in `privacy` and `identity-access` made by minting one code for both."
     }
   ]
 }
