@@ -875,8 +875,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1378,
-    "internal-packages": 0,
+    // + 3 (WIN-258 TRANCHE 7, the expand/contract rollout rehearsal's STORE half,
+    // in that same adapter directory: `upgrade-rollout-harness.ts`,
+    // `upgrade-rollout.integration.test.ts` and `mutations-upgrade-rollout.json`
+    // on the `packages.adapters.config` rule that already carries six guard
+    // ledgers) = 1381.
+    packages: 1381,
+    // 0 -> 8. WIN-258 TRANCHE 7 is the FIRST slice of this issue to add files
+    // outside `packages`, and the reason is a boundary rather than a preference:
+    // it rebuilds the OLD releases' Prisma clients from frozen schemas, and ADR
+    // M0.3 §4 puts the ORM in one home, so the rebuild cannot live under
+    // `packages/` without becoming a second place the vendor is named.
+    //
+    //   2 frozen release schemas under prisma/upgrade-baselines/ — origin/main
+    //     HEAD at 89c12b8a and c25432c5, whose genesis migration IS the frozen
+    //     baseline SQL already beside it — on the same fixture rule that file
+    //     already uses
+    //   4 source modules: the rebuild, the catalogue reader, the ordered-set and
+    //     baseline bootstrap, and the legacy fixture the two suites share
+    //   2 suites: the binary-level rehearsal and the guard suite for the
+    //     rehearsal's own refusals
+    "internal-packages": 8,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1125,7 +1144,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1454);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1465);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1150,9 +1169,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
     // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
     // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
-    // second sweep +1); this one re-derives it by summing the per-area counts
-    // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1454
+    // second sweep +1, and WIN-258 tranche 7's rollout rehearsal +11 across TWO
+    // areas — 3 in `packages` and 8 in `internal-packages`, the first slice of
+    // this issue to move the latter at all); this one re-derives it by summing
+    // the per-area counts independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1465
   );
 });
 
