@@ -80,16 +80,24 @@ export const MATERIAL_RESPONSE_KEYS = [
 ];
 
 /**
- * Names that LOOK material and are not, each for a stated reason.
+ * Names that LOOK material and are not. There is no code for this, and the
+ * absence is the point.
  *
  *   `hasClientSecret` / `hasBotToken` — a boolean saying whether one is set. A
  *      presence flag is the projection a caller is SUPPOSED to get.
- *   `webhookPathRedacted` — the redacted form, which is the fix rather than the
- *      defect.
  *   `clientId` / `client_id` — public by construction; it rides the OAuth
  *      authorize URL.
+ *
+ * A `PRESENCE_ONLY_PREFIXES` filter for `has*` / `is*` was written first and
+ * then DELETED, because the mutation sweep could not turn it red: the key list
+ * above is closed, `hasClientSecret` is not in it, and no input reaches the
+ * filter that the list has not already refused. A guard nothing can falsify is
+ * a comment, so it is one — this one.
+ *
+ * `webhookPathRedacted` is the third shape and is NOT in this class: it names a
+ * real property called `webhookPath` whose VALUE is redacted, so it needs the
+ * `isRedactedValue` check below, which the sweep does turn red.
  */
-export const PRESENCE_ONLY_PREFIXES = ["has", "is"];
 
 function listSurfaceFiles(root) {
   return execFileSync("git", ["ls-files", "apps/agent/src", "apps/webapp/app"], {
@@ -110,9 +118,6 @@ function propertyName(node) {
 
 function isMaterialResponseKey(name) {
   if (name === null) return false;
-  if (PRESENCE_ONLY_PREFIXES.some((prefix) => new RegExp(`^${prefix}[A-Z]`, "u").test(name))) {
-    return false;
-  }
   return MATERIAL_RESPONSE_KEYS.includes(name);
 }
 
@@ -328,9 +333,19 @@ function readManifest(root) {
   return JSON.parse(readFileSync(join(root, MANIFEST), "utf8"));
 }
 
-export function check(root = repositoryRoot) {
+/**
+ * @param root repository root to scan.
+ * @param overrides an alternative manifest, and the ONLY way this function's
+ *   four drift rules can be exercised. Against the committed manifest they are
+ *   all silent by construction — the tree and the file agree, which is what
+ *   "green" means — so a suite that could not substitute a manifest could only
+ *   assert that nothing is wrong, and would stay green with every one of them
+ *   deleted. The mutation sweep found exactly that: three of the four survived
+ *   until this parameter existed.
+ */
+export function check(root = repositoryRoot, overrides = null) {
   const live = census(root);
-  const manifest = readManifest(root);
+  const manifest = overrides ?? readManifest(root);
   const problems = [];
 
   const expected = new Map();

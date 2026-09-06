@@ -10,7 +10,22 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { MATERIAL_RESPONSE_KEYS, check, isRequestSurface, scanFile } from "./secret-response-census.mjs";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import {
+  MANIFEST,
+  MATERIAL_RESPONSE_KEYS,
+  check,
+  isRequestSurface,
+  scanFile,
+} from "./secret-response-census.mjs";
+
+const REPOSITORY_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+
+function committedManifest() {
+  return JSON.parse(readFileSync(new URL(`../../${MANIFEST}`, import.meta.url), "utf8"));
+}
 
 const CONTROLLER = "apps/agent/src/x/y.controller.ts";
 const TOOL = "apps/agent/src/mcp-platform/tools/y.ts";
@@ -69,6 +84,9 @@ test("a value that is already redacted is not a leak", () => {
   assert.deepEqual(found, []);
 });
 
+// The closed key list is what refuses these, not a `has*` / `is*` filter. One
+// was written and deleted when the sweep could not turn it red — the list had
+// already refused every input that would have reached it.
 test("a presence flag beside the material is not the material", () => {
   const found = scanFile(
     TOOL,
@@ -153,4 +171,77 @@ test("the repository check passes and is not vacuous", () => {
   // asserted from below. The exact number is pinned in the manifest, not here.
   assert.ok(live.sites.length >= 20, `expected the census to find sites, found ${live.sites.length}`);
   assert.ok(live.surfaces >= 100, `expected the census to scan surfaces, scanned ${live.surfaces}`);
+});
+
+// THE FOUR DRIFT RULES, each exercised against a SUBSTITUTED manifest.
+//
+// Against the committed manifest all four are silent, because the tree and the
+// file agree — that is what green means. So a suite that could not substitute a
+// manifest could only assert that nothing is wrong, and would stay green with
+// any of them deleted. The mutation sweep proved that: three of the four
+// survived their removal until `check` took an override.
+
+test("a raw-secret response path with no disposition is refused", () => {
+  const manifest = committedManifest();
+  const dropped = manifest.sites.shift();
+  manifest.totalOccurrences -= dropped.occurrences;
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("NEW") && problem.includes(dropped.key)),
+    problems.join("\n"),
+  );
+});
+
+test("a disposition for a path that no longer exists is refused", () => {
+  const manifest = committedManifest();
+  manifest.sites.push({
+    path: "apps/agent/src/gone/away.controller.ts",
+    key: "plaintextSecret",
+    occurrences: 1,
+    disposition: "m4-transport",
+    why: "a row for a file that is not there, so the CLOSED rule has something to find",
+  });
+  manifest.totalOccurrences += 1;
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("CLOSED")),
+    problems.join("\n"),
+  );
+});
+
+test("a reveal DUPLICATED inside a file it already appears in is refused", () => {
+  const manifest = committedManifest();
+  manifest.sites[0].occurrences += 1;
+  manifest.totalOccurrences += 1;
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("MOVED")),
+    problems.join("\n"),
+  );
+});
+
+test("an indirect path whose evidence line is gone is refused", () => {
+  const manifest = committedManifest();
+  manifest.indirectSites[0].evidence = "a line that is certainly not in that file";
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("EVIDENCE")),
+    problems.join("\n"),
+  );
+});
+
+test("a row carrying no reason, or an unknown disposition, is refused", () => {
+  const manifest = committedManifest();
+  manifest.sites[0].why = "short";
+  manifest.sites[1].disposition = "because-i-said-so";
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(problems.some((problem) => problem.startsWith("NOWHY")), problems.join("\n"));
+  assert.ok(problems.some((problem) => problem.startsWith("BADDISP")), problems.join("\n"));
+});
+
+test("a totalOccurrences that disagrees with its own rows is refused", () => {
+  const manifest = committedManifest();
+  manifest.totalOccurrences += 7;
+  const { problems } = check(REPOSITORY_ROOT, manifest);
+  assert.ok(problems.some((problem) => problem.startsWith("TOTAL")), problems.join("\n"));
 });

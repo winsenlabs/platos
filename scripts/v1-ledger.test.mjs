@@ -975,7 +975,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // other context moves: the write-only change altered THREE command types in
     // place and `providers` wrapped at its existing seam, and a changed file is
     // not a new one.
-    packages: 1401,
+    // WIN-259 (M2.4) FOLLOW-UP 1401 -> 1402: packages/contexts/secrets/
+    // mutations.json, this issue's guard ledger. It is the fifth `packages`
+    // file rather than a sixth area because it is DATA beside the context it
+    // documents, claimed by the packages.contexts.config rule exactly as the
+    // eight adapter guard ledgers are claimed by packages.adapters.config.
+    packages: 1402,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1238,7 +1243,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1503);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1504);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1289,7 +1294,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // across apps-core-api (+1), packages (+4), docs-content (+1) and
     // root-infra (+2); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1503
+    rulesDocument.baseline.totalFiles + 1504
   );
 });
 
