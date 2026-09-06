@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e3e56557c77b651a973991c5dfbdfa2ab2c95f76cd80d2bed70b36f90c17551c",
+  "evidenceSha256": "577d1f3c6bc397f68c9a910ac5605ebb2e5b02b5b12463e076f1195bbf67a7a7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "0e089a8a4f9c1cf05a1f19b0870397c20a6ba3cc8bc61f13f2d73bd0a238f22e",
+    "aggregateSha256": "d31a56d51a39cee3334be852659dad29e6e2b4740d58389965fc5578b2c258ee",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -18881,7 +18881,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "92dfa1e6b523460d749b178d2cdd83660264d7575a62c9295bfd39d0fdf54a64"
+        "sha256": "d519afa62032eda34bbd27fc4c449a4cbe9c9cebdbcbffaa3ac98ff7622cd100"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
