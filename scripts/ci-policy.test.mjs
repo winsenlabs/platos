@@ -127,6 +127,19 @@ const v1ReleaseGateCommands = [
   // below.
   "pnpm audit:transaction-outcome",
   "pnpm test:transaction-outcome",
+  // M2 INTEGRATION, +4. THESE TWO GATES WERE BUILT IN M2 AND NEVER RUN HERE, and
+  // the composition is what made that unaffordable rather than untidy.
+  // `docs/error-taxonomy.json` went RED the moment two dimensions stood in one
+  // tree: WIN-260 widened the scanner's roots from `packages/contexts` to all
+  // five owned trees, and WIN-259 then minted three codes and five deliberately
+  // uniform guards inside them -- nine problems, not one of them visible on any
+  // branch alone, and nothing in this file would have caught them. The
+  // secret-response census beside it is the same shape: a pinned artifact whose
+  // staleness only its own gate can see.
+  "pnpm audit:error-taxonomy",
+  "pnpm test:error-taxonomy",
+  "pnpm audit:secret-response-census",
+  "pnpm test:secret-response-census",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -314,6 +327,19 @@ const expectedV1EvidenceCommands = [
   // holds; two rules, two codes, because they are two different failures.
   "pnpm audit:transaction-outcome",
   "pnpm test:transaction-outcome",
+  // M2 INTEGRATION, +4. THESE TWO GATES WERE BUILT IN M2 AND NEVER RUN HERE, and
+  // the composition is what made that unaffordable rather than untidy.
+  // `docs/error-taxonomy.json` went RED the moment two dimensions stood in one
+  // tree: WIN-260 widened the scanner's roots from `packages/contexts` to all
+  // five owned trees, and WIN-259 then minted three codes and five deliberately
+  // uniform guards inside them -- nine problems, not one of them visible on any
+  // branch alone, and nothing in this file would have caught them. The
+  // secret-response census beside it is the same shape: a pinned artifact whose
+  // staleness only its own gate can see.
+  "pnpm audit:error-taxonomy",
+  "pnpm test:error-taxonomy",
+  "pnpm audit:secret-response-census",
+  "pnpm test:secret-response-census",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -2251,11 +2277,15 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      test), which gives the type-level transaction-outcome refusal a named
   //      case that can go red. A guard nothing can turn red is a guard that is
   //      not there, and a TYPE guard is the easiest kind to lose that way.
-  // 26 + 2 = 28.
+  //   +4 M2 INTEGRATION: error-taxonomy (audit + test) and
+  //      secret-response-census (audit + test). Both gates existed and neither
+  //      ran here, and the composition proved the taxonomy one goes stale across
+  //      a branch boundary in a way nothing else in this repository can see.
+  // 26 + 2 + 4 = 32.
   assert.equal(
     v1ReleaseGateCommands.length,
-    28,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate and the transaction-outcome gate"
+    32,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate and the secret-response census"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4439,12 +4469,18 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   control -- the same shape as the typed-configuration +2 immediately above,
   //   and for the same reason.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 = 363. The count is pinned rather than
+  //   M2 INTEGRATION, +4. audit/test:error-taxonomy and
+  //   audit/test:secret-response-census join the same V1 release gate list, so
+  //   each gains the same `|| true` control, for the reason every addition above
+  //   gains one: a release gate that could be neutralised by appending `|| true`
+  //   is a gate that runs and cannot fail.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 = 367. The count is pinned rather than
   // derived so that a control silently disappearing is a failure rather than a
   // smaller number nobody reads.
   assert.equal(
     controls.length,
-    363,
+    367,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

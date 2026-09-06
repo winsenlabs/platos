@@ -157,6 +157,10 @@ jobs:
           pnpm test:env-access
           pnpm audit:transaction-outcome
           pnpm test:transaction-outcome
+          pnpm audit:error-taxonomy
+          pnpm test:error-taxonomy
+          pnpm audit:secret-response-census
+          pnpm test:secret-response-census
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
