@@ -75,7 +75,7 @@
 // AND SO DOES `channels`' `ChannelsRepository` (WIN-258 T5). The six rows of ADR
 // M0.3 §1 row 9 are in that same database behind that same client — the SIXTH
 // owner delegated to this directory — so Amendment 15 puts them here rather than
-// in a thirteenth package holding a second client. Its fourteen method names
+// in a thirteenth package holding a second client. Its seventeen method names
 // collide with nothing above, so it is spread in like the rest and
 // `PORT_SATISFACTION` can resolve
 // `Satisfies<PostgresTenancyAdapter, ChannelsRepository>` at compile time. The
@@ -247,7 +247,7 @@ export function buildPostgresTenancyAdapter(
     // one PostgreSQL database, behind the one client, so a thirteenth adapter
     // package holding only its repository would be a second home for that client
     // and would make `tenancy-prisma-only` unwritable as a single-home rule. Its
-    // fourteen method names are disjoint from tenancy's thirty-one,
+    // seventeen method names are disjoint from tenancy's thirty-one,
     // identity-access's ten store properties, tools' twenty-five, agents'
     // thirty-five, cost-monitoring's twenty-two and the outbox's two, so there is
     // nothing to arbitrate; the spread is what lets `PORT_SATISFACTION` in the
