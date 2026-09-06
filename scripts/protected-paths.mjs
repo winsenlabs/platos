@@ -28,10 +28,18 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 //   docs/audits/win-284-differential-coverage.md
 // Both fall inside the existing `docs/**` selection rather than widening it.
 //
+// WIN-260 (M2.5) adds one, no removals and no content substitutions:
+//   docs/audits/M2.5-transaction-outbox-clock-retry.md   (milestone note)
+// It falls inside the existing `docs/**` selection rather than widening it. The
+// dimension's other new files are not protected paths: two live under
+// packages/, one under apps/core-api, and scripts/arch/ambient-time*.mjs are
+// already covered by the scripts/ prefix — 788 -> 789 is the one addition the
+// selection actually gains.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4";
+export const EXPECTED_PATH_SET_SHA256 = "1945eba06b0bd47e5f531babb71c16d1ad0caad686269bfc67fe5366c991cbb8";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

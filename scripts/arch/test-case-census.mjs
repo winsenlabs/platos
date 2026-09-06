@@ -2331,7 +2331,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 4, cases: 41 },
+  "packages/adapters/outbox": { files: 5, cases: 63 },
   "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
@@ -2340,7 +2340,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/channels": { files: 15, cases: 269 },
   "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
-  "packages/contexts/eventing": { files: 14, cases: 149 },
+  "packages/contexts/eventing": { files: 15, cases: 157 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 31, cases: 609 },
   "packages/contexts/identity-access": { files: 23, cases: 318 },
@@ -2353,7 +2353,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
-  "packages/kernel": { files: 3, cases: 44 },
+  "packages/kernel": { files: 5, cases: 113 },
 });
 
 /*
@@ -2625,7 +2625,59 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+/*
+ * WIN-260 DELTA (M2.5) — transaction and outbox semantics, clock and retry
+ * policies, graceful shutdown. THREE packages move, and no other:
+ *
+ *   packages/kernel            3 -> 5 files,  44 -> 113 cases  (+69)
+ *   packages/contexts/eventing 14 -> 15 files, 149 -> 157 cases (+8)
+ *   packages/adapters/outbox   4 -> 5 files,   41 -> 63 cases  (+22)
+ *
+ *   7399 + 69 + 8 + 22 = 7498, and 503 + 2 + 1 + 1 = 507 files.
+ *
+ * KERNEL +69, over two NEW files and no edits to the three that were there.
+ * `src/ports/unit-of-work.test.ts` (29) drives `runResult`: 4 cases that an
+ * `ok` answer commits, 5 that an `err` answer rolls back — the shape
+ * `cost-monitoring` shipped — 3 that a genuine exception is not relabelled as a
+ * business failure, 14 that `isTransactionAbort` discriminates exactly (11 of
+ * them one `it.each` row apiece), and 3 on the joined frame whose guarantee is
+ * the weaker one. `src/vo/retry.test.ts` (40) drives the bounded policy: 17 on
+ * the five refusals (10 of them `it.each` rows) plus the freeze and the
+ * default, 7 on growth and its ceiling, 6 on the send budget, 6 on jitter, 3 on
+ * the stated bound, 2 on `retryDueAtMs`. 29 + 40 = 69.
+ *
+ * EVENTING +8, one new file and no edits. `domain/retry-schedule.kernel-conformance.test.ts`
+ * declares the kernel policy to BE eventing's shipped schedule and sweeps 64
+ * retry numbers across every observable of both. The shipped module is
+ * UNCHANGED and its own suite is untouched, which is the point: if either side
+ * drifts this file goes red, and if someone "unifies" them by editing both,
+ * `retry-schedule.test.ts` — with its own hard-coded 2000/4000/give-up
+ * expectations — goes red instead.
+ *
+ * OUTBOX +22, one new file and no edits. `src/flush.test.ts` covers the
+ * shutdown flush: 4 that it drains to quiescence, 4 that it is bounded, 8 that
+ * it refuses and reports rather than guessing (4 of them `it.each` rows over
+ * page sizes), and 5 that the seam fits the adapter that ships — that last
+ * block builds the REAL `buildOutboxAdapter` over the REAL `createInMemoryOutbox`
+ * and is where a compile-time `Satisfies` stops being enough. 4+4+8+5 = 21 plus
+ * the `OUTBOX_FLUSH_SOURCE_SATISFACTION` case = 22.
+ *
+ * APPS/CORE-API IS NOT IN THIS TABLE, and this dimension's largest test
+ * addition lands there: 7 -> 8 files and 116 -> 155 cases, over
+ * `src/runtime/shutdown-drain.test.ts` (19 new) and additions to
+ * `in-flight.test.ts` (+8) and `lifecycle.test.ts` (+12). PACKAGE_ROOTS does
+ * not include apps/, so those 39 cases are pinned by
+ * docs/v1-ledger-rules.json's apps-core-api.test.suites FILE count and by
+ * apps/core-api/mutations.json, which names cases rather than counting them.
+ * They are recorded here so a reader reconciling this delta against the branch
+ * does not conclude the count is short.
+ *
+ * The runnable/integration split is unchanged in shape: every one of the 99 new
+ * cases is runnable by `pnpm test:v1-packages` (none carries `.integration.` in
+ * its filename), so the runnable side of the postgres-tenancy split is
+ * untouched at 429 over 23 files and the non-runnable side stays 1054 over 109.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7498;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

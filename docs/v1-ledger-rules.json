@@ -1375,6 +1375,7 @@
           "docs/audits/M0.5-dependency-sbom.md",
           "docs/audits/M0.6-admin-access-containment.md",
           "docs/audits/M0.8-operator-auth-boundary.md",
+          "docs/audits/M2.5-transaction-outbox-clock-retry.md",
           "docs/refactor/IMPLEMENTATION-STATUS.md",
           "docs/research/llm-serving-and-caching.md"
         ],
@@ -1384,7 +1385,7 @@
         "reached_via": [
           "docs-reference"
         ],
-        "evidence": "Exact milestone/research mixed reports are POINT-IN-TIME and precede broad audit and notes buckets.",
+        "evidence": "Exact milestone/research mixed reports are POINT-IN-TIME and precede broad audit and notes buckets. WIN-260 (M2.5) adds the transaction/clock/retry/shutdown milestone note here rather than letting it fall into the audit-notes bucket, so this rule and scripts/evidence-lifecycle.mjs POINT_IN_TIME_PATHS classify the same file the same way; the note carries counted figures that move as its stated remainder lands.",
         "protected": true
       },
       {
@@ -2061,7 +2062,7 @@
       "apps-core-api": 40,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
-      "docs-content": 733,
+      "docs-content": 734,
       "internal-packages": 1173,
       "packages": 2034,
       "root-infra": 279
@@ -2085,7 +2086,7 @@
       "retain": 3303,
       "unresolved": 2
     },
-    "protectedCount": 1628,
+    "protectedCount": 1629,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2136,7 +2137,7 @@
       "docs-content.governance.root-manifest": 2,
       "docs-content.governance.workspace-reachability": 2,
       "docs-content.lifecycle.draft": 1,
-      "docs-content.lifecycle.point-in-time-reports": 5,
+      "docs-content.lifecycle.point-in-time-reports": 6,
       "docs-content.lifecycle.point-in-time-snapshots": 2,
       "docs-content.lifecycle.rules-accepted-targets": 4,
       "docs-content.lifecycle.rules-manifest": 1,
@@ -2174,19 +2175,19 @@
       "packages.adapters.config": 48,
       "packages.adapters.doc": 12,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 231,
-      "packages.adapters.test": 151,
+      "packages.adapters.source": 232,
+      "packages.adapters.test": 152,
       "packages.config.build": 28,
       "packages.contexts.config": 36,
       "packages.contexts.doc": 17,
       "packages.contexts.source": 711,
-      "packages.contexts.test": 349,
+      "packages.contexts.test": 350,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
-      "packages.kernel.config": 2,
+      "packages.kernel.config": 3,
       "packages.kernel.doc": 1,
-      "packages.kernel.source": 17,
-      "packages.kernel.test": 3,
+      "packages.kernel.source": 18,
+      "packages.kernel.test": 5,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
       "packages.python.sources": 36,

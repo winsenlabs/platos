@@ -35,6 +35,15 @@ export const POINT_IN_TIME_PATHS = Object.freeze([
   "docs/audits/M0.5-dependency-sbom.md",
   "docs/audits/M0.6-admin-access-containment.md",
   "docs/audits/M0.8-operator-auth-boundary.md",
+  // WIN-260 (M2.5). POINT-IN-TIME on the same terms as the three M0 notes
+  // above, and for a reason the note itself states: its "what remains" section
+  // carries COUNTED figures — 111 commit-on-resolve call sites across 67 files,
+  // three retry schedules not yet expressed over the kernel policy — and those
+  // numbers move as the remainder lands. The contracts it describes ARE current
+  // and are held current by their own gates (ambient-time, composition-root,
+  // the three mutation ledgers); this file is the dated account of them, not
+  // the acceptance of them.
+  "docs/audits/M2.5-transaction-outbox-clock-retry.md",
   "docs/audits/history/win-252/prompt-caching-progress.md",
   "docs/audits/history/win-252/server-changes/login-passcode-backdoor.md",
   "docs/audits/history/win-252/server-changes/prompt-caching-and-billing.md",

@@ -524,7 +524,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    // +10 (WIN-260, M2.5), and each of the ten is attributable:
+    // +10 (WIN-260, typed configuration), and each of the ten is attributable:
     //   +6  the five sibling configuration sections beside WIN-297's core one —
     //       stores, providers, channels, durable-runtime, security — and the
     //       platform aggregate that validates all six in ONE pass.
@@ -537,7 +537,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // NO LEDGER RULE CHANGED: apps-core-api.source.process already matched
     // src/config/**, so the seven source files land on a rule WIN-297 wrote.
     // 19 + 10 = 29.
-    "apps-core-api": 29,
+    // +3 (WIN-260, M2.5 outbox/clock/retry): src/runtime/shutdown-drain.ts and
+    // its suite, plus mutations.json, which the existing
+    // apps-core-api.config.package rule already classifies. The admission gate
+    // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
+    // PLACE and add no file. 29 + 3 = 32.
+    "apps-core-api": 32,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -961,7 +966,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    // 1397 -> 1404 (WIN-260, M2.5), and this is the FIRST dimension since
+    // tranche 2 that adds nothing to packages/adapters/postgres-tenancy:
+    //   +4 packages/kernel   — vo/retry.ts, vo/retry.test.ts,
+    //      ports/unit-of-work.test.ts and mutations.json, the kernel's first
+    //      guard ledger. ports/unit-of-work.ts and vo/index.ts were widened IN
+    //      PLACE and a widened file is not a new one.
+    //   +1 packages/contexts/eventing — the kernel-policy conformance suite.
+    //      domain/retry-schedule.ts is UNCHANGED.
+    //   +2 packages/adapters/outbox — src/flush.ts and its suite. The flush is
+    //      HERE and not under apps/core-api because composition-root.mjs rule
+    //      (C1) allows exactly one importer of an adapter package; index.ts and
+    //      mutations.json were widened in place.
+    // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
+    packages: 1404,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1208,13 +1226,30 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
-    "docs-content": 13,
-    // +2 (WIN-260): scripts/arch/env-access.mjs and its test. Both classify
-    // under the existing root-infra.tooling.scripts rule, so no ledger rule
-    // changed here either. 41 + 2 = 43.
-    "root-infra": 43,
+    // 13 -> 14 (WIN-260, M2.5 outbox/clock/retry):
+    // docs/audits/M2.5-transaction-outbox-clock-retry.md, pinned into
+    // docs-content.lifecycle.point-in-time-reports rather than left to the
+    // audit-notes bucket, so this rule and evidence-lifecycle.mjs classify the
+    // same file the same way.
+    "docs-content": 14,
+    // +2 (WIN-260, typed configuration): scripts/arch/env-access.mjs and its
+    // test. Both classify under the existing root-infra.tooling.scripts rule,
+    // so no ledger rule changed here either. 41 + 2 = 43.
+    // +2 (WIN-260, M2.5 outbox/clock/retry): scripts/arch/ambient-time.mjs and
+    // its test, on the same rule and the same scripts/** prefix. ci.yml,
+    // ci-policy.test.mjs, protected-paths.mjs, evidence-lifecycle.mjs and the
+    // two census files were edited in place. 43 + 2 = 45.
+    // The two dimensions BOTH read 43 on their own bases and BOTH added two
+    // files; taking either side of the rebase whole would have lost two files.
+    "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
+  // 1482 -> 1495 (WIN-260, typed configuration): +10 apps-core-api,
+  // +1 apps-mcp-stdio, +2 root-infra = 13.
+  // 1495 -> 1508 (WIN-260, M2.5 outbox/clock/retry): +3 apps-core-api,
+  // +7 packages, +1 docs-content, +2 root-infra = 13, which is also the sum of
+  // the four area deltas above and is asserted as such by the deepEqual below
+  // rather than trusted.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1508);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1253,14 +1288,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
     //
-    // and WIN-260 (M2.5) +13 across THREE areas — `apps-core-api` +10 (seven
-    // configuration modules, two suites, and this dimension's guard ledger),
-    // `apps-mcp-stdio` +1 (the second deployable's own environment reader) and
-    // `root-infra` +2 (the containment gate and its test). It ADOPTS NO PROJECT
-    // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
-    // rule that already existed, which is why the delta is purely additive and
-    // sums with every one above it.
-    rulesDocument.baseline.totalFiles + 1495
+    // and WIN-260 (typed configuration) +13 across THREE areas — `apps-core-api`
+    // +10 (seven configuration modules, two suites, and this dimension's guard
+    // ledger), `apps-mcp-stdio` +1 (the second deployable's own environment
+    // reader) and `root-infra` +2 (the containment gate and its test). It ADOPTS
+    // NO PROJECT and CHANGES NO LEDGER RULE: every one of the thirteen is
+    // classified by a rule that already existed, which is why the delta is
+    // purely additive and sums with every one above it.
+    //
+    // and WIN-260 (M2.5 outbox/clock/retry) +13 across FOUR areas —
+    // `apps-core-api` +3, `packages` +7, `docs-content` +1, `root-infra` +2 —
+    // the first dimension since tranche 2 that adds nothing to
+    // `packages/adapters/postgres-tenancy`. Its `root-infra` +2 and the typed
+    // configuration dimension's `root-infra` +2 are FOUR DISTINCT FILES, which
+    // is the one place where the two dimensions' arithmetic does not merge by
+    // agreement; this one re-derives the total by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1508
   );
 });
 
