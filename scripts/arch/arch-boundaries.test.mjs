@@ -1032,8 +1032,21 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
     //               dimension's own figure — 1484, 1480, or the 1477 the other
     //               two left untouched — is right here.
-    assert.equal(result.fileCount, 1493, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2);
+    // WIN-259 (M2.4): +15, 1493 -> 1508. TEN in the new
+    //               `packages/adapters/keyring-envelope` (six source, four
+    //               suites), ONE in `packages/adapters/postgres-tenancy`, TWO
+    //               in `packages/contexts/providers` and TWO in
+    //               `packages/contexts/secrets`. This scan's roots are
+    //               packages/kernel, packages/contexts, packages/adapters,
+    //               apps/core-api and apps/mcp-stdio, so the thirteenth
+    //               adapter directory is inside it from the moment it exists
+    //               and `unknown-context-directory` polices it per FILE.
+    assert.equal(result.fileCount, 1508, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
+      // WIN-259 (M2.4): keyring-envelope 10, postgres-tenancy 1, providers 2,
+      // secrets 2. Written as four terms so a file deleted from one while
+      // another added cannot reach the same total.
+      10 + 1 + 2 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
