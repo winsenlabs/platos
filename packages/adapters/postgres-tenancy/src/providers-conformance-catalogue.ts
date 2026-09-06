@@ -31,6 +31,7 @@
 
 import type {
   ModelFacts,
+  ProviderId,
   ModelId,
   ModelKey,
   ModelPriceSnapshot,
@@ -118,7 +119,7 @@ const SECOND_CARD: PriceCard = {
 
 function facts(provider: string, name: string, sourceUpdatedAt: Date): ModelFacts {
   return {
-    provider: asProvidersIdentifier(provider),
+    provider: asProvidersIdentifier<ProviderId>(provider),
     name,
     displayName: `${name} (display)`,
     description: null,

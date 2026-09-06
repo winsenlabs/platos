@@ -35,6 +35,10 @@
 // `model#2` where the other produces `model#1`.
 
 import type {
+  ActorId,
+  CredentialId,
+  CredentialName,
+  EnvironmentProviderId,
   EnvironmentScope,
   ProviderId,
   ProviderKey,
@@ -97,12 +101,12 @@ function key(
   return {
     providerKeyId: asProvidersIdentifier<ProviderKeyId>(id),
     environmentId: scope.environmentId,
-    credentialId: asProvidersIdentifier(credentialId),
+    credentialId: asProvidersIdentifier<CredentialId>(credentialId),
     provider,
     label,
-    credentialName: asProvidersIdentifier(credentialName),
+    credentialName: asProvidersIdentifier<CredentialName>(credentialName),
     isDefault,
-    createdBy: asProvidersIdentifier("operator-1"),
+    createdBy: asProvidersIdentifier<ActorId>("operator-1"),
     lastUsedAt: null,
     createdAt,
     updatedAt: createdAt,
@@ -118,7 +122,7 @@ function link(
   updatedAt: Date,
 ): ProviderLink {
   return {
-    environmentProviderId: asProvidersIdentifier(id),
+    environmentProviderId: asProvidersIdentifier<EnvironmentProviderId>(id),
     environmentId: scope.environmentId,
     provider,
     enabled,

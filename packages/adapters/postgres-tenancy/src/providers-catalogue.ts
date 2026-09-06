@@ -110,6 +110,13 @@ const PRICE_COLUMNS = {
   cacheWriteSourceRef: true,
 } as const;
 
+/** One card and the model identity it is returned with, from the joined read. */
+type JoinedPriceRow = ModelPriceRow & {
+  readonly modelKey: string;
+  readonly modelProvider: string;
+  readonly modelName: string;
+};
+
 export interface ProviderCatalogueStore {
   findModelByKey(key: ModelKey): Promise<Result<Model | null>>;
   upsertModel(key: ModelKey, facts: ModelFacts, transaction: TransactionScope): Promise<Result<Model>>;
@@ -245,26 +252,46 @@ export function createProviderCatalogueStore(
       at: Date,
     ): Promise<Result<readonly ModelPriceSnapshot[]>> {
       if (keys.length === 0) return ok([]);
-      // ONE statement for any number of keys, with the model identity joined in
-      // the same read. A loop over the keys would be the N+1 this package
-      // measures, and a second read for the identities would be an N+1 one level
-      // down — `findPricesForKeys` is on the pricing path and is asked once per
-      // priced step.
+      // RAW SQL WITH A REAL JOIN, and that is a MEASURED decision rather than a
+      // preference. The delegate form — `findMany` with a nested
+      // `select: { model: … }` — is two statements, not one: the client's
+      // default relation strategy issues a second query for the to-one relation
+      // and stitches the rows together in JavaScript. The count does not grow
+      // with the number of keys, so it is not an N+1; it is a second round trip
+      // on a read that is asked once per priced step, and
+      // `providers-statements.integration.test.ts` is where that was found.
+      //
+      // The statement is statically visible, names no mutation, and is therefore
+      // attributed by `sole-writer.mjs` exactly as a delegate read is.
       //
       // EVERY card in force, not the newest per key. `selectByKeyPrecedence`
       // decides which one wins and it decides by KEY ORDER rather than by date,
       // so a store that pre-selected the newest would have thrown away the very
       // rows that rule exists to choose between.
-      const rows = await transactions.reader().modelPrice.findMany({
-        where: { effectiveFrom: { lte: at }, model: { key: { in: [...keys] } } },
-        select: {
-          ...PRICE_COLUMNS,
-          model: { select: { key: true, provider: true, name: true } },
-        },
-      });
+      const rows = await transactions.reader().$queryRaw<readonly JoinedPriceRow[]>`
+        SELECT price."id", price."modelId", price."effectiveFrom",
+               price."inputRate", price."outputRate", price."cacheReadRate", price."cacheWriteRate",
+               price."inputSource", price."outputSource",
+               price."cacheReadSource", price."cacheWriteSource",
+               price."inputObservedAt", price."outputObservedAt",
+               price."cacheReadObservedAt", price."cacheWriteObservedAt",
+               price."inputSourceRef", price."outputSourceRef",
+               price."cacheReadSourceRef", price."cacheWriteSourceRef",
+               model."key" AS "modelKey",
+               model."provider" AS "modelProvider",
+               model."name" AS "modelName"
+          FROM "ModelPrice" price
+          JOIN "Model" model ON model."id" = price."modelId"
+         WHERE price."effectiveFrom" <= ${at}
+           AND model."key" = ANY(${[...keys]}::text[])
+      `;
       return ok(
-        rows.map((row: ModelPriceRow & { readonly model: { key: string; provider: string; name: string } }) =>
-          readModelPriceSnapshot(row, row.model),
+        rows.map((row) =>
+          readModelPriceSnapshot(row, {
+            key: row.modelKey,
+            provider: row.modelProvider,
+            name: row.modelName,
+          }),
         ),
       );
     },
