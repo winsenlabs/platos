@@ -364,12 +364,12 @@ export function findEnvironmentReads(path, text) {
  * a scan this file did not produce — which is the only way to see a violation
  * code that the live tree, by design, never raises.
  */
-export function scan(root = repositoryRoot) {
+export function scan() {
   const files = SCAN_ROOTS.flatMap((scanRoot) => listSourceFiles(scanRoot));
   const readsByFile = new Map();
 
   for (const path of files) {
-    const text = readFileSync(join(root, path), "utf8");
+    const text = readFileSync(join(repositoryRoot, path), "utf8");
     // A cheap pre-filter. Every spelling this gate models contains the three
     // letters, so a file without them cannot hold a read, and the parser is
     // skipped for the roughly fourteen hundred files that do not.
@@ -470,8 +470,8 @@ export function judge({ files, readsByFile }, expectedFileCount = EXPECTED_FILE_
   };
 }
 
-export function analyse(root = repositoryRoot) {
-  return judge(scan(root));
+export function analyse() {
+  return judge(scan());
 }
 
 function main(argv) {
