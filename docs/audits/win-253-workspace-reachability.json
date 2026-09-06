@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "943eb54714cc946e4f856e96adc254315b65d305c240ea729eabf89d9a78e7d0",
+  "evidenceSha256": "5d2228262218ada40ffb2dbbe37efae2c537d54de0b2fcd410e06b4b23d771b2",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3bd2d6566bd888ec0efe76eb294a73ed72a7f855a6ffbceda85c876bb65e38da",
+    "aggregateSha256": "dbf7b3359b0ea714b77c15a7f84843a7b5f5cfee60a2265fb9d4cc813012c8b9",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -19329,7 +19329,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "5afc4e8b17052e38a8a2165c4715f0780a83ea9ec3047bc76e9af1749e893294"
+        "sha256": "d644b1d00f91b8e69197d0348acd63a53ae9e8738ea13b656b5c54ff00539f50"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -19389,7 +19389,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "c60a804547974edd7981dc54ad098fe48b2d5eae9d53fd449a08ee5ff08a20f0"
+        "sha256": "1d78e181c856f463fd1115a2ecd2cf439329cc706417167298549f5a77bf68b3"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -49645,6 +49645,11 @@
               "line": 89
             },
             {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 690
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 175
@@ -49703,6 +49708,10 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
             ],
@@ -49729,6 +49738,7 @@
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/composition-root.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
@@ -49791,7 +49801,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "85c54dfbd9223e4e2538f796121ce71af438e57942d248dee601b6d50711ec8f",
+      "evidenceSha256": "2af2ab2d6fcce06c60d2a8954f100817246849ed4fe7b61a6a0cfcba495bf376",
       "manifestSha256": "5a766cabb6ec0325aca2f6f4b999495fa6a1d20fecfc2c33fa61f0c797c00158",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
