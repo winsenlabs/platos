@@ -71,6 +71,8 @@ const written = {
   organization: "33000000-0000-4000-8000-000000000002",
   project: "33000000-0000-4000-8000-000000000003",
   environment: "33000000-0000-4000-8000-000000000004",
+  /** A thread id that names no row. The boundary's negative control. */
+  foreignThread: "33000000-0000-4000-8000-0000000000ff",
 } as const;
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
@@ -153,13 +155,23 @@ test("the V1 stores read ownership no legacy writer ever supplied", async () => 
     originalName: "preserve-me.txt",
   });
 
-  // A scope-shaped read is the sharpest form of the same question: an
-  // attachment whose backfilled thread pointed anywhere else would be invisible
-  // here rather than merely wrong.
-  const inScope = value(
-    await harness.adapter.findAttachmentsInScope(attachmentScopeOfLegacy, 10),
-  );
+  // A boundary-shaped read is the sharpest form of the same question: this one
+  // resolves the id INSIDE an owner boundary, so an attachment whose backfilled
+  // thread pointed anywhere else comes back absent rather than merely wrong.
+  const wanted = [asFilesIdentifier<AttachmentId>(ids.attachment)];
+  const inScope = value(await harness.adapter.findAttachmentsInScope(thread, wanted));
   expect(inScope.map((row) => row.storageKey)).toEqual(["legacy-attachment"]);
+
+  // THE NEGATIVE CONTROL. Same id, a thread the row does not belong to. Without
+  // this the case above would pass on a store that ignored the boundary, which
+  // is the failure a derived owner would actually produce.
+  const elsewhere = value(
+    await harness.adapter.findAttachmentsInScope(
+      { environment: scope, threadId: threadIdOf(written.foreignThread) },
+      wanted,
+    ),
+  );
+  expect(elsewhere).toEqual([]);
 
   // Same shape one context over: the tools store reads an EntityToolPolicy whose
   // environment was derived, not written.
