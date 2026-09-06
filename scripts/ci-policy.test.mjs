@@ -264,6 +264,16 @@ const expectedV1EvidenceCommands = [
   // the canonical-row ownership map non-regressable.
   "pnpm audit:kernel-content",
   "pnpm test:kernel-content",
+  // WIN-260 (M2.5). §5.3's clock discipline, which four context headers state in
+  // PROSE and nothing checked: `Date.now()`, a no-argument `new Date()`,
+  // `performance.now()`, `Math.random()` and `setTimeout` in a context's domain
+  // or application. `boundary-rules.mjs` could not carry it — it is an
+  // import-graph checker and `Date` is a global, so there is no import to ban.
+  // Invoked directly rather than through a package.json script, for the reason
+  // given on `capability-matrix.test.mjs` above: root package.json is a webapp
+  // image build input and a line there moves the SBOM receipt buildInputsSha256.
+  "node scripts/arch/ambient-time.mjs",
+  "node --test scripts/arch/ambient-time.test.mjs",
   "pnpm audit:sole-writer",
   "pnpm test:sole-writer",
   // WIN-297: rule (j) `adapters-only-from-core` names a PACKAGE; ADR M0.3 §4

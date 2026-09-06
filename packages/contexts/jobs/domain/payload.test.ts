@@ -92,7 +92,7 @@ describe("isPlainObject", () => {
   it("REFUSES an array, a null, and a class instance", () => {
     expect(isPlainObject([])).toBe(false);
     expect(isPlainObject(null)).toBe(false);
-    expect(isPlainObject(new Date())).toBe(false);
+    expect(isPlainObject(new Date(0))).toBe(false);
   });
 });
 
@@ -155,7 +155,7 @@ describe("isAdmissibleJson", () => {
   });
 
   it("REFUSES a non-plain object such as a Date", () => {
-    expect(isAdmissibleJson({ when: new Date() }, NO_SECRETS)).toBe(false);
+    expect(isAdmissibleJson({ when: new Date(0) }, NO_SECRETS)).toBe(false);
   });
 });
 

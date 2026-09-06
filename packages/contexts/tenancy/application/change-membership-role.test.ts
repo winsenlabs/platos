@@ -12,6 +12,15 @@ import {
 } from "./change-membership-role.js";
 import { createTenancyFixture, seedTree } from "./testing/tenant-fixture.js";
 
+/**
+ * A FIXED instant, because a fixture that says `new Date()` is a fixture whose
+ * value depends on when the suite runs. `scripts/arch/ambient-time.mjs` rule T2
+ * refuses the ambient form here as it does in the code under test: the whole
+ * reason `Clock` is a port is that an instant is an input.
+ */
+const ARCHIVED_AT = new Date("2026-01-01T00:00:00.000Z");
+
+
 const OWNER = userId("owner");
 const SECOND_OWNER = userId("owner-2");
 const ADMIN = userId("admin");
@@ -139,7 +148,7 @@ describe("changeMembershipRole", () => {
 
   it("refuses when the organization is archived, because the lock fails", async () => {
     const { fixture, organization, tree } = scenario();
-    fixture.store.organizations = [{ ...tree.organization, archivedAt: new Date() }];
+    fixture.store.organizations = [{ ...tree.organization, archivedAt: ARCHIVED_AT }];
     const change = createChangeMembershipRole(fixture.dependencies);
     const result = await change({
       organizationId: organization,
