@@ -27,7 +27,7 @@ import {
   EVAL_SCORE_NOT_FINITE,
   GOVERNANCE_IDENTIFIER_NOT_UUID,
   GovernanceWriteRefused,
-  RATING_OUTSIDE_SCHEMA_RANGE,
+  RATING_NOT_THUMBS,
   RATING_REVISION_INVALID,
   SAFETY_METADATA_RESERVED,
   guardEvalAppend,
@@ -262,21 +262,27 @@ describe("the write guards refuse what the schema will not hold", () => {
     expect(refusalOf(() => requireUuid("x", null))).toBe("<accepted>");
   });
 
-  test("`MessageRating_rating_check` admits 1..5 and refuses the domain's -1", () => {
+  test("`MessageRating_rating_check` is the constraint the migration ENDS with", () => {
+    // The file installs `BETWEEN 1 AND 5` and then, 1,000 lines later, DROPS it
+    // for `IN (-1, 1)`. Both thumbs are storable; every five-star value is not,
+    // which is the reading a stop-at-the-first-constraint adapter gets backwards
+    // in both directions at once.
     expect(refusalOf(() => requireStorableRating(1))).toBe("<accepted>");
-    // A legacy five-star value is STORABLE even though the domain never mints
-    // one, because the guard's bound is the CHECK's and not the domain's.
-    expect(refusalOf(() => requireStorableRating(5))).toBe("<accepted>");
-    expect(refusalOf(() => requireStorableRating(-1))).toBe(RATING_OUTSIDE_SCHEMA_RANGE);
-    expect(refusalOf(() => requireStorableRating(6))).toBe(RATING_OUTSIDE_SCHEMA_RANGE);
-    expect(refusalOf(() => requireStorableRating(1.5))).toBe(RATING_OUTSIDE_SCHEMA_RANGE);
+    expect(refusalOf(() => requireStorableRating(-1))).toBe("<accepted>");
+    expect(refusalOf(() => requireStorableRating(3))).toBe(RATING_NOT_THUMBS);
+    expect(refusalOf(() => requireStorableRating(5))).toBe(RATING_NOT_THUMBS);
+    expect(refusalOf(() => requireStorableRating(0))).toBe(RATING_NOT_THUMBS);
+    expect(refusalOf(() => requireStorableRating(1.5))).toBe(RATING_NOT_THUMBS);
   });
 
-  test("`revision` is a positive int4, under a code of its own", () => {
+  test("`revision` satisfies its own CHECK and fits int4, under a code of its own", () => {
+    // `MessageRating_revision_check CHECK ("revision" > 0)` is installed by the
+    // same later block that corrects the rating constraint. The int4 half is the
+    // column type and has no CHECK, so the guard covers both.
     expect(refusalOf(() => requireStorableRevision(1))).toBe("<accepted>");
     expect(refusalOf(() => requireStorableRevision(0))).toBe(RATING_REVISION_INVALID);
     expect(refusalOf(() => requireStorableRevision(2 ** 40))).toBe(RATING_REVISION_INVALID);
-    expect(RATING_REVISION_INVALID).not.toBe(RATING_OUTSIDE_SCHEMA_RANGE);
+    expect(RATING_REVISION_INVALID).not.toBe(RATING_NOT_THUMBS);
   });
 
   test("`Decimal(18, 6)` refuses what it would ROUND, not only what it would overflow", () => {
@@ -314,7 +320,7 @@ describe("the write guards refuse what the schema will not hold", () => {
     // code fails here rather than in an incident.
     const codes = [
       GOVERNANCE_IDENTIFIER_NOT_UUID,
-      RATING_OUTSIDE_SCHEMA_RANGE,
+      RATING_NOT_THUMBS,
       RATING_REVISION_INVALID,
       SAFETY_METADATA_RESERVED,
       EVAL_SCORE_NOT_FINITE,

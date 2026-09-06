@@ -13,21 +13,20 @@
 // nothing. That is the same reasoning `cost-budgets.ts` gives for keying its
 // update on `(id, environmentId)` rather than on `id`.
 //
-// *** THE PORT'S CONTRACT AND THE DATABASE DISAGREE HERE, AND IT IS REPORTED ***
-// `domain/rating.ts` declares `RatingValue = 1 | -1` — "the only two values the
-// column may hold" — and `admitRatingValue` refuses everything else. The
-// migrations declare `MessageRating_rating_check CHECK ("rating" BETWEEN 1 AND
-// 5)`. `1` satisfies both. `-1` satisfies the domain and is REFUSED BY THE
-// DATABASE, so a thumbs-DOWN cannot be stored by any adapter over this schema.
+// *** THE MIGRATION CHANGES ITS OWN MIND ABOUT THIS COLUMN, AND THAT IS THE
+// FINDING. *** `00000000000000_initial/migration.sql` installs
+// `MessageRating_rating_check CHECK ("rating" BETWEEN 1 AND 5)` at line 2799,
+// and at line 3802 — in the SAME FILE, 1,000 lines later — DROPS it and installs
+// `CHECK ("rating" IN (-1, 1))`, behind a preflight block that refuses to build
+// the database at all if any row holds 2, 3, 4 or 5. It adds `revision` and
+// `CHECK ("revision" > 0)` in the same breath.
 //
-// It is refused by name in `governance-guards.ts` rather than encoded around.
-// Mapping `-1` onto some value inside `1..5` would put a number in the column
-// that `domain/rating.ts`'s own `tally` counts as `discarded`, would make
-// `readVersionSatisfaction` — the rollup a canary decision is taken on — disagree
-// with the votes that produced it, and would be exactly the "invent a plausible
-// value" the acceptance forbids. The refusal is a named case in
-// `governance-constraints.integration.test.ts` and is reported to the
-// integrator.
+// A reader who stopped at the first constraint would have written an adapter
+// that refused every thumbs-DOWN the product emits and accepted four values no
+// database this migration builds can hold. `governance-guards.ts` restates the
+// constraint the file ENDS with, and the pair of named cases in
+// `governance-constraints.integration.test.ts` stands both halves side by side:
+// `-1` is stored, `3` is refused.
 //
 // READS THAT FOLD ARE SUBJECT-FREE BY SELECTION, not only by return type.
 // `sample` and `tallyTurn` select three columns and `endUserId` is not one of

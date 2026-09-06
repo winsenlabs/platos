@@ -279,12 +279,13 @@ export interface MessageRatingRow {
  * A stored rating, carried through as the domain's `RatingValue`.
  *
  * NOT VALIDATED, and that is the one place in this file the asymmetry is
- * deliberate. `domain/rating.ts` declares `RatingValue = 1 | -1` and its own
- * `tally` counts anything else as `discarded` rather than refusing it, because
- * the source's five-star rows are real history — and `MessageRating_rating_check`
- * in the migrations admits exactly `1..5`, so those rows are the ONLY ones an
- * install can have. Refusing them here would make a satisfaction rollup
- * unreadable for exactly the installs that have data.
+ * deliberate. The deployed `MessageRating_rating_check CHECK ("rating" IN
+ * (-1, 1))` admits exactly the domain's two values, so a row outside them is
+ * not a row an older binary wrote — it is a row no database this migration
+ * builds can hold. `domain/rating.ts`'s own `tally` nonetheless counts anything
+ * else as `discarded` rather than dropping it, and refusing the row HERE would
+ * take that defence away: an unreadable row would make the whole rollup
+ * unreadable, where a discarded one is visible beside the total it is not in.
  */
 export function readMessageRating(row: MessageRatingRow): MessageRating {
   return {

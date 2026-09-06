@@ -59,7 +59,17 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // same PostgreSQL database. `cost-monitoring` depends on `tenancy` and
 // `providers` and nothing depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below
 // is again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a sixth time). The directory gained a SIXTH owner edge,
+// to `packages/contexts/governance`, whose five canonical rows are in that same
+// PostgreSQL database. It is ONE edge carrying FIVE bindings — `SafetyLedger`,
+// `RatingsRepository`, `CriteriaRepository`, `EvalsRepository` and
+// `GoldenSetsRepository` — because a project reference is per PACKAGE, not per
+// port; it is the same one-edge-many-bindings shape `agents` introduced, at five
+// instead of two. `governance` depends on `tenancy` and `agents` and nothing
+// depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again unchanged and
+// no cycle is possible.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -166,8 +176,9 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // owner string until WIN-258 T2, which is the same shape as a one-element list
 // and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
 // the repositories of EVERY context whose canonical rows live in the one
-// PostgreSQL database it has the client for — two at T2, three since T5 bound
-// `cost-monitoring`, and the shape has not had to change to say so.
+// PostgreSQL database it has the client for — two at T2, and six since tranche 5
+// bound `tools`, `agents`, `cost-monitoring` and `governance`, and the shape has
+// not had to change to say so.
 //
 // The widening is exactly "one or more", not "any". The list is still compared
 // as an EXACT, ORDERED expectation against the tsconfig references and manifest
@@ -176,7 +187,14 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
 // than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": ["tenancy", "identity-access", "tools", "agents", "cost-monitoring"],
+  "postgres-tenancy": [
+    "tenancy",
+    "identity-access",
+    "tools",
+    "agents",
+    "cost-monitoring",
+    "governance",
+  ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
   "clickhouse-observability": ["observability"],
@@ -198,7 +216,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 5 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 6 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

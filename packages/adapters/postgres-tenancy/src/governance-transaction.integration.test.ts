@@ -182,7 +182,8 @@ test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first w
   await harness.base.adapter.unitOfWork.run(async (transaction) => {
     const erased = await harness.stores.safety.anonymizeSubject({ scope, principalId: subject }, transaction);
     expect(erased.ok && erased.value).toBe(1);
-    // A rating of `-1`: refused by `governance-guards.ts` BEFORE any statement.
+    // A five-star `3`: refused by `governance-guards.ts` BEFORE any statement,
+    // because the constraint the migration ENDS with is `IN (-1, 1)`.
     const refused = await harness.stores.ratings.upsert(
       scope,
       {
@@ -236,7 +237,7 @@ test("and THROWING the same refusal rolls both halves back", async () => {
           agentId: asGovernanceIdentifier<AgentId>(ids.agentId),
           agentVersionId: null,
           endUserId: asGovernanceIdentifier<EndUserId>(ids.endUserId),
-          rating: -1,
+          rating: 3 as unknown as 1,
           comment: null,
           revision: 1,
         },
@@ -309,6 +310,26 @@ test("an append with a NULL transaction JOINS the open one rather than escaping 
 
   expect(appendedId).not.toBeNull();
   expect(await observer.safetyEvent.count({ where: { id: appendedId ?? "" } })).toBe(0);
+});
+
+test("an APPEND carrying a scope is held to the same three refusals", async () => {
+  // The case above measures the refusals through `criteria.remove`. This one
+  // measures them through `safety.append`, which is the ONE method in this
+  // context whose transaction parameter is NULLABLE — so it is the one method an
+  // implementation could plausibly have resolved through `reader()` on both
+  // branches, which would silently accept a finished or a foreign token.
+  const stale = await harness.base.adapter.unitOfWork.run(async (transaction) => transaction);
+  await expect(
+    harness.base.adapter.unitOfWork.run(() =>
+      harness.stores.safety.append(scope, conformanceSafetyEvent(ids), stale),
+    ),
+  ).rejects.toThrow();
+  const refusal = await harness.base.adapter.unitOfWork
+    .run(() => harness.stores.safety.append(scope, conformanceSafetyEvent(ids), stale))
+    .then(() => "<no refusal>", (error: unknown) => codeOf(error));
+  // The token names a transaction that has already committed, so it is UNKNOWN
+  // rather than foreign and rather than absent.
+  expect(refusal).toBe(TRANSACTION_SCOPE_UNKNOWN);
 });
 
 test("the three scope refusals are three DISTINCT codes", async () => {

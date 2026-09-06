@@ -337,6 +337,78 @@ test("a duplicate criterion name is a CODE and leaves the transaction writable",
   });
 });
 
+test("an erasure destroys ONE subject's ratings and leaves every other subject's", async () => {
+  // The count an erasure returns is right whether or not the subject predicate
+  // is there, because the rows it destroyed are the rows it counted. The only
+  // thing that sees a missing predicate is somebody ELSE'S vote, so this case
+  // seeds one and looks for it afterwards.
+  const chainA = await harness.foreignChain();
+  const other = harness.base.freshId("001e");
+  harness.applyPeerRows(
+    `INSERT INTO "EndUser" ("id", "organizationId", "displayName", "createdAt", "updatedAt")
+     VALUES ('${other}', '${chainA.scope.organizationId}', 'second rater', '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');
+     INSERT INTO "Thread" ("id", "environmentId", "agentId", "endUserId", "status", "createdAt", "updatedAt")
+     VALUES ('${harness.base.freshId("001f")}', '${chainA.scope.environmentId}', '${chainA.agentId}', '${other}',
+             'ACTIVE', '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
+  );
+  // The second subject's vote has to hang off a turn in a thread THEY own —
+  // `MessageRating_ancestry` demands exactly that — so it goes on a second
+  // thread with a turn of its own.
+  const otherThread = await observer.thread.findFirst({
+    where: { endUserId: other },
+    select: { id: true },
+  });
+  const otherTurn = harness.base.freshId("0020");
+  harness.applyPeerRows(
+    `INSERT INTO "Turn" ("id", "threadId", "agentVersionId", "versionBucket", "sequence", "status", "createdAt")
+     VALUES ('${otherTurn}', '${otherThread?.id}', '${chainA.agentVersionId}', 'CURRENT', 1, 'SUCCEEDED',
+             '2026-05-01T09:00:00Z');`,
+  );
+
+  for (const [turn, subject] of [
+    [chainA.turnId, chainA.endUserId],
+    [otherTurn, other],
+  ] as const) {
+    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.stores.ratings.upsert(
+        chainA.scope,
+        {
+          turnId: asGovernanceIdentifier<TurnId>(turn),
+          agentId: asGovernanceIdentifier<AgentId>(chainA.agentId),
+          agentVersionId: asGovernanceIdentifier<AgentVersionId>(chainA.agentVersionId),
+          endUserId: asGovernanceIdentifier<EndUserId>(subject),
+          rating: 1,
+          comment: null,
+          revision: 1,
+        },
+        transaction,
+      ),
+    );
+    expect(written.ok).toBe(true);
+  }
+
+  const erased = await harness.base.adapter.unitOfWork.run((transaction) =>
+    harness.stores.ratings.eraseSubject(
+      { scope: chainA.scope, endUserId: asGovernanceIdentifier<EndUserId>(chainA.endUserId) },
+      transaction,
+    ),
+  );
+  expect(erased.ok && erased.value).toBe(1);
+  expect(
+    await observer.messageRating.count({ where: { endUserId: chainA.endUserId } }),
+  ).toBe(0);
+  // THE ROW THAT MUST SURVIVE.
+  expect(await observer.messageRating.count({ where: { endUserId: other } })).toBe(1);
+
+  // And a NULL subject erases nothing at all, which the port requires and which
+  // an implementation that dropped the predicate would get exactly backwards.
+  const none = await harness.base.adapter.unitOfWork.run((transaction) =>
+    harness.stores.ratings.eraseSubject({ scope: chainA.scope, endUserId: null }, transaction),
+  );
+  expect(none.ok && none.value).toBe(0);
+  expect(await observer.messageRating.count({ where: { endUserId: other } })).toBe(1);
+});
+
 describe("every read and every write is narrowed to ONE environment", () => {
   // THE NEGATIVE CONTROL FOR `scopedWhere`. Each of the five tables is written
   // in a SECOND tenant and then asked for from the first, and every answer must
@@ -426,10 +498,9 @@ describe("every read and every write is narrowed to ONE environment", () => {
           agentId: asGovernanceIdentifier<AgentId>(foreign.agentId),
           agentVersionId: null,
           endUserId: asGovernanceIdentifier<EndUserId>(foreign.endUserId),
-          // A legacy five-star value: the CHECK admits it and the domain's
-          // `RatingValue` does not, so the cast says which of the two this is
-          // testing. The row must not move whatever the value is.
-          rating: 5 as unknown as 1,
+          // A perfectly STORABLE value — `CHECK (rating IN (-1, 1))` admits it
+          // — so nothing but the scope can be what refuses this write.
+          rating: -1,
           comment: "reached across",
           revision: 9,
         },

@@ -470,6 +470,28 @@ export async function runGovernanceConformance(
     ),
     (rating) => ({ rating: rating.rating, revision: rating.revision, comment: rating.comment }),
   );
+  observed["ratings.upsert.flipDown"] = outcome(
+    // A THUMBS-DOWN, which the deployed `CHECK (rating IN (-1, 1))` admits and
+    // the FIRST constraint in the same migration file would have refused. Half
+    // the domain's value space is exercised here and nowhere else in this
+    // scenario.
+    await environment.run((transaction) =>
+      stores.ratings.upsert(
+        scope,
+        {
+          turnId,
+          agentId,
+          agentVersionId: asGovernanceIdentifier<AgentVersionId>(ids.secondAgentVersionId),
+          endUserId,
+          rating: -1,
+          comment: "changed my mind",
+          revision: 3,
+        },
+        transaction,
+      ),
+    ),
+    (rating) => ({ rating: rating.rating, revision: rating.revision, comment: rating.comment }),
+  );
   observed["ratings.tallyTurn"] = outcome(
     await stores.ratings.tallyTurn(scope, turnId),
     (rows) => rows.map((row) => row.rating),
@@ -546,6 +568,21 @@ export async function runGovernanceConformance(
       limit: 10,
       offset: 0,
       agentId: null,
+      activeOnly: false,
+      search: null,
+    }),
+    (page) => ({ total: page.total, names: page.items.map((item) => item.name) }),
+  );
+  observed["criteria.page.explicitUndefined"] = outcome(
+    // THE KEY IS PRESENT AND THE VALUE IS `undefined`, which is a THIRD case:
+    // `agentId?: AgentId | null` permits it, and `"agentId" in query` is what
+    // tells it from an absent key. The double treats it as the SHARED-only
+    // filter; a store that switched to `=== undefined` would treat it as no
+    // filter at all and widen the listing to every criterion in the environment.
+    await stores.criteria.page(scope, {
+      limit: 10,
+      offset: 0,
+      agentId: undefined,
       activeOnly: false,
       search: null,
     }),

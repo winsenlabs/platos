@@ -19,10 +19,14 @@
 //   `golden-0001`. Every one of those is accepted by its double and refused by
 //   PostgreSQL, and every use-case suite in the context passes with them.
 //
-//   `MessageRating_rating_check CHECK ("rating" BETWEEN 1 AND 5)`. See
-//   `RATING_OUTSIDE_SCHEMA_RANGE` below; this is the one guard that refuses a
-//   value the DOMAIN considers valid, and it is reported rather than encoded
-//   around.
+//   `MessageRating_rating_check`, whose text this file had to read TWICE. See
+//   `RATING_NOT_THUMBS` below: the initial migration installs one constraint on
+//   that column and then, 1,000 lines later in the SAME FILE, drops it and
+//   installs a different one. An adapter written against the first would refuse
+//   every thumbs-down the product emits.
+//
+//   `MessageRating_revision_check CHECK ("revision" > 0)`, installed by the same
+//   later block, on a column added by the same later block.
 //
 //   `Int` is int4. `revision`, `latencyMs`, `scoreScaleMin` and `scoreScaleMax`
 //   are all `Int`, and JavaScript hands the driver a `number` that may be 2^53.
@@ -64,22 +68,32 @@ import { SAFETY_METADATA_MARKER } from "./governance-rows.js";
 export const GOVERNANCE_IDENTIFIER_NOT_UUID = "governance.write.identifier_not_uuid";
 
 /**
- * A rating the canonical CHECK constraint does not admit.
+ * A rating that is not a thumb.
  *
- * THIS IS THE ONE PLACE THE PORT'S CONTRACT AND THE DATABASE DISAGREE, and the
- * disagreement is reported rather than encoded around. `domain/rating.ts`
- * declares `RatingValue = 1 | -1` and calls the pair "the only two values the
- * column may hold"; the migration declares
- * `CHECK ("rating" BETWEEN 1 AND 5)`, which admits `1` and refuses `-1`. So a
- * thumbs-UP stores and a thumbs-DOWN cannot, and there is no honest way for an
- * adapter to make one fit: mapping `-1` onto some value in `1..5` would put a
- * number in the column that `domain/rating.ts`'s own `tally` counts as
- * `discarded`, and would make the stored row disagree with the vote that
- * produced it. The refusal is named, returned as a `Result`, and reported.
+ * *** READ THE MIGRATION TO ITS END, AND THIS IS WHY. *** The initial migration
+ * installs `MessageRating_rating_check CHECK ("rating" BETWEEN 1 AND 5)` at line
+ * 2799 — a five-star scale — and then at line 3802, in the SAME FILE, DROPS that
+ * constraint and installs `CHECK ("rating" IN (-1, 1))` in its place, behind a
+ * preflight block that REFUSES TO BUILD THE DATABASE AT ALL if any existing row
+ * holds 2, 3, 4 or 5. The migration's own comment says why: "MessageRating has
+ * always been exposed by the product as thumbs feedback... repository history
+ * defines no safe star-scale interpretation for those values."
+ *
+ * So the deployed column admits exactly `domain/rating.ts`'s `RatingValue`, and
+ * an adapter written against the FIRST reading of that file would have refused
+ * every thumbs-down the product emits while storing four values no database
+ * this migration builds can hold. The guard below restates the constraint that
+ * actually ships.
  */
-export const RATING_OUTSIDE_SCHEMA_RANGE = "governance.write.rating_outside_schema_range";
+export const RATING_NOT_THUMBS = "governance.write.rating_not_thumbs";
 
-/** `MessageRating.revision` is not a positive int4. */
+/**
+ * `MessageRating.revision` is not a positive int4.
+ *
+ * `MessageRating_revision_check CHECK ("revision" > 0)` is installed by the same
+ * later block that corrects the rating constraint, on a column that block adds.
+ * The int4 half is the column TYPE and has no CHECK of its own.
+ */
 export const RATING_REVISION_INVALID = "governance.write.rating_revision_invalid";
 
 /** A producer's metadata object carries the envelope's reserved marker. */
@@ -139,18 +153,18 @@ function isInt4(value: number): boolean {
 }
 
 /**
- * The rating value guard.
+ * The rating value guard, which restates the constraint the migration ENDS with.
  *
- * The bound is the CHECK's, not the domain's, because the CHECK is what the
- * write meets. A caller handing `3` — a legacy five-star value the domain does
- * not mint but the column holds — is therefore ADMITTED, which is what keeps the
- * adapter able to write a row an older binary could also have written.
+ * A caller handing `3` — the five-star value the FIRST constraint in that file
+ * admitted — is refused here, before a statement is sent, because the deployed
+ * column refuses it too and a raised CHECK would take the caller's transaction
+ * with the answer.
  */
 export function requireStorableRating(value: number): void {
-  if (!Number.isInteger(value) || value < 1 || value > 5) {
+  if (value !== 1 && value !== -1) {
     throw new GovernanceWriteRefused(
-      RATING_OUTSIDE_SCHEMA_RANGE,
-      `MessageRating.rating must satisfy CHECK (rating BETWEEN 1 AND 5); received ${String(value)}`,
+      RATING_NOT_THUMBS,
+      `MessageRating.rating must satisfy CHECK (rating IN (-1, 1)); received ${String(value)}`,
     );
   }
 }
@@ -159,7 +173,7 @@ export function requireStorableRevision(value: number): void {
   if (!isInt4(value) || value < 1) {
     throw new GovernanceWriteRefused(
       RATING_REVISION_INVALID,
-      `MessageRating.revision must be a positive int4; received ${String(value)}`,
+      `MessageRating.revision must satisfy CHECK (revision > 0) and fit int4; received ${String(value)}`,
     );
   }
 }

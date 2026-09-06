@@ -527,14 +527,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a TWENTY-THIRD binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a TWENTY-EIGHTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 22 adapter bindings; ADAPTERS flattens to 23")));
+  assert.ok(errors.some((error) => error.includes("declares 27 adapter bindings; ADAPTERS flattens to 28")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
