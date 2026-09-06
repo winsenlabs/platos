@@ -43,6 +43,7 @@
         "docs/audits/M0.5-dependency-sbom.md",
         "docs/audits/M0.6-admin-access-containment.md",
         "docs/audits/M0.8-operator-auth-boundary.md",
+        "docs/audits/M2.5-transaction-outbox-clock-retry.md",
         "docs/audits/sbom/advisory/osv-report.json",
         "docs/audits/sbom/license-index.json",
         "docs/refactor/IMPLEMENTATION-STATUS.md",
@@ -123,7 +124,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4",
+  "protectedPathSetSha256": "1945eba06b0bd47e5f531babb71c16d1ad0caad686269bfc67fe5366c991cbb8",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -133,11 +134,11 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 250,
+  "entryCount": 251,
   "counts": {
     "ACCEPTED": 225,
     "SUPERSEDED-BY": 4,
-    "POINT-IN-TIME": 20,
+    "POINT-IN-TIME": 21,
     "DRAFT": 1
   },
   "entries": [
@@ -1233,6 +1234,15 @@
       "binds": "current-repository-truth"
     },
     {
+      "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "8a6366e85fdfc75776c2ea790c2c30a36ddf0c65afc1a8cc63eee94c74aa746d",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
       "status": "POINT-IN-TIME",
       "mode": "100644",
@@ -1397,7 +1407,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "682b4929ded1249ba1aadd56a62a75d4adf3decab5502c0057dc5a7b00d6fa2e",
+      "sha256": "a5ef0b08abc006f4168d37e01d54a486bf1e56f730250aef62c2ba931df62d60",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1521,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "69270bf5fdcff15e7cc1797c13f8e8000314a373d877533e6f46c46b143f5274",
+      "sha256": "1bbbf1063f1e9895b8c2c188f71796a51f4c415f23b18e0b1104f592c72b6cae",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d49be28581c8b900a3a5036669b7ed35791862b9f33d486bfa66a4dc57f8ab2e",
+      "sha256": "bc6df5e64112252cfc7fa19ecfa20121fb34df15b61eb038afb0c4c2da63fcb1",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1563,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4056fee251592aa44f69be131fae3d2ec892ab55b169f54d8054f20043df04da",
+      "sha256": "5e571035f9f5c346fd51eed025e5bebd1f7dd88fc3620ae03b38ace3cf8f57c2",
       "binds": "current-repository-truth"
     },
     {
