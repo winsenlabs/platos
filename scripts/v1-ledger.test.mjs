@@ -875,7 +875,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1378,
+    // +3 (WIN-258 T7): three integration suites under
+    // packages/adapters/postgres-tenancy/src — pooling, optimistic-concurrency
+    // and transaction-boundaries. All three are `packages.adapters.test`, all
+    // three land in `packages` and in no other area, and the tranche adds no
+    // source file at all: every code change it makes is an edit in place.
+    packages: 1381,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1125,7 +1130,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1454);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1457);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1150,9 +1155,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
     // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
     // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
-    // second sweep +1); this one re-derives it by summing the per-area counts
-    // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1454
+    // second sweep +1, and WIN-258 tranche 7's three concurrency, pooling and
+    // transaction-boundary suites +3); this one re-derives it by summing the
+    // per-area counts independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1457
   );
 });
 
