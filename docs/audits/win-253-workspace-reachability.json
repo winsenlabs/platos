@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2a1178741a7f5abad5d3902e31764f5c742869937b2510d9f8a6f245b91cef85",
+  "evidenceSha256": "e557bcc40e8bfee0549fa34588d951e99bdb0546203dc0ec34fa693dd97a86e8",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "13dbbd56c7e7d33bb42ff7edab1c366cb7315615387de2062859cbfeb46368e8",
+    "aggregateSha256": "9a1e55ad4ea969b6ece070afe09b65f752f6af8b960611014a6f293223f9d134",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -261,7 +261,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "3281660d9c27bb0c0ecda803cf9c24a4b77d9ba17ff1f8bd04fc94e49956985e"
+        "sha256": "7f023be9eb11efeb38d7d7772fbd4be702c35154021b3533b78dbed7a4ded226"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -2449,7 +2449,7 @@
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
-        "sha256": "2d85bc34ce72af4b5280e632001f57cfc406f0c7ecdcda5d40478c09c492e6ae"
+        "sha256": "33b31c7f8cb5743b734d55e08353db668d232685a5229494debe041acc8f3aa6"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -11273,7 +11273,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/adapter.ts",
-        "sha256": "db68252ddce5b208b725a45e9ca6ec5a0dbed9b643967c9ddcd6be701b647539"
+        "sha256": "0a0a7e355c1a24511b336c1be987cba3080078ac2b3fbbf9259f59e5065a6039"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/agents-catalog.ts",
@@ -11589,7 +11589,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/eventing-repository.ts",
-        "sha256": "e5fee5b927b78abcf9aa8aa7b2a1ae30ac1ac05ed452a3ea8750ada5b4e33c6d"
+        "sha256": "d28d06ada250f41a81b09396a9ddea549d87f5659968acc65589b866b4fcc2eb"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/eventing-rows.test.ts",
@@ -11853,7 +11853,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/index.ts",
-        "sha256": "158c46980201b262bdc9df9c58850d82fc5372a7efc4c467da4675a44eda6fe8"
+        "sha256": "985a5f03a85fef72cd89900528061cfad6e8debba34efa3980bbaf6ec2878e00"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/invitation-token.test.ts",
@@ -12069,7 +12069,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/observability-repository.ts",
-        "sha256": "173607d750f0e4038d292743c90ffe890e0de64d726427a2ca23a01fee1128cc"
+        "sha256": "99c044bee1519408d44c569c063eed6770952df677c0931231b67dbdb147de99"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/observability-rows.test.ts",
@@ -19073,7 +19073,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "218820dac2d65e491e42b195a571013eedb3c22b1f5a78f5eaca6a305096c5ae"
+        "sha256": "ec8d608fa7567f3b5c13c3b12d445e5714191b348785d56873bf7c353ad4639a"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -19093,7 +19093,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "71d3613a9a60332907fcbd497814d474911cc1e41c246c74f460045c7b05ff46"
+        "sha256": "7f7e7b75369f371319d719e864cab02a57a0473426f1d3b242e313733f5ff961"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -19105,7 +19105,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "56ebc063466cbaf88d7e56c7ab041882e42ff37acd3ce14d707c1fc7f28cdf5f"
+        "sha256": "1c82fc7b644a8ea4e02bca5b0dfa2dcd79475c09919f7abf7645ac17e661eed9"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -19137,7 +19137,7 @@
       },
       {
         "path": "scripts/arch/sole-writer.test.mjs",
-        "sha256": "676024d37d937b51033a61ca73bf1835dac5ec77155c36898687293934dad2f4"
+        "sha256": "17c2a1d7abc684a81839bee8b930e6a3a8647bd99199ab88eee45d2c83538684"
       },
       {
         "path": "scripts/arch/table-ownership.mjs",
@@ -19153,11 +19153,11 @@
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "a9addff7f20babc78a9d41b719b8bea27a3b429714ce82435b34365b3a47ba7a"
+        "sha256": "4878cb8811906f4088a662bddc2e41156ccd348690fd681941556951af0b0ac8"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "38e570c2e1085afd7bfc3a8f16dec9c8d3b03a699119df878d33aab55352b520"
+        "sha256": "5ae804ee263831fc7f2ffcbd6fc769802d6d18a4efed922b0d0512cfb86a2eae"
       },
       {
         "path": "scripts/audit-advisory.mjs",
