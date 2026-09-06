@@ -166,7 +166,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
         transaction,
       ),
     );
-    // The trigger's subject, in the CONTEXT's own vocabulary: from the
+    // The rule's subject, in the CONTEXT's own vocabulary: from the
     // operator's position the credential they named does not exist here, for
     // this provider.
     expect(refused).toMatchObject({
@@ -176,7 +176,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
   });
 
   test("a credential whose NAME does not match environmentKeyName is refused too", async () => {
-    // The trigger compares FOUR columns, and this is the pair the double could
+    // The rule compares FOUR columns, and this is the pair the double could
     // never model: `ProviderKey.environmentKeyName` must equal
     // `Credential.name`. A key that named the right credential id and the wrong
     // reference name would otherwise resolve to a credential the operator never
@@ -282,7 +282,7 @@ describe("ProviderKey_owner_immutable", () => {
 
   test("the store cannot reach that rule at all, and that is the claim", async () => {
     // `updateProviderKey` keys on BOTH id and environmentId and never writes
-    // `environmentId`, so the trigger has nothing to refuse. A key handed to it
+    // `environmentId`, so the rule has nothing to refuse. A key handed to it
     // carrying another environment's id writes ZERO rows and reports "no such
     // provider key" — the same answer an id that does not exist gets, which is
     // the answer a foreign id deserves.

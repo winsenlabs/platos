@@ -427,7 +427,7 @@ export function writeRateBook(rates: RateBook): RateColumnValues {
  * `insertPrice` does NOT use this: it omits the id so the column's own
  * `@default(uuid())` mints one, because the port hands no identifier for a card.
  * It is here for the constraint suites, which need to write a card at a KNOWN id
- * in order to assert that the immutability triggers refuse to touch it again.
+ * in order to assert that the immutability rules refuse to touch it again.
  */
 export function writeModelPrice(
   modelPriceId: string,

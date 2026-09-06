@@ -14,7 +14,7 @@
 // handed. `Model`'s `@@unique([provider, name])` is a SECOND identity
 // `upsertModel` — keyed by `key` — has no code for, and the double's map is
 // keyed by `key` alone so it stores both happily. And `ModelPrice`'s three
-// immutability triggers refuse an UPDATE the port never makes, with the
+// immutability rules refuse an UPDATE the port never makes, with the
 // privileges revoked from PUBLIC on top.
 //
 // It FAILS when Docker is absent rather than skipping.

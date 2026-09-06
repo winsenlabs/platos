@@ -10,12 +10,12 @@
 //   `ProviderKey_one_default_per_environment_provider` a PARTIAL unique index,
 //     `WHERE "isDefault" = TRUE`. The double models it as a scan.
 //   `ProviderKey_credential_provider_integrity`        a BEFORE INSERT OR UPDATE
-//     trigger demanding a `Credential` in the SAME environment whose `provider`
+//     rule demanding a `Credential` in the SAME environment whose `provider`
 //     equals this row's and whose `name` equals `environmentKeyName`. The double
 //     stores any `credentialId` at all.
-//   `ProviderKey_owner_immutable`                      a BEFORE UPDATE trigger
+//   `ProviderKey_owner_immutable`                      a BEFORE UPDATE rule
 //     freezing `environmentId`.
-//   `ProviderKey_executable_reference`                 a BEFORE DELETE trigger
+//   `ProviderKey_executable_reference`                 a BEFORE DELETE rule
 //     refusing to delete a key an EXECUTABLE `AgentVersion` still names, in
 //     either of the two places a version can name one.
 //
@@ -143,7 +143,7 @@ function keyRefusal(error: unknown): KeyRefusalReason {
   }
   // `ProviderKey_credentialId_environmentId_fkey` is `ON DELETE RESTRICT`, so a
   // foreign-key violation here is a credential that is not in this environment
-  // at all — the same fact the trigger reports, one statement earlier.
+  // at all — the same fact the rule reports, one statement earlier.
   if (sqlstate === FOREIGN_KEY_VIOLATION) return "credential";
   return null;
 }
@@ -330,7 +330,7 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
     ): Promise<Result<ProviderKey>> {
       const client = transactions.writer(transaction);
       // INSIDE A SAVEPOINT, not `createMany({ skipDuplicates: true })`. Two of
-      // the five rules over this table are TRIGGERS that raise BEFORE the
+      // the five rules over this table are RULES that raise BEFORE the
       // conflict resolution `ON CONFLICT DO NOTHING` performs, so the form that
       // works for `cost-monitoring`'s append-only rows cannot work here: a
       // credential mismatch would abort the transaction whatever the conflict
@@ -343,7 +343,7 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       );
       if (!written.ok) {
         if (written.refusal === "unique") return err(await uniqueRefusal(client, key, null));
-        // The trigger's own subject, in the context's own vocabulary: from the
+        // The rule's own subject, in the context's own vocabulary: from the
         // operator's position the credential they named does not exist HERE, for
         // THIS provider, which is exactly what `credentialUnavailable` says.
         if (written.refusal === "credential") {
@@ -363,7 +363,7 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       // KEYED ON BOTH id AND environmentId, and `environmentId` is NOT in the
       // data. `ProviderKey_owner_immutable` would refuse a move anyway; writing
       // the key by id alone would still have let a caller holding a key from
-      // another tenant edit its LABEL, which no trigger refuses. Writing zero
+      // another tenant edit its LABEL, which no rule refuses. Writing zero
       // rows and answering "no such provider key" is the same answer a caller
       // gets for an id that does not exist, which is the answer a foreign id
       // deserves.
@@ -399,15 +399,15 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
           client.providerKey.deleteMany({
             where: { id: providerKeyId, ...scopedWhere(scope) },
           }),
-        // A 23503 ON THIS DELETE CAN ONLY BE THE TRIGGER, and that is a property
+        // A 23503 ON THIS DELETE CAN ONLY BE THE RULE, and that is a property
         // of the schema rather than an assumption. NO table in the canonical
         // schema carries a foreign key INTO `ProviderKey` — the references live
         // inside `AgentVersion`'s JSON, which is exactly why the rule is a
-        // trigger and not a constraint — so nothing else can raise a
+        // rule and not a constraint — so nothing else can raise a
         // foreign-key violation when this row is deleted.
         //
         // IT IS MATCHED ON THE SQLSTATE AND NOT ON THE MESSAGE, and the first
-        // run against a real database is why. The trigger raises
+        // run against a real database is why. The rule raises
         // `USING ERRCODE = '23503'` with the text "ProviderKey is referenced by
         // an executable AgentVersion"; the client RECOGNISES that SQLSTATE, maps
         // it to `P2003`, and reports "Foreign key constraint violated on the
@@ -416,7 +416,7 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
         // SQLSTATE it does knows loses it.
         //
         // The classifier answers a REASON, not an error, because the error this
-        // refusal deserves carries a COUNT the trigger does not report — it says
+        // refusal deserves carries a COUNT the rule does not report — it says
         // THAT an executable version names the key and never HOW MANY. Minting
         // the error here would have meant inventing that number, which is the
         // fabrication tranche 3 refused on `OperatorSessionRevoker.revoke`.
@@ -425,7 +425,7 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       );
       if (!removed.ok) {
         // The savepoint has already rolled the DELETE back, so the versions the
-        // trigger saw are still there and the count IS obtainable — one extra
+        // rule saw are still there and the count IS obtainable — one extra
         // statement, only on the path that was already exceptional.
         const pinned = await pinnedBy(scope, providerKeyId);
         return err(providerKeyPinnedByAgents(providerKeyId, pinned));

@@ -221,7 +221,7 @@ describe("the ModelPrice crossing", () => {
   test("the sixteen rate columns are all present, by name", () => {
     // The shape is what proves at COMPILE time that a rate has not been left
     // out; this is the runtime half of the same claim, and it matters because
-    // the row cannot be corrected afterwards — three triggers refuse UPDATE,
+    // the row cannot be corrected afterwards — three rules refuse UPDATE,
     // DELETE and TRUNCATE on `ModelPrice`.
     expect(Object.keys(writeRateBook(RATES)).sort()).toEqual([
       "cacheReadObservedAt",

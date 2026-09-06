@@ -3,7 +3,7 @@
 //
 // ONE UNIQUE INDEX AND NOTHING ELSE. `@@unique([environmentId, providerId])` is
 // the whole of this table's law: adopting a provider twice is the same adoption,
-// as `domain/provider-link.ts` puts it. There is no trigger, no CHECK and no
+// as `domain/provider-link.ts` puts it. There is no rule, no CHECK and no
 // ancestry rule over it, which is worth stating rather than leaving as an
 // absence — every other row in this tranche carries at least one.
 //
@@ -131,7 +131,7 @@ export function createProviderLinkStore(transactions: TenancyTransactions): Prov
       const client = transactions.writer(transaction);
       // No savepoint, and that is a claim rather than an oversight: nothing
       // references `EnvironmentProvider`, so this DELETE has no foreign key to
-      // restrict it and no trigger to refuse it. `deleteMany` rather than
+      // restrict it and no rule to refuse it. `deleteMany` rather than
       // `delete` so an absent adoption is `ok(false)` instead of a raised P2025.
       const removed = await client.environmentProvider.deleteMany({
         where: { providerId: provider, ...scopedWhere(scope) },

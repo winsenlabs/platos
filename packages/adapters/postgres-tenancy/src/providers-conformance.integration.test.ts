@@ -10,7 +10,7 @@
 //
 // IT EARNED THAT ON THIS TRANCHE BEFORE IT PROVED ANYTHING ELSE. The first run
 // of this scenario against a real database was refused outright by
-// `ProviderKey_credential_provider_integrity` — a BEFORE INSERT trigger, in the
+// `ProviderKey_credential_provider_integrity` — a BEFORE INSERT rule, in the
 // migrations and in neither `schema.prisma` nor the double, demanding a
 // `Credential` in the same environment whose `provider` and `name` match the
 // key's. Every use-case suite in the tree inserts provider keys against a double

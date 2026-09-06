@@ -26,7 +26,7 @@
 //   THE APPEND-ONLY CLASH. A second card at an instant already taken must be
 //   REFUSED — never converted into an update and never shifted to the next free
 //   instant. The double compares instants in a list; the database has a unique
-//   index and three triggers that make the update the port forbids impossible
+//   index and three rules that make the update the port forbids impossible
 //   anyway.
 
 import type {

@@ -417,7 +417,7 @@ jobs:
         # crossing to a `Decimal(24, 12)` column — and
         # `application/testing/index.js` for `InMemoryProvidersRepository`, which
         # the conformance differential is measured against. Without this step the
-        # six suites do not fail an assertion — they fail to LOAD, which is the
+        # seven suites do not fail an assertion — they fail to LOAD, which is the
         # vacuity the mutation driver beside this package refuses to score.
         run: pnpm --filter "@platos/context-providers..." build
 

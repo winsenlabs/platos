@@ -125,7 +125,7 @@
 // at it, and `ProviderKey_credential_provider_integrity` RE-READS that
 // credential from inside the key's own INSERT. `secrets` resolves to this same
 // directory, so both halves are the same client and the same transaction; two
-// pools would have had the trigger looking for a row still uncommitted on the
+// pools would have had the rule looking for a row still uncommitted on the
 // other connection.
 //
 // The context's two OTHER ports are deliberately not here: `ModelRouter` is the
@@ -375,7 +375,7 @@ export function buildPostgresTenancyAdapter(
     //
     // Built from the SAME `transactions` as `secrets` above, which is what makes
     // "create the credential, then write the key that points at it" one
-    // transaction — and therefore what lets the trigger that re-reads the
+    // transaction — and therefore what lets the rule that re-reads the
     // credential from inside the key's INSERT see it.
     ...createProvidersRepository(transactions),
   };

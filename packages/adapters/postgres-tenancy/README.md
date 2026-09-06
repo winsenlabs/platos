@@ -1,6 +1,6 @@
 # @platos/adapter-postgres-tenancy
 
-Implements NINETEEN owner-supplied ports — the tenancy-database client; per-context repositories, owner-tagged:
+Implements TWENTY owner-supplied ports — the tenancy-database client; per-context repositories, owner-tagged:
 
 - the tenancy `TenancyRepository` port
 - the identity-access `IdentityAccessRepository` port
@@ -16,6 +16,7 @@ Implements NINETEEN owner-supplied ports — the tenancy-database client; per-co
 - the governance `GoldenSetsRepository` port
 - the secrets `SecretsRepository` port
 - the secrets `EnvironmentVariableRepository` port
+- the providers `ProvidersRepository` port
 - the tenancy `TenancyLocks` port
 - the tenancy `OperatorSessionRevoker` port
 - the tenancy `EnvironmentAccessKeyRevocationCounter` port

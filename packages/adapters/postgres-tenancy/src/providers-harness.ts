@@ -18,13 +18,13 @@
 // store would be testing that store rather than this one.
 //
 // EVERY `ProviderKey` NEEDS ONE OF THEM. `ProviderKey_credential_provider_integrity`
-// is a BEFORE INSERT OR UPDATE trigger demanding a `Credential` in the SAME
+// is a BEFORE INSERT OR UPDATE rule demanding a `Credential` in the SAME
 // environment whose `provider` equals the key's and whose `name` equals the
 // key's `environmentKeyName`. `InMemoryProvidersRepository` stores any
 // `credentialId` at all, so no use-case suite in the tree has ever met this
 // rule, and the first integration run of this tranche was refused by it.
 //
-// THE VERSION CHAIN IS WHAT MAKES THE DELETE TRIGGER REACHABLE.
+// THE VERSION CHAIN IS WHAT MAKES THE DELETE RULE REACHABLE.
 // `reject_executable_provider_key_delete` walks `Environment -> AgentBinding ->
 // Agent -> AgentVersion` and looks in TWO places a version can pin a key: the
 // `{__runtime,providerKeyId}` path inside `memoryConfig`, and every entry of the
@@ -55,15 +55,15 @@ const packageRoot = process.cwd();
 const databasePackage = resolve(packageRoot, "../../../internal-packages/tenancy-database");
 const prismaBinary = resolve(packageRoot, "../../../node_modules/.bin/prisma");
 
-/** What a seeded credential must look like to the ProviderKey trigger. */
+/** What a seeded credential must look like to the ProviderKey rule. */
 export interface CredentialShape {
-  /** Must equal the key's `provider`, or the trigger refuses the key. */
+  /** Must equal the key's `provider`, or the rule refuses the key. */
   readonly provider: string;
-  /** Must equal the key's `environmentKeyName`, or the trigger refuses the key. */
+  /** Must equal the key's `environmentKeyName`, or the rule refuses the key. */
   readonly name: string;
 }
 
-/** Where in an `AgentVersion` the pin is written. Both are what the trigger reads. */
+/** Where in an `AgentVersion` the pin is written. Both are what the rule reads. */
 export type PinSite = "memoryConfig" | "modelRoutes";
 
 export interface ProvidersHarness {
@@ -71,7 +71,7 @@ export interface ProvidersHarness {
   readonly repository: ProvidersRepository;
   /** A brand-new organization, project and environment, through the tenancy port. */
   freshScope(): Promise<EnvironmentScope>;
-  /** A `Credential` the ProviderKey trigger will accept. Returns its id. */
+  /** A `Credential` the ProviderKey rule will accept. Returns its id. */
   seedCredential(scope: EnvironmentScope, shape: CredentialShape): Promise<string>;
   /**
    * An `Agent`, an `AgentVersion` pinning `providerKeyId`, and the
@@ -144,7 +144,7 @@ export async function startProvidersHarness(): Promise<ProvidersHarness> {
       // because `enforce_win124_credential_kind` — the rule that demands an
       // active secret version — is installed on `EnvironmentVariable` and
       // `AlertChannelConfiguration` and NOT on `ProviderKey`. So a credential
-      // with no envelope satisfies this trigger, which is the honest fixture:
+      // with no envelope satisfies this rule, which is the honest fixture:
       // the material is `secrets`' business and this row is not.
       applyPeerRowsTo(
         base.databaseUrl,
@@ -190,7 +190,7 @@ export async function startProvidersHarness(): Promise<ProvidersHarness> {
            VALUES ('${versionId}', '${agentId}', 1, '${model}', ${memoryConfig}, ${modelRoutes},
                    'fixture', '2026-05-01T09:00:00Z');`,
           // The BINDING is what makes the version executable. Without it the
-          // trigger's join finds nothing and the delete it should refuse
+          // rule's join finds nothing and the delete it should refuse
           // succeeds, which is exactly the false green a fixture that seeded
           // only the version would have produced.
           `INSERT INTO "AgentBinding"

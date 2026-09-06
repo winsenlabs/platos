@@ -25,7 +25,7 @@
 // before this one, so both halves are the same client and the same transaction;
 // a thirteenth adapter package holding only `providers`' repository would have
 // had its own pool, and `ProviderKey_credential_provider_integrity` — a BEFORE
-// INSERT trigger that RE-READS the credential from inside the key's write —
+// INSERT rule that RE-READS the credential from inside the key's write —
 // would have looked for a row that was still uncommitted on another connection
 // and refused a key that was correct. That is the same shape as the
 // `EnvironmentVariable` seam one tranche back, one table over.

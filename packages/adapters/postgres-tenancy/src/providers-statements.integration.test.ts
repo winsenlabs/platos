@@ -148,7 +148,7 @@ function key(
 /**
  * `keys` provider keys and `models` models, each model carrying TWO cards.
  *
- * Every key needs its own `Credential`: the trigger demands one in the same
+ * Every key needs its own `Credential`: the rule demands one in the same
  * environment carrying the key's provider and its `environmentKeyName`, and
  * `Credential` is unique on `(environmentId, kind, name)`, so the names vary.
  */
@@ -426,13 +426,13 @@ describe("the writes, and what the savepoint costs them", () => {
     expect(measured.counted).toBe(5);
   });
 
-  test("an insert refused by the credential TRIGGER costs three, and no reads", async () => {
-    // The contrast that makes the count above mean something. A trigger names
+  test("an insert refused by the credential RULE costs three, and no reads", async () => {
+    // The contrast that makes the count above mean something. A rule names
     // itself in the message it raises, so there is nothing to establish and the
     // store answers from the error alone: SAVEPOINT, the refused INSERT,
     // ROLLBACK TO SAVEPOINT. A store that read on every refusal would cost five
     // here too and nothing would have noticed.
-    const name = "ANTHROPIC_MEASURED_TRIGGER";
+    const name = "ANTHROPIC_MEASURED_RULE";
     const credentialId = await harness.seedCredential(small.scope, {
       provider: "anthropic",
       name,
@@ -441,8 +441,8 @@ describe("the writes, and what the savepoint costs them", () => {
       harness.base.adapter.unitOfWork.run((transaction) =>
         harness.repository.insertProviderKey(
           // The credential exists and carries `name`; the KEY names a different
-          // reference, which is exactly what the trigger compares.
-          key(small.scope, uuid(), credentialId, "trigger refusal", "ANTHROPIC_NOT_THAT_ONE", false),
+          // reference, which is exactly what the rule compares.
+          key(small.scope, uuid(), credentialId, "rule refusal", "ANTHROPIC_NOT_THAT_ONE", false),
           transaction,
         ),
       ),

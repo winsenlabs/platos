@@ -1752,12 +1752,12 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *     .integration.test.ts                     11  the same pairing for `Model`
  *                                                  and `ModelPrice`: the rate
  *                                                  CHECK in both directions, the
- *                                                  append-only triggers, the
+ *                                                  append-only rules, the
  *                                                  SECOND identity the port does
  *                                                  not model, and the INTEGER
  *                                                  columns
  *   providers-rules.integration.test.ts         7  the rules NO port method
- *                                                  restates: the delete trigger
+ *                                                  restates: the delete rule
  *                                                  in BOTH places a version can
  *                                                  pin a key, its own provider
  *                                                  negative control, the scoped

@@ -449,7 +449,7 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // `register-provider-key.ts` are the same client and the same transaction.
   //
   // AND THAT IS WHAT MAKES `ProviderKey` WRITABLE AT ALL. `ProviderKey_credential
-  // _provider_integrity` is a BEFORE INSERT OR UPDATE trigger that RE-READS the
+  // _provider_integrity` is a BEFORE INSERT OR UPDATE rule that RE-READS the
   // `Credential` from inside the key's own write, demanding one in the same
   // environment whose `provider` and `name` match the key's. A thirteenth adapter
   // package holding only `providers`' repository would have had its own pool: the

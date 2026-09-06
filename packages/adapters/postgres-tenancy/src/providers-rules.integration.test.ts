@@ -5,7 +5,7 @@
 // comparison or teaching the double a database it does not have. Four of them
 // are the reason this file exists rather than more observations in a transcript:
 //
-//   THE DELETE TRIGGER. `reject_executable_provider_key_delete` walks
+//   THE DELETE RULE. `reject_executable_provider_key_delete` walks
 //   `Environment -> AgentBinding -> Agent -> AgentVersion` and refuses to delete
 //   a key an executable version still names, in EITHER of the two places a
 //   version can name one. The double deletes whatever it is asked to, so this
@@ -111,7 +111,7 @@ describe("reject_executable_provider_key_delete", () => {
       harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
     );
     // THE COUNT TRAVELS WITH THE ERROR, and it is READ rather than invented. The
-    // trigger reports THAT an executable version names the key and never HOW
+    // rule reports THAT an executable version names the key and never HOW
     // MANY; the savepoint has already rolled the DELETE back, so the versions it
     // saw are still there and the number is obtainable. Tranche 3 refused to
     // invent exactly this kind of number on `OperatorSessionRevoker.revoke`,
@@ -126,9 +126,9 @@ describe("reject_executable_provider_key_delete", () => {
   });
 
   test("a key pinned through memoryConfig is refused too, which is the OTHER half", async () => {
-    // The trigger reads TWO places: `{__runtime,providerKeyId}` inside
+    // The rule reads TWO places: `{__runtime,providerKeyId}` inside
     // `memoryConfig`, and every entry of the `modelRoutes` array. A store that
-    // counted only the routes would agree with the trigger on the case above and
+    // counted only the routes would agree with the rule on the case above and
     // disagree with it here — reporting zero and then being refused.
     const key = await seedKey(scope, uuid("0002"), "anthropic", "memoried", "ANTHROPIC_MEMORIED");
     await harness.seedPinningVersion(scope, key.providerKeyId, "anthropic", "memoryConfig");
@@ -146,12 +146,12 @@ describe("reject_executable_provider_key_delete", () => {
   });
 
   test("a version naming ANOTHER provider's model pins nothing, and the delete succeeds", async () => {
-    // THE NEGATIVE CONTROL, and it is the trigger's own clause rather than an
+    // THE NEGATIVE CONTROL, and it is the rule's own clause rather than an
     // invention: both halves compare `split_part(model, ':', 1)` against the
     // key's `provider`. A route that carries this key's id beside an OpenAI
     // model is a configuration error, not a use of this key, and counting it
     // would refuse a delete the database allows — which is the direction a suite
-    // written only as "the store agrees with the trigger when it refuses" cannot
+    // written only as "the store agrees with the rule when it refuses" cannot
     // see.
     const key = await seedKey(scope, uuid("0003"), "anthropic", "mismatched", "ANTHROPIC_MISMATCH");
     await harness.seedPinningVersion(scope, key.providerKeyId, "openai", "modelRoutes");

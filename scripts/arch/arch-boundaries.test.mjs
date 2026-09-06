@@ -842,7 +842,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `secrets` and then writes the `ProviderKey` that points at
     //               it, and `ProviderKey_credential_provider_integrity` RE-READS
     //               that credential from inside the key's own INSERT. Two homes
-    //               would have been two pools, and the trigger would have
+    //               would have been two pools, and the rule would have
     //               refused a key that was correct.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 = 1344. No

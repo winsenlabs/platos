@@ -9,7 +9,7 @@
 // nothing." So there is no `scopedWhere` in this file, and its absence is the
 // one thing about it a reviewer should check hardest.
 //
-// `ModelPrice` IS APPEND-ONLY AND THE DATABASE MEANS IT. Three triggers reject
+// `ModelPrice` IS APPEND-ONLY AND THE DATABASE MEANS IT. Three rules reject
 // UPDATE, DELETE and TRUNCATE outright and all three privileges are revoked from
 // PUBLIC, so a card written wrong cannot be corrected — only superseded by a
 // later-dated one. The port says the same thing from the other side:

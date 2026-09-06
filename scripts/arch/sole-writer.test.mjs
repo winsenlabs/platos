@@ -1209,7 +1209,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 //                               rule it restates — 3 ProviderKey (2 INSERT and
 //                               the owner-immutability UPDATE), 4 ModelPrice
 //                               (2 INSERT against the rate CHECK, and the
-//                               UPDATE and DELETE the append-only triggers
+//                               UPDATE and DELETE the append-only rules
 //                               refuse) and 1 Model INSERT against the INTEGER
 //                               column                                          8
 //                                                                       total = 16
@@ -1218,7 +1218,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 // reading rather than a silence. It needs FOUR rows this tranche's owner does
 // not own — a `Credential` for every provider key, because
 // `ProviderKey_credential_provider_integrity` demands one, and an `Agent`, an
-// `AgentVersion` and an `AgentBinding` to make the delete trigger reachable.
+// `AgentVersion` and an `AgentBinding` to make the delete rule reachable.
 // `secrets` and `agents` are both delegated to this directory now, so the gate
 // would have PERMITTED those writes; they are seeded out of band through the
 // ORM's own CLI (`prisma db execute`) anyway, because this package holding a
