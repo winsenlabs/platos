@@ -1,7 +1,8 @@
 // The database rules NO port method restates, and the two places the port's
 // contract and the schema cannot both be honoured.
 //
-// A CASCADE, A TRIGGER FIRING ON UPDATE, AN INDEX THE DOUBLE DOES NOT HOLD, and
+// A CASCADE, AN ANCESTRY RULE THAT RUNS ON UPDATE, AN INDEX THE DOUBLE DOES
+// NOT HOLD, and
 // two rows written the way an OLDER binary would have written them. None of
 // these is reachable by reading `schema.prisma` and none is enforced by any code
 // in this package; they are properties of the deployed database, so they are
@@ -255,11 +256,11 @@ test("a golden-set RENAME onto a taken name: the double allows it, the index doe
 });
 
 test("`MessageRating_ancestry` fires on UPDATE, so a flip onto a foreign version is refused", async () => {
-  // The trigger is `BEFORE INSERT OR UPDATE`. A flip that re-points
+  // The rule runs `BEFORE INSERT OR UPDATE`. A flip that re-points
   // `agentVersionId` at a version belonging to ANOTHER agent passes every guard
   // in this package — it is a uuid, the rating is 1, the revision is positive —
   // and is refused by the database. That is the shape of rule an adapter cannot
-  // pre-check without duplicating the trigger's own joins.
+  // pre-check without duplicating the rule's own joins.
   const foreign = await harness.foreignChain();
   const turnId = asGovernanceIdentifier<TurnId>(ids.secondTurnId);
   const endUserId = asGovernanceIdentifier<EndUserId>(ids.endUserId);

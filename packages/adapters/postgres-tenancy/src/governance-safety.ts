@@ -15,7 +15,7 @@
 // infrastructure fault.
 //
 // `SafetyEvent_ancestry` IS THE ONE REFUSAL THAT CANNOT BE PRE-CHECKED. It is a
-// database TRIGGER, fired BEFORE INSERT OR UPDATE, that resolves `agentId`,
+// database RULE, run BEFORE INSERT OR UPDATE, that resolves `agentId`,
 // `endUserId`, `threadId` and `turnId` against the environment's own project —
 // four joins this adapter would have to duplicate, racily, to anticipate. A
 // foreign agent is refused by the database, mapped to a `Result` here, and the

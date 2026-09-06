@@ -516,8 +516,8 @@ test("the live selectors scan an exact nonzero source census", () => {
   // it is 418 here and its sibling is below the band entirely. The other,
   // `governance-rules.integration.test.ts`, is long because each database rule
   // NO port method restates is stood beside the rule it measures -- a cascade, a
-  // trigger firing on UPDATE, an index the double does not hold, two rows an
-  // older binary wrote, and a cross-environment control that writes all five
+  // ancestry rule that runs on UPDATE, an index the double does not hold, two
+  // rows an older binary wrote, and a cross-environment control writing all five
   // tables in a second tenant. A table-driven loop would not be counted as cases
   // at all.
   assert.deepEqual(result.findings, [
