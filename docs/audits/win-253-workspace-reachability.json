@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ed4db205b5c5c0a090b99d1828ffd2ed2770269ec6ba12e85512d7963dcf2c95",
+  "evidenceSha256": "8cc5cec1ad653e473df05c2ef58fc3631c9dcec412d421190888204089c07c17",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5b2144d6649429dc6a758a3d9c371adc7d657b477488fb67f501135c1676d620",
+    "aggregateSha256": "d4a3082dc8a7799ba98d76afcadfd65193c2ea1f8de8e68b80d0697d19856cb7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2481,7 +2481,7 @@
       },
       {
         "path": "apps/core-api/src/config/platform.test.ts",
-        "sha256": "532196b2395a326a88281b6c411112fe69068826df6d8f7e593d10014004d152"
+        "sha256": "41bb3838bd935a732858d46ec08b6360ead2fc1879c2208ff623ce5a77cfdad9"
       },
       {
         "path": "apps/core-api/src/config/platform.ts",
@@ -2497,7 +2497,7 @@
       },
       {
         "path": "apps/core-api/src/config/sections.test.ts",
-        "sha256": "5efe8dfc78cbb7921b938d63fbd819e6881d73a64fe5e8dcb0be9f87a3a9c2d9"
+        "sha256": "e3b833790090b40dd9ce0b40cb97be2e2477da6aa2e288adc4f9fc2b1f0d0c62"
       },
       {
         "path": "apps/core-api/src/config/security.ts",
@@ -4433,7 +4433,7 @@
       },
       {
         "path": "docs/env-vars.md",
-        "sha256": "21a13a5b24e3f66d11d86a858d4f577dd8bbedef29c21d2fd7fb267ffc0aa80d"
+        "sha256": "8f820057f7b34fbeeec7326b92ebd6eaf807286fdb274ab5e74d3a181c19bd6c"
       },
       {
         "path": "docs/errors-retrying.mdx",
@@ -24507,6 +24507,11 @@
               "line": 200
             },
             {
+              "from": "docs/env-vars.md",
+              "kind": "reference",
+              "line": 194
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 6
@@ -24590,6 +24595,10 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/env-vars.md",
+              "docs/env-vars.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ],
@@ -24647,6 +24656,7 @@
             "apps/core-api/README.md",
             "apps/mcp-stdio/README.md",
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/env-vars.md",
             "docs/v1-ledger-rules.json",
             "packages/adapters/channel-slack/README.md",
             "packages/adapters/clickhouse-observability/README.md",
@@ -24866,7 +24876,7 @@
             {
               "from": "apps/core-api/src/config/sections.test.ts",
               "kind": "workspace-owned-file",
-              "line": 1
+              "line": 227
             },
             {
               "from": "apps/core-api/src/process.test.ts",
@@ -25113,7 +25123,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "5e0d375a1d496864ed5c7b95f69efbbd3da9714e4b5bf1fe4821e3b975c3f48b",
+      "evidenceSha256": "5860ec4090d898c3ef4e88dc3d0706d7f9b36aec48cab8e3e9ea44ca9203256e",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -25240,6 +25250,11 @@
               "line": 562
             },
             {
+              "from": "docs/env-vars.md",
+              "kind": "reference",
+              "line": 218
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 6
@@ -25259,6 +25274,10 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/env-vars.md",
+              "docs/env-vars.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ]
@@ -25267,6 +25286,7 @@
             "ai/references/repo.md",
             "apps/mcp-stdio/README.md",
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/env-vars.md",
             "docs/v1-ledger-rules.json"
           ]
         },
@@ -25419,6 +25439,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "apps/core-api/src/config/sections.test.ts",
+              "kind": "reference",
+              "line": 248
+            },
+            {
               "from": "apps/mcp-stdio/package.json",
               "kind": "test-script",
               "script": "test"
@@ -25476,6 +25501,10 @@
           ],
           "reversePaths": [
             [
+              "apps/core-api/src/config/sections.test.ts",
+              "apps/core-api/src/config/sections.test.ts"
+            ],
+            [
               "apps/mcp-stdio/package.json",
               "apps/mcp-stdio/package.json"
             ],
@@ -25521,6 +25550,7 @@
             ]
           ],
           "roots": [
+            "apps/core-api/src/config/sections.test.ts",
             "apps/mcp-stdio/package.json",
             "apps/mcp-stdio/src/main.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
@@ -25568,7 +25598,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "b72ab94a1f51c3f48ff865fd49bdca761e4761e8897866516cd8a97cf36c94e3",
+      "evidenceSha256": "88caa9a4f2c4e93f356d4ab8169d3987ae51a5ad200c8f35e51a3a1178c3eea0",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -33245,6 +33275,11 @@
               "line": 51
             },
             {
+              "from": "apps/core-api/src/config/sections.test.ts",
+              "kind": "reference",
+              "line": 214
+            },
+            {
               "from": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
               "kind": "reference",
               "line": 42
@@ -33440,6 +33475,10 @@
               "apps/agent/src/tool-gateway/bm25.test.ts"
             ],
             [
+              "apps/core-api/src/config/sections.test.ts",
+              "apps/core-api/src/config/sections.test.ts"
+            ],
+            [
               "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
               "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
             ],
@@ -33580,6 +33619,7 @@
             "apps/agent/src/mcp-platform/host-router.middleware.test.ts",
             "apps/agent/src/monitoring/model-pricing-bootstrap-postgres.integration.test.ts",
             "apps/agent/src/tool-gateway/bm25.test.ts",
+            "apps/core-api/src/config/sections.test.ts",
             "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
             "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts",
             "apps/webapp/test/authenticatedMutationEvidence.test.ts",
@@ -33622,7 +33662,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0a90b69bc4d24bb21d72d7207fea8e0a831af5c82eb4cb5dae1f0a5964b7f3f1",
+      "evidenceSha256": "f2369141f53baf997659b77e8e69f549a39e3fa5c236dfe7422f946ba839e459",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -74055,6 +74095,11 @@
               "line": 138
             },
             {
+              "from": "docs/env-vars.md",
+              "kind": "reference",
+              "line": 217
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 604
@@ -74075,6 +74120,10 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/env-vars.md",
+              "docs/env-vars.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ],
@@ -74086,6 +74135,7 @@
           "roots": [
             "ai/references/repo.md",
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/env-vars.md",
             "docs/v1-ledger-rules.json",
             "packages/kernel/README.md"
           ]
@@ -83654,7 +83704,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "a86298bdb30e1d4fa273ff076752459996b5c8d4e84631fdb909fa96fa69f37e",
+      "evidenceSha256": "57b1ddac43ee74fa7754333f704d25174928d885b96e045b8a805616e4f5d8f9",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
