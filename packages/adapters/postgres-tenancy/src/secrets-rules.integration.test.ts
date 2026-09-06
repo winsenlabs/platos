@@ -261,6 +261,61 @@ describe("four rules freeze a column the row may not change", () => {
     ).rejects.toThrow();
   });
 
+  // WIN-259 (M2.4), SECOND PASS. The SECRET REFERENCE's denied-exchange path
+  // states a limit in prose -- "a reference that does not open under the
+  // presented grant's environment leaves no trace, because the trail may only
+  // name credentials that exist here" -- and this is the case that makes the
+  // second half of that sentence a FACT ABOUT THE DATABASE rather than a claim
+  // about the code.
+  //
+  // THE IN-MEMORY DOUBLE CANNOT SEE THIS AT ALL. `inMemorySecretsStore` keys
+  // its audit rows by nothing and would accept the pair below happily, so the
+  // whole exchange suite in `packages/contexts/secrets` passes either way. Only
+  // `CredentialAudit_credentialId_environmentId_fkey` -- a COMPOSITE key that
+  // is in the migration and in neither `schema.prisma`'s generated types nor
+  // any port signature -- refuses it.
+  //
+  // The consequence worth naming: if the guard were dropped and a replayed
+  // foreign reference were allowed to resolve, the write would not silently
+  // pollute this tenant's trail. It would RAISE, mid-transaction, and take the
+  // exchange down with it. The guard turns a poisoned transaction into a
+  // deliberate silence; the database is what makes the alternative loud.
+  test("an audit row naming a credential from ANOTHER environment is refused by the database", async () => {
+    const { credentialId } = await live(environmentId, "REFERENCED_ELSEWHERE");
+    // Both halves of the pair exist. Only the PAIR does not.
+    expect(
+      await harness.base.client.credential.count({ where: { id: credentialId, environmentId } }),
+    ).toBe(1);
+    expect(await harness.base.client.environment.count({ where: { id: otherEnvironmentId } })).toBe(
+      1,
+    );
+    let raised: unknown = null;
+    try {
+      await inTransaction((transaction) =>
+        harness.repository.appendAudit(
+          auditDraft({
+            id: fresh(),
+            environmentId: otherEnvironmentId,
+            credentialId,
+            action: "READ",
+            outcome: "DENIED",
+            secretRevision: 1,
+          }),
+          transaction,
+        ),
+      );
+    } catch (thrown) {
+      raised = thrown;
+    }
+    expect(raised).not.toBeNull();
+    // And nothing landed in the other environment's trail.
+    expect(
+      await harness.base.client.credentialAudit.count({
+        where: { environmentId: otherEnvironmentId, credentialId },
+      }),
+    ).toBe(0);
+  });
+
   test("EnvironmentVariable_owner_immutable refuses a re-key", async () => {
     const variableId = fresh();
     await inTransaction((transaction) =>

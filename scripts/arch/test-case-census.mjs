@@ -2332,7 +2332,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 133, cases: 1484 },
+  "packages/adapters/postgres-tenancy": { files: 133, cases: 1485 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2746,7 +2746,30 @@ export const EXPECTED = Object.freeze({
  * "Test Files 20 passed (20) / Tests 239 passed (239)" -- and the two new files
  * on their own print 27 and 26.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7493;
+/*
+ * WIN-259 (M2.4) THE REFERENCE AGAINST REAL POSTGRESQL, +1 case and NO file, in
+ * `packages/adapters/postgres-tenancy`: 1484 -> 1485 cases, 133 files
+ * unchanged, and 7493 -> 7494.
+ *
+ * THE CASE IS `an audit row naming a credential from ANOTHER environment is
+ * refused by the database`, appended to `secrets-rules.integration.test.ts`.
+ * The denied-exchange path states a limit in prose -- a reference that does not
+ * open under the presented grant's environment leaves no trace, because the
+ * trail may only name credentials that exist here -- and this case turns the
+ * second half of that sentence into a fact about the database.
+ *
+ * `inMemorySecretsStore` keys its audit rows by nothing and accepts the pair
+ * happily, so all 26 exchange cases in `packages/contexts/secrets` pass either
+ * way. Only `CredentialAudit_credentialId_environmentId_fkey` -- a COMPOSITE
+ * key that lives in the migration and in neither the generated types nor any
+ * port signature -- refuses it. That is the shape this project has already been
+ * bitten by, and it is why the case is here rather than beside the use case.
+ *
+ * It is NOT executed by `pnpm test:v1-packages`: the file carries
+ * `.integration.` in its name. It runs on the Mac mini under
+ * `pnpm test:postgres-tenancy:integration`.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7494;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
