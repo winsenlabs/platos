@@ -102,7 +102,7 @@ describe("the declared binding table", () => {
     // that collapsed them back into one count fails.
     //
     // 12 directories + 32 extra ports on the one shared directory = 44 bindings.
-    // The directory count does NOT move when a third through THIRTEENTH owner is
+    // The directory count does NOT move when a third through SEVENTEENTH owner is
     // delegated to it, nor when WIN-258 M2.3 gives tenancy's five
     // NON-REPOSITORY ports slots on the directory that already satisfied them.
     // That is the whole property this pair of numbers exists to state.
@@ -116,6 +116,11 @@ describe("the declared binding table", () => {
     // The eleventh is `skills`, whose ONE port covers its three tables: a
     // catalogue entry, a project's adoption of one and an environment's binding
     // of that adoption are one aggregate with one uniqueness key.
+    // The FIFTEENTH is `files`, whose ONE port covers its two tables — and it
+    // is the one owner in this table that appears TWICE, because
+    // `objectstore-minio:ObjectStore` is also its. A row and a blob are two
+    // technologies behind two ports, and `domain/destruction.ts` fixes
+    // blob-before-row precisely because no transaction spans them.
     expect(ADAPTER_BINDINGS).toHaveLength(44);
     expect(DECLARED_BINDING_COUNT).toBe(44);
     // The twelfth is `memory`, whose TWO ports — `MemoryRepository` and
@@ -169,6 +174,7 @@ describe("the declared binding table", () => {
       "PrivacyRepository",
       "JobsRepository",
       "ApprovalsRepository",
+      "FilesRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
@@ -201,6 +207,10 @@ describe("the declared binding table", () => {
       "privacy",
       "jobs",
       "jobs",
+      // WIN-258 T5. `files` is the one owner that appears TWICE in the whole
+      // table: here for `MessageAttachment` and `Artifact`, and again at
+      // `objectstore-minio` for the blobs those rows point at.
+      "files",
     ]);
   });
 

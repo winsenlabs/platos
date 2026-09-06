@@ -573,6 +573,38 @@ test("the live selectors scan an exact nonzero source census", () => {
   // adds seventeen files rather than sixteen, and the finding list below is
   // unchanged by any of it.
   //
+  // 1377 -> 1395 (WIN-258 T5, `files`). EIGHTEEN files: ELEVEN source and SEVEN
+  // suites, all in the one adapter directory again, so `packages/contexts/files`
+  // gains none — its port entry point was widened in place.
+  //
+  // THE SPLIT IS THE §6 BUDGET AND IS ALSO THE SEAM. `files-attachments.ts` is
+  // the pointer at a blob and `files-artifacts.ts` the versioned inline
+  // document, and `domain/index.ts` is explicit that the two are deliberately
+  // NOT one union with nullable halves; `files-erasure.ts` spans both because an
+  // erasure is one operation over both; `files-ancestry.ts` is one question both
+  // halves have to ask the database and is a file so it cannot be asked two
+  // ways.
+  //
+  // ONE FILE OF THIS TRANCHE IS IN THE WARNING BAND, and it got there AFTER the
+  // mutation sweep rather than before it. `files-scope.integration.test.ts` was
+  // 384 when it was written and is 467 now, because the first sweep left seven
+  // mutants alive and six of them were closed by cases that belong in exactly
+  // this file: a sibling environment of the same project, two artifact keys in
+  // one thread, two threads in one environment, and an erasure count required to
+  // agree with the listing it plans against.
+  //
+  // ITS LENGTH IS ITS SUBJECT. The file is one case per clause of every scoped
+  // read, each wrong in exactly ONE id, which is the only shape that can tell a
+  // missing clause from a neighbouring one — and the sweep is the evidence that
+  // the enumeration has to be complete rather than representative. Splitting it
+  // along any seam would put two halves of one claim in two files and make the
+  // next reader check the shorter one.
+  //
+  // `files-conformance.ts` is the next longest at 346 and its length IS the
+  // scenario; the fixture BUILDERS the other four suites share are a separate
+  // file precisely because a differential's values have to be identical on both
+  // sides and are minted from a counter it owns.
+  //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
   // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452. All the stores are in the one
   // adapter directory, so no branch's own figure survives the merge — 1266 for
@@ -747,6 +779,11 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/cost-rows.ts",
       effectiveLines: 465,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
+      effectiveLines: 467,
       severity: "warning",
     },
     {

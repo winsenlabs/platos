@@ -47,7 +47,10 @@ import type {
   AgentsRepository,
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
-import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
+import type {
+  FilesRepository,
+  ObjectStore,
+} from "@platos/context-files/application/ports/index.js";
 import type { PrivacyRepository } from "@platos/context-privacy/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type {
@@ -242,6 +245,19 @@ interface PortSatisfaction {
     PostgresTenancyAdapter,
     ProvidersRepository
   >;
+  // WIN-258 T5. `files`' canonical-store port, proven through the ADAPTER rather
+  // than through a property, for the reason `providers`' is: its fifteen method
+  // names collide with nothing this directory already publishes, so it is spread
+  // in like the six repository composites and
+  // `PostgresTenancyAdapter extends FilesRepository` resolves directly.
+  //
+  // IT IS THE SECOND BINDING THIS TABLE HOLDS FOR ONE CONTEXT, and the pair is
+  // the point rather than an accident. `objectstore-minio:ObjectStore` below is
+  // also owned by `files`: a row and a blob are two technologies behind two
+  // ports, `domain/destruction.ts` fixes blob-before-row precisely because no
+  // transaction spans them, and one adapter holding both would have made that
+  // ordering look like an implementation detail it could optimise away.
+  readonly "postgres-tenancy:FilesRepository": Satisfies<PostgresTenancyAdapter, FilesRepository>;
   readonly "postgres-tenancy:SecretsRepository": Satisfies<
     PostgresTenancyAdapter["secrets"],
     SecretsRepository
@@ -379,6 +395,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:InvitationTokenIssuer": true,
   "postgres-tenancy:OperatorDirectory": true,
   "postgres-tenancy:ProvidersRepository": true,
+  "postgres-tenancy:FilesRepository": true,
   "postgres-tenancy:SecretsRepository": true,
   "postgres-tenancy:EnvironmentVariableRepository": true,
   "postgres-tenancy:ThreadRepository": true,
@@ -687,6 +704,11 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
+  // WIN-258 T5 (ADR M0.3 §15). The FIFTEENTH owner of the one PostgreSQL
+  // directory: `files`' two canonical rows, `MessageAttachment` and `Artifact`.
+  // It sits beside the `ObjectStore` row below rather than replacing it, because
+  // this context owns TWO ports over two technologies.
+  Object.freeze({ adapter: "postgres-tenancy", port: "FilesRepository", owner: "files" }),
   Object.freeze({ adapter: "objectstore-minio", port: "ObjectStore", owner: "files" }),
   Object.freeze({ adapter: "redis-ratelimit", port: "RateLimiter", owner: "identity-access" }),
   Object.freeze({ adapter: "redis-cache", port: "Cache", owner: "memory" }),

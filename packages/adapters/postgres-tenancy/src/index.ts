@@ -550,3 +550,51 @@ export {
   UNREADABLE_APPROVAL_ENVELOPE,
   UNREADABLE_PAYLOAD_SCHEMA,
 } from "./jobs-rows.js";
+
+// WIN-258 T5 — `files`' canonical store. The factory leaves the package for the
+// reason `createCostMonitoringRepository` does: a composition root that wanted
+// this repository WITHOUT tenancy's — a retention sweep, say — has to be able to
+// build one over the SAME transactions rather than over a second client, and it
+// takes the transactions rather than a client so there is no second
+// `AsyncLocalStorage` frame to build.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE THEY ARE DECISIONS AN OPERATOR ACTS ON.
+// `files/domain/errors.ts` publishes exactly ONE code a store may answer with,
+// `FILES_REPOSITORY_UNAVAILABLE`, so a caller cannot tell a forged tenant claim
+// from an oversized upload from a database that is down. That collapse is right
+// for a caller and useless for an operator, so the eight write-shape refusals
+// and the four unreadable-row refusals are named here and carried out of band,
+// where an operator reads them and a caller never does.
+//
+// TWO ARE PREFIXED AT THE SOURCE RATHER THAN ALIASED AT THIS DOOR.
+// `IDENTIFIER_NOT_UUID` was already taken four times over — by
+// `cost-monitoring`, `channels`, `secrets` and `skills` — and
+// `INSTANT_NOT_REPRESENTABLE` twice, so this context's two are minted
+// `FILES_`-prefixed in `files-guards.ts` instead of being renamed here. Five
+// aliases of one name would be five chances to export the wrong one. The other
+// six write codes and all four row codes are already unique across this file.
+//
+// `SCOPE_ANCESTRY_FORGED` AND `SCOPE_ENVIRONMENT_UNKNOWN` ARE THE PAIR THAT
+// MATTERS MOST. Both of this context's tables store an environment id and
+// nothing above it while both aggregates carry three, and no database rule
+// checks the caller's claim about the two parents — so a deleted tenant and a
+// caller lying about one are different operational events that would otherwise
+// arrive under one word.
+export { createFilesRepository } from "./files-repository.js";
+export {
+  FILES_IDENTIFIER_NOT_UUID,
+  FILES_INSTANT_NOT_REPRESENTABLE,
+  FilesWriteRefused,
+  INTEGER_OUT_OF_RANGE,
+  METADATA_NOT_OBJECT,
+  PRINCIPAL_EMPTY,
+  SCOPE_ANCESTRY_FORGED,
+  SCOPE_ENVIRONMENT_UNKNOWN,
+  TEXT_HOLDS_NUL,
+} from "./files-guards.js";
+export {
+  UNREADABLE_ARTIFACT_REVISION,
+  UNREADABLE_ATTACHMENT_MEASURE,
+  UNREADABLE_TOTAL_BYTES,
+  UNRESOLVED_SCOPE_ANCESTRY as FILES_UNRESOLVED_SCOPE_ANCESTRY,
+} from "./files-rows.js";

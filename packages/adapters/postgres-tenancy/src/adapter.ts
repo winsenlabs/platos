@@ -125,6 +125,23 @@
 // implementation detail, `EmbeddingModel` and `ExtractionJudge` are priced
 // provider calls, and `ContentDigest` is a synchronous host hash with no failure
 // channel and no row.
+//
+// AND SO DOES `files`' `FilesRepository` (WIN-258 T5). `MessageAttachment` and
+// `Artifact` are in that same database behind that same client — the THIRTEENTH
+// owner delegated to this directory — so Amendment 15 puts them here rather than
+// in a fourteenth package holding a second client. Its fifteen method names
+// collide with nothing above, so it is SPREAD IN like the six repository
+// composites and `PORT_SATISFACTION` resolves `PostgresTenancyAdapter extends
+// FilesRepository` at compile time, which a nested property could not.
+//
+// THE CONTEXT'S OTHER PORT IS NOT HERE AND HAS AN ADAPTER OF ITS OWN.
+// `ObjectStore` is `files`' adapter-facing port (ADR M0.3 §13) and
+// `objectstore-minio` satisfies it; `files` is therefore the one context this
+// layout reaches from TWO adapter directories, one for its rows and one for its
+// bucket. That split is load-bearing rather than tidy: `domain/destruction.ts`
+// fixes blob-before-row precisely because no transaction spans the two systems,
+// and a store that held both would have made that ordering look like an
+// implementation detail it could optimise away.
 
 // AND SO DOES `providers`' `ProvidersRepository` (WIN-258 T5). The four rows of
 // ADR M0.3 §1 row 4 — `ProviderKey`, `EnvironmentProvider`, `Model` and
@@ -223,6 +240,7 @@ import type {
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
 import type { BudgetRepository } from "@platos/context-cost-monitoring/application/ports/index.js";
+import type { FilesRepository } from "@platos/context-files/application/ports/index.js";
 import type {
   CriteriaRepository,
   EvalsRepository,
@@ -261,6 +279,7 @@ import { createTenancyDatabaseClient } from "./client.js";
 import { createChannelsRepository } from "./channels-repository.js";
 import { createConversationsStores } from "./conversations-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
+import { createFilesRepository } from "./files-repository.js";
 import { createGovernanceStores } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
@@ -293,6 +312,7 @@ export interface PostgresTenancyAdapter
     BudgetRepository,
     ChannelsRepository,
     ProvidersRepository,
+    FilesRepository,
     PrivacyRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
@@ -582,6 +602,16 @@ export function buildPostgresTenancyAdapter(
     // frame issued and every one of them accepts. A second pool would have made
     // it `scope_unknown` at each target in turn.
     ...createPrivacyRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The FIFTEENTH owner in this directory. Built
+    // from the SAME `transactions` as everything else here, which is what makes
+    // this context's erasure one unit of work: `files-erasure-target.ts` removes
+    // a subject's attachment ROWS one at a time — the blob beside each one is
+    // destroyed first, outside any transaction, because no transaction spans a
+    // bucket and a database — and then deletes every artifact revision the
+    // subject authored in a single statement. The two row halves commit or roll
+    // back together only because they are the same client on the same
+    // connection.
+    ...createFilesRepository(transactions),
   };
 }
 

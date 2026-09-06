@@ -107,6 +107,18 @@ test("the live repository satisfies both the boundary rules and the composition-
   // too it was FORCED: `ApprovalsRepository` and `ConversationsErasureStore`
   // both declare a top-level `erase` with different signatures, so one interface
   // cannot extend both.
+  // 41 -> 42 (WIN-258 T5, a FIFTEENTH owner): `files` adds `FilesRepository`,
+  // its ONE canonical-store port over the two rows of §1 row 10, so that
+  // directory carries THIRTY-TWO and the fifteenth owner arrives without a
+  // thirteenth directory. It is proven against the ADAPTER rather than through a
+  // property, like `providers`' — its fifteen method names collide with nothing
+  // the directory already publishes.
+  //
+  // IT IS THE SECOND BINDING THIS TABLE HOLDS FOR ONE CONTEXT, and the pair is
+  // the point rather than an accident: `objectstore-minio:ObjectStore` is also
+  // owned by `files`. A row and a blob are two technologies behind two ports,
+  // and `domain/destruction.ts` fixes blob-before-row precisely because no
+  // transaction spans them.
   assert.equal(audit.bindingCount, adapterBindings().length);
   assert.equal(audit.bindingCount, 44);
   //

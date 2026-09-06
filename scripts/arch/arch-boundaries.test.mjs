@@ -952,6 +952,27 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               statement here is a delegate call, and the rows this store
     //               may NOT write reach the database through `prisma db execute`
     //               — the ORM's CLI at runtime, which is not an import at all.
+    // 1402 -> 1420 (WIN-258 T5, `files`). EIGHTEEN files in the one adapter
+    //               directory: ELEVEN source (the guards, the row mapping, the
+    //               ancestry re-assertion, the refusal adapter, the attachment
+    //               half, the artifact half, the erasure half, the composite,
+    //               the harness, the shared conformance scenario and the fixture
+    //               builders) and SEVEN suites. The `mutations-files.json`
+    //               beside them is not source and is not counted here; the v1
+    //               ledger counts it and its own delta says 19.
+    //               `packages/contexts/files` gains NO file — its port entry
+    //               point was widened in place to publish the names its own
+    //               fifteen signatures use, which is what this census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME.
+    //               This store's reads are raw SQL, for the reason
+    //               `channels-connections.ts` gives — the delegate spelling of a
+    //               three-id scope is three round trips — and its append-only
+    //               INSERT is raw so the conflict can be `ON CONFLICT ... DO
+    //               NOTHING` rather than an aborted transaction. Every one of
+    //               them is in the same one home, attributed by the TABLE it
+    //               names, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
     //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is

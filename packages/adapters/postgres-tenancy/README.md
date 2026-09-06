@@ -9,6 +9,7 @@ Implements 28 owner-supplied ports — the tenancy-database client; per-context 
 - the agents `ScaffoldingRepository` port
 - the cost-monitoring `BudgetRepository` port
 - the channels `ChannelsRepository` port
+- the files `FilesRepository` port
 - the governance `SafetyLedger` port
 - the governance `RatingsRepository` port
 - the governance `CriteriaRepository` port

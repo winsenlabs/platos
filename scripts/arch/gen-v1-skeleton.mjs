@@ -85,6 +85,14 @@ export const ADAPTERS = [
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
       { port: "ChannelsRepository", owner: "channels" },
+      // WIN-258 T5 — `files`' one canonical-store port, the THIRTEENTH owner of
+      // the one PostgreSQL client. `MessageAttachment` and `Artifact` live in
+      // that same database, so by s15 they are written from the same directory.
+      // The context's OTHER port is deliberately absent and stays where it is:
+      // `ObjectStore` is `files`' own adapter-facing port and its adapter is
+      // `objectstore-minio`, which is why `files` appears TWICE in the owner
+      // tables below — once for its rows and once for its bucket.
+      { port: "FilesRepository", owner: "files" },
       // WIN-258 T5 — `governance`'s FIVE canonical-store ports, the SIXTH owner
       // of the one PostgreSQL client. `SafetyEvent`, `MessageRating`,
       // `EvalCriterion`, `AgentEval` and `GoldenSet` live in that same database,
@@ -408,6 +416,22 @@ export function adapterOwnerPackages(adapter) {
 // `erase` of a different signature, so one interface cannot extend both.
 // EXPECTED_ADAPTER_COUNT is deliberately unmoved a FOURTEENTH time, which is the
 // point of pinning the two separately.
+// 41 -> 42 (WIN-258 T5). `files` adds ONE canonical-store binding,
+// `FilesRepository`, over the two rows of ADR M0.3 s1 row 10 —
+// `MessageAttachment` and `Artifact` — and is the FIFTEENTH owner of the one
+// PostgreSQL client. ONE port and not two, because the context publishes one
+// canonical store over both tables: an attachment is a POINTER at a blob and an
+// artifact is a versioned inline DOCUMENT, and the port's own header says they
+// are deliberately not one union with nullable halves, but they are one store.
+// It is SPREAD IN rather than a property — the only tranche-5 store besides
+// `providers`' that needed neither — because its fifteen method names are
+// disjoint from every other port this directory satisfies, so the composition
+// root proves it against the adapter itself.
+//
+// EXPECTED_ADAPTER_COUNT IS UNMOVED A FIFTEENTH TIME, and here it would have
+// been wrong twice over: `files` ALREADY has an adapter directory of its own,
+// `objectstore-minio`, for the OTHER port it owns. A row and a blob are two
+// technologies behind two ports, and this pin counts DIRECTORIES.
 export const EXPECTED_ADAPTER_COUNT = 12;
 export const EXPECTED_BINDING_COUNT = 44;
 
@@ -545,6 +569,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // contexts are leaves relative to adapters, `jobs` depends on `tenancy` alone,
 // and the one context that depends on `jobs` is `conversations`, which the
 // 17-context DAG already carries.
+// -> `packages/contexts/files`, carrying that context's one canonical-store port
+// over `MessageAttachment` and `Artifact`. It cannot create a cycle, and this is
+// the one owner edge on which that needed checking rather than asserting:
+// `skills` DEPENDS on `files` and `skills` is already an owner of the same
+// directory, so a cycle would need `files` to depend on `skills` — and the s1
+// DAG has `files` depending on `tenancy` alone. The two owner edges are parallel
+// rather than circular, and an adapter is a leaf of the 17-context DAG either
+// way. `files` is now the only context reached from TWO adapter directories,
+// this one for its rows and `objectstore-minio` for its bucket; that is two
+// edges from two directories, not two edges from one.
 export const EXPECTED_EDGE_COUNT = 111;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
@@ -695,6 +729,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/privacy", // WIN-258 T5 — InMemoryPrivacyRepository is the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/jobs", // WIN-258 T5 — InMemoryJobsRepository and InMemoryApprovalsRepository are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/files", // WIN-258 T5 — InMemoryFilesRepository is the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

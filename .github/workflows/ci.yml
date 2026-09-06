@@ -484,6 +484,17 @@ jobs:
         # beside this package refuses to score.
         run: pnpm --filter "@platos/context-jobs..." build
 
+      - name: Build the files context and its dependencies
+        # WIN-258 T5. The THIRTEENTH owner of this directory. Two of its entry
+        # points have to exist in dist/: `application/ports/index.js` for
+        # `FilesRepository` and the twenty-six values and types its signatures
+        # name, and `application/testing/index.js` for `InMemoryFilesRepository`,
+        # which the conformance differential is measured against. Without this
+        # step the five suites do not fail an assertion — they fail to LOAD,
+        # which is the vacuity the mutation driver beside this package refuses to
+        # score.
+        run: pnpm --filter "@platos/context-files..." build
+
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
         # repository, the identity-access canonical store, the kernel outbox's

@@ -1,7 +1,7 @@
 {
   "$schema": "platos.audit.license-index/v1",
   "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock. resolvedAt is the latest immutable publication timestamp among successful external resolutions, not the generator wall clock. Every successful external resolution must provide a valid publication timestamp; non-success statuses are excluded.",
-  "resolvedAgainstLockfileSha256": "81fb16546d4ef4e2dd5345c1df69d051be0e180461f32665616c20e347d733db",
+  "resolvedAgainstLockfileSha256": "93149af34c33f85c0a6ff0482305bf82f80fb0e1af314352de1196830fc98654",
   "resolvedAt": "2026-08-07T16:41:05.696Z",
   "resolvedAtPolicy": "maximum registry version publication timestamp across successful external resolutions; every successful resolution is timestamped; non-success statuses are excluded",
   "registry": "https://registry.npmjs.org",

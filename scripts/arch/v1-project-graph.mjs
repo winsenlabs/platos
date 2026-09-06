@@ -124,6 +124,17 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // alone and `conversations` already depends on `jobs`, both of which the
 // 17-context DAG carries, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again
 // unchanged and no cycle is possible — the adapter is a leaf of that DAG.
+// 108 -> 109 (WIN-258 T5, a FIFTEENTH owner). The directory gained one more
+// owner edge, to `packages/contexts/files`, carrying that context's single
+// canonical-store port over `MessageAttachment` and `Artifact`. It is the one
+// owner edge in this wave whose acyclicity needed CHECKING rather than
+// asserting: `skills` depends on `files` and `skills` is already an owner of the
+// same directory, so a cycle would need `files` to depend on `skills` — and the
+// ADR M0.3 §1 DAG has `files` depending on `tenancy` alone, which is why
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged. `files` becomes the only
+// context reached from TWO adapter directories: this one for its rows and
+// `objectstore-minio` for the `ObjectStore` port it also owns. Two directories,
+// two edges — not one directory with two.
 export const EXPECTED_EDGE_COUNT = 111;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
@@ -258,6 +269,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "memory",
     "privacy",
     "jobs",
+    "files",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],

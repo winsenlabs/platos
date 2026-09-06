@@ -540,6 +540,14 @@ const LIVE_ADAPTERS = [
       { port: "PrivacyRepository", owner: "privacy" },
       { port: "JobsRepository", owner: "jobs" },
       { port: "ApprovalsRepository", owner: "jobs" },
+      // WIN-258 T5. `files`' one canonical-store port over `MessageAttachment`
+      // and `Artifact`, in the fixture copy for the reason every row above is:
+      // the mutations below are measured against a table otherwise identical to
+      // the live one, so a copy missing a binding would make the refusal COUNTS
+      // wrong rather than the refusals. It is also the row that makes `files`
+      // appear TWICE in this table — once here for its rows and once at
+      // `objectstore-minio` below for its bucket.
+      { port: "FilesRepository", owner: "files" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },

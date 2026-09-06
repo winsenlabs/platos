@@ -654,6 +654,36 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // for its own: a fixture with two mechanisms for one chain is a fixture that
   // has to be debugged before a suite can be read.
   jobs: "packages/adapters/postgres-tenancy",
+  // is one adapter DIRECTORY (ADR M0.3 s15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `files` owns — `MessageAttachment`
+  // and `Artifact`. Nothing else. `checkSoleWriter` asks per WRITE whether the
+  // file's directory is one of `ownerDirectories(OWNER[model])`, so a write to
+  // `Thread`, to `Turn`, to `EndUser` or to `Agent` from this package still
+  // fails — and those four matter here more than the usual pair, because every
+  // one of them is a FOREIGN KEY on `MessageAttachment` and this store READS all
+  // four through the joins that resolve a row's scope. Reads are unrestricted by
+  // design (s1 restricts WRITES); the moment one of them became a write it would
+  // be refused, and that is the whole point of the grant being per row rather
+  // than per directory.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET COHERENT ACROSS TWO SYSTEMS.
+  // `files-erasure-target.ts` destroys a subject's BLOB through `ObjectStore`
+  // and then its ROW through `deleteAttachment`, and then deletes every artifact
+  // revision the subject authored — and `domain/destruction.ts` fixes that order
+  // because no transaction spans a bucket and a database. The two ROW halves are
+  // written by the same client in the same transaction only because they resolve
+  // to the same directory; a fourteenth adapter package holding this context's
+  // repository would have had its own pool, and an erasure that failed between
+  // the attachment rows and the artifact rows would have left a subject's
+  // authored documents standing over blobs that are already gone.
+  //
+  // IT DOES NOT GRANT THE OTHER PORT THIS CONTEXT OWNS. `ObjectStore` is
+  // `files`' own adapter-facing port (ADR M0.3 s13) and its adapter is
+  // `packages/adapters/objectstore-minio`, which is where `files` already
+  // appears as an owner in `EXPECTED_ADAPTER_OWNERS`. This entry is about ROWS.
+  files: "packages/adapters/postgres-tenancy",
 });
 
 /**

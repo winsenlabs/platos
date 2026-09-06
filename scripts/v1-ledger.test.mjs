@@ -1103,6 +1103,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // where the work was five suites' worth is exactly the kind of thing a
     // ledger states rather than absorbs.
     //
+    // AND `files`' 19 ARE 18 — eleven source and seven suites — PLUS
+    // `mutations-files.json`, on the same rule as every guard ledger above it:
+    // the existing `packages.adapters.config` rule already classifies it, so no
+    // ledger rule changed. `packages/contexts/files` gains NO file — its port
+    // entry point was widened IN PLACE to publish the names its own fifteen
+    // signatures use, and a widened file is not a new one.
+    //
+    // TWO OF `files`' ELEVEN SOURCE MODULES EXIST BECAUSE THE MUTATION SWEEP
+    // ASKED FOR THEM RATHER THAN THE BUDGET: `files-ancestry.ts` is one question
+    // both halves of the store have to ask the database, in a file so it cannot
+    // be asked two ways, and `files-fixtures.ts` holds the builders four suites
+    // share — kept OUT of the conformance scenario on purpose, because a
+    // differential's values have to be identical on both sides and are minted
+    // from a counter it owns.
+    //
     // ALL FIVE TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
