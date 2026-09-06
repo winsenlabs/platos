@@ -1295,7 +1295,7 @@
       "file": "src/files-refusal.ts",
       "from": "  return error instanceof Error && error.name.startsWith(\"PrismaClient\");",
       "to": "  return false;",
-      "note": "The rules the migrations carry — every ancestry trigger, the one-way binding, the primary key — arrive as driver errors and nothing else. Without this half they reject the promise and no caller can act on them.",
+      "note": "The rules the migrations carry — every ancestry rule, the one-way binding, the primary key — arrive as driver errors and nothing else. Without this half they reject the promise and no caller can act on them.",
       "suites": [
         "src/files-rules.integration.test.ts"
       ],
