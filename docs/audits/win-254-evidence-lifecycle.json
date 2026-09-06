@@ -1397,7 +1397,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c1786743b6f670c82dad02c63e6fbe79a66d6cf34e835e7603443c9b340ba2a2",
+      "sha256": "9166e03a941beba60dd424b3436cde02e72524d368df4897e2d4fe1d26a21f6a",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "3eb6977dd3c4b89df516b27587b8f3cf2ab407b29a0e4e1b9f20a032ffcb4d6f",
+      "sha256": "6adfcc4ba39680f5906c6d6b568dc4062c7b244b38ac97152b207b973cdadf0f",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "581e4e54534ac44e1e27ed6a015ba8a1b9a9c746fa5ed91495e0723675db49e3",
+      "sha256": "821d819a1e0f45f5f1509f51694935e72b9cf11c331b045e20e96c0bba16e172",
       "binds": "current-repository-truth"
     },
     {

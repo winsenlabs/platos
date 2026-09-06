@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "c1786743b6f670c82dad02c63e6fbe79a66d6cf34e835e7603443c9b340ba2a2"
+      "sha256": "9166e03a941beba60dd424b3436cde02e72524d368df4897e2d4fe1d26a21f6a"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "3eb6977dd3c4b89df516b27587b8f3cf2ab407b29a0e4e1b9f20a032ffcb4d6f"
+      "sha256": "6adfcc4ba39680f5906c6d6b568dc4062c7b244b38ac97152b207b973cdadf0f"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "581e4e54534ac44e1e27ed6a015ba8a1b9a9c746fa5ed91495e0723675db49e3"
+      "sha256": "821d819a1e0f45f5f1509f51694935e72b9cf11c331b045e20e96c0bba16e172"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1403,7 +1403,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "080118ef0e595e71027f720073d6fa8635d4965b14d8d4cbcad171fb2aa999d0"
+      "sha256": "4f9a4b7160542bb39096919a885c93aa9cd4eb1dcb6f0e08153721d990f82da4"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3473,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "2799cf464fa16b21ed1539870d2727c8b2989d78cae03e79f2dac497f93fdcad"
+      "sha256": "84a3e901809d847390fff73d65349f9565f415b8095e8991b1ddb6d866c301be"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3538,7 +3538,7 @@
     {
       "path": "docs/win-260-mutation-ledger.json",
       "mode": "100644",
-      "sha256": "eb046c02a8836b69912161b4a6417d29d8217a65a58f0b199665fefe64010f9c"
+      "sha256": "43d3fc97e65271a138e6f668a7a0f0cd6dae6fac02334bbad7079134243a6694"
     },
     {
       "path": "docs/writing-agents.md",
@@ -3653,7 +3653,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "1f667a978e83a63afb4f462db27605dd0cad7eca4cb1c22f4ab2fa783db2a146"
+      "sha256": "61b4bae8878f33c8c4199a4d829243bd5a0f9a4ac51ca8ca7874821705b6b983"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3913,7 +3913,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "3e6e7acaf7038ae06e84f0f7fa129bec149ab66436d5f3fe7355eba37675bc4c"
+      "sha256": "8e5448e996507a0168becd9a9a0199b3a42480ffd0c3add2087442ebe5f07008"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
