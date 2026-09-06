@@ -79,6 +79,7 @@ import {
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
 
+import { runErasureConformance } from "./conversations-conformance-erasure.js";
 import {
   CONFORMANCE_RATES,
   RATE_OBSERVED_AT,
@@ -633,148 +634,12 @@ export async function runConversationsConformance(
     (page) => ({ total: page.total, ids: page.items.map((thread) => thread.threadId) }),
   );
 
-  // ---- the operator's execution -------------------------------------------
-
-  observed["findByRequest.nullTemplate"] = outcome(
-    await stores.postman.findByRequest(scope, null, ids.requestId),
-    projectExecution,
-  );
-  observed["createExecution"] = outcome(
-    await stores.postman.createExecution(scope, conformanceExecution(ids)),
-    projectExecution,
-  );
-  observed["findExecution"] = outcome(
-    await stores.postman.findExecution(
-      scope,
-      asConversationsIdentifier<PostmanExecutionId>(ids.executionId),
-    ),
-    projectExecution,
-  );
-  observed["findByRequest.replay"] = outcome(
-    await stores.postman.findByRequest(
-      scope,
-      asConversationsIdentifier<PostmanTemplateId>(ids.templateId),
-      ids.requestId,
-    ),
-    projectExecution,
-  );
-  observed["findByHandle.hit"] = outcome(
-    await stores.postman.findByHandle(
-      scope,
-      asConversationsIdentifier<PostmanContextHandle>(ids.contextHandle),
-    ),
-    projectExecution,
-  );
-  observed["findByHandle.miss"] = outcome(
-    await stores.postman.findByHandle(
-      scope,
-      asConversationsIdentifier<PostmanContextHandle>(ids.absentId),
-    ),
-    projectExecution,
-  );
-  observed["saveExecution.settled"] = outcome(
-    await stores.postman.saveExecution(scope, {
-      ...conformanceExecution(ids),
-      status: "SUCCEEDED" as const,
-      threadId,
-      turnId: firstTurnId,
-      completedAt: at(50_000),
-      updatedAt: at(50_000),
-    }),
-    projectExecution,
-  );
-  observed["pageExecutions.byActor"] = outcome(
-    await stores.postman.pageExecutions({
-      scope,
-      actorUserId: asConversationsIdentifier<ActorId>(ids.actorUserId),
-      limit: 10,
-      offset: 0,
-    }),
-    (page) => ({ total: page.total, ids: page.items.map((one) => one.executionId) }),
-  );
-  observed["pageExecutions.everyActor"] = outcome(
-    await stores.postman.pageExecutions({ scope, actorUserId: null, limit: 10, offset: 0 }),
-    (page) => ({ total: page.total, ids: page.items.map((one) => one.executionId) }),
-  );
-
-  // ---- the erasure --------------------------------------------------------
-
-  const subject = asConversationsIdentifier<EndUserId>(ids.endUserId);
-  observed["censusForEndUser"] = outcome(
-    await stores.conversationsErasure.censusForEndUser(subject, scope.organizationId),
-    (census) => ({ ...census }),
-  );
-  observed["censusForActor"] = outcome(
-    await stores.conversationsErasure.censusForActor(ids.actorUserId, scope.organizationId),
-    (census) => ({ ...census }),
-  );
-  observed["findHeldThreads"] = outcome(
-    await stores.conversationsErasure.findHeldThreads(subject, scope.organizationId),
-    (held) => [...held],
-  );
-
-  observed["erase"] = await environment.run(async (transaction) => {
-    const stripped = await stores.conversationsErasure.anonymizeExecutionsForEndUser(
-      subject,
-      scope.organizationId,
-      transaction,
-    );
-    const threads = await stores.conversationsErasure.deleteThreadsForEndUser(
-      subject,
-      scope.organizationId,
-      transaction,
-    );
-    return {
-      stripped: outcome(stripped, (n) => n),
-      threads: outcome(threads, (n) => n),
-    };
-  });
-
-  observed["censusForEndUser.afterErasure"] = outcome(
-    await stores.conversationsErasure.censusForEndUser(subject, scope.organizationId),
-    (census) => ({ ...census }),
-  );
-  // A NARROWER PROJECTION THAN EVERY OTHER EXECUTION STEP, and the two fields it
-  // leaves out are a FIFTH place the double is wrong rather than different.
-  // `PostmanExecution.thread` and `.turn` are both `onDelete: SetNull`, so the
-  // real store answers a row whose `threadId` and `turnId` are gone with the
-  // thread they named; `InMemoryConversations` has no cascade for either column
-  // and keeps them pointing at a thread it has just deleted. What the erasure is
-  // ABOUT is compared here — the row SURVIVED, its operator is intact, its
-  // subject link is severed — and the nulling is pinned against the real
-  // database in `conversations-rules.integration.test.ts`.
-  observed["findExecution.afterErasure"] = outcome(
-    await stores.postman.findExecution(
-      scope,
-      asConversationsIdentifier<PostmanExecutionId>(ids.executionId),
-    ),
-    (execution) =>
-      execution === null
-        ? null
-        : {
-            executionId: execution.executionId,
-            actorUserId: execution.actorUserId,
-            simulatedEndUserId: execution.simulatedEndUserId,
-            requestFingerprint: execution.requestFingerprint,
-            status: execution.status,
-          },
-  );
-  // THE CASCADE. `Turn.thread` and `Step.turn` are both `onDelete: Cascade`, so
-  // the subject's turns went with their thread. A store that deleted the thread
-  // and left the turns would answer a turn here, and a double that did not model
-  // the cascade would agree with it.
-  observed["findTurn.afterErasure"] = outcome(
-    await stores.turns.findTurn(scope, firstTurnId),
-    projectTurn,
-  );
-  observed["findThread.afterErasure"] = outcome(
-    await stores.threads.findThread(scope, threadId),
-    projectThread,
-  );
-  observed["findThread.secondAfterErasure"] = outcome(
-    await stores.threads.findThread(scope, secondThreadId),
-    projectThread,
-  );
-
+  // THE SECOND HALF RUNS FROM ITS OWN MODULE and writes into THIS observation
+  // map. `max-file-lines` bit at the hard error and the seam it pointed at is
+  // real: everything above is a CONVERSATION — threads, turns, steps, the
+  // compaction lock — and everything after it is the OPERATOR'S execution and
+  // the ERASURE that severs it. Both halves are one transcript, so the
+  // differential still compares one object per store.
+  await runErasureConformance(environment, observed);
   return observed;
 }

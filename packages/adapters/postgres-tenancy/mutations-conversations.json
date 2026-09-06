@@ -60,6 +60,15 @@
     "binary wrote, so the unknown-enum and half-written-rate branches are",
     "unreachable from it.",
     "",
+    "THE SUITES ARE SIX AND NOT FOUR, because `max-file-lines` bit at the 500-line",
+    "HARD error twice and both seams it pointed at were real. The constraints suite",
+    "split into the shapes a CONVERSATION admits and the shapes a BILL and an",
+    "OPERATOR'S AUDIT ROW admit; the rules suite split into what happens when rows",
+    "are DESTROYED and what a caller may not reach or change. The shared scenario",
+    "split the same way, into the conversation and the operator's execution, and",
+    "both halves still write into ONE observation map so the differential still",
+    "compares one object per store.",
+    "",
     "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
     "sweep that silently matched nothing is impossible: an entry whose `from`",
     "occurs zero times or more than once is refused rather than swept.",
@@ -259,11 +268,12 @@
       "to": "  if (false) {\n    refuse(CONVERSATIONS_IDENTIFIER_NOT_UUID",
       "note": "A non-uuid is not a constraint failure at all: it is a driver conversion error partway through a transaction, with no SQLSTATE a caller can act on. The context's own `threadFixture` mints `thread-1` and its `stepFixture` a `modelPriceId` of `price-1`.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-constraints.integration.test.ts",
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "@db.Uuid — a non-uuid identifier is a driver fault, not a constraint > the store refuses `thread-1`, which every in-memory double accepts",
-        "@db.Uuid — a non-uuid identifier is a driver fault, not a constraint > `price-1` on a step is refused the same way"
+        "@db.Uuid on a step's price card > the store refuses `price-1`, which the context's own stepFixture mints"
       ]
     },
     {
@@ -365,7 +375,7 @@
       "to": "  if (false) {",
       "note": "`Step_usage_check` opens with `\"sequence\" > 0 AND \"retryCount\" >= 0`, and `PRIMARY_STEP_SEQUENCE` is 1 because the row layout says so.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "Step_usage_check > the store refuses a step sequence of zero"
@@ -378,7 +388,7 @@
       "to": "    if (false) {\n      refuse(STEP_USAGE_NEGATIVE",
       "note": "Five columns, one clause each in `Step_usage_check`, and a negative one is a provider report this system cannot bill.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "Step_usage_check > the store refuses a negative token count"
@@ -391,7 +401,7 @@
       "to": "  if (false) {",
       "note": "`COALESCE(cacheCreation,0) + COALESCE(cacheRead,0) <= inputTokens` is the one clause of `Step_usage_check` that relates two columns, and it is the one that stops a cached step being charged twice.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "Step_usage_check > the store refuses cache figures that exceed the input total, under its OWN code"
@@ -404,7 +414,7 @@
       "to": "  if (false) {\n    refuse(\n      STEP_PRICE_SNAPSHOT_INCOMPLETE,",
       "note": "`Step_usage_check` ties `costCents` to thirteen other columns. A cost with no price card is a row nobody can audit, re-price or explain.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "Step_usage_check > a priced step with full rates but NO card is refused"
@@ -417,7 +427,7 @@
       "to": "    if (false) {",
       "note": "The second half of the same clause, and a different mistake from M-C24: a step that named a card and carried no rates would be refused by the database rather than by the store, with the caller's transaction gone.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "Step_usage_check > a priced step with a card but ONE rate missing is refused"
@@ -430,7 +440,7 @@
       "to": "  if (false) {",
       "note": "`PostmanExecution_requestFingerprint_check` is `~ '^[0-9a-f]{64}$'`, and the fingerprint is what tells a replay from a collision.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "PostmanExecution_requestFingerprint_check and _contextHandle_check > the store refuses a fingerprint that is not 64 lowercase hex"
@@ -443,7 +453,7 @@
       "to": "  if (false) {",
       "note": "The CHECK is not the ordinary uuid pattern: version 1-8, variant 8/9/a/b, lowercase only. A version-0 uuid is a perfectly good `@db.Uuid` and is refused by this column alone.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "PostmanExecution_requestFingerprint_check and _contextHandle_check > the store refuses a handle whose VERSION or VARIANT nibble is wrong"
@@ -456,7 +466,7 @@
       "to": "  if (false) {",
       "note": "`PostmanExecution_ancestry` resolves the turn through the row's own thread, so a turn with a null thread can never resolve — and the database's message names neither column.",
       "suites": [
-        "src/conversations-constraints.integration.test.ts"
+        "src/conversations-billing-constraints.integration.test.ts"
       ],
       "kills": [
         "PostmanExecution_ancestry — a turn link needs a thread link > the store refuses a turn with no thread, under its own code"
@@ -469,7 +479,7 @@
       "to": "          where: { id: threadId },\n          select: THREAD_COLUMNS,\n        });\n        return ok(row === null ? null : readThread(row as unknown as ThreadRow));\n      }, \"threads findThread\");",
       "note": "`Thread.id` is unique INSTALLATION-WIDE and no database rule protects a read, so this predicate is the whole tenant boundary. The double ignores the scope on every method.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "tenant isolation: every read and every write carries its scope > a foreign thread, turn and execution are all invisible through this scope"
@@ -508,7 +518,7 @@
       "to": "  return {\n    endUserId: thread.endUserId,\n    agentId: thread.agentId,\n    clusterId: thread.clusterId,",
       "note": "`Thread_subject_immutable` and `Thread_owner_immutable` raise 23514 on five columns between them. Sending one back makes a caller that DID change it look like one that did not, and the refusal arrives from the database with the transaction gone.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "Thread_owner_immutable and Thread_subject_immutable > `saveThread` writes neither the environment, the lineage nor the subject"
@@ -521,7 +531,7 @@
       "to": "            where: { id: thread.threadId },\n            data: threadUpdate(thread),",
       "note": "Without it a save addressed across a tenant boundary writes another tenant's row and reports success.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "tenant isolation: every read and every write carries its scope > a saveThread addressed across the boundary writes nothing and says so"
@@ -537,7 +547,7 @@
         "src/conversations-rules.integration.test.ts"
       ],
       "kills": [
-        "tenant isolation: every read and every write carries its scope > measureForkDepth counts EVERY ancestor, not the nearest"
+        "findHeldThreads names what the database would refuse, and nothing else > measureForkDepth counts EVERY ancestor, not the nearest"
       ]
     },
     {
@@ -602,7 +612,7 @@
         "src/conversations-rules.integration.test.ts"
       ],
       "kills": [
-        "tenant isolation: every read and every write carries its scope > findInheritedTurns answers in the CALLER'S order, not the database's"
+        "findHeldThreads names what the database would refuse, and nothing else > findInheritedTurns answers in the CALLER'S order, not the database's"
       ]
     },
     {
@@ -638,7 +648,7 @@
       "to": "          void settlement.turn.turnId;",
       "note": "A settlement is the whole record of the turn, and merging would let a step from a previous try survive into a rollup it was never part of — or violate `@@unique([turnId, sequence])` outright.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "tenant isolation: every read and every write carries its scope > a settlement REPLACES its steps, so a second one does not accumulate"
@@ -651,7 +661,7 @@
       "to": "            where: { id: settlement.turn.turnId },",
       "note": "`Turn` carries no `environmentId`, so the containment is a relation filter through `Thread`; without it a settlement addressed across a boundary overwrites another tenant's answer.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "tenant isolation: every read and every write carries its scope > a settlement addressed across the boundary writes nothing and says so"
@@ -716,7 +726,7 @@
       "to": "          where: { contextHandle: handle },",
       "note": "`contextHandle` is `@unique` installation-wide and is a CAPABILITY — whoever holds it can name that execution — so a lookup without the environment is a cross-tenant read for anyone who has ever been handed one.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "tenant isolation: every read and every write carries its scope > a foreign thread, turn and execution are all invisible through this scope"
@@ -729,7 +739,7 @@
       "to": "            data: {\n              requestFingerprint: execution.requestFingerprint,\n              templateId: execution.templateId,",
       "note": "`prevent_postman_execution_attribution_mutation` raises SQLSTATE 55000 — not the 23514 every CHECK raises — on seven columns, and a settlement that sent one back would fail on a value the caller never meant to change.",
       "suites": [
-        "src/conversations-rules.integration.test.ts"
+        "src/conversations-isolation.integration.test.ts"
       ],
       "kills": [
         "PostmanExecution's forensic attribution is immutable > `saveExecution` writes none of the seven frozen columns"
@@ -758,7 +768,7 @@
         "src/conversations-rules.integration.test.ts"
       ],
       "kills": [
-        "tenant isolation: every read and every write carries its scope > censusForActor is scoped to ONE organization too"
+        "the erasure is scoped to ONE organization, and the double is not > censusForActor is scoped to ONE organization too"
       ]
     },
     {

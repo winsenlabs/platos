@@ -118,6 +118,16 @@ export const ADAPTERS = [
       // `PostgresTenancyAdapter["secretsVariables"]`.
       { port: "SecretsRepository", owner: "secrets" },
       { port: "EnvironmentVariableRepository", owner: "secrets" },
+      // WIN-258 T5 — `conversations`' FOUR canonical-store ports, the NINTH
+      // owner of the one PostgreSQL client. `Thread`, `Turn`, `Step` and
+      // `PostmanExecution` live in that same database, so by §15 they are
+      // written from the same directory behind the same client. The context
+      // publishes four SEPARATE ports because they are four lifetimes, and
+      // declares NO non-store port at all — there is nothing here to skip.
+      { port: "ThreadRepository", owner: "conversations" },
+      { port: "TurnRepository", owner: "conversations" },
+      { port: "PostmanRepository", owner: "conversations" },
+      { port: "ConversationsErasureStore", owner: "conversations" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -245,8 +255,22 @@ export function adapterOwnerPackages(adapter) {
 // unmoved through all of it, which is the whole point of pinning the two
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
+//
+// 30 -> 34 (WIN-258 T5, `conversations`). FOUR canonical-store bindings —
+// `ThreadRepository`, `TurnRepository`, `PostmanRepository` and
+// `ConversationsErasureStore` — and the NINTH owner of the one PostgreSQL
+// client. Four ports and not one because they are four lifetimes: a thread is
+// opened, forked, compacted and archived; a turn and its steps settle together
+// and are never edited again; a postman execution outlives the turn it produced,
+// which is what makes it an audit row; and the erasure half is the only surface
+// in the context that deletes anything. They are PROPERTIES for the middle of
+// the three reasons this file now carries — they do not collide with each other
+// the way governance's five do and they are not blocked from spreading the way
+// secrets' two are; `ConversationsDependencies` simply names four SLOTS, and a
+// root has to hand each port over under its own name. EXPECTED_ADAPTER_COUNT is
+// unmoved a fourth time.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 30;
+export const EXPECTED_BINDING_COUNT = 34;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -321,7 +345,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `conversations` already depending on `secrets`. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 102;
+//
+// 102 -> 103 (WIN-258 T5, `conversations`). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/conversations`: a NINTH owner edge carrying FOUR
+// bindings, because a project reference is per PACKAGE and not per port — the
+// same one-edge-many-bindings shape `agents` introduced at two and `governance`
+// at five. `conversations` is the DAG's sink: it depends on eleven contexts and
+// nothing depends on it, so the 17-context graph is again unchanged and no cycle
+// is possible.
+export const EXPECTED_EDGE_COUNT = 103;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -454,6 +486,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
   "packages/contexts/channels", // WIN-258 T5 — measured against InMemoryChannelsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

@@ -387,13 +387,14 @@ test("NodeNext consumers resolve bare roots and the explicit exported adapter-po
 test("the live owner map passes its own check", () => {
   // Non-vacuity for everything below.
   assert.deepEqual(checkAdapterOwnerCounts(), []);
-  // 2 -> 8 (WIN-258 T5, six times). `tools` is the THIRD owner delegated to
+  // 2 -> 9 (WIN-258 T5, seven times). `tools` is the THIRD owner delegated to
   // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH,
-  // `channels` the SIXTH, `governance` the SEVENTH and `secrets` the EIGHTH.
-  // None of `agents`, `governance` or `secrets` is more than one owner edge even
-  // though they publish two ports, five and two: this map counts OWNERS, and the
-  // project reference the adapter needs is per package, not per port.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 8 });
+  // `channels` the SIXTH, `governance` the SEVENTH, `secrets` the EIGHTH and
+  // `conversations` the NINTH. None of `agents`, `governance`, `secrets` or
+  // `conversations` is more than one owner edge even though they publish two
+  // ports, five, two and four: this map counts OWNERS, and the project reference
+  // the adapter needs is per package, not per port.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 9 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -416,7 +417,7 @@ test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails 
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 8 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 9 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

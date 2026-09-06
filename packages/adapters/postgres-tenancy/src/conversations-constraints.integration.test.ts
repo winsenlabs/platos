@@ -1,4 +1,5 @@
-// Every write GUARD, stood beside the migration constraint it restates.
+// Every write GUARD over a `Thread` or a `Turn`, stood beside the migration
+// constraint it restates.
 //
 // TWO HALVES PER CASE, ALWAYS. The first asks the STORE and expects a refusal
 // carrying the guard's own code; the second sends the same value to the DATABASE
@@ -7,11 +8,17 @@
 // does not actually back is a store inventing a rule.
 //
 // NOT ONE of these constraints is in `schema.prisma`. Every one lives only in
-// `internal-packages/tenancy-database/prisma/migrations`, and the four in-memory
-// doubles this context ships enforce NONE of them — which is the whole reason
+// `internal-packages/tenancy-database/prisma/migrations`, and the in-memory
+// double this context ships enforces NONE of them — which is the whole reason
 // this file exists. The context's own `threadFixture` mints `thread-1` and its
-// `stepFixture` a `modelPriceId` of `price-1`; both satisfy every double in the
+// `stepFixture` a `modelPriceId` of `price-1`; both satisfy every double in that
 // package and both are refused by `@db.Uuid`.
+//
+// THE STEP AND THE POSTMAN EXECUTION ARE IN A FILE OF THEIR OWN. `max-file-lines`
+// bit at the hard error and the seam it pointed at is real: this file is about
+// the shapes a CONVERSATION admits, and
+// `conversations-billing-constraints.integration.test.ts` is about the shapes a
+// BILL and an OPERATOR'S AUDIT ROW admit.
 //
 // THE RAW HALF USES `$executeRawUnsafe` AND SPELLS ITS SQL AT THE CALL SITE, for
 // the reason `agents-constraints.integration.test.ts` gives: a helper that
@@ -23,20 +30,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import {
   asConversationsIdentifier,
-  money,
-  rollUpTurnCost,
-  sumStepUsage,
-  type ActorId,
-  type AgentId,
-  type AgentVersionId,
-  type EndUserId,
   type EnvironmentScope,
-  type ModelPriceId,
-  type PostmanContextHandle,
-  type PostmanExecution,
-  type PostmanExecutionId,
-  type Step,
-  type StepId,
   type Thread,
   type ThreadId,
   type Turn,
@@ -44,29 +38,18 @@ import {
 } from "@platos/context-conversations/application/ports/index.js";
 
 import {
-  CONTEXT_HANDLE_MALFORMED,
   CONVERSATIONS_IDENTIFIER_NOT_UUID,
-  EXECUTION_TURN_WITHOUT_THREAD,
   FORK_LINEAGE_INCOHERENT,
   FORK_LINEAGE_REPEATED,
   MEASUREMENT_NEGATIVE,
-  REQUEST_FINGERPRINT_MALFORMED,
   SEQUENCE_OUT_OF_RANGE,
   SESSION_CONTEXT_NOT_OBJECT,
-  STEP_CACHE_EXCEEDS_INPUT,
-  STEP_PRICE_SNAPSHOT_INCOMPLETE,
-  STEP_USAGE_NEGATIVE,
   TIMESTAMPS_INCOHERENT,
   TURN_JSON_NOT_OBJECT,
 } from "./conversations-guards.js";
+import { AT, rawClient, refusedByDatabase, threadOf, turnOf } from "./conversations-fixtures.js";
 import type { ConversationsHarness, PeerChain } from "./conversations-harness.js";
-import {
-  CONFORMANCE_RATES,
-  RATE_OBSERVED_AT,
-  RATE_SOURCE,
-  RATE_SOURCE_REF,
-  startConversationsHarness,
-} from "./conversations-harness.js";
+import { startConversationsHarness } from "./conversations-harness.js";
 
 let harness: ConversationsHarness;
 let chain: PeerChain;
@@ -74,144 +57,12 @@ let scope: EnvironmentScope;
 let threadId: ThreadId;
 let turnId: TurnId;
 
-const AT = new Date("2026-05-01T09:00:00.000Z");
 const uuid = (tail: string) => `c1000000-0000-4000-8000-${tail.padStart(12, "0")}`;
 
-/**
- * The raw client, resolved at the call site.
- *
- * Typed structurally so this suite names no vendor type: `client.ts` is the one
- * file in the layout entitled to, and a second naming here would be a second
- * import of the ORM in a package whose whole point is having one.
- */
-function db(): { $executeRawUnsafe(text: string, ...values: unknown[]): Promise<number> } {
-  return harness.base.client as unknown as {
-    $executeRawUnsafe(text: string, ...values: unknown[]): Promise<number>;
-  };
-}
-
-async function refusedByDatabase(work: () => Promise<unknown>): Promise<string> {
-  try {
-    await work();
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-  throw new Error("the database accepted a row the guard refuses");
-}
-
-function threadOf(overrides: Partial<Thread> = {}): Thread {
-  return Object.freeze({
-    threadId: asConversationsIdentifier<ThreadId>(uuid("1")),
-    agentId: asConversationsIdentifier<AgentId>(chain.agentId),
-    endUserId: asConversationsIdentifier<EndUserId>(chain.endUserId),
-    clusterId: null,
-    parentThreadId: null,
-    forkedUpToTurnId: null,
-    forkedTurnIds: Object.freeze([]),
-    compactedUpToTurnId: null,
-    title: null,
-    status: "ACTIVE" as const,
-    summary: null,
-    compactionState: "IDLE" as const,
-    compactedAt: null,
-    sessionContext: null,
-    tags: Object.freeze([]),
-    pinnedAt: null,
-    archivedAt: null,
-    createdAt: AT,
-    updatedAt: AT,
-    ...overrides,
-  });
-}
-
-function turnOf(overrides: Partial<Turn> = {}): Turn {
-  return Object.freeze({
-    turnId: asConversationsIdentifier<TurnId>(uuid("11")),
-    threadId,
-    parentTurnId: null,
-    agentVersionId: asConversationsIdentifier<AgentVersionId>(chain.agentVersionId),
-    versionBucket: "CURRENT" as const,
-    sequence: 1,
-    inputText: "hello",
-    outputText: null,
-    input: null,
-    output: null,
-    thinkingContent: null,
-    status: "PENDING" as const,
-    externalRuntimeId: null,
-    idempotencyKey: null,
-    cost: rollUpTurnCost([]),
-    usage: sumStepUsage([]),
-    latencyMs: null,
-    startedAt: null,
-    completedAt: null,
-    createdAt: AT,
-    ...overrides,
-  });
-}
-
-/** The four rates as the harness's card holds them. See `RATE_SOURCE_REF`. */
-function fullRates(): Step["rates"] {
-  const rate = (usdPerToken: string) => ({
-    usdPerToken,
-    source: RATE_SOURCE,
-    observedAt: RATE_OBSERVED_AT,
-    sourceRef: RATE_SOURCE_REF,
-  });
-  return Object.freeze({
-    input: rate(CONFORMANCE_RATES.input),
-    output: rate(CONFORMANCE_RATES.output),
-    cacheRead: rate(CONFORMANCE_RATES.cacheRead),
-    cacheWrite: rate(CONFORMANCE_RATES.cacheWrite),
-  });
-}
-
-function stepOf(overrides: Partial<Step> = {}): Step {
-  return Object.freeze({
-    stepId: asConversationsIdentifier<StepId>(uuid("21")),
-    turnId,
-    sequence: 1,
-    model: "anthropic:claude-test",
-    status: "SUCCEEDED" as const,
-    retryCount: 0,
-    usage: Object.freeze({
-      inputTokens: 1_000,
-      outputTokens: 200,
-      cacheCreationInputTokens: 0,
-      cacheReadInputTokens: 0,
-      reasoningTokens: 0,
-    }),
-    cost: null,
-    modelPriceId: null,
-    rates: Object.freeze({ input: null, output: null, cacheRead: null, cacheWrite: null }),
-    latencyMs: null,
-    error: null,
-    startedAt: null,
-    completedAt: null,
-    createdAt: AT,
-    ...overrides,
-  });
-}
-
-function executionOf(overrides: Partial<PostmanExecution> = {}): PostmanExecution {
-  return Object.freeze({
-    executionId: asConversationsIdentifier<PostmanExecutionId>(uuid("31")),
-    agentId: asConversationsIdentifier<AgentId>(chain.agentId),
-    templateId: null,
-    requestId: uuid("41"),
-    requestFingerprint: "b".repeat(64),
-    actorUserId: asConversationsIdentifier<ActorId>(chain.actorUserId),
-    simulatedEndUserId: null,
-    contextHandle: asConversationsIdentifier<PostmanContextHandle>(uuid("51")),
-    contextExpiresAt: AT,
-    status: "PENDING" as const,
-    threadId: null,
-    turnId: null,
-    completedAt: null,
-    createdAt: AT,
-    updatedAt: AT,
-    ...overrides,
-  });
+async function refusedByStore(work: () => Promise<{ readonly ok: boolean }>): Promise<string> {
+  const outcome = (await work()) as { ok: boolean; error?: { message: string } };
+  if (outcome.ok) throw new Error("the store accepted a value the database refuses");
+  return outcome.error?.message ?? "";
 }
 
 beforeAll(async () => {
@@ -220,13 +71,12 @@ beforeAll(async () => {
   chain = await harness.seedChain(scope);
   threadId = asConversationsIdentifier<ThreadId>(uuid("2"));
   turnId = asConversationsIdentifier<TurnId>(uuid("12"));
-  const created = await harness.stores.threads.createThread(
-    scope,
-    threadOf({ threadId }),
+  expect((await harness.stores.threads.createThread(scope, threadOf(chain, threadId))).ok).toBe(
+    true,
   );
-  expect(created.ok).toBe(true);
-  const turn = await harness.stores.turns.createTurn(scope, turnOf({ turnId, sequence: 1 }));
-  expect(turn.ok).toBe(true);
+  expect((await harness.stores.turns.createTurn(scope, turnOf(chain, turnId, threadId, 1))).ok).toBe(
+    true,
+  );
 }, 300_000);
 
 afterAll(async () => {
@@ -238,18 +88,15 @@ describe("@db.Uuid — a non-uuid identifier is a driver fault, not a constraint
     // THE CONTEXT'S OWN FIXTURE MINTS THIS EXACT STRING. `threadFixture` in
     // `application/testing/fixtures.ts` uses `THREAD_ID = "thread-1"`, and every
     // use-case suite in that package is green with it.
-    const refused = await harness.stores.threads.createThread(
-      scope,
-      threadOf({ threadId: asConversationsIdentifier<ThreadId>("thread-1") }),
+    const message = await refusedByStore(() =>
+      harness.stores.threads.createThread(scope, threadOf(chain, "thread-1")),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
+    expect(message).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
   });
 
   test("the database refuses it too, and not with a constraint name", async () => {
     const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
+      rawClient(harness).$executeRawUnsafe(
         `INSERT INTO "Thread" ("id", "environmentId", "agentId", "endUserId", "status", "createdAt", "updatedAt")
          VALUES ('thread-1', $1::uuid, $2::uuid, $3::uuid, 'ACTIVE', now(), now())`,
         scope.environmentId,
@@ -262,35 +109,24 @@ describe("@db.Uuid — a non-uuid identifier is a driver fault, not a constraint
     // on and the whole transaction is already gone by the time it arrives.
     expect(message.toLowerCase()).toContain("uuid");
   });
-
-  test("`price-1` on a step is refused the same way", async () => {
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [stepOf({ modelPriceId: asConversationsIdentifier<ModelPriceId>("price-1") })],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
-  });
 });
 
 describe("Thread_sessionContext_json_root", () => {
   test("the store refuses an array root", async () => {
-    const refused = await harness.stores.threads.createThread(
-      scope,
-      threadOf({
-        threadId: asConversationsIdentifier<ThreadId>(uuid("3")),
-        sessionContext: [1, 2] as unknown as Thread["sessionContext"],
-      }),
+    const message = await refusedByStore(() =>
+      harness.stores.threads.createThread(
+        scope,
+        threadOf(chain, uuid("3"), {
+          sessionContext: [1, 2] as unknown as Thread["sessionContext"],
+        }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(SESSION_CONTEXT_NOT_OBJECT);
+    expect(message).toContain(SESSION_CONTEXT_NOT_OBJECT);
   });
 
   test("the database refuses it, naming the constraint", async () => {
     const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
+      rawClient(harness).$executeRawUnsafe(
         `INSERT INTO "Thread" ("id", "environmentId", "agentId", "endUserId", "status", "sessionContext", "createdAt", "updatedAt")
          VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'ACTIVE', '[1,2]'::jsonb, now(), now())`,
         uuid("4"),
@@ -305,32 +141,27 @@ describe("Thread_sessionContext_json_root", () => {
 
 describe("Thread_ancestry — the fork lineage rule nothing outside the migration states", () => {
   test("the store refuses a boundary that is not the LAST inherited turn", async () => {
-    const refused = await harness.stores.threads.createThread(
-      scope,
-      threadOf({
-        threadId: asConversationsIdentifier<ThreadId>(uuid("5")),
-        parentThreadId: threadId,
-        forkedTurnIds: [turnId, asConversationsIdentifier<TurnId>(uuid("13"))],
-        forkedUpToTurnId: turnId,
-      }),
+    const message = await refusedByStore(() =>
+      harness.stores.threads.createThread(
+        scope,
+        threadOf(chain, uuid("5"), {
+          parentThreadId: threadId,
+          forkedTurnIds: [turnId, asConversationsIdentifier<TurnId>(uuid("13"))],
+          forkedUpToTurnId: turnId,
+        }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(FORK_LINEAGE_INCOHERENT);
+    expect(message).toContain(FORK_LINEAGE_INCOHERENT);
   });
 
   test("the store refuses a boundary set with an EMPTY lineage", async () => {
-    const refused = await harness.stores.threads.createThread(
-      scope,
-      threadOf({
-        threadId: asConversationsIdentifier<ThreadId>(uuid("6")),
-        parentThreadId: threadId,
-        forkedUpToTurnId: turnId,
-      }),
+    const message = await refusedByStore(() =>
+      harness.stores.threads.createThread(
+        scope,
+        threadOf(chain, uuid("6"), { parentThreadId: threadId, forkedUpToTurnId: turnId }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(FORK_LINEAGE_INCOHERENT);
+    expect(message).toContain(FORK_LINEAGE_INCOHERENT);
   });
 
   test("the store refuses a lineage that names one turn twice, under its OWN code", async () => {
@@ -338,23 +169,22 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
     // mistakes: one is a caller that lost track of the order, the other a caller
     // that appended the same ancestor twice. The trigger's own clause is
     // `cardinality(...) = (SELECT count(DISTINCT ...))`.
-    const refused = await harness.stores.threads.createThread(
-      scope,
-      threadOf({
-        threadId: asConversationsIdentifier<ThreadId>(uuid("7")),
-        parentThreadId: threadId,
-        forkedTurnIds: [turnId, turnId],
-        forkedUpToTurnId: turnId,
-      }),
+    const message = await refusedByStore(() =>
+      harness.stores.threads.createThread(
+        scope,
+        threadOf(chain, uuid("7"), {
+          parentThreadId: threadId,
+          forkedTurnIds: [turnId, turnId],
+          forkedUpToTurnId: turnId,
+        }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(FORK_LINEAGE_REPEATED);
+    expect(message).toContain(FORK_LINEAGE_REPEATED);
   });
 
   test("the database refuses the same three, as one ancestry violation", async () => {
     const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
+      rawClient(harness).$executeRawUnsafe(
         `INSERT INTO "Thread" ("id", "environmentId", "agentId", "endUserId", "status",
                               "parentThreadId", "forkedTurnIds", "forkedUpToTurnId", "createdAt", "updatedAt")
          VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'ACTIVE', $5::uuid,
@@ -375,38 +205,33 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
 
 describe("Turn_usage_check", () => {
   test("the store refuses a sequence of zero", async () => {
-    const refused = await harness.stores.turns.createTurn(
-      scope,
-      turnOf({ turnId: asConversationsIdentifier<TurnId>(uuid("14")), sequence: 0 }),
+    const message = await refusedByStore(() =>
+      harness.stores.turns.createTurn(scope, turnOf(chain, uuid("14"), threadId, 0)),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(SEQUENCE_OUT_OF_RANGE);
+    expect(message).toContain(SEQUENCE_OUT_OF_RANGE);
   });
 
   test("the store refuses a negative latency", async () => {
-    const refused = await harness.stores.turns.createTurn(
-      scope,
-      turnOf({ turnId: asConversationsIdentifier<TurnId>(uuid("15")), sequence: 9, latencyMs: -1 }),
+    const message = await refusedByStore(() =>
+      harness.stores.turns.createTurn(
+        scope,
+        turnOf(chain, uuid("15"), threadId, 9, { latencyMs: -1 }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(MEASUREMENT_NEGATIVE);
+    expect(message).toContain(MEASUREMENT_NEGATIVE);
   });
 
   test("the store refuses a turn that completed before it started", async () => {
-    const refused = await harness.stores.turns.createTurn(
-      scope,
-      turnOf({
-        turnId: asConversationsIdentifier<TurnId>(uuid("16")),
-        sequence: 10,
-        startedAt: new Date(AT.getTime() + 1_000),
-        completedAt: AT,
-      }),
+    const message = await refusedByStore(() =>
+      harness.stores.turns.createTurn(
+        scope,
+        turnOf(chain, uuid("16"), threadId, 10, {
+          startedAt: new Date(AT.getTime() + 1_000),
+          completedAt: AT,
+        }),
+      ),
     );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(TIMESTAMPS_INCOHERENT);
+    expect(message).toContain(TIMESTAMPS_INCOHERENT);
   });
 
   test("the database refuses all three, naming one constraint", async () => {
@@ -422,7 +247,7 @@ describe("Turn_usage_check", () => {
       },
     ]) {
       const message = await refusedByDatabase(() =>
-        db().$executeRawUnsafe(
+        rawClient(harness).$executeRawUnsafe(
           `INSERT INTO "Turn" ("id", "threadId", "agentVersionId", "versionBucket", "sequence",
                               "status", "latencyMs", "startedAt", "completedAt", "createdAt")
            VALUES ($1::uuid, $2::uuid, $3::uuid, 'CURRENT', ${String(values.sequence)},
@@ -440,23 +265,19 @@ describe("Turn_usage_check", () => {
 describe("Turn_input_json_root and Turn_output_json_root", () => {
   test("the store refuses a non-object in either, under ONE code", async () => {
     for (const patch of [{ input: [] }, { output: [] }] as readonly unknown[]) {
-      const refused = await harness.stores.turns.createTurn(
-        scope,
-        turnOf({
-          turnId: asConversationsIdentifier<TurnId>(uuid("1a")),
-          sequence: 13,
-          ...(patch as Partial<Turn>),
-        }),
+      const message = await refusedByStore(() =>
+        harness.stores.turns.createTurn(
+          scope,
+          turnOf(chain, uuid("1a"), threadId, 13, patch as Partial<Turn>),
+        ),
       );
-      expect(refused.ok).toBe(false);
-      if (refused.ok) return;
-      expect(refused.error.message).toContain(TURN_JSON_NOT_OBJECT);
+      expect(message).toContain(TURN_JSON_NOT_OBJECT);
     }
   });
 
   test("the database refuses an array in `Turn.input`", async () => {
     const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
+      rawClient(harness).$executeRawUnsafe(
         `INSERT INTO "Turn" ("id", "threadId", "agentVersionId", "versionBucket", "sequence",
                             "status", "input", "createdAt")
          VALUES ($1::uuid, $2::uuid, $3::uuid, 'CURRENT', 14, 'PENDING', '[]'::jsonb, now())`,
@@ -466,218 +287,5 @@ describe("Turn_input_json_root and Turn_output_json_root", () => {
       ),
     );
     expect(message).toContain("Turn_input_json_root");
-  });
-});
-
-describe("Step_usage_check", () => {
-  test("the store refuses a step sequence of zero", async () => {
-    // `Step_usage_check` opens `"sequence" > 0 AND "retryCount" >= 0`, and the
-    // sequence is what `@@unique([turnId, sequence])` orders a trace by.
-    // `PRIMARY_STEP_SEQUENCE` is 1 because the row layout says so, and a step at
-    // zero would sort in front of the turn's own model call.
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [stepOf({ sequence: 0 })],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(SEQUENCE_OUT_OF_RANGE);
-  });
-
-  test("the store refuses a negative token count", async () => {
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [
-        stepOf({
-          usage: {
-            inputTokens: -1,
-            outputTokens: 0,
-            cacheCreationInputTokens: 0,
-            cacheReadInputTokens: 0,
-            reasoningTokens: 0,
-          },
-        }),
-      ],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(STEP_USAGE_NEGATIVE);
-  });
-
-  test("the store refuses cache figures that exceed the input total, under its OWN code", async () => {
-    // THE ONE THE DOMAIN DOES NOT CATCH EITHER WAY. `domain/step-usage.ts` says
-    // the two cache figures are PARTS of `inputTokens`; the constraint says so in
-    // SQL; and a step whose cache reads exceed its input is a provider report
-    // this system cannot charge for twice.
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [
-        stepOf({
-          usage: {
-            inputTokens: 100,
-            outputTokens: 0,
-            cacheCreationInputTokens: 80,
-            cacheReadInputTokens: 80,
-            reasoningTokens: 0,
-          },
-        }),
-      ],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(STEP_CACHE_EXCEEDS_INPUT);
-  });
-
-  // THE PRICE SNAPSHOT IS TWO GUARDS AND THEY ARE STOOD APART ON PURPOSE. A step
-  // that carried neither a card nor its rates would be refused by whichever ran
-  // first, so deleting either one would change nothing and both would be
-  // unfalsifiable behind one case — which is exactly what the first mutation
-  // sweep found. Each case below leaves the OTHER half satisfied.
-  test("a priced step with full rates but NO card is refused", async () => {
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [stepOf({ cost: money(4_500_000n), modelPriceId: null, rates: fullRates() })],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(STEP_PRICE_SNAPSHOT_INCOMPLETE);
-  });
-
-  test("a priced step with a card but ONE rate missing is refused", async () => {
-    const refused = await harness.stores.turns.saveSettlement(scope, {
-      turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [
-        stepOf({
-          cost: money(4_500_000n),
-          modelPriceId: asConversationsIdentifier<ModelPriceId>(chain.modelPriceId),
-          rates: Object.freeze({ ...fullRates(), cacheWrite: null }),
-        }),
-      ],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(STEP_PRICE_SNAPSHOT_INCOMPLETE);
-  });
-
-  test("the database refuses all three, naming one constraint", async () => {
-    for (const values of [
-      { columns: `"inputTokens"`, values: `-1`, tail: "22" },
-      {
-        columns: `"inputTokens", "cacheReadInputTokens", "cacheCreationInputTokens"`,
-        values: `100, 80, 80`,
-        tail: "23",
-      },
-      { columns: `"costCents"`, values: `4.5`, tail: "24" },
-    ]) {
-      const message = await refusedByDatabase(() =>
-        db().$executeRawUnsafe(
-          `INSERT INTO "Step" ("id", "turnId", "sequence", "model", "status", ${values.columns}, "createdAt")
-           VALUES ($1::uuid, $2::uuid, 5, 'anthropic:claude-test', 'SUCCEEDED', ${values.values}, now())`,
-          uuid(values.tail),
-          turnId,
-        ),
-      );
-      expect(message).toContain("Step_usage_check");
-    }
-  });
-});
-
-describe("PostmanExecution_requestFingerprint_check and _contextHandle_check", () => {
-  test("the store refuses a fingerprint that is not 64 lowercase hex", async () => {
-    for (const fingerprint of ["A".repeat(64), "b".repeat(63), "zz"]) {
-      const refused = await harness.stores.postman.createExecution(
-        scope,
-        executionOf({ requestFingerprint: fingerprint }),
-      );
-      expect(refused.ok).toBe(false);
-      if (refused.ok) return;
-      expect(refused.error.message).toContain(REQUEST_FINGERPRINT_MALFORMED);
-    }
-  });
-
-  test("the store refuses a handle whose VERSION or VARIANT nibble is wrong", async () => {
-    // THE CHECK PINS BOTH NIBBLES: version 1-8 and variant 8/9/a/b. A version-0
-    // uuid is a perfectly good uuid for `@db.Uuid` and is refused by this column
-    // alone, which is why the guard restates the pattern rather than reusing the
-    // ordinary uuid one.
-    for (const handle of [
-      "c0000005-0000-0000-8000-000000000001",
-      "c0000005-0000-4000-c000-000000000001",
-      "C0000005-0000-4000-8000-000000000001",
-    ]) {
-      const refused = await harness.stores.postman.createExecution(
-        scope,
-        executionOf({ contextHandle: asConversationsIdentifier<PostmanContextHandle>(handle) }),
-      );
-      expect(refused.ok).toBe(false);
-      if (refused.ok) return;
-      expect(refused.error.message).toContain(CONTEXT_HANDLE_MALFORMED);
-    }
-  });
-
-  test("the database refuses both, naming its own constraint each time", async () => {
-    const fingerprint = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
-        `INSERT INTO "PostmanExecution" ("id", "environmentId", "agentId", "requestId",
-                                        "requestFingerprint", "actorUserId", "contextHandle",
-                                        "contextExpiresAt", "status", "createdAt", "updatedAt")
-         VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, 'NOTHEX', $5::uuid, $6, now(), 'PENDING', now(), now())`,
-        uuid("32"),
-        scope.environmentId,
-        chain.agentId,
-        uuid("42"),
-        chain.actorUserId,
-        uuid("52"),
-      ),
-    );
-    expect(fingerprint).toContain("PostmanExecution_requestFingerprint_check");
-
-    const handle = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
-        `INSERT INTO "PostmanExecution" ("id", "environmentId", "agentId", "requestId",
-                                        "requestFingerprint", "actorUserId", "contextHandle",
-                                        "contextExpiresAt", "status", "createdAt", "updatedAt")
-         VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6::uuid, 'not-a-handle', now(), 'PENDING', now(), now())`,
-        uuid("33"),
-        scope.environmentId,
-        chain.agentId,
-        uuid("43"),
-        "b".repeat(64),
-        chain.actorUserId,
-      ),
-    );
-    expect(handle).toContain("PostmanExecution_contextHandle_check");
-  });
-});
-
-describe("PostmanExecution_ancestry — a turn link needs a thread link", () => {
-  test("the store refuses a turn with no thread, under its own code", async () => {
-    const refused = await harness.stores.postman.createExecution(
-      scope,
-      executionOf({ executionId: asConversationsIdentifier<PostmanExecutionId>(uuid("34")), turnId, threadId: null }),
-    );
-    expect(refused.ok).toBe(false);
-    if (refused.ok) return;
-    expect(refused.error.message).toContain(EXECUTION_TURN_WITHOUT_THREAD);
-  });
-
-  test("the database refuses it as an ancestry violation, naming neither column", async () => {
-    const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
-        `INSERT INTO "PostmanExecution" ("id", "environmentId", "agentId", "requestId",
-                                        "requestFingerprint", "actorUserId", "contextHandle",
-                                        "contextExpiresAt", "status", "turnId", "createdAt", "updatedAt")
-         VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6::uuid, $7, now(), 'PENDING', $8::uuid, now(), now())`,
-        uuid("35"),
-        scope.environmentId,
-        chain.agentId,
-        uuid("45"),
-        "b".repeat(64),
-        chain.actorUserId,
-        uuid("55"),
-        turnId,
-      ),
-    );
-    expect(message).toContain("PostmanExecution crosses its canonical owner ancestry");
   });
 });

@@ -72,7 +72,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` and `identity-access`, `governance` on `tenancy` and `agents`, and
 // `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
-export const EXPECTED_EDGE_COUNT = 102;
+//
+// 102 -> 103 (WIN-258 T5, `conversations`). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/conversations`: a NINTH owner edge carrying FOUR
+// bindings, because a project reference is per PACKAGE and not per port — the
+// same one-edge-many-bindings shape `agents` introduced at two and `governance`
+// at five. `conversations` is the DAG's sink: it depends on eleven contexts and
+// nothing depends on it, so the 17-context graph is again unchanged and no cycle
+// is possible.
+export const EXPECTED_EDGE_COUNT = 103;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -199,6 +207,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "channels",
     "governance",
     "secrets",
+    "conversations",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -221,7 +230,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 8 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 9 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.
