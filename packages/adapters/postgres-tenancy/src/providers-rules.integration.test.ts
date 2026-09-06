@@ -145,16 +145,45 @@ describe("reject_executable_provider_key_delete", () => {
     });
   });
 
-  test("a version naming ANOTHER provider's model pins nothing, and the delete succeeds", async () => {
+  test("a key pinned through the LEGACY route field is refused too", async () => {
+    // THE THIRD PLACE, and the one a fixture would forget.
+    // `reject_executable_provider_key_delete` accepts EITHER spelling of the
+    // route's identifier — `providerCredentialId`, which the extraction source
+    // wrote, or `providerKeyId`, which the current shape writes — so a store
+    // reading only one of the two agrees with the rule on every key written by
+    // the release it was built against and disagrees on every key written by the
+    // other. Both spellings are live in one database the day an upgrade lands.
+    const key = await seedKey(scope, uuid("0005"), "anthropic", "legacy", "ANTHROPIC_LEGACY");
+    await harness.seedPinningVersion(scope, key.providerKeyId, "anthropic", "modelRoutesLegacy");
+    expect(await harness.repository.countAgentVersionsPinning(scope, key.providerKeyId)).toEqual({
+      ok: true,
+      value: 1,
+    });
+    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
+    );
+    expect(refused).toMatchObject({
+      ok: false,
+      error: { code: "PROVIDERS_KEY_PINNED_BY_AGENTS", details: { pinnedAgents: 1 } },
+    });
+  });
+
+  test("a version naming ANOTHER provider's model pins nothing, in EITHER place", async () => {
     // THE NEGATIVE CONTROL, and it is the rule's own clause rather than an
-    // invention: both halves compare `split_part(model, ':', 1)` against the
-    // key's `provider`. A route that carries this key's id beside an OpenAI
-    // model is a configuration error, not a use of this key, and counting it
-    // would refuse a delete the database allows — which is the direction a suite
-    // written only as "the store agrees with the rule when it refuses" cannot
-    // see.
+    // invention: BOTH halves compare `split_part(model, ':', 1)` against the
+    // key's `provider`. A route — or a memory configuration — that carries this
+    // key's id beside an OpenAI model is a configuration error, not a use of
+    // this key, and counting it would refuse a delete the database allows, which
+    // is the direction a suite written only as "the store agrees with the rule
+    // when it refuses" cannot see.
+    //
+    // BOTH SITES ARE SEEDED, because the clause is written out twice and the
+    // first sweep of `mutations-providers.json` proved that a control seeding
+    // only the routes leaves the memory configuration's copy of it with no
+    // witness at all.
     const key = await seedKey(scope, uuid("0003"), "anthropic", "mismatched", "ANTHROPIC_MISMATCH");
     await harness.seedPinningVersion(scope, key.providerKeyId, "openai", "modelRoutes");
+    await harness.seedPinningVersion(scope, key.providerKeyId, "openai", "memoryConfig");
     expect(await harness.repository.countAgentVersionsPinning(scope, key.providerKeyId)).toEqual({
       ok: true,
       value: 0,
@@ -165,13 +194,31 @@ describe("reject_executable_provider_key_delete", () => {
     expect(removed).toEqual({ ok: true, value: true });
   });
 
-  test("the count is scoped: a version in another environment is not this scope's", async () => {
+  test("the count is scoped: a version in another tenant is not this scope's", async () => {
     const key = await seedKey(scope, uuid("0004"), "anthropic", "scoped", "ANTHROPIC_SCOPED");
     await harness.seedPinningVersion(scope, key.providerKeyId, "anthropic", "modelRoutes");
-    // The SAME key id, asked for in the WRONG environment. The join is anchored
-    // on the scope's whole ancestry, so it finds nothing.
+    // The SAME key id, asked for in the WRONG tenant. The join is anchored on
+    // the scope's whole ancestry, so it finds nothing.
     expect(
       await harness.repository.countAgentVersionsPinning(elsewhere, key.providerKeyId),
+    ).toEqual({ ok: true, value: 0 });
+  });
+
+  test("and scoped to the ENVIRONMENT, not just to the tenant above it", async () => {
+    // THE CLAUSE THE CASE ABOVE CANNOT REACH. `elsewhere` differs in all three
+    // ids, so the organization and project clauses refuse it before the
+    // environment clause is consulted; a project with TWO environments is the
+    // ordinary shape that reaches the third, and the first sweep of
+    // `mutations-providers.json` found it had no witness at all.
+    const sibling = await harness.siblingEnvironment(scope);
+    const key = await seedKey(scope, uuid("0006"), "anthropic", "environed", "ANTHROPIC_ENVIRONED");
+    await harness.seedPinningVersion(scope, key.providerKeyId, "anthropic", "modelRoutes");
+    expect(await harness.repository.countAgentVersionsPinning(scope, key.providerKeyId)).toEqual({
+      ok: true,
+      value: 1,
+    });
+    expect(
+      await harness.repository.countAgentVersionsPinning(sibling, key.providerKeyId),
     ).toEqual({ ok: true, value: 0 });
   });
 });
@@ -294,5 +341,69 @@ describe("EnvironmentProvider, where the double and the database part company", 
     // adoption, which is what `@@unique([environmentId, providerId])` says.
     const listed = await harness.repository.listProviderLinks(readopting);
     expect(listed.ok && listed.value).toHaveLength(1);
+  });
+});
+
+describe("the scope predicate is the whole ancestry, not the environment id", () => {
+  test("a caller holding another tenant's grant sees nothing, whatever id it supplies", async () => {
+    // THE DIVERGENCE FROM THE DOUBLE, and it has to live here because the shared
+    // conformance scenario uses a consistent scope throughout and cannot reach
+    // it. `InMemoryProvidersRepository` compares `environmentId` and stops; this
+    // store spells the predicate as a relation filter through `Environment` and
+    // `Project`, so an environment id that is RIGHT under an organization that
+    // is WRONG resolves to nothing.
+    //
+    // It is not a hypothetical shape. `EnvironmentScope` is three ids a caller
+    // supplies together, and a grant for one tenant carrying another tenant's
+    // environment id is exactly what an authorization defect looks like from the
+    // store's side. Cross-scope denial is the property ADR M0.3 §4 says this
+    // programme cannot get wrong.
+    const owner = await harness.freshScope();
+    const key = await seedKey(owner, uuid("0040"), "anthropic", "owned", "ANTHROPIC_OWNED");
+    await harness.seedPinningVersion(owner, key.providerKeyId, "anthropic", "modelRoutes");
+    const stranger = await harness.freshScope();
+    const forged = {
+      level: "environment" as const,
+      organizationId: stranger.organizationId,
+      projectId: stranger.projectId,
+      // The RIGHT environment, under the WRONG project and organization.
+      environmentId: owner.environmentId,
+    } as unknown as EnvironmentScope;
+
+    expect(await harness.repository.listProviderKeys(forged)).toEqual({ ok: true, value: [] });
+    expect(await harness.repository.findProviderKey(forged, key.providerKeyId)).toEqual({
+      ok: true,
+      value: null,
+    });
+    expect(await harness.repository.listProviderKeysFor(forged, ANTHROPIC)).toEqual({
+      ok: true,
+      value: [],
+    });
+    const removed = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.deleteProviderKey(forged, key.providerKeyId, transaction),
+    );
+    expect(removed).toEqual({ ok: true, value: false });
+    // AND THE PIN COUNT IS ANCHORED THE SAME WAY, which is the one read in this
+    // store that cannot use `scopedWhere` at all: it is hand-written SQL, so its
+    // ancestry clauses are written out rather than folded in by the driver, and
+    // the first sweep of `mutations-providers.json` found them with no witness.
+    // Under a forged ancestry it must answer ZERO, and under the scope that owns
+    // the key it must answer the version that really is there — otherwise the
+    // case would pass against a count that is always zero.
+    expect(await harness.repository.countAgentVersionsPinning(forged, key.providerKeyId)).toEqual({
+      ok: true,
+      value: 0,
+    });
+    expect(await harness.repository.countAgentVersionsPinning(owner, key.providerKeyId)).toEqual({
+      ok: true,
+      value: 1,
+    });
+    // And the key is still there under the scope that really owns it, so this is
+    // a denial rather than a store that answers nothing to everybody.
+    expect(await harness.repository.findProviderKey(owner, key.providerKeyId)).toMatchObject({
+      ok: true,
+      value: { label: "owned" },
+    });
+    expect(await harness.repository.listProviderKeys(owner)).toMatchObject({ ok: true });
   });
 });

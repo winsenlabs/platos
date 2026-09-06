@@ -63,14 +63,34 @@ export interface CredentialShape {
   readonly name: string;
 }
 
-/** Where in an `AgentVersion` the pin is written. Both are what the rule reads. */
-export type PinSite = "memoryConfig" | "modelRoutes";
+/**
+ * Where in an `AgentVersion` the pin is written. All three are what the rule
+ * reads, and the third is the one a fixture would forget.
+ *
+ * `reject_executable_provider_key_delete` accepts EITHER spelling of the route's
+ * identifier — `route ->> 'providerCredentialId'` or `route ->> 'providerKeyId'`
+ * — because the extraction source wrote the first and the current shape writes
+ * the second. A store reading only one of the two agrees with the rule on every
+ * key written by the release it was built against and disagrees on every key
+ * written by the other.
+ */
+export type PinSite = "memoryConfig" | "modelRoutes" | "modelRoutesLegacy";
 
 export interface ProvidersHarness {
   readonly base: TenancyHarness;
   readonly repository: ProvidersRepository;
   /** A brand-new organization, project and environment, through the tenancy port. */
   freshScope(): Promise<EnvironmentScope>;
+  /**
+   * A SECOND environment under the same organization and project.
+   *
+   * The only shape that makes the environment clause of a scoped read
+   * load-bearing on its own: a scope whose organization and project both match
+   * and whose environment does not is the one a two-environment project
+   * produces on every request, and the ancestry clauses above it cannot refuse
+   * it.
+   */
+  siblingEnvironment(scope: EnvironmentScope): Promise<EnvironmentScope>;
   /** A `Credential` the ProviderKey rule will accept. Returns its id. */
   seedCredential(scope: EnvironmentScope, shape: CredentialShape): Promise<string>;
   /**
@@ -138,6 +158,28 @@ export async function startProvidersHarness(): Promise<ProvidersHarness> {
       } as unknown as EnvironmentScope;
     },
 
+    async siblingEnvironment(scope: EnvironmentScope): Promise<EnvironmentScope> {
+      const environmentId = asIdentifier<EnvironmentId>(base.freshId("000d"));
+      await base.adapter.unitOfWork.run((transaction) =>
+        base.adapter.saveEnvironment(
+          {
+            id: environmentId,
+            projectId: asIdentifier<ProjectId>(scope.projectId),
+            slug: asIdentifier<Slug>(`staging-${environmentId.slice(-8)}`),
+            name: "staging",
+            archivedAt: null,
+            accessKeyRevocationVersion: 0,
+            memoryFeedbackBackfillCursor: null,
+            memoryFeedbackBackfillCompletedAt: null,
+            createdAt: AT,
+            updatedAt: AT,
+          },
+          transaction,
+        ),
+      );
+      return { ...scope, environmentId } as unknown as EnvironmentScope;
+    },
+
     async seedCredential(scope: EnvironmentScope, shape: CredentialShape): Promise<string> {
       const credentialId = base.freshId("0009");
       // `SERVICE_CREDENTIAL` because that is what a provider key points at, and
@@ -175,9 +217,13 @@ export async function startProvidersHarness(): Promise<ProvidersHarness> {
         site === "memoryConfig"
           ? `'{"__runtime":{"providerKeyId":"${providerKeyId}"}}'::jsonb`
           : `'{}'::jsonb`;
+      // The LEGACY spelling is `providerCredentialId` and the current one is
+      // `providerKeyId`. The rule accepts either; a fixture that only ever wrote
+      // one would leave the other half of that `OR` with no witness.
+      const routeIdField = site === "modelRoutesLegacy" ? "providerCredentialId" : "providerKeyId";
       const modelRoutes =
-        site === "modelRoutes"
-          ? `'[{"model":"${model}","providerKeyId":"${providerKeyId}"}]'::jsonb`
+        site === "modelRoutes" || site === "modelRoutesLegacy"
+          ? `'[{"model":"${model}","${routeIdField}":"${providerKeyId}"}]'::jsonb`
           : `'[]'::jsonb`;
       applyPeerRowsTo(
         base.databaseUrl,

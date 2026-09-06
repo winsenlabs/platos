@@ -305,6 +305,61 @@ describe("ProviderKey_owner_immutable", () => {
   });
 });
 
+describe("WHICH unique index refused, established by reading", () => {
+  test("an identifier already in use is NOT reported as a label conflict", () => {
+    // The disambiguation's FIRST read, and the one the port has no code for. A
+    // caller minting an identifier that is already taken has made a defect, not
+    // a business conflict, and telling it the LABEL was taken would send an
+    // operator to rename a key that is not the problem.
+    //
+    // It is a read rather than a driver error because only two of this table's
+    // three unique indexes are in `schema.prisma`: the client can map those two
+    // back to field names and has no model of the partial one at all.
+    return harness.base.adapter.unitOfWork
+      .run((transaction) =>
+        harness.repository.insertProviderKey(
+          key({
+            // The id `the partial index refuses a second default` already wrote.
+            providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0006")),
+            label: "a different label entirely",
+          }),
+          transaction,
+        ),
+      )
+      .then((refused) => {
+        expect(refused).toMatchObject({
+          ok: false,
+          error: {
+            code: "PROVIDERS_REPOSITORY_UNAVAILABLE",
+            details: { reason: "provider key id already exists" },
+          },
+        });
+      });
+  });
+
+  test("a key claiming a second default is told about the DEFAULT, not its own label", async () => {
+    // The disambiguation's `excluding` clause. An UPDATE that promotes a second
+    // default violates the partial index; the label read that follows must
+    // EXCLUDE the row being updated, or it finds the row's own label and reports
+    // a conflict with itself — the right refusal for the wrong reason, and one an
+    // operator would act on by renaming.
+    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.updateProviderKey(
+        key({
+          providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0008")),
+          label: "not the default",
+          isDefault: true,
+        }),
+        transaction,
+      ),
+    );
+    expect(refused).toMatchObject({
+      ok: false,
+      error: { code: "PROVIDERS_KEY_ALREADY_EXISTS", details: { label: "default" } },
+    });
+  });
+});
+
 describe("the instant and page-window guards", () => {
   test("an Invalid Date is refused before it reaches the driver", async () => {
     await expect(

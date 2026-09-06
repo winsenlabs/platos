@@ -314,3 +314,37 @@ describe("Model's two INTEGER columns", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("isHidden is an operator's decision and not a catalogue fact", () => {
+  test("a catalogue pass over a hidden model leaves it hidden", async () => {
+    // `ModelFacts` omits `isHidden`, so the port cannot carry it either way, and
+    // the column has a `DEFAULT false`. A store that wrote `false` on the update
+    // branch — which is the shape a spread of the whole row produces — would
+    // un-hide every model an operator had hidden, on EVERY catalogue pass, and
+    // every other case in every other suite would still be green because nothing
+    // else ever sets the column.
+    const key = asProvidersIdentifier<ModelKey>("anthropic:hidden-model");
+    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.upsertModel(key, facts("hidden-model"), transaction),
+    );
+    expect(first).toMatchObject({ ok: true, value: { isHidden: false } });
+    // An operator hides it. `isHidden` is nobody's port column, so this is the
+    // one write in this file that goes around the store on purpose.
+    await harness.base.client.$executeRawUnsafe(
+      `UPDATE "Model" SET "isHidden" = true WHERE "key" = 'anthropic:hidden-model'`,
+    );
+    const again = await harness.base.adapter.unitOfWork.run((transaction) =>
+      harness.repository.upsertModel(
+        key,
+        { ...facts("hidden-model"), contextWindow: 2000 },
+        transaction,
+      ),
+    );
+    // The FACTS moved and the operator's decision did not.
+    expect(again).toMatchObject({ ok: true, value: { contextWindow: 2000, isHidden: true } });
+    expect(await harness.repository.findModelByKey(key)).toMatchObject({
+      ok: true,
+      value: { isHidden: true },
+    });
+  });
+});
