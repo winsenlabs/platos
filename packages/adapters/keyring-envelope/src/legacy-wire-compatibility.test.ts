@@ -130,6 +130,82 @@ describe("the discriminator is load-bearing", () => {
     expect(opened.error.details?.reason).toBe("payload_is_not_base64");
   });
 
+  it("refuses a well-formed dotted triple whose iv is 16 bytes, BY WIDTH", async () => {
+    // THIS CASE EXISTS BECAUSE A MUTANT SURVIVED. Deleting the
+    // `requireLegacyEnvelopeShape` call from the reader passed every case above:
+    // a mis-declared payload fails the DECODER first (no dots, or not base64),
+    // so nothing reached the width rule at all. AES-GCM accepts a 16-byte iv
+    // happily, and without this the mutation's only visible effect is that a
+    // width fault reports as `legacy_envelope_open_failed` — indistinguishable
+    // from a wrong key, which is the confusion the whole rule exists to prevent.
+    //
+    // So the payload here is deliberately well formed AS A DOTTED TRIPLE and
+    // wrong only in the iv width: format 3's parts, re-serialised the way format
+    // 2 serialises, and declared format 2.
+    const subject = vector(FORMAT_3_API_KEY);
+    const packed = Buffer.from(subject.payload, "base64");
+    const restacked = [packed.subarray(0, 16), packed.subarray(16, 32), packed.subarray(32)]
+      .map((part) => part.toString("base64url"))
+      .join(".");
+    const opened = await createLegacyEnvelopeReader({
+      keys: { "2": subject.legacyKeyHex },
+    }).openLegacy({ formatVersion: 2, payload: restacked });
+    expect(opened.ok).toBe(false);
+    if (opened.ok) return;
+    expect(opened.error.details?.reason).toBe("nonce_width_disagrees_with_format");
+  });
+
+  it("refuses a dotted triple whose tag is 15 bytes, BY WIDTH", async () => {
+    // Without the width rule this is `setAuthTag` throwing, which the catch
+    // reports as `legacy_envelope_open_failed`. With it, an operator is told the
+    // column is truncated rather than that the key is wrong.
+    const subject = vector(FORMAT_2_TOTP);
+    const [nonce, authTag, ciphertext] = subject.payload
+      .split(".")
+      .map((field) => Buffer.from(field, "base64url"));
+    const shortened = [nonce, (authTag ?? Buffer.alloc(0)).subarray(0, 15), ciphertext]
+      .map((part) => (part ?? Buffer.alloc(0)).toString("base64url"))
+      .join(".");
+    const opened = await createLegacyEnvelopeReader(legacyKeysFor(subject)).openLegacy({
+      formatVersion: 2,
+      payload: shortened,
+    });
+    expect(opened.ok).toBe(false);
+    if (opened.ok) return;
+    expect(opened.error.details?.reason).toBe("auth_tag_width_disagrees_with_format");
+  });
+
+  it("refuses a dotted triple with no ciphertext at all", async () => {
+    // An empty third field decodes to zero bytes, and GCM will happily
+    // "decrypt" nothing and fail the tag. Named instead: the column is empty,
+    // which is a different repair from a rotated key.
+    const subject = vector(FORMAT_2_TOTP);
+    const fields = subject.payload.split(".");
+    const emptied = [fields[0], fields[1], ""].join(".");
+    const opened = await createLegacyEnvelopeReader(legacyKeysFor(subject)).openLegacy({
+      formatVersion: 2,
+      payload: emptied,
+    });
+    expect(opened.ok).toBe(false);
+    if (opened.ok) return;
+    expect(opened.error.details?.reason).toBe("ciphertext_is_empty");
+  });
+
+  it("refuses a packed payload shorter than its own header", async () => {
+    // ANOTHER CASE A MUTANT ASKED FOR. Dropping the `packed.length <= 32` guard
+    // survived every case: `subarray` past the end yields empty slices rather
+    // than throwing, and the width rule then refuses it for the wrong reason —
+    // an operator would be told the tag is malformed when the truth is the
+    // column holds 20 bytes where 33 is the minimum.
+    const truncated = Buffer.alloc(20, 7).toString("base64");
+    const opened = await createLegacyEnvelopeReader({
+      keys: { "3": "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface" },
+    }).openLegacy({ formatVersion: 3, payload: truncated });
+    expect(opened.ok).toBe(false);
+    if (opened.ok) return;
+    expect(opened.error.details?.reason).toBe("payload_is_shorter_than_its_own_header");
+  });
+
   it("refuses the canonical format with its own reason", async () => {
     // Format 1 is not a legacy shape and reaching this verb with it is a mistake
     // about the caller's own data. It gets a reason of its own so an operator's

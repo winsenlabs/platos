@@ -3,18 +3,21 @@
   "milestone": "M2.4",
   "dimension": "credential envelopes, key versions, rotation and re-encryption",
   "branch": "tejas/secret-lifecycle",
-  "generatedFrom": "tejas/secret-lifecycle @ the sweep commit",
+  "generatedFrom": "tejas/secret-lifecycle, rebased onto v1 @ 2abd19b4, at the legacy-envelope migration",
   "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. The three postgres entries run ON THE MAC MINI inside a detached worktree; the laptop's Docker daemon is unreachable by policy and a local run of those three MUST fail to start, which is correct rather than a defect.",
   "summary": {
-    "entries": 34,
-    "killed": 34,
+    "entries": 65,
+    "killed": 63,
     "survived": 0,
-    "declaredUnfalsifiable": 0
+    "declaredUnfalsifiable": 2
   },
   "notes": [
     "TWO mutations SURVIVED their first sweep and both are recorded below with the case that was added to kill them. `cipher-latin1-plaintext` found that this adapter opened three non-ASCII fixtures and had never SEALED one, so the write side's text encoding was untested. `sweep-limit-not-clamped` found a case whose own comment admitted the clamp was \"not observable\" -- an assertion that could not fail, which is the exact shape this repository has a rule about.",
     "A THIRD DEFECT WAS FOUND BY A TEST RATHER THAN BY A MUTATION, in code this issue wrote: the sweep's first draft asked `needsReEncryption`, which is true only for the `prior` status, so a credential whose root key had been REMOVED from the ring -- `absent`, the fail-closed case -- was counted as `alreadyActive` and the environment was reported complete over a stranded credential. It is now `rootKeyStatus(...) === \"active\"`, and `sweep-absent-key-counted-as-done` below restores the bug and watches two named cases fail.",
-    "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns; and the ten sweep entries are killed through `reportRootKeyUsage` and the audit trail -- the store's own record of what happened -- rather than through the sweep's own return value."
+    "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns; and the ten sweep entries are killed through `reportRootKeyUsage` and the audit trail -- the store's own record of what happened -- rather than through the sweep's own return value.",
+    "THE LEGACY-ENVELOPE MIGRATION ADDS 31 ENTRIES BELOW, and FOUR of them SURVIVED their first sweep. Each survival named a real hole and each is recorded with the cases that closed it: `legacy-shape-check-removed` (no payload ever reached the width rule, because the decoder refused every mis-declared one first), `legacy-packed-header-length-guard-removed` (`subarray` past the end yields empty slices rather than throwing, so a truncated column was refused for the wrong reason), `audit-action-migrate-removed` (a TYPE-level deletion, caught by tsc and by no case) and `double-format-rule-hardcoded` (the in-memory double's own format rule was unreachable from the only suite that drives it, because the use case refuses format 1 before the cipher is called).",
+    "TWO ENTRIES ARE DECLARED UNFALSIFIABLE WITH A MEASURED REASON RATHER THAN COUNTED AS KILLS. `legacy-format2-alphabet-base64` cannot change behaviour because Node's base64 DECODER accepts the base64url alphabet — verified directly on this node (v24.3.0) against two format-2 vectors — and its encode-side twin IS killed, so the pair together shows exactly where the alphabets do and do not matter. `migrate-format-check-after-the-grant` moves a guard between two points that are both before `inTransaction`, past only a pure field read, so no observation distinguishes them; the reorder that DOES matter is `migrate-format-check-not-before-the-lock`, which is killed.",
+    "NO LEGACY ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. Every wire entry is killed by ciphertexts produced by `internal-packages/tenancy-database/src/auth.ts` or `apps/agent/src/auth/secrets.service.ts` — the two modules `secrets/domain/envelope.ts` records as those formats' `legacyOrigin`, neither of which this issue edits. A reader that swapped a field order, a width or an alphabet would move only its own side; the frozen bytes do not move with it."
   ],
   "mutations": [
     {
@@ -392,6 +395,347 @@
       "failingCases": 1,
       "killedBy": "sweep-root-key-reencryption.test.ts > skips a revoked credential as already-done rather than as a failure",
       "why": "The converse of `sweep-complete-ignores-skips`, and it needs its own case: a revoked credential has no envelope to move and is behaving correctly, so counting it as a skip would hold `complete` false for ever and stop an operator ever retiring the old key."
+    },
+    {
+      "id": "legacy-shape-check-removed",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "const parts = requireLegacyEnvelopeShape(format.value, decoded.value); (and its refusal)",
+      "to": "const parts = decoded;",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "legacy-wire-compatibility.test.ts > the discriminator is load-bearing > refuses a well-formed dotted triple whose iv is 16 bytes, BY WIDTH",
+      "why": "SURVIVED ITS FIRST SWEEP, and the survival was the finding. Every existing case reached the DECODER first — a mis-declared payload has no dots, or is not base64 — so nothing arrived at the width rule at all. AES-GCM accepts a 16-byte iv happily, so without this guard a width fault reports as `legacy_envelope_open_failed`: indistinguishable from a wrong key, which is the confusion the rule exists to prevent. Three cases were added whose payloads are well formed AS A DOTTED TRIPLE and wrong only in a width."
+    },
+    {
+      "id": "legacy-format3-nonce-hardcoded-12",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "return decodePacked(payload, descriptor.nonceBytes);",
+      "to": "return decodePacked(payload, 12);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 8,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 3 — one packed base64 string, 16-byte iv, written by the agent > opens an API key the extraction source sealed",
+      "why": "Format 3's iv is 16 bytes and format 1's and 2's are 12. A reader carrying its own literal instead of the descriptor's `nonceBytes` opens neither the agent's vectors nor a migrated row. The eight failures span BOTH suites, which is the point: the wire claim and the end-to-end claim are separately falsifiable."
+    },
+    {
+      "id": "legacy-format2-field-order-swapped",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "const [nonce, authTag, ciphertext] = fields.map(...)",
+      "to": "const [nonce, ciphertext, authTag] = fields.map(...)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 10,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 2 — dotted base64url, 12-byte iv, written by auth.ts > opens a TOTP secret the extraction source sealed",
+      "why": "`encryptSecret` in the extraction source emits iv, then TAG, then ciphertext — an unusual order and the one a re-implementation gets wrong. Nothing in this package could have caught it: the vectors are the only thing that knows."
+    },
+    {
+      "id": "legacy-format2-alphabet-base64",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "Buffer.from(field, \"base64url\")",
+      "to": "Buffer.from(field, \"base64\")",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "DECLARED UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": null,
+      "why": "MEASURED, NOT ASSUMED. Node's base64 DECODER accepts the base64url alphabet: `Buffer.from('x0JM-S8luiMZ3CqM','base64')` and `...,'base64url')` return identical bytes on node v24.3.0, checked directly for two of the format-2 vectors. So this replacement cannot change behaviour on ANY input and no case could kill it. The ENCODE direction is a different matter and IS killed — see `legacy-packed-canonicality-base64url` below, where re-encoding with the wrong alphabet breaks the format-3 canonicality check on a payload carrying `/` and `+`."
+    },
+    {
+      "id": "legacy-packed-canonicality-base64url",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "if (Buffer.from(packed).toString(\"base64\") !== payload) {",
+      "to": "if (Buffer.from(packed).toString(\"base64url\") !== payload) {",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 8,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 3 — one packed base64 string, 16-byte iv, written by the agent > opens a payload whose base64 carries `/` and `+`",
+      "why": "The canonicality check re-encodes and compares, because `Buffer.from(x,'base64')` is LENIENT and silently ignores characters outside the alphabet. Re-encoding with the url alphabet makes every payload containing `/` or `+` compare unequal to itself, so the agent's service-account vector is refused as non-canonical. This is the entry that makes the decode-side declaration above honest: the alphabets DO differ, just not where Node decodes."
+    },
+    {
+      "id": "legacy-absent-key-reason-collapsed",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "legacyEnvelopeUnreadable(\"legacy_key_absent_for_format\")",
+      "to": "legacyEnvelopeUnreadable(\"legacy_envelope_open_failed\")",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "legacy-wire-compatibility.test.ts > the key is judged, and its absence is the fail-closed default > refuses when no legacy key is configured for the format",
+      "why": "Two guards answering with one reason cannot be told apart. 'This installation has finished migrating and dropped the key' and 'this payload does not open under the key you gave' are opposite findings: the first is expected and the second is an incident."
+    },
+    {
+      "id": "legacy-tag-check-dropped",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "decipher.setAuthTag(parts.value.authTag);",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 7,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 2 — dotted base64url, 12-byte iv, written by auth.ts > opens a TOTP secret the extraction source sealed",
+      "why": "Without the tag, GCM authenticates nothing and a tampered legacy column would migrate into a canonical envelope that the vault then treats as trustworthy forever. The migration is the LAST moment the legacy tag can be checked at all."
+    },
+    {
+      "id": "legacy-plaintext-latin1",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": ".toString(\"utf8\")",
+      "to": ".toString(\"latin1\")",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 4,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 2 — dotted base64url, 12-byte iv, written by auth.ts > opens multi-byte UTF-8, a newline and a tab",
+      "why": "Both extraction sources encode utf8. A latin1 decode opens every ASCII vector byte for byte and silently corrupts every secret containing a non-ASCII character — the same shape as the survivor the first sweep of this adapter found on the SEAL side, which is why both legacy formats carry a non-ASCII vector."
+    },
+    {
+      "id": "legacy-packed-header-length-guard-removed",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "if (packed.length <= nonceBytes + TAG_BYTES) {",
+      "to": "if (packed.length < 0) {",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "legacy-wire-compatibility.test.ts > the discriminator is load-bearing > refuses a packed payload shorter than its own header",
+      "why": "SURVIVED ITS FIRST SWEEP. `subarray` past the end yields empty slices rather than throwing, so a 20-byte column reached the width rule and was refused for the wrong reason — an operator told the tag is malformed when the truth is the column is truncated. A case was added with a 20-byte canonical-base64 payload."
+    },
+    {
+      "id": "legacy-key-width-guard-removed",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "if (!HEX_KEY.test(value)) return err(...);",
+      "to": "if (false) return err(...);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "legacy-wire-compatibility.test.ts > the key is judged, and its absence is the fail-closed default > refuses a key that is not 32 bytes of hex",
+      "why": "A short key reaches `createDecipheriv`, which throws, and the catch reports it as an open failure — so an operator who pasted a truncated key would chase the ciphertext instead of the configuration."
+    },
+    {
+      "id": "legacy-format2-routed-to-wrong-decoder",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "if (descriptor.name === \"raw-key.aes-256-gcm.dotted-base64url\") return decodeDottedTriple(payload);",
+      "to": "if (descriptor.name === \"raw-key.aes-256-gcm.packed-base64\") return decodeDottedTriple(payload);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 4,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 2 — dotted base64url, 12-byte iv, written by auth.ts > opens a TOTP secret the extraction source sealed",
+      "why": "The DESCRIPTOR's stable name chooses the decoder, not a bare number, so a format catalogued later with a shape neither decoder handles falls through to a refusal. Pointing a name at the wrong decoder is the failure that check is shaped to make visible."
+    },
+    {
+      "id": "legacy-adds-associated-data",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "(no setAAD call — neither legacy format authenticates any)",
+      "to": "decipher.setAAD(Buffer.from(\"platos\", \"utf8\"));",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 4,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 2 — dotted base64url, 12-byte iv, written by auth.ts > opens a TOTP secret the extraction source sealed",
+      "why": "The ABSENCE of associated data is the legacy format, not an omission in this reader. `envelope.ts` records `bindsContext: false` for both, and adding any would make every stored legacy envelope permanently unopenable — the mirror of the format-1 entry `cipher-open-drops-aad` above, where the absence is the defect."
+    },
+    {
+      "id": "legacy-format3-tag-ciphertext-slices-swapped",
+      "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
+      "from": "authTag = packed.subarray(nonceBytes, nonceBytes + TAG_BYTES); ciphertext = packed.subarray(nonceBytes + TAG_BYTES)",
+      "to": "ciphertext = packed.subarray(nonceBytes, nonceBytes + TAG_BYTES); authTag = packed.subarray(nonceBytes + TAG_BYTES)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 8,
+      "killedBy": "legacy-wire-compatibility.test.ts > format 3 — one packed base64 string, 16-byte iv, written by the agent > opens a payload whose base64 carries `/` and `+`",
+      "why": "`SecretsService.encrypt` packs iv, then authTag, then ciphertext. The order is invisible in the payload — it is one base64 blob — so only bytes that source produced can settle it."
+    },
+    {
+      "id": "adapter-openlegacy-unwired",
+      "file": "packages/adapters/keyring-envelope/src/adapter.ts",
+      "from": "openLegacy: legacyReader.openLegacy,",
+      "to": "openLegacy: async () => err(legacyUnreachable()),",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 11,
+      "killedBy": "legacy-migration.test.ts > a format-2 row written by auth.ts opens after migration > returns the extraction source's plaintext through the runtime read path",
+      "why": "The reader exists and works; this asks whether the ADAPTER actually publishes it as the port's third verb. Eleven failures, all in the end-to-end suite, because that is the only suite that goes through the composed adapter rather than the reader alone."
+    },
+    {
+      "id": "domain-canonical-format-reason-collapsed",
+      "file": "packages/contexts/secrets/domain/legacy-envelope.ts",
+      "from": "legacyEnvelopeUnreadable(\"format_is_already_canonical\")",
+      "to": "legacyEnvelopeUnreadable(\"format_not_a_known_version\")",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "legacy-envelope.test.ts > which formats a migration may read > refuses the canonical format with a reason of its own",
+      "why": "'You pointed the migration at material that is already canonical' and 'that number is not a format' are different mistakes with different repairs, and an operator's log has only the reason to tell them apart."
+    },
+    {
+      "id": "domain-root-key-refusal-dropped",
+      "file": "packages/contexts/secrets/domain/legacy-envelope.ts",
+      "from": "if (!descriptor.versionedRootKey) refusals.push(\"CredentialSecretVersion_root_key_check\");",
+      "to": "(the branch deleted)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "legacy-envelope.test.ts > the canonical row refuses both legacy shapes > names all three constraints for format 2 — no salt and no root key version",
+      "why": "The constraint list is the FINDING this issue rests on: a legacy envelope is not merely un-writable by policy, the initial migration's CHECK constraints make it unstorable. Dropping a constraint from the list understates why the migration has to transcode rather than update in place."
+    },
+    {
+      "id": "domain-nonce-width-hardcoded",
+      "file": "packages/contexts/secrets/domain/legacy-envelope.ts",
+      "from": "if (parts.nonce.length !== descriptor.nonceBytes) {",
+      "to": "if (parts.nonce.length !== 12) {",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "legacy-envelope.test.ts > the width rule reads the descriptor rather than a literal > accepts format 3's 16-byte nonce",
+      "why": "The whole reason this rule lives in the domain is that the width comes from `envelope.ts`'s descriptor. A literal here is a second opinion about the format, and three modules each holding their own opinion is exactly how the tree came to have three incompatible envelopes."
+    },
+    {
+      "id": "domain-salt-refusal-dropped",
+      "file": "packages/contexts/secrets/domain/legacy-envelope.ts",
+      "from": "if (saltBytes !== descriptor.saltBytes) {",
+      "to": "if (saltBytes !== 0 && false) {",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "legacy-envelope.test.ts > the width rule reads the descriptor rather than a literal > refuses salt bytes, because neither legacy format has any",
+      "why": "A caller arriving with salt has mis-read a canonical envelope as a legacy one. Opening it anyway would silently discard material that changes the derived key, and produce a plaintext nobody sealed."
+    },
+    {
+      "id": "domain-migratable-set-shrunk",
+      "file": "packages/contexts/secrets/domain/legacy-envelope.ts",
+      "from": "([2, 3] as const).filter((version) => !envelopeFormat(version).writable)",
+      "to": "([2] as const).filter((version) => !envelopeFormat(version).writable)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "legacy-envelope.test.ts > which formats a migration may read > names exactly the two the descriptors call un-writable",
+      "why": "A format silently dropped from the migratable set is a format that stays readable, stays un-writable, and quietly becomes un-migratable — the exact state this whole issue exists to end, reintroduced for one format instead of two."
+    },
+    {
+      "id": "audit-action-migrate-removed",
+      "file": "packages/contexts/secrets/domain/audit.ts",
+      "from": "\"PURGE\", \"MIGRATE\"] as const",
+      "to": "\"PURGE\"] as const",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "legacy-envelope.test.ts > a migrated envelope is distinguishable in the audit trail > carries MIGRATE in the closed action set, distinct from CREATE",
+      "why": "SURVIVED ITS FIRST SWEEP, because it is a TYPE-level deletion and vitest does not typecheck — `tsc` catches it, no case did. A gate only the compiler enforces is a gate a suppression comment can be argued past, and this set is a security surface: after the legacy columns are dropped, the MIGRATE row is the only remaining evidence that a credential's material came from a raw-key, context-unbound envelope. A case was added."
+    },
+    {
+      "id": "port-openlegacy-removed",
+      "file": "packages/contexts/secrets/application/ports/crypto.ts",
+      "from": "openLegacy(request: LegacyOpenRequest): Promise<Result<SecretMaterial>>;",
+      "to": "(the member deleted)",
+      "command": "pnpm build:v1",
+      "outcome": "KILLED",
+      "failingCases": 0,
+      "killedBy": "pnpm build:v1 — in-memory-crypto.ts(194,11) TS2353 'openLegacy' does not exist in type 'AeadCipher'; migrate-legacy-envelope.ts(97,40) TS2339 Property 'openLegacy' does not exist on type 'AeadCipher'",
+      "why": "THE ONE ENTRY IN THIS LEDGER KILLED BY A GATE RATHER THAN BY A CASE, and it is declared as such rather than dressed up. Deleting a member from an interface has NO runtime effect — every implementation still carries the method and every caller still finds it — so no case can observe it and vitest does not typecheck. The compiler observes it at two sites, quoted above, and those are the measured evidence. Where a type-level deletion COULD be given a case it was: see `audit-action-migrate-removed` directly above."
+    },
+    {
+      "id": "migrate-grant-weakened-to-read",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "requireSecretMutation(command.authorization)",
+      "to": "requireSecretRead(command.authorization)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 5,
+      "killedBy": "migrate-legacy-envelope.test.ts > it fails closed > DENIES the runtime tier, which may read secrets but never introduce them",
+      "why": "The runtime tier is exactly the tier `requireSecretRead` admits. Migration ENDS with plaintext sealed under the active root key, so a read grant here would let the runtime introduce material into the vault from a string it supplied."
+    },
+    {
+      "id": "migrate-convergence-guard-removed",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "if (existing !== null) return ok(toCredentialMetadata(current.credential, existing));",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "migrate-legacy-envelope.test.ts > it converges rather than clobbering > returns a credential that is ALREADY canonical untouched",
+      "why": "THE DANGEROUS DIRECTION. Without this, a stale legacy column overwrites a secret an operator has since rotated properly — a silent downgrade of live material, reported as success. It is also what makes a half-finished sweep safe to repeat."
+    },
+    {
+      "id": "migrate-audit-action-create",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "action: \"MIGRATE\"",
+      "to": "action: \"CREATE\"",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "migrate-legacy-envelope.test.ts > a legacy column becomes a canonical envelope > does not record a CREATE, because nothing was created here",
+      "why": "Provenance. A credential whose material arrived from a raw-key, context-unbound envelope has a different blast radius from one an operator typed, and once the legacy column is dropped this row is the only place that difference survives."
+    },
+    {
+      "id": "migrate-audit-claims-a-from-key",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "(fromRootKeyVersion omitted, written as null)",
+      "to": "fromRootKeyVersion: stored.value.rootKeyVersion",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "migrate-legacy-envelope.test.ts > a legacy column becomes a canonical envelope > records a MIGRATE audit with a `to` root key and NO `from`",
+      "why": "Naming a source version asserts the material MOVED between two ring versions. It did not — formats 2 and 3 record `versionedRootKey: false` and name none. A migrated row is the only one in the trail with a `to` and no `from`, and that asymmetry is the evidence."
+    },
+    {
+      "id": "migrate-format-check-not-before-the-lock",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "requireMigratableFormat before inTransaction",
+      "to": "(the pre-transaction check deleted; the format judged only inside the cipher)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 9,
+      "killedBy": "migrate-legacy-envelope.test.ts > it fails closed > refuses the canonical format WITHOUT taking a row lock",
+      "why": "A caller pointing this at format 1 has made a mistake about its own data and should learn it without a row lock being taken on its behalf. The named case counts the unit of work's commits and rollbacks and asserts neither moved, which is the only way the ABSENCE of a transaction is observable."
+    },
+    {
+      "id": "migrate-format-check-after-the-grant",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "requireMigratableFormat before `const authorization = granted.value`",
+      "to": "requireMigratableFormat after it",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "DECLARED UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": null,
+      "why": "MEASURED: applied, the whole 213-case suite still passes. Both positions are BEFORE `inTransaction` and after `requireSecretMutation`, and `granted.value` is a pure field read with no effect, so the two orders are observationally identical — no lock is taken either way and the same error is returned either way. It is recorded rather than dropped because the neighbouring reorder that DOES matter — moving the check past `inTransaction` — is the entry above, and a reader comparing them should be able to see which axis is load-bearing."
+    },
+    {
+      "id": "migrate-revoked-credential-allowed",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "if (current.credential.revokedAt !== null) return err(credentialUnavailable(\"credential_revoked\"));",
+      "to": "(the branch deleted)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "migrate-legacy-envelope.test.ts > it fails closed > refuses a revoked credential",
+      "why": "A revoked credential is one an operator has deliberately taken out of service. Migrating material into it would give it a live envelope again, and the credential would read as usable to the runtime."
+    },
+    {
+      "id": "migrate-ignores-declared-format",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "formatVersion: format.value.formatVersion",
+      "to": "formatVersion: 2",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "migrate-legacy-envelope.test.ts > a legacy column becomes a canonical envelope > seals the canonical format, never the format it read",
+      "why": "The caller's declared format is the discriminator and the use case must carry it through unchanged. Hard-coding one silently reads every format-3 column as format 2, which fails the tag check and looks like a key problem."
+    },
+    {
+      "id": "migrate-revision-not-first",
+      "file": "packages/contexts/secrets/application/migrate-legacy-envelope.ts",
+      "from": "secretRevision(FIRST_SECRET_REVISION)",
+      "to": "secretRevision(2)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "migrate-legacy-envelope.test.ts > a legacy column becomes a canonical envelope > seals the legacy material at revision 1 under the ACTIVE root key",
+      "why": "The convergence branch above guarantees there is no previous CANONICAL version, so this IS the credential's first envelope in that table. Numbering it anything else claims a history of canonical revisions that never existed, and the store's `[credentialId, secretRevision, rootKeyVersion]` unique key would then leave a gap nothing explains."
+    },
+    {
+      "id": "double-format-rule-hardcoded",
+      "file": "packages/contexts/secrets/application/in-memory-crypto.ts",
+      "from": "requireMigratableFormat(request.formatVersion)",
+      "to": "requireMigratableFormat(2)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "in-memory-ports.test.ts > the legacy double is faithful about the FORMAT, and says so > routes through the domain's own rule rather than deciding for itself",
+      "why": "SURVIVED ITS FIRST SWEEP, and the survival named a real hole. `migrate-legacy-envelope.test.ts` reaches the cipher only THROUGH the use case, which refuses the canonical format before the cipher is ever called — so the double's own format rule was unreachable from the one suite that drives it. A double that quietly stops honouring the rule is worse than no double: every 'fails closed' assertion built on it would pass for the wrong reason. Three cases were added to `in-memory-ports.test.ts`, which is where this package already proves its doubles non-vacuous."
     }
   ]
 }

@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { CREDENTIAL_AUDIT_ACTIONS } from "./audit.js";
 import { CANONICAL_ENVELOPE_FORMAT, envelopeFormat } from "./envelope.js";
 import {
   AUTH_TAG_BYTES,
@@ -75,6 +76,21 @@ describe("which formats a migration may read", () => {
     if (!accepted.ok) return;
     expect(accepted.value.name).toBe("raw-key.aes-256-gcm.packed-base64");
     expect(accepted.value.legacyOrigin).toBe("apps/agent/src/auth/secrets.service.ts");
+  });
+});
+
+describe("a migrated envelope is distinguishable in the audit trail", () => {
+  it("carries MIGRATE in the closed action set, distinct from CREATE", () => {
+    // THIS CASE EXISTS BECAUSE A MUTANT SURVIVED THE SUITE. Deleting "MIGRATE"
+    // from `CREDENTIAL_AUDIT_ACTIONS` is caught by `tsc` — `action: "MIGRATE"`
+    // stops being assignable — but `vitest` does not typecheck, so no CASE could
+    // tell. A gate that only the compiler enforces is a gate a `// @ts-expect-error`
+    // can be argued past, and this set is a security surface: after the legacy
+    // columns are dropped, this row is the ONLY remaining evidence that a
+    // credential's material came from a raw-key, context-unbound envelope.
+    expect([...CREDENTIAL_AUDIT_ACTIONS]).toContain("MIGRATE");
+    expect(CREDENTIAL_AUDIT_ACTIONS).toHaveLength(7);
+    expect(new Set(CREDENTIAL_AUDIT_ACTIONS).size).toBe(7);
   });
 });
 
