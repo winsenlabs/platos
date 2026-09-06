@@ -42,26 +42,63 @@ interface Slugs {
   readonly customSkillId: SkillId | null;
 }
 
-function describeProject(installation: ProjectInstallation): Record<string, unknown> {
+/**
+ * A minted identifier, replaced by the NAME of the row it belongs to.
+ *
+ * WHY NO OBSERVATION MAY CARRY A MINTED ID. `Skill.id`, `ProjectSkill.id` and
+ * `EnvironmentSkill.id` are minted by the store, and the two stores mint from
+ * different sources: the double from an injected sequence, PostgreSQL's adapter
+ * from `crypto.randomUUID`. Comparing either literally compares the two id
+ * SOURCES and fails on every run for a reason that is not a divergence — which
+ * it did, on the first container run, at `upsertProjectInstallation.first`.
+ *
+ * Masking them out would have been the wrong repair: the identity of the row a
+ * pointer points AT is exactly what a store can get wrong, and a projection that
+ * dropped it would have stopped watching the column that matters. So an id is
+ * replaced by the name of the row it was learned as, and an id nobody has named
+ * reads as `<unnamed>` — which is a value the expected side never holds, so a
+ * pointer to the wrong row still fails, and it fails naming the step.
+ */
+function labeller() {
+  const named = new Map<string, string>();
+  return {
+    name(id: string | null, label: string): void {
+      if (id !== null) named.set(id, label);
+    },
+    of(id: string | null): string | null {
+      if (id === null) return null;
+      return named.get(id) ?? "<unnamed>";
+    },
+  };
+}
+
+type Labels = ReturnType<typeof labeller>;
+
+function describeProject(
+  installation: ProjectInstallation,
+  labels: Labels,
+): Record<string, unknown> {
   return {
     level: installation.scope.level,
     organizationId: installation.scope.organizationId,
     projectId: installation.scope.projectId,
-    skillId: installation.skillId,
+    skillId: labels.of(installation.skillId),
+    projectSkillId: labels.of(installation.projectSkillId),
     enabled: installation.enabled,
     createdAtNotAfterUpdatedAt:
       installation.createdAt.getTime() <= installation.updatedAt.getTime(),
   };
 }
 
-function describeInstallation(installation: Installation | null): unknown {
+function describeInstallation(installation: Installation | null, labels: Labels): unknown {
   if (installation === null) return null;
   return {
-    project: describeProject(installation.project),
+    project: describeProject(installation.project, labels),
     environment: {
       level: installation.environment.scope.level,
       environmentId: installation.environment.scope.environmentId,
-      projectSkillId: installation.environment.projectSkillId,
+      environmentSkillId: labels.of(installation.environment.environmentSkillId),
+      projectSkillId: labels.of(installation.environment.projectSkillId),
       enabled: installation.environment.enabled,
       config: installation.environment.config,
     },
@@ -79,14 +116,21 @@ export async function runSkillsInstallConformance(
 ): Promise<void> {
   const { repository, scope, staging, ids } = environment;
   const customSkillId = slugs.customSkillId ?? asIdentifier<SkillId>(ids.missingSkillId);
+  const labels = labeller();
+  labels.name(customSkillId, "skill:custom");
+  labels.name(ids.missingSkillId, "missing:skill");
+  labels.name(ids.missingEnvironmentSkillId, "missing:environmentSkill");
 
   // ----------------------------------------------------------- the install
   const project = await environment.run((transaction) =>
     repository.upsertProjectInstallation(scope, customSkillId, transaction),
   );
-  observed["upsertProjectInstallation.first"] = outcome(project, describeProject);
   const projectRow = project.ok ? project.value : null;
   const projectSkillId = projectRow?.projectSkillId ?? null;
+  labels.name(projectSkillId, "install:project");
+  observed["upsertProjectInstallation.first"] = outcome(project, (row) =>
+    describeProject(row, labels),
+  );
 
   const binding =
     projectRow === null
@@ -94,23 +138,25 @@ export async function runSkillsInstallConformance(
       : await environment.run((transaction) =>
           repository.upsertEnvironmentInstallation(scope, projectRow, transaction),
         );
+  const environmentSkillId =
+    binding !== null && binding.ok ? binding.value.environmentSkillId : null;
+  labels.name(environmentSkillId, "install:environment");
   observed["upsertEnvironmentInstallation.first"] =
     binding === null
       ? { ok: false, code: "no-project-row", category: "scenario", hasReason: false }
       : outcome(binding, (row) => ({
           level: row.scope.level,
           environmentId: row.scope.environmentId,
-          projectSkillId: row.projectSkillId,
+          environmentSkillId: labels.of(row.environmentSkillId),
+          projectSkillId: labels.of(row.projectSkillId),
           enabled: row.enabled,
           config: row.config,
           keyedByProjectRow: row.projectSkillId === projectSkillId,
         }));
-  const environmentSkillId =
-    binding !== null && binding.ok ? binding.value.environmentSkillId : null;
 
   observed["findInstallation.afterInstall"] = outcome(
     await repository.findInstallation(scope, customSkillId),
-    describeInstallation,
+    (installation) => describeInstallation(installation, labels),
   );
   observed["findVisibleSkill.afterInstall"] = outcome(
     await repository.findVisibleSkill(scope, customSkillId),
@@ -121,7 +167,7 @@ export async function runSkillsInstallConformance(
   // project: the skill IS adopted there and is NOT bound there.
   observed["findInstallation.fromStaging"] = outcome(
     await repository.findInstallation(staging, customSkillId),
-    describeInstallation,
+    (installation) => describeInstallation(installation, labels),
   );
   observed["findVisibleSkill.fromStaging"] = outcome(
     await repository.findVisibleSkill(staging, customSkillId),
@@ -137,7 +183,7 @@ export async function runSkillsInstallConformance(
     repository.upsertProjectInstallation(scope, customSkillId, transaction),
   );
   observed["upsertProjectInstallation.repeat"] = outcome(projectRepeat, (row) => ({
-    ...describeProject(row),
+    ...describeProject(row, labels),
     sameRow: row.projectSkillId === projectSkillId,
   }));
   const bindingRepeat =
@@ -159,18 +205,18 @@ export async function runSkillsInstallConformance(
   const bindingId = environmentSkillId ?? asIdentifier<EnvironmentSkillId>(ids.missingEnvironmentSkillId);
   observed["findInstallationById.present"] = outcome(
     await repository.findInstallationById(scope, bindingId),
-    describeInstallation,
+    (installation) => describeInstallation(installation, labels),
   );
   observed["findInstallationById.fromStaging"] = outcome(
     await repository.findInstallationById(staging, bindingId),
-    describeInstallation,
+    (installation) => describeInstallation(installation, labels),
   );
   observed["findInstallationById.absent"] = outcome(
     await repository.findInstallationById(
       scope,
       asIdentifier<EnvironmentSkillId>(ids.missingEnvironmentSkillId),
     ),
-    describeInstallation,
+    (installation) => describeInstallation(installation, labels),
   );
 
   // A BINDING THIS SCOPE DOES NOT COVER IS ABSENT, NEVER A PLACEHOLDER — and the
@@ -184,7 +230,9 @@ export async function runSkillsInstallConformance(
     ]),
     (installations) => ({
       count: installations.length,
-      environmentSkillIds: installations.map((one) => one.environment.environmentSkillId),
+      environmentSkillIds: installations.map((one) =>
+        labels.of(one.environment.environmentSkillId),
+      ),
     }),
   );
   observed["findInstallationsByIds.empty"] = outcome(
