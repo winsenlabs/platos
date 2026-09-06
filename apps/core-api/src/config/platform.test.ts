@@ -24,7 +24,9 @@ const ROOT_KEY = "a".repeat(64);
 // of one read, rather than exempted for being a test.
 describe("the one declared environment reader", () => {
   const PROBE = "PLATOS_ENV_SNAPSHOT_PROBE";
-  // eslint-disable-next-line no-restricted-syntax -- the pinned read; see above.
+  // THE PINNED READ. `scripts/arch/env-access.mjs` declares this file at
+  // exactly one, and fails in both directions — a second read here is ENV-002,
+  // and removing this one is ENV-003.
   const ambient = process.env;
 
   afterEach(() => {

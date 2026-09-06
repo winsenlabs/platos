@@ -9,10 +9,13 @@
 // contract `load.ts` renders under, the group semantics `platform.ts` decides
 // with, or a value chosen here and pushed through the real loader.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
-import { loadPlatformConfiguration, PLATFORM_SECTIONS } from "./platform.js";
-import { groupFields, type ConfigFieldSpec } from "./schema.js";
+import { loadPlatformConfiguration, platformFieldNames, PLATFORM_SECTIONS } from "./platform.js";
+import { CORE_API_CONFIG_FIELDS, groupFields, type ConfigFieldSpec } from "./schema.js";
 
 const MINIMAL = { PLATOS_ENVIRONMENT: "test" } as const;
 
@@ -202,6 +205,72 @@ describe("the constraint fields are internally coherent", () => {
       expect(field.defaultValue.length).toBeGreaterThanOrEqual(field.minimumLength ?? 0);
       if (field.pattern === undefined) continue;
       expect(new RegExp(`^(?:${field.pattern})$`, "u").test(field.defaultValue)).toBe(true);
+    }
+  });
+});
+
+// PROSE MUST MATCH MECHANISM, and here that is checkable rather than aspirational.
+//
+// `docs/env-vars.md` opens by claiming to list "every environment variable
+// Platos reads". For the six sections that claim is now enforced: the
+// operator-facing table and the field tables are joined, in BOTH directions, so
+// a variable cannot be added to the code without appearing in the document and a
+// row cannot outlive the field it describes.
+describe("the operator documentation and the field tables agree", () => {
+  const documentation = readFileSync(
+    fileURLToPath(new URL("../../../../docs/env-vars.md", import.meta.url)),
+    "utf8",
+  );
+
+  /** Every `PLATOS_*` name in a table cell of the V1 section, in order. */
+  function documentedNames(): readonly string[] {
+    const section = documentation.split("## V1 core-api (`apps/core-api`)")[1] ?? "";
+    return [...section.matchAll(/^\| `(PLATOS_[A-Z0-9_]+)` \|/gmu)].map((match) => match[1] ?? "");
+  }
+
+  it("finds the V1 section at all, so an empty match cannot pass every case below", () => {
+    expect(documentation).toContain("## V1 core-api (`apps/core-api`)");
+    expect(documentedNames().length).toBeGreaterThan(30);
+  });
+
+  it("documents every variable the six sections declare", () => {
+    const documented = new Set(documentedNames());
+    const declared = [...CORE_API_CONFIG_FIELDS.map((field) => field.name), ...platformFieldNames()];
+    expect(declared.filter((name) => !documented.has(name))).toEqual([]);
+  });
+
+  it("documents nothing the six sections do not declare", () => {
+    // The other direction, which is the one a document drifts in: a variable
+    // removed from the code leaves a row telling operators to set something
+    // nothing reads.
+    const declared = new Set([...CORE_API_CONFIG_FIELDS.map((field) => field.name), ...platformFieldNames()]);
+    // The stdio binary's one variable is documented in the same section and is
+    // validated by `apps/mcp-stdio/src/runtime.ts`, not by these tables.
+    declared.add("PLATOS_MCP_STDIO_RUNTIME_MODULE");
+    expect(documentedNames().filter((name) => !declared.has(name))).toEqual([]);
+  });
+
+  it("gives every declared default the same value the document promises", () => {
+    // The join that catches the drift nobody notices: a default changed in code
+    // and not in the table reads as a lie to whoever is sizing a pool.
+    const rows = new Map(
+      [...documentation.matchAll(/^\| `(PLATOS_[A-Z0-9_]+)` \| ([^|]*)\|/gmu)].map((match) => [
+        match[1] ?? "",
+        (match[2] ?? "").trim(),
+      ]),
+    );
+    for (const section of PLATFORM_SECTIONS) {
+      for (const group of section.groups) {
+        for (const field of groupFields(group)) {
+          const documented = rows.get(field.name);
+          if (documented === undefined) continue;
+          if (field.defaultValue === null) {
+            expect(["—", "anchor"].includes(documented), `${field.name} shows "${documented}"`).toBe(true);
+            continue;
+          }
+          expect(documented, field.name).toBe(`\`${field.defaultValue}\``);
+        }
+      }
     }
   });
 });
