@@ -83,6 +83,22 @@ export async function linkProviderKey(
   // A failure to forget it is not a failure of the link: the entry expires on
   // its own, and reporting an error here would tell an operator their key was
   // not created when it was.
-  await dependencies.probeCache.forgetProvider(draft.provider);
+  // WIN-259 M2.4 LEAVES THIS ONE DISCARDING, AND SAYS SO EXPLICITLY. Four of the
+  // six eviction sites now refuse when the cache cannot be told, because the
+  // material behind an ADDRESSABLE entry changed or went away. This is not one of
+  // them, and the paragraph above already had the argument: nothing stale is
+  // reachable here.
+  //
+  // A key is being ADDED where there was none, so there is no entry keyed by it —
+  // `credentialFingerprint` includes the row identifier, and this row is new. The
+  // only entry that could exist is the `not_configured` answer from before, and
+  // `check-provider-health.ts` never serves that from cache at all: "THE CACHE IS
+  // CONSULTED ONLY AFTER READINESS IS ESTABLISHED ... so adding a key produces a
+  // fresh answer immediately rather than one served from a window opened before
+  // the key existed."
+  //
+  // The `void` is deliberate. It is the difference between a discard someone
+  // decided and a discard nobody noticed, which is what the other four were.
+  void (await dependencies.probeCache.forgetProvider(draft.provider));
   return ok(inserted.value);
 }

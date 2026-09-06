@@ -166,6 +166,11 @@ export async function registerProviderKey(
     return err(compensation ?? inserted.error);
   }
 
-  await dependencies.probeCache.forgetProvider(draft.provider);
+  // WIN-259 M2.4 leaves this discarding for the reason `link-provider-key.ts`
+  // spells out: a key is being ADDED, `credentialFingerprint` keys on the new
+  // row, and the only prior answer is a `not_configured` one that
+  // `check-provider-health.ts` never serves from cache. The `void` marks the
+  // discard as decided rather than overlooked.
+  void (await dependencies.probeCache.forgetProvider(draft.provider));
   return ok(inserted.value);
 }

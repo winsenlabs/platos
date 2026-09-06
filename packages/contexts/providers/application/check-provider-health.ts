@@ -22,6 +22,7 @@
 import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
+  credentialFingerprint,
   expiresAt,
   findManifest,
   healthCacheKey,
@@ -176,7 +177,7 @@ export async function checkProviderHealth(
     return ok(notConfigured(manifest.id, ready.value.required, dependencies.clock.now()));
   }
 
-  const cacheKey = healthCacheKey(manifest.id, key.providerKeyId);
+  const cacheKey = healthCacheKey(manifest.id, credentialFingerprint(key));
   const cached = await dependencies.probeCache.readHealth(cacheKey);
   if (cached.ok && cached.value !== null) {
     if (isFresh(cached.value, dependencies.policy.health, dependencies.clock.now())) {

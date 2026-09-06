@@ -28,6 +28,7 @@ import {
 } from "../domain/index.js";
 import { requireAccess, vaultGrantFor, verifyOperator, type TenancyOperatorGrant } from "./authorization.js";
 import type { ProvidersDependencies } from "./dependencies.js";
+import { evictProbeCache } from "./evict-probe-cache.js";
 import { assertLabelIsFree, saveProviderKey } from "./provider-key-store.js";
 import { isUsableFor, requireProviderCredential } from "./vault.js";
 
@@ -130,8 +131,12 @@ export async function rotateProviderKeySecret(
   );
   if (!written.ok) return err(written.error);
 
-  await dependencies.probeCache.forgetProvider(key.value.provider);
-  return ok(written.value);
+  // WIN-259 M2.4. The `Result` used to be discarded here, and this is the site
+  // where that mattered most: the material behind an ADDRESSABLE cached verdict
+  // has just changed. A key rotated because it leaked would otherwise keep
+  // answering `healthy` — from a probe made against the leaked material — for
+  // the length of the health window.
+  return evictProbeCache(dependencies, key.value.provider, written.value);
 }
 
 export async function relinkProviderKey(
@@ -181,6 +186,10 @@ export async function relinkProviderKey(
   );
   if (!written.ok) return err(written.error);
 
-  await dependencies.probeCache.forgetProvider(key.value.provider);
-  return ok({ key: written.value, previousCredentialName: key.value.credentialName });
+  // A relink points the SAME row at DIFFERENT material, which is the rotation
+  // case under another name, so it refuses on the same terms.
+  return evictProbeCache(dependencies, key.value.provider, {
+    key: written.value,
+    previousCredentialName: key.value.credentialName,
+  });
 }

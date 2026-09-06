@@ -32,6 +32,17 @@ export class InMemoryProviderProbeCache implements ProviderProbeCache {
   /** When set, every write fails — the "cache is unreachable" case. */
   writesFail = false;
 
+  /**
+   * When set, every eviction fails AND CHANGES NOTHING (WIN-259 M2.4).
+   *
+   * The two halves are both load-bearing. Returning an error while still
+   * clearing the maps would make the stale-entry test vacuous: the entry would
+   * be gone for the reason the test is trying to prove it is gone for. This
+   * double leaves it exactly where it was, so a later read that misses can only
+   * have missed because it asked a DIFFERENT key.
+   */
+  evictionsFail = false;
+
   constructor(private readonly now: () => Date) {}
 
   private live<Value>(entry: Entry<Value> | undefined): Value | null {
@@ -67,6 +78,7 @@ export class InMemoryProviderProbeCache implements ProviderProbeCache {
 
   async forgetProvider(provider: ProviderId): Promise<Result<void>> {
     this.forgotten.push(provider);
+    if (this.evictionsFail) return err(repositoryUnavailable("in-memory cache refuses evictions"));
     for (const map of [this.health, this.modelLists]) {
       for (const key of [...map.keys()]) {
         if (key.includes(`/${provider}/`)) map.delete(key);
