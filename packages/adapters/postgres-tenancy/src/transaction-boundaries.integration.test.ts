@@ -7,13 +7,15 @@
 // writer looks again" proves nothing: a writer sees its own uncommitted rows.
 // Durability and rollback are both claims about what SOMEBODY ELSE sees.
 //
-//   1. A RETURNED ERROR `Result` COMMITS. `UnitOfWork.run` commits when its
-//      callback RESOLVES, and a `Result` failure is a resolved callback. This is
-//      the `cost-monitoring` trap — its own `detect-crossings.ts` carries the
-//      comment "REJECT, do not return. A returned error resolves the callback,
-//      and a resolved callback commits" because the shape shipped once — and
-//      nothing in the tree proved it against a database. It is proved here, so
-//      the sentence is a measurement rather than a warning.
+//   1. A RETURNED ERROR `Result` ROLLS BACK, and until WIN-260 (M2.5) this line
+//      read the opposite: `UnitOfWork.run` commits when its callback RESOLVES,
+//      and a `Result` failure was a resolved callback. That was the
+//      `cost-monitoring` trap, it shipped once, and this file was where it was
+//      finally proved against a database rather than warned about.
+//      `run` no longer ACCEPTS such a callback — `NotResult<Value>` collapses to
+//      `never` for a `Result` — and `runResult` aborts on `err`. The write, the
+//      second-connection read and the measurement are unchanged; only the answer
+//      moved, and it moved because the mechanism did.
 //
 //   2. THE BRIDGE THAT CLOSES IT. `secrets`' own `inTransaction` turns a
 //      `Result` failure into a rejection and the rejection into a rollback. The
@@ -57,8 +59,7 @@ import type {
   EnvironmentVariable,
   Result,
 } from "@platos/context-secrets/application/ports/index.js";
-import { err } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/context-secrets/application/ports/index.js";
+import { domainError, err, runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
@@ -127,27 +128,42 @@ async function seenByAnother(scope: EnvironmentId, key: string): Promise<string 
   return row?.value ?? null;
 }
 
-describe("a returned error Result commits, and the bridge is what stops it", () => {
-  test("UnitOfWork.run COMMITS work whose callback RESOLVED with a failure", async () => {
+// WIN-260 (M2.5). THIS BLOCK USED TO BE CALLED "a returned error Result commits,
+// and the bridge is what stops it", and its first case asserted — against a real
+// PostgreSQL, over a second connection — that `UnitOfWork.run` COMMITTED work
+// whose callback resolved with a failure. It was true, and it was the sharpest
+// statement of the defect anywhere in this repository: the row was there, and a
+// connection that had never been inside the transaction could see it.
+//
+// It is now false, and the reason is not that `run` behaves differently: a
+// resolved callback still commits, because that is the only contract a
+// transaction can have. What changed is that `run` NO LONGER ACCEPTS the
+// callback. `NotResult<Value>` collapses to `never` for a `Result`, so the shape
+// this case used to demonstrate cannot be compiled, and `runResult` — which
+// aborts on `err` — is the only way left to write it.
+//
+// THE THREE CASES BELOW ARE THE SAME THREE, with the same writes, the same
+// second-connection reads and the same negative control. Only the first one's
+// expectation moved, and it moved because the mechanism did.
+describe("a returned error Result ROLLS BACK, and the type is what makes it", () => {
+  test("runResult DISCARDS work whose callback returned a failure", async () => {
     const key = `RESOLVED_ERR_${fresh().slice(-4)}`;
     const outcome = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const written = await write(environmentId, key, "committed-anyway", transaction);
       expect(written).toMatchObject({ ok: true });
       // A LATER STEP FAILS, and says so the way a use case says so — by
-      // RETURNING. Nothing throws, so the callback resolves, so the transaction
-      // commits, so the write above is permanent. The failure is real and the
-      // caller will be told about it; the rollback it implies never happens.
-      return err({
-        code: "SOMETHING_FAILED",
-        kind: "conflict",
-        message: "a later step failed",
-      } as never) as Result<EnvironmentVariable>;
+      // RETURNING. Under `run` that resolved the callback and committed the write
+      // above; under `runResult` the failing branch throws before any `return` is
+      // reachable, so the transaction is rolled back with the write inside it.
+      return err<EnvironmentVariable>(
+        domainError("SOMETHING_FAILED", "conflict", "a later step failed"),
+      );
     });
 
     expect(outcome).toMatchObject({ ok: false });
-    // THE TRAP, MEASURED. A connection that was never inside that transaction
-    // can see the row.
-    expect(await seenByAnother(environmentId, key)).toBe("committed-anyway");
+    // THE ROLLBACK, MEASURED THE WAY THE TRAP WAS. A connection that was never
+    // inside that transaction sees NOTHING — the same read, the other answer.
+    expect(await seenByAnother(environmentId, key)).toBeNull();
   });
 
   test("the same work under `inTransaction` leaves NOTHING behind", async () => {
@@ -155,15 +171,20 @@ describe("a returned error Result commits, and the bridge is what stops it", () 
     const outcome = await inTransaction(harness.base.adapter.unitOfWork, async (transaction) => {
       const written = await write(environmentId, key, "should-not-survive", transaction);
       expect(written).toMatchObject({ ok: true });
-      return err({
-        code: "SOMETHING_FAILED",
-        kind: "conflict",
-        message: "a later step failed",
-      } as never) as Result<EnvironmentVariable>;
+      return err<EnvironmentVariable>(
+        domainError("SOMETHING_FAILED", "conflict", "a later step failed"),
+      );
     });
 
     // The caller still sees a plain `Result` — the bridge does not change the
     // answer, only what the database did with the work behind it.
+    //
+    // THIS CASE IS UNCHANGED AND IT NOW PROVES SOMETHING ELSE. `secrets`'
+    // `inTransaction` was a bespoke re-invention of the kernel's mechanism, with
+    // its own `TransactionRollback` class and its own `catch`; it is now one line
+    // of delegation to `runResult`. So this case and the one above run the SAME
+    // kernel code by two names, and they agree — which is what it means for the
+    // bridge to have stopped being a local escape and become the contract.
     expect(outcome).toMatchObject({ ok: false, error: { code: "SOMETHING_FAILED" } });
     expect(await seenByAnother(environmentId, key)).toBeNull();
   });

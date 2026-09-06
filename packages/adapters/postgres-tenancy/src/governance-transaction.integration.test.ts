@@ -21,14 +21,20 @@
 //   whether or not the callback resolved.
 //
 //   A GUARD refusal sends no statement at all — which is the whole point of
-//   `governance-guards.ts` — so the transaction is untouched. A callback that
-//   RETURNS that error `Result` therefore RESOLVES, and a resolved callback
-//   COMMITS. The first write survives.
+//   `governance-guards.ts` — so the transaction is untouched, and a callback
+//   that SWALLOWS that error `Result` and answers `void` resolves. A resolved
+//   callback COMMITS. The first write survives.
 //
-// The second is the `cost-monitoring` trap in this context's own shape, it is
-// not preventable by the store, and it is measured here so nobody has to
-// discover it in production: a use case composing two of these writes must
-// THROW on a refusal, not return it. Both halves are pinned.
+// WIN-260 (M2.5) CHANGED WHICH HALF OF THAT IS REACHABLE. The second case below
+// used to say "a caller that RETURNS it commits the first write", and that was
+// the `cost-monitoring` trap in this context's own shape. RETURNING it is no
+// longer something a caller can write: `UnitOfWork.run` refuses a `Result`-valued
+// callback, and `runResult` rolls back on one. What survives — and what the case
+// now measures — is the caller that DISCARDS the refusal and answers `void`.
+// That still commits, and it always will, because a callback that reports no
+// failure is indistinguishable from one that had none. It is not preventable by
+// the store and it is not preventable by a type; it is a decision taken in the
+// open at a call site a reader can see, which is the only place it belongs.
 
 import { afterAll, beforeAll, expect, test } from "vitest";
 
@@ -163,12 +169,19 @@ test("a DATABASE refusal on the second write takes the first with it", async () 
   expect(row?.metadata).not.toBeNull();
 });
 
-test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first write", async () => {
-  // *** THE TRAP, MEASURED. *** The guard sends no statement, so PostgreSQL never
-  // learns anything went wrong; the callback resolves and Prisma commits. This
-  // is `cost-monitoring`'s shipped defect in this context's shape, and it is not
-  // something a store can fix: the port returns a `Result` and a `Result` is not
-  // an exception. It is pinned so a use case author knows the rule.
+test("a GUARD refusal does NOT, and a caller that DISCARDS it commits the first write", async () => {
+  // *** WHAT REMAINS AFTER WIN-260 (M2.5), MEASURED. *** The guard sends no
+  // statement, so PostgreSQL never learns anything went wrong. This case used to
+  // be named for a caller that RETURNED the refusal, which is the shape
+  // `cost-monitoring` shipped — and that shape no longer compiles, because
+  // `UnitOfWork.run` refuses a `Result`-valued callback outright.
+  //
+  // THE CALLBACK BELOW DOES NOT RETURN THE REFUSAL. It reads it, asserts on it,
+  // and answers `void`. Nothing in this transaction ever reports a failure, so
+  // it commits — and no type can prevent that, because a callback that reports
+  // no failure is indistinguishable from one that had none. The remaining rule
+  // is therefore about a use case DISCARDING a `Result`, not about returning
+  // one, and it is pinned here so a use case author knows which rule survived.
   const subject = `subject-${harness.base.freshId("0021")}`;
   const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
@@ -205,8 +218,9 @@ test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first w
     where: { id: written.value.safetyEventId },
     select: { detail: true, metadata: true },
   });
-  // COMMITTED. The anonymisation stands even though the operation it was half of
-  // did not complete.
+  // COMMITTED, and still correctly so. The anonymisation stands even though the
+  // operation it was half of did not complete, because the callback never said
+  // it had not completed.
   expect(committed?.detail).toBeNull();
   expect(committed?.metadata).toBeNull();
 });
