@@ -2055,34 +2055,34 @@
     ]
   },
   "expected": {
-    "totalFiles": 4923,
+    "totalFiles": 4934,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 30,
       "apps-mcp-stdio": 7,
       "apps-webapp": 183,
       "docs-content": 733,
-      "internal-packages": 1164,
-      "packages": 2015,
+      "internal-packages": 1172,
+      "packages": 2018,
       "root-infra": 277
     },
     "kindCounts": {
       "asset": 155,
-      "config": 290,
+      "config": 291,
       "doc": 606,
-      "fixture": 4,
+      "fixture": 6,
       "generated": 43,
       "legal": 14,
       "lockfile": 3,
       "migration": 894,
-      "source": 1959,
-      "test": 955
+      "source": 1964,
+      "test": 958
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1606,
+      "move-refactor": 1612,
       "regenerate": 38,
-      "retain": 3270,
+      "retain": 3275,
       "unresolved": 2
     },
     "protectedCount": 1627,
@@ -2159,7 +2159,7 @@
       "internal-packages.doc.diagram": 1,
       "internal-packages.doc.package": 10,
       "internal-packages.email.templates": 15,
-      "internal-packages.fixture.upgrade-baseline": 1,
+      "internal-packages.fixture.upgrade-baseline": 3,
       "internal-packages.generated.release-history": 2,
       "internal-packages.infra.container": 1,
       "internal-packages.legal.attribution": 1,
@@ -2168,14 +2168,14 @@
       "internal-packages.migration.image": 4,
       "internal-packages.schema.analytics": 34,
       "internal-packages.schema.prisma": 3,
-      "internal-packages.source.typescript": 108,
-      "internal-packages.test.suites": 61,
+      "internal-packages.source.typescript": 112,
+      "internal-packages.test.suites": 63,
       "internal-packages.tooling.scripts": 9,
-      "packages.adapters.config": 45,
+      "packages.adapters.config": 46,
       "packages.adapters.doc": 12,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 228,
-      "packages.adapters.test": 138,
+      "packages.adapters.source": 229,
+      "packages.adapters.test": 139,
       "packages.config.build": 28,
       "packages.contexts.config": 36,
       "packages.contexts.doc": 17,
@@ -2221,6 +2221,6 @@
       "root-infra.tooling.scripts": 75,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "d932508fe70c7f10c1203863a502b45f6854b428b11e0c851fe72d0b9b320da3"
+    "classificationSha256": "0d477c63c94813b731d214eed143949e8f5e91298197d1748d9de3f98213f6db"
   }
 }
