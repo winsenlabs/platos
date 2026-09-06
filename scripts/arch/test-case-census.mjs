@@ -1171,6 +1171,1157 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * packages.contexts.test 349 + packages.kernel.test 3 + packages.adapters.test 15
  * = 367. The pre-adapter form (contexts + kernel alone) would read 352 and is no
  * longer the identity; `v1-ledger.test.mjs` carries the same restatement.
+ *
+ * WIN-258 POSTGRES-TENANCY (M2.3). One package moves, the second nonzero row
+ * under `packages/adapters`:
+ *
+ *   packages/adapters/postgres-tenancy   0 -> 4 files,   0 -> 56 cases
+ *
+ * 367 + 4 = 371 files and 5875 + 56 = 5931 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 19 = 371.
+ *
+ * WHAT THE 56 ARE, because two of the four files are unlike anything else this
+ * census counts:
+ *
+ *   client.test.ts                     17  the datasource URL and the driver
+ *                                          error classification, both pure
+ *   mapping.test.ts                    14  row -> record, and the three refusals
+ *                                          for a column this binary cannot read
+ *   repository.integration.test.ts     16  REAL PostgreSQL
+ *   transaction.integration.test.ts     9  REAL PostgreSQL
+ *
+ * THE 25 INTEGRATION CASES DO NOT RUN IN `pnpm test:v1-packages`. They start a
+ * container, and the typecheck job has no Docker daemon, so the package's own
+ * `test` script excludes them by filename and the `postgres-tenancy-repository`
+ * CI job runs them. They are counted here anyway, and deliberately: this census
+ * measures the suites a package SHIPS, not the suites one runner happens to
+ * execute, and a case that vanished from the tree would otherwise be invisible
+ * to the pin. `differential-coverage` and the CI job are what make sure they run.
+ *
+ * THE NUMBER TO WATCH WHEN THIS MOVES. `transaction.integration.test.ts` holds
+ * the failure-injection case that makes the SECOND write of a transaction fail
+ * against a real database and then looks for the first row. Its case count would
+ * not move if that assertion were weakened to counting rollbacks — the same
+ * blind spot `run-turn.test.ts` has above — so `mutations.json` beside the
+ * package is where that guard is held falsifiable, not here.
+ *
+ * WIN-258 TRANCHE 2 — THE IDENTITY-ACCESS CANONICAL STORE. The SAME package
+ * moves again, because ADR M0.3 §15 puts both contexts' repositories in one
+ * adapter directory:
+ *
+ *   packages/adapters/postgres-tenancy   4 -> 11 files,   56 -> 123 cases
+ *
+ * 371 + 7 = 378 files and 5931 + 67 = 5998 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 26 = 378.
+ *
+ * WHAT THE 67 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   identity-mapping.test.ts                        17  scope assembly, the five
+ *                                                       row refusals and the four
+ *                                                       write guards, all pure
+ *   identity-conformance.integration.test.ts         3  the fake and the adapter
+ *                                                       asked the SAME questions,
+ *                                                       plus two cases proving the
+ *                                                       fake WRONG
+ *   identity-constraints.integration.test.ts        16  rules that live only in
+ *                                                       the migrations
+ *   identity-transaction.integration.test.ts        11  failure injection, and the
+ *                                                       three scope refusals
+ *   identity-statements.integration.test.ts          7  measured statement counts
+ *   identity-differential.integration.test.ts        4  against PlatosAuthService,
+ *                                                       the session methods
+ *   identity-differential-login.integration.test.ts  9  against PlatosAuthService,
+ *                                                       the login paths, MFA,
+ *                                                       impersonation and the one
+ *                                                       divergence
+ *
+ * 17 + 3 + 16 + 11 + 7 + 4 + 9 = 67. The differential is TWO files because the
+ * single file crossed the ADR M0.3 §6 hard limit of 500 effective lines and the
+ * budget was pointing at a real seam. Six of the seven files are integration suites
+ * and do not run in `pnpm test:v1-packages` for the reason stated above; the
+ * `postgres-tenancy-repository` CI job runs them, and they are counted here
+ * because this census measures the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 3 in the conformance suite. It is
+ * small because it is ONE scenario of forty-six observations compared verbatim
+ * against the in-memory fake, plus the two cases that assert the fake is wrong.
+ * Adding an observation to that scenario strengthens it and moves no count here,
+ * which is why `mutations-identity.json` is where those guards are falsifiable.
+ *
+ * WIN-258 TRANCHE 3 — TENANCY'S OTHER FIVE PORTS. The SAME package moves a
+ * third time, for the third reason ADR M0.3 §15 gives: the row lock, the
+ * advisory lock, the session revoker, the access-key revocation counter, the
+ * invitation token issuer and the operator directory are the ports a use case
+ * needs BESIDE the repository, and they are the same connection as the
+ * repository.
+ *
+ *   packages/adapters/postgres-tenancy   11 -> 16 files,   123 -> 166 cases
+ *
+ * 378 + 5 = 383 files and 5998 + 43 = 6041 cases. The adapters term of the
+ * identity moves with it: 349 + 3 + 31 = 383.
+ *
+ * WHAT THE 43 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   invitation-token.test.ts                    7  the only one of the five
+ *                                                  ports provable with no
+ *                                                  database: digest shape,
+ *                                                  round trip, independence
+ *   locks.integration.test.ts                  12  whether the locks BLOCK,
+ *                                                  and the access-key fence
+ *                                                  with its negative control
+ *   ports-conformance.integration.test.ts       8  the fake and the adapter
+ *                                                  asked the SAME questions,
+ *                                                  plus six cases the shared
+ *                                                  scenario cannot reach — one
+ *                                                  of which is the only place
+ *                                                  the two stores' advisory-lock
+ *                                                  KEYS are compared
+ *   ports-transaction.integration.test.ts      10  the three scope refusals on
+ *                                                  all five methods, failure
+ *                                                  injection, and the
+ *                                                  OperatorSession rules
+ *   ports-statements.integration.test.ts        6  measured statement counts
+ *
+ * 7 + 12 + 8 + 10 + 6 = 43. Four of the five are integration suites and do not
+ * run in `pnpm test:v1-packages`, for the reason stated above; the
+ * `postgres-tenancy-repository` CI job runs them.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 12 in `locks.integration.test.ts`.
+ * Half of those cases assert an ORDERING across two concurrent transactions
+ * rather than a returned value, because a lock that does not block returns
+ * exactly what a lock that does returns. Weakening one of them to an assertion
+ * on the boolean would move no count here, which is why `mutations-ports.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ * WIN-258 TRANCHE 4 — THE KERNEL OUTBOX. TWO packages move, and they move for
+ * two different reasons, so the delta is written as two rows rather than one:
+ *
+ *   packages/adapters/outbox              0 -> 4 files,    0 -> 41 cases
+ *   packages/adapters/postgres-tenancy   11 -> 15 files, 123 -> 156 cases
+ *
+ * 378 + 4 + 4 = 386 files and 5998 + 41 + 33 = 6072 cases. The adapters term of
+ * the identity moves by the same eight: 349 + 3 + 34 = 386.
+ *
+ * WHY THE OUTBOX IS TWO PACKAGES AT ALL. `Event` has an owner that is an ADAPTER
+ * rather than a context, and ADR M0.3 §15 gives the ORM exactly one home — so
+ * the package that owns the port cannot be the package that issues its INSERT.
+ * `packages/adapters/outbox` keeps the identifier, the instant, the envelope and
+ * every refusal; `packages/adapters/postgres-tenancy` holds the statement.
+ *
+ * WHAT THE 39 ARE, file by file:
+ *
+ *   event-id.test.ts        11  the UUIDv7 that makes `ORDER BY createdAt, id`
+ *                               append order, and the five ways it could stop
+ *   envelope.test.ts        15  the seven refusal codes, the object-root
+ *                               constraint the double cannot see, and the
+ *                               pre-envelope row a drain must still read
+ *   adapter.test.ts         11  what `append` writes and what `drain` returns
+ *   conformance.test.ts      4  the committed scenario against the double, plus
+ *                               TWO negative controls: a store outside the
+ *                               snapshot set and a store that never refuses
+ *
+ * 11 + 15 + 11 + 4 = 41. None of them needs a database, so all 41 run in
+ * `pnpm test:v1-packages`.
+ *
+ * THE TWO ODD ONES OUT are the eleventh case in each of event-id and adapter,
+ * and both were written because the MUTATION SWEEP found a survivor rather than
+ * because a reviewer thought of them. `bytes[8] = tail[0]` — the variant bits
+ * left as drawn — survived every case in the file, because the fixed tail those
+ * cases use already carries the right two bits; and `createdAt: clock.now()` —
+ * the raw reading rather than the clamped one — survived because every case
+ * used a clock that stands still. A count that moved without that history is
+ * exactly what this block exists to prevent.
+ *
+ * WHAT THE 33 ARE, and all 33 need a real PostgreSQL:
+ *
+ *   outbox-transaction.integration.test.ts   11  failure injection, the returned
+ *                                                error value that COMMITS, and
+ *                                                the five refusal codes
+ *   outbox-constraints.integration.test.ts   12  rules and facts that live in
+ *                                                the migrations or the catalogue
+ *   outbox-statements.integration.test.ts     7  measured statement counts
+ *   outbox-conformance.integration.test.ts    3  the committed scenario against a
+ *                                                real database, and durability
+ *                                                read on a SECOND connection
+ *
+ * 11 + 12 + 7 + 3 = 33. They are excluded from the package's default `test`
+ * script by filename and run by the `postgres-tenancy-repository` CI job, and
+ * counted here because this census measures the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 3 in the conformance suite and the 4
+ * in the double's. Both are small because both are ONE scenario of twelve
+ * observations compared verbatim against a committed transcript; adding an
+ * observation strengthens the differential and moves no count here, which is why
+ * `packages/adapters/outbox/mutations.json` is where those guards are held
+ * falsifiable.
+ *
+ * TRANCHES 3 AND 4 LAND TOGETHER, AND THE PINS ARE THE SUM OF BOTH — never
+ * either one. Each block above is correct against the same base and about a
+ * DIFFERENT addition, so `packages/adapters/postgres-tenancy` moves twice:
+ *
+ *   packages/adapters/outbox              0 -> 4 files,     0 -> 41 cases
+ *   packages/adapters/postgres-tenancy   11 -> 20 files,  123 -> 199 cases
+ *
+ * 11 + 5 (tranche 3) + 4 (tranche 4) = 20 files, and 123 + 43 + 33 = 199 cases.
+ * The tree total is 378 + 5 + 4 + 4 = 391 files and 5998 + 43 + 41 + 33 = 6115
+ * cases. The adapters term of the three-way identity carries both: 26 + 5 + 8 =
+ * 39, and 349 + 3 + 39 = 391.
+ *
+ * THE FAILURE THIS PARAGRAPH EXISTS TO PREVENT is side-picking. Taking tranche
+ * 3's 16/166 would have dropped the outbox's four suites and 33 cases; taking
+ * tranche 4's 15/156 would have dropped the five ports' 43. Both readings pass
+ * their own branch's arithmetic and neither is the tree.
+ *
+ * TRANCHE 5 — THE `tools` CANONICAL STORE — adds 6 files and 59 cases to
+ * `packages/adapters/postgres-tenancy`, and to no other package at all. The
+ * `tools` CONTEXT gains no test file: the port and its in-memory double already
+ * existed and already had suites, and this tranche implements the port rather
+ * than widening it.
+ *
+ * WHAT THE 59 ARE, and 39 of them need a real PostgreSQL:
+ *
+ *   tools-mapping.test.ts                    20  row -> domain mapping, the
+ *                                                audit envelope's layout, and
+ *                                                what a THROW becomes on the way
+ *                                                out of the store; NO database,
+ *                                                which is why it is the one
+ *                                                countable unit suite of the six
+ *   tools-constraints.integration.test.ts    12  rules that live ONLY in the
+ *                                                migrations — the json-root
+ *                                                CHECK, the four ancestry
+ *                                                rules, the NULL-distinct
+ *                                                unique index
+ *   tools-isolation.integration.test.ts       8  which rows a statement may
+ *                                                reach, and which columns a
+ *                                                second write may not move
+ *   tools-statements.integration.test.ts      7  measured statement counts, each
+ *                                                pinned on a SMALL and a LARGE
+ *                                                fixture so an N+1 moves one
+ *   tools-conformance.integration.test.ts     5  the shared scenario against a
+ *                                                real database, compared
+ *                                                observation for observation
+ *                                                with the in-memory double's
+ *   tools-transaction.integration.test.ts     7  failure injection; a returned
+ *                                                error `Result` that must COMMIT
+ *                                                NOTHING; and the converse pair
+ *                                                — a GUARD refusal the unit of
+ *                                                work commits around, and a
+ *                                                refusal POSTGRESQL raised,
+ *                                                which takes the unit of work
+ *                                                with it and still resolves
+ *
+ * 20 + 12 + 8 + 7 + 5 + 7 = 59. Five of the six are excluded from the package's
+ * default `test` script by filename and run by the `postgres-tenancy-repository`
+ * CI job.
+ *
+ * THE SIXTH FILE IS THE INTERESTING ONE, and it is not here because the tranche
+ * grew. `tools-isolation.integration.test.ts` is eight cases that exist because
+ * a MUTATION SURVIVED: the sweep in `mutations-tools.json` removed the ancestry
+ * resolve's organization half, the replace's entity clause, the enable's tenant
+ * clause and three orderings, and the five suites above stayed green for every
+ * one. It is a separate file rather than an appendix to the constraints suite
+ * because appending took that file to 467 effective lines, and the ADR M0.3 §6
+ * budget was pointing at a real seam: migrations-only RULES on one side, what
+ * the STORE decides on the other.
+ *
+ * THE NUMBER TO WATCH HERE is the 5 in the conformance suite. It is small for
+ * the same reason the outbox's 3 is: it is ONE scenario compared verbatim, so
+ * adding an observation strengthens the differential and moves no count in this
+ * file. `packages/adapters/postgres-tenancy/mutations-tools.json` is where those
+ * guards are held falsifiable instead.
+ *
+ *
+ * WIN-258 TRANCHE 5 — THE `agents` CANONICAL STORE (M2.3) adds 6 files and 60
+ * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
+ *
+ *   agents-guards.test.ts                     14  the refusal parser, against the
+ *                                                 THREE shapes a refusal actually
+ *                                                 arrives in, every fixture copied
+ *                                                 off a container
+ *   agents-rows.test.ts                        7  the two readers that REFUSE
+ *                                                 rather than inventing a value,
+ *                                                 neither of them reachable
+ *                                                 through PostgreSQL today
+ *   agents-conformance.integration.test.ts     2  the two halves of the shared
+ *                                                 scenario, run against the
+ *                                                 double and against PostgreSQL
+ *                                                 and compared step by step
+ *   agents-constraints.integration.test.ts    16  what the MIGRATIONS refuse and
+ *                                                 `schema.prisma` does not say
+ *   agents-transaction.integration.test.ts    12  failure injection, the three
+ *                                                 transaction-scope refusals,
+ *                                                 the savepoint measured from a
+ *                                                 SECOND connection, and the
+ *                                                 parent row lock
+ *   agents-statements.integration.test.ts      9  measured statement counts
+ *
+ * 14 + 7 + 2 + 16 + 12 + 9 = 60, over 6 files, and every one of the six numbers
+ * is READ BACK from the counter in this file rather than tallied by hand. Four
+ * of the six are excluded from the package's default `test` script by filename
+ * and run by the `postgres-tenancy-repository` CI job; `agents-guards.test.ts`
+ * and `agents-rows.test.ts` are not, because neither module has a database in
+ * it.
+ *
+ * THE TWO UNIT FILES ARE HERE BECAUSE A SWEEP PUT THEM HERE, and that is the
+ * honest order of events. `agents-guards.test.ts` exists because two entries of
+ * `mutations-agents.json` SURVIVED: the branches that read a refusal out of a
+ * raw statement's `meta` are reached by no delegate call in this adapter, so
+ * nothing could turn them red. The suite falsifies them against the exact error
+ * objects, rather than the branches being deleted as dead code.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite. It is two
+ * because it is TWO scenarios compared verbatim -- 47 observations over
+ * `AgentsRepository` and 29 over `ScaffoldingRepository`, both READ OFF a run.
+ * Adding an observation strengthens the differential and moves no count here,
+ * which is why `mutations-agents.json` is where those guards are held
+ * falsifiable.
+ *
+ *
+ * WIN-258 TRANCHE 5 - COST-MONITORING'S CANONICAL STORE. The SAME package moves
+ * a SIXTH time, for the sixth reading of ADR M0.3 §15: `cost-monitoring` is
+ * sole writer of six rows in the same PostgreSQL database, so its repositories
+ * are the same client, the same transaction and the same directory.
+ *
+ * WHAT THE 61 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   cost-rows.test.ts                         22  the mapping in both
+ *                                                 directions and every guard,
+ *                                                 PURE — the only one of the six
+ *                                                 that `pnpm test:v1-packages`
+ *                                                 actually runs
+ *   cost-constraints.integration.test.ts      13  each guard against the CHECK it
+ *                                                 restates, in two halves, plus
+ *                                                 the three guards that have no
+ *                                                 constraint behind them
+ *   cost-rules.integration.test.ts             8  the database rules NO port
+ *                                                 method restates: immutability,
+ *                                                 the ancestry rule firing on
+ *                                                 UPDATE, the credential rule,
+ *                                                 the tombstone this port cannot
+ *                                                 write, and cross-scope denial
+ *   cost-transaction.integration.test.ts       7  failure injection on both
+ *                                                 two-statement operations, each
+ *                                                 with a negative control, and
+ *                                                 the three scope refusals
+ *   cost-statements.integration.test.ts        6  measured statement counts over
+ *                                                 two fixture sizes, the probe
+ *                                                 anchor, and the three writes
+ *                                                 whose count is the contract
+ *   cost-conformance.integration.test.ts       5  the scenario against the fake
+ *                                                 and the real store, compared
+ *                                                 verbatim, plus non-vacuity
+ *
+ * 22 + 13 + 8 + 7 + 6 + 5 = 61. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job, not by
+ * `pnpm test:v1-packages`; they are counted here because this census measures
+ * the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 5 in the conformance suite. It is
+ * small because it is ONE scenario of forty-five observations compared verbatim
+ * against `InMemoryBudgetRepository`; adding an observation strengthens the
+ * differential and moves NO count here, which is why `mutations-cost.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ * THE 6 IN THE STATEMENTS SUITE IS ALSO SMALL ON PURPOSE, and for a reason this
+ * census enforced: it began as ten cases generated in a `for` loop over a table
+ * of reads, which this script REFUSES to count. The loop became two cases over a
+ * map of every read, which is the better instrument anyway — a divergence names
+ * the read and shows both counts, and a read somebody forgot to measure cannot
+ * exist.
+ *
+ * WIN-258 TRANCHE 5, SECOND SWEEP — THE SEVENTH SUITE. The same package moves a
+ * FIFTH time, and the mutation ledger is what moved it:
+ *
+ *   packages/adapters/postgres-tenancy   26 -> 27 files,  260 -> 264 cases
+ *
+ * 397 + 1 = 398 files and 6176 + 4 = 6180 cases. The adapters term of the
+ * three-way identity moves with it: 349 + 3 + 46 = 398.
+ *
+ * WHAT THE 4 ARE, and why they are not in any file above:
+ *
+ *   cost-idempotency.integration.test.ts   4  the insert form that does not
+ *                                             raise, the uuid shape test the
+ *                                             vault's revoke depends on, the
+ *                                             terminal status that stops a
+ *                                             second send, and the count test
+ *                                             that keeps a stale dispatcher's
+ *                                             send record out of the history
+ *
+ * THE REASON IT IS A SEVENTH FILE rather than four more cases in the conformance
+ * suite is the one this census exists to make visible. Re-running all forty
+ * ledger entries scored SIX with zero executed cases: the edits compiled and
+ * collected, then broke `cost-conformance.integration.test.ts` while it was
+ * BUILDING its transcript, in a `beforeAll`, so vitest reported every case in
+ * the file SKIPPED and the file's pin of 5 did not move. Two of the six had a
+ * named case elsewhere in the tree; the four above had none anywhere, and a
+ * guard whose only witness is a crashed hook is a guard this census cannot see.
+ * The conformance suite's own 5 is unchanged, which is the point: these four
+ * observations could not have been added there without being invisible.
+ *
+ * WIN-258 TRANCHE 5, `governance`'s canonical store, adds SIX more suites to
+ * that same row and not one case to any context:
+ *
+ *   packages/adapters/postgres-tenancy   39 -> 45 files,  383 -> 449 cases
+ *
+ * governance-conformance.integration.test.ts    1   the differential, one case
+ *                                                  driving one scenario twice
+ * governance-constraints.integration.test.ts   12   what the migrations refuse
+ *                                                  and a double accepts, in PAIRS
+ * governance-rows.test.ts                      21   the PURE mapping branches a
+ *                                                  container suite cannot reach
+ * governance-rules.integration.test.ts         10   the database rules no port
+ *                                                  method restates
+ * governance-statements.integration.test.ts    15   every read pinned twice,
+ *                                                  small fixture and one 20x larger
+ * governance-transaction.integration.test.ts    7   failure injection and the
+ *                                                  three scope refusals
+ *
+ * THE CONFORMANCE SUITE IS ONE CASE, and that is the shape of this instrument
+ * rather than a thin suite: it drives ONE scenario against the doubles and then
+ * against the adapter and compares the two transcripts key by key, so what a
+ * second case would add is a second scenario and not a second assertion. The
+ * scenario itself records more than fifty observations, and the suite asserts
+ * that it recorded more than forty — a run that recorded nothing would satisfy
+ * every comparison in it.
+ *
+ * WIN-258 TRANCHE 5 AGAIN — `secrets`' canonical store, the FOURTH in the same
+ * package. NINE files, 83 cases, and not one of them anywhere else:
+ *
+ *   secrets-rows.test.ts                        18  the three closed unions a
+ *                                                   row is read back through,
+ *                                                   the readers' copying, and
+ *                                                   each of the nine guards on
+ *                                                   BOTH sides of its boundary.
+ *                                                   It runs under the default
+ *                                                   `test` script; the six below
+ *                                                   do not.
+ *   secrets-rules.integration.test.ts           11  the database rules NO port
+ *                                                   method restates: four
+ *                                                   immutability rules, the five
+ *                                                   clauses `enforce_win124_
+ *                                                   credential_kind` re-reads,
+ *                                                   the ON DELETE RESTRICT on an
+ *                                                   ACTIVE envelope, and the one
+ *                                                   place the double and the
+ *                                                   database disagree about what
+ *                                                   a row IS
+ *   secrets-statements.integration.test.ts      10  every read measured twice,
+ *                                                   over one row and over twelve
+ *   secrets-conformance.integration.test.ts      8  the differential against
+ *                                                   `inMemorySecretsStore`
+ *   secrets-constraints.integration.test.ts      8  each vault guard beside the
+ *                                                   migration CHECK it restates
+ *   secrets-transaction.integration.test.ts      7  failure injection, the three
+ *                                                   scope refusals, the ambient
+ *                                                   read and the row lock
+ *   secrets-variable-constraints.integration     7  the variable's three CHECKs
+ *     .test.ts                                      and the two guards standing
+ *                                                   where no CHECK does
+ *   secrets-scope.integration.test.ts            6  the clauses that decide
+ *                                                   WHICH ROW a call reaches:
+ *                                                   the environment clause on
+ *                                                   the row lock, the total
+ *                                                   order under a non-unique
+ *                                                   query, and the purge sweep's
+ *                                                   retention window, cutoff and
+ *                                                   `FOR UPDATE OF version`
+ *   secrets-refusals.integration.test.ts         7  the seven refusals whose
+ *                                                   ONLY witness was a crashed
+ *                                                   hook: every one is a
+ *                                                   `Result` where a naive
+ *                                                   store would RAISE, and the
+ *                                                   conformance suite drives
+ *                                                   them all inside a
+ *                                                   `beforeAll`
+ *
+ * TWO OF THE NINE EXIST BECAUSE OF THE SWEEP, exactly as `cost-idempotency`
+ * did one store over. `secrets-scope` carries six clauses that had no named case
+ * anywhere in the tree -- each was falsifiable only through a transcript that
+ * happened to differ, or not at all. `secrets-refusals` carries seven that the
+ * first sweep scored VACUOUS: each is a `Result` where a naive store would
+ * RAISE, the conformance suite drives all seven inside the `beforeAll` that
+ * builds its transcript, and a raise there made vitest report every case in the
+ * file SKIPPED. A guard whose only witness is a crashed hook is a guard nothing
+ * can see.
+ *
+ * EIGHT OF THE NINE ARE EXCLUDED from the package's default `test` script by
+ * filename and run by the `postgres-tenancy-repository` CI job, exactly as the
+ * other three tranche-5 stores' suites are.
+ *
+ * ALL FOUR TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the four blocks above
+ * SUM rather than any one standing alone. No branch's arithmetic is right
+ * merged, and side-picking one would under-count the others by their whole
+ * tranche:
+ *
+ *   packages/adapters/postgres-tenancy   20 -> 45 files,  199 -> 449 cases
+ *
+ * 20 + 6 + 6 + 7 = 39 files and 199 + 59 + 60 + 65 = 383 cases. The tree total
+ * is 391 + 19 = 410 files and 6115 + 184 = 6299 cases. The adapters term of the
+ * three-way identity carries all nineteen, because every added file is an
+ * adapter's: 39 + 19 = 58, and 349 + 3 + 58 = 410.
+ *
+ * WIN-258 TRANCHE 5 - CHANNELS' CANONICAL STORE. The SAME package moves a
+ * SEVENTH time, for the seventh reading of ADR M0.3 §15: `channels` is sole
+ * writer of six rows in the same PostgreSQL database, so its repository is the
+ * same client, the same transaction and the same directory.
+ *
+ *   packages/adapters/postgres-tenancy   39 -> 45 files,  383 -> 455 cases
+ *
+ * WHAT THE 72 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   channels-rows.test.ts                     25  the mapping in both directions
+ *                                                 and every guard, PURE - the
+ *                                                 only one of the six that
+ *                                                 `pnpm test:v1-packages` runs
+ *   channels-constraints.integration.test.ts  16  each guard against the
+ *                                                 migration-only CHECK it
+ *                                                 restates, plus the six that
+ *                                                 have no constraint behind them
+ *                                                 and are shown going in clean
+ *                                                 through SQL
+ *   channels-rules.integration.test.ts        10  the database rules NO port
+ *                                                 method restates: the immutable
+ *                                                 inbox identity, the ancestry
+ *                                                 rule firing on UPDATE, the
+ *                                                 owner column that will not
+ *                                                 move, the turn unique, and the
+ *                                                 revision this table has no
+ *                                                 column for
+ *   channels-transaction.integration.test.ts  10  failure injection over a
+ *                                                 second client, the negative
+ *                                                 control, BOTH answers a
+ *                                                 returned error Result gives,
+ *                                                 and the three scope refusals
+ *   channels-statements.integration.test.ts    6  measured statement counts over
+ *                                                 two fixture sizes, the probe
+ *                                                 anchor, and the three writes
+ *                                                 whose count is the contract
+ *   channels-conformance.integration.test.ts   5  the scenario against the fake
+ *                                                 and the real store, compared
+ *                                                 verbatim, plus non-vacuity
+ *
+ * 25 + 16 + 10 + 10 + 6 + 5 = 72. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job, not by
+ * `pnpm test:v1-packages`; they are counted here because this census measures
+ * the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 5 in the conformance suite. It is
+ * small because it is ONE scenario of thirty-five observations compared verbatim
+ * against `InMemoryChannelsRepository`; adding an observation strengthens the
+ * differential and moves NO count here, which is why `mutations-channels.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ * ALL THREE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE, so its row is the
+ * SUM: 20 + 6 + 6 + 7 + 6 + 6 + 9 = 60 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 = 604 cases. `channels` contributes 6 files
+ * / 72 cases, `governance` 6 / 66 and `secrets` 9 / 83, and no branch's own
+ * figure — 45/455, 45/449 or 48/466 — survives the merge. The tree total is
+ * 391 + 40 = 431 files and 6115 + 405 = 6520 cases. The adapters term of the
+ * three-way identity carries all forty, because every added file is an
+ * adapter's: 39 + 40 = 79, and 349 + 3 + 79 = 431.
+ * WIN-258 TRANCHE 5 - PROVIDERS' CANONICAL STORE. The SAME package moves a
+ * TENTH time, for the tenth reading of ADR M0.3 §15: `providers` is sole writer
+ * of four rows in the same PostgreSQL database, so its repository is the same
+ * client, the same transaction and the same directory.
+ *
+ *   packages/adapters/postgres-tenancy   60 -> 67 files,  604 -> 681 cases
+ *
+ * WHAT THE 77 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   providers-rows.test.ts                     17  the crossing in both
+ *                                                  directions, the three column
+ *                                                  renames, every guard and the
+ *                                                  two unreadable-row refusals,
+ *                                                  PURE - the only one of the
+ *                                                  seven `pnpm test:v1-packages`
+ *                                                  runs
+ *   providers-conformance.integration.test.ts  11  the scenario against the fake
+ *                                                  and the real store compared
+ *                                                  verbatim, plus non-vacuity,
+ *                                                  the listing order, the two
+ *                                                  unique refusals told apart,
+ *                                                  the Decimal(24, 12) round
+ *                                                  trip and the model identity
+ *   providers-constraints.integration.test.ts  13  `ProviderKey`'s five database
+ *                                                  rules, each guard beside the
+ *                                                  rule it restates and each
+ *                                                  rule shown refusing a raw
+ *                                                  statement that steps around
+ *                                                  the guard
+ *   providers-catalogue-constraints
+ *     .integration.test.ts                     12  the same pairing for `Model`
+ *                                                  and `ModelPrice`: the rate
+ *                                                  CHECK in both directions, the
+ *                                                  append-only rules, the
+ *                                                  SECOND identity the port does
+ *                                                  not model, and the INTEGER
+ *                                                  columns
+ *   providers-rules.integration.test.ts        10  the rules NO port method
+ *                                                  restates: the delete rule
+ *                                                  in BOTH places a version can
+ *                                                  pin a key, its own provider
+ *                                                  negative control, the scoped
+ *                                                  count, the collation
+ *                                                  disagreement and the second
+ *                                                  adoption
+ *   providers-transaction.integration.test.ts   7  failure injection over a
+ *                                                  second client, the negative
+ *                                                  control, BOTH answers a
+ *                                                  returned error Result gives,
+ *                                                  the touch that survives a
+ *                                                  rollback, and the three scope
+ *                                                  refusals
+ *   providers-statements.integration.test.ts    7  measured statement counts over
+ *                                                  two fixture sizes, the probe
+ *                                                  anchor, and the three writes
+ *                                                  whose count is the contract
+ *
+ * 17 + 11 + 13 + 12 + 10 + 7 + 7 = 77. Six of the seven need a real PostgreSQL
+ * and are run by the `postgres-tenancy-repository` CI job, not by
+ * `pnpm test:v1-packages`; they are counted here because this census measures
+ * the suites a package SHIPS.
+ *
+ * TWO OF THE SEVEN ARE THIS TRANCHE'S OWN SPLITS, and both were forced rather
+ * than chosen. The constraints proof measured 491 effective lines as one file,
+ * four lines of prose from the §6 hard error, and it split along the port's own
+ * seam: `ProviderKey`'s rules are environment-scoped and every case needs a
+ * tenant chain and a credential, while `Model` and `ModelPrice` have no scope at
+ * all. The conformance SCENARIO is two modules for the same reason and is
+ * counted once, under the suite that drives it.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 11 in the conformance suite. It is
+ * small because it is ONE scenario of sixty-two observations compared verbatim
+ * against `InMemoryProvidersRepository`; adding an observation strengthens the
+ * differential and moves NO count here, which is why `mutations-providers.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ *
+ * WIN-258 TRANCHE 5, `conversations` — the NINTH owner of the one ORM home, and
+ * the tranche whose suite COUNT was decided by `max-file-lines` rather than by
+ * choice. Eight files, 97 cases:
+ *
+ *   conversations-rows.test.ts                  24  the turn rollup from its
+ *                                                   STEPS — six of the nine
+ *                                                   numbers have no column —
+ *                                                   the exponential decimal the
+ *                                                   driver renders below 1e-7,
+ *                                                   the scale padding that makes
+ *                                                   the round trip exact, every
+ *                                                   stored enum validated rather
+ *                                                   than cast, and the
+ *                                                   half-written rate
+ *   conversations-constraints.integration.test.ts
+ *                                               14  each Thread and Turn guard
+ *                                                   stood beside the migration
+ *                                                   CHECK it restates, in two
+ *                                                   halves: the store's refusal
+ *                                                   and the database's
+ *   conversations-billing-constraints.integration.test.ts
+ *                                               12  the same instrument over
+ *                                                   `Step_usage_check` and the
+ *                                                   two PostmanExecution regular
+ *                                                   expressions, split out when
+ *                                                   the file passed the 500-line
+ *                                                   hard error
+ *   conversations-isolation.integration.test.ts 11  the three immutability
+ *                                                   rules and the tenant
+ *                                                   boundary — four rows unique
+ *                                                   INSTALLATION-WIDE, one of
+ *                                                   them a capability
+ *   conversations-rules.integration.test.ts     11  the transcript filter the
+ *                                                   double does not implement,
+ *                                                   the organization-scoped
+ *                                                   erasure it ignores, and the
+ *                                                   deletion order two rules
+ *                                                   force
+ *   conversations-transaction.integration.test.ts
+ *                                                8  failure injection over a
+ *                                                   second client, the negative
+ *                                                   control, the three scope
+ *                                                   refusals, and the row lock
+ *                                                   a second allocator BLOCKS on
+ *   conversations-statements.integration.test.ts
+ *                                               16  measured statement counts
+ *                                                   over two fixture sizes, the
+ *                                                   probe anchor, and the ONE
+ *                                                   read whose count is zero
+ *   conversations-conformance.integration.test.ts
+ *                                                1  the scenario against the
+ *                                                   fake and the real store,
+ *                                                   compared verbatim
+ *
+ * 24 + 14 + 12 + 11 + 11 + 8 + 16 + 1 = 97. Seven of the eight need a real
+ * PostgreSQL and are run by the `postgres-tenancy-repository` CI job.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 1 in the conformance suite, for the
+ * reason `channels`' 5 is: it is ONE scenario compared verbatim against
+ * `InMemoryConversations`, so adding an observation strengthens the differential
+ * and moves NO count here. `mutations-conversations.json` beside the package is
+ * where those guards are held falsifiable — 56 entries, 56 killed.
+ *
+ *
+ *
+ * WIN-258 TRANCHE 5 ONCE MORE — `skills`' canonical store, the FIFTH in the same
+ * package. SIX files, 62 cases, and not one of them anywhere else:
+ *
+ *   skills-rows.test.ts                        19  the row readers and the eight
+ *                                                  write guards, on BOTH sides of
+ *                                                  each boundary, plus the
+ *                                                  assertion that all thirteen
+ *                                                  refusal codes are distinct, and
+ *                                                  the default stamps measured over
+ *                                                  a thousand readings. It runs
+ *                                                  under the default `test` script;
+ *                                                  the five below do not.
+ *   skills-rules.integration.test.ts           15  rows an OLDER BINARY could have
+ *                                                  written, planted as SQL — a
+ *                                                  NULL `TEXT[]`, an origin
+ *                                                  outside the closed set, a thin
+ *                                                  manifest, a manifest carrying a
+ *                                                  key this release has never
+ *                                                  heard of — and the TWO
+ *                                                  divergences between this store
+ *                                                  and the double, pinned rather
+ *                                                  than hidden, and the two write
+ *                                                  paths whose input the port
+ *                                                  itself cannot produce.
+ *   skills-constraints.integration.test.ts     17  the six migration-only
+ *                                                  constraints read back out of
+ *                                                  `pg_catalog`, then falsified in
+ *                                                  PAIRS: the double accepts, the
+ *                                                  canonical schema refuses — plus
+ *                                                  the FIVE clauses that decide
+ *                                                  WHICH ROW a call reaches, two of
+ *                                                  which exist because the first
+ *                                                  mutation sweep left their guards
+ *                                                  standing with nothing red.
+ *   skills-transaction.integration.test.ts      7  failure injection over a SECOND
+ *                                                  client, and the three scope
+ *                                                  refusals under their three
+ *                                                  distinct codes.
+ *   skills-conformance.integration.test.ts      2  the differential, one case
+ *                                                  driving one scenario twice, and
+ *                                                  its negative control.
+ *   skills-statements.integration.test.ts       2  every count measured over a
+ *                                                  small fixture AND one 20x
+ *                                                  larger, in ONE map, plus the
+ *                                                  probe-filter case that keeps the
+ *                                                  measurement from discarding what
+ *                                                  it measures.
+ *
+ * 19 + 15 + 17 + 7 + 2 + 2 = 62. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job.
+ *
+ * NINE OF THE SIXTY-TWO EXIST BECAUSE THE MUTATION LEDGER WAS ENUMERATED FIRST,
+ * SEVEN BEFORE THE SWEEP AND TWO BECAUSE OF IT. Five guards had no case anywhere that could go red — the uuid guard on
+ * the PATCH path, the project and organization halves of a binding read, the
+ * `organizationId` clause of the raw anonymisation, the re-enable half of both
+ * install upserts, and `jsonb_set(create_missing => true)` — and two more prove
+ * the default stamps directly. `mutations-skills.json` names each of them.
+ *
+ * TWO OF ITS SUITES ARE ONE CASE APIECE AND THAT IS THE INSTRUMENT, not a thin
+ * suite. The conformance differential drives ONE scenario against the double and
+ * then against PostgreSQL and compares the two transcripts key by key — the
+ * scenario records more than fifty observations and the suite asserts it
+ * recorded more than forty, so a run that recorded nothing would satisfy every
+ * comparison in it. The statement suite measures EVERY method over both
+ * fixtures into one map and compares the map, so a moved pin shows every number
+ * that moved rather than the first. Adding an observation to either strengthens
+ * it and moves NO count here, which is why `mutations-skills.json` beside the
+ * package is where those guards are held falsifiable.
+ *
+ *
+ *
+ *
+ *
+ * WIN-258 TRANCHE 5 — THE `memory` CANONICAL STORE (M2.3) adds 7 files and 89
+ * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
+ *
+ *   memory-rows.test.ts                       24  the row mapping and the write
+ *                                                 guards without a database:
+ *                                                 which stored column is
+ *                                                 trusted, which is refused,
+ *                                                 and which value the CONTEXT
+ *                                                 itself produces that the
+ *                                                 schema will not hold
+ *   memory-conformance.integration.test.ts     2  the shared scenario against
+ *                                                 the two in-memory doubles and
+ *                                                 against PostgreSQL, compared
+ *                                                 step by step, plus a
+ *                                                 non-vacuity case that pins
+ *                                                 its shape
+ *   memory-constraints.integration.test.ts    18  what the MIGRATIONS refuse and
+ *                                                 `schema.prisma` does not say,
+ *                                                 each stood beside the raw
+ *                                                 statement the guard was
+ *                                                 written from
+ *   memory-rules.integration.test.ts          10  the four row rules, the two
+ *                                                 cascades, ONE of the two port
+ *                                                 contracts the real database
+ *                                                 proves unhonourable, and the
+ *                                                 two places the context's own
+ *                                                 doubles are WRONG rather than
+ *                                                 different
+ *   memory-vectors.integration.test.ts         5  the two `vector(1536)` columns
+ *                                                 the generated client cannot
+ *                                                 name: what `set`, `keep` and
+ *                                                 `clear` do to one, and the
+ *                                                 OTHER unhonourable contract —
+ *                                                 a search reading a column no
+ *                                                 method on its port can write
+ *   memory-transaction.integration.test.ts    12  failure injection from a
+ *                                                 SECOND connection, a returned
+ *                                                 error `Result` that COMMITS,
+ *                                                 the three scope refusals and
+ *                                                 the ambient read frame
+ *   memory-statements.integration.test.ts     18  measured statement counts,
+ *                                                 every pin taken over two rows
+ *                                                 and over twenty
+ *
+ * 24 + 2 + 18 + 10 + 12 + 18 + 5 = 89, over 7 files, and every one of the seven
+ * numbers is READ BACK from the counter in this file rather than tallied by
+ * hand. Six of the seven need a real PostgreSQL and are run by the
+ * `postgres-tenancy-repository` CI job; `memory-rows.test.ts` is not, because
+ * neither the mapping nor the guards have a database in them — and it is the
+ * only one of the seven that can reach a stored `kind` this binary cannot read,
+ * since a container only ever reads rows this binary wrote.
+ *
+ * THE SEVENTH FILE EXISTS BECAUSE A MUTATION SURVIVED AND THE BUDGET THEN BIT.
+ * `mutations-memory.json` M-M13 clears the vector on every update and survived
+ * FIVE suites, because no read on either port returns an embedding; the three
+ * cases that close it ask the column directly. Appending them to the rules suite
+ * took it to 500 effective lines — the ADR M0.3 §6 ERROR threshold exactly — and
+ * the seam the budget was pointing at is real: that file is about what the
+ * SCHEMA decides for a row, and this one about the one thing in this store the
+ * schema declares and the client cannot express.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario of sixty-odd
+ * observations compared verbatim, so adding an observation strengthens the
+ * differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-memory.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 60 -> 67 FILES and 604 -> 693 CASES, and the
+ * tree total 431 -> 438 files and 6520 -> 6609 cases. The adapters term of the
+ * three-way identity carries all seven, because every added file is an
+ * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
+ *
+ * WIN-258 T5 — `privacy`, THE THIRTEENTH OWNER, adds SIX files and 75 cases, and
+ * the shape of the split is the thing to read rather than the total. FIVE of the
+ * six are integration suites and ONE is pure, which is the inverse of what a
+ * two-table store would suggest: this context's guards are almost all about
+ * CONCURRENCY and about the ABSENCE of a statement, and neither is observable
+ * without a real database.
+ *
+ *   privacy-rows.test.ts                        25  the mapping and the guards,
+ *                                                   with NO database — the only
+ *                                                   place the unreadable-row
+ *                                                   branches are reachable at
+ *                                                   all, because two of them
+ *                                                   cannot even be PLANTED: the
+ *                                                   `status` column is a
+ *                                                   PostgreSQL ENUM and `scopes`
+ *                                                   and `stores` carry
+ *                                                   `_json_root` CHECKs
+ *   privacy-constraints.integration.test.ts     20  every migration-only
+ *                                                   constraint, each proved
+ *                                                   TWICE — once as the store's
+ *                                                   pre-statement refusal with
+ *                                                   the caller's transaction
+ *                                                   surviving it, and once as
+ *                                                   PostgreSQL's own error on a
+ *                                                   row planted past the port
+ *   privacy-rules.integration.test.ts           11  the four rules a
+ *                                                   single-threaded double
+ *                                                   cannot exhibit: two
+ *                                                   transactions racing one
+ *                                                   lease, the boundary instant
+ *                                                   at which a lease lapses, and
+ *                                                   the barrier proved sealed
+ *                                                   THROUGHOUT a re-seal from a
+ *                                                   second connection
+ *   privacy-statements.integration.test.ts       9  the N+1 control, at three
+ *                                                   aliases and at thirty —
+ *                                                   which on this port is the
+ *                                                   whole risk, because a seal
+ *                                                   runs inside the transaction
+ *                                                   holding the destruction open
+ *   privacy-transaction.integration.test.ts      9  failure injection over a
+ *                                                   SECOND client, plus the
+ *                                                   three scope refusals
+ *   privacy-conformance.integration.test.ts      2  the differential against
+ *                                                   `InMemoryPrivacyRepository`
+ *                                                                    total = 76
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario of forty-odd
+ * observations compared verbatim, so adding an observation strengthens the
+ * differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-privacy.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * ALL FIVE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
+ * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7
+ * + 5 + 6 = 119 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56
+ * = 1310 cases.
+ * `providers` contributes 7 files / 77 cases, `conversations` 8 / 97, `skills`
+ * 6 / 62 and `memory` 7 / 89, and no branch's own figure — 67/681, 68/701,
+ * 66/666 or 67/693 — survives the merge. The tree total is 431 + 28 + 31 = 490
+ * files and 6520 + 325 + 381 = 7226 cases. The adapters term of the three-way
+ * identity carries all fifty-nine, because every added file is an adapter's:
+ * 79 + 59 = 138, and 349 + 3 + 138 = 490.
+ *
+ * THE INTEGRATION/RUNNABLE SPLIT IS MEASURED, NOT CARRIED: 944 integration cases
+ * across 99 files, 366 pure across 20, 944 + 366 = 1310.
+ *
+ * THE 25th CASE IN privacy-rows.test.ts EXISTS BECAUSE A MUTATION SURVIVED.
+ * `mutations-privacy.json` M-P14 deletes the stored-scope LEVEL check and the
+ * case that was there stayed green, because its witness had no `projectId` and
+ * the NEXT clause refused it under the SAME code. The new case carries every id
+ * a scope of any level could want, so only the level check can refuse it.
+ *
+ * WIN-258 T5, `jobs` — THE FOURTEENTH OWNER, in that SAME package a thirteenth
+ * time. `Job` and `AgentApproval` are the two rows of ADR M0.3 §1 row 15, and
+ * the store that writes them adds SEVEN suites and 97 cases:
+ *
+ *   jobs-rows.test.ts                       22 — the only one that runs without
+ *                                                a container, and the only one
+ *                                                that can reach the branches a
+ *                                                container cannot: a container
+ *                                                reads only rows THIS binary
+ *                                                wrote
+ *   jobs-rules.integration.test.ts          16 — rows an older binary wrote,
+ *                                                planted by the ORM's CLI
+ *   jobs-constraints.integration.test.ts    15 — a guard beside the raw
+ *                                                statement it was written from
+ *   jobs-statements.integration.test.ts     14 — the N+1 controls, each taken
+ *                                                over a small fixture and one an
+ *                                                order of magnitude larger
+ *   jobs-transaction.integration.test.ts    13 — failure injection, the three
+ *                                                scope refusals, and the
+ *                                                `cost-monitoring` trap
+ *   jobs-isolation.integration.test.ts      16 — what the DATABASE decides with
+ *                                                no guard beside it
+ *   jobs-conformance.integration.test.ts     1 — one scenario, two stores, one
+ *                                                comparison
+ *
+ * THE 1 IN THE CONFORMANCE SUITE IS THE NUMBER TO WATCH, for the reason every
+ * tranche before it gives: it is ONE scenario of eighty-odd observations
+ * compared verbatim, so adding an observation strengthens the differential and
+ * moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-jobs.json` is where those guards
+ * are held falsifiable instead.
+ *
+ * FIVE OF THE ISOLATION SUITE'S SIXTEEN EXIST BECAUSE THE MUTATION SWEEP ASKED
+ * FOR THEM — the three predicates of the dedupe lookup, the default thirty-day
+ * listing window the conformance differential cannot ask for, the platform-wide
+ * enumeration's `distinct` and its pending filter, the writes that must miss
+ * another tenant's row, and the erasure's tenant narrowing. Every one closed a
+ * guard the first sweep left standing with nothing red.
+ *
+ * ONE VOCABULARY BOUNDARY MOVED A CASE FROM THE CONTAINER SUITE TO THE PURE ONE.
+ * `Job`'s invocation-type COLUMN carries the pre-cutover vendor name behind an
+ * `@map`, `domain/invocation.ts` deliberately does not spell it and
+ * `scripts/vocabulary-boundary.mjs` will not have this package spell it either —
+ * so a row holding an unknown invocation type cannot be planted by raw SQL here,
+ * and `readInvocationType` is proven in `jobs-rows.test.ts`, where the value goes
+ * straight to the reader and no column is named at all.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 94 -> 101 FILES and 1005 -> 1102 CASES on this
+ * step, and the tree total 465 -> 472 files and 6921 -> 7018 cases. The adapters
+ * term of the three-way identity carries all seven, because every added file is
+ * an adapter's: 113 + 7 = 120, and 349 + 3 + 120 = 472.
+ *
+ * 88 -> 95 FILES AND 929 -> 1024 CASES (WIN-258 T5, `files`). SEVEN files and
+ * NINETY-FIVE cases, every number READ BACK from the counter in this file:
+ *
+ *   files-rows.test.ts                        21  the mapping boundary, and the
+ *                                                 only one of the seven that
+ *                                                 needs no container
+ *   files-conformance.integration.test.ts      2  ONE scenario of forty-four
+ *                                                 observations, plus its
+ *                                                 negative control
+ *   files-constraints.integration.test.ts     15  what the columns refuse, and
+ *                                                 the two they ACCEPT
+ *   files-rules.integration.test.ts           16  the five rules that live only
+ *                                                 in the migrations, and the two
+ *                                                 referential actions
+ *   files-scope.integration.test.ts           31  one case per clause of every
+ *                                                 scoped read, one wrong id each
+ *   files-transaction.integration.test.ts      9  failure injection and the three
+ *                                                 scope refusals
+ *   files-statements.integration.test.ts       6  the measured counts
+ *
+ * 21 + 2 + 15 + 16 + 31 + 9 + 6 = 100, over 7 files. FIVE of those hundred were
+ * added by the MUTATION SWEEP rather than written first, and they are the five
+ * worth naming: four clause-isolation cases whose absence let a scoped read drop
+ * its environment clause, its artifact-key clause or its thread clause and stay
+ * green, and one unit case for a SQL NULL that JavaScript coerced to the right
+ * answer. Six of the seven need a real
+ * PostgreSQL and are run by the `postgres-tenancy-repository` CI job;
+ * `files-rows.test.ts` is not, and it is the one that reaches the two
+ * unreadable-row branches a container cannot — an unresolved ancestry, which the
+ * schema's own foreign keys make unreachable from a live database, and a summed
+ * byte total past 2^53, which would need nine petabytes of attachments in one
+ * organization.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario compared verbatim, so
+ * adding an observation strengthens the differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-files.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * The tree total is 459 + 7 = 466 files and 6845 + 100 = 6945 cases. The adapters
+ * term of the three-way identity carries all seven, because every added file is
+ * an adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
+ *
+ * 119 -> 122 FILES AND 1310 -> 1358 CASES (WIN-258 T7, typed JSON columns and
+ * projections). THREE files and FORTY-EIGHT cases, every number READ BACK from
+ * the counter in this file:
+ *
+ *   json-columns.test.ts                   24  the census of all forty-nine
+ *                                              JSONB columns, joined to
+ *                                              schema.prisma, to the migrations'
+ *                                              CHECK text and to the decoder
+ *                                              symbols on disk; twelve of the
+ *                                              twenty-four are the column maps
+ *                                              reconciled model by model
+ *   json-columns.integration.test.ts       17  the same census joined to
+ *                                              `pg_constraint` on a live
+ *                                              container, the malformed
+ *                                              interiors written by
+ *                                              `prisma db execute`, the five
+ *                                              roots the database itself refuses
+ *                                              and the projected SELECT lists
+ *   outbox-store.test.ts                    3  `Event.payload`'s reader
+ *
+ * 24 + 17 + 3 = 44, plus FOUR added to the existing `agents-rows.test.ts` — the
+ * params refusal this tranche found, the four-distinct-codes case, and the two
+ * for `readObjectColumn` — is 48 over 3 new files.
+ *
+ * TWO CASES IN THIS BLOCK ARE ONE CASE OVER FORTY-NINE COLUMNS, DELIBERATELY.
+ * The roots reconciliation and the decoder resolution were first written as
+ * `test.each` over a computed table, which this census REFUSES and is right to:
+ * a table it cannot count statically is a suite whose disappearing case it
+ * cannot notice. They are loops inside one case, each assertion carrying the
+ * column name so a failure still says which column failed.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 12 in the column-map reconciliation.
+ * It is an array literal of MODEL NAMES, one per projected read, so adding a
+ * projection adds a row here and moves this count — which is the point: a
+ * selector nothing joins to the schema is the circular assertion the mutation
+ * sweep found and killed.
+ *
+ * THAT DIMENSION ALONE would put the tree total at 490 + 3 = 493 files and
+ * 7226 + 48 = 7274 cases, with the adapters term at 138 + 3 = 141. It is one of
+ * FOUR that landed together, so the merged figure is neither this one nor any
+ * other single dimension's; the arithmetic that stands is at the end of the
+ * fourth block below.
+ *
+ * WIN-258 T7 — INDEXES, QUERY PLANS, PAGINATION AND COUNT TRUTH. Not a store:
+ * every row this dimension touches already had one. What it adds is the
+ * measurement no returned value can carry — the statements a read sent, the plan
+ * PostgreSQL chose for one of them, and the rows that plan actually touched —
+ * over fixtures of HUNDREDS of rows rather than two.
+ *
+ *   packages/adapters/postgres-tenancy   119 -> 125 files, 1310 -> 1393 cases
+ *
+ *   plans-probe.test.ts                         23  the measurement kit, measured,
+ *                                                   and WITHOUT a container: a
+ *                                                   defect in the kit is a defect
+ *                                                   in every number the other
+ *                                                   four report, and the failure
+ *                                                   mode is silent — a filter
+ *                                                   that discards too much reads
+ *                                                   as a better statement count
+ *   plans-agents.integration.test.ts            10  `pageBoundAgents` over 300
+ *                                                   bindings, with the count
+ *                                                   decoy in a SIBLING
+ *                                                   environment of the same
+ *                                                   project
+ *   plans-conversations.integration.test.ts     13  `pageThreads` and `pageTurns`
+ *                                                   over 300 rows each, and the
+ *                                                   before/after of the index
+ *                                                   this tranche added
+ *   plans-cost.integration.test.ts               10  `pageBudgets`, the full
+ *                                                   hydration that is deliberate,
+ *                                                   pinned as a cost
+ *   plans-tools.integration.test.ts              13  `pageExposures` over a
+ *                                                   fixture built to TIE four
+ *                                                   ways, which is what tranche
+ *                                                   5's `mutations-tools.json`
+ *                                                   M09 said it needed and did
+ *                                                   not have
+ *   plans-jobs.integration.test.ts               14  the approvals page, the ONE
+ *                                                   read in the tree returning
+ *                                                   TWO counts under TWO scopes
+ *                                                   on purpose — and the
+ *                                                   POSITIVE control, the one
+ *                                                   hot read whose index was
+ *                                                   already right
+ *                                                                    total = 83
+ *
+ * THE 13th CASE IN plans-conversations EXISTS BECAUSE A MUTATION SURVIVED.
+ * `mutations-plans.json` M-Q16 reverses the thread listing's direction, and the
+ * case that was there proved the pages PARTITION the listing — which a reversed
+ * order satisfies exactly as well as the right one. The added case walks every
+ * page and demands the stamps come back non-increasing.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 23 in `plans-probe.test.ts`: it is
+ * the only file here that needs no container, and it is deliberately the largest.
+ * Four of the five suites report numbers the kit produced, so the kit is the one
+ * thing in the dimension that cannot be checked by another part of it.
+ *
+ * THIS DIMENSION ALONE would put the tree total at 490 + 6 = 496 files and
+ * 7226 + 83 = 7309 cases, with the adapters term at 138 + 6 = 144. Merged it is
+ * neither; see the arithmetic at the end of the next block.
+ *
+ * WIN-258 TRANCHE 7 adds ONE file to this package, and the count is small for a
+ * reason worth stating rather than apologising for.
+ *
+ *   upgrade-rollout.integration.test.ts        6  the store half of the
+ *                                                 expand/contract rollout
+ *                                                 acceptance
+ *
+ * THE TRANCHE IS MOSTLY NOT COUNTED HERE, and that is correct. Its other two
+ * suites — `upgrade-guards.test.ts` and
+ * `upgrade-expand-contract.integration.test.ts`, 26 and 9 cases — live in
+ * `internal-packages/tenancy-database`, which is not a V1 package and has no
+ * term in this census. They belong there because they rebuild the OLD releases'
+ * Prisma clients from frozen schemas, and ADR M0.3 §4 puts the ORM in one home:
+ * a suite that rebuilt a client from inside `packages/` would be a second place
+ * the vendor is named, which `tenancy-prisma-only` refuses. The CI step that
+ * runs the forward rehearsal runs all three, so nothing here is unrun.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 6. Four of the six are READS —
+ * of a tenancy tree, an attachment, a policy and a thread written by a release
+ * that predates three of the columns the stores now scope by — so they grow by
+ * asserting more about the same rows rather than by adding cases. The guards
+ * behind them are held falsifiable in
+ * `packages/adapters/postgres-tenancy/mutations-upgrade-rollout.json`, whose
+ * eighteen entries were all killed by a named case and whose one unreachable
+ * branch is DECLARED there instead of counted.
+ *
+ * THIS DIMENSION ALONE would move the tree total by ONE file and SIX cases.
+ *
+ * THE MERGED ARITHMETIC, WHICH IS THE ONE THAT STANDS. Four T7 dimensions
+ * landed together and every one of them moves this ONE package's row and no
+ * other, so the figures compose by addition and no dimension's own total
+ * survives the merge:
+ *
+ *   files   119 + 3 (JSON columns) + 6 (plans) + 3 (concurrency) + 1 (rollout)
+ *             = 132
+ *   cases  1310 + 48            + 83       + 36            + 6
+ *             = 1483
+ *
+ * The tree total is 490 + 13 = 503 files and 7226 + 173 = 7399 cases. The
+ * adapters term of the three-way identity carries all thirteen, because every
+ * added file this census counts is an adapter's: 138 + 13 = 151, and
+ * 349 + 3 + 151 = 503. The rollout dimension's other eight files are NOT in
+ * that thirteen and cannot be: they are in `internal-packages/tenancy-database`,
+ * which has no row here at all. The v1 ledger counts all twenty-eight.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1180,8 +2331,8 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 0, cases: 0 },
-  "packages/adapters/postgres-tenancy": { files: 0, cases: 0 },
+  "packages/adapters/outbox": { files: 4, cases: 41 },
+  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1303,13 +2454,178 @@ export const EXPECTED = Object.freeze({
  */
 
 /**
- * The number `pnpm test:v1-packages` prints, pinned separately from the sum
- * above so the two can DISAGREE and be caught. They are computed differently —
- * one by this AST, one by vitest — and the refusal list is what keeps them
+ * The sum the pinned rows must reach, pinned separately from the rows above so
+ * the two can DISAGREE and be caught. They are computed differently — one by
+ * this AST, one by the pinned table — and the refusal list is what keeps them
  * equal. If a change makes them diverge, one of the two numbers is a lie, and
  * the census should fail rather than quietly track the wrong one.
+ *
+ * WIN-258 T2 — A CORRECTION TO THIS COMMENT, made rather than left standing.
+ * It used to read "the number `pnpm test:v1-packages` prints", and that has not
+ * been true since tranche 1: the adapter's own `test` script excludes
+ * `*.integration.test.ts` because the typecheck job has no Docker daemon, so
+ * that command executes 25 cases FEWER than this sum at tranche 1 and 92 fewer
+ * here. The census deliberately counts the suites a package SHIPS rather than
+ * the suites one runner happens to execute (see the note beside the
+ * postgres-tenancy row), and this constant is the sum of the rows under that
+ * rule. The `postgres-tenancy-repository` CI job is what makes the excluded 92
+ * run.
+ *
+ * 5931 -> 5998: the 67 identity-access cases of WIN-258 tranche 2, enumerated
+ * file by file in the block beside the postgres-tenancy row.
+ *
+ * 5998 -> 6041: the 43 cases of WIN-258 tranche 3 — tenancy's other five ports
+ * — enumerated file by file in the same block. That takes the count of cases
+ * this census records and `pnpm test:v1-packages` does not execute from 92 to
+ * 128, all of them in the one adapter the `postgres-tenancy-repository` job
+ * runs.
+ *
+ * 6041 -> 6115: the outbox's 41 and the 33 of tranche 4.
+ *
+ * 6115 -> 6175: the 60 cases of WIN-258 tranche 5 — the `agents` canonical store
+ * — enumerated file by file in the block beside the postgres-tenancy row, every
+ * number there read back from the counter in this file.
+ *
+ * 6299 -> 6520: the 221 cases of WIN-258 tranche 5's next three canonical
+ * stores — `channels`' 72, `governance`'s 66 and `secrets`' 83 — each
+ * enumerated file by file in the block beside the postgres-tenancy row.
+ *
+ * 6520 -> 6756: the 77 cases of `providers`, the 97 of `conversations` and the
+ * 62 of `skills`, each enumerated file by file in the blocks above. Three of
+ * `conversations`' eight files exist only because `max-file-lines` bit at the
+ * HARD error, so that file count moved by eight where the work was five suites'
+ * worth — which is the kind of thing a census states rather than absorbs.
+ *
+ * The cases this census records that `pnpm test:v1-packages` does not execute
+ * are the ones whose file name carries `.integration.`, which the package's own
+ * `test` script excludes. MEASURED over this tree: 598 cases across
+ * 67 files, all of them in `packages/adapters/postgres-tenancy`.
+ *
+ * THIS SENTENCE SAID "183 cases across 20 files" AND THE TREE SAID 265 ACROSS
+ * 31, at the base of this wave and before any of these three stores existed.
+ * Only the `governance` branch moved it, and it moved it by its own contribution
+ * alone; the `channels` and `secrets` branches left the stale figure standing.
+ * It is corrected to the merged measurement rather than carried, because a count
+ * of cases stated in prose beside an asserted one is exactly the drift this file
+ * exists to catch.
+ *
+ * 6520 -> 6597: the 77 cases of WIN-258 tranche 5's `providers` canonical store,
+ * enumerated file by file in the block beside the postgres-tenancy row. Six of
+ * its seven suites carry `.integration.` in the name, so the cases this census
+ * records and `pnpm test:v1-packages` does not execute go from 422 over 49 files
+ * to 482 over 55; the seventh, `providers-rows.test.ts`, runs in the ordinary
+ * package test script for the reason the other three row suites do — it has no
+ * database in it, and it reaches the mapping branches a container suite cannot,
+ * since a container only ever reads rows this binary wrote.
+ *
+ * +83: the cases of WIN-258 tranche 7's indexes/query-plans/
+ * pagination/count-truth dimension, enumerated file by file in the block beside
+ * the postgres-tenancy row. FIVE of its six suites carry `.integration.` in the
+ * name and need a real PostgreSQL, so the cases this census records and
+ * `pnpm test:v1-packages` does not execute go from 598 over 67 files to 658
+ * over 72. The sixth, `plans-probe.test.ts`, runs in the ordinary package test
+ * script and is deliberately the LARGEST single file of the six: it is the
+ * measurement kit every other suite in the dimension reports numbers from, so it
+ * is the one part that cannot be checked by another part of it, and a container
+ * is exactly what it must not need in order to be skippable.
  */
-export const EXPECTED_RUNTIME_TOTAL = 5875;
+/*
+ * WIN-258 T7, concurrency / pooling / transaction boundaries — +36.
+ *
+ * THIRTY-SIX CASES OVER THREE NEW SUITES AND TWO EDITED ONES, all inside
+ * `packages/adapters/postgres-tenancy`, whose row goes 119/1310 -> 122/1346:
+ *
+ *   pooling.integration.test.ts                 11  the datasource URL asked of
+ *                                                   a real server: the query
+ *                                                   parameter shape reporting
+ *                                                   '0', the options shape
+ *                                                   reporting its three values,
+ *                                                   the caller's own options
+ *                                                   surviving, and three
+ *                                                   refusals — 57014, 55P03 and
+ *                                                   a terminated session — each
+ *                                                   with its negative control,
+ *                                                   plus the pool's P2024
+ *   optimistic-concurrency.integration.test.ts   6  the unfenced lost update
+ *                                                   RUN rather than described,
+ *                                                   the stale writer refused
+ *                                                   after a measured wait, the
+ *                                                   loser's earlier work rolled
+ *                                                   back, the insert race, and
+ *                                                   the two controls
+ *   transaction-boundaries.integration.test.ts   9  the returned-error-commits
+ *                                                   trap and the bridge that
+ *                                                   closes it, failure
+ *                                                   injection, the aborted
+ *                                                   transaction that reports a
+ *                                                   successful commit, and
+ *                                                   isolation inside the
+ *                                                   ambient frame
+ *                                                        subtotal = 26
+ *
+ *   client.test.ts                              +9  six for the server-timeout
+ *                                                   shape, two for the P2025
+ *                                                   classification the M26
+ *                                                   sweep proved missing, and
+ *                                                   two more rows on the
+ *                                                   positive-integer table,
+ *                                                   less the one case the pool
+ *                                                   settings and the server
+ *                                                   settings were split out of
+ *   secrets-rules.integration.test.ts           +1  the divergence case became
+ *                                                   two: both stores keying on
+ *                                                   the pair, and both refusing
+ *                                                   a write that thinks the key
+ *                                                   is free
+ *                                                        subtotal = 10
+ *
+ * 26 + 10 = 36, and THIS DIMENSION ALONE would read 1310 + 36 = 1346. NO OTHER
+ * PACKAGE MOVES: the fence, the scoped DELETE and the domain refusal are edits
+ * in place in `packages/contexts/secrets`, whose own suites still number what
+ * they did.
+ *
+ * The three-way file identity holds, on the MERGED figure rather than this
+ * dimension's: packages.contexts.test 349 + packages.kernel.test 3 +
+ * packages.adapters.test 151 = 503, which is this census's own totalFiles. The
+ * adapters term moved 138 -> 151, of which THREE are this dimension's suites and
+ * the other ten belong to its three siblings; the v1 ledger counts the same
+ * thirteen.
+ *
+ * The cases this census records that `pnpm test:v1-packages` does not execute
+ * are the ones whose file name carries `.integration.`; all three new suites do,
+ * so that measured figure moves by 26 and `client.test.ts`'s nine stay runnable.
+ */
+
+/*
+ * +6: the cases of WIN-258 tranche 7's store-level rollout
+ * rehearsal. All six carry `.integration.` in the name, so `pnpm
+ * test:v1-packages` executes none of them — the file is one container and two
+ * rebuilt old clients — and the cases this census records but that script does
+ * not run go up by exactly six. The tranche's other 35 cases are not in this
+ * total at all: they live in `internal-packages/tenancy-database`, which has no
+ * row in this census, for the reason the postgres-tenancy block gives.
+ */
+
+/*
+ * THE MERGED RUNTIME TOTAL, WHICH IS THE ONE THIS CONSTANT HOLDS. The four T7
+ * dimensions land on the SAME adapter row and on no other, so their deltas
+ * compose by addition and each block above states its own contribution rather
+ * than a total: 7226 + 48 + 83 + 36 + 6 = 7399.
+ *
+ * The runnable/integration split composes the same way. Runnable goes
+ * 366 + 31 + 23 + 9 + 0 = 429; the cases this census records that
+ * `pnpm test:v1-packages` does not execute go 944 + 17 + 60 + 27 + 6 = 1054,
+ * over 99 + 1 + 5 + 3 + 1 = 109 files. THE CONCURRENCY DIMENSION IS THE ONE TO
+ * READ TWICE: nine of its thirty-six are runnable, in `client.test.ts`, and the
+ * other twenty-seven are not — twenty-six in its three new container suites and
+ * ONE added to `secrets-rules.integration.test.ts`, whose name carries
+ * `.integration.` and which therefore lands on that side however small the
+ * addition. 429 + 1054 = 1483 is the whole postgres-tenancy row and
+ * 23 + 109 = 132 is its file count, both of which the EXPECTED table above
+ * states independently. The `postgres-tenancy-repository` CI job running 109
+ * files / 1054 tests is therefore a check on this split derived without it.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7399;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

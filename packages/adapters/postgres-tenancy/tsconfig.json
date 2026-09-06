@@ -18,6 +18,54 @@
   "references": [
     {
       "path": "../../contexts/tenancy"
+    },
+    {
+      "path": "../../contexts/identity-access"
+    },
+    {
+      "path": "../../contexts/tools"
+    },
+    {
+      "path": "../../contexts/agents"
+    },
+    {
+      "path": "../../contexts/cost-monitoring"
+    },
+    {
+      "path": "../../contexts/channels"
+    },
+    {
+      "path": "../../contexts/files"
+    },
+    {
+      "path": "../../contexts/governance"
+    },
+    {
+      "path": "../../contexts/secrets"
+    },
+    {
+      "path": "../../contexts/providers"
+    },
+    {
+      "path": "../../contexts/conversations"
+    },
+    {
+      "path": "../../contexts/skills"
+    },
+    {
+      "path": "../../contexts/memory"
+    },
+    {
+      "path": "../../contexts/privacy"
+    },
+    {
+      "path": "../../contexts/jobs"
+    },
+    {
+      "path": "../../contexts/observability"
+    },
+    {
+      "path": "../../contexts/eventing"
     }
   ]
 }

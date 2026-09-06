@@ -462,9 +462,9 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 119 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 117 outputs across 32 V1 projects", () => {
   const report = repositoryReport();
-  // M2 INTEGRATION DELTA — 201 -> 119. Adoption RELEASES placeholders, so this
+  // M2 INTEGRATION DELTA — 201 -> 117. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
   // DISJOINT projects. The integrated count is therefore the SUM of every
   // reduction, never the smallest of the branch pins:
@@ -510,11 +510,19 @@ test("generated ownership includes the generator's exact 119 outputs across 32 V
   //   123 -> 119  WIN-256 adopts `conversations` (ADR M0.3 §1 row 16), the
   //               SEVENTEENTH AND LAST context, releasing the same 4 barrels.
   //               With it EVERY CONTEXT IS REAL: the 22 placeholders that
-  //               remain are the eleven still-unadopted adapters at two files
+  //               remained were the eleven still-unadopted adapters at two files
   //               each, and no `packages/contexts/**` file is generator-owned
   //               any more. Its own branch pinned 125 -> 121 because it was cut
   //               before the adapter released its 2; the reductions are disjoint
   //               and SUM, so 125 - 2 - 4 = 119 and 121 is not the number here.
+  //
+  //   119 -> 117  WIN-258 adopts `packages/adapters/postgres-tenancy`, the
+  //               SECOND adapter and the first PostgreSQL one, releasing its two
+  //               declaration placeholders. The second reduction on this list
+  //               that is 2 rather than 4, for the same reason as the first: an
+  //               adapter carries two barrels and a context carries four. Ten
+  //               adapters are still on placeholders, which is the 20 that
+  //               remain.
   //
   // Each branch pinned only what its own lineage could see: WIN-297 branched
   // from WIN-256 at 3ed8f3ce, BEFORE the providers commit, so it pinned
@@ -528,10 +536,10 @@ test("generated ownership includes the generator's exact 119 outputs across 32 V
   // pinned 165 - 4 = 161 — still partial, because the eventing, skills, jobs,
   // memory, cost-monitoring, privacy, observability, tools and channels
   // reductions were all invisible to it. None of those pins is correct here.
-  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 2 = 119:
+  // 201 - 19 - 4 - 9 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 4 - 2 - 2 = 117:
   // nineteen released by slices 1-5, four by providers, nine by the two apps,
-  // four each by the TWELVE contexts adopted since, and TWO by the first adopted
-  // adapter. That is 165 - 46 read from any of the ten branches that pinned 165,
+  // four each by the TWELVE contexts adopted since, TWO by the first adopted
+  // adapter and TWO by WIN-258's `postgres-tenancy`, the second. That is 165 - 46 read from any of the ten branches that pinned 165,
   // and 161 - 42 read from the governance branch that pinned 161. The model
   // router adapter branch pinned 169 - 2 = 167, blind to all twelve context
   // adoptions and to governance; the conversations branch pinned 121, blind to
@@ -556,11 +564,11 @@ test("generated ownership includes the generator's exact 119 outputs across 32 V
   // that was true of a tree in which only contexts and the two apps had ever
   // been adopted, and the first adapter adoption makes it false, so it is
   // corrected here rather than carried. Written out so a DELETION CANNOT HIDE
-  // INSIDE AN ADDITION: sixteen reductions, 82 placeholders released, 119 owned
-  // outputs left.
+  // INSIDE AN ADDITION: seventeen reductions, 84 placeholders released, 117
+  // owned outputs left.
   //
-  // The generator now owns the same 97 SCAFFOLDING files plus the 22
-  // placeholders of the 11 still-unadopted projects, which are the eleven
+  // The generator now owns the same 97 SCAFFOLDING files plus the 20
+  // placeholders of the 10 still-unadopted projects, which are the ten
   // remaining ADAPTERS at two files each. NO CONTEXT IS STILL ON PLACEHOLDERS —
   // that is what `conversations` being the seventeenth and last means, and it is
   // the property to re-check here rather than the total. The scaffolding tier is
@@ -587,17 +595,24 @@ test("generated ownership includes the generator's exact 119 outputs across 32 V
   // `pnpm audit:workspace-reachability` is regenerated to a fixpoint beside it.
   //
   // `node scripts/arch/gen-v1-skeleton.mjs --check` prints the same arithmetic
-  // from the other side: "97 scaffolding + 22 placeholder = 119 generated
-  // file(s) for 32 V1 projects and 95 project edges (21 project(s) adopted,
-  // 82 placeholder(s) released)". 22 placeholders REMAIN owned and 82 have been
+  // from the other side: "97 scaffolding + 20 placeholder = 117 generated
+  // file(s) for 32 V1 projects and 95 project edges (22 project(s) adopted,
+  // 84 placeholder(s) released)". 20 placeholders REMAIN owned and 84 have been
   // RELEASED. The adapter branch quoted "97 scaffolding + 70 placeholder = 167
   // ... 34 placeholder(s) released" and the conversations branch quoted
   // "97 scaffolding + 24 placeholder = 121 ... 80 placeholder(s) released", each
   // from the tree it could see; neither sentence is true here, and both are
   // re-read rather than carried.
   //
-  // THE 119 WAS READ BACK from the regenerated report and from
+  // THE 117 WAS READ BACK from the regenerated report and from
   // `gen-v1-skeleton.mjs --check`, which agree; it was not computed here.
+  // WIN-258 adopts `packages/adapters/postgres-tenancy` — the SECOND adapter
+  // and the first PostgreSQL one — releasing its two declaration placeholders,
+  // so 119 - 2 = 117 and the project count stays 32 for the reason below. That
+  // unchanged scaffolding tier is what lets the generator carry this adapter's
+  // `@platos/tenancy-database` runtime dependency, its `@testcontainers/postgresql`
+  // dev dependency and its integration-excluding test script, none of which a
+  // hand edit to a byte-compared manifest could have added.
   //
   // The count falls and the PROJECT count does not: 32 is unchanged, because
   // adoption releases a project's placeholders and never its scaffolding, and
@@ -605,15 +620,25 @@ test("generated ownership includes the generator's exact 119 outputs across 32 V
   // README.md. That is exactly what lets the generator carry this adapter's five
   // vendor specifiers, which a hand edit to a byte-compared manifest could not
   // have added.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 119);
+  //
+  // WIN-258 TRANCHE 4 adopts `packages/adapters/outbox` — the THIRD adapter —
+  // releasing its two declaration placeholders, so 117 - 2 = 115 and the project
+  // count stays 32 for the same reason. THE 115 WAS READ BACK from the
+  // regenerated report and from `gen-v1-skeleton.mjs --check`, which now print
+  // "97 scaffolding + 18 placeholder = 115 generated file(s) for 32 V1 projects
+  // and 96 project edges (23 project(s) adopted, 86 placeholder(s) released)".
+  // The EDGE count does not move: the outbox reaches its store through a seam
+  // declared in its own package and proven at the composition root, so it gained
+  // no project reference, and neither did `postgres-tenancy`.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 115);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 119 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 119);
+  // Same 115 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 115);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

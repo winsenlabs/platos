@@ -67,14 +67,21 @@ const expectedPnpmRunInstructions = new Map([
     ["RUN pnpm install --frozen-lockfile --prod"],
   ],
 ]);
-// DELTA — WIN-284 moves ci from 3 to 4. The fourth setup-node belongs to the new
-// `differential-state-conservation` job, which twin-runs the harness against two
-// isolated PostgreSQL databases and therefore needs a Docker daemon that the
-// typecheck job's service containers cannot provide. The count is pinned rather
-// than derived so that adding a job stays a reviewed decision: a silently
-// appearing runner is how unreviewed steps enter a pipeline.
+// DELTA — WIN-284 moves ci from 3 to 4, and WIN-258 from 4 to 5. The count is
+// one per JOB, so it IS each workflow's job count, and a new job that forgot to
+// pin its Node version cannot pass.
+//
+// The fourth setup-node belongs to `differential-state-conservation`, which
+// twin-runs the harness against two isolated PostgreSQL databases; the fifth to
+// `postgres-tenancy-repository`, which runs the PostgreSQL TenancyRepository
+// against a real container. Both need a Docker daemon that the typecheck job's
+// service containers cannot provide, which is why each is its own job.
+//
+// The count is pinned rather than derived so that adding a job stays a reviewed
+// decision: a silently appearing runner is how unreviewed steps enter a
+// pipeline.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 4],
+  ["ci", 5],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
@@ -111,6 +118,10 @@ const v1ReleaseGateCommands = [
   // pair in expectedV1EvidenceCommands below.
   "pnpm audit:composition-root",
   "pnpm test:composition-root",
+  // WIN-260 (M2.5): "feature code does not read process.env", made countable.
+  // See the note on the same pair in expectedV1EvidenceCommands below.
+  "pnpm audit:env-access",
+  "pnpm test:env-access",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -265,6 +276,17 @@ const expectedV1EvidenceCommands = [
   // acceptance requires — are in the test beside it.
   "pnpm audit:composition-root",
   "pnpm test:composition-root",
+  // WIN-260 (M2.5). The milestone's acceptance opens with "feature code does not
+  // read process.env". That was TRUE at f88c8364 and pinned nowhere: nothing in
+  // the repository said where an environment read may live, so the property was
+  // one line away from being false in a package nobody would think to check --
+  // the same position the ORM was in before ADR M0.3 s15 invented
+  // `tenancy-prisma-only`. This gate names the declared readers, pins every
+  // test-support read to an exact count in both directions, and fails closed on
+  // a computed key it cannot attribute. Its negative controls, one per violation
+  // code, are in the test beside it.
+  "pnpm audit:env-access",
+  "pnpm test:env-access",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -2184,7 +2206,7 @@ test("committed CI and image-build policy is executable, correlated, and complet
     7,
     "relocated command selector must cover all seven commands"
   );
-  // M2 INTEGRATION DELTA — 16 -> 24. Three branches add release gates on
+  // M2 INTEGRATION DELTA — 16 -> 26. Four branches add release gates on
   // independent axes, so the pinned count is their SUM:
   //   +1 WIN-299 (M2.6): audit:advisory:nonvacuity.
   //   +5 WIN-256: the two gates ADR M0.3 specifies that M1 did not build —
@@ -2194,10 +2216,14 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //   +2 WIN-297: composition-root (audit + test), which narrows rule (j) from
   //      a package to one file and carries the real-tree negative controls for
   //      rules (j) and (a).
+  //   +2 WIN-260 (M2.5): env-access (audit + test), which turns "feature code
+  //      does not read process.env" into a counted, pinned property — the same
+  //      containment shape ADR M0.3 §15 gave the ORM, on the one input nothing
+  //      in the repository had ever looked at.
   assert.equal(
     v1ReleaseGateCommands.length,
-    24,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, and the composition-root gate"
+    26,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, and the env-access gate"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4335,7 +4361,7 @@ test("CI policy controls fail under generated semantic source mutations", async 
     );
   }
 
-  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 358. Four independent
+  // M2 INTEGRATION DELTA — 340 (the M2 base) moves to 361. Six independent
   // contributions land on this count, on axes that do not interact, so the
   // pinned number is their SUM rather than any one side alone:
   //
@@ -4362,12 +4388,26 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   WIN-297 (composition root), +2. audit/test:composition-root join the
   //   same V1 release gate list, so each gains the same `|| true` control.
   //
-  // 340 + 2 + 9 + 5 + 2 = 358. The count is pinned rather than derived so that
-  // a control silently disappearing is a failure rather than a smaller number
-  // nobody reads.
+  //   WIN-258 (postgres tenancy repository), +1. The FIFTH ci.yml setup-node,
+  //   which belongs to the new `postgres-tenancy-repository` job — the same
+  //   shape as WIN-284's +1 above, and for the same reason: the controls are
+  //   generated one per setup-node occurrence, so a job that pins its Node
+  //   version gains a control that fails if the pin stops deriving from .nvmrc.
+  //   The job itself adds no other control: its four run steps are ordinary
+  //   pnpm commands with no `||`, no conditional and no relocated command.
+  //
+  //   WIN-260 (M2.5, typed configuration), +2. audit/test:env-access join the
+  //   same V1 release gate list, so each gains the same `|| true` control. The
+  //   same shape as WIN-297's +2 above, and for the same reason: a new release
+  //   gate that could be neutralised by appending `|| true` is a gate that runs
+  //   and cannot fail.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 = 361. The count is pinned rather than derived
+  // so that a control silently disappearing is a failure rather than a smaller
+  // number nobody reads.
   assert.equal(
     controls.length,
-    358,
+    361,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

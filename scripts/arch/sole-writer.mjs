@@ -14,12 +14,20 @@
 //   what discharges WIN-256's "current schema maps to explicit owners".
 //
 //   WRITE ENFORCEMENT — a file under packages/(contexts|adapters)/<X> may not
-//   call a mutating Prisma delegate for a model whose owner is not <X>. Reads
+//   call a mutating Prisma delegate for a model whose owner is not <X>, where
+//   <X> is the owner's context OR its canonical-store adapter. Reads
 //   (findMany/findUnique/count/aggregate) are exempt by design: §1 restricts
-//   WRITES. No V1 package imports Prisma yet, so this half currently finds
-//   nothing to judge. It is proven by fixtures, and it goes live with WIN-258
-//   when repositories arrive. This is stated plainly rather than reported as a
-//   pass: a gate with nothing to check has not checked anything.
+//   WRITES. This half is LIVE as of WIN-258: `packages/adapters/postgres-tenancy`
+//   is the first V1 package to import the ORM, and the check now judges its
+//   mutations rather than only fixtures.
+//
+//   IT COULD NOT HAVE BEEN SWITCHED ON WITHOUT `ownerDirectories`. Until WIN-258
+//   the only directory permitted to write a row was `packages/contexts/<owner>`,
+//   and ADR M0.3 §2 forbids a context's domain/ and application/ from importing
+//   the ORM — so the one package allowed to write a row was the one package
+//   unable to, and any real repository would have failed this gate on its first
+//   line. `CANONICAL_STORE_ADAPTERS` in table-ownership.mjs records the
+//   delegation per owner, by hand, so granting one is a decision somebody made.
 //
 //   node scripts/arch/sole-writer.mjs          # check, exit 1 on violation
 //   node scripts/arch/sole-writer.mjs --json   # machine-readable
@@ -94,9 +102,12 @@
 //   * NOTHING AT RUNTIME. `eval`, dynamic `import()`, a driver used directly, or
 //     any write issued outside `packages/contexts` and `packages/adapters` (an
 //     app, a script, a migration) is out of scope by construction.
-//   * ZERO CALLS TODAY. The whole half still judges nothing on the live tree —
-//     no V1 package imports the ORM. It is proven by fixtures alone until
-//     WIN-258 lands repositories.
+//   * ONE PACKAGE TODAY. The half judges the mutations of exactly one V1 package
+//     — `packages/adapters/postgres-tenancy`, the only one that imports the ORM.
+//     Every other context still reaches its store through a port with no
+//     implementation, so the gate has one adapter's worth of evidence and not a
+//     tree's worth. The fixtures remain, because they cover the six evasions the
+//     live tree does not happen to contain.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -107,6 +118,7 @@ import ts from "typescript";
 import {
   BLANKET_OWNER,
   CANONICAL_SCHEMA,
+  CANONICAL_STORE_ADAPTERS,
   MUTATING_DELEGATE_METHODS,
   MUTATING_SQL_STATEMENT,
   OWNER,
@@ -128,6 +140,23 @@ const OUTBOX_DIRECTORY = "packages/adapters/outbox";
 /** Repo-relative directory that owns writes for `owner`. */
 export function ownerDirectory(owner) {
   return owner === OUTBOX_OWNER ? OUTBOX_DIRECTORY : `packages/contexts/${owner}`;
+}
+
+/**
+ * EVERY repo-relative directory permitted to write `owner`'s rows.
+ *
+ * The context itself, plus its canonical-store adapter when it has one. This is
+ * the pair the enforcement half compares against, and it is why the half can be
+ * switched on at all: before WIN-258 the only permitted directory was the
+ * context, and a context may not import the ORM (ADR M0.3 §2), so the one
+ * package allowed to write a row was the one package unable to. The delegation
+ * is declared per owner in `CANONICAL_STORE_ADAPTERS` rather than derived from
+ * the adapter table's owner column — see the note there for why.
+ */
+export function ownerDirectories(owner) {
+  const primary = ownerDirectory(owner);
+  const store = CANONICAL_STORE_ADAPTERS[owner];
+  return store === undefined ? [primary] : [primary, store];
 }
 
 /** Read the model names declared in the canonical schema. */
@@ -463,13 +492,15 @@ export function checkWriteEnforcement(root = repositoryRoot, scanRoots = SCAN_RO
     for (const write of found.writes) {
       writeCount += 1;
       const actual = owningPackage(virtualPath);
-      const expected = ownerDirectory(OWNER[write.model]);
-      if (actual !== expected) {
+      const permitted = ownerDirectories(OWNER[write.model]);
+      const expected = permitted[0];
+      if (!permitted.includes(actual)) {
         violations.push({
           ...write,
           expected,
+          permitted,
           actual,
-          message: `${write.model}.${write.method}() may be called only from ${expected}; ${OWNER[write.model]} is its sole writer`,
+          message: `${write.model}.${write.method}() may be called only from ${permitted.join(" or ")}; ${OWNER[write.model]} is its sole writer`,
         });
       }
     }

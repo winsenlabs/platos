@@ -89,20 +89,160 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares twelve bindings, matching ADR M0.3 §4's twelve adapters", () => {
-    expect(ADAPTER_BINDINGS).toHaveLength(12);
-    expect(DECLARED_BINDING_COUNT).toBe(12);
+  it("declares FORTY-FOUR bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+    // The two numbers stopped being the same number at WIN-258 tranche 2:
+    // ADR M0.3 §15 lets one directory satisfy more than one port, and
+    // `postgres-tenancy` satisfies `TenancyRepository`,
+    // `IdentityAccessRepository` and — WIN-258 tranche 5, seven stores over —
+    // `ToolsRepository`, `AgentsRepository`, `ScaffoldingRepository`,
+    // `BudgetRepository`, `ChannelsRepository`, `SkillsRepository`, `secrets`'
+    // two and `governance`'s five, because
+    // there is one PostgreSQL database behind one client. All twelve are
+    // asserted, and the gap between the two counts is asserted too, so a change
+    // that collapsed them back into one count fails.
+    //
+    // 12 directories + 32 extra ports on the one shared directory = 44 bindings.
+    // The directory count does NOT move when a third through SEVENTEENTH owner is
+    // delegated to it, nor when WIN-258 M2.3 gives tenancy's five
+    // NON-REPOSITORY ports slots on the directory that already satisfied them.
+    // That is the whole property this pair of numbers exists to state.
+    //
+    // The ninth owner is `providers`, whose ONE port covers all four of its rows.
+    // The tenth is `conversations`, whose FOUR ports close the list: they are
+    // four lifetimes rather than one composite — a thread is opened, forked,
+    // compacted and archived; a turn and its steps settle together and are never
+    // edited again; a postman execution outlives the turn it produced; and the
+    // erasure half is the only surface in that context that deletes anything.
+    // The eleventh is `skills`, whose ONE port covers its three tables: a
+    // catalogue entry, a project's adoption of one and an environment's binding
+    // of that adoption are one aggregate with one uniqueness key.
+    // The twelfth is `memory`, whose TWO ports — `MemoryRepository` and
+    // `KnowledgeGraphRepository` — are both proven through the PROPERTY that
+    // carries them, because `KnowledgeGraphRepository.findEntity(subject,
+    // agentIds, entityId)` and `TenancyRepository.findEntity(entityId)` are one
+    // name with two signatures and no interface can extend both.
+    // The thirteenth is `privacy`, whose ONE port covers its two rows and is
+    // proven through the ADAPTER rather than a property: `PrivacyRepository` is
+    // `OperationRepository` and `TombstoneRepository` composed, and its ten
+    // method names collide with nothing the other twelve owners publish.
+    // The fourteenth is `jobs`, whose TWO ports over `Job` and `AgentApproval`
+    // are proven the same way and for the same kind of reason:
+    // `ApprovalsRepository.erase(selector, transaction)` and
+    // `ConversationsErasureStore.erase(plan, transaction)` are one name with two
+    // signatures. Its OTHER two ports get no row: `IdempotencyStore` is a
+    // reserve-once keyspace and `JobHandlerRuntime` is an isolate, and neither
+    // writes a canonical row.
+    // The FIFTEENTH is `files`, whose ONE port covers its two tables — and it
+    // is the one owner in this table that appears TWICE, because
+    // `objectstore-minio:ObjectStore` is also its. A row and a blob are two
+    // technologies behind two ports, and `domain/destruction.ts` fixes
+    // blob-before-row precisely because no transaction spans them.
+    // The SIXTEENTH is `observability`, whose ONE port covers its ONE Prisma
+    // row: ADR M0.3 §1 row 12 credits it with five tables and four of them are
+    // the analytical projections, which are not Prisma rows and are bound to
+    // `clickhouse-observability` instead.
+    // The SEVENTEENTH and LAST is `eventing`, whose ONE port covers its ONE
+    // canonical row — the smallest grant in the map, and proven against the
+    // ADAPTER rather than through a property, because its nine method names
+    // collide with nothing the directory already publishes. With it, every one
+    // of ADR M0.3 §1's seventeen contexts has a canonical store.
+    expect(ADAPTER_BINDINGS).toHaveLength(44);
+    expect(DECLARED_BINDING_COUNT).toBe(44);
+    expect(ADAPTER_NAMES).toHaveLength(12);
+    const sharedDirectory = ADAPTER_BINDINGS.filter(
+      (binding) => binding.adapter === "postgres-tenancy",
+    );
+    expect(sharedDirectory.map((binding) => binding.port)).toEqual([
+      "TenancyRepository",
+      "IdentityAccessRepository",
+      "ToolsRepository",
+      "AgentsRepository",
+      "ScaffoldingRepository",
+      "BudgetRepository",
+      "ChannelsRepository",
+      "SafetyLedger",
+      "RatingsRepository",
+      "CriteriaRepository",
+      "EvalsRepository",
+      "GoldenSetsRepository",
+      "SecretsRepository",
+      "EnvironmentVariableRepository",
+      "ProvidersRepository",
+      "ThreadRepository",
+      "TurnRepository",
+      "PostmanRepository",
+      "ConversationsErasureStore",
+      "SkillsRepository",
+      "TenancyLocks",
+      "OperatorSessionRevoker",
+      "EnvironmentAccessKeyRevocationCounter",
+      "InvitationTokenIssuer",
+      "OperatorDirectory",
+      "MemoryRepository",
+      "KnowledgeGraphRepository",
+      "PrivacyRepository",
+      "JobsRepository",
+      "ApprovalsRepository",
+      "FilesRepository",
+      "ObservabilityRepository",
+      "NotificationRuleRepository",
+    ]);
+    expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
+      "tenancy",
+      "identity-access",
+      "tools",
+      "agents",
+      "agents",
+      "cost-monitoring",
+      "channels",
+      "governance",
+      "governance",
+      "governance",
+      "governance",
+      "governance",
+      "secrets",
+      "secrets",
+      "providers",
+      "conversations",
+      "conversations",
+      "conversations",
+      "conversations",
+      "skills",
+      "tenancy",
+      "tenancy",
+      "tenancy",
+      "tenancy",
+      "tenancy",
+      "memory",
+      "memory",
+      "privacy",
+      "jobs",
+      "jobs",
+      // WIN-258 T5. `files` is the one owner that appears TWICE in the whole
+      // table: here for `MessageAttachment` and `Artifact`, and again at
+      // `objectstore-minio` for the blobs those rows point at.
+      "files",
+      "observability",
+      "eventing",
+    ]);
   });
 
-  it("names each adapter exactly once", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has THIRTY-THREE bindings", () => {
+    // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
+    // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
+    expect(new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)).size).toBe(
+      ADAPTER_NAMES.length,
+    );
   });
 
   it("carries a compile-time satisfaction entry for every declared binding", () => {
     // PORT_SATISFACTION is proven by the compiler; this asserts it is not
     // proving a SUBSET. An adapter dropped from the type would otherwise be
     // silently unproven.
-    expect(Object.keys(PORT_SATISFACTION).sort()).toEqual([...ADAPTER_NAMES].sort());
+    expect(Object.keys(PORT_SATISFACTION).sort()).toEqual(
+      ADAPTER_BINDINGS.map((binding) => `${binding.adapter}:${binding.port}`).sort(),
+    );
     expect(Object.values(PORT_SATISFACTION).every((value) => value === true)).toBe(true);
   });
 
@@ -119,15 +259,37 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(12);
+    expect(report.unsatisfied).toHaveLength(44);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/12 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/44 adapter bindings satisfied");
+    // Reported per BINDING, not per directory. A directory-named report would
+    // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
+    // carries were unserved, which is a readiness endpoint that lies about what
+    // is serving.
+    expect(report.unsatisfied).toContain("postgres-tenancy:TenancyRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:IdentityAccessRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ToolsRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:AgentsRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ScaffoldingRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:BudgetRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ProvidersRepository");
+    expect(report.unsatisfied).toContain("postgres-tenancy:ChannelsRepository");
+    // WIN-258 M2.3. The five that had no slot until now, and the reason the
+    // slots exist: readiness could not previously say the session revoker was
+    // unwired, because nothing declared it as a binding to be unsatisfied.
+    expect(report.unsatisfied).toContain("postgres-tenancy:TenancyLocks");
+    expect(report.unsatisfied).toContain("postgres-tenancy:OperatorSessionRevoker");
+    expect(report.unsatisfied).toContain("postgres-tenancy:EnvironmentAccessKeyRevocationCounter");
+    expect(report.unsatisfied).toContain("postgres-tenancy:InvitationTokenIssuer");
+    expect(report.unsatisfied).toContain("postgres-tenancy:OperatorDirectory");
+
   });
 
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
-    expect(report.satisfied).toEqual(["outbox"]);
-    expect(report.unsatisfied).toHaveLength(11);
+    expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
+    expect(report.unsatisfied).toHaveLength(43);
+
     expect(report.faults).toEqual([]);
   });
 
@@ -149,14 +311,15 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 12 declared bindings");
+    expect(report.faults[0]).toContain("is not one of the 12 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(12);
+    expect(app.bindings.unsatisfied).toHaveLength(44);
+
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
     expect(Object.isFrozen(app)).toBe(true);
@@ -184,8 +347,9 @@ describe("composing the application", () => {
 
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
-    expect(app.bindings.satisfied).toEqual(["outbox"]);
-    expect(app.bindings.unsatisfied).toHaveLength(11);
+    expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
+    expect(app.bindings.unsatisfied).toHaveLength(43);
+
   });
 
   it("does not compose a context from an adapter supply alone", () => {

@@ -63,7 +63,19 @@ function diagnostic(field: ConfigFieldSpec, problem: string, raw: string | undef
   return { field: field.name, problem, shownValue, presented, redacted: field.secret };
 }
 
-function validateField(
+/**
+ * Validate ONE field against ONE raw value.
+ *
+ * Exported because WIN-260's five sibling sections use it. They must: two
+ * validators that agree today are a census that can drift, and this programme
+ * has been bitten by that shape before. A section declares FIELDS; how a field
+ * fails is decided here, once.
+ *
+ * Returns the resolved string (a default when absent and not required, `null`
+ * when it failed) and pushes a diagnostic per failure rather than throwing —
+ * see COLLECT, DON'T THROW ON FIRST above.
+ */
+export function validateField(
   field: ConfigFieldSpec,
   raw: string | undefined,
   diagnostics: ConfigDiagnostic[],
@@ -103,10 +115,51 @@ function validateField(
     return supplied;
   }
 
+  if (field.kind === "boolean") {
+    // Exactly two spellings. "yes", "1", "on" and "TRUE" are all things an
+    // operator reasonably types and all things a hand-rolled truthiness check
+    // reads differently, so the set is closed and the failure names both members.
+    if (supplied !== "true" && supplied !== "false") {
+      diagnostics.push(diagnostic(field, "must be exactly true or false", raw));
+      return null;
+    }
+    return supplied;
+  }
+
+  if (field.kind === "url") {
+    // `URL` is the parser the runtime itself uses, so a value this accepts is a
+    // value the client built from it will accept. A hand-written regex here
+    // would be a second, weaker definition of the same word.
+    let parsed: URL;
+    try {
+      parsed = new URL(supplied);
+    } catch {
+      diagnostics.push(diagnostic(field, "must be an absolute URL with a scheme", raw));
+      return null;
+    }
+    const schemes = field.schemes ?? [];
+    if (schemes.length > 0 && !schemes.includes(parsed.protocol)) {
+      diagnostics.push(diagnostic(field, `must use one of the schemes ${schemes.join(", ")}`, raw));
+      return null;
+    }
+    return supplied;
+  }
+
   const minimumLength = field.minimumLength ?? 0;
   if (supplied.length < minimumLength) {
     diagnostics.push(diagnostic(field, `must be at least ${minimumLength} characters`, raw));
     return null;
+  }
+  if (field.pattern !== undefined) {
+    // Anchored HERE rather than in the spec. A spec that anchored itself could
+    // ship an unanchored pattern by omission, and a prefix match on an
+    // encryption key is the difference between 64 hex characters and 64 hex
+    // characters followed by anything at all.
+    const whole = new RegExp(`^(?:${field.pattern})$`, "u");
+    if (!whole.test(supplied)) {
+      diagnostics.push(diagnostic(field, `must be ${field.patternDescribe ?? "in the accepted form"}`, raw));
+      return null;
+    }
   }
   return supplied;
 }

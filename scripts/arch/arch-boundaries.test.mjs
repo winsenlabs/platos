@@ -636,8 +636,414 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               of which landed on the integration branch after it was cut.
     //               1113 is not the number here: the three deltas are disjoint
     //               and SUM, 1039 + 34 + 18 + 74 = 1165.
-    assert.equal(result.fileCount, 1165, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74);
+    //  1165 -> 1177 +12: WIN-258 adopts `packages/adapters/postgres-tenancy`,
+    //               the SECOND adapter and the first PostgreSQL one. 14 real .ts
+    //               files stand where 2 generated placeholders stood, so the
+    //               delta is a NET -- 14 - 2 = 12 -- written as that subtraction
+    //               for the same reason as conversations' above: the two
+    //               released placeholders are the only files this slice removes
+    //               and a deletion elsewhere must not hide behind them. Its
+    //               `.sql` fixture and its `mutations.json` are not source and
+    //               are not counted here; the v1 ledger counts all sixteen.
+    //               The rule to watch here is the NEW one, `tenancy-prisma-only`:
+    //               this is the only package in the V1 layout that may import
+    //               the ORM or the generated client package, and `src/client.ts`
+    //               is the only file in it that does. Before this slice the rule
+    //               did not exist and the ORM had no home at all -- it was banned
+    //               inside a context's domain/ and application/ and permitted
+    //               everywhere else. The rule is proved non-vacuous by adding
+    //               the import to a context file and watching it turn red.
+    //  1177 -> 1199 +22: WIN-258 TRANCHE 2 adds the identity-access canonical
+    //               store to the SAME package. Twenty-two .ts files -- fifteen
+    //               source and seven suites -- and NO subtraction this time,
+    //               because the directory was already adopted at tranche 1 and
+    //               has no placeholders left to release. Its
+    //               `mutations-identity.json` is not source and is not counted
+    //               here; the v1 ledger counts it and the total there is 23.
+    //               The rule to watch is still `tenancy-prisma-only`, and the
+    //               reason it is the rule to watch got sharper: this tranche is
+    //               the one that would have broken it. Sixteen contexts' worth
+    //               of canonical-store repositories over ONE PostgreSQL database
+    //               packaged as sixteen adapters would be sixteen homes for the
+    //               ORM, and the rule could not then be written as a single-home
+    //               rule at all. ADR M0.3 §15 records that as the deciding
+    //               argument for many ports per DIRECTORY, and `src/client.ts`
+    //               is still the only file in the layout that imports the ORM.
+    //  1199 -> 1210 +11: WIN-258 TRANCHE 3 adds tenancy's OTHER FIVE PORTS to
+    //               the SAME package. Eleven .ts files -- six source and five
+    //               suites -- and again no subtraction, because the directory
+    //               has had no placeholders left to release since tranche 1. Its
+    //               `mutations-ports.json` is not source and is not counted
+    //               here; the v1 ledger counts it and the total there is 12.
+    //               The rule to watch here is NOT `tenancy-prisma-only` -- the
+    //               ORM still has one home and `src/client.ts` is still the only
+    //               file that imports it -- but `cross-context-contracts-only`,
+    //               which is the one this tranche comes closest to. Two of the
+    //               five ports are tenancy's edges INTO identity-access, and
+    //               both are satisfied by taking a narrow `Pick<>` of
+    //               identity-access's own published port rather than by reaching
+    //               for `User` or `OperatorSession` directly. The rule does not
+    //               fire on an adapter (it needs a from-CONTEXT, and an adapter
+    //               is not one), so it is the DESIGN and not the gate that keeps
+    //               that true, which is why it is written down here.
+    //  1199 -> 1214 +15: WIN-258 TRANCHE 4 adds the kernel outbox, in TWO
+    //               directories. `packages/adapters/outbox` gains nine .ts files
+    //               -- five source modules and four suites -- with NO
+    //               subtraction, because its two generated placeholders
+    //               (adapter.ts, index.ts) were already counted and are edited
+    //               in place by adoption; `packages/adapters/postgres-tenancy`
+    //               gains six, the store and its harness plus four
+    //               real-PostgreSQL suites. Its two JSON documents are not
+    //               source and are not counted here; the v1 ledger counts them
+    //               and the total there is 18.
+    //               THE RULE TO WATCH IS STILL `tenancy-prisma-only`, and this
+    //               tranche is the one that shows what it costs. `Event` is the
+    //               one canonical row whose owner is an ADAPTER rather than a
+    //               context, so the obvious shape -- the outbox adapter holding
+    //               its own client -- is exactly the second ORM home the rule
+    //               forbids. The write went to the one home instead, owner-
+    //               tagged, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
+    //  1210/1214 -> 1225: THE TWO TRANCHES LAND TOGETHER, and the pin is the
+    //               SUM of their deltas, not either one of them. Each branch
+    //               pinned 1199 + its own addition and each was right alone;
+    //               merged, the count is 1199 + 11 + 15. The chain below is
+    //               extended by BOTH tails, `+ 11` for tranche 3 and `+ 9 + 6`
+    //               for tranche 4's two directories, so a term that went missing
+    //               would move the total and be caught rather than absorbed.
+    //  1225 -> 1243 +18: WIN-258 TRANCHE 5 adds the `tools` canonical store, all
+    //               of it in ONE directory. `packages/adapters/postgres-tenancy`
+    //               gains eighteen .ts files -- twelve source (the five store
+    //               modules and their composite, the two row-mapping halves, the
+    //               scope resolve, the two conformance-scenario halves and the
+    //               harness) and six suites. Its `fixtures/tools-rows.sql` and
+    //               `mutations-tools.json` are NOT source and are not counted
+    //               here; the v1 ledger counts them and the total there is 20.
+    //               THE RULE TO WATCH IS `cross-context-contracts-only`, and this
+    //               tranche is the one that pays for it. Every parameter and
+    //               every return of the port's twenty-five methods is spelled in
+    //               `tools` domain vocabulary, and an adapter may not reach into
+    //               `../../domain/`. The context re-exports those names from its
+    //               `application/ports/index.ts` -- the same block tenancy and
+    //               identity-access already carry -- so the one package entitled
+    //               to implement the port can name what the port says. The rule
+    //               does not fire on an adapter, so it is the DESIGN and not the
+    //               gate that keeps that true, which is why it is written here.
+    //  1243 -> 1259 +16: WIN-258 TRANCHE 5, the `agents` canonical store, and every
+    //               one of the sixteen is a `.ts` file in the SAME adapter
+    //               directory -- the two stores split across five modules, the
+    //               row readers, the refusal parser, the harness, the shared
+    //               conformance scenario in two halves, and six suites. The
+    //               `fixtures/agents-rows.sql` and `mutations-agents.json`
+    //               beside them are not source and are not counted here; the v1
+    //               ledger counts all eighteen and its own delta says 18.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` AGAIN, and this
+    //               tranche is the third time it decided the shape. `agents`
+    //               owns seven rows in the same database, so a per-context
+    //               adapter package would have been a second ORM home; the two
+    //               ports went to the one home instead, owner-tagged, and
+    //               `src/client.ts` is still the only file in the layout that
+    //               imports the ORM -- it gained `Prisma.DbNull` and nothing
+    //               else.
+    //  1259 -> 1275 +16: WIN-258 TRANCHE 5, `cost-monitoring`'s canonical store, in
+    //               that SAME one ORM home. Sixteen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ten source (the
+    //               three stores, their row mapping, their guards, the pending
+    //               projection, the composite, the two conformance halves and
+    //               the fixture harness) and six suites. The rule they are
+    //               measured against is the one this whole chain exists for --
+    //               `tenancy-prisma-only` -- and a thirteenth adapter package
+    //               for a third owner would have broken it exactly as a second
+    //               ORM home for the outbox would have.
+    //  1275 -> 1276 +1: THE SEVENTEENTH FILE IN THAT SAME HOME, and it is a suite
+    //               rather than a module: `cost-idempotency.integration.test.ts`
+    //               carries the four guards the mutation sweep found had no
+    //               named case anywhere, each of which had been falsifiable only
+    //               through a crashed `beforeAll`. It imports what every other
+    //               suite in the directory imports, so `tenancy-prisma-only` is
+    //               measured against one more file and still holds.
+    //  1276 -> 1291 +15: THE `channels` CANONICAL STORE, in that SAME one home:
+    //               nine modules (the four stores, the composite, the guards,
+    //               the row mapping, the harness and the shared conformance
+    //               scenario) and six suites. `tenancy-prisma-only` is measured
+    //               against fifteen more files and still holds, because the
+    //               client is still imported in `client.ts` and nowhere else —
+    //               and the arithmetic is the point: a thirteenth adapter
+    //               package for a sixth owner would have broken it exactly as a
+    //               second ORM home for the outbox would have.
+    //  1276 -> 1294 +18: WIN-258 TRANCHE 5, `governance`'s canonical store, in
+    //               that SAME one ORM home and for the fourth time on the same
+    //               sentence. Seventeen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: eleven source
+    //               (five stores, their row mapping, their write guards, the
+    //               refusal adapter, the composite, the fixture harness and the
+    //               shared conformance scenario IN TWO HALVES) and six suites.
+    //               THE SCENARIO IS TWO FILES BECAUSE THE §6 BUDGET SAID SO:
+    //               one scenario over five ports measured 716 effective lines,
+    //               past the 500-line hard error, and the seam it pointed at is
+    //               real — the safety ledger and the ratings table share a
+    //               SUBJECT, the other three share a CRITERION, and nothing
+    //               crosses. The
+    //               `mutations-governance.json` beside them is not source and is
+    //               not counted here; the v1 ledger counts it and its own delta
+    //               says 18.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FOURTH TIME.
+    //               `governance` owns five rows in the same database, so a
+    //               per-context adapter package would have been a second ORM
+    //               home; the five ports went to the one home instead,
+    //               owner-tagged, and `src/client.ts` is still the only file in
+    //               the layout that imports the ORM — this tranche added nothing
+    //               to it at all.
+    //  1276 -> 1295 +19: WIN-258 TRANCHE 5, `secrets`' canonical store, in that
+    //               SAME one ORM home. NINETEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ten source (the
+    //               guards, the row readers, the credential store, the envelope
+    //               and evidence store, the variable store, the composite, the
+    //               harness and the two conformance halves) and NINE suites.
+    //               The inline count here read "fifteen ... nine source and six
+    //               suites" on the branch and was wrong there too; it is
+    //               corrected rather than carried, because a file census stated
+    //               in prose beside an asserted one is exactly the drift this
+    //               file exists to catch.
+    //               `packages/contexts/secrets` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FOURTH time,
+    //               and this tranche is where it decided the SHAPE rather than
+    //               only the home: `secrets` owns four rows in the same
+    //               database, and its two ports could not be spread into
+    //               `PostgresTenancyAdapter` at all — `SecretsRepository` and
+    //               `ToolsRepository` both declare `appendAudit` — so they are
+    //               named properties on the one adapter rather than a thirteenth
+    //               package with a second client.
+    //  1328 -> 1344 +16: WIN-258 TRANCHE 5, `providers`' canonical store, in
+    //               that SAME one ORM home and for the fifth time on the same
+    //               sentence. SIXTEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: nine source (the
+    //               write guards, the row crossing, the key store, the link
+    //               store, the catalogue store, the composite, the fixture
+    //               harness and the shared conformance scenario IN TWO HALVES)
+    //               and SEVEN suites — the constraints proof is two files, split
+    //               along the same scoping seam by the §6 budget at 491 lines. The scenario is two files for a reason one
+    //               tranche back's was: the two halves have DIFFERENT SCOPING
+    //               REGIMES — every step in one takes an `EnvironmentScope` and
+    //               not one step in the other does — and keeping them together
+    //               would have put a call with a scope next to one without and
+    //               made the missing argument look like an oversight.
+    //               The `mutations-providers.json` beside them is not source and
+    //               is not counted here; the v1 ledger counts it and its own
+    //               delta says 16.
+    //               `packages/contexts/providers` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FIFTH TIME, and
+    //               here it decided the TRANSACTION rather than only the home:
+    //               `register-provider-key.ts` creates a credential through
+    //               `secrets` and then writes the `ProviderKey` that points at
+    //               it, and `ProviderKey_credential_provider_integrity` RE-READS
+    //               that credential from inside the key's own INSERT. Two homes
+    //               would have been two pools, and the rule would have
+    //               refused a key that was correct.
+    //  1328 -> 1348 +20: WIN-258 TRANCHE 5, `conversations`' canonical store, in
+    //               that SAME one ORM home and the NINTH owner of it. TWENTY
+    //               files, all under `packages/adapters/postgres-tenancy/src/`:
+    //               twelve source (the guards, the row readers, the refusal
+    //               parser, the four stores, the composite, the harness, the
+    //               shared fixtures and the two conformance halves) and EIGHT
+    //               suites. THREE of the twenty exist only because
+    //               `max-file-lines` bit at the HARD error — the conformance
+    //               scenario, the constraints suite and the rules suite each
+    //               split along a seam they already had.
+    //               `packages/contexts/conversations` gains NO file: its port
+    //               entry point was widened in place to republish the vocabulary
+    //               its four signatures are written in, and a widened file is
+    //               not a new one.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FIFTH time, and
+    //               this tranche is the one where the ORM's single home stopped
+    //               being an inconvenience for anyone: `Thread` and `Turn` were
+    //               the rows the OTHER eight owners' harnesses had to seed
+    //               through `prisma db execute`, because `conversations` had no
+    //               entry in `CANONICAL_STORE_ADAPTERS`. Those harnesses are
+    //               unchanged — the entry moves no owner TAG — but the directory
+    //               that could not write a thread now can, from this store.
+    //  1328 -> 1345 +17: WIN-258 TRANCHE 5, `skills`' canonical store, in that
+    //               SAME one ORM home. SEVENTEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ELEVEN source
+    //               (the guards, the row readers, the visibility predicate and
+    //               catalogue ordering, the `Skill` half, the two install rows,
+    //               the erasure half, the refusal wrapper, the composite, the
+    //               harness and the two conformance halves) and SIX suites.
+    //               `packages/contexts/skills` gains NO file — its port entry
+    //               point and its application barrel were widened IN PLACE, and
+    //               a widened file is not a new one.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FIFTH time, and
+    //               this tranche decided the SHAPE for the second time:
+    //               `SkillsRepository.findInstallation(scope, skillId)` and
+    //               `ChannelsRepository.findInstallation(installationId)` are
+    //               both top-level members with different signatures, so
+    //               `PostgresTenancyAdapter` cannot extend both ports and the
+    //               store arrives as a named property rather than a spread —
+    //               the same collision `secrets` produced on `appendAudit`.
+    //  1328 -> 1349 +21: WIN-258 TRANCHE 5, `memory`'s canonical store, in that
+    //               SAME one ORM home for the ninth owner. TWENTY-ONE files, all
+    //               under `packages/adapters/postgres-tenancy/src/`: fourteen
+    //               source (the guards, the row mapping, the refusal adapter,
+    //               the four raw vector statements, the five peer reads, the
+    //               point writes, the set reads, the two graph tables, the six
+    //               erasure methods, the composite, the harness and the shared
+    //               conformance scenario in two halves) and SEVEN suites. The
+    //               `mutations-memory.json` beside them is not source and is not
+    //               counted here; the v1 ledger counts it and its own delta says
+    //               22.
+    //               THE FOURTEEN SOURCE MODULES ARE THE §6 BUDGET, not a store
+    //               spread thin: `MemoryRepository` alone is twenty methods, and
+    //               the seventh suite arrived after the mutation sweep, when
+    //               three cases closing a survivor took the rules suite to 500
+    //               effective lines exactly.
+    //               `packages/contexts/memory` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FIFTH TIME, and
+    //               this tranche is the first where the ORM could not express
+    //               the write at all: `Memory.embedding` and
+    //               `MemoryEntity.embedding` are `Unsupported("vector(1536)")`,
+    //               so four statements are raw SQL — in the same one home,
+    //               attributed by the TABLE they name, and `src/client.ts` is
+    //               still the only file in the layout that imports the ORM.
+    // + 14 (WIN-258 T5) — `privacy`'s canonical store, the THIRTEENTH owner:
+    //               SIX modules of source (the guards, the row mapping, the
+    //               refusal adapter, the operation half, the register half and
+    //               the composite), the harness, the shared conformance scenario
+    //               and SIX suites.
+    //               THE SIX SOURCE MODULES ARE THE §6 BUDGET SPENT ON A SEAM,
+    //               not a store spread thin: the split is by WHOSE ROWS a module
+    //               touches and by WHAT IT DOES, and the two halves are separate
+    //               because their FAILURES are — `refusePrivacy` answers
+    //               `PRIVACY_OPERATION_STORE_UNAVAILABLE` and `refuseRegister`
+    //               answers `PRIVACY_ERASURE_REGISTER_UNAVAILABLE`, and
+    //               `guard-subject-write.ts` REFUSES A WRITE on the second.
+    //               `packages/contexts/privacy` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME, and
+    //               this tranche does not strain it at all: every statement is a
+    //               delegate call, there is no raw SQL anywhere in the store, and
+    //               `src/client.ts` is still the only file in the layout that
+    //               imports the ORM.
+    //  1328 -> 1345 +17: WIN-258 TRANCHE 5, `jobs`' canonical store, in that
+    //               SAME one ORM home for the FOURTEENTH owner. SEVENTEEN files,
+    //               all under `packages/adapters/postgres-tenancy/src/`: ten
+    //               source (the guards, the row mapping and its two envelopes,
+    //               the refusal adapter, the seven `Job` methods, the nine
+    //               `Approval` methods, the erasure pair, the composite, the
+    //               harness and the shared conformance scenario in two halves)
+    //               and SEVEN suites. The `mutations-jobs.json` beside them is
+    //               not source and is not counted here; the v1 ledger counts it
+    //               and its own delta says 18.
+    //               THE SEVENTEENTH FILE IS THE §6 BUDGET, not a suite spread
+    //               thin: the constraints proof reached 414 effective lines as
+    //               one file, and the three describes that left it had no guard
+    //               at all — `enforce_domain_ancestry`, the two unique indexes
+    //               and the scoped reads are rules this store does not restate.
+    //               `packages/contexts/jobs` gains NO file — its port entry
+    //               point was widened in place.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME, and
+    //               this tranche does not test it the way `memory` did: every
+    //               statement here is a delegate call, and the rows this store
+    //               may NOT write reach the database through `prisma db execute`
+    //               — the ORM's CLI at runtime, which is not an import at all.
+    // 1402 -> 1420 (WIN-258 T5, `files`). EIGHTEEN files in the one adapter
+    //               directory: ELEVEN source (the guards, the row mapping, the
+    //               ancestry re-assertion, the refusal adapter, the attachment
+    //               half, the artifact half, the erasure half, the composite,
+    //               the harness, the shared conformance scenario and the fixture
+    //               builders) and SEVEN suites. The `mutations-files.json`
+    //               beside them is not source and is not counted here; the v1
+    //               ledger counts it and its own delta says 19.
+    //               `packages/contexts/files` gains NO file — its port entry
+    //               point was widened in place to publish the names its own
+    //               fifteen signatures use, which is what this census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME.
+    //               This store's reads are raw SQL, for the reason
+    //               `channels-connections.ts` gives — the delegate spelling of a
+    //               three-id scope is three round trips — and its append-only
+    //               INSERT is raw so the conflict can be `ON CONFLICT ... DO
+    //               NOTHING` rather than an aborted transaction. Every one of
+    //               them is in the same one home, attributed by the TABLE it
+    //               names, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
+    // 1402 -> 1414 (WIN-258 T5, `observability`). TWELVE files in the one
+    //               adapter directory: SEVEN source (the guards, the row
+    //               mapping, the refusal adapter, the audit half, the erasure
+    //               half, the composite and the harness) and FIVE suites. The
+    //               `mutations-observability.json` beside them is not source and
+    //               is not counted here; the v1 ledger counts it and its own
+    //               delta says 13. `packages/contexts/observability` gains NO
+    //               file — its port entry point was widened in place.
+    // +14 (WIN-258 T5, `eventing`) — EIGHT source modules (the row mapping and
+    //               the two `where` shapes, the guards, the refusal adapter, the
+    //               seven CRUD-and-read methods, the two erasure methods, the
+    //               composite, the harness and the shared conformance scenario)
+    //               and SIX suites, over ONE canonical row. The
+    //               `mutations-eventing.json` beside them is not source and is
+    //               not counted here; the v1 ledger counts it.
+    //               EIGHT MODULES FOR ONE TABLE IS THE §6 BUDGET AND NOT A STORE
+    //               SPREAD THIN. The erasure is its own module because it holds
+    //               the ONE write in this store that is raw SQL, and the reason
+    //               (`@updatedAt` would move a column the DOMAIN owns) is a
+    //               paragraph rather than a line.
+    //               `packages/contexts/eventing` gains NO file — its port entry
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME:
+    //               this store issues ONE raw statement, the containment UPDATE
+    //               the erasure needs, and it is in the same one home,
+    //               attributed by the TABLE it names.
+    // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
+    //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is
+    //               right merged — 1416, 1419, 1420, 1414 and 1416 each under-count
+    //               the others by their whole tranche.
+    // WIN-258 TRANCHE 7 ADDS SEVEN, all in `packages/adapters/postgres-tenancy`:
+    //               the plan probe, its unit suite, and the five dense-fixture
+    //               plan suites. 1477 + 7 = 1484. The dimension implements NO
+    //               port, so no context directory moves and the boundary rules
+    //               it has to satisfy are the ones every file in that directory
+    //               already does — `tenancy-prisma-only` above all, and the
+    //               probe names the client type in the one file entitled to.
+    // 1477 -> 1480 (WIN-258 T7, concurrency, pooling and transaction
+    //               boundaries). THREE files, all suites, all in that same one
+    //               adapter directory: `pooling.integration.test.ts`,
+    //               `optimistic-concurrency.integration.test.ts` and
+    //               `transaction-boundaries.integration.test.ts`. NO source file
+    //               is added — the fence, the server timeouts and the tenant
+    //               clause on the DELETE are all edits in place — so this delta
+    //               is exactly the tranche's suite count and nothing else, and
+    //               `packages/contexts/secrets` gains no file either.
+    // AND FOUR MORE FROM THE JSON-COLUMN DIMENSION and TWO from the rollout
+    //               rehearsal's store half, NEITHER OF WHICH MOVED THIS PIN ON
+    //               ITS OWN BRANCH. `json-columns.ts`, its two suites and
+    //               `outbox-store.test.ts` are four files under
+    //               `packages/adapters/postgres-tenancy/src`, and
+    //               `upgrade-rollout-harness.ts` with
+    //               `upgrade-rollout.integration.test.ts` are two more; this
+    //               scan counts every one of them. Both dimensions reported a
+    //               ZERO delta here, so this gate was not in either one's list
+    //               and the merge is where it is first told the truth.
+    // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
+    //               dimension's own figure — 1484, 1480, or the 1477 the other
+    //               two left untouched — is right here.
+    // WIN-260 (M2.5) +10: nine files under `apps/core-api/src/config` — the six
+    //               typed configuration sections, `environment.ts`, and the two
+    //               suites — and `apps/mcp-stdio/src/environment.ts`, the second
+    //               deployable's own reader. `mutations-config.json` is NOT in
+    //               this count: it is data at the package root, and this scan
+    //               reads source under `src/`. 1493 + 10 = 1503, and
+    //               `scripts/arch/composition-root.mjs` and
+    //               `scripts/arch/env-access.mjs` read the same number back from
+    //               their own scans of the same five roots, so the three can
+    //               DISAGREE and be caught.
+    assert.equal(result.fileCount, 1503, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

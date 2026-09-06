@@ -151,6 +151,8 @@ jobs:
           pnpm test:sole-writer
           pnpm audit:composition-root
           pnpm test:composition-root
+          pnpm audit:env-access
+          pnpm test:env-access
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
@@ -293,6 +295,290 @@ jobs:
 
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
+
+  postgres-tenancy-repository:
+    name: postgres-tenancy-repository
+    # WIN-258. Runs the PostgreSQL TenancyRepository against a REAL PostgreSQL
+    # built by the repository's own `prisma migrate deploy` over the canonical
+    # tenancy schema, and compares it step by step against the in-memory fake the
+    # context ships as its contract fixture. It also proves the transaction
+    # boundary by failure injection and the three transaction-scope refusals by
+    # violating input.
+    #
+    # It is a SEPARATE job for the same reason differential-state-conservation
+    # is: it needs a Docker daemon, which the typecheck job's service containers
+    # do not provide, and `pnpm test:v1-packages` must stay runnable without one.
+    #
+    # The suites FAIL when Docker is absent rather than skipping. A skipped
+    # integration run and a passing one are indistinguishable in a summary, and
+    # this job is the whole of this issue's real-store evidence.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the tenancy database client
+        # The adapter imports the generated client through the package `main`,
+        # which vite resolves from dist/. Building it also runs `prisma generate`
+        # through the package's own prebuild, so the client and the migrations
+        # this job applies come from one schema.
+        run: pnpm --filter @platos/tenancy-database build
+
+      - name: Build the tenancy context
+        # vitest resolves @platos/context-tenancy through its package `main` too.
+        run: pnpm --filter "@platos/context-tenancy..." build
+
+      - name: Build the identity-access context
+        # WIN-258 T2. The same directory now also implements
+        # `IdentityAccessRepository` (ADR M0.3 §15), and its suites resolve that
+        # context through its package `main`, which is dist/.
+        run: pnpm --filter "@platos/context-identity-access..." build
+
+      - name: Build the tools context
+        # WIN-258 T5. The same directory also implements `ToolsRepository`, and
+        # its suites resolve `@platos/context-tools` — and the in-memory double
+        # the conformance differential compares against, published from that
+        # package's `./application/testing/index.js` export — through the package
+        # `main`, which is dist/. Without this step the tools suites fail to
+        # RESOLVE rather than fail to pass, which reads as a broken job rather
+        # than as a broken adapter.
+        run: pnpm --filter "@platos/context-tools..." build
+      - name: Build the agents context
+        # WIN-258 T5. The same directory a fourth time, for the seven rows of ADR
+        # M0.3 §1 row 5. The agents suites resolve the context through TWO
+        # published entry points — its driven ports and its `application/index.js`,
+        # which is where the in-memory doubles the conformance differential is
+        # measured against live — and both are dist/.
+        run: pnpm --filter "@platos/context-agents..." build
+      - name: Build the cost-monitoring context
+        # WIN-258 T5. The same directory also implements `BudgetRepository`, and
+        # its suites resolve that context through TWO published subpaths, both of
+        # which are dist/: `application/ports/index.js` for the port and the
+        # domain values its signatures name, and `application/testing/index.js`
+        # for `InMemoryBudgetRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-cost-monitoring..." build
+      - name: Build the channels context
+        # WIN-258 T5. The same directory a SIXTH time, for the six rows of ADR
+        # M0.3 §1 row 9. Its suites resolve that context through TWO published
+        # subpaths, both of which are dist/: `application/ports/index.js` for the
+        # port and the domain values its signatures name, and
+        # `application/testing/index.js` for `InMemoryChannelsRepository`, which
+        # the conformance differential is measured against. Without this step the
+        # six suites do not fail an assertion — they fail to LOAD, which is the
+        # vacuity the mutation driver beside this package refuses to score, and
+        # which this tranche saw for real once when a harness collision skipped
+        # all ten cases of a suite and the run reported nothing failing.
+        run: pnpm --filter "@platos/context-channels..." build
+
+      - name: Build the governance context
+        # WIN-258 T5. The SEVENTH owner delegated to this directory, and the one
+        # whose suites need the most from its context: the five canonical-store
+        # ports and the domain values their signatures name come from
+        # `application/ports/index.js`, and all FIVE in-memory doubles the
+        # conformance differential is measured against come from
+        # `application/testing/index.js`. Both are dist/. Without this step the
+        # five suites do not fail an assertion — they fail to LOAD, which is the
+        # vacuity the mutation driver beside this package refuses to score.
+        run: pnpm --filter "@platos/context-governance..." build
+      - name: Build the secrets context
+        # WIN-258 T5. The same directory also implements `SecretsRepository` and
+        # `EnvironmentVariableRepository`, and its suites resolve that context
+        # through TWO published subpaths, both of which are dist/:
+        # `application/ports/index.js` for the two ports and the eleven domain
+        # types their signatures name, and `application/index.js` for
+        # `inMemorySecretsStore`, which the conformance differential is measured
+        # against. Without this step the seven suites do not fail an assertion —
+        # they fail to LOAD, which is the vacuity the mutation driver beside this
+        # package refuses to score.
+        run: pnpm --filter "@platos/context-secrets..." build
+      - name: Build the providers context
+        # WIN-258 T5. The NINTH owner delegated to this directory, for the four
+        # rows of ADR M0.3 §1 row 4. Its suites resolve that context through TWO
+        # published subpaths, both of which are dist/:
+        # `application/ports/index.js` for the port and the domain values its
+        # signatures name — including `byListingOrder`, which IS the order the
+        # page promises, and `rateFromDecimalString`, which is the only exact
+        # crossing to a `Decimal(24, 12)` column — and
+        # `application/testing/index.js` for `InMemoryProvidersRepository`, which
+        # the conformance differential is measured against. Without this step the
+        # seven suites do not fail an assertion — they fail to LOAD, which is the
+        # vacuity the mutation driver beside this package refuses to score.
+        run: pnpm --filter "@platos/context-providers..." build
+      - name: Build the conversations context
+        # WIN-258 T5. The TENTH owner delegated to this directory, and the one
+        # whose context declares FOUR driven ports and no non-store ones at all.
+        # Its suites resolve that context through TWO published subpaths, both of
+        # which are dist/: `application/ports/index.js` for the four ports and
+        # the vocabulary their signatures are written in — republished there by
+        # this tranche, because before it the ports were nameable and `Thread`,
+        # `Turn`, `Step` and `PostmanExecution` were not — and
+        # `application/testing/index.js` for `InMemoryConversations`, the ONE
+        # double that satisfies all four ports and is what the conformance
+        # differential is measured against. Without this step the five suites do
+        # not fail an assertion: they fail to LOAD, which is the vacuity the
+        # mutation ledger beside this package refuses to score.
+        run: pnpm --filter "@platos/context-conversations..." build
+      - name: Build the skills context
+        # WIN-258 T5. The ELEVENTH owner delegated to this directory, resolved
+        # through TWO published subpaths, both of which are dist/:
+        # `application/ports/index.js` for `SkillsRepository` and the seventeen
+        # domain names its signatures use, and `application/index.js` for
+        # `InMemorySkillsRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-skills..." build
+      - name: Build the memory context
+        # WIN-258 T5. The TWELFTH owner delegated to this directory. Its suites
+        # resolve that context through TWO published subpaths, both of which are
+        # dist/: `application/ports/index.js` for `MemoryRepository`,
+        # `KnowledgeGraphRepository` and the twenty-seven domain values their
+        # signatures name, and `application/testing/index.js` for
+        # `InMemoryMemoryRepository` and `InMemoryKnowledgeGraphRepository`,
+        # which the conformance differential is measured against. Without this
+        # step the six suites do not fail an assertion — they fail to LOAD, which
+        # is the vacuity the mutation driver beside this package refuses to score.
+        run: pnpm --filter "@platos/context-memory..." build
+      - name: Build the privacy context
+        # WIN-258 T5. The THIRTEENTH owner delegated to this directory. Its suites
+        # resolve that context through TWO published subpaths, both of which are
+        # dist/: `application/ports/index.js` for `PrivacyRepository` and the
+        # domain values its signatures name — republished by this tranche, because
+        # before it the port was nameable and `PersistedErasureOperation`,
+        # `ErasureTombstone` and `TombstoneDraft` were not — and
+        # `application/testing/index.js` for `InMemoryPrivacyRepository`, which the
+        # conformance differential is measured against. THAT SECOND SUBPATH IS NEW
+        # IN THIS TRANCHE: the double existed and the export map did not, so the
+        # only package entitled to implement the port had no way to import the
+        # double it must agree with. Without this step the five suites do not fail
+        # an assertion — they fail to LOAD, which is the vacuity the mutation
+        # ledger beside this package refuses to score.
+        run: pnpm --filter "@platos/context-privacy..." build
+      - name: Build the jobs context
+        # WIN-258 T5. The FOURTEENTH owner delegated to this directory. Its
+        # suites resolve that context through TWO published subpaths, both of
+        # which are dist/: `application/ports/index.js` for `JobsRepository`,
+        # `ApprovalsRepository` and the twenty-six domain values their signatures
+        # name — republished there by this tranche, because before it the two
+        # ports were nameable and `Job` and `Approval` were not — and
+        # `application/testing/index.js` for `InMemoryJobsRepository` and
+        # `InMemoryApprovalsRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-jobs..." build
+
+      - name: Build the files context and its dependencies
+        # WIN-258 T5. The FIFTEENTH owner of this directory. Two of its entry
+        # points have to exist in dist/: `application/ports/index.js` for
+        # `FilesRepository` and the twenty-six values and types its signatures
+        # name, and `application/testing/index.js` for `InMemoryFilesRepository`,
+        # which the conformance differential is measured against. Without this
+        # step the five suites do not fail an assertion — they fail to LOAD,
+        # which is the vacuity the mutation driver beside this package refuses to
+        # score.
+        run: pnpm --filter "@platos/context-files..." build
+
+      - name: Build the observability context (WIN-258 T5)
+        # WIN-258 T5. The SIXTEENTH owner delegated to this directory. Its suites
+        # resolve that context through TWO published subpaths, both of which are
+        # dist/: `application/ports/index.js` for `ObservabilityRepository` and
+        # the domain values its signatures name, and
+        # `application/testing/index.js` for `InMemoryObservabilityRepository`,
+        # which the conformance differential is measured against — and which is
+        # also the double that says an unlink the real table refuses works.
+        # Without this step the six suites do not fail an assertion — they fail
+        # to LOAD, which is the vacuity the mutation ledger beside this package
+        # refuses to score.
+        run: pnpm --filter "@platos/context-observability..." build
+
+      - name: Build the eventing context (WIN-258 T5)
+        # WIN-258 T5. The SEVENTEENTH and LAST owner delegated to this directory,
+        # which completes ADR M0.3 §1. Its suites resolve that context through TWO
+        # published subpaths, both of which are dist/:
+        # `application/ports/index.js` for `NotificationRuleRepository` and the
+        # domain values its signatures name, and `application/testing/index.js`
+        # for `InMemoryNotificationRuleRepository`, which the conformance
+        # differential is measured against. Without this step the six suites do
+        # not fail an assertion — they fail to LOAD, which is the vacuity the
+        # mutation ledger beside this package refuses to score.
+        run: pnpm --filter "@platos/context-eventing..." build
+
+      - name: PostgreSQL repository integration suites
+        # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
+        # repository, the identity-access canonical store, the kernel outbox's
+        # `Event` row — WIN-258 tranche 4, written from here because its owner is
+        # an adapter that may not hold the ORM — and, tranche 5, the `tools`
+        # canonical store over the ten rows that context owns.
+        #
+        # Between them: three conformance differentials against the doubles those
+        # ports ship, the differential against PlatosAuthService, the
+        # migration-only constraint proofs, the failure-injection transaction
+        # proofs and the measured statement counts. Tranche 5 also lands the
+        # `secrets` canonical store here — the four rows of ADR M0.3 §1 row 3,
+        # whose two ports are the first in this directory that could not be
+        # spread into the adapter at all — the `skills` canonical store, the
+        # three rows of §1 row 6, whose one port is the SECOND that could not,
+        # because `SkillsRepository.findInstallation` and
+        # `ChannelsRepository.findInstallation` collide by name and differ by
+        # signature — and the `memory` canonical store, the three rows of §1
+        # row 8, whose two vector columns are the first canonical writes in
+        # this tree with no delegate form at all. The suites are selected by
+        # the word `integration` in their filename, so a new one joins this run
+        # by being named — there is no list here to forget to update.
+        #
+        # Tranche 5 also lands the `conversations` canonical store — the four
+        # rows of ADR M0.3 §1 row 16, and the LAST context whose rows the other
+        # eight owners' harnesses had to seed by hand because it had no entry in
+        # `CANONICAL_STORE_ADAPTERS`. Those fixtures are unchanged and stay
+        # unchanged: the entry moves no owner TAG.
+        #
+        # AND THE `privacy` CANONICAL STORE — the two rows of §1 row 18, and the
+        # THIRTEENTH owner. Its suites are the first here that prove a rule about
+        # CONCURRENCY rather than about a value: `claimLease` is a compare-and-set
+        # whose loser is decided by a row lock, and the in-memory double is a
+        # single-threaded map that cannot lose a race at all. They are also the
+        # first that prove a rule by the ABSENCE of a statement — the barrier's
+        # insert-then-extend must never send a DELETE, because the instant it
+        # would open is the width of the destructive pass.
+        #
+        # And the `jobs` canonical store — the two rows of ADR M0.3 §1 row 15,
+        # the narrowest grant in the map, and the store whose `AgentApproval`
+        # carries the strongest reason in this directory to reach for a row it
+        # does not own: `enforce_domain_ancestry` re-reads its `Agent`, its
+        # `Thread` and its `Turn` from inside its own INSERT, and all three
+        # belong to other contexts. They are seeded through the ORM's own CLI.
+        #
+        # AND THE LAST THREE OF THE SEVENTEEN. `files`' two rows, whose BYTES
+        # live behind `objectstore-minio` and whose blob-before-row ordering
+        # is fixed precisely because no transaction spans a bucket and a
+        # database; `observability`'s single `AdminAudit` row, which the
+        # initial migration makes APPEND-ONLY, so one clause of its port can
+        # only ever return zero or refuse and three named cases say which;
+        # and `eventing`'s single `NotificationRule`, the narrowest grant the
+        # map has made. With them every context in ADR M0.3 §1 has a
+        # canonical store behind this one client.
+        #
+        # They FAIL when Docker is absent rather than skipping.
+        run: pnpm test:postgres-tenancy:integration
 
   differential-state-conservation:
     name: differential-state-conservation

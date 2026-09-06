@@ -2,7 +2,7 @@
   "name": "@platos/adapter-postgres-tenancy",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the tenancy TenancyRepository port.",
+  "description": "Implements the tenancy TenancyRepository port, the identity-access IdentityAccessRepository port, the tools ToolsRepository port, the agents AgentsRepository port, the agents ScaffoldingRepository port, the cost-monitoring BudgetRepository port, the channels ChannelsRepository port, the files FilesRepository port, the governance SafetyLedger port, the governance RatingsRepository port, the governance CriteriaRepository port, the governance EvalsRepository port, the governance GoldenSetsRepository port, the secrets SecretsRepository port, the secrets EnvironmentVariableRepository port, the providers ProvidersRepository port, the conversations ThreadRepository port, the conversations TurnRepository port, the conversations PostmanRepository port, the conversations ConversationsErasureStore port, the skills SkillsRepository port, the tenancy TenancyLocks port, the tenancy OperatorSessionRevoker port, the tenancy EnvironmentAccessKeyRevocationCounter port, the tenancy InvitationTokenIssuer port, the tenancy OperatorDirectory port, the memory MemoryRepository port, the memory KnowledgeGraphRepository port, the privacy PrivacyRepository port, the jobs JobsRepository port, the jobs ApprovalsRepository port, the observability ObservabilityRepository port and the eventing NotificationRuleRepository port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,9 +15,30 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'"
   },
   "dependencies": {
-    "@platos/context-tenancy": "workspace:*"
+    "@platos/context-tenancy": "workspace:*",
+    "@platos/context-identity-access": "workspace:*",
+    "@platos/context-tools": "workspace:*",
+    "@platos/context-agents": "workspace:*",
+    "@platos/context-cost-monitoring": "workspace:*",
+    "@platos/context-channels": "workspace:*",
+    "@platos/context-files": "workspace:*",
+    "@platos/context-governance": "workspace:*",
+    "@platos/context-secrets": "workspace:*",
+    "@platos/context-providers": "workspace:*",
+    "@platos/context-conversations": "workspace:*",
+    "@platos/context-skills": "workspace:*",
+    "@platos/context-memory": "workspace:*",
+    "@platos/context-privacy": "workspace:*",
+    "@platos/context-jobs": "workspace:*",
+    "@platos/context-observability": "workspace:*",
+    "@platos/context-eventing": "workspace:*",
+    "@platos/tenancy-database": "workspace:*"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^10.28.0"
   }
 }

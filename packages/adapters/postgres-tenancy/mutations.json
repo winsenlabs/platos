@@ -1,0 +1,407 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for @platos/adapter-postgres-tenancy. One entry per",
+    "transaction boundary, tenant-isolation key, compare-and-set precondition,",
+    "count filter, unreadable-column refusal and configuration check in the",
+    "package, each carrying the file it lives in, the EXACT text that implements",
+    "it (`from`), the edit that removes it (`to`), and the NAMED cases that were",
+    "seen to go red (`kills`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there. All 22 entries",
+    "below were exercised on a real PostgreSQL container before this adapter was",
+    "proposed and all 22 were falsifiable, each with at least one named case.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
+    "PLACEHOLDERS, never its scaffolding, so an adopted adapter still owes the",
+    "generator its README verbatim.",
+    "",
+    "WIN-258 T7 adds M23-M26 and lifts the count from 22 to 26. M23 is the",
+    "sharpest entry in this file, because the mutation IS the code as it stood",
+    "at 8f078963: it puts the server timeouts back on the datasource URL as",
+    "query parameters. Three of its four kills are in",
+    "`pooling.integration.test.ts` and NONE of them could have been in",
+    "`client.test.ts`, because the URL the mutant writes is exactly as",
+    "convincing as the URL the fix writes and only a real server can tell them",
+    "apart -- it answers `current_setting('statement_timeout')` with '0' and",
+    "runs a `pg_sleep` to the end.",
+    "",
+    "M25 IS DECLARED WEAK AND NAMED SO. Dropping the `ms` suffix leaves a",
+    "mutant that is still correct against PostgreSQL today, because all three",
+    "settings default to milliseconds; what goes red is the spelling",
+    "`current_setting` echoes back. It is counted as a kill of the SPELLING and",
+    "the entry says so, rather than being counted as a behavioural guard it is",
+    "not."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. The first run of this sweep reported 22 kills",
+    "and every one of them was VACUOUS: `packages/contexts/tenancy/dist` had been",
+    "cleaned by an earlier `tsc -b --clean`, so every suite failed to load its",
+    "import and would have 'died' against any mutation at all, including none.",
+    "The driver now runs each suite set unmutated and refuses to sweep unless it",
+    "is green, and treats a module-load failure as VACUOUS rather than as a kill.",
+    "A mutation sweep that never saw green is a sweep that measured nothing.",
+    "",
+    "For one entry: build @platos/tenancy-database and @platos/context-tenancy,",
+    "replace its `from` with its `to` in the named file, run",
+    "`pnpm exec vitest run <suites>` from the package (with DOCKER_HOST set for",
+    "the integration suites), and confirm a NAMED case goes red. Then revert and",
+    "confirm green.",
+    "",
+    "FIFTEEN OF THE TWENTY-TWO NEED A REAL POSTGRESQL. They are the entries",
+    "whose suites end in `.integration.test.ts` -- M01-M14 and M22 -- and none",
+    "of them could have been written against a double: M01-M06 are about a",
+    "transaction that has to exist, M07-M09 about a compound index that has to",
+    "be the thing doing the filtering, M10 about an UPDATE ... WHERE that has",
+    "to affect zero rows on the second call, and M22 about statements a client",
+    "has to actually send.",
+    "",
+    "TWO ENTRIES ARE ABOUT THE DOUBLE, NOT THE ADAPTER, and they are the reason",
+    "the conformance scenario exists. M10's kill is the conformance case rather",
+    "than a dedicated one, because both stores are asked the same question and",
+    "the fake answers it correctly; the pin is `firstConsume: 1, secondConsume: 0`",
+    "by exact value. And the suite's FIRST run failed on",
+    "`OperatorSession_tokenHash_check` -- a CHECK constraint in the migrations",
+    "that neither schema.prisma nor the fake carries -- which is a defect this",
+    "ledger did not have to look for."
+  ],
+  "mutations": [
+    {
+      "name": "M01 transaction: a write with no open transaction is allowed through",
+      "file": "src/transaction.ts",
+      "from": "      const frame = ambient.getStore();\n      if (frame === undefined) {\n        throw new TransactionScopeError(\n          TRANSACTION_NOT_OPEN,\n          scope.transactionId,\n          \"a tenancy write must run inside UnitOfWork.run; no transaction is open\",\n        );\n      }",
+      "to": "      const frame = ambient.getStore();\n      if (frame === undefined) {\n        return client as unknown as TenancyTransactionClient;\n      }",
+      "suites": [
+        "src/transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction scope guards > a write outside any transaction is refused with not_open",
+        "src/transaction.integration.test.ts > transaction boundaries, proven by failure injection > the open-transaction registry does not outlive a commit or a rollback"
+      ]
+    },
+    {
+      "name": "M02 transaction: a finished transaction's token still resolves",
+      "file": "src/transaction.ts",
+      "from": "      if (!open.has(scope.transactionId)) {\n        throw new TransactionScopeError(\n          TRANSACTION_SCOPE_UNKNOWN,\n          scope.transactionId,\n          `transaction ${scope.transactionId} is not open; it has already finished or never existed`,\n        );\n      }",
+      "to": "",
+      "suites": [
+        "src/transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction scope guards > a write carrying a FINISHED transaction's token is refused with scope_unknown"
+      ]
+    },
+    {
+      "name": "M03 transaction: another live transaction's token is accepted",
+      "file": "src/transaction.ts",
+      "from": "      if (scope.transactionId !== frame.transactionId) {\n        throw new TransactionScopeError(\n          TRANSACTION_SCOPE_FOREIGN,\n          scope.transactionId,\n          `transaction ${scope.transactionId} is open but is not the one this write is running inside (${frame.transactionId})`,\n        );\n      }",
+      "to": "",
+      "suites": [
+        "src/transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction scope guards > a write carrying another LIVE transaction's token is refused with scope_foreign"
+      ]
+    },
+    {
+      "name": "M04 transaction: the registry keeps a token after its transaction ends",
+      "file": "src/transaction.ts",
+      "from": "        open.delete(transactionId);",
+      "to": "        void transactionId;",
+      "suites": [
+        "src/transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction scope guards > a write carrying a FINISHED transaction's token is refused with scope_unknown"
+      ]
+    },
+    {
+      "name": "M05 transaction: nesting opens a SECOND transaction instead of joining",
+      "file": "src/transaction.ts",
+      "from": "      if (joined !== undefined) return work({ transactionId: joined.transactionId });",
+      "to": "      void joined;",
+      "suites": [
+        "src/transaction.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction boundaries, proven by failure injection > nesting JOINS the outer transaction rather than opening a second one"
+      ]
+    },
+    {
+      "name": "M06 transaction: a read ignores the open transaction and goes to the pool",
+      "file": "src/transaction.ts",
+      "from": "      return ambient.getStore()?.client ?? client;",
+      "to": "      return client;",
+      "suites": [
+        "src/transaction.integration.test.ts",
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/transaction.integration.test.ts > transaction boundaries, proven by failure injection > a read inside a transaction sees that transaction's own uncommitted rows"
+      ]
+    },
+    {
+      "name": "M07 membership: a membership is found by id alone, across tenants",
+      "file": "src/membership.ts",
+      "from": "        where: { id_organizationId: { id: membershipId, organizationId } },",
+      "to": "        where: { id: membershipId },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > tenant isolation is in the key, not in a check afterwards > findOrganizationMembershipById refuses to answer across organizations"
+      ]
+    },
+    {
+      "name": "M08 tree: a project is found by slug alone, across tenants",
+      "file": "src/tree.ts",
+      "from": "        where: { organizationId_slug: { organizationId, slug } },",
+      "to": "        where: { slug_only: { slug } },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > tenant isolation is in the key, not in a check afterwards > findProjectBySlug refuses to answer across organizations"
+      ]
+    },
+    {
+      "name": "M09 invitation: an entity is found by externalId alone, across projects",
+      "file": "src/invitation.ts",
+      "from": "        where: { projectId_externalId: { projectId, externalId } },",
+      "to": "        where: { externalId_only: { externalId } },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > tenant isolation is in the key, not in a check afterwards > findEntityByExternalId refuses to answer across projects"
+      ]
+    },
+    {
+      "name": "M10 invitation: the consumption drops its compare-and-set precondition",
+      "file": "src/invitation.ts",
+      "from": "        where: { id: invitationId, acceptedAt: null, revokedAt: null },",
+      "to": "        where: { id: invitationId },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M11 membership: the owner count includes deactivated members",
+      "file": "src/membership.ts",
+      "from": "        where: { organizationId, deactivatedAt: null, role: OrganizationRole.OWNER },",
+      "to": "        where: { organizationId, role: OrganizationRole.OWNER },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > read semantics > countActiveOwners counts under the same filter as the rows it describes"
+      ]
+    },
+    {
+      "name": "M12 membership: the owner count includes every role",
+      "file": "src/membership.ts",
+      "from": "        where: { organizationId, deactivatedAt: null, role: OrganizationRole.OWNER },",
+      "to": "        where: { organizationId, deactivatedAt: null },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > read semantics > countActiveOwners counts under the same filter as the rows it describes"
+      ]
+    },
+    {
+      "name": "M13 membership: the memberships read hides deactivated rows from the read model",
+      "file": "src/membership.ts",
+      "from": "        .organizationMembership.findMany({ where: { userId }, orderBy: [...LIST_ORDER] });",
+      "to": "        .organizationMembership.findMany({ where: { userId, deactivatedAt: null }, orderBy: [...LIST_ORDER] });",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > read semantics > listOrganizationMembershipsForUser includes deactivated rows, as the port says"
+      ]
+    },
+    {
+      "name": "M14 invitation: the live-invitation read drops the live predicate",
+      "file": "src/invitation.ts",
+      "from": "        where: { organizationId, email, acceptedAt: null, revokedAt: null },",
+      "to": "        where: { organizationId, email },",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > the shared conformance scenario > the postgres adapter and the in-memory fake answer it identically",
+        "src/repository.integration.test.ts > constraints that live in the MIGRATIONS and not in the double > the PARTIAL unique index allows one live invitation per address and refuses a second"
+      ]
+    },
+    {
+      "name": "M15 mapping: an unknown organization role is cast instead of refused",
+      "file": "src/mapping.ts",
+      "from": "  if (!isOrganizationRole(value)) {\n    throw new UnreadableRowError(UNKNOWN_ORGANIZATION_ROLE, \"OrganizationMembership.role\", value);\n  }\n  return value;",
+      "to": "  return value as OrganizationRole;",
+      "suites": [
+        "src/mapping.test.ts"
+      ],
+      "kills": [
+        "src/mapping.test.ts > enum columns are validated, not cast > refuses an unknown organization role with its own code"
+      ]
+    },
+    {
+      "name": "M16 mapping: an unknown project role is cast instead of refused",
+      "file": "src/mapping.ts",
+      "from": "  if (!isProjectRole(value)) {\n    throw new UnreadableRowError(UNKNOWN_PROJECT_ROLE, \"ProjectMembership.role\", value);\n  }\n  return value;",
+      "to": "  return value as ProjectRole;",
+      "suites": [
+        "src/mapping.test.ts"
+      ],
+      "kills": [
+        "src/mapping.test.ts > enum columns are validated, not cast > refuses a project role that is only an organization role"
+      ]
+    },
+    {
+      "name": "M17 mapping: an unknown principal tier is cast instead of refused",
+      "file": "src/mapping.ts",
+      "from": "  if (value !== PrincipalTier.OPERATOR && value !== PrincipalTier.END_USER) {\n    throw new UnreadableRowError(UNKNOWN_PRINCIPAL_TIER, \"EnvironmentSession.tier\", value);\n  }\n  return value;",
+      "to": "  return value as typeof PrincipalTier[keyof typeof PrincipalTier];",
+      "suites": [
+        "src/mapping.test.ts"
+      ],
+      "kills": [
+        "src/mapping.test.ts > enum columns are validated, not cast > refuses an unknown principal tier with its own code",
+        "src/mapping.test.ts > row -> record > an environment session validates its tier on the way through"
+      ]
+    },
+    {
+      "name": "M18 client: any URL scheme is accepted as a datasource",
+      "file": "src/client.ts",
+      "from": "  if (url.protocol !== \"postgresql:\" && url.protocol !== \"postgres:\") {\n    throw new AdapterConfigurationError(\n      DATABASE_URL_INVALID,\n      `databaseUrl must use the postgresql scheme; received ${url.protocol}`,\n    );\n  }",
+      "to": "",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > refuses a URL that is not a URL, with database_url_invalid",
+        "src/client.test.ts > buildDatasourceUrl > refuses a non-postgresql scheme, with database_url_invalid"
+      ]
+    },
+    {
+      "name": "M19 client: a pool setting is taken on trust",
+      "file": "src/client.ts",
+      "from": "  if (!Number.isInteger(value) || value <= 0) {\n    throw new AdapterConfigurationError(\n      POOL_SETTING_INVALID,\n      `${label} must be a positive whole number; received ${String(value)}`,\n    );\n  }\n  return value;",
+      "to": "  void label;\n  return value;",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > refuses a connectionLimit that is not a positive whole number, with pool_setting_invalid",
+        "src/client.test.ts > buildDatasourceUrl > refuses a poolTimeoutSeconds that is not a positive whole number, with pool_setting_invalid",
+        "src/client.test.ts > buildDatasourceUrl > refuses a statementTimeoutMs that is not a positive whole number, with pool_setting_invalid"
+      ]
+    },
+    {
+      "name": "M20 client: a caller's own connection_limit is appended to rather than replaced",
+      "file": "src/client.ts",
+      "from": "    url.searchParams.set(\n      \"connection_limit\",\n      String(requirePositiveInteger(\"connectionLimit\", pool.connectionLimit)),\n    );",
+      "to": "    url.searchParams.append(\n      \"connection_limit\",\n      String(requirePositiveInteger(\"connectionLimit\", pool.connectionLimit)),\n    );",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > REPLACES a setting the caller already put on the URL rather than doubling it"
+      ]
+    },
+    {
+      "name": "M21 client: the unique-violation code is recognised by message rather than by code",
+      "file": "src/client.ts",
+      "from": "export function isUniqueViolation(error: unknown): boolean {\n  return errorCode(error) === UNIQUE_VIOLATION_CODE;\n}",
+      "to": "export function isUniqueViolation(error: unknown): boolean {\n  return String(error).includes(\"unique\");\n}",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > driver error classification > recognises the unique-violation code and nothing else"
+      ]
+    },
+    {
+      "name": "M22 tree: a project list hydrates one statement per row",
+      "file": "src/tree.ts",
+      "from": "      const rows = await transactions\n        .reader()\n        .project.findMany({ where: { organizationId }, orderBy: [...LIST_ORDER] });\n      return rows.map(toProject);",
+      "to": "      const identifiers = await transactions\n        .reader()\n        .project.findMany({ where: { organizationId }, orderBy: [...LIST_ORDER], select: { id: true } });\n      const rows = [];\n      for (const { id } of identifiers) {\n        const row = await transactions.reader().project.findUnique({ where: { id } });\n        if (row !== null) rows.push(row);\n      }\n      return rows.map(toProject);",
+      "suites": [
+        "src/repository.integration.test.ts"
+      ],
+      "kills": [
+        "src/repository.integration.test.ts > read semantics > a list of twenty-five projects is ONE statement, not one per row"
+      ]
+    },
+    {
+      "name": "M23 client: the server timeouts go back on the URL as query parameters",
+      "file": "src/client.ts",
+      "from": "  const serverOptions = buildServerOptions(pool);\n  if (serverOptions !== null) {\n    const existing = url.searchParams.get(\"options\");\n    url.searchParams.set(\n      \"options\",\n      existing === null || existing.length === 0 ? serverOptions : `${existing} ${serverOptions}`,\n    );\n  }",
+      "to": "  for (const [setting, field] of SERVER_TIMEOUT_SETTINGS) {\n    const value = pool[field];\n    if (value !== undefined) {\n      url.searchParams.set(setting, String(requirePositiveInteger(field, value)));\n    }\n  }",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > carries a statement timeout as a server option, NOT as a query parameter",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > the OPTIONS shape reports all three settings back, with their units",
+        "src/pooling.integration.test.ts > each timeout REFUSES, with its own SQLSTATE > a statement that outruns statementTimeoutMs is cancelled with 57014",
+        "src/pooling.integration.test.ts > each timeout REFUSES, with its own SQLSTATE > a statement that waits for a row lock past lockTimeoutMs is cancelled with 55P03"
+      ],
+      "note": "This mutation IS the defect T7 found, restored: it is exactly what `buildDatasourceUrl` did at 8f078963. The unit case sees the shape change; the three integration cases see the server report '0' and enforce nothing. That the unit suite alone cannot catch it is the reason `pooling.integration.test.ts` exists."
+    },
+    {
+      "name": "M24 client: a caller's own options are replaced rather than appended to",
+      "file": "src/client.ts",
+      "from": "      existing === null || existing.length === 0 ? serverOptions : `${existing} ${serverOptions}`,",
+      "to": "      serverOptions,",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > KEEPS an options value the caller set and appends its own after it",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > a caller's own options survive, and the adapter's timeout is the one in force"
+      ]
+    },
+    {
+      "name": "M25 client: the unit is dropped, so a bare integer is read in the parameter's own unit",
+      "file": "src/client.ts",
+      "from": "    flags.push(`-c ${setting}=${String(requirePositiveInteger(field, value))}ms`);",
+      "to": "    flags.push(`-c ${setting}=${String(requirePositiveInteger(field, value))}`);",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > carries all three server timeouts in one options value, each with its unit",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > the OPTIONS shape reports all three settings back, with their units"
+      ],
+      "note": "Declared as a WEAK guard rather than a strong one, and named so it cannot be mistaken for a strong one. All three settings happen to default to milliseconds, so the mutant is still CORRECT against PostgreSQL today; what goes red is the value `current_setting` echoes back ('400' rather than '400ms'). The guard is against a future setting whose unit is not ms, and the kill is real but is a kill of the SPELLING, not of the behaviour."
+    },
+    {
+      "name": "M26 client: the record-not-found code is recognised by message rather than by code",
+      "file": "src/client.ts",
+      "from": "export function isRecordNotFound(error: unknown): boolean {\n  return errorCode(error) === RECORD_NOT_FOUND_CODE;\n}",
+      "to": "export function isRecordNotFound(error: unknown): boolean {\n  return String(error).includes(\"not found\");\n}",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > driver error classification > recognises the record-not-found code and nothing else"
+      ]
+    }
+  ]
+}

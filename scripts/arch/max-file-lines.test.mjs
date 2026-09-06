@@ -271,18 +271,23 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   //     packages/kernel/**                20   NEWLY COVERED
   //     packages/contexts/**            1060
-  //     packages/adapters/**              54   NEWLY COVERED
+  //     packages/adapters/**              88
   //     apps/core-api/src/transports/**    6
   //                                     ----
-  //                                     1140
+  //                                     1174
   //
   // `packages/contexts/**` is 1060: 964 at adoption, +4 because the adapter branch
   // adds two domain modules and two suites to `providers`, +18 for WIN-257, and
   // +74 for conversations (78 real .ts where 4 placeholders stood).
   // `packages/adapters/**`
-  // is 54: the eleven still-unadopted adapters carry two declaration
-  // placeholders each (22), and model-router-providers carries 32 — seventeen
-  // source modules and fifteen suites. The adapter branch pinned
+  // is 66: the TEN still-unadopted adapters carry two declaration placeholders
+  // each (20), model-router-providers carries 32 — seventeen source modules and
+  // fifteen suites — and WIN-258's postgres-tenancy carries 14: eight source
+  // modules (the client, the unit of work, the mapping, three repository
+  // modules, the assembly and the entry point), two unit suites, the shared
+  // conformance scenario, the container harness and two integration suites. The
+  // eleventh placeholder pair became those 14, so the row moves 54 -> 66 and the
+  // ADAPTERS census below moves 22 -> 20 in the same step. The adapter branch pinned
   // 20 + 334 + 54 + 6 = 414 against a v1-based tree that had none of the eleven
   // contexts; 414 is not the number here and its +4, +20 and +54 are the parts
   // that conserve.
@@ -327,21 +332,387 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // None of the 18 is inside the 400-line warning band, so the finding list
   // below is unchanged.
+  //
+  // WIN-258 POSTGRES-TENANCY (M2.3) adds 12 NET under `packages/adapters/**`:
+  // 14 real files where the adapter's two declaration placeholders stood. Two of
+  // the fourteen were forced by this gate and are worth naming, because both are
+  // the split-rather-than-waive answer the notes above describe. The repository
+  // is three modules (tree, membership, invitation) rather than one, which would
+  // have been about 340 effective lines and inside the budget but not inside the
+  // seam; and the integration suite is two files plus a harness, because it
+  // reached 604 effective lines — over the 500 ERROR threshold — as one. Nothing
+  // the adapter adds is inside the 400-line warning band; the largest is the
+  // repository integration suite at 374, so the finding list below is unchanged.
+  //
   // WIN-256 CONVERSATIONS, the seventeenth and last context, adds 74 more under
   // `packages/contexts/**` (78 real .ts files where 4 generated placeholders stood),
   // 1066 -> 1140. Its own branch pinned 1044 with a sum ending `+ 8 + 74`, blind to
   // the adapter's +4/+20/+54 and to WIN-257's +18; 1044 is not the number here. The
   // 7,121-line oracle service it brings is split below even the 400-line warning
   // band, so the finding list below is unchanged by it.
-  assert.equal(result.fileCount, 1140);
+  //
+  // WIN-258 TRANCHE 2 adds 22 more under `packages/adapters/**`, 1152 -> 1174,
+  // and no subtraction: the directory was already adopted, so it has no
+  // placeholders left to release. THIS GATE BIT TWICE while the tranche was
+  // written, and both times the budget was pointing at a real seam rather than
+  // at a number that wanted raising:
+  //
+  //   `identity-mapping.ts` reached 452 effective lines and was split into the
+  //   REFUSALS (scope assembly and the five row-refusal codes) and the
+  //   TRANSCRIPTION (`identity-rows.ts`: the structural row shapes and the pure
+  //   row -> record mappers). 188 and 297.
+  //
+  //   `identity-differential.integration.test.ts` reached 537 — over the 500
+  //   ERROR threshold — and was split into a shared harness plus two suites
+  //   along the seam it already had: the session methods, and the login paths
+  //   with MFA and impersonation. 273, 121 and 279.
+  //
+  // The conformance scenario was split for the same reason at 428, into the
+  // person-keyed half and the tenant-scoped half. Nothing this tranche adds is
+  // now inside the 400-line warning band, so the finding list below is unchanged.
+  //
+  // WIN-258 TRANCHE 3 adds 11 more under `packages/adapters/**`, 1174 -> 1185,
+  // and no subtraction for the same reason. THIS GATE DID NOT BITE, and that is
+  // worth stating rather than passing over: the largest file the tranche adds is
+  // `locks.integration.test.ts` at 322 effective lines, well inside the 400-line
+  // warning band, because the five ports were split by PORT rather than gathered
+  // into one module and the suites by QUESTION -- whether the locks block, what
+  // the two stores answer, what a wrong transaction scope does, what the
+  // statements cost. The finding list below is therefore unchanged at the same
+  // four contexts files it already named.
+  //
+  // WIN-258 TRANCHE 4 adds 15 more under `packages/adapters/**`, 1174 -> 1189,
+  // across TWO directories: nine in `packages/adapters/outbox` (five source
+  // modules and four suites, with no subtraction because adoption edits its two
+  // placeholders in place) and six in `packages/adapters/postgres-tenancy` (the
+  // store, its harness, and four real-PostgreSQL suites).
+  //
+  // THE BUDGET SHAPED THE SPLIT AGAIN, and again it was pointing at a real seam.
+  // The outbox's four integration concerns are four files rather than one --
+  // failure injection, migration-only constraints, statement counts and the
+  // conformance replay -- because as one suite they would have been well over
+  // the 500-line ERROR threshold, and because each has its own harness needs.
+  // Nothing this tranche adds is inside the 400-line warning band; the largest
+  // is `outbox-transaction.integration.test.ts` at 221, so the finding list
+  // below is unchanged by it.
+  //
+  // MERGED, THE PIN IS THE SUM: 1174 + 11 + 15 = 1200. Each tranche pinned its
+  // own addition against the same base and each was right alone; taking either
+  // number here would have silently dropped the other's eleven or fifteen files
+  // out of a gate whose whole job is to see every file. The gate still does not
+  // bite: the largest file either tranche adds is `locks.integration.test.ts` at
+  // 322 effective lines, and the finding list below is unchanged by both.
+  // WIN-258 TRANCHE 5 adds 18 more under `packages/adapters/**`, 1200 -> 1218,
+  // all of them in `packages/adapters/postgres-tenancy`: twelve source modules
+  // and six suites. Its `.sql` fixture and its guard ledger are not source and
+  // are not scanned here.
+  //
+  // THE BUDGET BIT THIS TIME, AND THE SPLIT IS THE ANSWER. The eight
+  // tenant-isolation and transcript-integrity cases were first appended to
+  // `tools-constraints.integration.test.ts`, which took it to 467 effective
+  // lines -- inside the 400-line warning band and heading for the 500-line ERROR
+  // threshold. They live in `tools-isolation.integration.test.ts` instead,
+  // because the seam the budget was pointing at is real: that file is about
+  // rules that exist ONLY IN THE MIGRATIONS, and this one is about what the
+  // STORE decides. `tools-constraints.integration.test.ts` is back at 339
+  // effective lines and the new file is 222, so the finding list below is
+  // unchanged by this tranche too — nothing it adds reaches the warning band.
+  //
+  // WIN-258 TRANCHE 5 adds 16 more again, 1218 -> 1234,
+  // all of them in `packages/adapters/postgres-tenancy`: the two stores split
+  // across five modules, the row readers, the refusal parser, the harness, the
+  // shared conformance scenario in two halves, and six suites.
+  //
+  // AND THIS TIME THE BUDGET DID BITE, twice, before either file was committed.
+  // `AgentsRepository` has three scoping regimes -- project, environment and
+  // version -- and one module holding all of them was past the 500-line ERROR
+  // threshold, so it is `agents-catalog`, `agents-versions` and
+  // `agents-clusters` behind one `createAgentsRepository`. The integration
+  // suites split by QUESTION for the same reason the outbox's did: what the
+  // migrations refuse, what a failed write costs, what the statements cost, and
+  // whether the double and the database answer alike. The largest file the
+  // tranche adds is `agents-conformance.ts` at 436 raw lines and well under the
+  // effective threshold, so the finding list below is unchanged by it.
+  //
+  //
+  // 1234 -> 1250 (WIN-258 T5): `cost-monitoring`'s canonical store adds sixteen
+  // files to the one ORM home -- ten source and six suites. The gate still does
+  // not bite: the largest of the sixteen is `cost-rows.ts` at 393 effective
+  // lines, under the 400-line warning band, and the finding list below is
+  // unchanged by it. It is the closest any file in this package has come, and
+  // that is the reason the three stores were split by lifecycle rather than
+  // left as one.
+  //
+  // 1250 -> 1251 (WIN-258 T5, second sweep): the SEVENTEENTH file in the same
+  // directory, `cost-idempotency.integration.test.ts`, the four guards the
+  // mutation sweep found had no named case anywhere. It is a suite, not a
+  // source module, and at well under 400 effective lines it leaves the finding
+  // list below unchanged too.
+  //
+  // 1251 -> 1266 (WIN-258 T5, the `channels` store): fifteen more files in the
+  // same directory — nine modules and six suites. The band does not bite here
+  // either: the largest is `channels-conformance.ts` at 448 effective lines,
+  // inside the 400-500 WARNING band and well under the 500-line error, and it is
+  // one scenario of thirty-five observations rather than a module that could be
+  // split by lifecycle.
+  //
+  //
+  // 1251 -> 1269 (WIN-258 T5, `governance`): eighteen files in the same ORM
+  // home — twelve source and six suites.
+  //
+  // AND THIS TIME THE BUDGET BIT AGAIN, at the HARD error rather than the
+  // warning band. The shared conformance scenario over five ports measured 716
+  // effective lines, so it is two files: `governance-conformance.ts` drives the
+  // safety ledger and the ratings table — the two that share a SUBJECT and are
+  // erased on one person's behalf — and `governance-conformance-evals.ts`
+  // drives the three that share a CRITERION, which cascades. Both write into
+  // ONE observation map, so the differential still compares one object per
+  // store. The FIVE stores were five files from the start for the same reason.
+  //
+  //
+  //
+  // 1251 -> 1270 (WIN-258 T5): `secrets`' canonical store adds nineteen files
+  // to the one ORM home -- ten source and NINE suites.
+  //
+  // AND THE BUDGET BIT TWICE, before either file was committed. The conformance
+  // scenario reached 402 effective lines as one module and the constraints suite
+  // 482 -- inside the warning band and heading for the 500-line ERROR threshold.
+  // Both splits are at seams the budget was pointing at and both are real: a
+  // credential's IDENTITY (created, found three ways, listed) is not its
+  // LIFECYCLE (rotated, rewrapped, purged, revoked), and the shapes the VAULT's
+  // rows admit are not the shapes the CONFIGURATION row that points at one
+  // admits. The largest file the tranche now adds is
+  // `secrets-rules.integration.test.ts` at 353, so the finding list below is
+  // unchanged by it.
+  //
+  // THAT LAST SENTENCE IS NO LONGER TRUE, AND IS CORRECTED HERE RATHER THAN
+  // CARRIED. WIN-258 tranche 7's concurrency and pooling dimension added the
+  // fenced upsert's cases to that same file and took it from 353 effective
+  // lines to 439 — into the warning band — without moving this pin, because
+  // this gate was in none of that dimension's list. The merge is where it is
+  // first told, and the file is now named in the finding list below.
+  //
+  //
+  //
+  // 1251 -> 1267 (WIN-258 T5): `providers`' canonical store adds SIXTEEN files
+  // to the one ORM home -- nine source and SEVEN suites.
+  //
+  // AND THE BUDGET BIT AGAIN, before either file was committed. The constraints
+  // suite reached 491 effective lines as one module -- inside the warning band
+  // and four lines of prose from the 500-line ERROR -- and the split is at a
+  // seam the port itself already has: `ProviderKey`'s five rules are all
+  // ENVIRONMENT-SCOPED and every case needs a tenant chain and a credential,
+  // while `Model` and `ModelPrice` have no scope at all and not one case there
+  // takes one. The remaining warning is `providers-conformance.ts` at 421, and
+  // it is named in the finding list below rather than split: like
+  // `channels-conformance.ts` it is ONE scenario compared verbatim against a
+  // double, and it is ALREADY two files -- the catalogue half is a separate
+  // module for the same scoping reason.
+  //
+  //
+  // 1303 -> 1323 (WIN-258 T5, `conversations`): TWENTY more files in the same
+  // ORM home — twelve source modules and eight suites. TWO of the twenty exist
+  // only because this gate bit at the HARD error, and a third because it bit
+  // twice more; see the note above the finding list for what each split is
+  // along. Its guard ledger is not source and is not scanned here.
+  //
+  //
+  // 1303 -> 1320 (WIN-258 T5): `skills`' canonical store adds seventeen files to
+  // the one ORM home -- ELEVEN source and SIX suites.
+  //
+  // THE BUDGET SHAPED ONE SPLIT, before either file was committed. The
+  // conformance scenario reached past the warning band as a single module and
+  // was cut at a seam the budget was pointing at and that is real: everything in
+  // `skills-conformance.ts` is a question about the CATALOGUE, which is
+  // organization-scoped, and everything in `skills-conformance-installs.ts` is a
+  // question about an INSTALL, which is not. The largest file the tranche adds
+  // is `skills-conformance-installs.ts` at 361 effective lines, so the finding
+  // list below is unchanged by it.
+  //
+  //
+  // 1303 -> 1324 (WIN-258 T5): `memory`'s canonical store adds TWENTY-ONE files
+  // to the one ORM home — fourteen source and seven suites. Its mutation ledger
+  // is not source and is not scanned here.
+  //
+  // THE BUDGET SHAPED THE SPLIT THREE TIMES, and each seam it pointed at is one
+  // the two ports already had. `MemoryRepository` alone is twenty methods, so
+  // it is `memory-placement` (the five that read rows this context does NOT
+  // own), `memory-store` (the point writes and point reads) and `memory-listing`
+  // (the set reads); `KnowledgeGraphRepository` is `memory-entities` and
+  // `memory-relationships`; and the six erasure methods are `memory-erasure`
+  // because they SPAN both ports and are one operation. The shared conformance
+  // scenario is two files for the reason `governance`'s is.
+  //
+  // AND THE BUDGET BIT A FOURTH TIME, AFTER THE MUTATION SWEEP RATHER THAN
+  // BEFORE IT. Three cases closing `mutations-memory.json` M-M13 took
+  // `memory-rules.integration.test.ts` to 500 effective lines — the ERROR
+  // threshold EXACTLY — so the two `vector(1536)` columns moved into
+  // `memory-vectors.integration.test.ts`, which is why this tranche adds
+  // twenty-one files rather than twenty. The seam is real: the rules suite is
+  // about what the SCHEMA decides for a row, and the new one about the one thing
+  // in this store the schema declares and the client cannot express.
+  //
+  // TWO FILES REMAIN IN THE WARNING BAND. `memory-conformance.ts` is 441: its
+  // length IS the scenario — one sequence of observations driven against the two
+  // in-memory doubles and against PostgreSQL and compared verbatim — and its
+  // graph half is already a separate file, so halving it again would put the
+  // write path and the read path of the same three rows in two transcripts that
+  // no longer compare as one object. `memory-constraints.integration.test.ts` is
+  // 406, and each of its cases stands a guard beside the raw statement the guard
+  // was written from; splitting them would separate the pair that is the
+  // evidence.
+  //
+  //
+  // 1303 -> 1320 (WIN-258 T5, `jobs`): SEVENTEEN more files in the same ORM home
+  // — ten source modules and seven suites. Its guard ledger is not source and is
+  // not scanned here.
+  //
+  // THE BUDGET SHAPED TWO SPLITS AND BOTH SEAMS ARE ONES THE WORK ALREADY HAD.
+  // `ApprovalsRepository` is eleven methods, and its erasure PAIR spans a
+  // question nothing else in the port asks — "whose rows are these" rather than
+  // "what is this approval" — so `jobs-erasure.ts` is its own module for the
+  // reason `memory-erasure.ts` is. And the constraints suite reached 414
+  // effective lines as one file: every case there is a PAIR, a TypeScript guard
+  // stood beside the raw statement it was written from, and three of its
+  // describes had no guard at all — `enforce_domain_ancestry`, the two unique
+  // indexes and the scoped reads are rules this store does not restate. Those
+  // three are `jobs-isolation.integration.test.ts`, which is why this tranche
+  // adds seventeen files rather than sixteen, and the finding list below is
+  // unchanged by any of it.
+  //
+  // 1377 -> 1395 (WIN-258 T5, `files`). EIGHTEEN files: ELEVEN source and SEVEN
+  // suites, all in the one adapter directory again, so `packages/contexts/files`
+  // gains none — its port entry point was widened in place.
+  //
+  // THE SPLIT IS THE §6 BUDGET AND IS ALSO THE SEAM. `files-attachments.ts` is
+  // the pointer at a blob and `files-artifacts.ts` the versioned inline
+  // document, and `domain/index.ts` is explicit that the two are deliberately
+  // NOT one union with nullable halves; `files-erasure.ts` spans both because an
+  // erasure is one operation over both; `files-ancestry.ts` is one question both
+  // halves have to ask the database and is a file so it cannot be asked two
+  // ways.
+  //
+  // ONE FILE OF THIS TRANCHE IS IN THE WARNING BAND, and it got there AFTER the
+  // mutation sweep rather than before it. `files-scope.integration.test.ts` was
+  // 384 when it was written and is 467 now, because the first sweep left seven
+  // mutants alive and six of them were closed by cases that belong in exactly
+  // this file: a sibling environment of the same project, two artifact keys in
+  // one thread, two threads in one environment, and an erasure count required to
+  // agree with the listing it plans against.
+  //
+  // ITS LENGTH IS ITS SUBJECT. The file is one case per clause of every scoped
+  // read, each wrong in exactly ONE id, which is the only shape that can tell a
+  // missing clause from a neighbouring one — and the sweep is the evidence that
+  // the enumeration has to be complete rather than representative. Splitting it
+  // along any seam would put two halves of one claim in two files and make the
+  // next reader check the shorter one.
+  //
+  // `files-conformance.ts` is the next longest at 346 and its length IS the
+  // scenario; the fixture BUILDERS the other four suites share are a separate
+  // file precisely because a differential's values have to be identical on both
+  // sides and are minted from a counter it owns.
+  //
+  // 1377 -> 1389 (WIN-258 T5): `observability`'s canonical store adds TWELVE
+  // files to the one ORM home — six source and six suites — for ONE port with
+  // FOUR methods over ONE table. Its mutation ledger is not source and is not
+  // scanned here.
+  //
+  // TWELVE FILES FOR FOUR METHODS IS THE SMALLEST STORE IN THE DIRECTORY AND THE
+  // LARGEST RATIO OF EVIDENCE TO CODE, and the reason is the finding rather than
+  // thoroughness. `AdminAudit` is APPEND-ONLY IN THE DATABASE, so
+  // `clearAdminAuditActor` cannot be honoured at all — three named cases say what
+  // that leaves, one of them measuring that the caller's transaction is aborted
+  // by the rule rather than by this package. And the table carries no ancestry
+  // rule while the port's record carries a three-level scope, so the containment
+  // is this adapter's WHERE clause and a whole second tenant exists in two suites
+  // to prove it. Neither claim can be made without a real database.
+  //
+  // NO FILE IN THE TRANCHE ENTERS THE WARNING BAND. The largest is
+  // `observability-constraints.integration.test.ts`; the split that keeps it out
+  // is the one the port already had — what the DATABASE decides for a row is that
+  // file, what a TRANSACTION does with it is `observability-transaction`, and
+  // what a mapping does with a row an older binary wrote is
+  // `observability-rows.test.ts`, which needs no daemon.
+  //
+  // AND `eventing` ADDS FOURTEEN: eight source files and six suites, over ONE
+  // canonical row. The split is per CONCERN and not per table, because there is
+  // only one table: `eventing-rows` is the mapping and the two `where` shapes,
+  // `eventing-guards` what the schema refuses before a statement is sent,
+  // `eventing-refusal` the one place a throw becomes a `Result`,
+  // `eventing-rules` the seven CRUD-and-read methods, `eventing-erasure` the two
+  // that scrub — separate because it is the ONE write in this store that is raw
+  // SQL, and its reason (`@updatedAt` would move a column the domain owns) is a
+  // paragraph rather than a line — `eventing-repository` the composition and the
+  // record of the two ports deliberately skipped, and `eventing-harness` and
+  // `eventing-conformance` the fixture and the differential the other suites
+  // share.
+  // NOTHING HERE IS IN THE WARNING BAND, which is the one thing this tranche can
+  // claim that the four before it could not: the largest file is the conformance
+  // scenario and it is under 400 effective lines, because one table's scenario
+  // is one table's scenario.
+  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
+  // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452, and tranche 7 adds 16 for 1468. All the stores are in the one
+  // adapter directory, so no branch's own figure survives the merge — 1266 for
+  // `channels`, 1269 for `governance`, 1270 for `secrets`, 1319 for `providers`,
+  // 1323 for `conversations`, 1320 for `skills`, 1324 for `memory`, 1391 for
+  // `privacy`, 1394 for `jobs`, 1395 for `files`, 1389 for `observability` and
+  // 1391 for `eventing`.
+  //
+  // WIN-258 TRANCHE 7 ADDS SEVEN, all in the same adapter directory: the plan
+  // probe (`src/plans-probe.ts`), its unit suite, and the five dense-fixture
+  // plan suites for agents, conversations, cost-monitoring, tools and jobs.
+  // 1452 + 7 = 1459, AND THAT IS THE PLAN DIMENSION ALONE. Merged, tranche 7
+  // adds nine more files under the same directory that no other dimension moved
+  // this pin for: FOUR from the typed-JSON-column dimension (`json-columns.ts`,
+  // its two suites and `outbox-store.test.ts`), THREE from the concurrency and
+  // pooling dimension (its pooling, optimistic-concurrency and
+  // transaction-boundaries suites) and TWO from the rollout rehearsal's store
+  // half (`upgrade-rollout-harness.ts` and its suite). Each of those three
+  // branches reported a ZERO delta here, so this gate was in none of their
+  // lists; the merged scan reads back 1452 + 16 = 1468.
+  //
+  // NONE OF THE SEVEN IS IN THE WARNING BAND EITHER, and the largest is the
+  // conversations suite at 350 effective lines. That is worth stating because
+  // this tranche's files are the most heavily COMMENTED in the directory —
+  // every pin carries the measurement it came from — and effective lines
+  // exclude comments, so a reader comparing raw line counts with this figure
+  // will find them very different and should.
+  assert.equal(result.fileCount, 1468);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
   );
-  assert.equal(result.fileCount, 20 + 1060 + 54 + 6);
+  // The adapters row of the four-way disjoint scan carries every tranche, and
+  // tranche 5 contributes FIVE times because it landed four canonical stores in
+  // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
+  // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
+  // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
+  // (secrets) + 16 (providers) + 20 (conversations) + 17 (skills) + 21
+  // (memory) + 14 (privacy) + 17 (jobs) + 18 (files) + 12 (observability) + 14
+  // (eventing) = 366. The contexts, kernel and app rows are untouched, which is
+  // the claim worth making: no tranche-5 store adds a file to a context at all —
+  // each implements a port that already existed rather than widening one.
+  // `secrets`, `providers`, `conversations`, `skills`, `memory`, `privacy`,
+  // `jobs`, `files`, `observability` and `eventing` are the sharpest cases: each
+  // had its port entry point widened, in place, and a widened file is not a new
+  // one.
+  //
+  // `privacy` CONTRIBUTES 14 AND NOT ONE OF THEM IS OVER THE WARNING BAND, which
+  // is worth stating for a store whose six source modules carry the longest
+  // headers in this directory: the §6 budget is EFFECTIVE lines, so a file that
+  // argues for itself at length and then does one thing is exactly what the
+  // budget is for. The six source modules split by WHOSE ROWS they touch and by
+  // WHAT THEY DO — the guards, the row mapping, the refusal adapter, the
+  // operation half, the register half and the composite — and the eight others
+  // are the harness, the shared conformance scenario and the six suites.
+  // WIN-258 TRANCHE 7 lands its seven in the ADAPTERS term of this split, and
+  // nowhere else: the plan dimension implements no port, so neither the kernel
+  // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
+  // nine land in that same term: 366 + 16 = 382.
+  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -351,12 +722,199 @@ test("the live selectors scan an exact nonzero source census", () => {
   // shrug. EMPTY is false of the integrated tree — `jobs` and `memory` each
   // brought a warning-band suite with them — so the anti-drift property is kept
   // by pinning the EXACT list rather than by deleting the assertion or by
-  // reformatting four real warnings out of existence. A FIFTH file drifting into
-  // the band still turns this red, which is the whole point; the four below are
-  // named, in the band, and below the 500-line hard error. `tools` is the fourth
-  // and it arrived with this merge, so it is added here with its measured line
-  // count rather than left to be discovered by a later branch.
+  // reformatting seven real warnings out of existence. AN EIGHTH file drifting
+  // into the band still turns this red, which is the whole point; the seven
+  // below are named, in the band, and below the 500-line hard error. `tools` was
+  // the fourth and it arrived with an earlier merge, so it was added with its
+  // measured line count rather than left to be discovered by a later branch.
+  //
+  // WIN-258 T5 BROUGHT FOUR, AND THE FIRST OF THEM IS A SOURCE FILE. That is
+  // the fact worth stating rather than burying: every warning before it was a
+  // test suite. `cost-rows.ts` is one function pair per row -- read and write --
+  // over SIX tables, and the six pairs are what the length is; splitting it
+  // would put the encode and the decode of one column in two files, which is
+  // the drift `cost-rows.test.ts` exists to catch. The two suites beside it are
+  // long for the reason the census block in scripts/arch/test-case-census.mjs
+  // gives: each guard is stood beside the migration CHECK it restates, in two
+  // halves, and a table-driven loop would not be counted as cases at all.
+  // NONE of the four is near the 500-line hard error, and the file this
+  // package would have had to split for that reason -- the repository composite
+  // -- is 14 effective lines, because the three stores were split by lifecycle
+  // when they were written.
+  //
+  // WIN-258 T5 BROUGHT A FOURTH, and it is the only warning in the tree that is
+  // neither a suite nor a row mapping: `channels-conformance.ts` is ONE scenario
+  // of thirty-five observations, driven against the in-memory double and against
+  // PostgreSQL and compared verbatim. Its length IS the scenario, and splitting
+  // it would split a transcript that is only evidence while it is one sequence.
+  // It is 459 rather than 448 because the first mutation sweep found one guard
+  // unfalsifiable and the observation that closes it went INTO the scenario.
+  // The store modules beside it are all well inside the band, because the six
+  // rows were split by lifecycle — connections and apps, installations, links,
+  // the inbox — when they were written, which is the same discipline the note
+  // above records for `cost-*`.
+  //
+  // WIN-258 T5 (`governance`) BROUGHT TWO MORE, AND ONE OF THEM IS THE RESIDUE
+  // OF A SPLIT THE HARD ERROR FORCED. The shared conformance scenario over five
+  // ports measured 716 effective lines; halved along the subject/criterion seam
+  // it is 418 here and its sibling is below the band entirely. The other,
+  // `governance-rules.integration.test.ts`, is long because each database rule
+  // NO port method restates is stood beside the rule it measures -- a cascade, a
+  // ancestry rule that runs on UPDATE, an index the double does not hold, two
+  // rows an older binary wrote, and a cross-environment control writing all five
+  // tables in a second tenant. A table-driven loop would not be counted as cases
+  // at all.
+  //
+  // WIN-258 T5 (`providers`) BROUGHT ONE, and it is the second conformance
+  // scenario in this list rather than a new kind of finding.
+  // `providers-conformance.ts` is 421 because it drives EIGHTEEN port methods
+  // over four rows in one sequence and records every one, and it is ALREADY
+  // split: the catalogue half is a separate module, because `Model` and
+  // `ModelPrice` take no scope and every step in this half does. Splitting it
+  // again would split a transcript that is only evidence while it is one
+  // sequence. The constraints suite beside it was 491 and IS split, along the
+  // same seam, which is the difference between a warning that is a shape and one
+  // that is a queue for the hard error.
+  //
+  // WIN-258 T5 (`conversations`) BROUGHT TWO MORE AND FORCED TWO SPLITS AT THE
+  // HARD ERROR, which is the loudest this budget has been in the programme.
+  //
+  // The shared conformance scenario measured 605 effective lines and is halved
+  // along the seam it already had — the CONVERSATION (threads, turns, steps, the
+  // compaction lock, the paged listings) and the OPERATOR'S EXECUTION with the
+  // erasure that severs it — leaving 485 here and its sibling below the band.
+  // The constraints suite measured 585 and split into the shapes a conversation
+  // admits and the shapes a BILL and an operator's audit row admit; the rules
+  // suite measured 695 and split into what happens when rows are DESTROYED and
+  // what a caller may not reach or change. All four halves are below the band.
+  //
+  // A SHARED FIXTURE MODULE CAME OUT OF THE SAME PRESSURE and is the part worth
+  // recording: four suites over four tables each needed a `Thread`, a `Turn`, a
+  // `Step` and a `PostmanExecution` of the right shape, and four copies of those
+  // builders would have been four chances for one to drift into a shape the
+  // database refuses — which is the exact class of defect this tranche spent an
+  // integration run on. `conversations-fixtures.ts` is one copy, imported four
+  // times, and it is why the four halves stay short.
+  //
+  // The two that remain in the band are `conversations-conformance.ts` at 485 —
+  // one scenario, and its length IS the scenario, exactly as
+  // `channels-conformance.ts`'s is — and
+  // `conversations-transaction.integration.test.ts` at 401, which is failure
+  // injection against a real database: every case seeds a pair of writes, forces
+  // the second to fail and then reads BOTH back on a second connection, and a
+  // shorter version would be one that stopped checking the second half.
+  //
+  // WIN-258 T5 (`memory`) BROUGHT A SEVENTH AND AN EIGHTH.
+  // `memory-conformance.ts` is the same shape as `channels`' and `governance`'s:
+  // ONE scenario driven against two in-memory doubles and against PostgreSQL and
+  // compared verbatim. Its graph half is ALREADY a separate file and is below
+  // the band; what is left is the write path and the read path of the same three
+  // rows, and splitting those would produce two transcripts that no longer
+  // compare as one object. `memory-constraints.integration.test.ts` is the
+  // eighth, and its length is its instrument: every case stands a TypeScript
+  // guard beside the raw statement the guard was written from, so PostgreSQL is
+  // asked directly as well — and a guard whose constraint had been dropped from
+  // the schema would pass the first half and fail the second. Splitting the pairs
+  // apart would leave two files neither of which is the evidence. The eleven
+  // store modules beside them are all well inside the band, because the twenty
+  // methods of `MemoryRepository` were split by whose rows they touch and by what
+  // they do before any of them was written.
   assert.deepEqual(result.findings, [
+    {
+      path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
+      effectiveLines: 459,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/conversations-conformance.ts",
+      effectiveLines: 485,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
+      effectiveLines: 401,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/cost-constraints.integration.test.ts",
+      effectiveLines: 453,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/cost-rows.test.ts",
+      effectiveLines: 442,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/cost-rows.ts",
+      effectiveLines: 465,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
+      effectiveLines: 467,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
+      effectiveLines: 418,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
+      effectiveLines: 424,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/memory-conformance.ts",
+      effectiveLines: 441,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/memory-constraints.integration.test.ts",
+      effectiveLines: 406,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
+      effectiveLines: 421,
+      severity: "warning",
+    },
+    {
+      // WIN-258 TRANCHE 7's FENCE PUT THIS FILE IN THE BAND. It was 353
+      // effective lines before the concurrency and pooling dimension added the
+      // `EnvironmentVariable` version fence's cases to it — the loser refused,
+      // the insert race, and the rotation that rolls back with the losing write
+      // — and 439 after. It is named here rather than split because the seam is
+      // not obvious: every case in it is one store's RULES, and the fence is a
+      // rule of exactly that store. A further case takes it past 460 and the
+      // split to make then is the fence's own `describe`, moved whole.
+      path: "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
+      effectiveLines: 439,
+      severity: "warning",
+    },
+    {
+      // WIN-258 T5. `skills`' constraints suite, and a finding rather than a
+      // twelfth file, which is a decision rather than an omission.
+      //
+      // It reached 438 by GAINING CASES THE MUTATION SWEEP ASKED FOR — five
+      // clauses that decide WHICH ROW a call reaches, two of them written
+      // because the first sweep left their guards standing with nothing red —
+      // and every one of them needs a tenant chain built through the port before
+      // it can ask its question. The warning band is where a judgement is made,
+      // not where a split is mandatory, and the same wave's
+      // `governance-rules.integration.test.ts` sits here at 424 for the same
+      // kind of reason.
+      //
+      // THE SEAM IS NAMED SO THE NEXT PERSON DOES NOT HAVE TO FIND IT. The file
+      // has two halves — what SHAPES the canonical schema will hold, and which
+      // ROWS a call is entitled to reach once the shape is fine — and the second
+      // is already its own `describe`. A sixth case in that block takes it past
+      // 500 and the split is that block, moved whole.
+      path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
+      effectiveLines: 438,
+      severity: "warning",
+    },
     {
       path: "packages/contexts/jobs/application/approval-lifecycle.test.ts",
       effectiveLines: 465,

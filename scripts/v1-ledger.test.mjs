@@ -524,11 +524,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    "apps-core-api": 19,
+    // +10 (WIN-260, M2.5), and each of the ten is attributable:
+    //   +6  the five sibling configuration sections beside WIN-297's core one —
+    //       stores, providers, channels, durable-runtime, security — and the
+    //       platform aggregate that validates all six in ONE pass.
+    //   +1  config/environment.ts, the one file in this deployable entitled to
+    //       read the ambient environment. main.ts held that read inline and was
+    //       rewritten in place, so it adds no file.
+    //   +2  the two suites, config/{platform,sections}.test.ts.
+    //   +1  mutations-config.json, this dimension's guard ledger, classified by
+    //       the existing apps-core-api.config.package rule.
+    // NO LEDGER RULE CHANGED: apps-core-api.source.process already matched
+    // src/config/**, so the seven source files land on a rule WIN-297 wrote.
+    // 19 + 10 = 29.
+    "apps-core-api": 29,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
-    "apps-mcp-stdio": 3,
+    // +1 (WIN-260): apps/mcp-stdio/src/environment.ts. The stdio binary is the
+    // SECOND deployable and has a process edge of its own; rule (j) is why it
+    // may not borrow the core-api reader. The gate found the inline read in its
+    // main.ts on its first run — nothing in the repository had looked there.
+    "apps-mcp-stdio": 4,
     // 1 -> 207 -> 272 -> 339. WIN-252 added packages/core/NOTICE (the upstream
     // MIT attribution, kept out of LICENSE so every publishable package's
     // LICENSE stays byte-identical to the repository Apache-2.0 text). WIN-256
@@ -719,8 +736,233 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // outside it moves. Its branch pinned packages 990 (915 + 75) on a tree that
     // had neither the adapter nor WIN-257; the three deltas are disjoint and SUM,
     // 915 + 34 + 18 + 75 = 1042, and neither 967 nor 990 is the number here.
-    packages: 1042,
-    "internal-packages": 0,
+    // WIN-258 POSTGRES-TENANCY (M2.3) adds 13, ALL in `packages` and all under
+    // packages/adapters/postgres-tenancy: 15 real files stand where 2 generated
+    // placeholders stood, so 15 - 2 = 13 and the release is written into the
+    // number rather than hidden by it. On the kind axis the same 13 is +8 source
+    // (10 modules less the 2 released placeholders, which were themselves
+    // source), +4 test and +1 fixture — the SQL that seeds the identity-access
+    // rows this adapter is not the writer of, which needed the one new ledger
+    // rule this issue adds. Nothing outside that directory moves: the generator
+    // adoption, the new boundary rule, the sole-writer delegation and every
+    // census pin are edits to files that already existed.
+    //
+    // A FOURTEENTH file joined it once the guard sweep had been run:
+    // `packages/adapters/postgres-tenancy/mutations.json`, the 22-entry ledger,
+    // which the existing `packages.adapters.config` rule already classifies, so
+    // it needed no rule of its own. 16 real files where 2 placeholders stood.
+    // 1042 + 13 + 1 = 1056, and on the kind axis the extra 1 is config.
+    //
+    // WIN-258 TRANCHE 2 — the identity-access canonical store — adds 23 more to
+    // the SAME directory, 1056 -> 1079, and to no other area at all. ADR M0.3
+    // §15 is why: one PostgreSQL database is one client is one adapter
+    // DIRECTORY, so both contexts' repositories live in `postgres-tenancy` and
+    // there is no thirteenth adapter package to move `packages` a second way.
+    //
+    //   +15 source  identity-mapping, identity-rows, identity-guards, the seven
+    //               store modules and the identity-repository composite, the two
+    //               conformance-scenario halves, identity-harness and
+    //               identity-differential-harness
+    //   +7  test    identity-mapping.test and the six integration suites
+    //               (conformance, constraints, transaction, statements,
+    //               differential, differential-login)
+    //   +1  config  mutations-identity.json, the 37-entry guard ledger, under
+    //               the same packages.adapters.config rule as mutations.json
+    //
+    // 15 + 7 + 1 = 23. NOTHING is released this time — the directory was already
+    // adopted at tranche 1, so no placeholder is subtracted and the 23 additions
+    // ARE the whole delta. The gate widenings, the ADR §15 amendment, the
+    // composition-root binding table, the census and sole-writer pins, the CI
+    // job and the regenerated evidence are all edits to files that already
+    // existed. 1056 + 23 = 1079.
+    //
+    // WIN-258 TRANCHE 3 — tenancy's OTHER FIVE PORTS — adds 12 more to the SAME
+    // directory, 1079 -> 1091, and again to no other area at all. The five ports
+    // are a row lock and an advisory lock, a session revoker, an access-key
+    // revocation counter, an invitation token issuer and an operator directory;
+    // five of the six ports on `TenancyDependencies` that are not the
+    // repository, and they are here because a lock a use case takes has to be
+    // held by the transaction its writes are in.
+    //
+    //   +6  source  locks, access-key-revocation, operator-peers,
+    //               invitation-token, the shared ports-conformance scenario and
+    //               ports-harness
+    //   +5  test    invitation-token.test and the four integration suites
+    //               (locks, ports-conformance, ports-transaction,
+    //               ports-statements)
+    //   +1  config  mutations-ports.json, the 21-entry guard ledger, under the
+    //               same packages.adapters.config rule as the other two
+    //
+    // 6 + 5 + 1 = 12. NOTHING is released — the directory has had no placeholder
+    // left since tranche 1 — so the 12 additions ARE the whole delta. The one
+    // re-export added to tenancy's ports entry point, the adapter assembly, the
+    // census, arch, line-budget and sole-writer pins and the regenerated
+    // evidence are all edits to files that already existed. 1079 + 12 = 1091.
+    //
+    // WIN-258 TRANCHE 4 — the kernel outbox — adds 18, and this is the FIRST
+    // WIN-258 delta that lands in TWO adapter directories, because the outbox is
+    // two packages. `Event` has an owner that is an adapter rather than a
+    // context, and ADR M0.3 §15 gives the ORM one home, so the package that owns
+    // the port cannot be the package that issues its INSERT.
+    //
+    //   packages/adapters/outbox              +11  five source modules (store,
+    //               event-id, envelope, in-memory, conformance), four suites,
+    //               conformance-scenario.json and mutations.json. Its two
+    //               generated placeholders — adapter.ts and index.ts — are
+    //               EDITED in place by adoption, not added, which is why 11 and
+    //               not 13.
+    //   packages/adapters/postgres-tenancy     +7  outbox-store and
+    //               outbox-harness, four real-PostgreSQL suites, and
+    //               mutations-outbox.json.
+    //
+    // On the kind axis the same 18 is +7 source, +8 test and +3 config; both
+    // JSON documents land on the existing packages.adapters.config rule and
+    // needed no rule of their own. Nothing outside those two directories moves:
+    // the generator adoption, the sole-writer delegation, the composition root's
+    // cross-adapter assertion and every census pin are edits to files that
+    // already existed. 1079 + 18 = 1097.
+    //
+    // BOTH TRANCHES LAND, so this area carries BOTH tails: 1079 + 12 + 18 =
+    // 1109. Each branch pinned 1079 + its own addition and each was right
+    // alone; taking either merged would understate the packages area by the
+    // other's twelve or eighteen files.
+    //
+    // WIN-258 TRANCHE 5 — the `tools` canonical store — adds 20, and unlike
+    // tranche 4 every one of them lands in ONE directory,
+    // `packages/adapters/postgres-tenancy`. There is no thirteenth adapter
+    // package for the same ADR M0.3 §15 reason there was none for tranches 2
+    // and 3: one PostgreSQL database behind one client is one adapter
+    // DIRECTORY. No file is deleted anywhere in the tree, so the 20 additions
+    // ARE the whole delta and no removal can hide inside them.
+    //
+    //   +12 source  the five store modules (catalogue, exposures, policies,
+    //               mcp, transcript) and the composite that assembles them;
+    //               the two row-mapping halves (tools-rows, tools-audit-rows);
+    //               the scope resolve and its driver-error boundary
+    //               (tools-scope); the shared conformance scenario and its
+    //               shapes (tools-conformance, tools-conformance-shapes); and
+    //               tools-harness.
+    //   +6  test    tools-mapping.test plus five real-PostgreSQL suites —
+    //               conformance, constraints, isolation, statements and
+    //               transaction.
+    //   +1  fixture fixtures/tools-rows.sql, the sixteen pre-seeded tenants.
+    //               It is a FIXTURE and not source because `prisma db execute`
+    //               applies it with no code path in any package — which is the
+    //               whole reason it exists: the seven rows it writes belong to
+    //               `agents`, `conversations` and `secrets`, and
+    //               scripts/arch/sole-writer.mjs refused all seven when an
+    //               earlier draft of the harness wrote them from TypeScript.
+    //   +1  config  mutations-tools.json, the 15-entry guard ledger, on the
+    //               same packages.adapters.config rule that already carries
+    //               mutations.json, mutations-identity.json, mutations-ports.json
+    //               and mutations-outbox.json.
+    //
+    // 12 + 6 + 1 + 1 = 20. The sole-writer delegation and its write-count pin,
+    // the census pins, the project-graph edge count and owner map, the
+    // composition-root binding, the CI job's new build step and the ports
+    // barrel's re-export block are all edits to files that already existed.
+    //
+    // WIN-258 TRANCHE 5 — the `agents` canonical store — adds 18 MORE, into the
+    // SAME directory, and none of them is a new ledger rule: sixteen `src/*.ts`
+    // modules and suites under the existing packages.adapters source and test
+    // rules, `fixtures/agents-rows.sql` under the fixture rule that
+    // `fixtures/identity-access-rows.sql` already uses, and
+    // `mutations-agents.json` under the packages.adapters config rule that
+    // already carries the other five mutation ledgers. `agents` publishes two
+    // more ports from files that already existed, so `packages/contexts/agents`
+    // adds none.
+    //
+    // WIN-258 TRANCHE 5 adds 17 to the SAME area and to no other:
+    // `cost-monitoring`'s canonical store, in the SAME adapter directory, on
+    // ADR M0.3 s15's rule that one PostgreSQL database behind one client is one
+    // adapter DIRECTORY. Ten source, six suites and `mutations-cost.json`, the
+    // guard ledger, under the config rule that already carries four siblings.
+    // a third slice of 17 on the same area.
+    //
+    // ITS SECOND SWEEP adds ONE more to the same area and to no other:
+    // `cost-idempotency.integration.test.ts`. Re-running all forty ledger
+    // entries scored six with zero executed cases -- each edit compiled and
+    // collected, then broke the conformance suite while it was BUILDING its
+    // transcript, so vitest reported every case in that file SKIPPED and no
+    // named case went red. Two of the six had a named case elsewhere in the
+    // tree; this file is the four that had none anywhere.
+    // 1109 + 20 + 18 + 17 + 1 = 1165, + 16 (WIN-258 tranche 5, the `channels`
+    // canonical store, in that SAME directory: nine modules, six suites and the
+    // guard ledger beside them) = 1181. ALL FOUR tranche-5 stores land in
+    // `packages` and nowhere else, so this slice is the SUM; no branch's own
+    // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
+    // merged.
+    //
+    // WIN-258 TRANCHE 7, the `typed JSON columns; selectors and projections`
+    // dimension, adds FIVE and all five to `packages`, none to any other area:
+    //   source  packages/adapters/postgres-tenancy/src/json-columns.ts
+    //             the census of all forty-nine JSONB columns, their pinned roots
+    //             and the decoder standing at each one
+    //   test    packages/adapters/postgres-tenancy/src/json-columns.test.ts
+    //             the census joined to schema.prisma, to the migrations' CHECK
+    //             text, and to the decoder symbols on disk
+    //   test    packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts
+    //             the same census joined to `pg_constraint` on a live container,
+    //             plus the malformed interiors written by `prisma db execute`
+    //   test    packages/adapters/postgres-tenancy/src/outbox-store.test.ts
+    //             `Event.payload`'s reader, falsified directly because the
+    //             column's CHECK makes a committed bad payload impossible
+    //   config  packages/adapters/postgres-tenancy/mutations-json.json
+    //             the tranche's guard ledger, on the `packages.adapters.config`
+    //             rule that already carries nineteen siblings
+    // 1378 + 5 = 1383. No ledger rule changed: all five land on rules that
+    // already existed.
+    // WIN-258 TRANCHE 7 adds EIGHT more to `packages` and, for the first time
+    // since the M2 integration began, ONE to `internal-packages`. The eight are
+    // all in `packages/adapters/postgres-tenancy`: the shared statement-count
+    // and EXPLAIN kit (`src/plans-probe.ts`), its own unit suite, five
+    // dense-fixture plan suites — agents, conversations, cost-monitoring, tools
+    // and jobs — and `mutations-plans.json` beside them, on the same config rule
+    // that already carries eighteen sibling ledgers.
+    //
+    // THE ONE IN `internal-packages` IS AN INDEX, AND IT IS THE POINT OF THAT
+    // TRANCHE.
+    // `prisma/migrations/20260906120000_win258_thread_listing_index/migration.sql`
+    // adds `Thread_environmentId_updatedAt_id_idx`. The operator thread listing
+    // passes no end user, so `Thread_environmentId_endUserId_updatedAt_idx` —
+    // which the store's own prose named as the index its order exists for —
+    // could find the environment's rows and not order them. MEASURED on a real
+    // PostgreSQL 16 at three hundred threads: an index scan feeding a full
+    // `Sort`, 241 rows read to return a page of 25, at every window.
+    // 1378 + 8 = 1386, and internal-packages 0 -> 1.
+    // +3 (WIN-258 T7): three integration suites under
+    // packages/adapters/postgres-tenancy/src — pooling, optimistic-concurrency
+    // and transaction-boundaries. All three are `packages.adapters.test`, all
+    // three land in `packages` and in no other area, and the tranche adds no
+    // source file at all: every code change it makes is an edit in place.
+    // + 3 (WIN-258 TRANCHE 7, the expand/contract rollout rehearsal's STORE half,
+    // in that same adapter directory: `upgrade-rollout-harness.ts`,
+    // `upgrade-rollout.integration.test.ts` and `mutations-upgrade-rollout.json`
+    // on the `packages.adapters.config` rule that already carries six guard
+    // ledgers) = 1381.
+    // 0 -> 8. WIN-258 TRANCHE 7 is the FIRST slice of this issue to add files
+    // outside `packages`, and the reason is a boundary rather than a preference:
+    // it rebuilds the OLD releases' Prisma clients from frozen schemas, and ADR
+    // M0.3 §4 puts the ORM in one home, so the rebuild cannot live under
+    // `packages/` without becoming a second place the vendor is named.
+    //
+    //   2 frozen release schemas under prisma/upgrade-baselines/ — origin/main
+    //     HEAD at 89c12b8a and c25432c5, whose genesis migration IS the frozen
+    //     baseline SQL already beside it — on the same fixture rule that file
+    //     already uses
+    //   4 source modules: the rebuild, the catalogue reader, the ordered-set and
+    //     baseline bootstrap, and the legacy fixture the two suites share
+    //   2 suites: the binary-level rehearsal and the guard suite for the
+    //     rehearsal's own refusals
+    // MERGED, AND THIS IS THE FIGURE THAT STANDS. `packages` 1378 + 5 (the
+    // JSON-column census) + 8 (the plan suites and their kit) + 3 (the
+    // concurrency, pooling and transaction-boundary suites) + 3 (the rollout
+    // rehearsal's store half) = 1397. `internal-packages` 0 + 1 (the thread
+    // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
+    // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
+    // again -- is right here, and neither is any pair of them.
+    packages: 1397,
+    "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -879,11 +1121,100 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // are all edits to files that already existed and add none.
     //
     // 20 + 5 + 19 + 278 + 24 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42
-    //   + 84 + 8 + 2 + 34 + 18 + 75 = 1118.
+    //   + 84 + 8 + 2 + 34 + 18 + 75 + 13 + 1 = 1132, + 23 (WIN-258 tranche 2)
+    //   = 1155, + 12 (WIN-258 tranche 3) + 18 (WIN-258 tranche 4, in TWO
+    //   adapter directories) = 1185, + 20 (WIN-258 tranche 5, the `tools`
+    //   canonical store, every one of them in the ONE adapter directory) = 1205,
+    //   + 18 (WIN-258 tranche 5, the `agents` canonical store, in that SAME
+    //   directory) = 1223, + 17 (WIN-258 tranche 5, the `cost-monitoring`
+    //   canonical store, in that SAME directory) = 1240, + 1 (that tranche's
+    //   second sweep, the four guards whose only witness was a crashed hook)
+    //   = 1241, + 16 (WIN-258 tranche 5, the `channels` canonical store, in that
+    //   SAME directory again) + 19 (that tranche's `governance` canonical store,
+    //   in the same directory once more) + 20 (its `secrets` canonical store,
+    //   there too) = 1296, + 17 (WIN-258 tranche 5, the `providers` canonical
+    //   store, in that SAME one directory) + 21 (its `conversations` canonical
+    //   store, the TENTH owner of that one directory) + 18 (its `skills`
+    //   canonical store, the ELEVENTH, there again) + 22 (its `memory`
+    //   canonical store, the TWELFTH, in that ONE directory again) = 1374,
+    //   + 15 (WIN-258 tranche 5, the `privacy` canonical store, the THIRTEENTH
+    //   owner of that ONE directory) = 1389.
+    //
+    // EACH SLICE CARRIES ITS GUARD LEDGER AND IS ONE LARGER THAN ITS `.ts`
+    // COUNT. `channels`' 16 are 15 source-and-test files plus
+    // `mutations-channels.json`, `governance`'s 19 are 18 plus
+    // `mutations-governance.json`, `secrets`' 20 are 19 — ten source and
+    // nine suites — plus `mutations-secrets.json`. `providers`' 17 are 16 —
+    // nine source and SEVEN suites — plus `mutations-providers.json`; it is
+    // seven suites rather than six because the §6 budget split the constraints
+    // proof at 491 effective lines, along the port's own scoping seam. And
+    // `conversations`' 21 are 20 — twelve source and eight suites — plus
+    // `mutations-conversations.json`, and `skills`' 18 are 17 — eleven source
+    // and six suites — plus `mutations-skills.json`, and `memory`'s 22 are 21 — fourteen source
+    // and seven suites — plus `mutations-memory.json`. THE FIVE STORES OF THIS
+    // WAVE ADD 80 MORE: `privacy`'s 15 are 14 — EIGHT source and SIX suites —
+    // plus `mutations-privacy.json`; `jobs`' 18 are 17 — TEN source and SEVEN
+    // suites — plus `mutations-jobs.json`; `files`' 19 are 18 — ELEVEN source
+    // and SEVEN suites — plus `mutations-files.json`; `observability`'s 13 are
+    // 12 — SEVEN source and FIVE suites — plus `mutations-observability.json`;
+    // and `eventing`'s 15 are 14 — EIGHT source and SIX suites — plus
+    // `mutations-eventing.json`. The existing `packages.adapters.config` rule
+    // already classifies every one of those ledgers, so no ledger rule changed
+    // for any of them: a guard ledger is DATA beside the package rather than a
+    // module in it. None of `packages/contexts/secrets`,
+    // `packages/contexts/providers`, `packages/contexts/conversations`,
+    // `packages/contexts/jobs`, `packages/contexts/privacy`,
+    // `packages/contexts/files`, `packages/contexts/observability` or
+    // `packages/contexts/eventing` gains a file — each had its port entry point
+    // widened IN PLACE, and a widened file is not a new one.
+    //
+    // `privacy` IS THE SMALLEST SLICE OF THE SEVENTEEN AND ITS SPLIT IS THE MOST
+    // LOPSIDED: SIX suites over EIGHT source modules, and five of the six need a
+    // real PostgreSQL. That is a fact about the guards rather than about the
+    // coverage — four of them cannot be exercised without TWO OPEN TRANSACTIONS
+    // and two are about a statement that must NOT be sent, and a map in a
+    // single-threaded process can exhibit neither.
+    //
+    // ONE OF `jobs`' SEVENTEEN EXISTS BECAUSE `max-file-lines` BIT IN THE
+    // WARNING BAND: the constraints proof reached 414 effective lines, and the
+    // three describes that left it had no guard beside them at all —
+    // `enforce_domain_ancestry`, the two unique indexes and the scoped reads are
+    // rules the store does not restate, so they are
+    // `jobs-isolation.integration.test.ts`.
+    //
+    // THREE OF `conversations`' TWENTY EXIST BECAUSE `max-file-lines` BIT AT THE
+    // HARD ERROR: the shared conformance scenario, the constraints suite and the
+    // rules suite each split along a seam they already had, and a shared fixture
+    // module came out of the same pressure. A file count that moved by twenty
+    // where the work was five suites' worth is exactly the kind of thing a
+    // ledger states rather than absorbs.
+    //
+    // AND `files`' 19 ARE 18 — eleven source and seven suites — PLUS
+    // `mutations-files.json`, on the same rule as every guard ledger above it:
+    // the existing `packages.adapters.config` rule already classifies it, so no
+    // ledger rule changed. `packages/contexts/files` gains NO file — its port
+    // entry point was widened IN PLACE to publish the names its own fifteen
+    // signatures use, and a widened file is not a new one.
+    //
+    // TWO OF `files`' ELEVEN SOURCE MODULES EXIST BECAUSE THE MUTATION SWEEP
+    // ASKED FOR THEM RATHER THAN THE BUDGET: `files-ancestry.ts` is one question
+    // both halves of the store have to ask the database, in a file so it cannot
+    // be asked two ways, and `files-fixtures.ts` holds the builders four suites
+    // share — kept OUT of the conformance scenario on purpose, because a
+    // differential's values have to be identical on both sides and are minted
+    // from a counter it owns.
+    //
+    // ALL FIVE TRANCHE-5 SLICES ARE ALL `packages`, every file under
+    // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
+    // three apps areas are untouched — which is why the slices compose with
+    // every one above, and with each other, by addition.
     "docs-content": 13,
-    "root-infra": 41,
+    // +2 (WIN-260): scripts/arch/env-access.mjs and its test. Both classify
+    // under the existing root-infra.tooling.scripts rule, so no ledger rule
+    // changed here either. 41 + 2 = 43.
+    "root-infra": 43,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1118);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -900,9 +1231,36 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-256 channels +42, WIN-256 governance +84, the WIN-256 `conversations`
     // prerequisite +8, WIN-256 capability-matrix ownership +2, WIN-256's model
     // router adapter +34, WIN-257 operator identity +18, WIN-256 conversations
-    // +75); this one re-derives it by summing the per-area counts
+    // +75, WIN-258 postgres-tenancy +13 and its guard ledger +1, and WIN-258
+    // tranche 2's identity-access canonical store +23, WIN-258 tranche 3's other
+    // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
+    // TWO adapter directories, and WIN-258 tranche 5's SIX canonical stores,
+    // `tools` +20, `agents` +18, `cost-monitoring` +17, `channels` +16,
+    // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
+    // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
+    // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
+    // second sweep +1, WIN-258 tranche 7's JSON-column census +5, and that
+    // tranche's indexes/query-plans/pagination dimension +9 — eight under
+    // `packages/adapters/postgres-tenancy` and the ONE migration under
+    // `internal-packages` that gives the operator thread listing the index it
+    // was said to have); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1118
+    // and that tranche's concurrency, pooling and transaction-boundary suites
+    // +3); this one re-derives it by summing the per-area counts independently,
+    // so the two can DISAGREE and be caught.
+    // and that tranche's rollout rehearsal +11 across TWO areas, 3 in
+    // `packages` and 8 in `internal-packages`); this one re-derives it by
+    // summing the per-area counts independently, so the two can DISAGREE and
+    // be caught.
+    //
+    // and WIN-260 (M2.5) +13 across THREE areas — `apps-core-api` +10 (seven
+    // configuration modules, two suites, and this dimension's guard ledger),
+    // `apps-mcp-stdio` +1 (the second deployable's own environment reader) and
+    // `root-infra` +2 (the containment gate and its test). It ADOPTS NO PROJECT
+    // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
+    // rule that already existed, which is why the delta is purely additive and
+    // sums with every one above it.
+    rulesDocument.baseline.totalFiles + 1495
   );
 });
 

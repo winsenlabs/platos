@@ -1,16 +1,18 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkAdapterTable,
   ADOPTED_PROJECTS,
   APPLICATION_ENTRY_PROJECTS,
   EXPECTED_PLACEHOLDER_FILE_COUNT,
   EXPECTED_SCAFFOLDING_FILE_COUNT,
   SCAFFOLDING_BASENAMES,
+  TESTING_ENTRY_PROJECTS,
   checkSkeleton,
   isScaffoldingPath,
   projectPaths,
@@ -64,7 +66,24 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // implements the three kernel ports that have no adapter (Clock, IdGenerator,
   // Logger), so it must be able to name them. Reasoned in full on
   // EXPECTED_EDGE_COUNT in the generator.
-  assert.match(output, /32 V1 projects and 95 project edges/u);
+  // 96 -> 97 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/tools, the reference the adapter needs to name the port it
+  // satisfies. Reasoned in full on EXPECTED_EDGE_COUNT in the generator.
+  // 97 -> 98 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/agents, the reference the adapter needs to name the two
+  // canonical-store ports it satisfies. ONE edge for TWO bindings, because a
+  // project reference is per package.
+  // 98 -> 99 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/cost-monitoring, the fifth owner of the one PostgreSQL
+  // client (ADR M0.3 §15).
+  // 99 -> 106 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/channels, -> packages/contexts/governance, ->
+  // packages/contexts/secrets, -> packages/contexts/providers, ->
+  // packages/contexts/conversations, -> packages/contexts/skills and ->
+  // packages/contexts/memory, the sixth through twelfth owners of that same
+  // client. SEVEN edges for FIFTEEN bindings. The count is READ BACK from the
+  // generator here rather than computed, which is the whole point of this case.
+  assert.match(output, /32 V1 projects and 111 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -204,12 +223,17 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  assert.deepEqual(selfCheck([], []), [], "an empty registry is valid");
+  // WIN-258 T5. All THREE registries are supplied empty. `selfCheck` judges the
+  // testing-entry list against the SAME adoption argument, so leaving it to
+  // default would import the live list into a case about an empty one and
+  // report `tools` and `cost-monitoring` unadopted — a true statement about a
+  // registry this case is not describing.
+  assert.deepEqual(selfCheck([], [], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], []), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], [], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], []), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], [], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
 });
@@ -222,21 +246,89 @@ test("selfCheck rejects an application entry that is not an adopted context", ()
   const adopted = ["packages/contexts/identity-access"];
 
   assert.deepEqual(
-    selfCheck(adopted, ["packages/contexts/agents"]),
+    selfCheck(adopted, ["packages/contexts/agents"], []),
     ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
     "an unadopted context's application/index.ts is a generated placeholder",
   );
   assert.deepEqual(
-    selfCheck(adopted, ["apps/core-api"]),
+    selfCheck(adopted, ["apps/core-api"], []),
     [
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
     ],
     "apps/core-api is adopted but is not a context; both clauses fire",
   );
-  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted]), [
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted], []), [
     "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T5: a context may publish its in-memory doubles only when the adapter
+// measured against them can actually import them.
+// ---------------------------------------------------------------------------
+
+test("selfCheck rejects a testing entry that is not an adopted context", () => {
+  const adopted = ["packages/contexts/identity-access"];
+
+  assert.deepEqual(
+    selfCheck(adopted, [], ["packages/contexts/agents"]),
+    ["TESTING_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
+    "an unadopted context's application/testing/ tree is generated placeholders",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, [], ["apps/core-api"]),
+    [
+      "TESTING_ENTRY_PROJECTS names apps/core-api, which is not a context",
+      "TESTING_ENTRY_PROJECTS names apps/core-api, which is not adopted",
+    ],
+    "apps/core-api is adopted but is not a context; both clauses fire",
+  );
+  assert.deepEqual(selfCheck(adopted, [], [...adopted, ...adopted]), [
+    "TESTING_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
+  ]);
+  // And the two lists are judged SEPARATELY: naming a project on one says
+  // nothing about the other, which is the property that keeps a mistake in
+  // either from being reported under the other's name.
+  assert.deepEqual(
+    selfCheck(adopted, ["packages/contexts/agents"], ["packages/contexts/skills"]),
+    [
+      "APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted",
+      "TESTING_ENTRY_PROJECTS names packages/contexts/skills, which is not adopted",
+    ],
+  );
+});
+
+test("publishing the doubles entry point is what the list decides, nothing else", () => {
+  const withoutEntry = renderSkeleton(ADOPTED_PROJECTS, [], []);
+  const withEntry = renderSkeleton(ADOPTED_PROJECTS, [], ["packages/contexts/identity-access"]);
+  const manifest = "packages/contexts/identity-access/package.json";
+
+  assert.ok(!withoutEntry.get(manifest).includes("./application/testing/index.js"));
+  assert.ok(withEntry.get(manifest).includes('"./application/testing/index.js"'));
+  assert.equal(
+    withoutEntry.size,
+    withEntry.size,
+    "publishing a subpath adds no file; it edits one manifest",
+  );
+
+  for (const path of withEntry.keys()) {
+    if (path === manifest) continue;
+    assert.equal(withEntry.get(path), withoutEntry.get(path), `${path} must not move`);
+  }
+});
+
+test("the live testing registry is adopted, is a context, and is named once", () => {
+  const known = new Set(projectPaths());
+  for (const project of TESTING_ENTRY_PROJECTS) {
+    assert.ok(known.has(project), `${project} is not a V1 project`);
+    assert.ok(ADOPTED_PROJECTS.includes(project), `${project} is not adopted`);
+  }
+  assert.equal(
+    new Set(TESTING_ENTRY_PROJECTS).size,
+    TESTING_ENTRY_PROJECTS.length,
+    "no duplicate testing entries",
+  );
 });
 
 test("publishing the application entry point is what the list decides, nothing else", () => {
@@ -290,27 +382,65 @@ test("gitignored build artifacts are never reported as EXTRA", () => {
 // ---------------------------------------------------------------------------
 // WIN-257 T2: the published entry list must stay HONEST.
 //
-// `APPLICATION_ENTRY_PROJECTS` is documented as "the contexts apps/core-api
-// ACTUALLY composes", and until now nothing checked that sentence. selfCheck
-// can see that an entry is an adopted context; it cannot see whether anything
-// imports the subpath the entry publishes, which is the exact dead surface
-// WIN-297 declined to create. This closes the loop from the other end by
-// reading the composition root.
+// `APPLICATION_ENTRY_PROJECTS` is documented as the contexts whose
+// `application/index.js` a V1 project actually imports, and until now nothing
+// checked that sentence. selfCheck can see that an entry is an adopted context;
+// it cannot see whether anything imports the subpath the entry publishes, which
+// is the exact dead surface WIN-297 declined to create. This closes the loop
+// from the other end by reading the importers.
+//
+// WIN-258 T5 WIDENED WHAT COUNTS AS AN IMPORTER, and the widening is the point
+// rather than an accommodation. Until this tranche the composition root was the
+// only V1 project that had ever imported a use-case entry, so "imported" and
+// "imported by apps/core-api" were the same set and this test read one file.
+// They are not the same set any more: `packages/adapters/postgres-tenancy`
+// imports `@platos/context-agents/application/index.js` for the in-memory
+// `AgentsRepository` and `ScaffoldingRepository`, because the conformance
+// differential runs ONE scenario through the double and through PostgreSQL and
+// compares the two observation lists verbatim. That import is a real consumer of
+// a real published subpath, so the entry is not dead surface — and the property
+// this test exists to keep, that nothing is published which nothing imports, is
+// unchanged. What would break it is narrowing the search back to one file and
+// deleting the entry, which is why the scan is over every V1 source file.
 // ---------------------------------------------------------------------------
 
 const COMPOSITION_ROOT = "apps/core-api/src/app.module.ts";
 
-/** Which contexts the composition root imports a use-case entry point from. */
-function entryPointsImportedByCompositionRoot(source) {
+/** Which contexts a source file imports a use-case entry point from. */
+function entryPointsImportedBy(source) {
   const specifier = /from "@platos\/context-([a-z-]+)\/application\/index\.js"/gu;
   const imported = new Set();
   for (const match of source.matchAll(specifier)) imported.add(`packages/contexts/${match[1]}`);
   return imported;
 }
 
-test("every published application entry point is imported by the composition root", () => {
-  const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT), "utf8");
-  const imported = entryPointsImportedByCompositionRoot(source);
+/** Every V1 source file that could import one: the composition root and the packages. */
+function v1SourceFiles() {
+  const files = [join(repositoryRoot, COMPOSITION_ROOT)];
+  const roots = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api/src", "apps/mcp-stdio"];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(?:ts|mts|tsx)$/u.test(entry.name)) files.push(full);
+    }
+  };
+  for (const root of roots) walk(join(repositoryRoot, root));
+  return files;
+}
+
+test("every published application entry point is imported by a V1 project", () => {
+  const imported = new Set();
+  for (const file of v1SourceFiles()) {
+    for (const entry of entryPointsImportedBy(readFileSync(file, "utf8"))) imported.add(entry);
+  }
 
   assert.deepEqual(
     [...imported].sort(),
@@ -318,15 +448,204 @@ test("every published application entry point is imported by the composition roo
     "an entry nobody imports is dead surface, and an import with no entry cannot resolve",
   );
 
+  // The composition root is still an importer, and still the only one for the
+  // two WIN-257 entries. Asserted separately so a change that stopped composing
+  // them and left the adapter's import standing cannot pass on the union alone.
+  const byRoot = entryPointsImportedBy(readFileSync(join(repositoryRoot, COMPOSITION_ROOT), "utf8"));
+  assert.deepEqual(
+    [...byRoot].sort(),
+    ["packages/contexts/identity-access", "packages/contexts/tenancy"],
+  );
+
   // The negative control: the extractor must be able to SEE an absence. A list
-  // naming a context the root does not import has to disagree with the tree.
+  // naming a context nothing imports the entry of has to disagree with the tree.
   assert.notDeepEqual(
     [...imported].sort(),
-    [...APPLICATION_ENTRY_PROJECTS, "packages/contexts/agents"].sort(),
+    [...APPLICATION_ENTRY_PROJECTS, "packages/contexts/memory"].sort(),
   );
   assert.equal(
-    entryPointsImportedByCompositionRoot('import { x } from "@platos/context-tenancy";').size,
+    entryPointsImportedBy('import { x } from "@platos/context-tenancy";').size,
     0,
     "importing a context's CONTRACTS is not importing its use-case entry point",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15) — the adapter table now permits MANY ports per
+// DIRECTORY, and these are the refusals that widening did not take with it.
+//
+// The check is called with a SUPPLIED table rather than by editing the module,
+// so each refusal runs in CI on every change instead of once, by hand, in a
+// throwaway script.
+// ---------------------------------------------------------------------------
+
+const LIVE_ADAPTERS = [
+  // WIN-258 T5 added the third binding, `cost-monitoring:BudgetRepository`. The
+  // fixture copy has to carry it or the first case below — the non-vacuity
+  // anchor every refusal here stands on — is comparing the refusals against a
+  // table the tree no longer has.
+  { dir: "postgres-tenancy", port: "TenancyRepository", owner: "tenancy",
+    additional: [
+      { port: "IdentityAccessRepository", owner: "identity-access" },
+      // WIN-258 T5. The THIRD binding on the one shared directory.
+      { port: "ToolsRepository", owner: "tools" },
+      // WIN-258 T5: `agents` publishes TWO canonical-store ports and one
+      // directory satisfies both. A copy that stopped short would make every
+      // refusal below assert against a table the live one no longer looks like.
+      { port: "AgentsRepository", owner: "agents" },
+      { port: "ScaffoldingRepository", owner: "agents" },
+      // WIN-258 T5. The SIXTH, `cost-monitoring`'s.
+      { port: "BudgetRepository", owner: "cost-monitoring" },
+      // WIN-258 T5. The SEVENTH, `channels`'.
+      { port: "ChannelsRepository", owner: "channels" },
+      // WIN-258 T5: `governance` publishes FIVE canonical-store ports and one
+      // directory satisfies all five, because five separate rows in the one
+      // PostgreSQL database are five repositories behind one client.
+      { port: "SafetyLedger", owner: "governance" },
+      { port: "RatingsRepository", owner: "governance" },
+      { port: "CriteriaRepository", owner: "governance" },
+      { port: "EvalsRepository", owner: "governance" },
+      { port: "GoldenSetsRepository", owner: "governance" },
+      // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, which now
+      // carry binding slots of their own on the directory that already
+      // satisfied them. SEVENTEEN bindings on one row.
+      { port: "TenancyLocks", owner: "tenancy" },
+      { port: "OperatorSessionRevoker", owner: "tenancy" },
+      { port: "EnvironmentAccessKeyRevocationCounter", owner: "tenancy" },
+      { port: "InvitationTokenIssuer", owner: "tenancy" },
+      { port: "OperatorDirectory", owner: "tenancy" },
+      // WIN-258 T5. The fixture copy carries `secrets`' two ports for the reason
+      // it carries every other row: the mutations below are measured against a
+      // table that is otherwise identical to the live one, so a copy missing a
+      // binding would make the refusal COUNTS wrong rather than the refusals.
+      { port: "SecretsRepository", owner: "secrets" },
+      { port: "EnvironmentVariableRepository", owner: "secrets" },
+      // WIN-258 T5. The NINTH owner, `providers`', over the four rows of §1
+      // row 4. ONE port and not two: the context publishes three, and only this
+      // one is a canonical store.
+      { port: "ProvidersRepository", owner: "providers" },
+      // WIN-258 T5: `conversations` publishes FOUR canonical-store ports and one
+      // directory satisfies all four, because four separate rows in the one
+      // PostgreSQL database are four repositories behind one client.
+      { port: "ThreadRepository", owner: "conversations" },
+      { port: "TurnRepository", owner: "conversations" },
+      { port: "PostmanRepository", owner: "conversations" },
+      { port: "ConversationsErasureStore", owner: "conversations" },
+      // WIN-258 T5. `skills`' one canonical-store port, in the fixture copy for
+      // the reason `secrets`' two are: a copy missing a binding would make the
+      // refusal COUNTS below wrong rather than the refusals.
+      { port: "SkillsRepository", owner: "skills" },
+      { port: "MemoryRepository", owner: "memory" },
+      { port: "KnowledgeGraphRepository", owner: "memory" },
+      { port: "PrivacyRepository", owner: "privacy" },
+      { port: "JobsRepository", owner: "jobs" },
+      { port: "ApprovalsRepository", owner: "jobs" },
+      // WIN-258 T5. `files`' one canonical-store port over `MessageAttachment`
+      // and `Artifact`, in the fixture copy for the reason every row above is:
+      // the mutations below are measured against a table otherwise identical to
+      // the live one, so a copy missing a binding would make the refusal COUNTS
+      // wrong rather than the refusals. It is also the row that makes `files`
+      // appear TWICE in this table — once here for its rows and once at
+      // `objectstore-minio` below for its bucket.
+      { port: "FilesRepository", owner: "files" },
+      // WIN-258 T5. `observability`'s one canonical-store port, in the fixture
+      // copy for the reason `skills`' is: a copy missing a binding would make
+      // the refusal COUNTS below wrong rather than the refusals.
+      { port: "ObservabilityRepository", owner: "observability" },
+      // WIN-258 T5. `eventing`'s one canonical-store port, in the fixture copy
+      // for the reason `secrets`' two and `skills`' one are: the mutations
+      // below are measured against a table that is otherwise identical to the
+      // live one, so a copy missing a binding would make the refusal COUNTS
+      // wrong rather than the refusals.
+      { port: "NotificationRuleRepository", owner: "eventing" },
+    ], note: "n" },
+  { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
+  { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
+  { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "n" },
+  { dir: "objectstore-minio", port: "ObjectStore", owner: "files", note: "n" },
+  { dir: "redis-ratelimit", port: "RateLimiter", owner: "identity-access", note: "n" },
+  { dir: "redis-cache", port: "Cache", owner: "memory", note: "n" },
+  { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
+  { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
+  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
+  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "n" },
+];
+
+test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
+  // Non-vacuity for everything below: the mutations are the ONLY reason those
+  // cases go red.
+  assert.deepEqual(checkAdapterTable(), []);
+  assert.deepEqual(checkAdapterTable(LIVE_ADAPTERS), []);
+});
+
+test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings may exceed twelve", () => {
+  const errors = checkAdapterTable([
+    ...LIVE_ADAPTERS,
+    { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  ]);
+  assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
+});
+
+test("§15 refusal: a FORTY-FIFTH binding fails, even though a directory may hold more than one", () => {
+  // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
+  // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
+  // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
+  // `eventing`'s one canonical-store binding all landed in the one directory.
+  const widened = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
+      : adapter
+  );
+  const errors = checkAdapterTable(widened);
+  assert.ok(errors.some((error) => error.includes("declares 44 adapter bindings; ADAPTERS flattens to 45")));
+});
+
+test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
+  const invented = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [{ port: "IdentityAccessRepository", owner: "auth" }] }
+      : adapter
+  );
+  assert.ok(
+    checkAdapterTable(invented).some((error) =>
+      error.includes("postgres-tenancy assigns IdentityAccessRepository to unknown owner auth")
+    )
+  );
+});
+
+test("§15 refusal: a port gaining a SECOND home fails unless it is named as multi-home", () => {
+  const shared = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "redis-cache" ? { ...adapter, port: "EventBus", owner: "kernel" } : adapter
+  );
+  assert.ok(
+    checkAdapterTable(shared).some((error) => error.includes("kernel:EventBus is satisfied by"))
+  );
+  // And `Notifier`, the one port ADR M0.3 §4 gives two homes, is NOT flagged —
+  // the allow-list is what makes this a rule rather than a blanket ban.
+  assert.deepEqual(checkAdapterTable(LIVE_ADAPTERS), []);
+});
+
+test("§15 refusal: one directory declaring the same port twice fails", () => {
+  const doubled = LIVE_ADAPTERS.map((adapter) =>
+    adapter.dir === "postgres-tenancy"
+      ? { ...adapter, additional: [{ port: "TenancyRepository", owner: "tenancy" }] }
+      : adapter
+  );
+  assert.ok(
+    checkAdapterTable(doubled).some((error) =>
+      error.includes("postgres-tenancy declares TenancyRepository more than once")
+    )
+  );
+});
+
+test("§15 refusal: the multi-home allow-list must still be earned", () => {
+  // `Notifier` with only one home left means the allow-list entry is stale, and
+  // a stale exemption is a hole. It fails in that direction too.
+  const single = LIVE_ADAPTERS.filter((adapter) => adapter.dir !== "notifier-webhook");
+  assert.ok(
+    checkAdapterTable(single).some((error) =>
+      error.includes("cost-monitoring:Notifier is declared as a multi-home port but has 1 home(s)")
+    )
   );
 });

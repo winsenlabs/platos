@@ -32,6 +32,7 @@ import type {
   FamilyRevocation,
   ImpersonationAuditEntry,
   MagicLinkTokenRecord,
+  OAuthAccessTokenRecord,
   OAuthAuthorizationCodeRecord,
   OAuthRefreshTokenRecord,
   OperatorIdentityProvider,
@@ -65,6 +66,15 @@ export interface InMemoryState {
   readonly revocationGenerations: Map<EnvironmentId, number>;
   readonly refreshTokens: Map<TokenHash, OAuthRefreshTokenRecord>;
   readonly authorizationCodes: Map<TokenHash, OAuthAuthorizationCodeRecord>;
+  /**
+   * WIN-258 T2. The double could not represent an `OAuthAccessToken` at all,
+   * so `revokeRotationFamily` counted only the refresh side and understated its
+   * answer against the real store by exactly the number of access tokens the
+   * family had minted. The differential against the PostgreSQL adapter is what
+   * showed it; the map is here so the two agree on a number a caller reports as
+   * the blast radius of a detected replay.
+   */
+  readonly accessTokens: Map<string, OAuthAccessTokenRecord>;
   readonly bearerCredentials: Map<string, BearerCredentialRecord>;
   readonly endUsers: Map<EndUserId, EndUserRecord>;
   readonly endUserIdentities: Map<EndUserIdentityId, EndUserIdentityRecord>;
@@ -83,6 +93,7 @@ function emptyState(): InMemoryState {
     revocationGenerations: new Map(),
     refreshTokens: new Map(),
     authorizationCodes: new Map(),
+    accessTokens: new Map(),
     bearerCredentials: new Map(),
     endUsers: new Map(),
     endUserIdentities: new Map(),
@@ -280,12 +291,30 @@ export function inMemoryIdentityAccessRepository(
             plan.consumedRefreshToken,
           );
         }
+        state.accessTokens.set(plan.accessToken.tokenId, plan.accessToken);
         state.refreshTokens.set(plan.refreshToken.tokenHash, plan.refreshToken);
       },
       async revokeRotationFamily(revocation: FamilyRevocation) {
         let count = 0;
+        // The ACCESS tokens first, selected by the refresh tokens that point at
+        // them, exactly as the adapter's nested filter does. A family revocation
+        // that left them live would leave the holder of a stolen refresh token
+        // with a working access token for the rest of its lifetime, which is the
+        // window rotation exists to close.
+        const linked = new Set<string>();
+        for (const token of state.refreshTokens.values()) {
+          if (token.rotationFamilyId !== revocation.rotationFamilyId) continue;
+          if (token.accessTokenId !== null) linked.add(token.accessTokenId);
+        }
+        for (const tokenId of linked) {
+          const accessToken = state.accessTokens.get(tokenId);
+          if (accessToken === undefined || accessToken.revokedAt !== null) continue;
+          state.accessTokens.set(tokenId, { ...accessToken, revokedAt: revocation.revokedAt });
+          count += 1;
+        }
         for (const [hash, token] of state.refreshTokens) {
           if (token.rotationFamilyId !== revocation.rotationFamilyId) continue;
+          if (token.revokedAt !== null) continue;
           state.refreshTokens.set(hash, {
             ...token,
             replayDetectedAt: revocation.replayDetectedAt,
@@ -302,10 +331,19 @@ export function inMemoryIdentityAccessRepository(
         return state.bearerCredentials.get(bearerKey(kind, tokenHash)) ?? null;
       },
       async save(credential) {
-        state.bearerCredentials.set(
-          bearerKey(credential.kind, credential.tokenHash),
-          credential,
-        );
+        // UPDATES, never creates. WIN-258 T2: the real tables all carry required
+        // columns this port cannot supply — `McpToken.name`, `McpBearerToken.label`,
+        // `PersonalAccessToken.role`, `EndUserSession.identityId` — so the
+        // adapter refuses a save with no row behind it, and a double that
+        // created one would let a use case mint a credential through a method
+        // that cannot mint.
+        const key = bearerKey(credential.kind, credential.tokenHash);
+        if (!state.bearerCredentials.has(key)) {
+          throw new Error(
+            `no ${credential.kind} credential carries this digest; save updates a credential, it does not mint one`,
+          );
+        }
+        state.bearerCredentials.set(key, credential);
       },
     },
 

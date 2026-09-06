@@ -80,6 +80,41 @@ const MODEL_ROUTER_ADAPTER = "^packages/adapters/model-router-providers/";
 // bytes. `ai(?:/|$)` matches the package and its subpaths and nothing else.
 const INFERENCE_SDK_SOURCE = "node_modules/(ai(?:/|$)|@ai-sdk/)";
 
+// The one directory that may hold the canonical PostgreSQL client (ADR M0.3 §4,
+// which spells it "the tenancy-database client; per-context repositories,
+// owner-tagged").
+const POSTGRES_TENANCY_ADAPTER = "^packages/adapters/postgres-tenancy/";
+
+// The ORM and the generated client package built from the canonical schema.
+//
+// WHY THIS RULE DID NOT EXIST BEFORE WIN-258. Every other (h) entry was written
+// when its SDK already had a home. `@prisma` and `prisma` were on
+// BANNED_CORE_IMPORT_SOURCES, so a context's `domain/` and `application/` could
+// not import them — but nothing said WHERE they could be imported, and a
+// transport, a second adapter or the composition root could all have held the
+// client with every gate green. The charter sentence is "Prisma lives ONLY in
+// the adapter", and that is a containment rule, not a purity rule.
+//
+// WHY IT NAMES THE WORKSPACE PACKAGE AS WELL AS THE ORM. Nothing in the V1
+// layout imports `@prisma/client` directly; the generated client is re-exported
+// from `@platos/tenancy-database`, so a rule that banned only the vendor scope
+// would be satisfied by importing the wrapper — which is the exact door the
+// legacy tree walks through today.
+//
+// WHY `@platos/database` IS ABSENT. That is the durable-runtime store's client,
+// and ADR M0.3 §7 decision 10 puts the WHOLE of it behind the `DurableRuntime`
+// port, whose adapter is `packages/adapters/durable-runtime/`. Naming it here
+// would assign it to the wrong home. It gets its own entry when that adapter is
+// adopted; `durable-runtime-sdk-only` already binds the vendor SDK beside it.
+//
+// SEGMENT MATCHING, NOT PREFIX. `prisma(?:/|$)` matches the ORM package and its
+// subpaths and nothing else. As ADR M0.3 §14 records for `ai`, a bare prefix
+// here would also condemn any future package whose name merely opens with those
+// bytes, and the point of a containment rule is that a violation names the thing
+// that was actually imported.
+const TENANCY_DATABASE_SOURCE =
+  "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))";
+
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
 export const SDK_CONTAINMENT = [
@@ -108,6 +143,11 @@ export const SDK_CONTAINMENT = [
     id: "provider-sdk-only",
     home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",
+  },
+  {
+    id: "tenancy-prisma-only",
+    home: POSTGRES_TENANCY_ADAPTER,
+    source: TENANCY_DATABASE_SOURCE,
   },
   {
     // ADR M0.3 §1 row 16 makes `conversations` the turn-execution engine and the

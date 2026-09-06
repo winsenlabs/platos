@@ -1,0 +1,584 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 7 — the INDEX, PLAN, PAGINATION and",
+    "COUNT-TRUTH dimension. It is not a nineteenth store: every row it touches",
+    "already had one. What it adds is the measurement the earlier tranches could",
+    "not make from a returned value, and the guards that measurement turns on.",
+    "",
+    "IT IS A TWENTIETH FILE beside mutations.json and the eighteen named ones,",
+    "for the reason the fourth was: separate tranches are separate claims about",
+    "separate surfaces, and a reader checking one should not have to read past",
+    "the others. All are hashed by the same packages.adapters.config rule and",
+    "counted together by the v1 ledger.",
+    "",
+    "WHAT THIS DIMENSION FOUND, AND THE THREE FINDINGS ARE DIFFERENT IN KIND.",
+    "",
+    "ONE. `Thread_environmentId_endUserId_updatedAt_idx` DOES NOT SERVE THE",
+    "LISTING THE PROSE SAID IT DID. `conversations-threads.ts` named it as the",
+    "index `updatedAt DESC` exists for; the operator listing passes no end user,",
+    "so the middle column is unconstrained and the index can find the",
+    "environment's rows but not order them. MEASURED at three hundred threads:",
+    "an index scan feeding a full `Sort`, 241 rows read to return a page of 25,",
+    "at every window. With an end user named, `Incremental Sort` and 15 rows.",
+    "That is a REPORTABLE DEFECT and it is fixed here rather than only reported:",
+    "`20260906120000_win258_thread_listing_index` adds the index whose columns",
+    "are the listing's whole order, and the same measurement now reads 25.",
+    "",
+    "TWO. TWO PAGED READS HYDRATE THE WHOLE SET BY DESIGN, and the design is",
+    "right. `pageBudgets` and `pageProviderKeys` read every live row in the",
+    "environment and cut the window in JavaScript, because their leading sort",
+    "key is DECODED out of a text column and is not a column at all — SQL cannot",
+    "order by a value the database does not hold, and cutting the window in the",
+    "database would apply a different order from the one the port names. The",
+    "cost is pinned rather than argued away: a page of ONE costs the same rows",
+    "as a page of twenty-five, and the pin will fail the day somebody makes the",
+    "read cheaper as well as the day somebody makes it worse.",
+    "",
+    "THREE. TWO MORE PAGED READS SORT ON A JOINED COLUMN, which no index on the",
+    "table being paged can serve. `pageBoundAgents` orders by `Agent.createdAt`",
+    "and `pageExposures` by `Tool.name` then `Entity.externalId`. Both read the",
+    "environment's whole set, join, sort and discard. MEASURED at 300 rows in",
+    "both. Fixing either needs a denormalised column, which is a schema question",
+    "beyond this tranche; it is reported precisely and pinned so it cannot get",
+    "worse unnoticed.",
+    "",
+    "AND ONE GAP FROM TRANCHE 5 IS CLOSED. `mutations-tools.json` carries M09",
+    "under `unfalsifiable`: truncating `EXPOSURE_ORDER` to its first key survives",
+    "because the order is applied twice, and only `pageExposures` can see the",
+    "difference. Its own words were that the proof needed 'a fixture built to",
+    "produce ties across pages'. `plans-tools.integration.test.ts` builds one —",
+    "seventy-five names each minted twice, both entities exposing all of them, so",
+    "every name ties FOUR ways over three hundred rows — and kills the mutation",
+    "on the STATEMENT the store sends rather than on the rows it returns, which",
+    "is the half that cannot depend on which sort the planner picked. M-Q19",
+    "below is that kill.",
+    "",
+    "AND ONE PAGED READ RETURNS TWO COUNTS UNDER TWO DIFFERENT SCOPES, ON",
+    "PURPOSE. `ApprovalPage` carries `total` — the query's filters and its",
+    "thirty-day window — beside `pendingCount`, which the port defines as",
+    "\"Pending in the WHOLE scope, not just this page\". Every other page in this",
+    "package would be defective if its two numbers disagreed; this one is",
+    "defective if they agree. M-Q24 is the plausible tidy-up that makes them",
+    "agree, and it is in the ledger so nobody can make it by accident."
+  ],
+  "procedure": [
+    "PROVE THE SUITE SET GREEN FIRST, AND REFUSE A VACUOUS RUN. Tranche 1's",
+    "first sweep reported 22 kills and every one was vacuous: the contexts' dist/",
+    "had been cleaned, so every suite failed to LOAD and 'died' against no",
+    "mutation at all. The driver used here runs the set UNMUTATED, refuses to",
+    "sweep unless it is green, and treats a mutated run in which the named case",
+    "did not EXECUTE as VACUOUS rather than as a kill. The baseline for the run",
+    "recorded here was 68 cases, 0 failing.",
+    "",
+    "For one entry: with @platos/tenancy-database and every @platos/context-*",
+    "already built, replace its `from` with its `to` in the named file; run",
+    "`pnpm exec vitest run <suite>` from this package with DOCKER_HOST and",
+    "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE set; confirm the NAMED case in",
+    "`kills` is among the failures; restore the file. NO REBUILD IS NEEDED for a",
+    "mutation under this package's own src/ — the suites import it by relative",
+    "path and the runner transpiles it — which is also why a mutation here can",
+    "never be vacuous for the reason tranche 1's were.",
+    "",
+    "An anchor that matches zero times or more than once is a stale entry, not a",
+    "kill. The driver refuses those rather than reporting them either way."
+  ],
+  "mutations": [
+    {
+      "name": "M-Q01 probe: the connection-probe filter loses its END anchor",
+      "file": "src/plans-probe.ts",
+      "from": "      !/^\\s*SELECT\\s+1\\s*$/iu.test(statement),",
+      "to": "      !/^\\s*SELECT\\s+1/iu.test(statement),",
+      "why": "TRANCHE 3'S TRAP, ANCHORED. Its advisory lock projected `SELECT 1 FROM pg_advisory_xact_lock(...)`, an unanchored filter swallowed it, the lock measured ZERO statements and a mutation deleting it outright survived. Every number this tranche reports comes through this filter, so a filter that discards too much makes every one of them read better than the truth.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > countedQueries > KEEPS a read that happens to project a constant — tranche 3's trap"
+      ]
+    },
+    {
+      "name": "M-Q02 probe: the frame filter loses its WORD BOUNDARY",
+      "file": "src/plans-probe.ts",
+      "from": "      !/^\\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE)\\b/iu.test(statement) &&",
+      "to": "      !/^\\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE)/iu.test(statement) &&",
+      "why": "A statement whose FIRST TOKEN merely begins with one of the four words is not the frame. IT IS DEFENCE IN DEPTH AND SAYS SO: no SQL this adapter emits starts with `BEGINNING`, so the boundary defends a shape the tree does not produce today — which is not the same as being untested and not the same as being load-bearing either. It is recorded at that weight rather than dressed up. THE FIRST SWEEP REPORTED IT SURVIVING and the finding was in the CASE, not the guard: the case put the word in a `SELECT`'s projection, which an anchor reading the first token never looks at. The case now reads the first token.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > countedQueries > keeps a statement whose FIRST WORD merely begins with a discarded one"
+      ],
+      "sweep": "SURVIVED the first sweep against a case that could not see it; KILLED on the second, after the case was corrected."
+    },
+    {
+      "name": "M-Q03 probe: an ambiguous statement match takes the first instead of refusing",
+      "file": "src/plans-probe.ts",
+      "from": "  if (found.length !== 1) {",
+      "to": "  if (found.length === 0) {",
+      "why": "Every plan in this tranche is read off ONE captured statement. A matcher that took the first would silently start planning the count statement the day a read's order changed, and would keep passing while measuring the wrong thing.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > onlyStatement > REFUSES an ambiguous match rather than taking the first"
+      ]
+    },
+    {
+      "name": "M-Q04 probe: the row count forgets that `Actual Rows` is PER LOOP",
+      "file": "src/plans-probe.ts",
+      "from": "    .reduce((sum, entry) => sum + entry.actualRows * Math.max(entry.actualLoops, 1), 0);",
+      "to": "    .reduce((sum, entry) => sum + entry.actualRows, 0);",
+      "why": "This is the shape an N+1 takes once the planner has turned it into a nested loop: one row per loop, one loop per outer row. Dropping the multiply reports the inner relation as costing a single row, which is the most flattering possible reading of the worst possible plan.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > the plan readers > rowsFrom sums a relation's rows ACROSS LOOPS, which is where an N+1 hides"
+      ]
+    },
+    {
+      "name": "M-Q05 probe: the parameters are filled LOWEST placeholder first",
+      "file": "src/plans-probe.ts",
+      "from": "  for (let index = params.length; index >= 1; index -= 1) {",
+      "to": "  for (let index = 1; index <= params.length; index += 1) {",
+      "why": "`$1` is a prefix of `$10`. Filling upwards rewrites the front of every two-digit placeholder, so any read with ten or more bound values is planned as a DIFFERENT statement from the one the store sent — or fails outright, which at least says so.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > inlineParameters > fills the TENTH placeholder before the first, so `$1` cannot eat `$10`"
+      ]
+    },
+    {
+      "name": "M-Q06 probe: a quote in a value closes the literal instead of being doubled",
+      "file": "src/plans-probe.ts",
+      "from": "  return `'${String(value).replaceAll(\"'\", \"''\")}'`;",
+      "to": "  return `'${String(value)}'`;",
+      "why": "The values inlined here come out of the driver's query log, and a tool name or a slug may contain a quote. An unescaped one turns the plan probe into a syntax error at best and a different statement at worst.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > inlineParameters > doubles a quote rather than closing the literal early"
+      ]
+    },
+    {
+      "name": "M-Q07 probe: a result with no plan in it is read as an empty plan",
+      "file": "src/plans-probe.ts",
+      "from": "  if (raw === null) throw new Error(\"no Plan node in the EXPLAIN result\");",
+      "to": "  if (raw === null) return {} as RawPlanNode;",
+      "why": "An empty plan has no relations, no indexes and no rows, so EVERY `rowsFrom` pin passes and every `scansSequentially` pin passes. A plan reader that cannot find a plan must say so rather than answer zero to every question.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > readPlan > refuses a result with no plan in it rather than inventing an empty one"
+      ]
+    },
+    {
+      "name": "M-Q08 probe: the sequential-scan test ignores WHICH relation was scanned",
+      "file": "src/plans-probe.ts",
+      "from": "    (entry) => entry.relationName === relation && entry.nodeType === \"Seq Scan\",",
+      "to": "    (entry) => entry.nodeType === \"Seq Scan\",",
+      "why": "A plan that scans a small joined table and index-scans the paged one would be reported as scanning the paged one. The relation is the whole question.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > the plan readers > scansSequentially names the relation, not the plan as a whole"
+      ]
+    },
+    {
+      "name": "M-Q09 probe: the page windows drop the SHORT final one",
+      "file": "src/plans-probe.ts",
+      "from": "  for (let offset = 0; offset < total; offset += size) offsets.push(offset);",
+      "to": "  for (let offset = 0; offset + size <= total; offset += size) offsets.push(offset);",
+      "why": "Every paging proof in this tranche walks these windows. Losing the last, short window means the rows at the end of a listing are never asked for — so a store that dropped exactly those would partition perfectly.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > the paging helpers > windows covers every row, and the last window is short rather than absent"
+      ]
+    },
+    {
+      "name": "M-Q10 probe: the repeat test cannot see a repeat",
+      "file": "src/plans-probe.ts",
+      "from": "  return new Set(values).size === values.length;",
+      "to": "  return values.length >= 0;",
+      "why": "A row served on two pages and missing from a third is the classic symptom of an order that is not total. This predicate is the only thing in the tranche that can see it.",
+      "suite": "plans-probe",
+      "kills": [
+        "plans-probe.test.ts > the paging helpers > allDistinct is what makes a repeated row across pages visible"
+      ]
+    },
+    {
+      "name": "M-Q11 harness: the driver's bound values are dropped instead of parsed",
+      "file": "src/harness.ts",
+      "from": "  if (typeof params !== \"string\") return [];",
+      "to": "  return [];",
+      "why": "The driver logs its parameters as a JSON array INSIDE a string. Dropping them leaves every `$1` unfilled, so `EXPLAIN` is handed a statement PostgreSQL cannot plan and every plan case fails at once — which is the point: the capture is load-bearing for the whole dimension and its failure must be loud.",
+      "suite": "plans-agents",
+      "kills": [
+        "plans-agents.integration.test.ts > the plan > the environment clause is served by an index rather than a scan"
+      ]
+    },
+    {
+      "name": "M-Q12 agents: the page total is counted WITHOUT the environment clause",
+      "file": "src/agents-catalog.ts",
+      "from": "        transactions.reader().agentBinding.count({ where }),",
+      "to": "        transactions.reader().agentBinding.count({ where: { agent } }),",
+      "why": "COUNT TRUTH. The items are the environment's; the total would be the PROJECT'S. Every page still renders correctly and the number beside it is wrong — a silent correctness bug, not a performance one. The fixture puts three agents in a SIBLING ENVIRONMENT OF THE SAME PROJECT so the two answers differ.",
+      "suite": "plans-agents",
+      "kills": [
+        "plans-agents.integration.test.ts > count truth > the total is the environment's own rows, not the project's"
+      ]
+    },
+    {
+      "name": "M-Q13 agents: the page window is not sent to the database",
+      "file": "src/agents-catalog.ts",
+      "from": "          skip: query.offset,\n          take: query.limit,\n        }) as Promise<BoundRow[]>,",
+      "to": "        }) as Promise<BoundRow[]>,",
+      "why": "A store that returns the whole listing whenever it is asked for a page passes every count-truth case and every order case. Over a fixture of two rows it also passes `length <= limit`; over three hundred it does not, which is the whole reason the fixture is dense.",
+      "suite": "plans-agents",
+      "kills": [
+        "plans-agents.integration.test.ts > count truth > the total does not move with the window it is reported beside"
+      ]
+    },
+    {
+      "name": "M-Q14 agents: the search filter is dropped from the page's `where`",
+      "file": "src/agents-catalog.ts",
+      "from": "      const where = { environmentId: scope.environmentId, agent };",
+      "to": "      const where = { environmentId: scope.environmentId };",
+      "why": "The total and the items are counted under ONE `where`, so dropping it moves both together and no length check can see it. Only a total compared with an INDEPENDENTLY computed count over the returned rows can.",
+      "suite": "plans-agents",
+      "kills": [
+        "plans-agents.integration.test.ts > count truth > the total is the count of the FILTERED set, computed independently"
+      ]
+    },
+    {
+      "name": "M-Q15 threads: the archived filter is dropped from the listing",
+      "file": "src/conversations-threads.ts",
+      "from": "          ...(query.includeArchived ? {} : { archivedAt: null }),",
+      "to": "",
+      "why": "COUNT TRUTH under a tombstone. `includeArchived` false is what an operator's default listing sends, and a store that ignored it would answer a bigger total and a page that looked entirely reasonable. Sixty of the three hundred threads in the fixture are archived.",
+      "suite": "plans-conversations",
+      "kills": [
+        "plans-conversations.integration.test.ts > count truth > the total counts the LIVE threads unless archived ones were asked for"
+      ]
+    },
+    {
+      "name": "M-Q16 threads: the listing order loses its DIRECTION",
+      "file": "src/conversations-threads.ts",
+      "from": "          orderBy: [{ updatedAt: \"desc\" }, { id: \"desc\" }],",
+      "to": "          orderBy: [{ updatedAt: \"asc\" }, { id: \"asc\" }],",
+      "why": "THE ORDER IS THE PORT'S CONTRACT AND THE NEW INDEX IS DECLARED IN ITS DIRECTION. A reversed `orderBy` returns the same rows, once each, in windows that still partition the listing — so the partition case cannot see it, and the FIRST SWEEP REPORTED THIS SURVIVING for exactly that reason. The case that kills it walks every page and demands the stamps come back non-increasing, which is the property `Thread_environmentId_updatedAt_id_idx` exists to serve without a sort.",
+      "suite": "plans-conversations",
+      "kills": [
+        "plans-conversations.integration.test.ts > page truth over three hundred threads > the listing is NEWEST FIRST, and stays so across every page"
+      ],
+      "sweep": "SURVIVED the first sweep — the partition case is blind to direction; KILLED on the second, against a case written for the order itself."
+    },
+    {
+      "name": "M-Q17 budgets: the tombstone filter is dropped from the live read",
+      "file": "src/cost-budgets.ts",
+      "from": "      where: { ...scopedWhere(scope), deletedAt: null },",
+      "to": "      where: { ...scopedWhere(scope) },",
+      "why": "`retireBudget` is SOFT: the row survives because a threshold event points at it. A read that forgot the filter would be right until the first retirement and wrong forever after, in both the page and its total at once — which is why the case compares the total against the unpaged listing as well as against the fixture.",
+      "suite": "plans-cost",
+      "kills": [
+        "plans-cost.integration.test.ts > count truth > the total is the LIVE set: a tombstoned cap is gone from both halves"
+      ]
+    },
+    {
+      "name": "M-Q18 budgets: the total is the page's length instead of the set's",
+      "file": "src/cost-budgets.ts",
+      "from": "        items: all.slice(query.offset, query.offset + query.limit),\n        total: all.length,",
+      "to": "        items: all.slice(query.offset, query.offset + query.limit),\n        total: all.slice(query.offset, query.offset + query.limit).length,",
+      "why": "The most plausible wrong total there is: it agrees with the page on every full window and only disagrees on the LAST one, which a fixture of two rows never reaches.",
+      "suite": "plans-cost",
+      "kills": [
+        "plans-cost.integration.test.ts > count truth > the total does not move with the window"
+      ]
+    },
+    {
+      "name": "M-Q19 exposures: the exposure ordering stops being TOTAL",
+      "file": "src/tools-exposures.ts",
+      "from": "      orderBy: [...EXPOSURE_ORDER],",
+      "to": "      orderBy: [EXPOSURE_ORDER[0]],",
+      "why": "THE ENTRY TRANCHE 5 DECLARED UNFALSIFIABLE, CLOSED. `mutations-tools.json` M09 records this exact edit as SURVIVED: the order is applied again in JavaScript, so every returned page is correctly ordered whatever SQL did, and only `pageExposures` — where the DATABASE chooses the window — can tell the difference. The kill is taken on the STATEMENT rather than on the rows, so it does not depend on which sort the planner picked for a given window; the tie fixture (seventy-five names minted twice, both entities exposing all of them, every name tying four ways over three hundred rows) is what makes the behavioural case beside it meaningful.",
+      "supersedes": "mutations-tools.json M09 (unfalsifiable)",
+      "suite": "plans-tools",
+      "kills": [
+        "plans-tools.integration.test.ts > the order is total, and the fixture ties four ways > the WINDOW STATEMENT asks the database for all three order keys"
+      ]
+    },
+    {
+      "name": "M-Q20 exposures: the entity filter is dropped from the page's `where`",
+      "file": "src/tools-exposures.ts",
+      "from": "          ...(query.entityId === null || query.entityId === undefined\n            ? {}\n            : { entityId: query.entityId }),",
+      "to": "",
+      "why": "COUNT TRUTH under a filter the surface always sends. Both halves move together, so the page still looks right; what changes is the number rendered beside it and the SET the window was drawn from. The fixture's two entities each hold exactly half the environment's exposures, so the wrong answer is exactly double.",
+      "suite": "plans-tools",
+      "kills": [
+        "plans-tools.integration.test.ts > count truth > the total narrows with the entity, and the two entities add up"
+      ]
+    },
+    {
+      "name": "M-Q21 exposures: the search filter is dropped from the page's `where`",
+      "file": "src/tools-exposures.ts",
+      "from": "          ...(query.search === null || query.search === undefined\n            ? {}\n            : { tool: { name: { contains: query.search, mode: \"insensitive\" as const } } }),",
+      "to": "",
+      "why": "The same shape one filter over, and it is listed separately because the two are told apart by DIFFERENT cases: an entity filter is an equality on this table and a search is a condition on the JOINED tool, so a `where` that lost one and kept the other would still pass the other's case.",
+      "suite": "plans-tools",
+      "kills": [
+        "plans-tools.integration.test.ts > count truth > the total under a search is the count of what the search matches"
+      ]
+    },
+    {
+      "name": "M-Q22 exposures: the total is counted under the page's own window",
+      "file": "src/tools-exposures.ts",
+      "from": "        const total = await reader.environmentEntityTool.count({ where });",
+      "to": "        const total = (await readExposures(reader, where, { skip: query.offset, take: query.limit })).length;",
+      "why": "The store's own comment says the total is 'the set the page was drawn from … never the page's own window'. This is that sentence deleted. It agrees with the truth on every window except the last, and on a fixture that fits in one page it agrees always.",
+      "suite": "plans-tools",
+      "kills": [
+        "plans-tools.integration.test.ts > count truth > the total does not move with the window"
+      ]
+    },
+    {
+      "name": "M-Q23 approvals: the since-window is dropped from the listing",
+      "file": "src/jobs-approvals.ts",
+      "from": "    createdAt: { gte: new Date(now.getTime() - sinceDays * 86_400_000) },",
+      "to": "",
+      "why": "COUNT TRUTH UNDER A TIME FILTER, which is the one filter no page LENGTH can see: the window narrows the set the page is drawn from and every page stays exactly as full. The fixture spreads three hundred approvals over ninety days with a hundred of them outside the store's thirty-day default, so the two totals differ by exactly that hundred while both pages hold twenty-five rows.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > the total NARROWS with the window, which is the filter a length cannot see"
+      ]
+    },
+    {
+      "name": "M-Q24 approvals: the pending count is taken under the LISTING's where",
+      "file": "src/jobs-approvals.ts",
+      "from": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...scopedWhere(scope), status: \"PENDING\" },\n        });",
+      "to": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...where, status: \"PENDING\" },\n        });",
+      "why": "THE ONE PLACE IN THIS PACKAGE WHERE MAKING TWO COUNTS AGREE IS THE DEFECT. `ApprovalPage.pendingCount` is documented as \"Pending in the WHOLE scope, not just this page — the live semantics\", so it deliberately ignores the window AND the filters that `total` honours. This edit is the plausible tidy-up — the two counts finally counted the same way — and it silently changes what an operator's badge means without changing a single page. It is here so nobody can make it by accident.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > PENDING IS COUNTED OVER THE WHOLE SCOPE, ON PURPOSE, AND DIFFERS"
+      ]
+    },
+    {
+      "name": "M-Q25 approvals: the pending count loses its SCOPE",
+      "file": "src/jobs-approvals.ts",
+      "from": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...scopedWhere(scope), status: \"PENDING\" },\n        });",
+      "to": "        const pendingCount = await reader.agentApproval.count({\n          where: { status: \"PENDING\" },\n        });",
+      "why": "The other direction, and the one that is unambiguously a defect: a count over every tenant's pending approvals, rendered beside one tenant's page. It is listed separately from M-Q24 because the two are told apart by DIFFERENT cases — one asks whether the count ignores the window on purpose, the other whether it still ignores the neighbours.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > pending is nonetheless SCOPED: another environment's pending rows are not counted"
+      ]
+    }
+  ],
+  "result": [
+    "SWEPT THREE TIMES ON A REAL POSTGRESQL, on the Mac mini, in a detached",
+    "worktree. Baseline: the suite set UNMUTATED, green, with cases executed —",
+    "the driver refuses to sweep a set that is not, and classifies a mutated run",
+    "in which the named case did not EXECUTE as VACUOUS rather than as a kill.",
+    "",
+    "FIRST SWEEP, 22 entries: 20 killed. Both survivors were defects in the CASE",
+    "rather than in the guard, and both are recorded above rather than quietly",
+    "re-anchored — M-Q02's case put the word in a projection the anchor never",
+    "reads, and M-Q16's case proved the pages PARTITION, which a reversed order",
+    "satisfies exactly as well as the right one.",
+    "",
+    "SECOND SWEEP, the same 22: 22 killed, after the two cases were corrected.",
+    "",
+    "THIRD SWEEP, 25 entries with the three approvals guards added: baseline 83",
+    "cases, 0 failing; 25 killed, none vacuous, none declared unfalsifiable.",
+    "",
+    "AND ONE ENTRY ELSEWHERE IS SUPERSEDED. `mutations-tools.json` M09 is",
+    "recorded there as SURVIVED and NOT counted as a guard; M-Q19 is the same",
+    "edit killed by a named case. That file is left as written — it was an honest",
+    "report of what its own suite set could see — and this one names it as",
+    "superseded rather than editing another tranche's ledger."
+  ],
+  "index-survey": {
+    "purpose": [
+      "EVERY PAGED READ THIS ADAPTER OWNS, against the index that would have to",
+      "serve it. Nineteen ports declare a `total`; this is the whole list, with",
+      "the WHERE it filters on, the ORDER it names, and the verdict.",
+      "",
+      "THE TWO COLUMNS THAT MATTER ARE `measured` AND `verdict`, AND THEY ARE",
+      "DIFFERENT CLAIMS. `measured: true` means a plan for the statement THIS",
+      "ADAPTER SENT was read back under `EXPLAIN (ANALYZE)` against a real",
+      "PostgreSQL 16 holding hundreds of rows, and the row count below is what",
+      "that plan touched. `measured: false` means the WHERE and the ORDER were",
+      "read out of the source and matched against the migrations by hand — a",
+      "reading, not a measurement, and it is labelled as one rather than",
+      "presented beside the measured rows as though it were the same thing.",
+      "",
+      "THE RECURRING SHAPE HAS A NAME AND IT IS WORTH STATING ONCE: an index",
+      "`(a, b, c)` cannot deliver `WHERE a = ? ORDER BY c` when `b` is",
+      "unconstrained. Five of the reads below are that shape, `Thread` was the",
+      "sixth and is fixed by this tranche's migration. It is the same defect",
+      "every time and it never shows up in a returned value."
+    ],
+    "reads": [
+      {
+        "read": "conversations pageThreads, no end user named",
+        "table": "Thread",
+        "where": "environmentId = ? [AND archivedAt IS NULL]",
+        "order": "updatedAt DESC, id DESC",
+        "index": "Thread_environmentId_updatedAt_id_idx",
+        "measured": true,
+        "verdict": "FIXED BY THIS TRANCHE. Before the migration: index scan on Thread_environmentId_endUserId_updatedAt_idx feeding a full Sort, 241 rows read for a page of 25, at every window. After: bounded by the window."
+      },
+      {
+        "read": "conversations pageThreads, end user named",
+        "table": "Thread",
+        "where": "environmentId = ? AND endUserId = ? [AND archivedAt IS NULL]",
+        "order": "updatedAt DESC, id DESC",
+        "index": "Thread_environmentId_endUserId_updatedAt_idx",
+        "measured": true,
+        "verdict": "ALREADY RIGHT. Incremental Sort over the index, 15 rows read. This is the read the store's prose was written about; the prose claimed it for the other one too."
+      },
+      {
+        "read": "conversations pageTurns",
+        "table": "Turn",
+        "where": "threadId = ? AND thread.environmentId = ? [AND parentTurnId IS NULL]",
+        "order": "sequence ASC",
+        "index": "Turn_threadId_sequence_key",
+        "measured": true,
+        "verdict": "ALREADY RIGHT, and the control for the rest. No Sort node at all, fewer rows read than the transcript holds."
+      },
+      {
+        "read": "jobs approvals list, status named",
+        "table": "AgentApproval",
+        "where": "environmentId = ? AND status = ? AND createdAt >= ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentApproval_environmentId_status_createdAt_idx",
+        "measured": true,
+        "verdict": "ALREADY RIGHT. All three leading columns constrained or ordered; bounded by the window, not by the scope's hundred pending rows."
+      },
+      {
+        "read": "jobs approvals list, NO status named",
+        "table": "AgentApproval",
+        "where": "environmentId = ? AND createdAt >= ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentApproval_environmentId_status_createdAt_idx (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, NOT FIXED. `status` sits between the equality column and the order column, so this is the same shape `Thread` had. It is bounded by one environment's window-filtered approvals rather than by the page, and adding a second three-column index has a write cost on every approval; that is a schema decision, not a test's."
+      },
+      {
+        "read": "agents pageBoundAgents",
+        "table": "AgentBinding joined to Agent",
+        "where": "environmentId = ? AND agent.projectId = ? [+ active/search]",
+        "order": "agent.createdAt DESC, agent.id DESC",
+        "index": "AgentBinding_environmentId_agentId_key (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, AND NO INDEX ON THIS TABLE CAN FIX IT. The order keys are columns of the JOINED row. 300 bindings read and 900 agent-row touches for a page of 25. A fix needs `Agent.createdAt` denormalised onto `AgentBinding`, which is a schema change with a write path behind it."
+      },
+      {
+        "read": "tools pageExposures",
+        "table": "EnvironmentEntityTool joined to Tool and Entity",
+        "where": "environmentId = ? [AND entityId = ?] [AND tool.name ILIKE ?]",
+        "order": "tool.name ASC, entity.externalId ASC, toolId ASC",
+        "index": "EnvironmentEntityTool_environmentId_entityId_toolId_key (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, SAME REASON AS pageBoundAgents. Two of the three order keys are on joined rows. 300 exposures read for a page of 25."
+      },
+      {
+        "read": "cost-monitoring pageBudgets",
+        "table": "Budget",
+        "where": "environmentId = ? AND ancestry AND deletedAt IS NULL",
+        "order": "NONE IN SQL — sorted and sliced over the decoded rows",
+        "index": "Budget_environmentId_deletedAt_enabled_idx serves the WHERE",
+        "measured": true,
+        "verdict": "DELIBERATE FULL HYDRATION, PINNED AS A COST. The leading sort key is `target.subject`, decoded out of the encoded `scope` text together with `agentId`; SQL cannot order by a value the database does not hold. 255 rows read for a page of 25 AND for a page of 1."
+      },
+      {
+        "read": "providers pageProviderKeys",
+        "table": "ProviderKey",
+        "where": "environmentId = ? [AND provider = ?]",
+        "order": "NONE IN SQL — sorted, SEARCHED and sliced over the decoded rows",
+        "index": "ProviderKey_environmentId_provider_isDefault_idx serves the WHERE",
+        "measured": false,
+        "verdict": "READ FROM SOURCE, NOT MEASURED. The same design as pageBudgets and for a second reason too: the search runs over decoded rows because Prisma's `contains` builds an unescaped ILIKE, so `100%` would match everything. Its cost is the size of the environment's key set, which is bounded by how many provider keys an operator has configured — tens, not thousands. Named here rather than measured, because a suite for it would pin the same finding a third time."
+      },
+      {
+        "read": "governance pageSafetyEvents",
+        "table": "SafetyEvent",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "SafetyEvent_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: the index leads on the equality column and continues with the order column, so it can serve this read; only the `id` tie-break needs resolving above it."
+      },
+      {
+        "read": "governance pageEvals",
+        "table": "AgentEval",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentEval_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: same shape as pageSafetyEvents, same verdict."
+      },
+      {
+        "read": "conversations pagePostmanExecutions",
+        "table": "PostmanExecution",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "PostmanExecution_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: same shape, same verdict."
+      },
+      {
+        "read": "governance pageCriteria",
+        "table": "EvalCriterion",
+        "where": "environmentId = ?",
+        "order": "createdAt ASC, id ASC",
+        "index": "EvalCriterion_environmentId_name_key leads on the scope; NOTHING carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED: no index provides this order. The read is bounded by one environment's criteria, which an operator writes by hand, so the set is small by construction — but the shape is the one this tranche exists to name."
+      },
+      {
+        "read": "governance pageGoldenSets",
+        "table": "GoldenSet",
+        "where": "environmentId = ? [AND agentId = ?]",
+        "order": "createdAt ASC, id ASC",
+        "index": "GoldenSet_environmentId_agentId_name_key leads on the scope; NOTHING carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED: same as pageCriteria, same bound, same shape."
+      },
+      {
+        "read": "memory pageMemories",
+        "table": "Memory",
+        "where": "environmentId = ? AND endUserId = ? [+ archivedAt, agentId, cluster]",
+        "order": "createdAt ASC, id ASC",
+        "index": "Memory_environmentId_endUserId_archivedAt_idx and two siblings; NONE carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED, AND THE ONE ON THIS LIST MOST LIKELY TO MATTER. A subject's memory set is the thing that grows without an operator doing anything, and no index here delivers the listing's order. An index on `(environmentId, endUserId, archivedAt, createdAt, id)` would; declaring it is a schema decision this tranche does not take unmeasured."
+      },
+      {
+        "read": "memory listEntities",
+        "table": "MemoryEntity",
+        "where": "environmentId = ? AND endUserId = ? [+ agentId IN, cluster]",
+        "order": "entityKey ASC, id ASC",
+        "index": "MemoryEntity_environmentId_endUserId_agentId_entityKey_key",
+        "measured": false,
+        "verdict": "REPORTED: `agentId` sits between the subject and the order key, and the read filters it with `IN` rather than equality, so this is the `Thread` shape again. Bounded by one subject's entity set."
+      },
+      {
+        "read": "skills pageSkills",
+        "table": "Skill",
+        "where": "the visibility clause: organization, project adoption and environment binding",
+        "order": "isOfficial DESC, slug ASC, version DESC, id ASC",
+        "index": "Skill_organizationId_slug_version_key",
+        "measured": false,
+        "verdict": "REPORTED: the index carries slug and version but not `isOfficial`, which is the LEADING key, so it cannot deliver the order. The catalogue is bounded by an organization's skills."
+      },
+      {
+        "read": "agents pageVersions",
+        "table": "AgentVersion",
+        "where": "agentId = ?",
+        "order": "versionNumber DESC, id DESC",
+        "index": "AgentVersion_agentId_versionNumber_key",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: the unique index is exactly the equality column and the order column. Right by construction."
+      },
+      {
+        "read": "agents pageTemplates",
+        "table": "PostmanTemplate",
+        "where": "environmentId = ? [AND agentId = ?] [+ search]",
+        "order": "isDefault DESC, updatedAt DESC, id DESC",
+        "index": "PostmanTemplate_environmentId_agentId_name_key",
+        "measured": false,
+        "verdict": "REPORTED: the index carries the scope but neither order key. Bounded by an environment's templates, which an operator writes by hand."
+      }
+    ]
+  }
+}

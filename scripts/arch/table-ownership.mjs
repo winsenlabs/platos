@@ -202,6 +202,560 @@ export const UNOWNED_ADR_ROWS = Object.freeze({
 });
 
 /**
+ * The ADAPTER that holds each owner's canonical PostgreSQL store.
+ *
+ * WHY THIS MAP HAS TO EXIST. The sole-writer rule says a canonical row has one
+ * writing CONTEXT. ADR M0.3 §2 says a context's `domain/` and `application/` may
+ * not import the ORM. Those two sentences are both right and, taken literally
+ * together, they forbid the row from ever being written: the only package
+ * allowed to write it is the only package not allowed to hold a client. The
+ * missing third sentence is ADR M0.3 §4's own note on the adapter directory —
+ * "the tenancy-database client; per-context repositories, owner-tagged" — which
+ * says the owner's PostgreSQL adapter writes on the owner's behalf.
+ *
+ * WHY IT IS NOT "ANY ADAPTER WHOSE OWNER MATCHES". `redis-ratelimit` is owned by
+ * `identity-access` and `notifier-email` by `cost-monitoring`; neither has any
+ * business writing a canonical row, and a rule derived from the adapter table's
+ * owner column would have granted both. Only a CANONICAL-STORE adapter is
+ * listed, and it is listed by hand, so granting one is a decision somebody made
+ * rather than a consequence of an unrelated table.
+ *
+ * THE OUTBOX PSEUDO-OWNER IS PRESENT, and it was not until WIN-258 T4. The note
+ * that used to sit here said it needed no delegation "because it is already an
+ * adapter: it resolves through `ownerDirectory`". That was true of the DIRECTORY
+ * and false of the WRITE. `packages/adapters/outbox` may not hold the ORM — ADR
+ * M0.3 §15 gives the client exactly one home and `tenancy-prisma-only` in
+ * scripts/arch/boundary-rules.mjs enforces it — so the directory the pseudo-owner
+ * resolves to is a directory that cannot issue an INSERT, and `Event` was in
+ * exactly the position every other canonical row was in before this map existed:
+ * owned by a package unable to write it. The delegation below is that same
+ * amendment applied to the one owner that is an adapter rather than a context.
+ */
+export const CANONICAL_STORE_ADAPTERS = Object.freeze({
+  // WIN-258. The PostgreSQL TenancyRepository. `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names the same directory as the ORM's one
+  // home, so the package permitted to write these rows and the package permitted
+  // to hold the client are the same package by construction.
+  tenancy: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T2. The PostgreSQL IdentityAccessRepository — the SAME directory,
+  // because there is one PostgreSQL database behind one client and ADR M0.3 §15
+  // makes that one adapter directory rather than one per context.
+  //
+  // TWO OWNERS RESOLVING TO ONE DIRECTORY IS NOT THE SAME AS ONE OWNER LOSING
+  // ITS BOUNDARY. Ownership here is carried by the owner TAG on the row, and
+  // `checkSoleWriter` still asks, per WRITE, whether the file's directory is one
+  // of `ownerDirectories(OWNER[model])`. A write to `Memory` from this package
+  // still fails, because `memory` has no entry in this map; what this entry
+  // grants is exactly the 23 rows `identity-access` owns.
+  //
+  // It is also what makes `AccessKeyStore` implementable at all.
+  // `Environment.accessKeyRevocationVersion` — the fence a rotation and a
+  // revoke race over — is a column on `Environment`, which `tenancy` owns. A
+  // thirteenth adapter package holding only identity-access's repositories
+  // could not have bumped it without writing a row it does not own; the shared
+  // directory can, because it is already `tenancy`'s delegate.
+  "identity-access": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T4. The kernel outbox adapter's canonical store — the SAME
+  // directory again, and for the same reason: `Event` lives in the one
+  // PostgreSQL database, behind the one client, in the one file that imports it.
+  //
+  // WHAT THIS GRANTS, EXACTLY. `ownerDirectories("<kernel-outbox-adapter>")` now
+  // returns the outbox adapter's own directory AND this one, and nothing else.
+  // The outbox adapter keeps every decision that makes an event an event — the
+  // ordered identifier, the instant, the envelope, the refusals — and this
+  // directory holds the statement. A write to `Event` from any third place still
+  // fails, and a write to any row this owner does not own still fails from here:
+  // ownership is carried by the owner TAG on the row and `checkSoleWriter` asks
+  // per WRITE, so this entry grants exactly the two rows the pseudo-owner owns,
+  // `Event` and the superseded `ObservabilityOutbox`.
+  "<kernel-outbox-adapter>": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The PostgreSQL `ToolsRepository` — the SAME directory for the
+  // fourth time, and for the same sentence: one PostgreSQL database behind one
+  // client is one adapter DIRECTORY (ADR M0.3 §15), not one package per context.
+  //
+  // WHAT THIS GRANTS, EXACTLY. The ten rows ADR M0.3 §1 row 7 gives `tools`:
+  // `Tool`, `EnvironmentEntityTool`, `ToolHealth`, `ToolCall`, `ToolCallAudit`,
+  // `AgentToolPolicy`, `EntityToolPolicy`, `EntityMcpConfig`, `EntityMcpClient`
+  // and `OrganizationMcpPolicy`. Nothing wider. `checkSoleWriter` still asks, per
+  // WRITE, whether the file's directory is one of `ownerDirectories(OWNER[model])`,
+  // so a write to `Memory` or to `Budget` from this package still fails — the
+  // ownership is carried by the owner TAG on the row and this entry moves no tag.
+  //
+  // IT IS ALSO WHAT MAKES `replaceExposures` IMPLEMENTABLE. That method is a
+  // DELETE and two set-writes on `EnvironmentEntityTool` that must commit or roll
+  // back together, and the transaction they run in is `TenancyTransactions` — the
+  // one this directory already holds. A thirteenth adapter package holding only
+  // this context's repository would have had its own pool, so a use case that
+  // registered an entity's tools and bumped its environment's access-key fence
+  // would have been two transactions with a window between them.
+  tools: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The PostgreSQL `AgentsRepository` and `ScaffoldingRepository` —
+  // the SAME directory a fifth time, and for the fourth time for the same
+  // reason: one PostgreSQL database behind one client is one adapter directory
+  // (ADR M0.3 §15), not one directory per context.
+  //
+  // WHAT THIS GRANTS, EXACTLY. The seven rows of ADR M0.3 §1 row 5 — `Agent`,
+  // `AgentBinding`, `AgentCluster`, `AgentSkill`, `AgentVersion`, `Macro` and
+  // `PostmanTemplate` — and nothing else. `ownerDirectories("agents")` now
+  // returns `packages/contexts/agents` AND this one; every other owner is
+  // unmoved, so a write to `Tool` or `Memory` from here still fails, and a write
+  // to `Agent` from any third directory still fails.
+  //
+  // IT DOES NOT GRANT WHAT `agents` NEEDS AND DOES NOT OWN, and that turned out
+  // to matter. `AgentSkill.environmentSkillId` is a foreign key into
+  // `EnvironmentSkill`, which ADR M0.3 §1 row 6 gives to `skills`; `skills` has
+  // no entry here, so this directory cannot create the row its own loadout write
+  // depends on. The integration fixture seeds that chain as SQL applied by
+  // `prisma db execute`, which is honest about the fact that the row belongs to
+  // a context whose store does not exist yet, rather than reaching for a
+  // permission the map deliberately withholds.
+  agents: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The FIFTH context to resolve to this directory, and the reason
+  // is unchanged from T2's: one PostgreSQL database is one client is one adapter
+  // DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  // A thirteenth adapter package holding `cost-monitoring`'s repositories would
+  // have to import the client too, and the single-home rule would stop being
+  // writable as a single-home rule.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the SIX rows `cost-monitoring` owns — `Budget`,
+  // `BudgetThresholdEvent`, `AlertChannel`, `AlertChannelConfiguration`,
+  // `AlertDelivery` and `AlertDeliveryRetry`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these six from anywhere else
+  // still fails. Three owners resolving to one directory is not one owner losing
+  // its boundary: the boundary is the owner TAG on the row.
+  //
+  // IT IS ALSO WHAT MAKES `BudgetRepository` IMPLEMENTABLE AT ALL. Without this
+  // entry `ownerDirectories("cost-monitoring")` is `packages/contexts/cost-monitoring`
+  // alone — and ADR M0.3 §2 forbids that package's `domain/` and `application/`
+  // from importing the ORM, so the one package permitted to write these six rows
+  // would be the one package unable to.
+  "cost-monitoring": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The SIXTH context to resolve to this directory, and the reason
+  // has not changed since T2's: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the SIX rows `channels` owns — `ChannelApp`,
+  // `ChannelAppThread`, `ChannelConnection`, `ChannelEventInbox`,
+  // `ChannelInstallation` and `ChannelThread`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Thread` or to `Turn` from
+  // this package still fails — `conversations` has no entry here — and a write
+  // to any of these six from anywhere else still fails. Six owners resolving to
+  // one directory is not six owners losing their boundaries: the boundary is the
+  // owner TAG on the row, and this entry moves no tag.
+  //
+  // IT DOES NOT GRANT WHAT `channels` NEEDS AND DOES NOT OWN, and here that is
+  // the interesting half. Every thread link is a foreign key into `Thread`,
+  // which ADR M0.3 §1 row 16 gives to `conversations`; `Credential` belongs to
+  // `secrets` and `Agent` to `agents`; none of the three has an entry here. So
+  // this directory cannot create the rows its own link write depends on, and the
+  // integration fixture seeds that chain as SQL applied by `prisma db execute` —
+  // which is honest about the fact that the rows belong to contexts whose stores
+  // do not exist yet, rather than reaching for a permission the map deliberately
+  // withholds.
+  channels: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The SEVENTH context to resolve to this directory, on the sentence
+  // that has not changed since T2: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FIVE rows `governance` owns — `SafetyEvent`,
+  // `MessageRating`, `EvalCriterion`, `AgentEval` and `GoldenSet`. Nothing else.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Turn` or to `Thread` from
+  // this package still fails — and those two matter here, because three of these
+  // five rows hang off a `Thread` and `governance` reads all three through the
+  // inverted read-seam ports in `application/ports/read-seams.ts` rather than
+  // through a store of its own. The entry moves no owner TAG.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC. `governance-erasure-target.ts`
+  // counts a subject's safety events and ratings, then ANONYMISES the first and
+  // DESTROYS the second, and the port signatures put both mutations in the
+  // caller's `TransactionScope`. Those two tables are written by the same client
+  // in the same transaction only because they resolve to the same directory; a
+  // thirteenth adapter package holding `governance`'s five repositories would
+  // have had its own pool, and an erasure that failed between the two halves
+  // would have left the ledger anonymised and the votes intact.
+  governance: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The EIGHTH context to resolve to this directory, on the sentence
+  // every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `secrets` owns — `Credential`,
+  // `CredentialSecretVersion`, `CredentialAudit` and `EnvironmentVariable`.
+  // Nothing else. `checkSoleWriter` asks per WRITE whether the file's directory
+  // is one of `ownerDirectories(OWNER[model])`, so a write to `Memory` or to
+  // `ProviderKey` from this package still fails, and a write to any of these
+  // four from anywhere else still fails. `SecretReference` is NOT granted and
+  // could not be: `UNOWNED_ADR_ROWS` above records that the ADR's fifth row for
+  // this context does not exist in the canonical schema at all.
+  //
+  // IT IS ALSO WHAT MAKES THE `EnvironmentVariable` SEAM IMPLEMENTABLE.
+  // `setEnvironmentVariable` seals a credential, writes its envelope, points the
+  // credential at it, writes the variable row and appends two audit records, and
+  // `enforce_win124_credential_kind` re-reads the credential from INSIDE the
+  // variable's write to check it is unrevoked and already has an active version.
+  // A thirteenth adapter package holding only this context's repositories would
+  // have had its own pool: the credential would be uncommitted on one connection
+  // while the rule that has to see it ran on another, and the rule would refuse
+  // a row that is correct.
+  //
+  // THE CONVERSE IS ALSO TRUE AND IS WHY `ProviderKey` IS NOT GRANTED HERE. The
+  // extraction source writes `ProviderKey` inside its secret store; ADR M0.3 §1
+  // row 4 gives that row to `providers`, and `domain/credential.ts` records that
+  // those three methods were deliberately not extracted for exactly that reason.
+  // The `providers` entry below grants that row to its own owner — which is the
+  // split the ADR describes and not a widening of this one: `secrets` still owns
+  // the credential and its envelope, `providers` still owns the row that points
+  // at them, and `checkSoleWriter` still asks per WRITE which owner a row has.
+  secrets: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The NINTH context to resolve to this directory, on the sentence
+  // the eight above stand on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `providers` owns —
+  // `EnvironmentProvider`, `Model`, `ModelPrice` and `ProviderKey`. Nothing
+  // else. `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these four from anywhere
+  // else still fails. Nine owners resolving to one directory is not nine owners
+  // losing their boundaries: the boundary is the owner TAG on the row, and this
+  // entry moves no tag.
+  //
+  // IT IS THE ENTRY THE COMMENT ON `secrets` ABOVE SAID WAS MISSING, and the
+  // sentence it closes is worth keeping rather than deleting. That comment
+  // records that the extraction source writes `ProviderKey` inside its secret
+  // store, that ADR M0.3 §1 row 4 gives the row to `providers`, and that
+  // `providers` "has no entry here, so this directory cannot write it" — which
+  // is why `secrets/domain/credential.ts` records three methods as deliberately
+  // not extracted. With this entry the directory CAN write it, and the split is
+  // now the one the ADR describes: `secrets` owns the credential and its
+  // envelope, `providers` owns the row that points at them, and both halves of
+  // `register-provider-key.ts` are the same client and the same transaction.
+  //
+  // AND THAT IS WHAT MAKES `ProviderKey` WRITABLE AT ALL. `ProviderKey_credential
+  // _provider_integrity` is a BEFORE INSERT OR UPDATE rule that RE-READS the
+  // `Credential` from inside the key's own write, demanding one in the same
+  // environment whose `provider` and `name` match the key's. A thirteenth adapter
+  // package holding only `providers`' repository would have had its own pool: the
+  // credential would be uncommitted on the `secrets` connection while the rule
+  // that has to see it ran on this one, and the rule would refuse a row that is
+  // correct. It is the `EnvironmentVariable` seam one tranche back, one table
+  // over.
+  //
+  // IT DOES NOT GRANT WHAT `providers` NEEDS AND DOES NOT OWN. `AgentVersion`,
+  // `AgentBinding` and `Agent` are `agents`' rows and `Credential` is `secrets`',
+  // and this store READS all four — `countAgentVersionsPinning` walks the first
+  // three to answer how many executable versions pin a key. Reads are
+  // unrestricted by design (§1 restricts WRITES), and the integration fixture
+  // seeds the versions it needs as SQL applied by `prisma db execute`, which is
+  // honest about the fact that those rows belong to another context.
+  providers: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The TENTH context to resolve to this directory, on the sentence
+  // every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `conversations` owns — `Thread`,
+  // `Turn`, `Step` and `PostmanExecution`. Nothing else. `checkSoleWriter` asks
+  // per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory`, to `Artifact` or to
+  // `ToolCallAudit` from this package still fails, and a write to any of these
+  // four from anywhere else still fails.
+  //
+  // IT CLOSES A HOLE THE OTHER EIGHT ENTRIES HAD TO WORK AROUND. Until now
+  // `conversations` had NO entry here, and three sibling harnesses said so in as
+  // many words: `governance-harness.ts` seeds its `Thread` and `Turn` peers
+  // through `prisma db execute` because "sole-writer.mjs refuses a write to
+  // either from this directory, correctly", and the `channels` entry above
+  // records the same for its thread links. Those fixtures are unchanged and stay
+  // unchanged: this entry moves no owner TAG, so a `Thread` written from
+  // `channels-links.ts` is still refused — what it grants is that
+  // `conversations-threads.ts`, in the same directory, may write one.
+  //
+  // AND IT IS WHAT MAKES THE FOUR PORTS IMPLEMENTABLE AT ALL. Without it
+  // `ownerDirectories("conversations")` is `packages/contexts/conversations`
+  // alone, and ADR M0.3 §2 forbids that package's `domain/` and `application/`
+  // from importing the ORM — so the one package permitted to write these four
+  // rows would be the one package unable to.
+  //
+  // IT DOES NOT GRANT WHAT `conversations` NEEDS AND DOES NOT OWN, and here the
+  // list is long because a turn touches everything: `Agent` and `AgentVersion`
+  // are `agents`' (§1 row 5), `EndUser` is `identity-access`' (row 1),
+  // `PostmanTemplate` is `agents`', `User` is `identity-access`' and `ModelPrice`
+  // is `providers`' (row 4). `providers` has no entry here at all, and
+  // `Step_price_snapshot` makes that bite: a priced step's four rates must match
+  // a real `ModelPrice` row exactly, and this directory cannot create one. The
+  // integration fixture seeds that chain as SQL applied by `prisma db execute`,
+  // which is honest about the fact that the rows belong to contexts whose stores
+  // do not exist yet, rather than reaching for a permission the map withholds.
+  conversations: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The ELEVENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the THREE rows `skills` owns — `Skill`,
+  // `ProjectSkill` and `EnvironmentSkill`. Nothing else. `checkSoleWriter` asks
+  // per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these three from anywhere
+  // else still fails. Nine owners resolving to one directory is not nine owners
+  // losing their boundaries: the boundary is the owner TAG on the row, and this
+  // entry moves no tag.
+  //
+  // IT IS ALSO WHAT MAKES AN INSTALL ATOMIC. An install is TWO rows in two
+  // tables — the `ProjectSkill` adoption and the `EnvironmentSkill` binding that
+  // is keyed by the adoption's id — and `install-skill.ts` writes both in one
+  // unit of work. They commit or roll back together only because they are the
+  // same client on the same connection; a thirteenth adapter package holding
+  // only this context's repository would have had its own pool, and an install
+  // that failed on its second row would have left a project adoption behind that
+  // nothing points at and that the uninstall path — which deletes only the
+  // environment row — could never remove.
+  //
+  // AND IT CLOSES THE GAP THIS MAP RECORDED AT `agents`. The `agents` entry
+  // above says its own loadout write depends on `EnvironmentSkill`, "which ADR
+  // M0.3 §1 row 6 gives to `skills`; `skills` has no entry here, so this
+  // directory cannot create the row its own loadout write depends on", and that
+  // its integration fixture seeds the chain as SQL applied by `prisma db
+  // execute` rather than reaching for a permission the map withholds. The
+  // permission is now granted — to `skills`, tagged `skills`, and used by
+  // `skills`' own store. It does NOT widen what `agents` may write: the tag on
+  // `EnvironmentSkill` did not move, so a write to it from `agents`' repository
+  // modules is still judged against `ownerDirectories("skills")`, which is this
+  // directory — the same directory — which is exactly why the ownership that
+  // matters is carried by the tag rather than by the folder.
+  skills: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The TWELFTH context to resolve to this directory, on the same
+  // sentence:
+  // WHAT THIS GRANTS, EXACTLY: the THREE rows `memory` owns — `Memory`,
+  // `MemoryEntity` and `MemoryRelationship`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Turn` or to `MessageRating`
+  // from this package still fails — and those two matter here more than the
+  // usual pair, because `MemoryRepository` READS both. Five of its methods read
+  // rows this context does not own (`AgentBinding`, `Thread`, `Turn`,
+  // `MessageRating`), which §5.2 exempts by name because they are reads; the
+  // moment one of them became a write it would be refused, and that is the whole
+  // point of the grant being per row rather than per directory.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC ACROSS THREE TABLES.
+  // `memory-erasure-target.ts` counts a subject's memories, entities and edges,
+  // then destroys the edges, the nodes and the rows, and every one of those six
+  // port signatures puts the mutations in the CALLER's `TransactionScope`. The
+  // three tables are written by the same client in the same transaction only
+  // because they resolve to the same directory; a thirteenth adapter package
+  // holding `memory`'s two repositories would have had its own pool, and an
+  // erasure that failed between the edges and the memories would have left a
+  // knowledge graph standing over a person whose memories are gone.
+  //
+  // AND IT IS WHAT LETS THE VECTOR BE WRITTEN AT ALL. `Memory.embedding` is
+  // `Unsupported("vector(1536)")`, which the generated client can neither select
+  // nor set — so storing one is a raw `UPDATE "Memory"`, and `RAW_SQL_METHODS`
+  // below attributes that statement to `memory` by the table it names. Without
+  // this entry the one package permitted to write the row would be issuing a
+  // statement the gate refuses.
+  memory: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the same
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client
+  // is one adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `privacy` owns — `ErasureOperation`
+  // and `ErasureTombstone`. Nothing else, and here that is the whole point.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory`, to `Turn` or to
+  // `EndUser` from this package still fails — and those three matter more here
+  // than the usual pair, because a right-to-erasure is a sweep across exactly
+  // those tables. It does NOT get to make it: each of those rows is destroyed by
+  // its own owner's `ErasureTarget`, tagged with that owner, and this entry moves
+  // no tag.
+  //
+  // IT IS WHAT MAKES A MULTI-CONTEXT ERASURE ATOMIC, and that argument is
+  // stronger for this owner than for any of the twelve above. `run-erasure-pass.ts`
+  // opens ONE unit of work, asks every injected `ErasureTarget` to carry out its
+  // plan inside it, and writes this context's own progress row in the same
+  // breath. Those targets are `conversations`', `memory`'s, `governance`'s and
+  // `skills`' — every one already delegated to this directory. A thirteenth
+  // adapter package holding only `privacy`'s repository would have had its own
+  // pool and its own `AsyncLocalStorage` frame, so the `TransactionScope` the
+  // pass minted would have reached each target as a token their frame had never
+  // issued and been refused `scope_unknown`. The erasure would not have been
+  // non-atomic; it would not have run at all.
+  //
+  // AND IT IS WHAT LETS THE BARRIER BE SEALED SEPARATELY AND STILL BE SEEN.
+  // `seal-subject.ts` writes the tombstones in their OWN unit of work, before the
+  // destruction, because a barrier that committed with the destruction would be
+  // open for exactly as long as the destruction takes. Both units of work are
+  // this one client, so the seal is a committed fact the destructive transaction
+  // reads; two pools would have made it invisible to the pass it exists to
+  // protect.
+  //
+  // IT DOES NOT GRANT WHAT `privacy` NEEDS AND DOES NOT OWN, and for this context
+  // that withholding is a design property rather than an inconvenience.
+  // `SubjectDirectory` resolves a handle into every scope and alias a person
+  // occupies by reading `EndUser`, `EndUserIdentity` and `EndUserSession` — ADR
+  // M0.3 §1 row 1, `identity-access`'. Reads are unrestricted by design (§1
+  // restricts WRITES), so this directory could physically answer that port; it is
+  // deliberately not implemented here, because the port's own header says it is
+  // the composition root — not this package — that is allowed to know
+  // identity-access exists.
+  privacy: "packages/adapters/postgres-tenancy",
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `jobs` owns — `Job` and
+  // `AgentApproval`. Nothing else, and this is the narrowest grant in the map.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Thread`, to `Turn` or to
+  // `Agent` from this package still fails — and all three matter here, because
+  // `AgentApproval` carries a foreign key to every one of them. Seventeen owners
+  // resolving to one directory is not seventeen owners losing their boundaries:
+  // the boundary is the owner TAG on the row, and this entry moves no tag.
+  //
+  // IT IS WHAT MAKES A DECISION AND ITS RESUMPTION ONE UNIT OF WORK.
+  // `resolve-approval.ts` records a human's decision on `AgentApproval` and then
+  // resumes the run parked on a `DurableRuntime` suspension, and
+  // `jobs-erasure-target.ts` counts a subject's approvals and then destroys
+  // them — both through a `TransactionScope` the caller opened. Those writes are
+  // the same client on the same connection only because this owner resolves to
+  // the same directory as `tenancy`, whose `UnitOfWork` mints the token; a
+  // thirteenth adapter package holding only these two repositories would have
+  // had its own pool and its own `AsyncLocalStorage` frame, and a token minted
+  // by one would have been refused by the other as `scope_unknown`.
+  //
+  // IT DOES NOT GRANT WHAT `jobs` NEEDS AND DOES NOT OWN, and here that is the
+  // whole ancestry of an approval. `enforce_domain_ancestry` fires BEFORE INSERT
+  // OR UPDATE on `AgentApproval` and demands that its `agentId` belong to an
+  // `Agent` in the environment's project, its `threadId` to a `Thread` in the
+  // environment, and its `turnId` to a `Turn` in that thread. `Agent` is
+  // `agents`' row (ADR M0.3 §1 row 5) and `Thread` and `Turn` are
+  // `conversations`' (row 16); both contexts resolve to this same directory, so
+  // this package CAN write them — under their own owners' tags, from their own
+  // stores, never from `jobs`'. The integration fixture seeds that chain as SQL
+  // applied by `prisma db execute` for the reason `governance-harness.ts` gives
+  // for its own: a fixture with two mechanisms for one chain is a fixture that
+  // has to be debugged before a suite can be read.
+  jobs: "packages/adapters/postgres-tenancy",
+  // is one adapter DIRECTORY (ADR M0.3 s15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `files` owns — `MessageAttachment`
+  // and `Artifact`. Nothing else. `checkSoleWriter` asks per WRITE whether the
+  // file's directory is one of `ownerDirectories(OWNER[model])`, so a write to
+  // `Thread`, to `Turn`, to `EndUser` or to `Agent` from this package still
+  // fails — and those four matter here more than the usual pair, because every
+  // one of them is a FOREIGN KEY on `MessageAttachment` and this store READS all
+  // four through the joins that resolve a row's scope. Reads are unrestricted by
+  // design (s1 restricts WRITES); the moment one of them became a write it would
+  // be refused, and that is the whole point of the grant being per row rather
+  // than per directory.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET COHERENT ACROSS TWO SYSTEMS.
+  // `files-erasure-target.ts` destroys a subject's BLOB through `ObjectStore`
+  // and then its ROW through `deleteAttachment`, and then deletes every artifact
+  // revision the subject authored — and `domain/destruction.ts` fixes that order
+  // because no transaction spans a bucket and a database. The two ROW halves are
+  // written by the same client in the same transaction only because they resolve
+  // to the same directory; a fourteenth adapter package holding this context's
+  // repository would have had its own pool, and an erasure that failed between
+  // the attachment rows and the artifact rows would have left a subject's
+  // authored documents standing over blobs that are already gone.
+  //
+  // IT DOES NOT GRANT THE OTHER PORT THIS CONTEXT OWNS. `ObjectStore` is
+  // `files`' own adapter-facing port (ADR M0.3 s13) and its adapter is
+  // `packages/adapters/objectstore-minio`, which is where `files` already
+  // appears as an owner in `EXPECTED_ADAPTER_OWNERS`. This entry is about ROWS.
+  files: "packages/adapters/postgres-tenancy",
+  // WHAT THIS GRANTS, EXACTLY: the ONE row `observability` owns — `AdminAudit`.
+  // Nothing else, and this owner's "nothing else" is unusually wide, because ADR
+  // §1 row 12 gives the context four analytical tables as well and NOT ONE of
+  // them is a Prisma row: the note on `AdminAudit` in `OWNER` above says so, and
+  // they are reached through `ObservabilitySink` in a different store with a
+  // different failure model. `checkSoleWriter` asks per WRITE whether the file's
+  // directory is one of `ownerDirectories(OWNER[model])`, so a write to `Event`
+  // or to `ObservabilityOutbox` from this package is still judged against the
+  // `<kernel-outbox-adapter>` pseudo-owner and not against this entry — which
+  // matters more here than anywhere else in this map, since `observability` is
+  // the context that DRAINS both of those rows and is deliberately not their
+  // writer (§1's closing note, §7 decision 8).
+  //
+  // IT IS WHAT MAKES AN AUDIT ROW COMMIT WITH THE ACTION IT RECORDS. Every write
+  // on `ObservabilityRepository` takes the caller's `TransactionScope`, and
+  // `record-admin-action.ts` puts the append inside the admin action's own unit
+  // of work. Those two writes are one transaction only because they resolve to
+  // the same directory and therefore the same client and the same ambient frame;
+  // a fourteenth adapter package holding this one repository would have had its
+  // own pool, and an audit trail that can disagree with what actually happened is
+  // worse than no audit trail, because it is believed.
+  //
+  // AND IT IS THE FIRST ENTRY THAT DOES NOT MAKE ITS PORT FULLY IMPLEMENTABLE.
+  // `00000000000000_initial/migration.sql` installs `reject_admin_audit_mutation()`
+  // on UPDATE, DELETE and TRUNCATE of `AdminAudit` and withdraws all three
+  // privileges from PUBLIC, so `ObservabilityRepository.clearAdminAuditActor` —
+  // an UPDATE returning rows changed — can return zero or refuse and nothing
+  // else. The grant below is still exactly right: the write this directory is
+  // permitted to issue is the write the port declares, and it is the DATABASE,
+  // not this map, that declines it.
+  observability: "packages/adapters/postgres-tenancy",
+  // WHAT THIS GRANTS, EXACTLY: the ONE row `eventing` owns —
+  // `NotificationRule`. Nothing else, and there IS nothing else: ADR M0.3 §1 row
+  // 17 names three rows for this context and `UNOWNED_ADR_ROWS` above records
+  // that the other two, `PlatformNotification` and
+  // `PlatformNotificationInteraction`, exist only in the legacy schema and are
+  // therefore not canonical tenancy rows at all. This is the SMALLEST grant in
+  // the map.
+  //
+  // ONE ROW DOES NOT MAKE THE ENTRY OPTIONAL, and that is the whole reason it
+  // reads like the twelve above it. Without it `ownerDirectories("eventing")` is
+  // `packages/contexts/eventing` alone — and ADR M0.3 §2 forbids that package's
+  // `domain/` and `application/` from importing the ORM — so the one package
+  // permitted to write `NotificationRule` would be the one package unable to.
+  // `checkSoleWriter` still asks per WRITE whether the file's directory is one
+  // of `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn`
+  // from this package still fails, and a write to `NotificationRule` from
+  // anywhere else still fails.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC ACROSS CONTEXTS. Unlike
+  // `governance`'s and `memory`'s, this context's target touches ONE table, so
+  // the atomicity it needs is not internal — it is that `privacy` opens one unit
+  // of work, hands the SAME `TransactionScope` to every `ErasureTarget` in the
+  // array, and this context's `createdBy` scrub commits or rolls back with the
+  // others. That is true only because they are the same client on the same
+  // connection: a thirteenth adapter package holding this one repository would
+  // have had its own pool and its own ambient frame, and the shared scope would
+  // have been refused as `scope_unknown` — the right fact under the wrong cause.
+  //
+  // AND IT DOES NOT GRANT WHAT `eventing` READS AND DOES NOT OWN. Every read in
+  // this store narrows through `Environment` and `Project` — the ancestry filter
+  // the legacy `environmentScopeWhere` walks — and both rows are `tenancy`'s.
+  // Reads are unrestricted by design (§1 restricts WRITES), and the row that
+  // makes the difference visible is `Event`: the outbox envelope this context
+  // ROUTES belongs to the `<kernel-outbox-adapter>` pseudo-owner, and a write to
+  // it attributed to `eventing` is refused from here exactly as it is from
+  // anywhere else.
+  eventing: "packages/adapters/postgres-tenancy",
+});
+
+/**
  * ADR M0.3 §7 decision 10: the durable-runtime adapter owns the ENTIRE vendor
  * database behind one kernel port, so that schema needs no per-model rows. This
  * blanket entry is what makes "no domain context touches it" checkable.

@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "e612a4b4f733a1e0a4627528db3a51832e8cc4ce1cd9eaab878f840f1f5d9a21"
+      "sha256": "39b61eaaa595c9d58d4c2562c686b4519f5265ff0b78d11369d435ca2506005e"
     },
     {
       "path": "LICENSE",
@@ -768,7 +768,7 @@
     {
       "path": "docs/adr/M0.3-bounded-contexts.md",
       "mode": "100644",
-      "sha256": "788cb69f7c9881afa271b03c4808c0392a790b6375abedf9fb335d460e790d12"
+      "sha256": "73b5503f7f779cd1bb77e1a61e1ce1db127bf273d25b994d2fbcbaf642b0243f"
     },
     {
       "path": "docs/adr/M0.4-contract-versioning.md",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "4bcf914702a9a3d5f74c5eb7a85852a5e5d51c61d1fcfe7b0d6c12b3e817370e"
+      "sha256": "a1b27d9a71101317f16bac9aae535b09ab1471b31ec51ab3c5e5d8bd65ced371"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -953,12 +953,12 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "2d9bb6a054e79ebc9b78f1fc53c615731fb4bc44cb88a9ec96bbb02c10c585ed"
+      "sha256": "682b4929ded1249ba1aadd56a62a75d4adf3decab5502c0057dc5a7b00d6fa2e"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
       "mode": "100644",
-      "sha256": "11201695bda81a732b9c34eec730835af383792e7be0427eeb3021b596494b6d"
+      "sha256": "4aab9409a4c498935f10d95315eb8710185ae8ff8b6241ad0314f7650ff4f27f"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.md",
@@ -968,7 +968,7 @@
     {
       "path": "docs/audits/sbom/license-index.json",
       "mode": "100644",
-      "sha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b"
+      "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6"
     },
     {
       "path": "docs/audits/sbom/license-overlay.json",
@@ -983,7 +983,7 @@
     {
       "path": "docs/audits/sbom/platos-agent.cdx.json",
       "mode": "100644",
-      "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe"
+      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.cdx.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "9d68a8488177701c92a65d044b912acbc7a4968ef8b83a9bd97db56ee287bb6b"
+      "sha256": "69270bf5fdcff15e7cc1797c13f8e8000314a373d877533e6f46c46b143f5274"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "754b75fb5f1aab00ffd79153d4d42fd2123db09518e68a9d4834cd9112c10096"
+      "sha256": "d49be28581c8b900a3a5036669b7ed35791862b9f33d486bfa66a4dc57f8ab2e"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "9634090885afff98b59ef21600840c6ca50a7b2fc1e6f3406e08881d4b2c66e0"
+      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "1b9073abb000ac9b77a1472b04e0897b94712e760ca87176e4ff66d673b2c494"
+      "sha256": "4056fee251592aa44f69be131fae3d2ec892ab55b169f54d8054f20043df04da"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1398,7 +1398,7 @@
     {
       "path": "docs/env-vars.md",
       "mode": "100644",
-      "sha256": "21a13a5b24e3f66d11d86a858d4f577dd8bbedef29c21d2fd7fb267ffc0aa80d"
+      "sha256": "8f820057f7b34fbeeec7326b92ebd6eaf807286fdb274ab5e74d3a181c19bd6c"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "c111f3cd07f61f0b7da482e577b87af1dca32943a5fa5999f9465de713100e60"
+      "sha256": "b3d8cae9c8229502f9747a7ebd3f599509b9e46800d5677fc3c2b9e552b24605"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "aa8e86ef57ccbb07022c4ef57c38a9acf383fe1efc198cdeaa77f0d66c1e91c0"
+      "sha256": "e7e5387f0563f28360f1eda048bb9200e210d865ddacb8148feb3fcaf4b3599d"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3638,12 +3638,12 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "d6c5b0c50f1d674b2e907a42edab38aa84acc87ba46e2eaab2f3eb188464b224"
+      "sha256": "1183568aa76211de07ab4b398f5149a704c5329de35edf2ab8bb969d95215ded"
     },
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "e197323cf6272d481e4a734b593ba00c0c2935b69dc06b37e96ba90bb8dddde1"
+      "sha256": "e34e96d623fbfbff43c8a8b825ac2ea11316df1f0e07811fc6e5fa53e6da442b"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "2ada7d0ec68c4d367b5e74410c4c75bf75c267c6aa65d310f27a809fc9f07f4a"
+      "sha256": "76a3976e4782e3670c72520b64cb8f5542f533de5fb0538d9a3cd93d816a46bf"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3938,7 +3938,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "9e996572548f1cfed665073d4441a9273170f73cd8e41f7b643618f2a28f1651"
+      "sha256": "f0b406aecc5296410f56cb299648998ec5ab371cb81d33d1acbb02b6483d5493"
     },
     {
       "path": "scripts/workspace-reachability.mjs",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "1fe80502d8799efca7b007c7441e0e3702dac19ca60dfb0cb78356654f26272b"
+      "sha256": "5ecc09c20dbe7e5dbd906524e9741ab0bac3013f292b92113291f6289131a7d3"
     }
   ]
 }

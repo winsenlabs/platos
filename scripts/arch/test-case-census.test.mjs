@@ -263,11 +263,102 @@ test("the census is not vacuous — it reads the real suites", () => {
   // v1 where only six rows were real. The conversations branch pinned 340 for
   // the same reason, blind to the adapter's +17 and to WIN-257's +10. Each is
   // right alone and wrong here; 357 + 10 = 367 is the number on this tree.
-  assert.equal(live.totalFiles, 367);
+  //
+  // WIN-258 TRANCHE 2 adds a term: +7 suites in the postgres-tenancy
+  // adapter row, which was already real at 4. 371 + 7 = 378.
+  //
+  // WIN-258 TRANCHE 3 adds +5 to that same row — tenancy's other five ports,
+  // one pure suite and four real-PostgreSQL ones.
+  //
+  // WIN-258 TRANCHE 4 adds the last TWO, and they are two terms rather than one
+  // because the kernel outbox is two packages: +4 in the postgres-tenancy row
+  // and +4 turning `packages/adapters/outbox` real. It is two packages because
+  // `Event` has an owner that is an adapter and the ORM has one home (ADR M0.3
+  // §15), so the package that owns the port cannot be the one that issues its
+  // INSERT.
+  //
+  // The two tranches land TOGETHER, so the total is 378 + 5 + 4 + 4 = 391 — the
+  // SUM of both, not either branch's own 383 or 386.
+  //
+  // WIN-258 TRANCHE 5 adds THREE terms, +6, +6 and +6, and all of them land on
+  // the SAME postgres-tenancy row every tranche since 2 has landed on: the six
+  // `tools` suites, the six `agents` ones and the six `cost-monitoring` ones. No
+  // CONTEXT row moves at all — their suites already existed, because tranche 5
+  // implements ports rather than widening them. Of the eighteen, four have no
+  // database in them (`tools-mapping.test.ts`, `agents-guards.test.ts`,
+  // `agents-rows.test.ts`, `cost-rows.test.ts`) and fourteen are
+  // real-PostgreSQL. 391 + 6 + 6 + 6 = 409.
+  //
+  // COST-MONITORING'S SECOND SWEEP ADDS THE NINETEENTH, to the same row again.
+  // Four guards were falsifiable only through a crashed `beforeAll` in the
+  // conformance suite, so no named case saw them;
+  // `cost-idempotency.integration.test.ts` is the file that gives them one.
+  // 409 + 1 = 410.
+  //
+  // CHANNELS' CANONICAL STORE ADDS SIX MORE, to the same row again, and no
+  // CONTEXT row moves for it either: one pure (`channels-rows.test.ts`) and five
+  // real-PostgreSQL. 410 + 6 = 416.
+  // AND `governance` ADDS SIX MORE to that same row: the differential, the
+  // constraint pairs, the database rules, the statement pins, the failure
+  // injection, and the ONE pure suite that reaches the mapping branches a
+  // container cannot — a container only ever reads rows this binary wrote.
+  // No context row moves, for the fourth time.
+  //
+  // AND `secrets` ADDS NINE MORE: eight real-PostgreSQL and one pure
+  // (`secrets-rows.test.ts`). 410 + 6 + 6 + 9 = 431 across the three of them.
+  //
+  // AND `providers` ADDS SEVEN: six real-PostgreSQL and one pure
+  // (`providers-rows.test.ts`). It is SEVEN rather than six because the §6
+  // budget split the constraints proof at 491 effective lines, along the port's
+  // own seam — `ProviderKey`'s rules are environment-scoped and `Model`'s and
+  // `ModelPrice`'s have no scope at all. 410 + 6 + 6 + 9 + 7 = 438 across the
+  // four of them. No context row moves, for the fifth time.
+  //
+  // AND `conversations` ADDS EIGHT, to the same row a fourth time and with no
+  // CONTEXT row moving for it either: seven real-PostgreSQL and one pure
+  // (`conversations-rows.test.ts`). THREE of the eight exist only because
+  // `max-file-lines` bit at the 500-line HARD error — the shared scenario, the
+  // constraints suite and the rules suite each split along a seam they already
+  // had — which is worth saying here rather than absorbing, because a file count
+  // that moved by eight for five suites' worth of work is exactly the kind of
+  // thing this census is for. 431 + 8 = 439.
+  //
+  // AND `skills` ADDS SIX MORE: five real-PostgreSQL and one pure
+  // (`skills-rows.test.ts`), and for the fifth time no CONTEXT row moves — the
+  // port it implements already existed.
+  //
+  // AND `memory` ADDS SEVEN MORE to the same row a fourth time: six
+  // real-PostgreSQL and one pure (`memory-rows.test.ts`). No CONTEXT row moves
+  // for it either — both ports already existed, and widening a port entry point
+  // 431 + 7 + 8 + 6 + 7 = 459 across the seven of them. No context row moves,
+  // for the eighth time.
+  //
+  // AND THE FOUR STORES BESIDE IT ADD 25 MORE to the same row: `jobs` seven,
+  // `files` seven, `observability` five and `eventing` six. 459 + 31 = 490. No
+  // context row moves, for the NINTH time — every port already existed, and
+  // widening a port entry point is not a new file.
+  //
+  // AND WIN-258 TRANCHE 7 ADDS THIRTEEN to the SAME row, for the TENTH time
+  // with no context row moving. FOUR dimensions landed together and each moves
+  // this one row and no other, so they compose by addition:
+  //   +3  the JSON-column census, its real-database half, and the outbox
+  //       payload reader
+  //   +6  the plan dimension's measurement kit, its unit suite, and its four
+  //       dense-fixture plan suites — it implements no port at all
+  //   +3  the concurrency dimension's pooling, optimistic-concurrency and
+  //       transaction-boundaries suites; it adds no source file anywhere
+  //   +1  `upgrade-rollout.integration.test.ts`, the store half of the
+  //       expand/contract rollout rehearsal. Its two sibling suites are NOT
+  //       here and cannot be: they rebuild the old releases' Prisma clients,
+  //       which ADR M0.3 §4 keeps in `internal-packages/tenancy-database`, a
+  //       package with no row in this census at all.
+  // 490 + 3 + 6 + 3 + 1 = 503. No dimension's own figure — 493, 496, 493 again
+  // or 491 — is right here, and neither is any pair of them.
+  assert.equal(live.totalFiles, 503);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3);
+  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -301,7 +392,125 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // budget forced out of the façade file. Its own branch pinned 98 and the
   // conversations branch pinned 340, each read off a tree missing the other's
   // rows; both are right alone and wrong here.
-  assert.equal(files, 367);
+  //
+  // WIN-258 adds the last term: +4 for the postgres-tenancy adapter — two unit
+  // suites, and two REAL-PostgreSQL suites that this census counts and
+  // `pnpm test:v1-packages` does not run. 367 + 4 = 371.
+  //
+  // WIN-258 TRANCHE 2 adds +7 to that same already-real row: one pure suite and
+  // SIX real-PostgreSQL ones — the conformance differential against the
+  // in-memory fake, the migration-only constraint proofs, the failure-injection
+  // transaction proofs, the measured statement counts, and the two halves of the
+  // differential against `PlatosAuthService`. 371 + 7 = 378. Ninety of the 378
+  // files' cases are integration cases this census counts and
+  // `pnpm test:v1-packages` does not execute; the `postgres-tenancy-repository`
+  // CI job is what makes them run.
+  //
+  // WIN-258 TRANCHE 3 adds +5 to that same already-real row: one pure suite for
+  // the invitation token issuer and FOUR real-PostgreSQL ones — whether the
+  // locks block, the shared conformance scenario over the five ports, the scope
+  // refusals with failure injection, and the statement counts.
+  //
+  // WIN-258 TRANCHE 4 adds the last TWO terms: +4 to that same postgres-tenancy
+  // row, all four real-PostgreSQL suites for the `Event` row, and +4 turning
+  // `packages/adapters/outbox` real with four suites that need no database at
+  // all.
+  //
+  // WIN-258 TRANCHE 5 adds THREE terms, +6 each, to that same postgres-tenancy
+  // row, and a fourth term of +1 from one store's second sweep: the `tools`
+  // canonical store's one pure suite and FIVE real-PostgreSQL ones, the `agents`
+  // store's two pure suites and FOUR real-PostgreSQL ones, and the
+  // `cost-monitoring` store's one pure suite and FIVE real-PostgreSQL ones plus
+  // `cost-idempotency`. `tools-isolation.integration.test.ts`,
+  // `agents-guards.test.ts` and `cost-idempotency.integration.test.ts` all exist
+  // because a mutation sweep found guards nothing could falsify.
+  //
+  // 378 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 = 452, and 598 of
+  // those files' cases are integration cases the `postgres-tenancy-repository`
+  // CI job runs and `pnpm test:v1-packages` does not, across 67 files.
+  //
+  // THIS SENTENCE SAID 159 AND THE TREE SAID 144, AT THE BASE OF THIS BRANCH
+  // (tejas/win-258-postgres-ownership @ 42daafb3) AND BEFORE ANY TRANCHE-5 STORE
+  // EXISTED. The decomposition it offered — "the ninety above plus tranche 3's
+  // 36 and tranche 4's 33" — does not sum to 159 either; 90 + 36 + 33 = 159 was
+  // arithmetic over a term that was never ninety. The real decomposition is the
+  // row's ORIGINAL 25 real-PostgreSQL cases, plus tranche 2's six suites
+  // (3 + 16 + 11 + 7 + 4 + 9 = 50), plus tranche 3's four (12 + 8 + 10 + 6 = 36),
+  // plus tranche 4's four (11 + 12 + 7 + 3 = 33): 25 + 50 + 36 + 33 = 144. It is
+  // corrected rather than carried because it is a COUNT OF CASES stated in prose
+  // beside an asserted one, and the two disagreeing is the failure this file
+  // exists to catch. Every integration case in the tree is this one package's —
+  // `packages/adapters/outbox`'s four suites need no database at all — which is
+  // why the tree total and the row's own total are the same number.
+  //
+  // 144 + `tools`' 39 (12 + 8 + 7 + 5 + 7, over 5 files)
+  //     + `agents`' 39 (16 + 12 + 9 + 2, over 4 files)
+  //     + `cost-monitoring`'s 43 (13 + 8 + 7 + 6 + 5, over 5 files, + 4 over
+  //       cost-idempotency) = 265, over 31 files.
+  //     + `channels`' 47 (16 + 10 + 10 + 6 + 5, over 5 files) = 312, over 36.
+  //     + `governance`'s 45 (1 + 12 + 10 + 15 + 7, over 5 files) = 357, over 41.
+  //     + `secrets`' 65 (11 + 10 + 8 + 8 + 8 + 7 + 7 + 6, over 8 files; its
+  //       ninth suite, `secrets-rows.test.ts`, is PURE and runs in the ordinary
+  //       package script) = 422, over 49 files.
+  //     + `conversations`' 73 (14 + 12 + 11 + 11 + 8 + 16 + 1, over 7 files; its
+  //       eighth suite, `conversations-rows.test.ts`, is PURE and runs in the
+  //       ordinary package script) = 495, over 56 files,
+  //     + `skills`' 43 (17 + 15 + 7 + 2 + 2, over 5 files; its sixth suite,
+  //       `skills-rows.test.ts`, is PURE for the same reason) = 538, over 61 —
+  //       and 598 over 67 once the eleven integration suites the four EARLIER
+  //       owners contribute are counted with them.
+  // ALL THREE branches in this wave independently corrected the 159 and each
+  // landed on a figure counted against the base alone — 183, 183 and 187.
+  // Merged the figure is none of them.
+  //
+  // EACH TRANCHE'S PURE SUITE IS DELIBERATELY NOT IN THAT SPLIT.
+  // `channels-rows.test.ts` (25 cases), `governance-rows.test.ts` (21),
+  // `secrets-rows.test.ts` (18), `providers-rows.test.ts` (17),
+  // `conversations-rows.test.ts` (24), `skills-rows.test.ts` (19) and
+  // `memory-rows.test.ts` (24) reach the mapping branches a container suite
+  // cannot, because a container only ever reads rows this binary wrote — and
+  // `conversations`' is the sharpest of the seven, because the branches it
+  // reaches include a `Decimal` the DRIVER renders in exponential form, which
+  // no row this binary wrote can produce. They run in the ordinary package test
+  // script, which is why the runnable term goes
+  // 118 + 25 + 21 + 18 + 17 + 24 + 19 + 24 = 266 while the integration term
+  // goes 265 + 47 + 45 + 65 + 60 + 73 + 43 + 65 = 663, and 266 + 663 = 929 is
+  // the row's whole case count.
+  //
+  // AND EACH OF THE FOUR STORES BESIDE `privacy` SHIPS ONE PURE SUITE TOO —
+  // `jobs-rows.test.ts` (22), `files-rows.test.ts` (21),
+  // `observability-rows.test.ts` (15) and `eventing-rows.test.ts` (17). Each
+  // reaches the same kind of branch for the same reason: a row an older binary
+  // wrote, a status the current one never writes, an envelope shape no container
+  // can produce, because a container only ever reads rows this binary wrote.
+  // They run in the ordinary package test script, so the runnable term goes
+  // 266 + 25 + 22 + 21 + 15 + 17 = 366 and the integration term
+  // 663 + 51 + 75 + 79 + 37 + 39 = 944, and 366 + 944 = 1310 is the row's whole
+  // case count over 119 files.
+  //
+  // WIN-258 TRANCHE 7 SPLITS FOUR WAYS AND EVERY WAY LANDS HERE.
+  //   the JSON-column dimension: 31 runnable (the census's 24, the outbox
+  //     reader's 3, and the four added to `agents-rows.test.ts`) and 17 that
+  //     need the daemon — 48 over three new files
+  //   the plan dimension: 23 runnable and 60 that need the daemon — 83 over six
+  //     new files. `plans-probe.test.ts` is the largest of its six rather than
+  //     the smallest, deliberately: it is the measurement kit the five container
+  //     suites report their numbers from, so it is the one part of that
+  //     dimension no other part can check, and a container is exactly what it
+  //     must not need in order to be skippable
+  //   the concurrency dimension: 9 runnable, all in `client.test.ts`, and 27
+  //     that need the daemon — 26 in its three new container suites and ONE
+  //     added to `secrets-rules.integration.test.ts`, whose name carries
+  //     `.integration.` and which therefore lands on that side however small
+  //     the addition — 36
+  //   the rollout dimension: 6, all of them integration, in one new file
+  //
+  // MERGED, the runnable term is 366 + 31 + 23 + 9 = 429 and the integration
+  // term 944 + 17 + 60 + 27 + 6 = 1054, and 429 + 1054 = 1483 is the row's
+  // whole case count over 23 + 109 = 132 files. The
+  // `postgres-tenancy-repository` CI job running 109 files / 1054 tests is a
+  // check on this split derived without it.
+  assert.equal(files, 503);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -381,7 +590,16 @@ test("the providers context is pinned at what vitest prints", () => {
   // survivors — all with the file count held at 14. Skills is the fourth at
   // 306, jobs the fifth at 378, memory the sixth at 605 and cost-monitoring the
   // seventh at 352; each is pinned by its own test.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  // WIN-258 tranche 2 adds the last term, +67, to the postgres-tenancy row that
+  // tranche 1 made real at 56.
+  //
+  // AND THE FINAL +83 IS WIN-258 TRANCHE 7, on that same adapter row and on no
+  // other: the indexes/query-plans/pagination/count-truth dimension implements
+  // no port, so not one context row moves for it. Every one of the eleven
+  // re-derivations below carries the same term, which is the property this
+  // file exists for — a sum stated once can be edited once, and a sum stated
+  // eleven ways cannot.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -423,15 +641,37 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // hold only on the skills branch alone, which is exactly the side-picking
   // this comment exists to prevent:
   // 1240 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198
-  // + 350 = 5875. The `untouched` base is 1240 rather than 1000 for three
+  // + 350 = 5875. (The trailing terms below carry every adapter tranche,
+  // including tranche 5's `skills` 52.) The `untouched` base is 1240 rather than 1000 for three
   // reasons, none of them an adoption: the `conversations` prerequisite moved
   // providers 283 -> 346, WIN-256's MODEL ROUTER ADAPTER then moved it
   // 346 -> 375, and WIN-257 moved identity-access to 318 and tenancy to 207.
   // The trailing 198 is the adapter row and the trailing 350 the conversations
   // row, neither of which any `untouched` entry covers because both were zero
   // when this map was written.
+  // The trailing 56 is tranche 1 of the adapter row and the 67 beside it is
+  // tranche 2's identity-access half of the SAME row. Tranche 4 adds two more
+  // trailing terms and they are separate on purpose: 33 is its half of that same
+  // postgres-tenancy row and 39 is the outbox package, a row that was zero when
+  // this map was written. Tranche 5 adds ONE more trailing term, 60, which is
+  // its own half of that same postgres-tenancy row: `agents` publishes no test
+  // package of its own here, so nothing but the adapter row moves. The trailing
+  // 97 is the same shape a fourth time — `conversations`' canonical store, whose
+  // 350-case context row above is untouched by it — the trailing 62 a fifth,
+  // for `skills`, whose 306-case context row is untouched for the same reason,
+  // the LAST-but-four 89 a sixth, for `memory`, whose two ports already existed
+  // and whose 378-case context row does not move either, and the FINAL five —
+  // 76, 97, 100, 52 and 56 — a seventh through an eleventh, for `privacy`,
+  // `jobs`, `files`, `observability` and `eventing`, whose context rows above
+  // are untouched for exactly the same reason: the port existed and only the
+  // adapter row moved.
+  // WIN-258 tranche 7 adds a TWELFTH trailing term, 48, on the same shape as the
+  // eleven before it: the JSON-column census, its real-database half and the
+  // outbox payload reader all land on the postgres-tenancy adapter row, and no
+  // context row above moves — every port those decoders sit behind already
+  // existed, and four of the 48 went into a file this row already counted.
   assert.equal(
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350,
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -468,7 +708,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -498,7 +738,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -536,7 +776,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -569,7 +809,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -612,7 +852,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -641,7 +881,7 @@ test("the tools context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -676,7 +916,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -702,7 +942,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 609);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -728,7 +968,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -811,7 +1051,332 @@ test("the conversations context is pinned at what vitest prints", () => {
   // On its own branch "the previous one" was 5150; on the integrated tree the
   // adapter's 198 and WIN-257's 148 landed first, so it is 5525 and this row
   // closes the census at 5875. The +350 is the part that conserves.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350);
+  // WIN-258 tranche 2's 67 identity-access cases join the adapter's 56, and
+  // tranche 5's last four stores — `providers`', `conversations`',
+  // `skills`' and `memory`'s own canonical stores, in the ADAPTER row rather
+  // than this one — add their 77, 97, 62 and 89 at the end. The context rows
+  // above do NOT move for any of them: all four implement ports that already
+  // existed and all four had their port entry point widened in place, which is
+  // what this census distinguishes from an addition.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
+});
+
+test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
+  // The ONE row WIN-258 moves, and the SECOND nonzero row under
+  // `packages/adapters`. `pnpm --filter @platos/adapter-postgres-tenancy exec
+  // vitest run --exclude '**/*.integration.test.ts'` prints 31 across 2 files;
+  // `pnpm test:postgres-tenancy:integration` prints 25 across 2 more. The census
+  // counts what the package SHIPS, so the row is the sum of both runs.
+  //
+  // WIN-258 TRANCHE 2 adds SEVEN more suites and 67 more cases to the same row:
+  // one pure (identity-mapping.test, 17) and six real-PostgreSQL — the
+  // conformance differential against the in-memory fake (3), the migration-only
+  // constraint proofs (16), the failure-injection transaction proofs (11), the
+  // measured statement counts (7), and the two halves of the differential
+  // against `PlatosAuthService` (4 and 9). 4 + 7 = 11 files, 56 + 67 = 123.
+  //
+  // WIN-258 TRANCHE 3 adds FIVE more suites and 43 more cases to the same row —
+  // tenancy's other five ports: one pure (invitation-token.test, 7) and four
+  // real-PostgreSQL — whether the locks block and the access-key fence with its
+  // negative control (12), the shared conformance scenario over the five ports
+  // plus the six cases it cannot reach (8), the three scope refusals on all
+  // five scoped methods with failure injection and the OperatorSession database
+  // rules (10), and the measured statement counts (6).
+  //
+  // WIN-258 TRANCHE 4 adds FOUR more suites and 33 more cases to the same row,
+  // all four real-PostgreSQL: the failure-injection transaction proofs for the
+  // `Event` row (11), the migration-only and catalogue-read constraint proofs
+  // (12), the measured statement counts (7), and the conformance differential
+  // against the committed scenario the in-memory double is also measured against
+  // (3).
+  //
+  // BOTH tranches move THIS row, so it carries both tails: 11 + 5 + 4 = 20 files
+  // and 123 + 43 + 33 = 199 cases. Neither branch's own 16/166 nor 15/156 is the
+  // merged row, and either one taken alone would drop the other's suites out of
+  // a census whose whole purpose is to see every case.
+  //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 59 more cases to the same row —
+  // the `tools` canonical store over the ten rows that context owns: one pure
+  // (tools-mapping.test, 20) and five real-PostgreSQL — the migration-only
+  // constraint proofs (12), the tenant-isolation and transcript-integrity cases
+  // (8), the measured statement counts (7), the conformance differential against
+  // the in-memory double (5), and the failure-injection transaction proofs (7).
+  //
+  // THE ISOLATION SUITE IS NOT PADDING. Its eight cases and four of the mapping
+  // suite's twenty were written because the tranche's own mutation sweep
+  // (`mutations-tools.json`) found those guards UNFALSIFIABLE — the other five
+  // suites stayed green with the ancestry resolve's organization half deleted,
+  // with an unknown environment admitted, with the replace's entity clause gone
+  // and with two orderings reversed.
+  //
+  // WIN-258 TRANCHE 5 adds SIX MORE suites and 60 MORE cases to the same row —
+  // the `agents` canonical store, the seven rows of ADR M0.3 §1 row 5. Two of
+  // the six have no database in them: the refusal parser against the three
+  // shapes a refusal arrives in (`agents-guards.test.ts`, 14) and the two row
+  // readers that refuse rather than inventing a value (`agents-rows.test.ts`,
+  // 7). Four are real-PostgreSQL: what the MIGRATIONS refuse and
+  // `schema.prisma` does not say (16), failure injection with the three
+  // transaction-scope refusals and the parent row lock (12), the measured
+  // statement counts (9), and the shared conformance scenario run against the
+  // in-memory double and against PostgreSQL and compared verbatim (2).
+  //
+  // THE 2 IS THE NUMBER TO WATCH. It is two because it is TWO scenarios --
+  // 47 observations over `AgentsRepository` and 29 over `ScaffoldingRepository`,
+  // both counts READ OFF a run rather than tallied from the source -- compared
+  // step by step. Adding an observation strengthens the differential and moves
+  // no count here, which is why the guards behind it are held falsifiable in
+  // `mutations-agents.json` instead.
+  //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 61 more cases to the same row —
+  // `cost-monitoring`'s canonical store, the THIRD owner behind the one ORM
+  // client: one pure (cost-rows.test, 22, the row mapping in both directions and
+  // every guard) and five real-PostgreSQL — each guard beside the migration
+  // CHECK it restates (13), the database rules no port method restates (8), the
+  // failure injection on both two-statement operations with their negative
+  // controls and the three scope refusals (7), the measured statement counts
+  // (6), and the conformance differential against `InMemoryBudgetRepository`
+  // (5).
+  //
+  // WIN-258 TRANCHE 5's SECOND SWEEP adds a SEVENTH suite and 4 more cases to
+  // the same row. Re-running all forty ledger entries scored six with zero
+  // executed cases: the edits compiled and collected, then broke the conformance
+  // suite while it was BUILDING its transcript, in a `beforeAll`, so vitest
+  // reported every case in that file SKIPPED and its pin of 5 did not move. Two
+  // of the six had a named case elsewhere; the four in `cost-idempotency` had
+  // none anywhere — the insert form that does not raise, the uuid shape test the
+  // vault's revoke depends on, the terminal status that stops a second send, and
+  // the count test that keeps a stale dispatcher's send record out of the
+  // history. The conformance suite's 5 is deliberately unchanged: added there,
+  // those four observations would have been invisible to this census.
+  //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 72 more cases to the same row —
+  // `channels`' canonical store, the SIXTH context owner behind the one ORM
+  // client: one pure (channels-rows.test, 25, the row mapping in both directions
+  // and every guard) and five real-PostgreSQL — each guard beside the
+  // migration-only CHECK it restates or the database's willingness to take the
+  // value (16), the database rules no port method restates (10), failure
+  // injection over a second client with BOTH answers a returned error Result
+  // gives and the three scope refusals (10), the measured statement counts (6),
+  // and the conformance differential against `InMemoryChannelsRepository` (5).
+  //
+  // THE 25 IN THE PURE SUITE IS THE LARGEST PURE ROW ANY TRANCHE HAS ADDED, and
+  // that is a fact about this port rather than about its author: `channels` is
+  // the only context whose store has to REFUSE a row it can read — an unknown
+  // installation status, an unknown inbox status, an unreadable routing table —
+  // and each of those decisions is a value mapping with no database in it.
+  //
+  // ALL FIVE tranches move THIS row, so it carries every tail:
+  // 11 + 5 + 4 + 6 + 6 + 6 + 1 + 6 + 6 = 51 files and
+  // 123 + 43 + 33 + 59 + 60 + 61 + 4 + 72 + 66 = 521 cases. No branch's own row is
+  //
+  // WIN-258 TRANCHE 5 adds NINE more suites and 83 more cases to the same row —
+  // `secrets`' canonical store, the FOURTH owner behind the one ORM client: one
+  // pure (secrets-rows.test, 18, the three closed unions a row is read back
+  // through and each of the nine guards on both sides of its boundary) and six
+  // real-PostgreSQL — the database rules no port method restates (11), the
+  // measured statement counts (10), the differential against
+  // `inMemorySecretsStore` (8), each vault guard beside the migration CHECK it
+  // restates (8), the failure injection with the three scope refusals and the
+  // row lock (7), and the variable's three CHECKs with the two guards that stand
+  // where no CHECK does (7), and the clauses that decide WHICH ROW a call
+  // reaches (6) and the seven refusals whose only witness was a crashed hook
+  // (7) — the eighth and ninth suites, which exist because the sweep found six
+  // clauses with no named case anywhere and seven more whose only witness was a
+  // `beforeAll` that raised.
+  //
+  // WIN-258 TRANCHE 5 adds SEVEN more suites and 77 more cases to the same row —
+  // `providers`' canonical store, the FIFTH owner behind the one ORM client and
+  // the NINTH overall: one pure (providers-rows.test, 17, the three column
+  // renames the schema and the aggregates disagree about, every guard, and the
+  // two unreadable-row refusals) and six real-PostgreSQL — `ProviderKey`'s five
+  // database rules each stood beside a raw statement that steps around the
+  // guard (13), the same pairing for `Model` and `ModelPrice` (12), the
+  // conformance differential against `InMemoryProvidersRepository` (11), the
+  // rules no port method restates (10), failure injection with the touch that
+  // survives a rollback and the three scope refusals (7), and the measured
+  // statement counts (7).
+  //
+  // IT IS SEVEN SUITES RATHER THAN SIX BECAUSE THE §6 BUDGET SPLIT ONE, at 491
+  // effective lines and four lines of prose from the hard error. The seam is the
+  // port's own and not an arbitrary halving: `ProviderKey`'s rules are
+  // ENVIRONMENT-SCOPED and every case needs a tenant chain and a credential,
+  // while `Model` and `ModelPrice` have no scope at all.
+  //
+  //
+  // AND `conversations` ADDS EIGHT AND 97: the turn rollup and the driver's
+  // exponential decimal in a PURE suite (24), each Thread and Turn guard beside
+  // its migration CHECK (14), the same over a bill and an operator's audit row
+  // (12), the three immutability rules with the tenant boundary (11), the
+  // deletion rules and the transcript filter the double does not implement (11),
+  // the failure injection with the three scope refusals and the blocking row
+  // lock (8), the measured statement counts (16), and the differential against
+  // `InMemoryConversations` (1). THREE of the eight exist only because
+  // `max-file-lines` bit at the HARD error.
+  //
+  //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 62 more cases to the same row —
+  // `skills`' canonical store, the NINTH owner behind the one ORM client, over
+  // the three rows ADR M0.3 §1 row 6 gives it: one pure (skills-rows.test, 19,
+  // the row readers and the eight write guards on BOTH sides of each boundary,
+  // plus the assertion that all thirteen refusal codes are distinct) and five
+  // real-PostgreSQL — the rows an older binary could have written, planted as
+  // SQL, together with the two store/double divergences pinned rather than
+  // hidden and the two write paths whose input the port cannot produce (15), the
+  // three migration-only CHECKs read back out of `pg_catalog`, the three
+  // immutability RULES and both ancestry RULES proved by statements that must
+  // RAISE, the shape refusals falsified in PAIRS, and the five clauses that
+  // decide WHICH ROW a call reaches (17), the
+  // failure injection over a
+  // SECOND client with the three scope refusals (7), the conformance
+  // differential with its negative control (2) and the statement counts, whole
+  // map at once over two fixtures, with the probe-filter case (2).
+  //
+  // TWO OF ITS SUITES ARE ONE CASE APIECE, which is the LOWEST any tranche has
+  // added and is a fact about the instrument rather than about the coverage: a
+  // differential is one scenario compared verbatim and a statement pin is one
+  // map compared whole, so strengthening either adds observations and no cases.
+  // `mutations-skills.json` beside the package is where those guards are held
+  // falsifiable instead.
+  //
+  //
+  // WIN-258 TRANCHE 5 adds SEVEN more suites and 89 more cases to the same row —
+  // `memory`'s canonical store, the NINTH owner behind the one ORM client: one
+  // pure (memory-rows.test, 24, the row mapping in both directions and every
+  // guard, including the three vocabulary columns a row written by an older
+  // binary can hold) and six real-PostgreSQL — what the MIGRATIONS refuse and
+  // `schema.prisma` does not say (18), the measured statement counts (18), the
+  // failure injection over a SECOND client with both answers a returned error
+  // `Result` gives and the three scope refusals (12), the database rules no port
+  // method restates (10), the two `vector(1536)` columns the generated client
+  // cannot name (5), and the conformance differential against the context's two
+  // in-memory doubles (2).
+  //
+  // THE 5 IN THE VECTOR SUITE IS THE NUMBER TO READ, and it exists because a
+  // mutation survived. `mutations-memory.json` M-M13 clears the vector on every
+  // update and stayed green through FIVE suites, because no read on either port
+  // returns an embedding — the only observable consequence is a row quietly
+  // dropping out of every future candidate set. Two of its five cases are not
+  // rules at all: they are the contract a caller CANNOT satisfy, since
+  // `searchEntities` reads a column no method on its port can write. Both halves
+  // are pinned rather than worked around, which is what makes it a report
+  // instead of a defect.
+  //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 76 more cases to the same row —
+  // `privacy`'s canonical store, the THIRTEENTH owner behind the one ORM client,
+  // and the tranche with the most LOPSIDED split any of them has had: one pure
+  // (privacy-rows.test, 25) and FIVE real-PostgreSQL. That is the inverse of what
+  // a two-table store suggests, and it is a fact about the guards rather than
+  // about the coverage — the ones that matter here are about CONCURRENCY and
+  // about the ABSENCE of a statement, and neither is observable without a real
+  // database. What the MIGRATIONS refuse and `schema.prisma` does not say (20),
+  // the rules a single-threaded double cannot exhibit at all (11), the measured
+  // statement counts (9), failure injection over a SECOND client plus the three
+  // scope refusals (9), and the conformance differential against
+  // `InMemoryPrivacyRepository` (2).
+  //
+  // THE 11 IN THE RULES SUITE IS THE NUMBER TO READ. Four of its cases are the
+  // only ones in this directory that race TWO OPEN TRANSACTIONS against each
+  // other: `claimLease` is a compare-and-set whose loser is decided by a row
+  // lock, and the in-memory double is a map in a single-threaded process that
+  // cannot lose a race. Two more prove the barrier by the ABSENCE of a DELETE —
+  // insert-then-extend is a rule about an instant that must not exist, so
+  // "the row is there afterwards" would have been satisfied by the very
+  // delete-then-insert the port forbids.
+  //
+  // WIN-258 TRANCHE 7 adds THREE more suites and 48 more cases to the same row —
+  // the typed-JSON-column dimension: the census of all forty-nine JSONB columns
+  // joined to the schema, the migrations and the decoder symbols on disk (24, of
+  // which twelve are the column maps reconciled model by model), the same census
+  // joined to `pg_constraint` on a live container with the malformed interiors
+  // written by `prisma db execute` (17), and `Event.payload`'s reader (3). FOUR
+  // of the 48 land in the EXISTING `agents-rows.test.ts` rather than in a new
+  // file — the params refusal this tranche found, the four-distinct-codes case
+  // and the two for `readObjectColumn` — which is why 24 + 17 + 3 = 44 but the
+  // case tail below reads 48.
+  //
+  // ALL SIX tranches move THIS row, so it carries every tail:
+  // 11 + 5 + 4 + 6 + 6 + 6 + 1 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 = 110 files and
+  // 123 + 43 + 33 + 59 + 60 + 61 + 4 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48
+  // = 1220 cases.
+  // ALL FIVE tranches move THIS row, so it carries every tail:
+  // 11 + 5 + 4 + 6 + 6 + 6 + 1 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 = 107 files and
+  // 123 + 43 + 33 + 59 + 60 + 61 + 4 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56
+  // = 1172 cases.
+  //
+  // TRANCHE 7 adds ONE file and SIX cases on top of that slice — 107 + 1 = 108
+  // and 1172 + 6 = 1178 — for the store half of the expand/contract rollout
+  // rehearsal.
+  // No branch's own row is the merged row, and any one taken alone would drop
+  // the others' suites out of a census whose whole purpose is to see every case.
+  assert.equal(
+    EXPECTED["packages/adapters/postgres-tenancy"].files,
+    2 + 2 + 1 + 6 + 1 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1,
+  );
+  assert.equal(
+    EXPECTED["packages/adapters/postgres-tenancy"].cases,
+    17 + 14 + 16 + 9 + 17 + 3 + 16 + 11 + 7 + 4 + 9 + 7 + 12 + 8 + 10 + 6 + 11 + 12 + 7 + 3 +
+      20 + 12 + 8 + 7 + 5 + 7 +
+      14 + 7 + 16 + 12 + 9 + 2 +
+      22 + 13 + 8 + 7 + 6 + 5 + 4 +
+      25 + 16 + 10 + 10 + 6 + 5 +
+      1 + 12 + 21 + 10 + 15 + 7 +
+      18 + 11 + 10 + 8 + 8 + 8 + 7 + 7 + 6 +
+      17 + 11 + 13 + 12 + 10 + 7 + 7 +
+      24 + 14 + 12 + 11 + 11 + 8 + 16 + 1 +
+      19 + 15 + 17 + 7 + 2 + 2 +
+      24 + 18 + 18 + 12 + 10 + 5 + 2 +
+      25 + 20 + 11 + 9 + 9 + 2 +
+      22 + 16 + 16 + 15 + 14 + 13 + 1 +
+      21 + 2 + 15 + 16 + 31 + 9 + 6 +
+      15 + 17 + 10 + 9 + 1 +
+      17 + 15 + 9 + 7 + 5 + 3 +
+      24 + 17 + 3 + 4 +
+      23 + 10 + 13 + 10 + 13 + 14 +
+      11 + 6 + 9 + 9 + 1 +
+      6,
+  );
+  assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 1483);
+  // 429 of the 1483 run in `pnpm test:v1-packages`; the other 1054 need a Docker
+  // daemon and run in the `postgres-tenancy-repository` CI job. A pin that
+  // counted only the runnable 429 would go green if the integration suites were
+  // deleted, which is the one change this row exists to make visible.
+  //
+  // THE FOURTH TERM OF TRANCHE 7's FIRST GROUP IS THE ONE TO READ: the 4 in
+  // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
+  // row already counted, which is why that dimension's file tail gains 3 while
+  // its case tail gains 48.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6);
+  assert.equal(
+    EXPECTED_RUNTIME_TOTAL,
+    Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
+  );
+  // No other adapter row moved: NINE of the twelve are still zero, and
+  // model-router-providers is untouched at 198. The tenth stopped being zero at
+  // tranche 4, which is the outbox row asserted below.
+  assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
+  const zeroAdapters = Object.entries(EXPECTED).filter(
+    ([name, row]) => name.startsWith("packages/adapters/") && row.cases === 0
+  );
+  assert.equal(zeroAdapters.length, 9);
+});
+
+test("the kernel outbox adapter is pinned at what vitest prints", () => {
+  // WIN-258 TRANCHE 4, and the THIRD nonzero row under `packages/adapters`.
+  // `pnpm --filter @platos/adapter-outbox exec vitest run` prints 39 across 4
+  // files, and all 39 of them run there: this package holds no vendor client and
+  // needs no container, which is the point of the split — the envelope, the
+  // ordered identifier and every refusal are testable with no database, and the
+  // 33 cases that DO need one sit in the postgres-tenancy row above.
+  //
+  // The four files are event-id (11), envelope (15), adapter (11) and
+  // conformance (4). Two of those cases exist because the mutation sweep found
+  // a survivor — the variant bits left as drawn, and the row stamped from the
+  // raw clock — not because a reviewer thought of them. The conformance row is small on purpose: it is ONE scenario
+  // of twelve observations compared verbatim against a committed transcript,
+  // plus the two negative controls that make the comparison non-vacuous.
+  assert.equal(EXPECTED["packages/adapters/outbox"].files, 4);
+  assert.equal(EXPECTED["packages/adapters/outbox"].cases, 11 + 15 + 11 + 4);
+  assert.equal(EXPECTED["packages/adapters/outbox"].cases, 41);
 });
 
 test("every V1 package has a pinned row, including the ones with no tests yet", () => {

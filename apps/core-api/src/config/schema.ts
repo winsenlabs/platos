@@ -6,6 +6,20 @@
 // where to listen, how long to drain, how to correlate, how loudly to log. No
 // context configuration, no store credentials, no provider keys.
 //
+// AND THAT SCOPE SENTENCE IS STILL TRUE AFTER WIN-260 (M2.5). The five sibling
+// sections this milestone adds — stores, providers, channels, durable runtime
+// and security — are SEPARATE modules beside this one, each with its own field
+// table and its own typed result, composed by `platform.ts`. The store
+// credentials and provider settings did not move in here; the reason they are
+// named in the paragraph above is that they belong somewhere ELSE, and now they
+// have somewhere else to be.
+//
+// WHAT THIS FILE GAINED. The `ConfigFieldSpec` shape below is the one field
+// vocabulary all six sections share, so it grew two kinds and three optional
+// constraints for theirs. One engine, in `load.ts`, validates every field of
+// every section: a second validator that happened to agree with this one would
+// be the weaker census this repository keeps refusing to ship.
+//
 // EVERY FIELD CARRIES ITS OWN REDACTION CLASSIFICATION. Redaction is a property
 // of the schema, not of the diagnostic writer's discipline: a field marked
 // `secret` can never have its value rendered, because the renderer reads this
@@ -13,8 +27,16 @@
 // non-secret value IS echoed, a secret value is NOT — because a redactor that
 // prints nothing at all is indistinguishable from one that works.
 
-/** How a field's value is parsed, and therefore how it can fail. */
-export type ConfigFieldKind = "string" | "integer" | "enum";
+/**
+ * How a field's value is parsed, and therefore how it can fail.
+ *
+ * WIN-260 adds `boolean` and `url` to WIN-297's three. Both were previously
+ * spelled as `string` plus a comment, which is a validation rule that runs
+ * nowhere: `PLATOS_STORE_REDIS_TLS=yes` and a bucket endpoint of `localhost`
+ * would both have been accepted and would both have failed at first use, which
+ * is the exact behaviour this milestone exists to remove.
+ */
+export type ConfigFieldKind = "string" | "integer" | "enum" | "boolean" | "url";
 
 export interface ConfigFieldSpec {
   /** The environment variable. Fields are addressed by this name everywhere. */
@@ -37,6 +59,65 @@ export interface ConfigFieldSpec {
   readonly maximum?: number;
   /** `string` only: minimum accepted length, after trimming. */
   readonly minimumLength?: number;
+  /**
+   * `string` only: a regular expression the trimmed value must match WHOLE.
+   *
+   * Held as source text rather than as a `RegExp` so a field spec stays a frozen
+   * plain value that can be compared, serialised and printed. The engine anchors
+   * it; a spec that anchored itself could silently accept a prefix match.
+   */
+  readonly pattern?: string;
+  /** `pattern` only: what the pattern means, in operator language. Required with it. */
+  readonly patternDescribe?: string;
+  /** `url` only: the accepted schemes, colon included (`"postgresql:"`). */
+  readonly schemes?: readonly string[];
+}
+
+/**
+ * A GROUP: one anchor field plus the fields that only mean anything beside it.
+ *
+ * WHY GROUPS EXIST, AND WHY THEY ARE NOT JUST "REQUIRED". The core section can
+ * demand `PLATOS_ENVIRONMENT` unconditionally because a process without one is
+ * not a process. Nothing in the five sibling sections is like that: an install
+ * with no object store is a legitimate install, and a V1 process must still boot
+ * for it — readiness reports the unsatisfied bindings, which is the honest
+ * answer. So a store is DECLARED or ABSENT, and the group is the unit of that
+ * decision.
+ *
+ * The half-configured case is the one this shape exists to catch. Setting
+ * `PLATOS_STORE_OBJECT_BUCKET` and forgetting the endpoint reads, to every
+ * "required-or-default" scheme, as a bucket name nobody asked for: it validates,
+ * it boots, the adapter is never constructed, and the operator's belief that the
+ * store is wired survives until the first upload. An anchor makes both halves
+ * loud — a member without its anchor is orphaned, an anchor without its required
+ * members is incomplete — and both fail startup with the variable named.
+ */
+export interface ConfigGroupSpec {
+  /** Stable identifier. Appears in the typed result and in every diagnostic. */
+  readonly id: string;
+  /** Operator-facing name of what this group configures. */
+  readonly describe: string;
+  /**
+   * The field whose PRESENCE declares the group. It is never `required` in its
+   * own right — absence is a legitimate answer, and means "not wired here".
+   */
+  readonly anchor: ConfigFieldSpec;
+  /** Fields that must be present and valid once the anchor is. */
+  readonly requiredWithAnchor: readonly ConfigFieldSpec[];
+  /** Fields that take their default once the anchor is present. */
+  readonly optional: readonly ConfigFieldSpec[];
+}
+
+/** One typed configuration module: a name and the groups it owns. */
+export interface ConfigSectionSpec {
+  readonly id: string;
+  readonly describe: string;
+  readonly groups: readonly ConfigGroupSpec[];
+}
+
+/** Every field a group can carry, anchor first. Order is the diagnostic order. */
+export function groupFields(group: ConfigGroupSpec): readonly ConfigFieldSpec[] {
+  return [group.anchor, ...group.requiredWithAnchor, ...group.optional];
 }
 
 export const CORE_API_CONFIG_FIELDS: readonly ConfigFieldSpec[] = Object.freeze([

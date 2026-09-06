@@ -8,6 +8,18 @@
 // May import this context's `domain/`, its own `application/ports/`, its own
 // `contracts/`, and the published `contracts/` of the peer contexts ADR M0.3 §1
 // permits — which for `agents` are `tenancy`, `providers` and `skills`.
+//
+// WHY THE FIXTURES ARE PUBLISHED FROM HERE (WIN-258 T5). `application/testing/`
+// holds the in-memory `AgentsRepository` and `ScaffoldingRepository`, and their
+// own headers say they enforce what the store enforces. That claim is only worth
+// anything if somebody checks it, and the only package that can is the adapter
+// that implements the same two ports: `packages/adapters/postgres-tenancy` runs
+// ONE conformance scenario against the double and against PostgreSQL and
+// compares the two observation lists verbatim. Re-exporting the doubles here is
+// what lets it name them, and it hands the adapter the SAME fixtures every use
+// case in this package is already written against rather than a second set that
+// could drift from them. The precedent is `tenancy`, whose `application/index.ts`
+// publishes its fakes for the same reason.
 export * from "./ports/index.js";
 export * from "./dependencies.js";
 export * from "./authorization.js";
@@ -25,3 +37,4 @@ export * from "./macros.js";
 export * from "./postman-templates.js";
 export * from "./resolve-route.js";
 export * from "./views.js";
+export * from "./testing/index.js";

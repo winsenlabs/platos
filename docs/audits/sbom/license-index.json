@@ -1,8 +1,8 @@
 {
   "$schema": "platos.audit.license-index/v1",
   "note": "Frozen registry.npmjs.org licence snapshot for the union production closure plus linked first-party workspace components. Provisioning output of scripts/audit-licenses.mjs; consumed read-only by scripts/audit-sbom.mjs. Regenerate only after a relock. resolvedAt is the latest immutable publication timestamp among successful external resolutions, not the generator wall clock. Every successful external resolution must provide a valid publication timestamp; non-success statuses are excluded.",
-  "resolvedAgainstLockfileSha256": "e191a0559e0d78ee9c122818d0ca6e0515b103540d2a78df9388fca75339e7f9",
-  "resolvedAt": "2026-07-18T09:43:18.346Z",
+  "resolvedAgainstLockfileSha256": "93149af34c33f85c0a6ff0482305bf82f80fb0e1af314352de1196830fc98654",
+  "resolvedAt": "2026-08-07T16:41:05.696Z",
   "resolvedAtPolicy": "maximum registry version publication timestamp across successful external resolutions; every successful resolution is timestamped; non-success statuses are excluded",
   "registry": "https://registry.npmjs.org",
   "componentCount": 883,
@@ -2686,7 +2686,7 @@
       "resolutionStatus": "resolved",
       "status": 200
     },
-    "engine.io@6.6.6": {
+    "engine.io@6.6.9": {
       "license": "MIT",
       "resolvedFrom": "version",
       "resolutionStatus": "resolved",
@@ -3856,7 +3856,7 @@
       "resolutionStatus": "resolved",
       "status": 200
     },
-    "nanoid@3.3.8": {
+    "nanoid@3.3.18": {
       "license": "MIT",
       "resolvedFrom": "version",
       "resolutionStatus": "resolved",
@@ -5206,7 +5206,7 @@
       "resolutionStatus": "resolved",
       "status": 200
     },
-    "ws@8.18.3": {
+    "ws@8.21.1": {
       "license": "MIT",
       "resolvedFrom": "version",
       "resolutionStatus": "resolved",

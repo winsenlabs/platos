@@ -67,3 +67,6 @@ apps/**/public/build
 .cursor/debug.log
 ailogger-output.log
 .claude/worktrees/
+
+# agent scratch tooling (worktrees, one-shot patch scripts, mini run scripts)
+.claude/

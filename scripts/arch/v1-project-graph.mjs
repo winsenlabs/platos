@@ -26,7 +26,136 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // (rule (f) makes the kernel a leaf, so it can never create a cycle). It does
 // not widen the context DAG, and `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
-export const EXPECTED_EDGE_COUNT = 95;
+// 95 -> 96 (WIN-258 T2, ADR M0.3 §15). `packages/adapters/postgres-tenancy`
+// gained a SECOND owner edge, to `packages/contexts/identity-access`.
+//
+// One PostgreSQL database sits behind one client, so one directory holds every
+// context's repositories over it — which is what §4's body already said the
+// directory was ("per-context repositories, owner-tagged"). That directory
+// therefore names two contexts' port types and needs two project references.
+// The edge cannot create a cycle: nothing imports an adapter except the
+// composition root, and `tenancy` already depends on `identity-access`, so
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged.
+//
+// 96 -> 97 (WIN-258 T5, the same amendment a third time). The directory gained
+// a THIRD owner edge, to `packages/contexts/tools`, because the ten rows that
+// context owns are in the same PostgreSQL database behind the same client. It
+// is ONE edge and not two: `@platos/context-tools` already depended on
+// `@platos/context-tenancy` and on `@platos/context-identity-access` before this
+// tranche, so no context edge is added and `EXPECTED_CONTEXT_DEPENDS_ON` below
+// is again unchanged. Nothing imports an adapter except the composition root,
+// so a cycle is still unreachable by construction.
+//
+// 97 -> 98 (WIN-258 T5, a fourth time). The directory gained a FOURTH owner
+// edge, to `packages/contexts/agents`, for the seven rows of ADR M0.3 §1 row 5.
+// It is ONE edge carrying TWO bindings — `AgentsRepository` and
+// `ScaffoldingRepository` — because a project reference is per PACKAGE, not per
+// port. The edge cannot create a cycle and does not widen the context DAG:
+// `agents` does not depend on `tenancy`'s, `identity-access`'s or `tools`'s
+// internals and none of them depends on it; they simply share a directory.
+//
+// 98 -> 99 (WIN-258 T5, a fifth time). The directory gained a FIFTH owner edge,
+// to `packages/contexts/cost-monitoring`, whose six canonical rows are in that
+// same PostgreSQL database. `cost-monitoring` depends on `tenancy` and
+// `providers` and nothing depends on it, so `EXPECTED_CONTEXT_DEPENDS_ON` below
+// is again unchanged and no cycle is possible.
+//
+// 99 -> 102 (WIN-258 T5, three tranches landed together).
+// `packages/adapters/postgres-tenancy` gained THREE owner edges in this wave —
+// to `packages/contexts/channels` (`ChannelsRepository`), to
+// `packages/contexts/governance` (`SafetyLedger`, `RatingsRepository`,
+// `CriteriaRepository`, `EvalsRepository`, `GoldenSetsRepository`) and to
+// `packages/contexts/secrets` (`SecretsRepository`,
+// `EnvironmentVariableRepository`). THREE edges carrying EIGHT bindings,
+// because a project reference is per PACKAGE, not per port. None can create a
+// cycle: contexts are leaves relative to adapters, `channels` depends on
+// `tenancy` and `identity-access`, `governance` on `tenancy` and `agents`, and
+// `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
+// unchanged.
+//
+// 102 -> 106 (WIN-258 T5, a NINTH, a TENTH, an ELEVENTH and a TWELFTH owner).
+// The directory gained four more owner edges. The first is to `packages/contexts/providers`,
+// whose four canonical rows — `ProviderKey`, `EnvironmentProvider`, `Model` and
+// `ModelPrice` — are in that same PostgreSQL database: ONE edge carrying ONE
+// binding, because `providers` publishes a single canonical-store port over all
+// four. The second is to `packages/contexts/conversations`: ONE edge carrying
+// FOUR bindings, because a project reference is per PACKAGE and not per port —
+// the same one-edge-many-bindings shape `agents` introduced at two and
+// `governance` at five. The third is to `packages/contexts/skills`: ONE edge
+// carrying ONE binding, on the same rule, because `SkillsRepository` is one port
+// over three tables.
+//
+// NONE CAN CREATE A CYCLE, and on the first that needed checking rather than
+// asserting: `providers` DEPENDS on `secrets`, and `secrets` is already an owner
+// of this same directory. A cycle would need `secrets` to depend on `providers`,
+// and the §1 DAG has it depending on the kernel alone — so
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged and the two owner edges are
+// parallel rather than circular. `conversations` is the DAG's sink: it depends on
+// eleven contexts and nothing depends on it. `skills` depends on `tenancy` and
+// `files` and `agents` depends on `skills`, all of which the 17-context DAG
+// already carries, and an adapter is a leaf of that DAG. The 17-context graph is
+// unchanged by all three.
+//
+// AND a TWELFTH owner edge, to `packages/contexts/memory`, whose three canonical rows — `Memory`,
+// `MemoryEntity` and `MemoryRelationship` — are in that same PostgreSQL
+// database. It is ONE edge carrying TWO bindings, `MemoryRepository` and
+// `KnowledgeGraphRepository`, because a project reference is per PACKAGE and not
+// per port. `memory` depends on `tenancy` and `providers` and nothing in the
+// 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
+// again unchanged and no cycle is possible.
+//
+// AND a THIRTEENTH owner edge, to `packages/contexts/privacy`, whose two
+// canonical rows — `ErasureOperation` and `ErasureTombstone` — are in that same
+// PostgreSQL database. It is ONE edge carrying ONE binding, `PrivacyRepository`,
+// because that context publishes a single canonical-store port over both tables.
+//
+// NO CYCLE IS POSSIBLE, and this is the owner where that is worth stating rather
+// than assuming: `privacy` is the context every OTHER context's erasure runs
+// through. ADR M0.3 §1 permits it exactly two dependencies, `tenancy` and the
+// kernel, and the §3 graft is what keeps it that way — the contexts whose rows it
+// erases are reached through the KERNEL's `ErasureTarget`, injected as an array at
+// the composition root, so `privacy` names none of them and none names `privacy`.
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged for a fifth time.
+// 107 -> 108 (WIN-258 T5). AND a FOURTEENTH owner edge, to
+// `packages/contexts/jobs`, whose two canonical rows — `Job` and
+// `AgentApproval` — are in that same PostgreSQL database. It is ONE edge
+// carrying TWO bindings, `JobsRepository` and `ApprovalsRepository`, because a
+// project reference is per PACKAGE and not per port. `jobs` depends on `tenancy`
+// alone and `conversations` already depends on `jobs`, both of which the
+// 17-context DAG carries, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again
+// unchanged and no cycle is possible — the adapter is a leaf of that DAG.
+// 108 -> 109 (WIN-258 T5, a FIFTEENTH owner). The directory gained one more
+// owner edge, to `packages/contexts/files`, carrying that context's single
+// canonical-store port over `MessageAttachment` and `Artifact`. It is the one
+// owner edge in this wave whose acyclicity needed CHECKING rather than
+// asserting: `skills` depends on `files` and `skills` is already an owner of the
+// same directory, so a cycle would need `files` to depend on `skills` — and the
+// ADR M0.3 §1 DAG has `files` depending on `tenancy` alone, which is why
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged. `files` becomes the only
+// context reached from TWO adapter directories: this one for its rows and
+// `objectstore-minio` for the `ObjectStore` port it also owns. Two directories,
+// two edges — not one directory with two.
+// AND a SIXTEENTH owner edge, to `packages/contexts/observability`, whose ONE
+// canonical row — `AdminAudit` — is in that same PostgreSQL database. It is ONE
+// edge carrying ONE binding. ADR M0.3 §1 gives `observability` exactly two
+// dependencies, `tenancy` and the kernel, and nothing in the 17-context DAG
+// depends on `observability`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again
+// unchanged and no cycle is possible.
+// AND a SEVENTEENTH owner edge, to `packages/contexts/eventing`, whose ONE
+// canonical row — `NotificationRule` — is in that same PostgreSQL database. One
+// edge carrying ONE binding, `NotificationRuleRepository`. It is the smallest
+// owner this directory has and it needs the edge for the same reason the twelve
+// above it do: ADR M0.3 §2 forbids the context's own `domain/` and
+// `application/` from importing the ORM, so the package permitted to write the
+// row cannot hold the client.
+//
+// NO CYCLE IS POSSIBLE, and here that is checked rather than asserted. ADR M0.3
+// §1 grants `eventing` exactly two dependencies — `tenancy` and the kernel — and
+// `application/dependencies.ts` holds the tenancy handle OPAQUELY and never calls
+// it, so nothing in the 17-context DAG depends on `eventing` at all: it emits
+// `NotificationRequested` and performs no delivery. `EXPECTED_CONTEXT_DEPENDS_ON`
+// below is unchanged, and an adapter is a leaf of that DAG either way.
+export const EXPECTED_EDGE_COUNT = 111;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -69,6 +198,22 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // resolves them to the entries already in pnpm-lock.yaml rather than opening a
   // second resolution, so extracting a context cannot become a supply-chain
   // change. Changing a range here is a reviewed line, which is the point.
+  // WIN-258. The generated PostgreSQL client over the canonical schema.
+  //
+  // This is the same second half of ADR M0.3's cutting rule that the entry below
+  // states for the inference SDK: `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs says the ORM may only be IMPORTED here, and
+  // this line is where it may only be DECLARED here. Without it a context could
+  // put `@platos/tenancy-database` in its own manifest and pass the import rule
+  // by never importing it — and the next file that did would be one review away
+  // from legal.
+  //
+  // It is a workspace specifier because the client is generated from a schema
+  // inside this repository, so a version range would pin a copy that could
+  // disagree with the migrations the same commit ships.
+  "packages/adapters/postgres-tenancy": {
+    "@platos/tenancy-database": "workspace:*",
+  },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -112,20 +257,97 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 
 // Deliberately repeated here rather than imported from the generator. This is
 // the independent reviewed expectation that catches generator/map mutations.
+//
+// EACH VALUE IS A LIST OF OWNERS, IN ORDER (ADR M0.3 §15). It was a single
+// owner string until WIN-258 T2, which is the same shape as a one-element list
+// and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
+// the repositories of EVERY context whose canonical rows live in the one
+// PostgreSQL database it has the client for — two at T2, and THIRTEEN since
+// tranche 5 bound `tools`, `agents`, `cost-monitoring`, `channels`,
+// `governance`, `secrets`, `providers`, `conversations`, `skills`, `memory` and
+// `jobs`, and the shape has not had to change to say so.
+//
+// The widening is exactly "one or more", not "any". The list is still compared
+// as an EXACT, ORDERED expectation against the tsconfig references and manifest
+// dependencies the tree actually carries, so an adapter with an owner edge it
+// was not granted, and an adapter missing one it was, both still fail — and
+// `EXPECTED_MULTI_OWNER_ADAPTERS` below pins WHICH directories are allowed more
+// than one, so a second owner cannot appear anywhere by accident.
 export const EXPECTED_ADAPTER_OWNERS = {
-  "postgres-tenancy": "tenancy",
-  outbox: "kernel",
-  "durable-runtime": "kernel",
-  "clickhouse-observability": "observability",
-  "objectstore-minio": "files",
-  "redis-ratelimit": "identity-access",
-  "redis-cache": "memory",
-  "redis-streams": "kernel",
-  "model-router-providers": "providers",
-  "channel-slack": "channels",
-  "notifier-email": "cost-monitoring",
-  "notifier-webhook": "cost-monitoring",
+  "postgres-tenancy": [
+    "tenancy",
+    "identity-access",
+    "tools",
+    "agents",
+    "cost-monitoring",
+    "channels",
+    "governance",
+    "secrets",
+    "providers",
+    "conversations",
+    "skills",
+    "memory",
+    "privacy",
+    "jobs",
+    "files",
+    "observability",
+    "eventing",
+  ],
+  outbox: ["kernel"],
+  "durable-runtime": ["kernel"],
+  "clickhouse-observability": ["observability"],
+  "objectstore-minio": ["files"],
+  "redis-ratelimit": ["identity-access"],
+  "redis-cache": ["memory"],
+  "redis-streams": ["kernel"],
+  "model-router-providers": ["providers"],
+  "channel-slack": ["channels"],
+  "notifier-email": ["cost-monitoring"],
+  "notifier-webhook": ["cost-monitoring"],
 };
+
+/**
+ * The adapter directories entitled to more than one owner edge, and how many.
+ *
+ * Without this, "a value may be a list" would be indistinguishable from "any
+ * adapter may reach any number of contexts". This names the exception, and the
+ * check below fails BOTH ways: an unlisted directory with two owners, and a
+ * listed one that has stopped having the number recorded here.
+ */
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17 };
+
+/**
+ * The multi-owner exception, judged over maps the caller SUPPLIES.
+ *
+ * "A value may be a list" on its own would permit any adapter any number of
+ * owner edges; this restores the one-owner default and makes each departure a
+ * named, counted line. It is injectable so `v1-project-graph.test.mjs` can hand
+ * it a mutated map and watch each refusal happen — a gate widened to permit many
+ * owners per directory has to be shown still refusing an owner it was not given.
+ */
+export function checkAdapterOwnerCounts(
+  owners = EXPECTED_ADAPTER_OWNERS,
+  multiOwner = EXPECTED_MULTI_OWNER_ADAPTERS,
+) {
+  const errors = [];
+  for (const [adapter, list] of Object.entries(owners)) {
+    const allowed = multiOwner[adapter] ?? 1;
+    if (list.length !== allowed) {
+      errors.push(
+        `packages/adapters/${adapter} expects ${list.length} owner edge(s); ${allowed} is what ADR M0.3 §4/§15 grants it`,
+      );
+    }
+    if (new Set(list).size !== list.length) {
+      errors.push(`packages/adapters/${adapter} names the same owner more than once`);
+    }
+  }
+  for (const adapter of Object.keys(multiOwner)) {
+    if (!(adapter in owners)) {
+      errors.push(`EXPECTED_MULTI_OWNER_ADAPTERS names ${adapter}, which is not an adapter`);
+    }
+  }
+  return errors;
+}
 
 function expectedProjects() {
   return [
@@ -145,8 +367,11 @@ function expectedReferences() {
       ...EXPECTED_CONTEXT_DEPENDS_ON[name].map((dependency) => `packages/contexts/${dependency}`),
     ]);
   }
-  for (const [adapter, owner] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
-    graph.set(`packages/adapters/${adapter}`, [owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`]);
+  for (const [adapter, owners] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
+    graph.set(
+      `packages/adapters/${adapter}`,
+      owners.map((owner) => (owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`)),
+    );
   }
   graph.set("apps/core-api", [
     // WIN-297: the composition root names kernel ports directly. See the note on
@@ -325,6 +550,8 @@ export function checkV1ProjectGraph(root = repositoryRoot) {
   if (!sameSet(discovered, projects)) {
     errors.push(`discovered project set ${describeSet(discovered)} does not equal expected ${describeSet(projects)}`);
   }
+
+  errors.push(...checkAdapterOwnerCounts());
 
   let referenceEdgeCount = 0;
   let dependencyEdgeCount = 0;

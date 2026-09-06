@@ -1,0 +1,1123 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `jobs`' canonical store, the",
+    "THIRTEENTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM.",
+    "One entry per guard: per scope predicate, per vocabulary check that stands",
+    "where no enum stands, per shape check that stands where a migration-only",
+    "CHECK stands, per envelope decision that keeps a row an older binary wrote",
+    "readable, and per statement the port's contract says must be one statement.",
+    "Each carries the file it lives in, the EXACT text that implements it",
+    "(`from`), the edit that removes it (`to`), and the NAMED cases that were seen",
+    "to go red (`kills`).",
+    "",
+    "IT IS A THIRTEENTH FILE beside mutations.json and the eleven others rather",
+    "than an extension of any of them, for the reason the fourth was: thirteen",
+    "tranches are thirteen separate claims about thirteen separate port surfaces,",
+    "and a reader checking one should not have to read past the other twelve. All",
+    "are hashed by the same packages.adapters.config rule and counted together by",
+    "the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. TEN of `Approval`'s twenty fields have",
+    "NO COLUMN. `AgentApproval` predates the model this context extracted, so the",
+    "live system put the business `approvalId`, the `source`, who asked, the dedupe",
+    "digest, the MCP token, the consumption instant and the human's edits inside the",
+    "`arguments` JSON under `__platosApproval`. That is a WIRE FORMAT — rows",
+    "carrying it are in the database now — and an envelope that stopped",
+    "discriminating would read a legacy row's own arguments as its metadata, or",
+    "discard them. Neither is visible in a returned value on a store with one",
+    "caller.",
+    "",
+    "AND TWO COLUMNS CARRY VOCABULARIES THE DATABASE DOES NOT HOLD. `Job.status` is",
+    "the FIVE-member `WorkStatus` enum of which a `Job` row only ever takes two, and",
+    "`Job.invocationType` is a plain TEXT column whose closed set lives only in",
+    "`domain/invocation.ts`. A store that CAST either would put a value outside its",
+    "union into `assertDispatchable` or `authorizeInvocation`, whose tables are keyed",
+    "BY the union — and an unknown invocation type would then authorize nothing",
+    "while reporting no error at all.",
+    "",
+    "M-J15 IS THE ONE ENTRY PROVEN IN THE PURE SUITE ALONE, and that is a vocabulary",
+    "boundary rather than a weaker claim. The invocation type's COLUMN carries the",
+    "pre-cutover vendor name behind an `@map`; `domain/invocation.ts` deliberately",
+    "does not spell it and `scripts/vocabulary-boundary.mjs` will not have this",
+    "package spell it either, so a container suite could not plant such a row without",
+    "naming it. `jobs-rows.test.ts` hands the value straight to the reader instead.",
+    "",
+    "AND ONE COLUMN'S CONSTRAINT IS WHY THE OUTCOME RIDES IN AN ENVELOPE OF ITS OWN.",
+    "`AgentApproval_resolution_json_root` admits an OBJECT or SQL NULL, and",
+    "`Approval.outcome` is `JsonValue | null` — so an array, a string and a number",
+    "are all values the port admits and the column refuses. The live",
+    "`markMcpConsumed` wrapped a non-object as `{ value: x }`, which is",
+    "indistinguishable on read from an outcome that IS `{ value: x }`. M-J27, M-J28",
+    "and M-J29 are the three halves of that guard."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero executed case count, and classifies a run",
+    "with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the machine",
+    "that has a daemon. `jobs-rows.test.ts` is the only suite here that runs without",
+    "one, and it is the one that reaches the mapping branches a container suite",
+    "cannot: a container only ever reads rows THIS binary wrote, so the",
+    "legacy-envelope and unknown-vocabulary branches are unreachable from it except",
+    "through the rows `jobs-rules.integration.test.ts` plants as raw SQL.",
+    "",
+    "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
+    "sweep that silently matched nothing is impossible: the driver refuses an entry",
+    "whose `from` occurs zero times or more than once.",
+    "",
+    "RESULT, 2026-09-06, against pgvector/pgvector:pg16 in a container: 75 entries,",
+    "75 KILLED, 0 SURVIVED, 0 VACUOUS. All TWELVE distinct suite sets were green with",
+    "a non-zero executed case count before any mutation was applied — 1, 14, 15, 16,",
+    "17, 22, 23, 37 and 38 cases — and every `from` matched its file exactly once, so",
+    "a sweep that silently changed nothing is not a state this can reach.",
+    "",
+    "THE FIRST SWEEP'S SURVIVORS ARE WHY SIX CASES EXIST. The dedupe lookup's three",
+    "predicates were measured through a scenario in which every row was pending and",
+    "every row was an `mcp_tool_call`, so removing either predicate changed nothing;",
+    "the listing's DEFAULT thirty-day window is a question the in-memory double",
+    "cannot be asked at all, because it applies no date filter; the platform-wide",
+    "enumeration's `distinct` and its pending filter were measured against one scope",
+    "holding one row; the writes were never aimed at another tenant's row; and the",
+    "erasure's tenant narrowing was measured where only one environment held a row.",
+    "Each is now a named case in `jobs-isolation.integration.test.ts` rather than a",
+    "widened entry.",
+    "",
+    "TWO ENTRIES WERE WITHDRAWN RATHER THAN CARRIED. A mutation of",
+    "`readApprovalOutcome`'s non-object branch is unfalsifiable, because",
+    "`AgentApproval_resolution_json_root` means no row can hold a non-object there;",
+    "and a mutation of the same function's null branch answers null either way. An",
+    "entry nothing can kill is not a guard, and listing one would make this ledger",
+    "say something it cannot support."
+  ],
+  "mutations": [
+    {
+      "name": "M-J01 guards: the uuid guard actually inspects the value",
+      "file": "src/jobs-guards.ts",
+      "from": "export function requireUuid(column: string, value: string | null): void {\n  if (value === null) return;\n  if (!isUuid(value)) {",
+      "to": "export function requireUuid(column: string, value: string | null): void {\n  if (value === null) return;\n  if (false) {",
+      "note": "`aJob()` mints `jobId: \"job-0001\"` and `anApproval()` mints `rowId: \"appr-row-0001\"`. Both doubles store them and `@db.Uuid` refuses them, so without this guard the refusal arrives as a driver error that has already ABORTED the caller's transaction.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "the id the context's own builder mints is refused, and PostgreSQL refuses it too",
+        "an approval row id that is not a uuid is refused on both sides"
+      ]
+    },
+    {
+      "name": "M-J02 guards: the uuid pattern is the one the column parses",
+      "file": "src/jobs-guards.ts",
+      "from": "const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;",
+      "to": "const UUID = /^[0-9a-z-]+$/i;",
+      "note": "A looser hex-and-dashes pattern admits spellings the `uuid` input type then rejects, which is a guard that does not guard.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "each of the three approval foreign keys is guarded, and the guard names the column"
+      ]
+    },
+    {
+      "name": "M-J03 guards: the payload schema root is checked",
+      "file": "src/jobs-guards.ts",
+      "from": "export function requireStorablePayloadSchema(value: JsonValue | null): void {\n  if (value === null) return;\n  if (!isJsonObject(value)) {",
+      "to": "export function requireStorablePayloadSchema(value: JsonValue | null): void {\n  if (value === null) return;\n  if (false) {",
+      "note": "`Job_payloadSchema_json_root` admits an object or SQL NULL. The field is `JsonValue | null`, so an array type-checks and aborts the transaction at the wire.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an ARRAY schema is refused by the guard and by the CHECK"
+      ]
+    },
+    {
+      "name": "M-J04 guards: an array is not an object",
+      "file": "src/jobs-guards.ts",
+      "from": "function isJsonObject(value: JsonValue): boolean {\n  return typeof value === \"object\" && value !== null && !Array.isArray(value);",
+      "to": "function isJsonObject(value: JsonValue): boolean {\n  return typeof value === \"object\" && value !== null;",
+      "note": "`jsonb_typeof` tells an array from an object and the CHECK admits only the second. A guard that conflated them would send the statement and get the refusal from the driver instead, with the transaction already gone.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an ARRAY schema is refused by the guard and by the CHECK"
+      ]
+    },
+    {
+      "name": "M-J05 guards: int4 has an upper bound",
+      "file": "src/jobs-guards.ts",
+      "from": "function isNonNegativeInt4(value: number): boolean {\n  return Number.isInteger(value) && value >= 0 && value <= INT4_MAX;",
+      "to": "function isNonNegativeInt4(value: number): boolean {\n  return Number.isInteger(value) && value >= 0;",
+      "note": "`Int` is int4 and JavaScript hands the driver a `number` that may be 2^53. `clampTimeoutSeconds` has a floor and deliberately no ceiling, so a caller asking for a century of decision time reaches this column.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a job budget beyond int4 is refused, and PostgreSQL refuses it too",
+        "a retry count beyond int4 is refused under the SAME code, and that is deliberate",
+        "an approval timeout beyond int4 has its OWN code, because it is another table"
+      ]
+    },
+    {
+      "name": "M-J06 guards: the instant guard sees an Invalid Date",
+      "file": "src/jobs-guards.ts",
+      "from": "export function requireStorableInstant(column: string, value: Date | null): void {\n  if (value === null) return;\n  if (Number.isNaN(value.getTime())) {",
+      "to": "export function requireStorableInstant(column: string, value: Date | null): void {\n  if (value === null) return;\n  if (false) {",
+      "note": "`new Date(\"nonsense\")` is a `Date` to the type checker and a `NaN` epoch at the wire. Without the guard the failure carries the driver's name rather than this store's.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an Invalid Date is refused before it reaches the driver"
+      ]
+    },
+    {
+      "name": "M-J07 guards: the outcome marker is reserved at the ROOT",
+      "file": "src/jobs-guards.ts",
+      "from": "  if (Object.prototype.hasOwnProperty.call(outcome, APPROVAL_OUTCOME_MARKER)) {",
+      "to": "  if (false) {",
+      "note": "A stored `{ \"__platosOutcome\": 7 }` would read back as `7`. Refusing it at the root is what makes the unwrap total.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an outcome carrying the envelope marker at its ROOT is refused"
+      ]
+    },
+    {
+      "name": "M-J08 guards: only the ROOT is reserved, not a nested occurrence",
+      "file": "src/jobs-guards.ts",
+      "from": "export function requireUnreservedOutcome(outcome: JsonValue | null): void {\n  if (outcome === null) return;\n  if (!isJsonObject(outcome)) return;",
+      "to": "export function requireUnreservedOutcome(outcome: JsonValue | null): void {\n  if (outcome === null) return;\n  if (!isJsonObject(outcome)) return;\n  if (JSON.stringify(outcome).includes(APPROVAL_OUTCOME_MARKER)) {\n    throw new JobsWriteRefused(APPROVAL_OUTCOME_RESERVED, \"nested\");\n  }",
+      "note": "The converse of M-J07. A handler attribute that happens to share the name is a value, and a store that refused it would be deciding what a handler may return.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a NESTED occurrence of the marker is not the marker, and reads back unchanged"
+      ]
+    },
+    {
+      "name": "M-J09 guards: an edit the envelope cannot hold is refused",
+      "file": "src/jobs-guards.ts",
+      "from": "export function requireStorableEdit(edit: ApprovalEdit | null): void {\n  if (edit === null) return;\n  if (edit.editedArguments === null) {",
+      "to": "export function requireStorableEdit(edit: ApprovalEdit | null): void {\n  if (edit === null) return;\n  if (false) {",
+      "note": "THE PORT CONTRACT THE SCHEMA CANNOT HONOUR. The live envelope stores the edit and the ABSENCE of an edit in one field, so this value round-trips into the other one with nothing to report.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an edit whose editedArguments is JSON null is refused rather than silently lost"
+      ]
+    },
+    {
+      "name": "M-J10 guards: a page limit must be positive",
+      "file": "src/jobs-guards.ts",
+      "from": "  if (!isNonNegativeInt4(limit) || limit === 0) {",
+      "to": "  if (false) {",
+      "note": "The double answers `query.limit ?? 50` without looking at the value; PostgreSQL reads a negative `take` as \"page BACKWARDS from the offset\".",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a page window the double accepts and PostgreSQL reads backwards is refused"
+      ]
+    },
+    {
+      "name": "M-J11 guards: a page offset must be non-negative",
+      "file": "src/jobs-guards.ts",
+      "from": "  if (!isNonNegativeInt4(offset)) {\n    throw new JobsWriteRefused(\n      APPROVAL_PAGE_WINDOW_INVALID,\n      `ApprovalQuery.offset must be a non-negative int4; received ${String(offset)}`,",
+      "to": "  if (false) {\n    throw new JobsWriteRefused(\n      APPROVAL_PAGE_WINDOW_INVALID,\n      `ApprovalQuery.offset must be a non-negative int4; received ${String(offset)}`,",
+      "note": "Its own clause rather than the limit's, because a caller acts on the two the same way and a sweep that killed only one would leave the other standing.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a page window the double accepts and PostgreSQL reads backwards is refused"
+      ]
+    },
+    {
+      "name": "M-J12 guards: the approval's three foreign keys are guarded, not just its own id",
+      "file": "src/jobs-guards.ts",
+      "from": "  requireUuid(\"AgentApproval.agentId\", approval.agentId);\n  requireUuid(\"AgentApproval.threadId\", approval.threadId);\n  requireUuid(\"AgentApproval.turnId\", approval.turnId);",
+      "to": "",
+      "note": "Each is `@db.Uuid` and each is the id of a row another context owns, so a caller holding one of that context's own non-uuid doubles reaches this column.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "each of the three approval foreign keys is guarded, and the guard names the column"
+      ]
+    },
+    {
+      "name": "M-J13 guards: the scope's environment is guarded before the statement",
+      "file": "src/jobs-definitions.ts",
+      "from": "        requireUuid(\"Job.environmentId\", scope.environmentId);",
+      "to": "",
+      "note": "A scope is not a value the caller built from a row; it is a value the caller built from a request, and `@db.Uuid` refuses a malformed one with the transaction attached.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a scope whose environment is not a uuid is refused before any statement"
+      ]
+    },
+    {
+      "name": "M-J14 rows: Job.status is mapped, not defaulted",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (value === \"ACTIVE\") return \"active\";\n  if (value === \"FAILED\") return \"registration-failed\";\n  throw new UnreadableRowError(JOBS_UNKNOWN_WORK_STATUS, \"Job.status\", value);",
+      "to": "  if (value === \"FAILED\") return \"registration-failed\";\n  return \"active\";",
+      "note": "`WorkStatus` has FIVE members and a `Job` row takes two. Defaulting the other three to `active` makes `assertDispatchable` answer for a row this binary cannot describe.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "Job.status maps the two a Job row takes and refuses the other three by name",
+        "a row holding PENDING is refused by name rather than mapped to whichever looks closest"
+      ]
+    },
+    {
+      "name": "M-J15 rows: the invocation type is validated, not cast",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (!isStoredInvocationType(value)) {\n    throw new UnreadableRowError(UNKNOWN_INVOCATION_TYPE, \"Job.invocationType\", value);\n  }\n  return value;",
+      "to": "  return value as StoredInvocationType;",
+      "note": "The closed set lives only in `domain/invocation.ts`. A cast puts a value outside the union into `authorizeInvocation`, whose acceptance table is keyed BY the union — so the job authorizes nothing and no error is raised anywhere. It is proven in the PURE suite alone: the column carries the pre-cutover vendor name behind an `@map`, this package may not spell it, and a container suite would have to in order to plant such a row.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "Job.invocationType admits the four stored types and refuses `agent`, which is CLAIMED"
+      ]
+    },
+    {
+      "name": "M-J16 rows: AgentApproval.status is total, and EXPIRED is the pair that does not match",
+      "file": "src/jobs-rows.ts",
+      "from": "  const status = fromStoredStatus(value);\n  if (status === null) {",
+      "to": "  const status = fromStoredStatus(value) ?? \"pending\";\n  if (false) {",
+      "note": "The live `publicStatus` returns `pending` for anything unrecognised, which is a decision waiting on a human that no human will ever see. The parse here is total.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "AgentApproval.status maps all four, and EXPIRED is the pair that does not match by name"
+      ]
+    },
+    {
+      "name": "M-J17 rows: payloadSchema is validated against its CHECK",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (!isObject(value)) {\n    throw new UnreadableRowError(UNREADABLE_PAYLOAD_SCHEMA, \"Job.payloadSchema\", typeof value);\n  }\n  return value as JsonValue;",
+      "to": "  return value as JsonValue;",
+      "note": "Reachable only from a row written while `Job_payloadSchema_json_root` was absent, which is exactly the expand/contract window a store must be able to describe.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "null and an object read; an array, a string and a number do not",
+        "a payloadSchema written while the CHECK was absent is refused on read"
+      ]
+    },
+    {
+      "name": "M-J18 rows: a NULL allowedAgentIds is the empty list",
+      "file": "src/jobs-rows.ts",
+      "from": "    allowedAgentIds: (row.allowedAgentIds ?? []).map((value) => asIdentifier<AgentId>(value)),",
+      "to": "    allowedAgentIds: (row.allowedAgentIds as readonly string[]).map((value) => asIdentifier<AgentId>(value)),",
+      "note": "`schema.prisma` says `String[] @default([])`; the initial migration declares `TEXT[]` with NO `NOT NULL`. The two disagree and only the migration builds the database.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a NULL allowedAgentIds reads as the empty list, which the DDL permits",
+        "allowedAgentIds is NULLABLE in the DDL and reads as the empty list"
+      ]
+    },
+    {
+      "name": "M-J19 rows: a legacy arguments column keeps its arguments",
+      "file": "src/jobs-rows.ts",
+      "from": "    return { ...ABSENT_ENVELOPE, value: stored as JsonValue };",
+      "to": "    return ABSENT_ENVELOPE;",
+      "note": "The live `readArguments` answers `value: null` for a marker-less row and DISCARDS its arguments on every read. Discarding a column the port promises to return is data loss, and this is the one place this store diverges from the live reader on purpose.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a row with NO marker is a legacy row and the whole object is its arguments",
+        "an arguments object with NO marker is a legacy row and its arguments SURVIVE"
+      ]
+    },
+    {
+      "name": "M-J20 rows: a marker that is not an object is unreadable",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (!isObject(metadata)) {\n    throw new UnreadableRowError(\n      UNREADABLE_APPROVAL_ENVELOPE,\n      `AgentApproval.arguments.${APPROVAL_METADATA_MARKER}`,\n      typeof metadata,\n    );\n  }",
+      "to": "",
+      "note": "A string under the marker would still be refused — by `requiredString`, one line later — but under the WRONG COLUMN: `arguments.__platosApproval.approvalId` rather than the envelope itself. The code is the same and the repair is not, which is why the case that kills this one asserts the column.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "the refusal names the COLUMN it found the problem in, not just the row"
+      ]
+    },
+    {
+      "name": "M-J21 rows: a required metadata field is a STRING or the row is unreadable",
+      "file": "src/jobs-rows.ts",
+      "from": "function requiredString(value: unknown, column: string): string {\n  if (typeof value !== \"string\") {",
+      "to": "function requiredString(value: unknown, column: string): string {\n  if (false) {",
+      "note": "A numeric `approvalId` would be branded as one and compared against a string for the rest of its life, matching nothing.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a metadata field of the wrong type is unreadable rather than coerced",
+        "a metadata field of the wrong TYPE is an unreadable row, not a coerced one"
+      ]
+    },
+    {
+      "name": "M-J22 rows: an optional metadata field is a string or null, and nothing else",
+      "file": "src/jobs-rows.ts",
+      "from": "function optionalString(value: unknown, column: string): string | null {\n  if (value === null || value === undefined) return null;\n  if (typeof value !== \"string\") {",
+      "to": "function optionalString(value: unknown, column: string): string | null {\n  if (value === null || value === undefined) return null;\n  if (false) {",
+      "note": "`requestedBy` is the erasure's subject. A number read as one would make an erasure match nothing and report success.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a metadata field of the wrong type is unreadable rather than coerced",
+        "a metadata field of the wrong TYPE is an unreadable row, not a coerced one"
+      ]
+    },
+    {
+      "name": "M-J23 rows: a consumedAt that is not an instant is unreadable",
+      "file": "src/jobs-rows.ts",
+      "from": "  const at = new Date(envelope.consumedAt);\n  if (Number.isNaN(at.getTime())) {",
+      "to": "  const at = new Date(envelope.consumedAt);\n  if (false) {",
+      "note": "An `Invalid Date` would travel as a `Date`, compare false against everything, and serialise as `null` — a consumed approval that reads as unconsumed.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a consumedAt that is not an instant is unreadable rather than an Invalid Date",
+        "a metadata field of the wrong TYPE is an unreadable row, not a coerced one"
+      ]
+    },
+    {
+      "name": "M-J24 rows: a PENDING row has no resolution",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (status === \"pending\") return null;",
+      "to": "  if (false) return null;",
+      "note": "A pending row can carry a `respondedBy` a legacy path wrote, and a resolution built from it would report a decision nobody made — and would make `isPending` and `isResolved` disagree.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a PENDING approval has no resolution, whatever the decision columns hold",
+        "a PENDING row carries no resolution at all, whatever the decision columns say"
+      ]
+    },
+    {
+      "name": "M-J25 rows: resolvedAt falls back to updatedAt rather than to null",
+      "file": "src/jobs-rows.ts",
+      "from": "    resolvedAt: row.resolvedAt ?? row.updatedAt,",
+      "to": "    resolvedAt: row.resolvedAt as Date,",
+      "note": "`ApprovalResolution.resolvedAt` is not nullable and the COLUMN is. For every row this store wrote the two are the same instant, so only a row it did NOT write can see the difference.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-rules.integration.test.ts"
+      ],
+      "kills": [
+        "a decided approval with no resolvedAt falls back to updatedAt",
+        "a decided row with NO resolvedAt falls back to updatedAt rather than to null"
+      ]
+    },
+    {
+      "name": "M-J26 rows: no edit is not an edit carrying null",
+      "file": "src/jobs-rows.ts",
+      "from": "function readEdit(envelope: ApprovalEnvelope): ApprovalEdit | null {\n  if (envelope.editedArgs === null) return null;",
+      "to": "function readEdit(envelope: ApprovalEnvelope): ApprovalEdit | null {\n  if (false) return null;",
+      "note": "Every approval that was never edited would come back carrying an edit whose arguments are null, which `effectiveArguments` would then prefer over the caller's own.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "a decided approval with no resolvedAt falls back to updatedAt"
+      ]
+    },
+    {
+      "name": "M-J27 rows: the outcome envelope unwraps",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (Object.prototype.hasOwnProperty.call(stored, APPROVAL_OUTCOME_MARKER)) {\n    return (stored[APPROVAL_OUTCOME_MARKER] ?? null) as JsonValue | null;\n  }",
+      "to": "",
+      "note": "Without the unwrap every outcome reads back as the wrapper this store put round it, and an array outcome becomes an object.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "every JsonValue survives the wrap, including the ones the column refuses",
+        "a NON-object outcome round-trips, where the raw column refuses it"
+      ]
+    },
+    {
+      "name": "M-J28 rows: the outcome is WRAPPED, because the column refuses the alternative",
+      "file": "src/jobs-rows.ts",
+      "from": "  return { [APPROVAL_OUTCOME_MARKER]: outcome };",
+      "to": "  return outcome as Record<string, unknown>;",
+      "note": "`AgentApproval_resolution_json_root` admits an object or SQL NULL, and `outcome` is `JsonValue | null`. The wrapper is what makes an array storable at all.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "every JsonValue survives the wrap, including the ones the column refuses",
+        "a NON-object outcome round-trips, where the raw column refuses it"
+      ]
+    },
+    {
+      "name": "M-J29 rows: a null outcome is SQL NULL, not a wrapper holding null",
+      "file": "src/jobs-rows.ts",
+      "from": "export function writeApprovalOutcome(outcome: JsonValue | null): Record<string, unknown> | null {\n  if (outcome === null) return null;",
+      "to": "export function writeApprovalOutcome(outcome: JsonValue | null): Record<string, unknown> | null {\n  if (false) return null;",
+      "note": "A `Json?` column has two nulls. The JSON scalar `null` has `jsonb_typeof` `'null'` and the CHECK refuses it; SQL NULL is admitted by the constraint's first clause.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "a null outcome is SQL NULL rather than a wrapper holding null"
+      ]
+    },
+    {
+      "name": "M-J31 rows: the envelope carries consumedAt",
+      "file": "src/jobs-rows.ts",
+      "from": "      consumedAt: approval.consumedAt === null ? null : approval.consumedAt.toISOString(),",
+      "to": "      consumedAt: null,",
+      "note": "`consumedAt` has no column. A write that dropped it would let an approved MCP call be carried out twice.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "write then read is the identity on a fully populated approval",
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J32 rows: the envelope carries the caller's arguments",
+      "file": "src/jobs-rows.ts",
+      "from": "    value: approval.arguments,\n  };\n}",
+      "to": "    value: null,\n  };\n}",
+      "note": "The arguments are what the human is approving. A write that dropped them would show an empty tool call in the queue and execute a full one.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "write then read is the identity on a fully populated approval",
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J33 rows: the envelope carries the human's edits",
+      "file": "src/jobs-rows.ts",
+      "from": "      editedArgs: edit === null ? null : edit.editedArguments,\n      editedByUserId: edit === null ? null : edit.editedBy,",
+      "to": "      editedArgs: null,\n      editedByUserId: null,",
+      "note": "`effectiveArguments` prefers the edit, so a write that dropped it would execute what the human declined to approve.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "write then read is the identity on a fully populated approval",
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J34 rows: the tenant filter reaches an ORGANIZATION through the tree",
+      "file": "src/jobs-rows.ts",
+      "from": "  return { environment: { project: { organizationId: scope.organizationId } } };",
+      "to": "  return {};",
+      "note": "An erasure addressed at an organization would become an erasure of everybody's approvals in the install.",
+      "suites": [
+        "src/jobs-rows.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenantWhere resolves containment through the tree rather than by widening it",
+        "one subject with approvals in two environments is counted per environment"
+      ]
+    },
+    {
+      "name": "M-J35 rows: a PROJECT scope is not an environment scope",
+      "file": "src/jobs-rows.ts",
+      "from": "  if (scope.level === \"project\") return { environment: { projectId: scope.projectId } };",
+      "to": "  if (scope.level === \"project\") return { environmentId: scope.projectId };",
+      "note": "A project id compared against an environment column matches nothing, so an erasure addressed at a project would silently destroy nothing and report success.",
+      "suites": [
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "tenantWhere resolves containment through the tree rather than by widening it"
+      ]
+    },
+    {
+      "name": "M-J36 rows: the scoped read is scoped",
+      "file": "src/jobs-rows.ts",
+      "from": "export function scopedWhere(scope: EnvironmentScope): { readonly environmentId: string } {\n  return { environmentId: scope.environmentId };",
+      "to": "export function scopedWhere(scope: EnvironmentScope): { readonly environmentId: string } {\n  return {} as { readonly environmentId: string };",
+      "note": "Every read and every write in both stores is narrowed by this. Without it a caller holding another tenant's id reads and writes that tenant's row.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts",
+        "src/jobs-rows.test.ts"
+      ],
+      "kills": [
+        "a job that exists in another environment is invisible, not merely un-asserted",
+        "scopedWhere is the environment and nothing else"
+      ]
+    },
+    {
+      "name": "M-J37 definitions: the duplicate insert does not raise",
+      "file": "src/jobs-definitions.ts",
+      "from": "          skipDuplicates: true,\n          select: JOB_COLUMNS,",
+      "to": "          skipDuplicates: false,\n          select: JOB_COLUMNS,",
+      "note": "A raised unique violation ABORTS the enclosing transaction, so the caller keeps the refusal and loses everything else it was going to write.",
+      "suites": [
+        "src/jobs-transaction.integration.test.ts",
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the duplicate-key insert refuses WITHOUT aborting the transaction",
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J38 definitions: an empty return IS the conflict",
+      "file": "src/jobs-definitions.ts",
+      "from": "        const row = created[0];\n        if (row === undefined) {\n          return err(repositoryUnavailable(\"unique(environmentId, externalId) violated\"));",
+      "to": "        const row = created[0];\n        if (false) {\n          return err(repositoryUnavailable(\"unique(environmentId, externalId) violated\"));",
+      "note": "`ON CONFLICT DO NOTHING` returns no row rather than raising, so the empty return is the only signal there is.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "a second job with the same key in the same environment is refused"
+      ]
+    },
+    {
+      "name": "M-J39 definitions: the listing order is total and oldest-first",
+      "file": "src/jobs-definitions.ts",
+      "from": "          orderBy: [{ createdAt: \"asc\" }, { id: \"asc\" }],\n        });\n        return ok(rows.map((row) => readJob(row as JobRow)));",
+      "to": "          orderBy: [{ createdAt: \"desc\" }, { id: \"asc\" }],\n        });\n        return ok(rows.map((row) => readJob(row as JobRow)));",
+      "note": "`createdAt` is `TIMESTAMP(3)` and `now()` is the TRANSACTION's start time, so two jobs registered in one unit of work tie and an untied order differs per read.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J40 definitions: an update that matched nothing is refused",
+      "file": "src/jobs-definitions.ts",
+      "from": "        if (outcome.count === 0) return err(repositoryUnavailable(\"job absent from scope\"));",
+      "to": "        if (false) return err(repositoryUnavailable(\"job absent from scope\"));",
+      "note": "`updateMany` reports rather than raising, so the count is the only place \"there was no such row here\" is said.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "update, delete, markStarted, resolve and markConsumed all miss another tenant's row"
+      ]
+    },
+    {
+      "name": "M-J41 definitions: markStarted is guarded on ACTIVE",
+      "file": "src/jobs-definitions.ts",
+      "from": "            where: { id: jobId, status: \"ACTIVE\", ...scopedWhere(scope) },",
+      "to": "            where: { id: jobId, ...scopedWhere(scope) },",
+      "note": "A job deactivated between the dispatch and the stamp must not get a `lastStartedAt` that says a run began.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J42 definitions: markStarted moves updatedAt with the stamp",
+      "file": "src/jobs-definitions.ts",
+      "from": "            data: { lastStartedAt: startedAt, updatedAt: startedAt },",
+      "to": "            data: { lastStartedAt: startedAt },",
+      "note": "`withLastStartedAt` in `domain/job.ts` sets both, and `@updatedAt` would otherwise stamp the wall clock rather than the run's own instant.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J43 definitions: a delete that matched nothing answers false",
+      "file": "src/jobs-definitions.ts",
+      "from": "        return ok(outcome.count > 0);\n      }, \"jobs deleteJob\");",
+      "to": "        return ok(true);\n      }, \"jobs deleteJob\");",
+      "note": "Deleting the same job twice must answer true then false, or a caller cannot tell an erasure from a no-op.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J44 definitions: the status is mapped to the stored enum",
+      "file": "src/jobs-definitions.ts",
+      "from": "    status: JOB_STATUS_TO_STORED[job.status],",
+      "to": "    status: \"ACTIVE\" as const,",
+      "note": "A registration-failed row written as ACTIVE becomes dispatchable, which is the one thing `checkSyntax` refused it for.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J45 definitions: the invocation type is the row's own",
+      "file": "src/jobs-definitions.ts",
+      "from": "    invocationType: job.invocationType,",
+      "to": "    invocationType: \"manual\" as const,",
+      "note": "`invocationType` is the CLIENT property; the column behind it carries the pre-cutover vendor name behind an `@map`. `authorizeInvocation` is keyed by the property, so a schedule stored as manual is a job an agent may no longer start.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J46 definitions: the agent allow-list is written",
+      "file": "src/jobs-definitions.ts",
+      "from": "    allowedAgentIds: [...job.allowedAgentIds],",
+      "to": "    allowedAgentIds: [],",
+      "note": "An EMPTY list means \"any agent\" (`authorizeAgent`), so dropping a populated one turns a restriction into a permission.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J47 definitions: a nullable Json column needs the driver's own null",
+      "file": "src/jobs-definitions.ts",
+      "from": "    payloadSchema: nullableJson(job.payloadSchema),",
+      "to": "    payloadSchema: job.payloadSchema as never,",
+      "note": "A plain JavaScript `null` on a nullable `Json` field is a client VALIDATION error, not a stored null — the client demands one of its two sentinels and will not choose.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J48 approvals: the business id is resolved through the metadata path",
+      "file": "src/jobs-approvals.ts",
+      "from": "  return { arguments: { path: [APPROVAL_METADATA_MARKER, field], equals: value } };",
+      "to": "  return { arguments: { path: [field], equals: value } };",
+      "note": "`AgentApproval` has no column for `approvalId`. Every live caller holds that id and nothing else, so the JSON path IS the lookup.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J49 approvals: the dedupe answer must still be PENDING",
+      "file": "src/jobs-approvals.ts",
+      "from": "            status: \"PENDING\",\n            AND: [metadataWhere(\"requestHash\", digest), metadataWhere(\"source\", \"mcp_tool_call\")],",
+      "to": "            AND: [metadataWhere(\"requestHash\", digest), metadataWhere(\"source\", \"mcp_tool_call\")],",
+      "note": "A resolved approval returned as the dedupe answer would let a retry ride on a decision that has already been carried out.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "only a PENDING mcp_tool_call row carrying the digest is the answer"
+      ]
+    },
+    {
+      "name": "M-J50 approvals: the dedupe answer must be an mcp_tool_call",
+      "file": "src/jobs-approvals.ts",
+      "from": "            AND: [metadataWhere(\"requestHash\", digest), metadataWhere(\"source\", \"mcp_tool_call\")],",
+      "to": "            AND: [metadataWhere(\"requestHash\", digest)],",
+      "note": "The port names the source and the live `findFirst` matches it. Without it a generic approval carrying the same digest satisfies a tool call's guard.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "only a PENDING mcp_tool_call row carrying the digest is the answer"
+      ]
+    },
+    {
+      "name": "M-J51 approvals: the dedupe answer is the MOST RECENT",
+      "file": "src/jobs-approvals.ts",
+      "from": "          orderBy: [{ createdAt: \"desc\" }, { id: \"desc\" }],\n          select: APPROVAL_COLUMNS,\n        });\n        return ok(row === null ? null : readApproval(row as ApprovalRow));\n      }, \"approvals findPendingByDigest\");",
+      "to": "          orderBy: [{ createdAt: \"asc\" }, { id: \"asc\" }],\n          select: APPROVAL_COLUMNS,\n        });\n        return ok(row === null ? null : readApproval(row as ApprovalRow));\n      }, \"approvals findPendingByDigest\");",
+      "note": "Two concurrent retries mint two rows; the one a caller should wait on is the newest, which is what the live `orderBy` says.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J52 approvals: the pending count is scope-wide, not page-wide",
+      "file": "src/jobs-approvals.ts",
+      "from": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...scopedWhere(scope), status: \"PENDING\" },\n        });",
+      "to": "        const pendingCount = await reader.agentApproval.count({ where });",
+      "note": "The port says it in as many words: \"Pending in the WHOLE scope, not just this page\". It is the badge a dashboard shows, and a filtered one would go to zero the moment somebody filtered.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "the DEFAULT window is thirty days back from now, and a wide one reaches past it"
+      ]
+    },
+    {
+      "name": "M-J53 approvals: the page window is applied",
+      "file": "src/jobs-approvals.ts",
+      "from": "          skip: offset,\n          take: limit,",
+      "to": "          take: limit,",
+      "note": "Without the offset every page is the first page, and a caller walking a queue sees the same rows for ever.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J54 approvals: the listing has a date window at all",
+      "file": "src/jobs-approvals.ts",
+      "from": "    createdAt: { gte: new Date(now.getTime() - sinceDays * 86_400_000) },\n",
+      "to": "",
+      "note": "The live default is thirty days and the double applies no filter at all, so the conformance differential always passes a wide window and this is the only place the default is measured.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the DEFAULT window is thirty days back from now, and a wide one reaches past it"
+      ]
+    },
+    {
+      "name": "M-J55 approvals: the thread filter filters",
+      "file": "src/jobs-approvals.ts",
+      "from": "  if (query.threadId) where[\"threadId\"] = query.threadId;",
+      "to": "",
+      "note": "A dashboard opened on one conversation would show every approval in the environment.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J56 approvals: the agent filter filters",
+      "file": "src/jobs-approvals.ts",
+      "from": "  if (query.agentId) where[\"agentId\"] = query.agentId;",
+      "to": "",
+      "note": "Same shape as the thread filter, on the other axis a queue is read by.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J57 approvals: the status filter maps through the stored vocabulary",
+      "file": "src/jobs-approvals.ts",
+      "from": "  if (query.status) where[\"status\"] = toStoredStatus(query.status);",
+      "to": "  if (query.status) where[\"status\"] = query.status;",
+      "note": "`timed_out` is stored as `EXPIRED`. A filter that passed the domain word through would match nothing and report an empty queue.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J58 approvals: the source filter reaches into the envelope",
+      "file": "src/jobs-approvals.ts",
+      "from": "  if (query.source) where[\"AND\"] = [metadataWhere(\"source\", query.source)];",
+      "to": "",
+      "note": "`source` has no column either. It is the axis that separates an MCP tool call from a cancellation, and the queue is filtered by it.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J59 approvals: the search is case-insensitive over the action",
+      "file": "src/jobs-approvals.ts",
+      "from": "    where[\"action\"] = { contains: query.search, mode: \"insensitive\" as const };",
+      "to": "    where[\"action\"] = { contains: query.search };",
+      "note": "The double lower-cases both sides. A case-sensitive `contains` answers a different set for the same query, which is a divergence with a real consequence for whoever is searching.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J60 approvals: resolve is guarded on PENDING",
+      "file": "src/jobs-approvals.ts",
+      "from": "          where: { id: approval.rowId, status: \"PENDING\", ...scopedWhere(scope) },",
+      "to": "          where: { id: approval.rowId, ...scopedWhere(scope) },",
+      "note": "THE RACE DEFENCE. Two dashboards clicking Approve at the same instant must resolve once; without the guard the second overwrites the first's decision.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "a throw from the callback rolls the decision and its resumption back together"
+      ]
+    },
+    {
+      "name": "M-J61 approvals: exactly one row moved means this call moved it",
+      "file": "src/jobs-approvals.ts",
+      "from": "        return ok(outcome.count === 1);\n      }, \"approvals resolve\");",
+      "to": "        return ok(true);\n      }, \"approvals resolve\");",
+      "note": "The port's contract: \"Returns `true` when THIS call performed the transition and `false` when the row was already decided.\"",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "update, delete, markStarted, resolve and markConsumed all miss another tenant's row"
+      ]
+    },
+    {
+      "name": "M-J62 approvals: resolve writes the envelope back",
+      "file": "src/jobs-approvals.ts",
+      "from": "            arguments: nullableJson(writeApprovalEnvelope(approval)),\n            updatedAt: approval.updatedAt,",
+      "to": "            updatedAt: approval.updatedAt,",
+      "note": "The human's edits live in the envelope and nowhere else, so a resolve that did not rewrite it would record the decision and lose what was decided.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J63 approvals: the duplicate approval insert does not raise",
+      "file": "src/jobs-approvals.ts",
+      "from": "          skipDuplicates: true,\n          select: APPROVAL_COLUMNS,",
+      "to": "          skipDuplicates: false,\n          select: APPROVAL_COLUMNS,",
+      "note": "`request-approval.ts` writes this row inside the unit of work that then parks the turn on a suspension; a raised primary-key violation would take the suspension with it, and the THIRD write in that case is what proves it did not.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a second approval with the same row id is refused WITHOUT aborting the transaction"
+      ]
+    },
+    {
+      "name": "M-J64 approvals: markConsumed answers false for a row that is not there",
+      "file": "src/jobs-approvals.ts",
+      "from": "        if (row === null) return ok(false);",
+      "to": "        if (false) return ok(false);",
+      "note": "The business id is resolved through a JSON path with no index behind it, so a miss is an ordinary outcome rather than an exception.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts",
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically",
+        "update, delete, markStarted, resolve and markConsumed all miss another tenant's row"
+      ]
+    },
+    {
+      "name": "M-J65 approvals: markConsumed moves updatedAt",
+      "file": "src/jobs-approvals.ts",
+      "from": "            resolution: nullableJson(writeApprovalOutcome(outcome)),\n            updatedAt: at,",
+      "to": "            resolution: nullableJson(writeApprovalOutcome(outcome)),",
+      "note": "`@updatedAt` would stamp the wall clock rather than the instant the caller says the work was carried out at.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J66 approvals: findPending returns only pending rows",
+      "file": "src/jobs-approvals.ts",
+      "from": "          where: { ...scopedWhere(scope), status: \"PENDING\" },\n          select: APPROVAL_COLUMNS,\n          orderBy: [{ createdAt: \"asc\" }, { id: \"asc\" }],",
+      "to": "          where: { ...scopedWhere(scope) },\n          select: APPROVAL_COLUMNS,\n          orderBy: [{ createdAt: \"asc\" }, { id: \"asc\" }],",
+      "note": "The sweep judges what it is handed. A decided approval in that list would be flipped to `timed_out` over a decision a human already made.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J67 approvals: the platform-wide enumeration is pending-only",
+      "file": "src/jobs-approvals.ts",
+      "from": "          where: { status: \"PENDING\" },\n          distinct: [\"environmentId\"],",
+      "to": "          distinct: [\"environmentId\"],",
+      "note": "A scope whose approvals are all decided has nothing for a sweep to do, and visiting it is work the sweep pays for on every install.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a scope is enumerated ONCE while it holds a pending row, and not at all after"
+      ]
+    },
+    {
+      "name": "M-J68 approvals: the platform-wide enumeration is DISTINCT",
+      "file": "src/jobs-approvals.ts",
+      "from": "          distinct: [\"environmentId\"],\n          orderBy: [{ environmentId: \"asc\" }],",
+      "to": "          orderBy: [{ environmentId: \"asc\" }],",
+      "note": "Without it the sweep visits an environment once per waiting approval, which is the N+1 the port split the enumeration from the sweep to prevent.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a scope is enumerated ONCE while it holds a pending row, and not at all after"
+      ]
+    },
+    {
+      "name": "M-J69 approvals: the page window is checked before the statement",
+      "file": "src/jobs-approvals.ts",
+      "from": "        requireStorablePageWindow(limit, offset);",
+      "to": "",
+      "note": "A negative `take` is read by PostgreSQL as \"page backwards from the offset\", which is a different page rather than an error.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a page window the double accepts and PostgreSQL reads backwards is refused"
+      ]
+    },
+    {
+      "name": "M-J70 approvals: resolve guards the approval it is handed",
+      "file": "src/jobs-approvals.ts",
+      "from": "        guardApproval(approval);\n        const client = transactions.writer(transaction);\n        // THE GUARD IS `status: \"PENDING\"` IN THE `where`",
+      "to": "        const client = transactions.writer(transaction);\n        // THE GUARD IS `status: \"PENDING\"` IN THE `where`",
+      "note": "`resolve` is the one write that carries a human's edits, and the edit shape the envelope cannot hold is refused here or lost silently.",
+      "suites": [
+        "src/jobs-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "an edit whose editedArguments is JSON null is refused rather than silently lost"
+      ]
+    },
+    {
+      "name": "M-J71 erasure: a subject-less selector matches nothing",
+      "file": "src/jobs-erasure.ts",
+      "from": "  const principalId = selector.principalId;\n  if (principalId === null) return null;",
+      "to": "  const principalId = selector.principalId;\n  if (false) return null;",
+      "note": "A null subject would make the `WHERE` a tenant alone — every approval of every person in that organization. `selectorFor` answers null for an `entity` subject, so this is reachable from the erasure target itself.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J72 erasure: the operator who DECIDED is a subject too",
+      "file": "src/jobs-erasure.ts",
+      "from": "      { respondedBy: principalId },\n      { arguments: { path: [APPROVAL_METADATA_MARKER, \"requestedBy\"], equals: principalId } },",
+      "to": "      { arguments: { path: [APPROVAL_METADATA_MARKER, \"requestedBy\"], equals: principalId } },",
+      "note": "`respondedBy` names a human who authorised a specific action with specific arguments. An erasure that missed it would leave that name behind.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J73 erasure: the requester in the envelope is a subject too",
+      "file": "src/jobs-erasure.ts",
+      "from": "      { respondedBy: principalId },\n      { arguments: { path: [APPROVAL_METADATA_MARKER, \"requestedBy\"], equals: principalId } },\n    ],",
+      "to": "      { respondedBy: principalId },\n    ],",
+      "note": "The requester has no COLUMN, so a store that matched only the column would erase the deciders and leave every asker.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J74 erasure: the selector is narrowed by its tenant scope",
+      "file": "src/jobs-erasure.ts",
+      "from": "  return {\n    ...tenantWhere(selector.scope),\n    OR: [",
+      "to": "  return {\n    OR: [",
+      "note": "An erasure addressed at one environment would reach every environment in the install that holds a row for that subject.",
+      "suites": [
+        "src/jobs-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "one subject with approvals in two environments is counted per environment"
+      ]
+    },
+    {
+      "name": "M-J75 erasure: a subject-less erasure destroys nothing",
+      "file": "src/jobs-erasure.ts",
+      "from": "        if (where === null) return ok(0);\n        const client = transactions.writer(transaction);",
+      "to": "        if (where === null) return ok(1);\n        const client = transactions.writer(transaction);",
+      "note": "The fail-CLOSED direction: it answers zero and destroys nothing rather than matching broadly, and the receipt must say zero rather than claim a row.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-J76 erasure: the receipt reports what the delete destroyed",
+      "file": "src/jobs-erasure.ts",
+      "from": "        const destroyed = await client.agentApproval.deleteMany({ where });\n        return ok(destroyed.count);",
+      "to": "        const destroyed = await client.agentApproval.deleteMany({ where });\n        void destroyed;\n        return ok(0);",
+      "note": "Nothing holds a foreign key TO an approval, so this single count IS the receipt and there is no cascade to recover it from.",
+      "suites": [
+        "src/jobs-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fakes and the real store answer the same scenario identically"
+      ]
+    }
+  ]
+}

@@ -386,6 +386,17 @@ module.exports = {
       }
     },
     {
+      "name": "tenancy-prisma-only",
+      "comment": "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$)) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/postgres-tenancy/"
+      },
+      "to": {
+        "path": "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))"
+      }
+    },
+    {
       "name": "inference-sdk-only",
       "comment": "node_modules/(ai(?:/|$)|@ai-sdk/) may be imported only from its single owning adapter.",
       "severity": "error",

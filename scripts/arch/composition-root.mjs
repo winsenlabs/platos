@@ -19,8 +19,9 @@
 //   * the binding table must agree with the generator's ADR §4/§13 ADAPTERS
 //     table on all of name, port and owner — so the composition root cannot
 //     silently disagree with the architecture it composes;
-//   * every declared adapter must carry a compile-time port-satisfaction entry,
-//     so no adapter is bound by convention alone;
+//   * every declared BINDING must carry a compile-time port-satisfaction entry
+//     and every entry must answer to a declared binding, so no adapter is bound
+//     by convention alone and none satisfies a port it was never bound to;
 //   * a DYNAMIC import — a specifier resolved at run time, which no static
 //     boundary checker in this repository can see — may exist in exactly one
 //     declared place, and must carry its declaration.
@@ -35,7 +36,7 @@ import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
-import { ADAPTERS } from "./gen-v1-skeleton.mjs";
+import { ADAPTERS, adapterBindings } from "./gen-v1-skeleton.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -131,10 +132,20 @@ function importedAdapters(file) {
   return names;
 }
 
-/** Read the `ADAPTER_BINDINGS` literal out of the composition-root source. */
+/**
+ * Read the `ADAPTER_BINDINGS` literal out of the composition-root source.
+ *
+ * THE TRAILING COMMA IS PART OF THE PATTERN, and it was not until WIN-258 T2.
+ * A one-line entry has none; a multi-line one that the formatter has wrapped
+ * does. The earlier pattern therefore DROPPED a wrapped entry silently, and the
+ * only reason that was not a hole is that a dropped row fails closed twice over
+ * — the binding it names is reported as omitted and the count no longer agrees.
+ * Widened here so a gate does not depend on how a formatter chose to break a
+ * line, and the first entry it had to read was the one this tranche added.
+ */
 export function parseBindingTable(source) {
   const entries = [];
-  const pattern = /\{\s*adapter:\s*"([^"]+)",\s*port:\s*"([^"]+)",\s*owner:\s*"([^"]+)"\s*\}/gu;
+  const pattern = /\{\s*adapter:\s*"([^"]+)",\s*port:\s*"([^"]+)",\s*owner:\s*"([^"]+)",?\s*\}/gu;
   let match;
   while ((match = pattern.exec(source)) !== null) {
     entries.push({ adapter: match[1], port: match[2], owner: match[3] });
@@ -191,39 +202,88 @@ export function auditCompositionRoot(root = repositoryRoot) {
     }
   }
 
-  // --- (C2) the table must agree with the generator's ADR §4/§13 ownership ---
+  // --- (C2) the table must agree with the generator's ADR §4/§13/§15 ownership ---
+  //
+  // Compared as a SET OF TRIPLES rather than a lookup keyed by directory. Under
+  // the §15 amendment a directory may satisfy more than one port, so a
+  // directory-keyed map would silently keep only the last binding of a
+  // multi-port adapter and stop judging the others. The set comparison runs
+  // BOTH WAYS and on the exact count, so all three of the refusals the
+  // directory-keyed version made are preserved:
+  //
+  //   * a binding the ADR declares and the table omits    -> "binding table omits"
+  //   * a binding the table declares and the ADR does not -> "not one of the N declared bindings"
+  //     (this is the adapter-satisfies-an-unbound-port case: claiming
+  //      `postgres-tenancy` implements `Cache` fails here even though
+  //      `postgres-tenancy` is a real directory and `Cache` is a real port)
+  //   * a count that disagrees                            -> "declares N binding(s)"
   const declared = parseBindingTable(compositionSource);
-  const byName = new Map(declared.map((entry) => [entry.adapter, entry]));
-  for (const adapter of ADAPTERS) {
-    const entry = byName.get(adapter.dir);
-    if (entry === undefined) {
-      problems.push(`binding table omits ${adapter.dir}`);
-      continue;
-    }
-    if (entry.port !== adapter.port) {
-      problems.push(`binding table gives ${adapter.dir} port ${entry.port}; ADR M0.3 §4 says ${adapter.port}`);
-    }
-    if (entry.owner !== adapter.owner) {
-      problems.push(`binding table gives ${adapter.dir} owner ${entry.owner}; ADR M0.3 §4 says ${adapter.owner}`);
+  const expected = adapterBindings();
+  const tripleKey = (entry) => `${entry.adapter}\u0000${entry.port}\u0000${entry.owner}`;
+  const declaredKeys = new Set(declared.map(tripleKey));
+  const expectedKeys = new Set(expected.map(tripleKey));
+  for (const binding of expected) {
+    if (!declaredKeys.has(tripleKey(binding))) {
+      problems.push(
+        `binding table omits ${binding.adapter} -> ${binding.owner} ${binding.port}`,
+      );
     }
   }
   for (const entry of declared) {
-    if (!ADAPTERS.some((adapter) => adapter.dir === entry.adapter)) {
-      problems.push(`binding table names ${entry.adapter}, which is not one of the ${ADAPTERS.length} adapters`);
+    if (!expectedKeys.has(tripleKey(entry))) {
+      problems.push(
+        `binding table names ${entry.adapter} -> ${entry.owner} ${entry.port},` +
+          ` which is not one of the ${expected.length} declared bindings`,
+      );
     }
   }
-  if (declared.length !== ADAPTERS.length) {
-    problems.push(`binding table declares ${declared.length} binding(s); the skeleton creates ${ADAPTERS.length}`);
+  if (declared.length !== expected.length) {
+    problems.push(`binding table declares ${declared.length} binding(s); ADR M0.3 §4/§15 declares ${expected.length}`);
+  }
+  // A duplicated row would let the two set comparisons above pass while the
+  // count check caught only the size. Naming it separately keeps the diagnosis
+  // on the duplicate rather than on an off-by-one.
+  if (declaredKeys.size !== declared.length) {
+    problems.push(`binding table declares the same (adapter, port, owner) triple more than once`);
   }
 
   // --- (C3) every binding carries a compile-time port-satisfaction entry ---
+  //
+  // Keyed `<adapter>:<Port>`, not `<adapter>`. A directory-keyed table cannot
+  // hold two entries for a two-port directory, so under §15 it could prove one
+  // binding and leave the other asserted — and TypeScript would not notice,
+  // because the missing entry is a missing obligation rather than a wrong one.
+  //
+  // This is checked in BOTH directions, which the directory-keyed version was
+  // not. An entry for a pair that is not a declared binding now fails: without
+  // that half, `"postgres-tenancy:Cache": true` would be a compile-time proof
+  // that an adapter satisfies a port it was never bound to, sitting in the
+  // table unchallenged.
   const satisfaction = parseSatisfactionKeys(compositionSource);
   if (satisfaction === null) problems.push(`${COMPOSITION_ROOT_FILE} declares no PORT_SATISFACTION table`);
   else {
-    for (const adapter of ADAPTERS) {
-      if (!satisfaction.includes(adapter.dir)) {
-        problems.push(`PORT_SATISFACTION has no entry for ${adapter.dir}; its binding is asserted, not proven`);
+    const satisfied = new Set(satisfaction);
+    const bindingKey = (binding) => `${binding.adapter}:${binding.port}`;
+    for (const binding of expected) {
+      if (!satisfied.has(bindingKey(binding))) {
+        problems.push(
+          `PORT_SATISFACTION has no entry for ${bindingKey(binding)}; that binding is asserted, not proven`,
+        );
       }
+    }
+    const expectedSatisfactionKeys = new Set(expected.map(bindingKey));
+    for (const key of satisfaction) {
+      if (!expectedSatisfactionKeys.has(key)) {
+        problems.push(
+          `PORT_SATISFACTION proves ${key}, which is not a declared binding;` +
+            ` an adapter may not satisfy a port it was not bound to`,
+        );
+      }
+    }
+    if (satisfaction.length !== expectedSatisfactionKeys.size) {
+      problems.push(
+        `PORT_SATISFACTION has ${satisfaction.length} entr(ies); ${expectedSatisfactionKeys.size} binding(s) are declared`,
+      );
     }
   }
 
@@ -265,7 +325,7 @@ function main() {
     for (const problem of result.problems) process.stdout.write(`FAIL ${problem}\n`);
     if (result.problems.length === 0) {
       process.stdout.write(
-        `ok: adapters are imported in exactly one file, all ${result.bindingCount} bindings agree with ADR M0.3 §4,` +
+        `ok: adapters are imported in exactly one file, all ${result.bindingCount} bindings agree with ADR M0.3 §4/§15,` +
           ` and every one is proven at compile time\n`,
       );
     }

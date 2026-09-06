@@ -28,7 +28,7 @@ import {
   parseBindingTable,
   parseSatisfactionKeys,
 } from "./composition-root.mjs";
-import { ADAPTERS } from "./gen-v1-skeleton.mjs";
+import { ADAPTERS, adapterBindings } from "./gen-v1-skeleton.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const V1_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
@@ -71,7 +71,75 @@ test("the live repository satisfies both the boundary rules and the composition-
 
   const audit = auditCompositionRoot(repositoryRoot);
   assert.deepEqual(audit.problems, []);
-  assert.equal(audit.bindingCount, ADAPTERS.length);
+  // THIRTY-ONE bindings across TWELVE directories (ADR M0.3 §15). Both are
+  // asserted, so a change that collapsed them back to one number fails here.
+  // 13 -> 17 (WIN-258 T5, three stores): `tools:ToolsRepository`,
+  // `agents:AgentsRepository`, `agents:ScaffoldingRepository` and
+  // `cost-monitoring:BudgetRepository`, so one directory now carries six.
+  // 17 -> 22 (WIN-258 M2.3): tenancy's five NON-REPOSITORY driven ports get
+  // slots, so that directory carries eleven.
+  // 22 -> 30 (WIN-258 T5, three stores landing together): `channels` adds
+  // `ChannelsRepository`, `governance` its FIVE canonical-store ports over five
+  // canonical rows, and `secrets` its TWO over four, so that directory carries
+  // NINETEEN. Both of `secrets`' are proven through the property that carries
+  // them rather than through the adapter itself, and there that was FORCED:
+  // `SecretsRepository` and `ToolsRepository` both declare a top-level
+  // `appendAudit` with different signatures, so one interface cannot extend
+  // both. The DIRECTORY count deliberately does not move through any of it,
+  // which is the whole content of the amendment.
+  // 30 -> 38 (WIN-258 T5, four times): `providers` adds `ProvidersRepository`, its ONE
+  // canonical-store port over the four rows of §1 row 4, and `conversations`
+  // adds FOUR — `ThreadRepository`, `TurnRepository`, `PostmanRepository` and
+  // `ConversationsErasureStore` — so that directory carries TWENTY-EIGHT and the
+  // ninth through twelfth owners arrive without a thirteenth directory. `providers` is
+  // proven against the ADAPTER rather than through a property — its eighteen
+  // method names collide with nothing the directory already publishes — which is
+  // the contrast that makes `secrets`' two property proofs read as forced rather
+  // than stylistic. `conversations`' four are proven through the property that
+  // carries them, and there the reason is the middle one of the three: they
+  // neither collide with each other nor are blocked from spreading, but
+  // `ConversationsDependencies` names four SLOTS and a root has to hand each port
+  // over under its own name.
+  // 38 -> 40 (WIN-258 T5, a fifth time): `jobs` adds `JobsRepository` and
+  // `ApprovalsRepository` over the two rows of §1 row 15, so that directory
+  // carries THIRTY-THREE and the seventeenth owner arrives without a thirteenth
+  // directory. Both are proven through the property that carries them, and there
+  // too it was FORCED: `ApprovalsRepository` and `ConversationsErasureStore`
+  // both declare a top-level `erase` with different signatures, so one interface
+  // cannot extend both.
+  // 41 -> 42 (WIN-258 T5, a FIFTEENTH owner): `files` adds `FilesRepository`,
+  // its ONE canonical-store port over the two rows of §1 row 10, so that
+  // directory carries THIRTY-TWO and the fifteenth owner arrives without a
+  // thirteenth directory. It is proven against the ADAPTER rather than through a
+  // property, like `providers`' — its fifteen method names collide with nothing
+  // the directory already publishes.
+  //
+  // IT IS THE SECOND BINDING THIS TABLE HOLDS FOR ONE CONTEXT, and the pair is
+  // the point rather than an accident: `objectstore-minio:ObjectStore` is also
+  // owned by `files`. A row and a blob are two technologies behind two ports,
+  // and `domain/destruction.ts` fixes blob-before-row precisely because no
+  // transaction spans them.
+  assert.equal(audit.bindingCount, adapterBindings().length);
+  assert.equal(audit.bindingCount, 44);
+  //
+  // AND `memory` adds `MemoryRepository` and
+  // `KnowledgeGraphRepository` over its three canonical rows, so that directory
+  // carries TWENTY-EIGHT in all with `observability`'s. Both are proven through the property that carries them,
+  // and there too it was FORCED: `KnowledgeGraphRepository` and
+  // `TenancyRepository` both declare a top-level `findEntity` with different
+  // signatures, so one interface cannot extend both. The DIRECTORY count is
+  // unmoved a fourth time.
+  //
+  // 38 -> 39 (WIN-258 T5, the THIRTEENTH owner): `privacy` adds
+  // `PrivacyRepository`, its ONE canonical-store port over the two rows of §1
+  // row 18, so that directory carries TWENTY-EIGHT. It is proven against the
+  // ADAPTER rather than through a property — like `providers`', and unlike
+  // `secrets`', `skills`' and `memory`'s: `PrivacyRepository` is declared as
+  // `OperationRepository` and `TombstoneRepository` composed into ONE interface,
+  // and its ten method names collide with nothing the directory already
+  // publishes, so nothing here forces a property. The DIRECTORY count is unmoved
+  // a fifth time.
+  assert.equal(ADAPTERS.length, 12);
 });
 
 // ---------------------------------------------------------------------------
@@ -172,9 +240,14 @@ test("C1: the composition root importing NO adapter fails as vacuous", () => {
 });
 
 test("C6: dropping one adapter import fails", () => {
+  // The specifier is matched rather than the whole import line. WIN-258 T4 added
+  // a second name to it — `OutboxEventStore`, the seam the composition root
+  // proves `postgres-tenancy` satisfies — and a control anchored on the exact
+  // one-name line stopped matching and started passing vacuously. Anchoring on
+  // the specifier is what the audit itself looks for.
   const root = realTreeCopy();
   edit(root, COMPOSITION_ROOT_FILE, (source) =>
-    source.replace('import type { OutboxAdapter } from "@platos/adapter-outbox";\n', "")
+    source.replace(/^import type \{[^}]*\} from "@platos\/adapter-outbox";\n/mu, "")
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) => problem.includes("does not import @platos/adapter-outbox"))
@@ -182,13 +255,16 @@ test("C6: dropping one adapter import fails", () => {
 });
 
 test("C2: a port renamed in the binding table fails against the ADR ownership map", () => {
+  // WIN-258 T2: the comparison is now a SET of (adapter, port, owner) triples,
+  // so a renamed port fails in BOTH directions at once — the declared triple is
+  // not one the ADR gives, and the one the ADR gives is missing.
   const root = realTreeCopy();
   edit(root, COMPOSITION_ROOT_FILE, (source) =>
     source.replace('adapter: "redis-cache", port: "Cache"', 'adapter: "redis-cache", port: "EventBus"')
   );
-  assert.ok(
-    auditCompositionRoot(root).problems.some((problem) => problem.includes("gives redis-cache port EventBus"))
-  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(problems.some((problem) => problem.includes("names redis-cache -> memory EventBus")));
+  assert.ok(problems.some((problem) => problem.includes("omits redis-cache -> memory Cache")));
 });
 
 test("C2: an owner reassigned in the binding table fails", () => {
@@ -197,9 +273,9 @@ test("C2: an owner reassigned in the binding table fails", () => {
     source.replace('adapter: "objectstore-minio", port: "ObjectStore", owner: "files"',
       'adapter: "objectstore-minio", port: "ObjectStore", owner: "memory"')
   );
-  assert.ok(
-    auditCompositionRoot(root).problems.some((problem) => problem.includes("gives objectstore-minio owner memory"))
-  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(problems.some((problem) => problem.includes("names objectstore-minio -> memory ObjectStore")));
+  assert.ok(problems.some((problem) => problem.includes("omits objectstore-minio -> files ObjectStore")));
 });
 
 test("C2: an entry removed from the binding table fails", () => {
@@ -209,17 +285,17 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 11 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 43 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
   const root = realTreeCopy();
   edit(root, COMPOSITION_ROOT_FILE, (source) =>
-    source.replace(/\n\s*"durable-runtime": true,/u, "")
+    source.replace(/\n\s*"durable-runtime:DurableRuntime": true,/u, "")
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("PORT_SATISFACTION has no entry for durable-runtime")
+      problem.includes("PORT_SATISFACTION has no entry for durable-runtime:DurableRuntime")
     )
   );
 });
@@ -264,15 +340,112 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all twelve entries from the real file", () => {
+test("the binding-table parser reads all FORTY-FOUR bindings, across twelve directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
-  assert.equal(entries.length, ADAPTERS.length);
+  const bindings = adapterBindings();
+  assert.equal(entries.length, bindings.length);
+  assert.equal(bindings.length, 44);
+  assert.equal(ADAPTERS.length, 12);
   assert.deepEqual(
-    entries.map((entry) => entry.adapter).sort(),
-    ADAPTERS.map((adapter) => adapter.dir).sort()
+    entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
+    bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  assert.deepEqual(parseSatisfactionKeys(source).sort(), ADAPTERS.map((adapter) => adapter.dir).sort());
+  assert.deepEqual(
+    parseSatisfactionKeys(source).sort(),
+    bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
+  );
+  // A directory with thirty-three bindings appears THIRTY-THREE TIMES in the
+  // flattening and once in the directory set. Both halves are asserted so a
+  // change that collapsed the table back to one row per directory cannot pass
+  // here. It is thirty-three rather than two because WIN-258 T5 landed all of
+  // tranche 5's canonical stores in this one directory — `tools` publishes one
+  // port, `agents` two, `cost-monitoring` one, `channels` one, `governance`
+  // FIVE, `secrets` two and `skills` one, all over the same client as tenancy's
+  // and identity-access's — and WIN-258 M2.3 then gave tenancy's five
+  // NON-REPOSITORY ports slots on the same directory that already satisfied
+  // them, and WIN-258 T5 then added `providers`' one, `conversations`' four,
+  // `skills`' one, `memory`'s two, `privacy`'s one, `jobs`' two, `files`' one,
+  // `observability`'s one and `eventing`'s one.
+  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 33);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
+});
+
+test("the parser reads a WRAPPED entry, not only a one-line one", () => {
+  // The trailing comma a formatter adds when it wraps an entry used to end the
+  // match, silently dropping the binding. It failed closed — the dropped row was
+  // reported as omitted — but a gate should not depend on how a line was broken.
+  const wrapped = `Object.freeze({\n    adapter: "x",\n    port: "Y",\n    owner: "z",\n  }),`;
+  assert.deepEqual(parseBindingTable(wrapped), [{ adapter: "x", port: "Y", owner: "z" }]);
+  assert.deepEqual(parseBindingTable('{ adapter: "x", port: "Y", owner: "z" }'), [
+    { adapter: "x", port: "Y", owner: "z" },
+  ]);
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15). The binding table now holds MANY ports per
+// DIRECTORY. These are the three refusals that widening did not take with it —
+// an adapter satisfying a port it was not bound to, a declared binding with no
+// proof, and a port with no satisfying adapter.
+// ---------------------------------------------------------------------------
+
+test("§15 refusal: PORT_SATISFACTION proving a pair that was never bound fails", () => {
+  // The direction the directory-keyed table could not see at all: an EXTRA
+  // entry was simply invisible, so a compile-time "proof" that an adapter
+  // implements a port nobody bound it to sat in the file unchallenged.
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('"postgres-tenancy:TenancyRepository": true,',
+      '"postgres-tenancy:TenancyRepository": true,\n  "postgres-tenancy:Cache": true,')
+  );
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("PORT_SATISFACTION proves postgres-tenancy:Cache, which is not a declared binding")
+    )
+  );
+});
+
+test("§15 refusal: a binding table row the ADR does not declare fails", () => {
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('{ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }',
+      '{ adapter: "outbox", port: "Cache", owner: "memory" }')
+  );
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 44 declared bindings")
+    )
+  );
+});
+
+test("§15 refusal: the SECOND binding of a two-port directory needs its own proof", () => {
+  // The case a directory-keyed table structurally could not hold: one binding
+  // proven, the other merely asserted, with the compiler unable to notice
+  // because a missing obligation is not a wrong one.
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace(/\n\s*"postgres-tenancy:IdentityAccessRepository": true,/u, "")
+  );
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("PORT_SATISFACTION has no entry for postgres-tenancy:IdentityAccessRepository")
+    )
+  );
+});
+
+test("§15 refusal: a declared binding with no row in the table fails", () => {
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace(/\n\s*Object\.freeze\(\{\n\s*adapter: "postgres-tenancy",\n\s*port: "IdentityAccessRepository",\n\s*owner: "identity-access",\n\s*\}\),/u, "")
+  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(
+    problems.some((problem) =>
+      problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
+    )
+  );
+  assert.ok(problems.some((problem) => problem.includes("declares 43 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

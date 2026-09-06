@@ -1,0 +1,544 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for the IDENTITY-ACCESS half of",
+    "@platos/adapter-postgres-tenancy (WIN-258 tranche 2). One entry per",
+    "compare-and-set precondition, tenant-isolation key, transaction boundary,",
+    "migration-only write invariant, unreadable-column refusal and scope",
+    "assembly rule in the ten stores, each carrying the file it lives in, the",
+    "EXACT text that implements it (`from`), the edit that removes it (`to`),",
+    "and the NAMED cases that were seen to go red (`kills`).",
+    "",
+    "The twenty-two tranche-1 entries are in ./mutations.json and are unchanged.",
+    "This file is the tranche-2 half and is kept separate so the two tranches'",
+    "evidence can be read, and re-run, independently.",
+    "",
+    "A guard nothing can turn red is a guard that is not there."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: the context's dist/ had been cleaned, so every suite",
+    "failed to LOAD and would have 'died' against no mutation at all. The driver",
+    "runs each suite set UNMUTATED and refuses to sweep unless it is green, and",
+    "classifies a module-load failure with no named failing case as VACUOUS",
+    "rather than as a kill.",
+    "",
+    "For one entry: build @platos/tenancy-database, @platos/context-identity-access",
+    "and @platos/context-tenancy; replace its `from` with its `to` in the named",
+    "file; rebuild; run `pnpm exec vitest run <suites>` from the package with",
+    "DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE set; confirm a NAMED",
+    "case goes red. Then revert, rebuild and confirm green.",
+    "",
+    "A mutation the COMPILER rejects is recorded as KILLED-BY-COMPILER and is",
+    "counted separately from a kill by a case, because a type error is a",
+    "different kind of evidence from a failing assertion.",
+    "",
+    "THIRTY OF THE THIRTY-SIX NEED A REAL POSTGRESQL -- every entry whose suites",
+    "end in `.integration.test.ts`. None of them could have been written against",
+    "a double: the conformance entries are about a conditional UPDATE affecting",
+    "zero rows on its second call, the constraint entries about rules that exist",
+    "only in the migrations, and the transaction entries about a write that has",
+    "to disappear when a later one fails."
+  ],
+  "mutations": [
+    {
+      "name": "M-I01 guard: a token digest is written without being checked",
+      "file": "src/identity-guards.ts",
+      "from": "export function requireDigest(column: string, value: string): string {\n  if (!DIGEST.test(value)) {",
+      "to": "export function requireDigest(column: string, value: string): string {\n  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts",
+        "src/identity-conformance.integration.test.ts",
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a 64-lowercase-hex digest passes and everything else is refused",
+        "a readable placeholder digest is accepted by the fake and refused by PostgreSQL",
+        "OperatorSession_tokenHash_check refuses anything but 64 lowercase hex"
+      ]
+    },
+    {
+      "name": "M-I02 guard: an address is written without being normalised",
+      "file": "src/identity-guards.ts",
+      "from": "export function requireNormalisedEmail(column: string, value: string): string {\n  if (value !== value.trim().toLowerCase()) {",
+      "to": "export function requireNormalisedEmail(column: string, value: string): string {\n  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts",
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "an address must already be lower(btrim(...)) of itself",
+        "an un-normalised address is accepted by the fake and refused by the store"
+      ]
+    },
+    {
+      "name": "M-I03 guard: a TOTP row may be enrolled with no secret behind it",
+      "file": "src/identity-guards.ts",
+      "from": "  if (!inactive && !active) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts",
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a TOTP row is fully unenrolled or fully enrolled, and its pending half agrees",
+        "enrolled with no secret behind it is refused"
+      ]
+    },
+    {
+      "name": "M-I04 guard: a pending enrolment may carry a secret with no expiry",
+      "file": "src/identity-guards.ts",
+      "from": "  if (!pendingAbsent && !pendingPresent) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a TOTP row is fully unenrolled or fully enrolled, and its pending half agrees"
+      ]
+    },
+    {
+      "name": "M-I05 guard: a rotation overlap need not be a positive duration",
+      "file": "src/identity-guards.ts",
+      "from": "  if (!Number.isSafeInteger(value) || value <= 0) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a rotation overlap is a positive whole number of milliseconds"
+      ]
+    },
+    {
+      "name": "M-I06 mapping: an unknown OperatorIdentity.provider is cast, not refused",
+      "file": "src/identity-mapping.ts",
+      "from": "  const known: readonly string[] = OPERATOR_IDENTITY_PROVIDERS;\n  if (!known.includes(value)) {",
+      "to": "  const known: readonly string[] = OPERATOR_IDENTITY_PROVIDERS;\n  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a provider this binary has not heard of is refused under its own code"
+      ]
+    },
+    {
+      "name": "M-I07 mapping: an unknown principal tier is cast, not refused",
+      "file": "src/identity-mapping.ts",
+      "from": "  const known: readonly string[] = PRINCIPAL_TIERS;\n  if (!known.includes(value)) {",
+      "to": "  const known: readonly string[] = PRINCIPAL_TIERS;\n  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a tier this binary has not heard of is refused under a DIFFERENT code"
+      ]
+    },
+    {
+      "name": "M-I08 mapping: a scopeKind outside the enum is accepted",
+      "file": "src/identity-mapping.ts",
+      "from": "  if (!SCOPE_KINDS.includes(columns.scopeKind)) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a scopeKind outside the enum is refused"
+      ]
+    },
+    {
+      "name": "M-I09 mapping: a scope whose id columns contradict its kind is accepted",
+      "file": "src/identity-mapping.ts",
+      "from": "  if (set !== 1) {\n    throw new UnreadableRowError(\n      INCONSISTENT_AUTHORIZATION_SCOPE,\n      `${table}.scopeKind`,\n      `${kind} with ${String(set)} tenant id(s) set`,\n    );\n  }",
+      "to": "",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a kind whose id columns contradict it is refused under a different code"
+      ]
+    },
+    {
+      "name": "M-I10 mapping: an unresolved ancestor is silently treated as absent",
+      "file": "src/identity-mapping.ts",
+      "from": "function requireAncestor(column: string, value: string | null | undefined): string {\n  if (value === null || value === undefined || value === \"\") {\n    throw new UnreadableRowError(UNRESOLVED_SCOPE_ANCESTRY, column, String(value));\n  }\n  return value;\n}",
+      "to": "function requireAncestor(column: string, value: string | null | undefined): string {\n  return value ?? \"\";\n}",
+      "suites": [
+        "src/identity-mapping.test.ts"
+      ],
+      "kills": [
+        "a scoped row read without its ancestry is refused, not silently widened"
+      ]
+    },
+    {
+      "name": "M-I11 mapping: a PROJECT scope is written with its organization as well",
+      "file": "src/identity-mapping.ts",
+      "from": "  if (tenant.level === \"project\") {\n    return {\n      scopeKind: \"PROJECT\",\n      organizationId: null,\n      projectId: tenant.projectId,\n      environmentId: null,\n    };\n  }",
+      "to": "  if (tenant.level === \"project\") {\n    return {\n      scopeKind: \"PROJECT\",\n      organizationId: tenant.organizationId,\n      projectId: tenant.projectId,\n      environmentId: null,\n    };\n  }",
+      "suites": [
+        "src/identity-mapping.test.ts",
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "writing drops the ancestry the shape check forbids, and reading restores it",
+        "every scope kind round-trips",
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I12 magic link: consume is not conditional on being unconsumed",
+      "file": "src/identity-sessions.ts",
+      "from": "        where: { tokenHash, consumedAt: null, expiresAt: { gt: now } },",
+      "to": "        where: { tokenHash, expiresAt: { gt: now } },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I13 magic link: an expired link can still be consumed",
+      "file": "src/identity-sessions.ts",
+      "from": "        where: { tokenHash, consumedAt: null, expiresAt: { gt: now } },\n        data: { consumedAt: now },",
+      "to": "        where: { tokenHash, consumedAt: null },\n        data: { consumedAt: now },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I14 mfa: the TOTP counter advances without the replay precondition",
+      "file": "src/identity-mfa.ts",
+      "from": "        where: { userId, OR: [{ lastUsedCounter: null }, { lastUsedCounter: { lt: counter } }] },",
+      "to": "        where: { userId },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I15 mfa: a recovery code can be consumed twice",
+      "file": "src/identity-mfa.ts",
+      "from": "        where: { userId, codeHash, consumedAt: null },",
+      "to": "        where: { userId, codeHash },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I16 mfa: replacing the recovery set does not invalidate the old one",
+      "file": "src/identity-mfa.ts",
+      "from": "        await client.operatorMfaRecoveryCode.deleteMany({ where: { userId } });\n",
+      "to": "",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I17 mfa: replaceRecoveryCodes runs outside a transaction",
+      "file": "src/identity-mfa.ts",
+      "from": "      await transactions.atomic(async (client) => {",
+      "to": "      await (async (client: ReturnType<typeof transactions.reader>) => {",
+      "suites": [
+        "src/identity-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "replaceRecoveryCodes never leaves an operator with no codes at all"
+      ]
+    },
+    {
+      "name": "M-I18 sessions: revokeAllForUser ignores sessions that impersonate the user",
+      "file": "src/identity-sessions.ts",
+      "from": "          OR: [{ userId }, { impersonatedUserId: userId }],",
+      "to": "          OR: [{ userId }],",
+      "suites": [
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "revokeAllForUser reaches a session that IMPERSONATES the user"
+      ]
+    },
+    {
+      "name": "M-I19 sessions: revokeAllForUser ignores the caller's own session",
+      "file": "src/identity-sessions.ts",
+      "from": "          ...(exceptSessionId === undefined ? {} : { id: { not: exceptSessionId } }),",
+      "to": "          ...(exceptSessionId === undefined ? {} : {}),",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I20 sessions: revokeAllForUser revokes rows it already revoked",
+      "file": "src/identity-sessions.ts",
+      "from": "          OR: [{ userId }, { impersonatedUserId: userId }],\n          revokedAt: null,",
+      "to": "          OR: [{ userId }, { impersonatedUserId: userId }],",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I21 access key: the rotation fence is not checked under the lock",
+      "file": "src/identity-access-keys.ts",
+      "from": "        if (generation !== input.observedGeneration) return { committed: false, generation };",
+      "to": "        if (false) return { committed: false, generation };",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I22 access key: the incoming key is inserted visible to the partial unique index",
+      "file": "src/identity-access-keys.ts",
+      "from": "            validUntil: overlapEndsAt,\n          },\n        });",
+      "to": "            validUntil: null,\n          },\n        });",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I23 access key: a revoke does not bump the generation",
+      "file": "src/identity-access-keys.ts",
+      "from": "        await client.environment.update({\n          where: { id: environmentId },\n          data: { accessKeyRevocationVersion: { increment: 1 } },\n        });",
+      "to": "",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I24 access key: findByHash answers across environments",
+      "file": "src/identity-access-keys.ts",
+      "from": "        where: { environmentId, keyHash },",
+      "to": "        where: { keyHash },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I25 oauth: the presented refresh token is consumed unconditionally",
+      "file": "src/identity-oauth.ts",
+      "from": "          where: { id: consumed.tokenId, consumedAt: null },",
+      "to": "          where: { id: consumed.tokenId },",
+      "suites": [
+        "src/identity-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "saveTokenPair rolls the new pair back when the presented token was consumed concurrently"
+      ]
+    },
+    {
+      "name": "M-I26 oauth: the mint and the consume are not one transaction",
+      "file": "src/identity-oauth.ts",
+      "from": "      await transactions.atomic(async (client) => {\n        await client.oAuthAccessToken.create({",
+      "to": "      await (async (client: ReturnType<typeof transactions.reader>) => {\n        await client.oAuthAccessToken.create({",
+      "suites": [
+        "src/identity-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "saveTokenPair rolls the new pair back when the presented token was consumed concurrently"
+      ]
+    },
+    {
+      "name": "M-I27 oauth: a family revocation leaves the access tokens live",
+      "file": "src/identity-oauth.ts",
+      "from": "        const accessTokens = await client.oAuthAccessToken.updateMany({\n          where: {\n            revokedAt: null,\n            refreshTokens: { some: { rotationFamilyId: revocation.rotationFamilyId } },\n          },\n          data: { revokedAt: revocation.revokedAt },\n        });",
+      "to": "        const accessTokens = { count: 0 };",
+      "suites": [
+        "src/identity-conformance.integration.test.ts",
+        "src/identity-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically",
+        "a family revocation is TWO statements however large the family"
+      ]
+    },
+    {
+      "name": "M-I28 oauth: an authorization code can be spent twice",
+      "file": "src/identity-oauth.ts",
+      "from": "        where: { codeHash, usedAt: null, expiresAt: { gt: now } },",
+      "to": "        where: { codeHash, expiresAt: { gt: now } },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I29 end users: the tenant clause is dropped from the page",
+      "file": "src/identity-end-users.ts",
+      "from": "  const filter: EndUserFilter = { organizationId: query.organizationId };",
+      "to": "  const filter: EndUserFilter = { organizationId: query.organizationId as never };\n  Reflect.deleteProperty(filter, \"organizationId\");",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I30 end users: the search does not reach an identity subject",
+      "file": "src/identity-end-users.ts",
+      "from": "      { identities: { some: { subject: { contains: query.search, mode: \"insensitive\" } } } },",
+      "to": "",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I31 end users: count and list are filtered differently",
+      "file": "src/identity-end-users.ts",
+      "from": "      return transactions.reader().endUser.count({ where: filterFor(query) });",
+      "to": "      return transactions.reader().endUser.count({\n        where: { organizationId: query.organizationId },\n      });",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I32 end users: the identities are loaded one row at a time",
+      "file": "src/identity-end-users.ts",
+      "from": "          identities: { select: IDENTITY_COLUMNS, orderBy: { id: \"asc\" } },",
+      "to": "          identities: { select: IDENTITY_COLUMNS, orderBy: { id: \"asc\" }, take: 1 },",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ],
+      "note": [
+        "SURVIVED the first sweep, and the scenario was the thing at fault: every",
+        "seeded end user had exactly ONE identity, so loading only the first was",
+        "indistinguishable from loading them all. The conformance fixture now",
+        "gives one end user a Slack handle AND an email address."
+      ]
+    },
+    {
+      "name": "M-I33 bearer: save mints a credential instead of refusing",
+      "file": "src/identity-bearer.ts",
+      "from": "      if (count !== 1) {\n        throw new IdentityWriteRefused(\n          BEARER_CREDENTIAL_ABSENT,\n          `${credential.kind}.tokenHash`,\n          `no ${credential.kind} row carries this digest; save updates a credential, it does not mint one`,\n        );\n      }",
+      "to": "",
+      "suites": [
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "bearerCredentials.save refuses a credential with no row behind it"
+      ]
+    },
+    {
+      "name": "M-I34 bearer: an McpToken is read at the wrong principal tier",
+      "file": "src/identity-bearer.ts",
+      "from": "    // See the note at the top of this file: NOT `row.tier`.\n    tier: \"OPERATOR\",",
+      "to": "    tier: \"END_USER\",",
+      "suites": [
+        "src/identity-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the postgres adapter and the in-memory fake answer it identically"
+      ]
+    },
+    {
+      "name": "M-I35 users: the get-or-create loses its early return",
+      "file": "src/identity-users.ts",
+      "from": "      const existing = await findByEmail(address);\n      if (existing !== null) return existing;",
+      "to": "      const existing = null;\n      if (existing !== null) return existing;",
+      "suites": [
+        "src/identity-statements.integration.test.ts"
+      ],
+      "kills": [
+        "upsertByEmail on an EXISTING address is one statement, not a failed insert"
+      ],
+      "note": [
+        "TWO DEFENCES, SEPARATED DELIBERATELY. The early return and the",
+        "unique-violation recovery each keep the ANSWER correct without the other,",
+        "so the first sweep of this ledger SURVIVED a mutation that removed one of",
+        "them. Recorded rather than papered over, and split: this entry removes the",
+        "early return and is killed by the statement COUNT, and M-I37 removes the",
+        "recovery and is killed by sixteen concurrent first logins."
+      ]
+    },
+    {
+      "name": "M-I36 identities: the upsert is keyed on (userId, provider) rather than (provider, subject)",
+      "file": "src/identity-users.ts",
+      "from": "        where: {\n          provider_subject: { provider: identity.provider, subject: identity.subject },\n        },",
+      "to": "        where: {\n          userId_provider: { userId: identity.userId, provider: identity.provider },\n        },",
+      "suites": [
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "a second subject for the same (user, provider) is refused"
+      ]
+    },
+    {
+      "name": "M-I37 users: a concurrent first login is not recovered from",
+      "file": "src/identity-users.ts",
+      "from": "        if (!isUniqueViolation(error)) throw error;\n        const won = await findByEmail(address);\n        if (won === null) throw error;\n        return won;",
+      "to": "        throw error;",
+      "suites": [
+        "src/identity-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "two concurrent first logins for one address produce ONE account"
+      ]
+    }
+  ],
+  "result": [
+    "THIRTY-SEVEN ENTRIES, THIRTY-SEVEN KILLS, NONE VACUOUS, on a real PostgreSQL",
+    "container at branch head. Each kill is a NAMED case in the `kills` list of its",
+    "entry, and the driver classified nothing as vacuous because it proved every",
+    "suite set green BEFORE mutating and treats a module-load failure with no named",
+    "failing case as vacuous rather than as a kill.",
+    "",
+    "TWO ENTRIES SURVIVED THE FIRST SWEEP AND BOTH WERE FINDINGS, not noise:",
+    "",
+    "  M-I32 (loading only the first identity of every end user) survived because",
+    "  every seeded end user in the conformance scenario had exactly ONE identity,",
+    "  so `take: 1` was indistinguishable from loading them all. The FIXTURE was at",
+    "  fault; one end user now has a Slack handle and an email address, which is",
+    "  also the ordinary case an operator searches by.",
+    "",
+    "  M-I35 (removing the early return from `upsertByEmail`) survived because the",
+    "  get-or-create has TWO independent defences and either one alone keeps the",
+    "  ANSWER correct: the early return, and the unique-violation recovery around",
+    "  the insert. That is a real property of the code and it is recorded rather",
+    "  than papered over. The two halves were then separated so each is falsifiable",
+    "  on its own -- M-I35 by a statement COUNT (a repeat login must cost ONE",
+    "  statement, not a read, a refused insert and a second read) and M-I37 by",
+    "  sixteen concurrent first logins for one address, which must produce one",
+    "  account.",
+    "",
+    "The first sweep of tranche 1 reported 22 kills that were ALL vacuous. This",
+    "sweep is the reason that cannot have happened again."
+  ]
+}

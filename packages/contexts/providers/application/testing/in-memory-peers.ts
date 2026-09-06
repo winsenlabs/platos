@@ -4,6 +4,15 @@
 // contract this context actually relies on, so a use case that passes here has
 // been held to the same rules the real contexts impose:
 //
+//   NEITHER IMPLEMENTS ITS OWNER'S WHOLE CONTRACT, and after WIN-258 M2.3 this
+//   file holds no such double at all. `InMemorySecrets` implements `SecretsPeer`
+//   — the seven members `providers` actually calls — and `InMemoryTenancy` the
+//   two-member Pick beside it. A double typed as a whole contract has to grow a
+//   stub for every method its owner adds, and a stub answering "not offered" is a
+//   test passing against a peer that would have refused; that shape broke
+//   `build:v1` three times on this issue. The seven `NOT_OFFERED` stubs this
+//   double used to carry are GONE rather than hidden.
+//
 //   The vault refuses to read material under an OPERATOR grant, exactly as
 //   `secrets` does — "operators administer the vault; they do not read out of
 //   it". A use case that reached for material with the wrong grant fails here
@@ -32,7 +41,6 @@ import {
   type EnvironmentOperatorAuthorization as VaultOperatorGrant,
   type EnvironmentRuntimeAuthorization as VaultRuntimeGrant,
   type SecretMaterial,
-  type SecretsContract,
 } from "@platos/context-secrets";
 import type {
   EnvironmentAccess,
@@ -40,10 +48,9 @@ import type {
   TenancyContract,
 } from "@platos/context-tenancy";
 
-import { repositoryUnavailable } from "../../domain/index.js";
+import type { SecretsPeer } from "../dependencies.js";
 
-const NOT_OFFERED = () =>
-  err(repositoryUnavailable("this in-memory double does not implement that operation"));
+import { repositoryUnavailable } from "../../domain/index.js";
 
 /** Redacts under JSON and string coercion, like the value it stands in for. */
 function material(plaintext: string): SecretMaterial {
@@ -69,7 +76,7 @@ export interface SeededCredential {
  * Holds credentials and their material, mints genuine grants, and enforces the
  * tier rule on every material read.
  */
-export class InMemorySecrets implements SecretsContract {
+export class InMemorySecrets implements SecretsPeer {
   readonly name = "secrets" as const;
 
   private readonly credentials = new Map<string, CredentialMetadata>();
@@ -158,10 +165,6 @@ export class InMemorySecrets implements SecretsContract {
     return ok([...this.credentials.values()]);
   }
 
-  async listEnvironmentVariables(): Promise<Result<readonly never[]>> {
-    return ok([]);
-  }
-
   async readSecret(query: {
     readonly authorization: unknown;
     readonly credentialId?: CredentialId;
@@ -185,10 +188,6 @@ export class InMemorySecrets implements SecretsContract {
     const plaintext = this.plaintexts.get(held.id);
     if (plaintext === undefined) return err(repositoryUnavailable("credential_unavailable"));
     return ok(material(plaintext));
-  }
-
-  async readEnvironmentVariable(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
   }
 
   async createCredential(command: {
@@ -229,26 +228,6 @@ export class InMemorySecrets implements SecretsContract {
     const revoked = { ...held, revokedAt: this.now() };
     this.credentials.set(held.id, revoked);
     return ok(revoked);
-  }
-
-  async reEncryptCredential(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
-  }
-
-  async setEnvironmentVariable(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
-  }
-
-  async deleteEnvironmentVariable(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
-  }
-
-  async reportRootKeyUsage(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
-  }
-
-  async purgeRetiredSecretVersions(): Promise<Result<never>> {
-    return NOT_OFFERED() as Result<never>;
   }
 }
 

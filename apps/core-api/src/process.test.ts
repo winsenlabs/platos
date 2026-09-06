@@ -122,6 +122,132 @@ describe("the built binary refuses to start on bad configuration", () => {
   });
 });
 
+// WIN-260 (M2.5). The four cases above prove the CORE section refuses at the
+// process boundary. These prove the same for the five sections added beside it —
+// against the built binary, its real exit code and its real stderr, because a
+// unit test of `loadPlatformConfiguration` proves the function refuses and says
+// nothing about whether the process that calls it does.
+//
+// Each case removes or breaks exactly one value and shows the process REFUSING
+// TO BOOT: exit 78, the variable named, and an empty stdout, which is the only
+// evidence that nothing was constructed and no port was bound before it gave up.
+describe("the built binary refuses to start on a bad section", () => {
+  it("exits 78 when a store anchor names a scheme that is not PostgreSQL", async () => {
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_STORE_POSTGRES_URL: "mysql://platos:swordfish-password@db.internal:3306/platos",
+    });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_STORE_POSTGRES_URL");
+    expect(spawned.stderr()).toContain("no port was bound");
+    expect(spawned.stdout()).toBe("");
+    // A connection string is a secret even when it is the wrong KIND of string.
+    expect(`${spawned.stdout()}${spawned.stderr()}`).not.toContain("swordfish-password");
+  });
+
+  it("exits 78 when a declared group is missing the value it cannot work without", async () => {
+    // The REMOVED-VALUE proof. The endpoint is present and valid; the database
+    // name that must accompany it is not, so the process refuses rather than
+    // booting and discovering it at the first span write.
+    const spawned = launch({ ...SERVING_ENV, PLATOS_STORE_CLICKHOUSE_URL: "https://clickhouse.internal:8123" });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_STORE_CLICKHOUSE_DATABASE");
+    expect(spawned.stderr()).toContain("is required once PLATOS_STORE_CLICKHOUSE_URL is set");
+    expect(spawned.stdout()).toBe("");
+  });
+
+  it("exits 78 when a value is set that nothing would ever read", async () => {
+    // The ORPHANED proof, and the one that would otherwise be silent: a bucket
+    // with no endpoint validates under every field-at-a-time scheme, boots, and
+    // wires no object store at all.
+    const spawned = launch({ ...SERVING_ENV, PLATOS_STORE_OBJECT_BUCKET: "platos-media" });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_STORE_OBJECT_BUCKET");
+    expect(spawned.stderr()).toContain("PLATOS_STORE_OBJECT_ENDPOINT is not");
+    expect(spawned.stdout()).toBe("");
+  });
+
+  it("exits 78 on a durable endpoint with no key, without repeating the key", async () => {
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
+      PLATOS_DURABLE_RUNTIME_SECRET_KEY: "tiny",
+    });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_DURABLE_RUNTIME_SECRET_KEY");
+    expect(spawned.stderr()).toContain("[redacted]");
+    expect(`${spawned.stdout()}${spawned.stderr()}`).not.toContain("tiny");
+  });
+
+  it("exits 78 on a credential root that is 64 characters and not hexadecimal", async () => {
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_SECURITY_ENCRYPTION_KEY: `${"a".repeat(63)}z`,
+      PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "1",
+    });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_SECURITY_ENCRYPTION_KEY");
+    expect(spawned.stderr()).toContain("64 hexadecimal");
+    expect(spawned.stdout()).toBe("");
+  });
+
+  it("names problems from three different sections in one run", async () => {
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_STORE_REDIS_TLS: "yes",
+      PLATOS_PROVIDERS_DEFAULT_MODEL: "claude-haiku-4-5",
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "https://relay.internal",
+      PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
+    });
+    const { code } = await spawned.exited;
+    expect(code).toBe(EXIT_CONFIGURATION);
+    expect(spawned.stderr()).toContain("PLATOS_STORE_REDIS_TLS");
+    expect(spawned.stderr()).toContain("PLATOS_PROVIDERS_DEFAULT_MODEL");
+    expect(spawned.stderr()).toContain("PLATOS_CHANNELS_EMAIL_SMTP_URL");
+  });
+
+  it("STILL BOOTS with every one of those variables absent", async () => {
+    // The control that stops all six cases above from being vacuous. If the
+    // sections were required rather than anchored, the process would refuse
+    // here too and every refusal above would prove nothing about the value.
+    const spawned = launch(SERVING_ENV);
+    const port = await awaitListening(spawned);
+    expect(port).toBeGreaterThan(0);
+    spawned.child.kill("SIGTERM");
+    expect((await spawned.exited).code).toBe(EXIT_OK);
+  }, 40_000);
+
+  it("boots with a fully wired platform, so a valid value is not merely an unrejected one", async () => {
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_STORE_POSTGRES_URL: "postgresql://platos:password-here@db.internal:5432/platos_control",
+      PLATOS_STORE_REDIS_URL: "rediss://cache.internal:6380",
+      PLATOS_STORE_CLICKHOUSE_URL: "https://clickhouse.internal:8123",
+      PLATOS_STORE_CLICKHOUSE_DATABASE: "spans",
+      PLATOS_STORE_OBJECT_ENDPOINT: "https://minio.internal:9000",
+      PLATOS_STORE_OBJECT_BUCKET: "platos-media",
+      PLATOS_STORE_OBJECT_ACCESS_KEY_ID: "platos-minio-admin",
+      PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY: "platos-minio-password",
+      PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
+      PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
+      PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
+      PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),
+      PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
+      PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
+      PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+    });
+    const port = await awaitListening(spawned);
+    expect(port).toBeGreaterThan(0);
+    spawned.child.kill("SIGTERM");
+    expect((await spawned.exited).code).toBe(EXIT_OK);
+  }, 40_000);
+});
+
 describe("the built binary starts, serves and stops", () => {
   it("listens, answers liveness and readiness, then exits 0 on SIGTERM", async () => {
     const spawned = launch(SERVING_ENV);

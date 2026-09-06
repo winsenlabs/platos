@@ -1,0 +1,334 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for @platos/adapter-outbox. One entry per ordering",
+    "invariant, envelope refusal, drain precondition and transaction guard in",
+    "the package, each carrying the file it lives in, the EXACT text that",
+    "implements it (`from`), the edit that removes it (`to`), and the NAMED",
+    "cases that were seen to go red (`kills`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there. Every entry",
+    "below was exercised before this adapter was proposed.",
+    "",
+    "The store half of the outbox lives in packages/adapters/postgres-tenancy,",
+    "because ADR M0.3 §15 gives the ORM one home and this package may not hold",
+    "it. Its guards are in that package's mutations-outbox.json; the two",
+    "ledgers are separate because the two halves are separate packages with",
+    "separate suites, not because the outbox is two things.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
+    "PLACEHOLDERS, never its scaffolding."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills",
+    "and every one was VACUOUS: the context's dist/ had been cleaned, so every",
+    "suite failed to LOAD and would have 'died' against no mutation at all.",
+    "The driver runs each suite set UNMUTATED and refuses to sweep unless it",
+    "is green, and classifies a module-load failure with no named failing case",
+    "as VACUOUS rather than as a kill.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file, run",
+    "`pnpm --filter @platos/adapter-outbox exec vitest run <suites>`, and",
+    "confirm a NAMED case goes red. Then revert and confirm green.",
+    "",
+    "NONE of these entries needs a database. That is the point of the split:",
+    "the identifier, the envelope and every refusal are decided above the",
+    "store, so they are falsifiable with no container at all."
+  ],
+  "mutations": [
+    {
+      "name": "M01 event-id: the within-millisecond counter never advances",
+      "file": "src/event-id.ts",
+      "from": "        counter += 1;\n        // A full millisecond of counter is 4096 events.",
+      "to": "        counter += 0;\n        // A full millisecond of counter is 4096 events.",
+      "suites": [
+        "src/event-id.test.ts",
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > append > the row is stamped with the MINTED instant, not with the raw clock",
+        "src/adapter.test.ts > drain > events come back oldest first, INCLUDING two written in one millisecond",
+        "src/adapter.test.ts > drain > a cursor resumes strictly after the last event of the previous page",
+        "src/adapter.test.ts > drain > the SECOND event of a shared millisecond is neither repeated nor skipped"
+      ]
+    },
+    {
+      "name": "M02 event-id: the counter WRAPS instead of refusing",
+      "file": "src/event-id.ts",
+      "from": "        if (counter >= COUNTER_LIMIT) {\n          throw new RangeError(\n            `more than ${String(COUNTER_LIMIT)} events were appended in one millisecond;` +\n              \" the ordering counter cannot carry them\",\n          );\n        }",
+      "to": "        counter %= COUNTER_LIMIT;",
+      "suites": [
+        "src/event-id.test.ts"
+      ],
+      "kills": [
+        "src/event-id.test.ts > the counter refuses rather than wrapping > more than 4096 events in one millisecond is refused, not reordered"
+      ]
+    },
+    {
+      "name": "M03 event-id: a BACKWARDS clock is taken at face value instead of clamped",
+      "file": "src/event-id.ts",
+      "from": "      if (milliseconds > lastMilliseconds) {\n        counter = 0;\n        lastMilliseconds = milliseconds;\n      } else {",
+      "to": "      if (milliseconds !== lastMilliseconds) {\n        counter = 0;\n        lastMilliseconds = milliseconds;\n      } else {",
+      "suites": [
+        "src/event-id.test.ts"
+      ],
+      "kills": [
+        "src/event-id.test.ts > order is preserved > a clock that steps BACKWARDS is clamped, and both halves stay ordered"
+      ]
+    },
+    {
+      "name": "M04 event-id: the version nibble is not written into byte six",
+      "file": "src/event-id.ts",
+      "from": "      bytes[6] = 0x70 | ((counter >> 8) & 0x0f);",
+      "to": "      bytes[6] = (counter >> 8) & 0x0f;",
+      "suites": [
+        "src/event-id.test.ts"
+      ],
+      "kills": [
+        "src/event-id.test.ts > the minted identifier is a well-formed UUIDv7 > the version nibble is 7 and the variant bits are 10"
+      ]
+    },
+    {
+      "name": "M05 event-id: the variant bits are left as drawn",
+      "file": "src/event-id.ts",
+      "from": "      bytes[8] = ((tail[0] ?? 0) & 0x3f) | 0x80;",
+      "to": "      bytes[8] = tail[0] ?? 0;",
+      "suites": [
+        "src/event-id.test.ts"
+      ],
+      "kills": [
+        "src/event-id.test.ts > the minted identifier is a well-formed UUIDv7 > the variant bits are IMPOSED on the random tail, not hoped for"
+      ]
+    },
+    {
+      "name": "M06 envelope: any event name is accepted",
+      "file": "src/envelope.ts",
+      "from": "  if (!EVENT_NAME_PATTERN.test(name)) {",
+      "to": "  if (false && !EVENT_NAME_PATTERN.test(name)) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a draft is refused before anything is minted > a name that is not dotted, lower-case and three-part is refused"
+      ]
+    },
+    {
+      "name": "M07 envelope: any schema version is accepted",
+      "file": "src/envelope.ts",
+      "from": "  if (!Number.isInteger(version) || version <= 0) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a draft is refused before anything is minted > a schema version that is not a positive whole number is refused"
+      ]
+    },
+    {
+      "name": "M08 envelope: an organization- or project-scoped event is let through",
+      "file": "src/envelope.ts",
+      "from": "  if (scope.level !== \"environment\") {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/envelope.test.ts",
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > append > a refused draft writes nothing AND consumes no ordering slot",
+        "src/envelope.test.ts > a draft is refused before anything is minted > an organization-scoped event is refused: the row has no column for it",
+        "src/envelope.test.ts > a draft is refused before anything is minted > a project-scoped event is refused by the same code"
+      ]
+    },
+    {
+      "name": "M09 envelope: the payload is stored without a serialisation check",
+      "file": "src/envelope.ts",
+      "from": "  let text: string;\n  try {\n    text = JSON.stringify(payload);\n  } catch (cause) {",
+      "to": "  let text: string;\n  try {\n    text = JSON.stringify(payload) ?? \"null\";\n  } catch (cause) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a draft is refused before anything is minted > a payload JSON cannot carry is refused at the port"
+      ]
+    },
+    {
+      "name": "M10 envelope: an envelope version this binary cannot read is decoded as version one",
+      "file": "src/envelope.ts",
+      "from": "  if (marker !== ENVELOPE_VERSION) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > an envelope version this binary does not know is refused, not guessed"
+      ]
+    },
+    {
+      "name": "M11 envelope: a payload that is not an object is decoded anyway",
+      "file": "src/envelope.ts",
+      "from": "  if (typeof row.payload !== \"object\" || row.payload === null || Array.isArray(row.payload)) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > a payload that is not a JSON object is refused"
+      ]
+    },
+    {
+      "name": "M12 envelope: a malformed scope is reported as no scope at all",
+      "file": "src/envelope.ts",
+      "from": "    scope: readScope(body[\"scope\"]),",
+      "to": "    scope: null,",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > a round trip through the envelope keeps every envelope field",
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > a malformed field inside a known envelope is its own refusal",
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > an organization-scoped envelope still decodes, because a reader must read what is there"
+      ]
+    },
+    {
+      "name": "M13 envelope: a pre-envelope row is REFUSED rather than read",
+      "file": "src/envelope.ts",
+      "from": "  if (marker === undefined) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/envelope.test.ts"
+      ],
+      "kills": [
+        "src/envelope.test.ts > a stored row is decoded, or refused with a code that says why > a row written BEFORE the envelope existed reads as a scopeless event"
+      ]
+    },
+    {
+      "name": "M14 adapter: the identifier is minted BEFORE the draft is judged",
+      "file": "src/adapter.ts",
+      "from": "      const envelope = encodeEnvelope(event);\n      const environmentId = environmentOf(event.scope);\n      const minted = minter.mint(clock.now());",
+      "to": "      const minted = minter.mint(clock.now());\n      const envelope = encodeEnvelope(event);\n      const environmentId = environmentOf(event.scope);",
+      "suites": [
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > append > a refused draft writes nothing AND consumes no ordering slot"
+      ]
+    },
+    {
+      "name": "M15 adapter: any drain page size is accepted",
+      "file": "src/adapter.ts",
+      "from": "      if (!Number.isInteger(limit) || limit <= 0) {",
+      "to": "      if (false) {",
+      "suites": [
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > drain > a page size that is not a positive whole number is refused"
+      ]
+    },
+    {
+      "name": "M16 adapter: the resume cursor names the FIRST row of the page, not the last",
+      "file": "src/adapter.ts",
+      "from": "      const last = rows.at(-1);",
+      "to": "      const last = rows.at(0);",
+      "suites": [
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > drain > a cursor resumes strictly after the last event of the previous page"
+      ]
+    },
+    {
+      "name": "M17 adapter: the row is stamped with the raw clock rather than the minted instant",
+      "file": "src/adapter.ts",
+      "from": "          createdAt: minted.at,",
+      "to": "          createdAt: clock.now(),",
+      "suites": [
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > append > the row is stamped with the MINTED instant, not with the raw clock"
+      ]
+    },
+    {
+      "name": "M18 in-memory: the snapshot is NOT restored on a rollback (the conversations defect)",
+      "file": "src/in-memory.ts",
+      "from": "      } catch (error) {\n        rows = snapshot;\n        throw error;",
+      "to": "      } catch (error) {\n        throw error;",
+      "suites": [
+        "src/conformance.test.ts"
+      ],
+      "kills": [
+        "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    },
+    {
+      "name": "M19 in-memory: a repeated event identifier is accepted",
+      "file": "src/in-memory.ts",
+      "from": "      if (rows.some((existing) => existing.eventId === row.eventId)) {",
+      "to": "      if (false) {",
+      "suites": [
+        "src/conformance.test.ts"
+      ],
+      "kills": [
+        "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    },
+    {
+      "name": "M20 in-memory: a FINISHED transaction's token still resolves",
+      "file": "src/in-memory.ts",
+      "from": "    if (finished.has(scope.transactionId)) {",
+      "to": "    if (false) {",
+      "suites": [
+        "src/conformance.test.ts"
+      ],
+      "kills": [
+        "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    },
+    {
+      "name": "M21 in-memory: a write with no open transaction is allowed through",
+      "file": "src/in-memory.ts",
+      "from": "    if (open === null) {",
+      "to": "    if (false && open === null) {",
+      "suites": [
+        "src/conformance.test.ts",
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > append > an append outside a transaction is refused by the store, and nothing is written",
+        "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    },
+    {
+      "name": "M22 in-memory: the page cursor compares the timestamp alone",
+      "file": "src/in-memory.ts",
+      "from": "  const byTime = row.createdAt.getTime() - cursor.createdAt.getTime();\n  if (byTime !== 0) return byTime > 0;\n  return row.eventId > cursor.eventId;",
+      "to": "  return row.createdAt.getTime() > cursor.createdAt.getTime();",
+      "suites": [
+        "src/conformance.test.ts",
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > drain > the SECOND event of a shared millisecond is neither repeated nor skipped"
+      ]
+    },
+    {
+      "name": "M23 in-memory: rows are ordered by timestamp alone, with no tie-break",
+      "file": "src/in-memory.ts",
+      "from": "    const byTime = left.createdAt.getTime() - right.createdAt.getTime();\n    if (byTime !== 0) return byTime;\n    return left.eventId < right.eventId ? -1 : left.eventId > right.eventId ? 1 : 0;",
+      "to": "    return right.createdAt.getTime() - left.createdAt.getTime();",
+      "suites": [
+        "src/conformance.test.ts",
+        "src/adapter.test.ts"
+      ],
+      "kills": [
+        "src/adapter.test.ts > drain > events come back oldest first, INCLUDING two written in one millisecond",
+        "src/adapter.test.ts > drain > a cursor resumes strictly after the last event of the previous page",
+        "src/adapter.test.ts > drain > the SECOND event of a shared millisecond is neither repeated nor skipped",
+        "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    }
+  ]
+}

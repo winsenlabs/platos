@@ -6,6 +6,9 @@ import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkAdapterOwnerCounts,
+  EXPECTED_ADAPTER_OWNERS,
+  EXPECTED_MULTI_OWNER_ADAPTERS,
   EXPECTED_ALIASES,
   EXPECTED_CONTEXT_DEPENDS_ON,
   EXPECTED_EDGE_COUNT,
@@ -42,7 +45,7 @@ function errorIncludes(result, text) {
   return result.errors.some((error) => error.includes(text));
 }
 
-test("the live graph has exact aliases, 32 projects and 95 edges in all three representations", () => {
+test("the live graph has exact aliases, 32 projects and 96 edges in all three representations", () => {
   const result = checkV1ProjectGraph(repositoryRoot);
   assert.deepEqual(result.errors, []);
   assert.equal(result.projectCount, EXPECTED_PROJECT_COUNT);
@@ -78,14 +81,31 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly TWO projects may hold an external dependency, and they are named", () => {
-  // The list is short on purpose and its shortness is the property. A third
+test("exactly THREE projects may hold an external dependency, and they are named", () => {
+  // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
+  //
+  // WIN-258 made the third: `packages/adapters/postgres-tenancy` declares the
+  // generated PostgreSQL client. It is the only V1 project entitled to, and the
+  // case below says so on the DECLARE axis exactly as the inference-SDK case
+  // does, because a boundary rule that governs imports alone leaves a manifest
+  // entry legal until the day somebody imports it.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
     "packages/adapters/model-router-providers",
+    "packages/adapters/postgres-tenancy",
   ]);
+});
+
+test("the PostgreSQL client is declared in exactly ONE project, as a workspace link", () => {
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/postgres-tenancy"], {
+    "@platos/tenancy-database": "workspace:*",
+  });
+  const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
+    .filter(([, declared]) => Object.keys(declared).some((name) => name.includes("tenancy-database")))
+    .map(([project]) => project);
+  assert.deepEqual(holders, ["packages/adapters/postgres-tenancy"]);
 });
 
 test("the inference SDK is declared in exactly ONE project, at exactly one range each", () => {
@@ -356,4 +376,91 @@ test("NodeNext consumers resolve bare roots and the explicit exported adapter-po
   } finally {
     spawnSync("pnpm", ["clean:v1"], { cwd: repositoryRoot });
   }
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T2 (ADR M0.3 §15) — an adapter's owner map became a LIST, and these
+// are the refusals that widening did not take with it. The default is still
+// exactly one owner edge; every departure is named and counted.
+// ---------------------------------------------------------------------------
+
+test("the live owner map passes its own check", () => {
+  // Non-vacuity for everything below.
+  assert.deepEqual(checkAdapterOwnerCounts(), []);
+  // 2 -> 13 (WIN-258 T5, eleven times). `tools` is the THIRD owner delegated to
+  // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH,
+  // `channels` the SIXTH, `governance` the SEVENTH, `secrets` the EIGHTH,
+  // `providers` the NINTH, `conversations` the TENTH, `skills` the ELEVENTH,
+  // `memory` the TWELFTH, `privacy` the THIRTEENTH, `jobs` the FOURTEENTH,
+  // `files` the FIFTEENTH, `observability` the SIXTEENTH and `eventing` the
+  // SEVENTEENTH — which is every context ADR M0.3 §1 names.
+  // None of `agents`, `governance`, `secrets` or `conversations` is more than one
+  // owner edge even though they publish two ports, five, two and four, and
+  // neither is `skills`, whose ONE port covers three tables: this map counts
+  // OWNERS, and the project reference the adapter needs is per package, not per
+  // port. `providers` is the converse and the sharpest case: it publishes THREE
+  // ports and gets ONE edge, because only one of the three is a canonical store —
+  // `ModelRouter` belongs to `model-router-providers` and `ProviderProbeCache` to
+  // no adapter at all.
+  // `memory` is a second converse: it publishes SIX ports and gets ONE edge,
+  // because only two of the six are canonical stores — `Cache` is bound to
+  // `redis-cache`, and the other three write no row at all.
+  // 12 -> 13 (WIN-258 T5). `privacy` is the THIRTEENTH owner delegated to this
+  // one directory, and it is the THIRD converse and the sharpest of the three:
+  // it publishes FOUR ports and gets ONE edge, because only one of the four is a
+  // canonical store. `SubjectDirectory` reads `identity-access`' identity graph —
+  // a peer read this directory could physically serve and that port is not
+  // entitled to — `SubjectHasher` is a synchronous salted digest with a secret in
+  // it, and `LegalHoldRegister` is installation configuration with no canonical
+  // row in the schema at all.
+  // 13 -> 14 (WIN-258 T5). `jobs` is a FOURTH: it publishes FOUR ports and gets
+  // ONE edge, because only two of the four are canonical stores —
+  // `IdempotencyStore` is a reserve-once keyspace and `JobHandlerRuntime` is an
+  // isolate, and neither writes a row.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17 });
+  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
+});
+
+test("§15 refusal: an adapter granted an owner edge it was not given fails", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("packages/adapters/redis-cache expects 2 owner edge(s); 1 is what ADR M0.3 §4/§15 grants it")
+    )
+  );
+});
+
+test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails too", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "postgres-tenancy": ["tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) =>
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 17 is what ADR M0.3 §4/§15 grants it")
+    )
+  );
+});
+
+test("§15 refusal: the same owner listed twice is not two edges", () => {
+  const errors = checkAdapterOwnerCounts(
+    { ...EXPECTED_ADAPTER_OWNERS, "postgres-tenancy": ["tenancy", "tenancy"] },
+    EXPECTED_MULTI_OWNER_ADAPTERS,
+  );
+  assert.ok(
+    errors.some((error) => error.includes("packages/adapters/postgres-tenancy names the same owner more than once"))
+  );
+});
+
+test("§15 refusal: the multi-owner allow-list may not name something that is not an adapter", () => {
+  const errors = checkAdapterOwnerCounts(EXPECTED_ADAPTER_OWNERS, {
+    ...EXPECTED_MULTI_OWNER_ADAPTERS,
+    "postgres-auth": 2,
+  });
+  assert.ok(
+    errors.some((error) => error.includes("EXPECTED_MULTI_OWNER_ADAPTERS names postgres-auth, which is not an adapter"))
+  );
 });
