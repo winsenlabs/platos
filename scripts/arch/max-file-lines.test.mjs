@@ -677,13 +677,24 @@ test("the live selectors scan an exact nonzero source census", () => {
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1468);
+  // WIN-260 (M2.5) adds SIX, and for the first time since tranche 2 none of them
+  // is in `packages/adapters/postgres-tenancy`: THREE in `packages/kernel`
+  // (`vo/retry.ts` and the two behaviour suites — the kernel is the FIRST
+  // selector in this list and had not moved it before), ONE in
+  // `packages/contexts/eventing` (the kernel-policy conformance suite) and TWO
+  // in `packages/adapters/outbox` (`src/flush.ts` and its suite).
+  // `apps/core-api/src/runtime/**` is NOT a selector, so this dimension's
+  // shutdown-drain pair is outside this scan even though it is inside the
+  // arch-boundaries one — the two censuses differ by exactly those two files,
+  // which is worth stating so a reader does not try to reconcile 1501 with 1474.
+  // 1468 + 6 = 1474, read back from the scan.
+  assert.equal(result.fileCount, 1474);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 3 + 1 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -712,7 +723,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nowhere else: the plan dimension implements no port, so neither the kernel
   // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
   // nine land in that same term: 366 + 16 = 382.
-  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
+  // WIN-260 (M2.5) is the FIRST dimension to move the KERNEL term of this split:
+  // 20 -> 23 for `vo/retry.ts` and the two behaviour suites. Contexts 1060 ->
+  // 1061 (the eventing conformance suite), adapters 382 -> 384 (the outbox
+  // flush and its suite), and the core-api TRANSPORTS term stays 6 — this
+  // dimension's shutdown work is under `src/runtime/`, which is not a selector.
+  // 23 + 1061 + 384 + 6 = 1474.
+  assert.equal(result.fileCount, 23 + 1061 + 384 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
