@@ -228,8 +228,14 @@ export const VIOLATION_CODES = Object.freeze({
  * `packages/adapters/redis-cache/src/` (the client, the two stores, the harness
  * and three suites), and the correlation integration suite under
  * `packages/adapters/postgres-tenancy/src/`. 1503 + 11 = 1514.
+ *
+ * And TWELVE more from the same dimension's `Idempotency-Key` gate, none of
+ * which reads the environment either: five source modules and four suites under
+ * `apps/core-api/src/http/`, the kernel's `RequestIdempotency` port, and the
+ * Redis implementation of that port with its suite under
+ * `packages/adapters/redis-cache/src/`. 1514 + 12 = 1526.
  */
-export const EXPECTED_FILE_COUNT = 1514;
+export const EXPECTED_FILE_COUNT = 1526;
 
 function listSourceFiles(root) {
   const found = [];
