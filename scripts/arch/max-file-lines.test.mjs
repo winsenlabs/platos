@@ -555,18 +555,42 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was written from; splitting them would separate the pair that is the
   // evidence.
   //
+  //
+  // 1377 -> 1389 (WIN-258 T5): `observability`'s canonical store adds TWELVE
+  // files to the one ORM home — six source and six suites — for ONE port with
+  // FOUR methods over ONE table. Its mutation ledger is not source and is not
+  // scanned here.
+  //
+  // TWELVE FILES FOR FOUR METHODS IS THE SMALLEST STORE IN THE DIRECTORY AND THE
+  // LARGEST RATIO OF EVIDENCE TO CODE, and the reason is the finding rather than
+  // thoroughness. `AdminAudit` is APPEND-ONLY IN THE DATABASE, so
+  // `clearAdminAuditActor` cannot be honoured at all — three named cases say what
+  // that leaves, one of them measuring that the caller's transaction is aborted
+  // by the rule rather than by this package. And the table carries no ancestry
+  // rule while the port's record carries a three-level scope, so the containment
+  // is this adapter's WHERE clause and a whole second tenant exists in two suites
+  // to prove it. Neither claim can be made without a real database.
+  //
+  // NO FILE IN THE TRANCHE ENTERS THE WARNING BAND. The largest is
+  // `observability-constraints.integration.test.ts`; the split that keeps it out
+  // is the one the port already had — what the DATABASE decides for a row is that
+  // file, what a TRANSACTION does with it is `observability-transaction`, and
+  // what a mapping does with a row an older binary wrote is
+  // `observability-rows.test.ts`, which needs no daemon.
+  //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
-  // + 17 + 21 = 1377. All the stores are in the one adapter directory, so no
+  // + 17 + 21 + 12 = 1389. All the stores are in the one adapter directory, so no
   // branch's own figure survives the merge — 1266 for `channels`, 1269 for
   // `governance`, 1270 for `secrets`, 1319 for `providers`, 1323 for
-  // `conversations`, 1320 for `skills`, 1324 for `memory`.
-  assert.equal(result.fileCount, 1377);
+  // `conversations`, 1320 for `skills`, 1324 for `memory`, 1315 for
+  // `observability`.
+  assert.equal(result.fileCount, 1389);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 12
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -574,13 +598,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
   // (secrets) + 16 (providers) + 20 (conversations) + 17 (skills) + 21
-  // (memory) = 291. The contexts, kernel and app rows are untouched, which is
+  // (memory) + 12 (observability) = 303. The contexts, kernel and app rows are untouched, which is
   // the claim worth making: no tranche-5 store adds a file to a context at all —
   // each implements a port that already existed rather than widening one.
   // `secrets`, `providers`, `conversations`, `skills` and `memory` are the
   // sharpest cases: each had its port entry point widened, in place, and a
   // widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 291 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 303 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

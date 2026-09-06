@@ -402,7 +402,14 @@ test("the live owner map passes its own check", () => {
   // `memory` is a second converse: it publishes SIX ports and gets ONE edge,
   // because only two of the six are canonical stores — `Cache` is bound to
   // `redis-cache`, and the other three write no row at all.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 12 });
+  // 12 -> 13 (WIN-258 T5): `observability` is the THIRTEENTH. It is a THIRD
+  // converse and the strongest of them: it publishes FOUR ports and is credited
+  // with FIVE tables in ADR M0.3 §1 row 12, and gets ONE edge — because exactly
+  // one of the four is a canonical store over exactly one Prisma row, the other
+  // four tables are analytical projections bound to `clickhouse-observability`,
+  // and the outbox row this context DRAINS is written by the kernel outbox
+  // adapter rather than by it.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 13 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -425,7 +432,7 @@ test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails 
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 12 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 13 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

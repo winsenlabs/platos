@@ -910,13 +910,38 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               so four statements are raw SQL — in the same one home,
     //               attributed by the TABLE they name, and `src/client.ts` is
     //               still the only file in the layout that imports the ORM.
+    //  1402 -> 1414 +12: WIN-258 TRANCHE 5, `observability`'s canonical store, in
+    //               that SAME one ORM home for the thirteenth owner. TWELVE
+    //               files, all under `packages/adapters/postgres-tenancy/src/`:
+    //               SIX source (the row mapping, the guards, the refusal adapter,
+    //               the store, the composite door and the harness) and SIX suites
+    //               (the differential, the constraints, the transaction proof,
+    //               the statement counts, the shared conformance scenario and the
+    //               daemon-free row unit test). The `mutations-observability.json`
+    //               beside them is not source and is not counted here; the v1
+    //               ledger counts it and its own delta says 13.
+    //               SIX SOURCE MODULES FOR FOUR METHODS IS THE SMALLEST STORE
+    //               HERE, and the six suites are why: `AdminAudit` is APPEND-ONLY
+    //               in the database, so one of those four methods cannot be
+    //               honoured and three named cases say what that leaves; and the
+    //               table carries no ancestry rule while the port's record
+    //               carries a three-level scope, so the containment is this
+    //               adapter's WHERE clause and a second tenant exists in two
+    //               suites to prove it.
+    //               `packages/contexts/observability` gains NO file — its port
+    //               entry point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME. This
+    //               tranche adds raw SQL to a SUITE rather than to a store — two
+    //               planted rows no path through the port can produce — in the
+    //               same one home, attributed by the TABLE they name.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
-    //               21 = 1402. No branch's own figure is right merged — 1344,
-    //               1348, 1345 and 1349 each under-count the others by their
+    //               21 + 12 = 1414. No branch's own figure is right merged — 1344,
+    //               1348, 1345, 1349 and 1340 each under-count the others by their
     //               whole tranche.
-    assert.equal(result.fileCount, 1402, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21);
+    assert.equal(result.fileCount, 1414, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 12);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

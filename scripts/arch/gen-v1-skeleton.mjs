@@ -639,6 +639,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
   "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
   "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/observability", // WIN-258 T5 — InMemoryObservabilityRepository is the differential packages/adapters/postgres-tenancy is measured against, and the double that says the unlink works
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
