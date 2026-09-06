@@ -63,6 +63,9 @@
     },
     {
       "path": "../../contexts/observability"
+    },
+    {
+      "path": "../../contexts/eventing"
     }
   ]
 }

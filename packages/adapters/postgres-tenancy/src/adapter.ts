@@ -236,8 +236,32 @@
 // PostgreSQL does not have, and `JobHandlerRuntime` is the isolate that runs
 // untrusted handler source, which ADR M0.3 §7 decision 10 puts behind
 // `packages/adapters/durable-runtime`.
+//
+// AND SO DOES `eventing`'s `NotificationRuleRepository` (WIN-258 T5). ONE row —
+// `NotificationRule`, ADR M0.3 §1 row 17's only canonical member — in that same
+// database behind that same client, so Amendment 15 puts it here rather than in
+// an eighteenth package holding a second one. The row COUNT is what makes this
+// entry look small and does not change the argument: without it
+// `ownerDirectories("eventing")` is the context alone, and §2 forbids that
+// package from importing the ORM, so the one package permitted to write the row
+// would be the one package unable to.
+//
+// It is SPREAD rather than nested, and unlike `skills`, `secrets`, `memory`,
+// `governance` and `conversations` above there was nothing to arbitrate: its
+// nine method names collide with nothing this directory already publishes across
+// sixteen owners, so `PORT_SATISFACTION` resolves
+// `Satisfies<PostgresTenancyAdapter, NotificationRuleRepository>` against the
+// adapter itself, exactly as it does for `ProvidersRepository`.
+//
+// The context's TWO other ports are deliberately absent and
+// `eventing-repository.ts` says why for each: `DestinationScreen` is the SSRF
+// boundary, whose contract is DNS resolution and a pinned socket — obligations a
+// package that opens no sockets cannot meet — and `NotificationQueue` is a
+// DELAYED hand-off whose `availableAt` asks for the durable schedule ADR M0.3 §7
+// decision 10 puts behind `durable-runtime`.
 
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
+import type { NotificationRuleRepository } from "@platos/context-eventing/application/ports/index.js";
 import type {
   ConversationsErasureStore,
   PostmanRepository,
@@ -292,6 +316,7 @@ import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createChannelsRepository } from "./channels-repository.js";
 import { createConversationsStores } from "./conversations-repository.js";
+import { createNotificationRuleRepository } from "./eventing-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createFilesRepository } from "./files-repository.js";
 import { createGovernanceStores } from "./governance-repository.js";
@@ -328,6 +353,7 @@ export interface PostgresTenancyAdapter
     ChannelsRepository,
     ProvidersRepository,
     FilesRepository,
+    NotificationRuleRepository,
     PrivacyRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
@@ -653,6 +679,14 @@ export function buildPostgresTenancyAdapter(
     // back together only because they are the same client on the same
     // connection.
     ...createFilesRepository(transactions),
+    // smallest grant the map has made: ONE row. Built from the SAME
+    // `transactions` as everything above, which is the whole reason it is here
+    // rather than in a package of its own — `privacy` opens ONE unit of work and
+    // hands the same `TransactionScope` to every `ErasureTarget` in the array,
+    // so this context's `createdBy` scrub commits or rolls back with
+    // `governance`'s and `memory`'s. A second ambient frame would have refused
+    // that scope as `scope_unknown` — the right fact under the wrong cause.
+    ...createNotificationRuleRepository(transactions),
   };
 }
 

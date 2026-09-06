@@ -69,6 +69,7 @@ import type {
   ChannelAdapter,
   ChannelsRepository,
 } from "@platos/context-channels/application/ports/index.js";
+import type { NotificationRuleRepository } from "@platos/context-eventing/application/ports/index.js";
 import type {
   BudgetRepository,
   Notifier,
@@ -261,6 +262,19 @@ interface PortSatisfaction {
   // transaction spans them, and one adapter holding both would have made that
   // ordering look like an implementation detail it could optimise away.
   readonly "postgres-tenancy:FilesRepository": Satisfies<PostgresTenancyAdapter, FilesRepository>;
+
+  // WIN-258 T5. `eventing`'s ONE canonical-store port, proven through the
+  // ADAPTER rather than through a property, like `ProvidersRepository` above:
+  // its nine method names collide with nothing this adapter already publishes
+  // across twelve owners, so it is spread in and
+  // `PostgresTenancyAdapter extends NotificationRuleRepository` resolves
+  // directly. The day the adapter drops `anonymizeRulesForSubject` or re-types
+  // `findRule`, `pnpm build:v1` fails HERE — at the composition root, which is
+  // the only place that knows the port and the adapter are meant to meet.
+  readonly "postgres-tenancy:NotificationRuleRepository": Satisfies<
+    PostgresTenancyAdapter,
+    NotificationRuleRepository
+  >;
   readonly "postgres-tenancy:SecretsRepository": Satisfies<
     PostgresTenancyAdapter["secrets"],
     SecretsRepository
@@ -427,6 +441,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:JobsRepository": true,
   "postgres-tenancy:ApprovalsRepository": true,
   "postgres-tenancy:ObservabilityRepository": true,
+  "postgres-tenancy:NotificationRuleRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -751,6 +766,31 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     adapter: "postgres-tenancy",
     port: "ObservabilityRepository",
     owner: "observability",
+  }),
+  // WIN-258 T5 (ADR M0.3 §15). The SEVENTEENTH and LAST owner of the one
+  // PostgreSQL client, which completes ADR M0.3 §1. ONE row —
+  // `NotificationRule` — which is the smallest grant this table has made, and
+  // the argument for it is the same as for the twelve owners above: without the
+  // delegation the one package permitted to write the row is the one package §2
+  // forbids from importing the ORM.
+  //
+  // IT SITS AT THE END, like `memory`'s pair and tenancy's five before it, so
+  // every ordinal above stays true. Unlike those seven it is a SPREAD rather
+  // than a named property: nothing it publishes collides.
+  //
+  // The context's TWO OTHER ports get no row here, and that is a claim rather
+  // than an omission. `DestinationScreen` is the SSRF boundary — its contract is
+  // DNS resolution and a socket pinned to the address that resolved, and its own
+  // header says the adapter satisfying it is "the sole holder of the resolver";
+  // a PostgreSQL client opens no sockets. `NotificationQueue` is a DELAYED
+  // hand-off whose `availableAt` exists because the legacy in-process timer
+  // "loses every scheduled retry if the process restarts inside the window",
+  // which asks for the durable schedule ADR M0.3 §7 decision 10 puts behind
+  // `durable-runtime`. Neither is a store.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "NotificationRuleRepository",
+    owner: "eventing",
   }),
   Object.freeze({ adapter: "redis-ratelimit", port: "RateLimiter", owner: "identity-access" }),
   Object.freeze({ adapter: "redis-cache", port: "Cache", owner: "memory" }),

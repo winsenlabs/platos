@@ -116,13 +116,6 @@ describe("the declared binding table", () => {
     // The eleventh is `skills`, whose ONE port covers its three tables: a
     // catalogue entry, a project's adoption of one and an environment's binding
     // of that adoption are one aggregate with one uniqueness key.
-    // The FIFTEENTH is `files`, whose ONE port covers its two tables — and it
-    // is the one owner in this table that appears TWICE, because
-    // `objectstore-minio:ObjectStore` is also its. A row and a blob are two
-    // technologies behind two ports, and `domain/destruction.ts` fixes
-    // blob-before-row precisely because no transaction spans them.
-    expect(ADAPTER_BINDINGS).toHaveLength(44);
-    expect(DECLARED_BINDING_COUNT).toBe(44);
     // The twelfth is `memory`, whose TWO ports — `MemoryRepository` and
     // `KnowledgeGraphRepository` — are both proven through the PROPERTY that
     // carries them, because `KnowledgeGraphRepository.findEntity(subject,
@@ -139,10 +132,22 @@ describe("the declared binding table", () => {
     // signatures. Its OTHER two ports get no row: `IdempotencyStore` is a
     // reserve-once keyspace and `JobHandlerRuntime` is an isolate, and neither
     // writes a canonical row.
+    // The FIFTEENTH is `files`, whose ONE port covers its two tables — and it
+    // is the one owner in this table that appears TWICE, because
+    // `objectstore-minio:ObjectStore` is also its. A row and a blob are two
+    // technologies behind two ports, and `domain/destruction.ts` fixes
+    // blob-before-row precisely because no transaction spans them.
     // The SIXTEENTH is `observability`, whose ONE port covers its ONE Prisma
     // row: ADR M0.3 §1 row 12 credits it with five tables and four of them are
     // the analytical projections, which are not Prisma rows and are bound to
     // `clickhouse-observability` instead.
+    // The SEVENTEENTH and LAST is `eventing`, whose ONE port covers its ONE
+    // canonical row — the smallest grant in the map, and proven against the
+    // ADAPTER rather than through a property, because its nine method names
+    // collide with nothing the directory already publishes. With it, every one
+    // of ADR M0.3 §1's seventeen contexts has a canonical store.
+    expect(ADAPTER_BINDINGS).toHaveLength(44);
+    expect(DECLARED_BINDING_COUNT).toBe(44);
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -180,6 +185,7 @@ describe("the declared binding table", () => {
       "ApprovalsRepository",
       "FilesRepository",
       "ObservabilityRepository",
+      "NotificationRuleRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
@@ -217,6 +223,7 @@ describe("the declared binding table", () => {
       // `objectstore-minio` for the blobs those rows point at.
       "files",
       "observability",
+      "eventing",
     ]);
   });
 

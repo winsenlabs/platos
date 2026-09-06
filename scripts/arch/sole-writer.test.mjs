@@ -1823,11 +1823,68 @@ test("an element-access member that is not a delegate is still not a write", () 
 // `actorUserId` is a plain nullable TEXT column with no relation — so nothing it
 // points at belongs to a context this directory may not write.
 //
+//
+// WIN-258 TRANCHE 5, `eventing` adds ELEVEN, all from the SAME directory and all
+// on the ONE row its owner holds — with one deliberate exception named below.
+// Each line was read back from the enforcer rather than counted by eye:
+//
+//   src/eventing-rules.ts       notificationRule.create, .updateManyAndReturn
+//                               and .deleteMany. The two PLURAL forms are not a
+//                               style: `update` and `delete` RAISE P2025 when
+//                               nothing matched, and a raise inside the caller's
+//                               transaction aborts it, so a rule addressed in
+//                               the wrong scope would cost the caller its whole
+//                               unit of work instead of returning the refusal
+//                               the port describes                              3
+//   src/eventing-erasure.ts     the raw `UPDATE "NotificationRule" ... FROM
+//                               "Environment" JOIN "Project"` that scrubs
+//                               `createdBy` WITHOUT moving `updatedAt`. There is
+//                               no delegate form of that write: the column is
+//                               `@updatedAt`, so every `updateMany` stamps it,
+//                               and the domain — not the client — owns that
+//                               value. `MUTATING_SQL_STATEMENT` attributes the
+//                               statement by the TABLE it names                 1
+//   src/eventing-constraints.integration.test.ts
+//                               FOUR writes standing each guard beside the
+//                               constraint it restates: two `create` calls
+//                               issued through the CLIENT rather than the port
+//                               (the `@db.Uuid` control and the NUL-byte
+//                               control, both of which must be seen to be
+//                               refused by the DATABASE and not only by the
+//                               guard), and two raw INSERTs that put a JSON
+//                               ARRAY into `filters` and a JSON STRING into
+//                               `delivery` — the two `*_json_root` CHECKs, which
+//                               no port call can reach                          4
+//   src/eventing-rules.integration.test.ts
+//                               THREE: two raw INSERTs proving the unique index
+//                               and the absent `updatedAt` default refuse a
+//                               writer that bypasses the port, and ONE
+//                               `DELETE FROM "Environment"` — a row `tenancy`
+//                               owns, legal from here ONLY because `tenancy`
+//                               resolves to this same directory, and the one
+//                               write in this tranche that is not on
+//                               `NotificationRule`                              3
+//                                                                       total = 11
+//
+// `src/eventing-harness.ts` CONTRIBUTES ZERO and that is the interesting half.
+// Its tenant tree goes through `saveOrganization`, `saveProject` and
+// `saveEnvironment` — `tenancy`'s ports, in this directory — and its
+// `applyRows` is a STRING handed to `prisma db execute`, not a call to
+// `$executeRaw`, so the four rows the rules suite plants (a `filters` with no
+// `eventTypes`, a `delivery` outside the union, a 200-character name, a row with
+// no `enabled`) are invisible to this scanner and should be: they are the ORM's
+// CLI at runtime rather than a client call at all.
+// `src/eventing-conformance.integration.test.ts`,
+// `src/eventing-transaction.integration.test.ts` and
+// `src/eventing-statements.integration.test.ts` contribute zero for the simpler
+// reason: every row they need is written through the port under measurement.
+//
+//
 // 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 + 6 + 8 + 5 + 5
-// = 290. All of tranche 5's stores landed in the ONE directory, so this pin is
-// the SUM of every enumeration above and no single branch's own figure survives
-// the merge.
-const LIVE_TREE_WRITE_COUNT = 290;
+// + 11 = 301. All of tranche 5's stores landed in the ONE directory, so this
+// pin is the SUM of every enumeration above and no single branch's own figure
+// survives the merge.
+const LIVE_TREE_WRITE_COUNT = 301;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -2072,6 +2129,43 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     .map(([model]) => model)
     .sort();
   assert.deepEqual(outboxRows, ["Event", "ObservabilityOutbox"]);
+  // WIN-258 T5: `eventing` is the THIRTEENTH owner delegated to that directory,
+  // and the grant is exactly the ONE row ADR M0.3 §1 row 17 gives it that exists
+  // in the canonical schema. It is the SMALLEST grant in the map, and the set is
+  // pinned rather than the count for the same reason every other one is: a count
+  // of one is satisfied by ANY row.
+  assert.deepEqual(ownerDirectories("eventing"), [
+    "packages/contexts/eventing",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.eventing, "packages/adapters/postgres-tenancy");
+  const eventingRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "eventing")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(eventingRows, ["NotificationRule"]);
+  // And the OTHER TWO rows ADR §1 row 17 names are still unowned, which is what
+  // keeps the grant honest: `PlatformNotification` and
+  // `PlatformNotificationInteraction` exist only in the legacy schema, so this
+  // entry could not have granted them however it was written.
+  assert.equal(OWNER.PlatformNotification, undefined);
+  assert.equal(OWNER.PlatformNotificationInteraction, undefined);
+  assert.equal(UNOWNED_ADR_ROWS.PlatformNotification, "legacy schema only; not a canonical tenancy row");
+  // The row this context READS most and owns least is `Event`: the outbox
+  // envelope it routes belongs to the pseudo-owner, and this grant moves nothing
+  // about it. A write to `Event` tagged `eventing` is refused from here exactly
+  // as it is from anywhere else.
+  const eventTrespass = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/eventing/application/x.ts": write("event", "create"),
+    }),
+  );
+  assert.equal(eventTrespass.violations.length, 1);
+  assert.equal(eventTrespass.violations[0].model, "Event");
+  assert.deepEqual(eventTrespass.violations[0].permitted, [
+    "packages/adapters/outbox",
+    "packages/adapters/postgres-tenancy",
+  ]);
   // WIN-258 T5: `tools` is delegated to that SAME directory, for the fourth
   // time and on the same sentence — one PostgreSQL database behind one client
   // is one adapter DIRECTORY (ADR M0.3 §15).
@@ -2374,6 +2468,58 @@ test("a THIRD directory writing a `tools` row is refused, and the refusal names 
   // find the offending line.
   assert.equal(byModel.ToolCall.actual, "packages/contexts/agents");
   assert.equal(byModel.Tool.actual, "packages/adapters/redis-ratelimit");
+});
+
+test("a THIRD directory writing `eventing`'s ONE row is refused, and the refusal names it", () => {
+  // The narrowness proof for the smallest grant in the map. A one-row
+  // delegation is the easiest to mistake for a blanket licence, because every
+  // write the live tree makes on that row is already legal — so this is the same
+  // statement, on the same row, from two directories that are neither
+  // `packages/contexts/eventing` nor its one delegate.
+  const root = fixture({
+    // A context that is NOT eventing, writing eventing's row through the ORM.
+    "packages/contexts/governance/application/steal.ts":
+      `export async function run(db: any) {\n  await db.notificationRule.updateMany({ data: {} });\n}\n`,
+    // And an ADAPTER that is not the delegate, writing it raw.
+    "packages/adapters/redis-streams/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.$executeRaw\`update "public"."NotificationRule" set "enabled" = false\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.violations.length, 2, "both writes must be refused, not just the ORM one");
+  for (const violation of result.violations) {
+    assert.equal(violation.model, "NotificationRule");
+    assert.deepEqual(violation.permitted, [
+      "packages/contexts/eventing",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    assert.match(violation.message, /eventing is its sole writer/);
+  }
+  // And it has to name the directory that actually wrote it, or a reader cannot
+  // find the offending line.
+  assert.deepEqual(
+    result.violations.map((violation) => violation.actual).sort(),
+    ["packages/adapters/redis-streams", "packages/contexts/governance"],
+  );
+});
+
+test("the SAME two writes from the delegate directory are permitted", () => {
+  // The control for the case above. Without it the RED case could be passing
+  // because the harness refuses everything rather than because the delegation is
+  // narrow.
+  const root = fixture({
+    "packages/adapters/postgres-tenancy/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.notificationRule.updateMany({ data: {} });\n` +
+      `  await db.$executeRaw\`update "public"."NotificationRule" set "enabled" = false\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 2);
 });
 
 test("the SAME writes from the delegate directory are permitted", () => {

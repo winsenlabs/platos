@@ -631,3 +631,34 @@ export {
   ObservabilityStoreRefused,
 } from "./observability-guards.js";
 export { AUDIT_ROW_OUTSIDE_SCOPE, AUDIT_STATE_NOT_AN_OBJECT } from "./observability-rows.js";
+// WIN-258 T5 — `eventing`'s ONE canonical-store port.
+//
+// The factory is published for the reason `createMemoryStores` and
+// `createGovernanceStores` are: a composition root that wanted this store
+// WITHOUT tenancy's repositories — a routing drain, say — has to be able to
+// build it over the SAME transactions rather than over a second client, or a
+// multi-context erasure would be two transactions with a window between them.
+//
+// THE REFUSAL CODES ARE CARRIED OUT OF BAND BECAUSE `eventing/domain/errors.ts`
+// PUBLISHES ONE. Every store failure in that context is
+// `repositoryUnavailable`, which is right for a caller — a routing pass that
+// cannot reach its store has one thing to do whatever the cause — and useless
+// for an operator, who needs to tell a malformed identifier from a NUL byte from
+// an environment that does not exist from a stored `delivery` this binary cannot
+// parse. The five write-shape refusals, the two driver refusals and the three
+// unreadable-row refusals are named here.
+export { createNotificationRuleRepository } from "./eventing-repository.js";
+export {
+  EVENTING_DELIVERY_NOT_OBJECT,
+  EVENTING_FILTERS_NOT_OBJECT,
+  EVENTING_IDENTIFIER_NOT_UUID,
+  EVENTING_INSTANT_NOT_STORABLE,
+  EVENTING_TEXT_HAS_NUL,
+  EventingWriteRefused,
+} from "./eventing-guards.js";
+export { EVENTING_ENVIRONMENT_UNKNOWN, EVENTING_STORE_FAILED } from "./eventing-refusal.js";
+export {
+  EVENTING_DELIVERY_UNREADABLE,
+  EVENTING_FILTERS_UNREADABLE,
+  EVENTING_NAME_UNREADABLE,
+} from "./eventing-rows.js";

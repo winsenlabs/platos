@@ -552,6 +552,12 @@ const LIVE_ADAPTERS = [
       // copy for the reason `skills`' is: a copy missing a binding would make
       // the refusal COUNTS below wrong rather than the refusals.
       { port: "ObservabilityRepository", owner: "observability" },
+      // WIN-258 T5. `eventing`'s one canonical-store port, in the fixture copy
+      // for the reason `secrets`' two and `skills`' one are: the mutations
+      // below are measured against a table that is otherwise identical to the
+      // live one, so a copy missing a binding would make the refusal COUNTS
+      // wrong rather than the refusals.
+      { port: "NotificationRuleRepository", owner: "eventing" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },

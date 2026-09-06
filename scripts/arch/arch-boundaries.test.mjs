@@ -981,6 +981,23 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               is not counted here; the v1 ledger counts it and its own
     //               delta says 13. `packages/contexts/observability` gains NO
     //               file — its port entry point was widened in place.
+    // +14 (WIN-258 T5, `eventing`) — EIGHT source modules (the row mapping and
+    //               the two `where` shapes, the guards, the refusal adapter, the
+    //               seven CRUD-and-read methods, the two erasure methods, the
+    //               composite, the harness and the shared conformance scenario)
+    //               and SIX suites, over ONE canonical row. The
+    //               `mutations-eventing.json` beside them is not source and is
+    //               not counted here; the v1 ledger counts it.
+    //               EIGHT MODULES FOR ONE TABLE IS THE §6 BUDGET AND NOT A STORE
+    //               SPREAD THIN. The erasure is its own module because it holds
+    //               the ONE write in this store that is raw SQL, and the reason
+    //               (`@updatedAt` would move a column the DOMAIN owns) is a
+    //               paragraph rather than a line.
+    //               `packages/contexts/eventing` gains NO file — its port entry
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME:
+    //               this store issues ONE raw statement, the containment UPDATE
+    //               the erasure needs, and it is in the same one home,
+    //               attributed by the TABLE it names.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
     //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is

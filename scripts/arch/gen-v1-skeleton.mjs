@@ -284,6 +284,23 @@ export const ADAPTERS = [
       // `ErasedSubjectRegister` and `SubjectLocatorSource` read `privacy`'s
       // tombstones and `conversations`' threads.
       { port: "ObservabilityRepository", owner: "observability" },
+      // WIN-258 T5 adds the THIRTEENTH owner. `eventing` owns ONE canonical row
+      // in that same database — `NotificationRule`, the only member of ADR M0.3
+      // §1 row 17 that exists in the canonical schema at all — and publishes ONE
+      // canonical-store port over it.
+      //
+      // IT IS SATISFIED BY THE ADAPTER ITSELF rather than by a property, like
+      // `ProvidersRepository` above: its nine method names collide with nothing
+      // this directory already publishes, so
+      // `PostgresTenancyAdapter extends NotificationRuleRepository` resolves
+      // directly. The context's TWO other ports get no row here and that is a
+      // claim rather than an omission: `DestinationScreen` is the SSRF boundary,
+      // whose contract is DNS resolution and a socket pinned to the resolved
+      // address, and `NotificationQueue` is a DELAYED hand-off whose
+      // `availableAt` asks for the durable schedule §7 decision 10 puts behind
+      // `durable-runtime`. Neither is a store, and a PostgreSQL client can
+      // honour no clause of either.
+      { port: "NotificationRuleRepository", owner: "eventing" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -466,6 +483,14 @@ export function adapterOwnerPackages(adapter) {
 // `ObservabilityDependencies` names the slot `repository`, and a root has to hand
 // the port over under that name. EXPECTED_ADAPTER_COUNT is deliberately unmoved a
 // THIRTEENTH time, which is the point of pinning the two separately.
+// AND `eventing` adds ONE, `NotificationRuleRepository`, over the ONE canonical
+// row of ADR M0.3 §1 row 17 — the THIRTEENTH owner of the one PostgreSQL client.
+// One row is the smallest grant this table has made and it changes nothing about
+// the argument: without it `ownerDirectories("eventing")` is the context alone,
+// and §2 forbids that package from importing the ORM, so the one package
+// permitted to write the row would be the one package unable to. It is SPREAD
+// rather than a property — its nine method names collide with nothing — and
+// EXPECTED_ADAPTER_COUNT is deliberately unmoved a SEVENTEENTH time.
 export const EXPECTED_ADAPTER_COUNT = 12;
 export const EXPECTED_BINDING_COUNT = 44;
 
@@ -620,6 +645,22 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` and the kernel, neither of which depends back on it. The independent
 // expectation in scripts/arch/v1-project-graph.mjs carries the same delta and is
 // maintained separately on purpose.
+// AND `packages/adapters/postgres-tenancy` -> `packages/contexts/eventing`.
+// A THIRTEENTH owner edge, carrying that context's ONE canonical-store port over
+// its ONE canonical row. 106 -> 107, and the arithmetic is the whole delta: one
+// new project REFERENCE, because a reference is per PACKAGE and not per port and
+// this owner brings exactly one package.
+//
+// IT CANNOT CREATE A CYCLE, and here that is checked rather than asserted. ADR
+// M0.3 §1 grants `eventing` exactly two dependencies — `tenancy` and the kernel
+// — and `application/dependencies.ts` holds the tenancy handle opaquely and
+// never calls it. `tenancy` is already an owner of this same directory, so the
+// two owner edges are parallel rather than circular, and nothing in the
+// 17-context DAG depends on `eventing`: it is a sink that emits
+// `NotificationRequested` and performs no delivery. An adapter is a leaf of the
+// graph either way. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
 export const EXPECTED_EDGE_COUNT = 111;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
@@ -772,6 +813,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/jobs", // WIN-258 T5 — InMemoryJobsRepository and InMemoryApprovalsRepository are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/files", // WIN-258 T5 — InMemoryFilesRepository is the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/observability", // WIN-258 T5 — InMemoryObservabilityRepository is the differential packages/adapters/postgres-tenancy is measured against, and the double that says the unlink works
+  "packages/contexts/eventing", // WIN-258 T5 — InMemoryNotificationRuleRepository is the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
@@ -795,6 +837,17 @@ export const TESTING_ENTRY_PROJECTS = [
 // `InMemoryCriteriaRepository`, `InMemoryEvalsRepository` and
 // `InMemoryGoldenSetsRepository` — and without the subpath the adapter's suites
 // do not fail an assertion, they fail to LOAD.
+//
+// `eventing` is the EIGHTH, and it is the one whose double this list is most
+// obviously FOR. `InMemoryNotificationRuleRepository`'s own header says "It is
+// not a stub. It enforces the two invariants the real table enforces" — the
+// `@@unique([environmentId, name])` index and scope isolation — and every
+// use-case suite in `packages/contexts/eventing` is written against that claim.
+// It is a claim about the PostgreSQL store, so the PostgreSQL store is what
+// checks it, and without the subpath the differential cannot name the double at
+// all. The double turned out to hold BOTH invariants and to miss the shapes: it
+// accepts `id-0001` and the scope triple `org-1`/`proj-1`/`env-1`, none of
+// which `@db.Uuid` will hold.
 //
 // Every entry must be an adopted project: an unadopted one's `application/`
 // tree is generated placeholders, so `selfCheck` fails on it.

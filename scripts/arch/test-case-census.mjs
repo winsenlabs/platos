@@ -2372,12 +2372,6 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
- * 6845 -> 6945: the 100 cases of WIN-258 tranche 5's `files` canonical store,
- * enumerated file by file in the block beside the postgres-tenancy row. Six of
- * its seven suites carry `.integration.` in the name; the seventh,
- * `files-rows.test.ts`, runs in the ordinary package test script for the reason
- * every other row suite does.
- */
 export const EXPECTED_RUNTIME_TOTAL = 7226;
 
 /** Every case-declaring package directory, in byte order. */

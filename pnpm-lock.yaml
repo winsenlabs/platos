@@ -1080,6 +1080,9 @@ importers:
       '@platos/context-cost-monitoring':
         specifier: workspace:*
         version: link:../../contexts/cost-monitoring
+      '@platos/context-eventing':
+        specifier: workspace:*
+        version: link:../../contexts/eventing
       '@platos/context-files':
         specifier: workspace:*
         version: link:../../contexts/files
