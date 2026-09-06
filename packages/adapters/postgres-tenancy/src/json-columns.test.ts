@@ -119,15 +119,21 @@ describe("the census agrees with the migrations that pin the roots", () => {
     expect([...checks.keys()].sort()).toEqual([...censusKeys].sort());
   });
 
-  test.each(JSON_COLUMNS.map((contract) => [jsonColumnKey(contract), contract] as const))(
-    "%s: the census root and null arm are the CHECK's own",
-    (_key, contract) => {
-      const check = checks.get(jsonColumnKey(contract));
-      expect(check).toBeDefined();
-      expect(check?.root).toBe(contract.root);
-      expect(check?.nullable).toBe(contract.nullable);
-    },
-  );
+  // ONE CASE OVER FORTY-NINE COLUMNS, not forty-nine cases. `test.each` over a
+  // computed table has no statically visible row count, and
+  // `scripts/arch/test-case-census.mjs` refuses one for exactly that reason: a
+  // census that cannot count a suite's cases cannot notice one going missing.
+  // The column name is carried INTO each assertion so a failure still names the
+  // column that failed.
+  test("every census root and null arm is the CHECK's own", () => {
+    for (const contract of JSON_COLUMNS) {
+      const key = jsonColumnKey(contract);
+      expect([key, checks.get(key)]).toEqual([
+        key,
+        { root: contract.root, nullable: contract.nullable },
+      ]);
+    }
+  });
 
   test("the CHECK's null arm is the schema's own optionality", () => {
     const declared = new Map([...jsonFieldsOf("schema.prisma"), ...jsonFieldsOf("end-user.prisma")]);
@@ -149,17 +155,20 @@ describe("every named decoder exists where the census says it does", () => {
       : resolve(packageRoot, "src", `${module}.ts`);
   }
 
-  test.each(
-    JSON_COLUMNS.filter((contract) => contract.decoder !== "").map(
-      (contract) => [jsonColumnKey(contract), contract.decoder] as const,
-    ),
-  )("%s is decoded by %s", (_key, decoder) => {
-    const symbol = decoder.slice(decoder.lastIndexOf(".") + 1);
-    const source = readFileSync(moduleFileOf(decoder), "utf8");
-    // `function` and not `export function`: a decoder private to its module is
-    // still the boundary, and requiring an export would push modules to widen
-    // their surface for the census's benefit.
-    expect(new RegExp(`\\bfunction ${symbol}\\b`, "u").test(source)).toBe(true);
+  // One case again, and for the same reason as the roots above.
+  test("every named decoder is a symbol declared in the module named", () => {
+    for (const contract of JSON_COLUMNS) {
+      if (contract.decoder === "") continue;
+      const symbol = contract.decoder.slice(contract.decoder.lastIndexOf(".") + 1);
+      const source = readFileSync(moduleFileOf(contract.decoder), "utf8");
+      // `function` and not `export function`: a decoder private to its module is
+      // still the boundary, and requiring an export would push modules to widen
+      // their surface for the census's benefit.
+      expect([contract.decoder, new RegExp(`\\bfunction ${symbol}\\b`, "u").test(source)]).toEqual([
+        contract.decoder,
+        true,
+      ]);
+    }
   });
 
   test("a decoder is named exactly when the disposition implies one", () => {
