@@ -4,13 +4,13 @@
   "toolVersion": "1.0.0",
   "fixedTimestamp": "2026-08-28T00:00:00.000Z",
   "lockfileSha256": "81fb16546d4ef4e2dd5345c1df69d051be0e180461f32665616c20e347d733db",
-  "licenseIndexSha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b",
+  "licenseIndexSha256": "757f2954ccd96a268c3da679f6ba02d15f0537940fe28545382f84c2e0b3b5f4",
   "licenseOverlaySha256": "db436a3bfad82b7bfe9413d8023f86df0ea848e44ad4b5c86d78b727406a713b",
   "licensePolicySha256": "2c47d8ec03aed511b986f67ab1bca3f3735aef6f440255ca0ad5afabe06bd0d1",
   "images": {
     "agent": {
       "file": "docs/audits/sbom/platos-agent.cdx.json",
-      "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe",
+      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
       "componentCount": 718,
       "distinctNames": 657,
       "roots": [
