@@ -189,9 +189,9 @@ describe("count truth", () => {
   });
 
   test("the total narrows with the end user, and the two halves add up", async () => {
-    const first = await threads({ endUserId: asConversationsIdentifier(chain.endUserId) });
+    const first = await threads({ endUserId: asConversationsIdentifier<EndUserId>(chain.endUserId) });
     const second = await threads({
-      endUserId: asConversationsIdentifier(chain.secondEndUserId),
+      endUserId: asConversationsIdentifier<EndUserId>(chain.secondEndUserId),
     });
     const live = await threads();
     // The second subject's threads are the FIRST seventy-five, which are also
@@ -267,7 +267,7 @@ describe("the plan", () => {
       harness.base.client,
       threadRowStatement(
         await capture(harness.base, () =>
-          threads({ endUserId: asConversationsIdentifier(chain.secondEndUserId) }),
+          threads({ endUserId: asConversationsIdentifier<EndUserId>(chain.secondEndUserId) }),
         ),
       ),
     );
