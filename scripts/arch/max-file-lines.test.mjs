@@ -449,26 +449,33 @@ test("the live selectors scan an exact nonzero source census", () => {
   // source module, and at well under 400 effective lines it leaves the finding
   // list below unchanged too.
   //
-  // THE THREE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 = 1251. All three
+  // 1251 -> 1266 (WIN-258 T5, the `channels` store): fifteen more files in the
+  // same directory — nine modules and six suites. The band does not bite here
+  // either: the largest is `channels-conformance.ts` at 448 effective lines,
+  // inside the 400-500 WARNING band and well under the 500-line error, and it is
+  // one scenario of thirty-five observations rather than a module that could be
+  // split by lifecycle.
+  //
+  // THE FOUR TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 = 1266. All four
   // stores are in the one adapter directory, so no branch's own figure survives
   // the merge.
-  assert.equal(result.fileCount, 1251);
+  assert.equal(result.fileCount, 1266);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
-  // tranche 5 contributes FOUR times because it landed three canonical stores in
+  // tranche 5 contributes FIVE times because it landed four canonical stores in
   // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
-  // (cost-monitoring's second sweep) = 165. The contexts, kernel and app rows
-  // are untouched, which is the claim worth making: no tranche-5 store adds a
-  // file to a context at all — each implements a port that already existed
-  // rather than widening one.
-  assert.equal(result.fileCount, 20 + 1060 + 165 + 6);
+  // (cost-monitoring's second sweep) + 15 (channels) = 180. The contexts, kernel
+  // and app rows are untouched, which is the claim worth making: no tranche-5
+  // store adds a file to a context at all — each implements a port that already
+  // existed rather than widening one.
+  assert.equal(result.fileCount, 20 + 1060 + 180 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -484,7 +491,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // the fourth and it arrived with an earlier merge, so it was added with its
   // measured line count rather than left to be discovered by a later branch.
   //
-  // WIN-258 T5 BROUGHT THREE, AND THE FIRST OF THEM IS A SOURCE FILE. That is
+  // WIN-258 T5 BROUGHT FOUR, AND THE FIRST OF THEM IS A SOURCE FILE. That is
   // the fact worth stating rather than burying: every warning before it was a
   // test suite. `cost-rows.ts` is one function pair per row -- read and write --
   // over SIX tables, and the six pairs are what the length is; splitting it
@@ -493,11 +500,26 @@ test("the live selectors scan an exact nonzero source census", () => {
   // long for the reason the census block in scripts/arch/test-case-census.mjs
   // gives: each guard is stood beside the migration CHECK it restates, in two
   // halves, and a table-driven loop would not be counted as cases at all.
-  // NONE of the three is near the 500-line hard error, and the file this
+  // NONE of the four is near the 500-line hard error, and the file this
   // package would have had to split for that reason -- the repository composite
   // -- is 14 effective lines, because the three stores were split by lifecycle
   // when they were written.
+  //
+  // WIN-258 T5 BROUGHT A FOURTH, and it is the only warning in the tree that is
+  // neither a suite nor a row mapping: `channels-conformance.ts` is ONE scenario
+  // of thirty-five observations, driven against the in-memory double and against
+  // PostgreSQL and compared verbatim. Its length IS the scenario, and splitting
+  // it would split a transcript that is only evidence while it is one sequence.
+  // The store modules beside it are all well inside the band, because the six
+  // rows were split by lifecycle — connections and apps, installations, links,
+  // the inbox — when they were written, which is the same discipline the note
+  // above records for `cost-*`.
   assert.deepEqual(result.findings, [
+    {
+      path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
+      effectiveLines: 448,
+      severity: "warning",
+    },
     {
       path: "packages/adapters/postgres-tenancy/src/cost-constraints.integration.test.ts",
       effectiveLines: 453,

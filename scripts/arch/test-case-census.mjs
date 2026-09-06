@@ -1569,6 +1569,62 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * is 391 + 19 = 410 files and 6115 + 184 = 6299 cases. The adapters term of the
  * three-way identity carries all nineteen, because every added file is an
  * adapter's: 39 + 19 = 58, and 349 + 3 + 58 = 410.
+ *
+ * WIN-258 TRANCHE 5 - CHANNELS' CANONICAL STORE. The SAME package moves a
+ * SEVENTH time, for the seventh reading of ADR M0.3 §15: `channels` is sole
+ * writer of six rows in the same PostgreSQL database, so its repository is the
+ * same client, the same transaction and the same directory.
+ *
+ *   packages/adapters/postgres-tenancy   39 -> 45 files,  383 -> 455 cases
+ *
+ * WHAT THE 72 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ *
+ *   channels-rows.test.ts                     25  the mapping in both directions
+ *                                                 and every guard, PURE - the
+ *                                                 only one of the six that
+ *                                                 `pnpm test:v1-packages` runs
+ *   channels-constraints.integration.test.ts  16  each guard against the
+ *                                                 migration-only CHECK it
+ *                                                 restates, plus the six that
+ *                                                 have no constraint behind them
+ *                                                 and are shown going in clean
+ *                                                 through SQL
+ *   channels-rules.integration.test.ts        10  the database rules NO port
+ *                                                 method restates: the immutable
+ *                                                 inbox identity, the ancestry
+ *                                                 rule firing on UPDATE, the
+ *                                                 owner column that will not
+ *                                                 move, the turn unique, and the
+ *                                                 revision this table has no
+ *                                                 column for
+ *   channels-transaction.integration.test.ts  10  failure injection over a
+ *                                                 second client, the negative
+ *                                                 control, BOTH answers a
+ *                                                 returned error Result gives,
+ *                                                 and the three scope refusals
+ *   channels-statements.integration.test.ts    6  measured statement counts over
+ *                                                 two fixture sizes, the probe
+ *                                                 anchor, and the three writes
+ *                                                 whose count is the contract
+ *   channels-conformance.integration.test.ts   5  the scenario against the fake
+ *                                                 and the real store, compared
+ *                                                 verbatim, plus non-vacuity
+ *
+ * 25 + 16 + 10 + 10 + 6 + 5 = 72. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job, not by
+ * `pnpm test:v1-packages`; they are counted here because this census measures
+ * the suites a package SHIPS.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 5 in the conformance suite. It is
+ * small because it is ONE scenario of thirty-five observations compared verbatim
+ * against `InMemoryChannelsRepository`; adding an observation strengthens the
+ * differential and moves NO count here, which is why `mutations-channels.json`
+ * beside the package is where those guards are held falsifiable.
+ *
+ * 39 + 6 = 45 files and 383 + 72 = 455 cases. The tree total is 410 + 6 = 416
+ * files and 6299 + 72 = 6371 cases. The adapters term of the three-way identity
+ * carries all six, because every added file is an adapter's: 58 + 6 = 64, and
+ * 349 + 3 + 64 = 416.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1579,7 +1635,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 39, cases: 383 },
+  "packages/adapters/postgres-tenancy": { files: 45, cases: 455 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1741,7 +1797,7 @@ export const EXPECTED = Object.freeze({
  * `agents-rows.test.ts`) run in the ordinary package test script, because
  * neither module has a database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6299;
+export const EXPECTED_RUNTIME_TOTAL = 6371;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

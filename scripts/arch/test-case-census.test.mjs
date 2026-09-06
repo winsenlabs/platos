@@ -294,11 +294,15 @@ test("the census is not vacuous — it reads the real suites", () => {
   // conformance suite, so no named case saw them;
   // `cost-idempotency.integration.test.ts` is the file that gives them one.
   // 409 + 1 = 410.
-  assert.equal(live.totalFiles, 410);
+  //
+  // CHANNELS' CANONICAL STORE ADDS SIX MORE, to the same row again, and no
+  // CONTEXT row moves for it either: one pure (`channels-rows.test.ts`) and five
+  // real-PostgreSQL. 410 + 6 = 416.
+  assert.equal(live.totalFiles, 416);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1);
+  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -365,9 +369,9 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // `agents-guards.test.ts` and `cost-idempotency.integration.test.ts` all exist
   // because a mutation sweep found guards nothing could falsify.
   //
-  // 378 + 5 + 4 + 4 + 6 + 6 + 6 + 1 = 410, and 265 of those files' cases are
+  // 378 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 = 416, and 312 of those files' cases are
   // integration cases the `postgres-tenancy-repository` CI job runs and
-  // `pnpm test:v1-packages` does not, across 31 files.
+  // `pnpm test:v1-packages` does not, across 36 files.
   //
   // THIS SENTENCE SAID 159 AND THE TREE SAID 144, AT THE BASE OF THIS BRANCH
   // (tejas/win-258-postgres-ownership @ 42daafb3) AND BEFORE ANY TRANCHE-5 STORE
@@ -387,10 +391,11 @@ test("the pinned rows sum to the pinned runtime total", () => {
   //     + `agents`' 39 (16 + 12 + 9 + 2, over 4 files)
   //     + `cost-monitoring`'s 43 (13 + 8 + 7 + 6 + 5, over 5 files, + 4 over
   //       cost-idempotency) = 265, over 31 files.
+  //     + `channels`' 47 (16 + 10 + 10 + 6 + 5, over 5 files) = 312, over 36.
   // ALL THREE tranche-5 branches independently corrected the 159 and each landed
   // on a figure counted against the base — 183, 183 and 187. Merged the figure
   // is none of them.
-  assert.equal(files, 410);
+  assert.equal(files, 416);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -472,7 +477,7 @@ test("the providers context is pinned at what vitest prints", () => {
   // seventh at 352; each is pinned by its own test.
   // WIN-258 tranche 2 adds the last term, +67, to the postgres-tenancy row that
   // tranche 1 made real at 56.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -529,7 +534,7 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // its own half of that same postgres-tenancy row: `agents` publishes no test
   // package of its own here, so nothing but the adapter row moves.
   assert.equal(
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4,
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -566,7 +571,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -596,7 +601,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -634,7 +639,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -667,7 +672,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -710,7 +715,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -739,7 +744,7 @@ test("the tools context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -774,7 +779,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -800,7 +805,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 609);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -826,7 +831,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -910,7 +915,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // adapter's 198 and WIN-257's 148 landed first, so it is 5525 and this row
   // closes the census at 5875. The +350 is the part that conserves.
   // WIN-258 tranche 2's 67 identity-access cases join the adapter's 56.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1001,28 +1006,45 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // history. The conformance suite's 5 is deliberately unchanged: added there,
   // those four observations would have been invisible to this census.
   //
+  // WIN-258 TRANCHE 5 adds SIX more suites and 72 more cases to the same row —
+  // `channels`' canonical store, the SIXTH context owner behind the one ORM
+  // client: one pure (channels-rows.test, 25, the row mapping in both directions
+  // and every guard) and five real-PostgreSQL — each guard beside the
+  // migration-only CHECK it restates or the database's willingness to take the
+  // value (16), the database rules no port method restates (10), failure
+  // injection over a second client with BOTH answers a returned error Result
+  // gives and the three scope refusals (10), the measured statement counts (6),
+  // and the conformance differential against `InMemoryChannelsRepository` (5).
+  //
+  // THE 25 IN THE PURE SUITE IS THE LARGEST PURE ROW ANY TRANCHE HAS ADDED, and
+  // that is a fact about this port rather than about its author: `channels` is
+  // the only context whose store has to REFUSE a row it can read — an unknown
+  // installation status, an unknown inbox status, an unreadable routing table —
+  // and each of those decisions is a value mapping with no database in it.
+  //
   // ALL FIVE tranches move THIS row, so it carries every tail:
-  // 11 + 5 + 4 + 6 + 6 + 6 + 1 = 39 files and
-  // 123 + 43 + 33 + 59 + 60 + 61 + 4 = 383 cases. No branch's own row is the
-  // merged row, and any one taken alone would drop the others' suites out of a
-  // census whose whole purpose is to see every case.
+  // 11 + 5 + 4 + 6 + 6 + 6 + 1 + 6 = 45 files and
+  // 123 + 43 + 33 + 59 + 60 + 61 + 4 + 72 = 455 cases. No branch's own row is
+  // the merged row, and any one taken alone would drop the others' suites out of
+  // a census whose whole purpose is to see every case.
   assert.equal(
     EXPECTED["packages/adapters/postgres-tenancy"].files,
-    2 + 2 + 1 + 6 + 1 + 4 + 4 + 6 + 6 + 6 + 1,
+    2 + 2 + 1 + 6 + 1 + 4 + 4 + 6 + 6 + 6 + 1 + 6,
   );
   assert.equal(
     EXPECTED["packages/adapters/postgres-tenancy"].cases,
     17 + 14 + 16 + 9 + 17 + 3 + 16 + 11 + 7 + 4 + 9 + 7 + 12 + 8 + 10 + 6 + 11 + 12 + 7 + 3 +
       20 + 12 + 8 + 7 + 5 + 7 +
       14 + 7 + 16 + 12 + 9 + 2 +
-      22 + 13 + 8 + 7 + 6 + 5 + 4,
+      22 + 13 + 8 + 7 + 6 + 5 + 4 +
+      25 + 16 + 10 + 10 + 6 + 5,
   );
-  assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 383);
-  // 118 of the 383 run in `pnpm test:v1-packages`; the other 265 need a Docker
+  assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 455);
+  // 143 of the 455 run in `pnpm test:v1-packages`; the other 312 need a Docker
   // daemon and run in the `postgres-tenancy-repository` CI job. A pin that
-  // counted only the runnable 118 would go green if the integration suites were
+  // counted only the runnable 143 would go green if the integration suites were
   // deleted, which is the one change this row exists to make visible.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)

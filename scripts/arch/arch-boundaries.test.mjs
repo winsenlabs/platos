@@ -762,12 +762,21 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               through a crashed `beforeAll`. It imports what every other
     //               suite in the directory imports, so `tenancy-prisma-only` is
     //               measured against one more file and still holds.
-    // ALL THREE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 = 1276. No branch's own figure
-    //               is right merged, and taking any one alone under-counts the
-    //               others by their whole tranche.
-    assert.equal(result.fileCount, 1276, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1);
+    //  1276 -> 1291 +15: THE `channels` CANONICAL STORE, in that SAME one home:
+    //               nine modules (the four stores, the composite, the guards,
+    //               the row mapping, the harness and the shared conformance
+    //               scenario) and six suites. `tenancy-prisma-only` is measured
+    //               against fifteen more files and still holds, because the
+    //               client is still imported in `client.ts` and nowhere else —
+    //               and the arithmetic is the point: a thirteenth adapter
+    //               package for a sixth owner would have broken it exactly as a
+    //               second ORM home for the outbox would have.
+    // ALL FOUR TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 = 1291. No branch's own
+    //               figure is right merged, and taking any one alone
+    //               under-counts the others by their whole tranche.
+    assert.equal(result.fileCount, 1291, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

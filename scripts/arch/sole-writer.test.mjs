@@ -244,6 +244,13 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/cost-monitoring",
     "packages/adapters/postgres-tenancy",
   ]);
+  // WIN-258 T5. `channels` moved from the undelegated list below to this one,
+  // the SIXTH context to do so; the list it left still has to contain somebody,
+  // or the case stops saying anything.
+  assert.deepEqual(ownerDirectories("channels"), [
+    "packages/contexts/channels",
+    "packages/adapters/postgres-tenancy",
+  ]);
   for (const owner of ["memory", "secrets", "governance", "files"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
@@ -313,6 +320,66 @@ test("only cost-monitoring's own two directories may write its six rows", () => 
       ).violations.length,
       1,
       `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+});
+
+test("only channels' own two directories may write its six rows", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // Every one of the six rows is checked, not a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise sit
+  // here unnoticed behind a green case for `ChannelConnection`.
+  const SIX = [
+    ["channelApp", "ChannelApp"],
+    ["channelAppThread", "ChannelAppThread"],
+    ["channelConnection", "ChannelConnection"],
+    ["channelEventInbox", "ChannelEventInbox"],
+    ["channelInstallation", "ChannelInstallation"],
+    ["channelThread", "ChannelThread"],
+  ];
+
+  for (const [delegate, model] of SIX) {
+    // The delegate directory: legal, and the reason the repository can exist.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/postgres-tenancy/src/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree, because ADR M0.3 §2 forbids that package from holding the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/contexts/channels/application/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `conversations` is the pointed choice — it owns
+    // `Thread`, which every link row points at, and would most plausibly write a
+    // link while cleaning one up. It is exactly as refused as anything else.
+    const trespass = checkWriteEnforcement(
+      fixture({ [`packages/contexts/conversations/application/x.ts`]: write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/conversations");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/channels",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And the vendor-client adapter this context DOES own is not a loophole:
+    // `packages/adapters/channel-slack` is `channels`' adapter and holds the
+    // provider SDK, and being that adapter is not the qualification — being this
+    // owner's declared canonical STORE is.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/channel-slack/src/x.ts`]: write(delegate, "create") }),
+      ).violations.length,
+      1,
+      `${model} must be refused from the context's own vendor adapter`,
     );
   }
 });
@@ -691,7 +758,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 // and each was right alone — which is why this line merged with no textual
 // conflict at all and would have shipped three writes short of the tree. The
 // second and third assertions below say the writes are all legal and all
-// attributable, so the pin cannot be satisfied by 150 mutations somewhere else.
+// attributable, so the pin cannot be satisfied by 157 mutations somewhere else.
 //
 // WIN-258 TRANCHE 5 adds 27, again all from the SAME directory, on the SEVEN
 // rows `agents` owns. Written out so a deletion cannot hide inside an addition:
@@ -782,10 +849,33 @@ test("an element-access member that is not a delegate is still not a write", () 
 // somewhere else.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 = 150. All THREE tranche-5 stores landed in
-// the one directory, so the pin is the SUM of the three enumerations above and
-// no branch's own figure — 86, 96 or 106 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 150;
+// WIN-258 TRANCHE 5 adds 7 more, all from the SAME directory, and all seven on
+// rows `channels` itself owns. Each line was read back from the enforcer rather
+// than counted by eye:
+//
+//   src/channels-connections.ts    channelConnection.upsert,
+//                                  channelApp.upsert                             2
+//   src/channels-installations.ts  channelInstallation.upsert                    1
+//   src/channels-links.ts          channelThread.create,
+//                                  channelAppThread.create                       2
+//   src/channels-inbox.ts          channelEventInbox.create + .upsert            2
+//                                                                        total = 7
+//
+// ITS FIVE INTEGRATION SUITES CONTRIBUTE ZERO, and that is the line worth
+// reading rather than a silence. `channels-constraints.integration.test.ts`
+// writes bad values PAST the port on purpose, and every one of them goes through
+// `prisma db execute` — the ORM's own CLI, which is runtime and therefore out of
+// this scanner's scope by construction — because writing them through this
+// package's delegate would be writing them through the guard under test. The
+// harness needs five rows this package may not write at all: `Agent`,
+// `Credential`, `Entity`, `EndUser` and `Thread`, whose owners have no entry in
+// `CANONICAL_STORE_ADAPTERS`. It seeds them the same way, rather than routing
+// around a refusal this gate is right to make.
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 = 157. All FOUR tranche-5 stores landed in
+// the one directory, so the pin is the SUM of the four enumerations above and
+// no branch's own figure — 86, 96, 106 or 76 — survives the merge.
+const LIVE_TREE_WRITE_COUNT = 157;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -878,6 +968,30 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   // integration fixture applies that chain as SQL instead.
   assert.equal(CANONICAL_STORE_ADAPTERS.skills, undefined);
   assert.deepEqual(ownerDirectories("skills"), ["packages/contexts/skills"]);
+  // WIN-258 T5: `channels` is delegated to the SAME directory a fifth time, and
+  // the grant is exactly the SIX rows ADR M0.3 §1 row 9 gives it.
+  assert.deepEqual(ownerDirectories("channels"), [
+    "packages/contexts/channels",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.channels, "packages/adapters/postgres-tenancy");
+  const channelRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "channels")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(channelRows, [
+    "ChannelApp",
+    "ChannelAppThread",
+    "ChannelConnection",
+    "ChannelEventInbox",
+    "ChannelInstallation",
+    "ChannelThread",
+  ]);
+  // And `conversations` is NOT delegated, which is why the adapter cannot seed
+  // the `Thread` row every one of its link rows points at, and why the
+  // integration harness applies that chain as SQL instead.
+  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, undefined);
+  assert.deepEqual(ownerDirectories("conversations"), ["packages/contexts/conversations"]);
 
   // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
   // Its primary directory is an ADAPTER rather than a context — the one owner in
