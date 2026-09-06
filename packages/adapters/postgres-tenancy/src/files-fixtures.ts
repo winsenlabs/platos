@@ -182,7 +182,7 @@ export function refusalCode(result: { readonly ok: boolean } | null): string {
  * own message.
  *
  * A guard's reason begins with a code this package minted; a driver error's
- * begins with the METHOD and carries the constraint or trigger PostgreSQL named.
+ * begins with the METHOD and carries the constraint or rule PostgreSQL named.
  * A case about a rule that lives only in the migrations has to be able to assert
  * that the rule is what refused it, and the name PostgreSQL prints is the only
  * thing in the refusal that says so.

@@ -79,7 +79,7 @@ function plant(sql: string): string {
 }
 
 describe("MessageAttachment_ancestry: the row must name ONE consistent chain", () => {
-  test("a thread belonging to another tenant is refused by the trigger, not by a guard", async () => {
+  test("a thread belonging to another tenant is refused by the RULE, not by a guard", async () => {
     const written = await harness.run((transaction) =>
       harness.repository.insertAttachment(
         // The environment, end user and agent are this tenant's; only the thread
@@ -176,7 +176,7 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
       ),
     ).toBe("<accepted>");
     // FOUND BY THE FIRST INTEGRATION RUN, and it is a fact about the schema
-    // rather than about this store. PostgreSQL fires BEFORE triggers in
+    // rather than about this store. PostgreSQL fires BEFORE rules in
     // ALPHABETICAL order by name, so `MessageAttachment_ancestry` runs before
     // `MessageAttachment_owner_immutable` — and the thread pins the environment,
     // the subject AND the agent, so every move of any of those three breaks the

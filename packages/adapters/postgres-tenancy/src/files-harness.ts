@@ -87,9 +87,9 @@ export interface FilesChain {
    *
    * It exists for one case and could not be replaced by either of the other two.
    * `MessageAttachment_owner_immutable` and `MessageAttachment_ancestry` are both
-   * BEFORE UPDATE triggers, and PostgreSQL fires BEFORE triggers in ALPHABETICAL
-   * order by name — so `_ancestry` runs first and refuses every owner move that
-   * breaks the chain, which is every move to a thread of a different subject or a
+   * BEFORE UPDATE rules, and PostgreSQL fires those in ALPHABETICAL order by
+   * name — so `_ancestry` runs first and refuses every owner move that breaks
+   * the chain, which is every move to a thread of a different subject or a
    * different agent. The only owner change that survives the ancestry rule and
    * reaches the immutability rule is a move to a SIBLING thread of the same
    * subject on the same agent, and this is that thread.

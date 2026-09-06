@@ -3,7 +3,7 @@
 //
 // WHY VALIDATION AND NOT A CAST, COLUMN BY COLUMN. This context's two tables are
 // unusually well constrained compared with `skills`' or `channels`' — there is a
-// real CHECK behind `Artifact.metadata` and a real trigger behind every ancestry
+// real CHECK behind `Artifact.metadata` and a real rule behind every ancestry
 // — so the honest list of what this file has to defend against is SHORT, and
 // saying which columns are safe is as much a part of the record as saying which
 // are not.
