@@ -1191,7 +1191,7 @@ test("an element-access member that is not a delegate is still not a write", () 
 //
 //
 //
-// WIN-258 TRANCHE 5 adds 16 more, a FIFTH store in the SAME directory, on the
+// WIN-258 TRANCHE 5 adds 17 more, a FIFTH store in the SAME directory, on the
 // FOUR rows `providers` owns. Every one is on a row this tranche's own owner
 // holds, and each line was read back from the enforcer rather than counted by
 // eye:
@@ -1205,14 +1205,21 @@ test("an element-access member that is not a delegate is still not a write", () 
 //   src/providers-links.ts      environmentProvider.upsert + .deleteMany       2
 //   src/providers-catalogue.ts  model.upsert, modelPrice.create                2
 //   src/providers-constraints.integration.test.ts
-//                               8 raw writes standing each guard beside the
-//                               rule it restates — 3 ProviderKey (2 INSERT and
-//                               the owner-immutability UPDATE), 4 ModelPrice
-//                               (2 INSERT against the rate CHECK, and the
-//                               UPDATE and DELETE the append-only rules
-//                               refuse) and 1 Model INSERT against the INTEGER
-//                               column                                          8
-//                                                                       total = 16
+//                               3 raw writes standing each `ProviderKey` guard
+//                               beside the rule it restates — 2 INSERT and the
+//                               owner-immutability UPDATE                        3
+//   src/providers-catalogue-constraints.integration.test.ts
+//                               6 more, on the two installation-global rows —
+//                               4 ModelPrice (2 INSERT against the rate CHECK,
+//                               and the UPDATE and DELETE the append-only rules
+//                               refuse), 1 Model INSERT against the INTEGER
+//                               column, and the `isHidden` UPDATE that is the
+//                               ONE write in this tranche's suites that goes
+//                               around the store on purpose: `isHidden` is
+//                               nobody's port column, and an operator hiding a
+//                               model is the state the catalogue pass must not
+//                               undo                                             6
+//                                                                       total = 17
 //
 // `src/providers-harness.ts` contributes ZERO, and that is the line worth
 // reading rather than a silence. It needs FOUR rows this tranche's owner does
@@ -1232,11 +1239,11 @@ test("an element-access member that is not a delegate is still not a write", () 
 // measurement.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 16 = 214. All of tranche 5's
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 = 215. All of tranche 5's
 // stores landed in the ONE directory, so this pin is the SUM of every
 // enumeration above and no single branch's own figure — 157, 163, 178 or 198 —
 // survives the merge.
-const LIVE_TREE_WRITE_COUNT = 214;
+const LIVE_TREE_WRITE_COUNT = 215;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
