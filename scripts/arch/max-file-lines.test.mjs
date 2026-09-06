@@ -486,29 +486,46 @@ test("the live selectors scan an exact nonzero source census", () => {
   // unchanged by it.
   //
   //
-  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 = 1303. All
-  // the stores are in the one adapter directory, so no branch's own figure
-  // survives the merge — 1266 for `channels`, 1269 for `governance`, 1270 for
-  // `secrets`.
-  assert.equal(result.fileCount, 1303);
+  //
+  // 1251 -> 1267 (WIN-258 T5): `providers`' canonical store adds SIXTEEN files
+  // to the one ORM home -- nine source and SEVEN suites.
+  //
+  // AND THE BUDGET BIT AGAIN, before either file was committed. The constraints
+  // suite reached 491 effective lines as one module -- inside the warning band
+  // and four lines of prose from the 500-line ERROR -- and the split is at a
+  // seam the port itself already has: `ProviderKey`'s five rules are all
+  // ENVIRONMENT-SCOPED and every case needs a tenant chain and a credential,
+  // while `Model` and `ModelPrice` have no scope at all and not one case there
+  // takes one. The remaining warning is `providers-conformance.ts` at 421, and
+  // it is named in the finding list below rather than split: like
+  // `channels-conformance.ts` it is ONE scenario compared verbatim against a
+  // double, and it is ALREADY two files -- the catalogue half is a separate
+  // module for the same scoping reason.
+  //
+  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 =
+  // 1319. All the stores are in the one adapter directory, so no branch's own
+  // figure survives the merge — 1266 for `channels`, 1269 for `governance`,
+  // 1270 for `secrets`, 1267 for `providers`.
+  assert.equal(result.fileCount, 1319);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
   // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
-  // (secrets) = 217. The contexts, kernel and app rows are untouched, which is
+  // (secrets) + 16 (providers) = 233. The contexts, kernel and app rows are
+  // untouched, which is
   // the claim worth making: no tranche-5 store adds a file to a context at all —
   // each implements a port that already existed rather than widening one.
   // `secrets` is the sharpest case: its port entry point WAS widened, in place,
   // and a widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 217 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 233 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -560,6 +577,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // rows an older binary wrote, and a cross-environment control writing all five
   // tables in a second tenant. A table-driven loop would not be counted as cases
   // at all.
+  //
+  // WIN-258 T5 (`providers`) BROUGHT ONE, and it is the second conformance
+  // scenario in this list rather than a new kind of finding.
+  // `providers-conformance.ts` is 421 because it drives EIGHTEEN port methods
+  // over four rows in one sequence and records every one, and it is ALREADY
+  // split: the catalogue half is a separate module, because `Model` and
+  // `ModelPrice` take no scope and every step in this half does. Splitting it
+  // again would split a transcript that is only evidence while it is one
+  // sequence. The constraints suite beside it was 491 and IS split, along the
+  // same seam, which is the difference between a warning that is a shape and one
+  // that is a queue for the hard error.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -589,6 +617,11 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
       effectiveLines: 424,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
+      effectiveLines: 421,
       severity: "warning",
     },
     {

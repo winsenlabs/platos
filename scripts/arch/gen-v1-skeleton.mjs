@@ -118,6 +118,19 @@ export const ADAPTERS = [
       // `PostgresTenancyAdapter["secretsVariables"]`.
       { port: "SecretsRepository", owner: "secrets" },
       { port: "EnvironmentVariableRepository", owner: "secrets" },
+      // WIN-258 T5 adds the NINTH. `providers` owns four canonical rows in that
+      // same database — `ProviderKey`, `EnvironmentProvider`, `Model` and
+      // `ModelPrice` — and publishes ONE canonical-store port over all four.
+      //
+      // IT IS SATISFIED BY THE ADAPTER ITSELF rather than by a property: its
+      // eighteen method names collide with nothing the directory already
+      // publishes, so `PostgresTenancyAdapter extends ProvidersRepository`
+      // resolves directly. The context's two OTHER ports get no row here and
+      // that is a claim rather than an omission: `ModelRouter` already has one,
+      // on `model-router-providers` below, and `ProviderProbeCache` is a
+      // five-minute memo of what a provider said, which §13's map has no home
+      // for and which no canonical store should hold.
+      { port: "ProvidersRepository", owner: "providers" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -245,8 +258,17 @@ export function adapterOwnerPackages(adapter) {
 // unmoved through all of it, which is the whole point of pinning the two
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
+//
+// 30 -> 31 (WIN-258 T5). `providers` adds ONE canonical-store binding,
+// `ProvidersRepository`, over the four rows of ADR M0.3 §1 row 4. It is the
+// NINTH owner of the one PostgreSQL client and the only one of tranche 5's
+// stores whose port needed no property at all: its eighteen method names are
+// disjoint from every other port this directory satisfies, so the composition
+// root proves it against the adapter itself. EXPECTED_ADAPTER_COUNT is unmoved
+// again, and for the ninth time that is the point of pinning the two
+// separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 30;
+export const EXPECTED_BINDING_COUNT = 31;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.

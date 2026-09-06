@@ -1,19 +1,26 @@
-// Each write-shape guard, standing beside the migration-only rule it restates.
+// Each of `ProviderKey`'s five database rules, standing beside the guard or the
+// store method that meets it.
 //
-// THE PAIRING IS THE POINT. For every guard in `providers-guards.ts` there are
-// two cases: the guard refuses the value with a NAMED code, and PostgreSQL
-// refuses the SAME value when the guard is stepped around with a raw statement.
-// A guard that drifted looser is caught by the second half going green when it
-// should be red; one that drifted tighter is caught by the conformance
-// differential going red on a value the database accepts.
+// THE PAIRING IS THE POINT. For every write-shape guard there are two cases: the
+// guard refuses the value with a NAMED code, and PostgreSQL refuses the SAME
+// value when the guard is stepped around with a raw statement. A guard that
+// drifted looser is caught by the second half going green when it should be red;
+// one that drifted tighter is caught by the conformance differential going red
+// on a value the database accepts.
 //
 // NOT ONE of the rules below is in `schema.prisma`, so not one is in the
 // generated client's types; and not one is in `InMemoryProvidersRepository`, so
 // not one is in any use-case suite in the tree. That is the whole reason this
-// file exists: the double this context ships mints values PostgreSQL refuses —
-// a `VERIFIED_PROVIDER` rate with no source reference, a context window of four
-// billion, a `credentialId` pointing at nothing — and every one of them
-// type-checks.
+// file exists: the double this context ships stores any `credentialId` at all,
+// and every provider key in every use-case suite in the repository was written
+// against it.
+//
+// `Model` AND `ModelPrice` ARE NEXT DOOR, in
+// `providers-catalogue-constraints.integration.test.ts`, and the seam is the
+// port's own: these four rules are ENVIRONMENT-SCOPED and every case here needs
+// a tenant chain and a credential, while not one case there needs a scope at
+// all. The split is also what the §6 budget asked for — one file measured 491
+// effective lines, inside the warning band and heading for the 500-line ERROR.
 //
 // It FAILS when Docker is absent rather than skipping.
 
@@ -295,248 +302,6 @@ describe("ProviderKey_owner_immutable", () => {
       ok: false,
       error: { code: "PROVIDERS_REPOSITORY_UNAVAILABLE", details: { reason: "no such provider key" } },
     });
-  });
-});
-
-describe("ModelPrice_rate_check", () => {
-  let modelId: string;
-
-  beforeAll(async () => {
-    const model = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.upsertModel(
-        asProvidersIdentifier<ModelKey>("anthropic:constraint-model"),
-        {
-          provider: ANTHROPIC,
-          name: "constraint-model",
-          displayName: null,
-          description: null,
-          contextWindow: 1000,
-          maxOutputTokens: 100,
-          capabilities: [],
-          releaseDate: null,
-          deprecationDate: null,
-          baseModelName: null,
-          sourceUpdatedAt: AT,
-        },
-        transaction,
-      ),
-    );
-    if (!model.ok) throw new Error("the fixture model could not be written");
-    modelId = model.value.modelId;
-  }, 120_000);
-
-  test("the guard refuses a KNOWN rate that names no source", async () => {
-    await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
-        harness.repository.insertPrice(
-          asProvidersIdentifier<ModelId>(modelId),
-          card(new Date("2026-01-01T00:00:00.000Z"), {
-            output: {
-              rate: rate("0.000002000000"),
-              source: "VERIFIED_PROVIDER",
-              observedAt: AT,
-              sourceRef: null,
-            },
-          }),
-          transaction,
-        ),
-      ),
-    ).rejects.toMatchObject({
-      code: RATE_PROVENANCE_MISSING,
-      column: "ModelPrice.outputSourceRef",
-    });
-  });
-
-  test("PostgreSQL refuses the same row when the guard is stepped around", async () => {
-    await expect(
-      harness.base.client.$executeRawUnsafe(
-        `INSERT INTO "ModelPrice" ("id", "modelId", "effectiveFrom",
-           "inputRate", "outputRate", "cacheReadRate", "cacheWriteRate",
-           "inputSource", "outputSource", "cacheReadSource", "cacheWriteSource",
-           "inputObservedAt", "outputObservedAt", "cacheReadObservedAt", "cacheWriteObservedAt",
-           "inputSourceRef", "outputSourceRef", "cacheReadSourceRef", "cacheWriteSourceRef")
-         VALUES ('${uuid("0010")}', '${modelId}', '2026-01-01T00:00:00Z',
-                 1, 1, 1, 1,
-                 'LITELLM', 'VERIFIED_PROVIDER', 'LITELLM', 'LITELLM',
-                 now(), now(), now(), now(),
-                 'ref', NULL, 'ref', 'ref')`,
-      ),
-    ).rejects.toThrow();
-  });
-
-  test("an UNAVAILABLE rate with no reference is ACCEPTED, which is the other half", async () => {
-    // The rule is one-directional and a guard that demanded a null reference
-    // for an unavailable rate would be STRICTER than the database — the drift
-    // a constraints suite written only as "the guard refuses what the CHECK
-    // refuses" cannot see.
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.insertPrice(
-        asProvidersIdentifier<ModelId>(modelId),
-        card(new Date("2026-02-01T00:00:00.000Z"), {
-          cacheWrite: { rate: rate("0"), source: "UNAVAILABLE", observedAt: AT, sourceRef: null },
-        }),
-        transaction,
-      ),
-    );
-    expect(written.ok).toBe(true);
-  });
-
-  test("the guard refuses a rate outside the Decimal(24, 12) domain", async () => {
-    await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
-        harness.repository.insertPrice(
-          asProvidersIdentifier<ModelId>(modelId),
-          card(new Date("2026-03-01T00:00:00.000Z"), {
-            input: {
-              // `tokenRate()` refuses both of these; a `TokenRate` is a plain
-              // readonly object, so a literal never went near the constructor.
-              rate: { picoUsdPerToken: -1n },
-              source: "LITELLM",
-              observedAt: AT,
-              sourceRef: "litellm",
-            },
-          }),
-          transaction,
-        ),
-      ),
-    ).rejects.toMatchObject({ code: RATE_OUT_OF_DOMAIN, column: "ModelPrice.inputRate" });
-  });
-
-  test("PostgreSQL refuses a negative rate when the guard is stepped around", async () => {
-    await expect(
-      harness.base.client.$executeRawUnsafe(
-        `INSERT INTO "ModelPrice" ("id", "modelId", "effectiveFrom",
-           "inputRate", "outputRate", "cacheReadRate", "cacheWriteRate",
-           "inputSource", "outputSource", "cacheReadSource", "cacheWriteSource",
-           "inputObservedAt", "outputObservedAt", "cacheReadObservedAt", "cacheWriteObservedAt",
-           "inputSourceRef", "outputSourceRef", "cacheReadSourceRef", "cacheWriteSourceRef")
-         VALUES ('${uuid("0011")}', '${modelId}', '2026-04-01T00:00:00Z',
-                 -1, 1, 1, 1,
-                 'LITELLM', 'LITELLM', 'LITELLM', 'LITELLM',
-                 now(), now(), now(), now(),
-                 'ref', 'ref', 'ref', 'ref')`,
-      ),
-    ).rejects.toThrow();
-  });
-});
-
-describe("ModelPrice is append-only, and the database means it", () => {
-  test("a raw UPDATE of a stored card is refused", async () => {
-    const stored = await harness.base.client.modelPrice.findFirst({ select: { id: true } });
-    expect(stored).not.toBeNull();
-    await expect(
-      harness.base.client.$executeRawUnsafe(
-        `UPDATE "ModelPrice" SET "inputRate" = 2 WHERE "id" = '${stored?.id ?? ""}'`,
-      ),
-    ).rejects.toThrow();
-  });
-
-  test("a raw DELETE of a stored card is refused", async () => {
-    const stored = await harness.base.client.modelPrice.findFirst({ select: { id: true } });
-    await expect(
-      harness.base.client.$executeRawUnsafe(
-        `DELETE FROM "ModelPrice" WHERE "id" = '${stored?.id ?? ""}'`,
-      ),
-    ).rejects.toThrow();
-  });
-});
-
-describe("Model's SECOND identity, which the port does not model", () => {
-  test("two keys resolving to one provider and name are refused", async () => {
-    // `@@unique([provider, name])` is a second identity `upsertModel` — keyed by
-    // `key` — has no code for, and `InMemoryProvidersRepository` stores both
-    // happily because its map is keyed by `key` alone. An alias published beside
-    // its target is exactly this shape.
-    const facts = {
-      provider: ANTHROPIC,
-      name: "shared-name",
-      displayName: null,
-      description: null,
-      contextWindow: 1000,
-      maxOutputTokens: 100,
-      capabilities: [],
-      releaseDate: null,
-      deprecationDate: null,
-      baseModelName: null,
-      sourceUpdatedAt: AT,
-    };
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.upsertModel(
-        asProvidersIdentifier<ModelKey>("anthropic:shared-name"),
-        facts,
-        transaction,
-      ),
-    );
-    expect(first.ok).toBe(true);
-    const second = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.upsertModel(
-        asProvidersIdentifier<ModelKey>("anthropic:shared-name-alias"),
-        facts,
-        transaction,
-      ),
-    );
-    expect(second).toMatchObject({
-      ok: false,
-      error: {
-        code: "PROVIDERS_REPOSITORY_UNAVAILABLE",
-        details: { reason: "model provider and name already belong to another key" },
-      },
-    });
-  });
-
-  test("a card for a model that does not exist is refused by the foreign key", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
-      harness.repository.insertPrice(
-        asProvidersIdentifier<ModelId>(uuid("00ff")),
-        card(new Date("2026-05-01T00:00:00.000Z")),
-        transaction,
-      ),
-    );
-    expect(refused).toMatchObject({
-      ok: false,
-      error: { code: "PROVIDERS_REPOSITORY_UNAVAILABLE", details: { reason: "no such model" } },
-    });
-  });
-});
-
-describe("Model's two INTEGER columns", () => {
-  test("the guard refuses a context window the column cannot hold", async () => {
-    await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
-        harness.repository.upsertModel(
-          asProvidersIdentifier<ModelKey>("anthropic:too-wide"),
-          {
-            provider: ANTHROPIC,
-            name: "too-wide",
-            displayName: null,
-            description: null,
-            // A catalogue that published a context window in BYTES.
-            contextWindow: 4_000_000_000,
-            maxOutputTokens: 100,
-            capabilities: [],
-            releaseDate: null,
-            deprecationDate: null,
-            baseModelName: null,
-            sourceUpdatedAt: AT,
-          },
-          transaction,
-        ),
-      ),
-    ).rejects.toMatchObject({
-      code: MODEL_INTEGER_OUT_OF_RANGE,
-      column: "Model.contextWindow",
-    });
-  });
-
-  test("PostgreSQL refuses the same value when the guard is stepped around", async () => {
-    await expect(
-      harness.base.client.$executeRawUnsafe(
-        `INSERT INTO "Model" ("id", "key", "provider", "name", "contextWindow", "sourceUpdatedAt",
-           "createdAt", "updatedAt")
-         VALUES ('${uuid("0012")}', 'anthropic:raw-too-wide', 'anthropic', 'raw-too-wide',
-                 4000000000, now(), now(), now())`,
-      ),
-    ).rejects.toThrow();
   });
 });
 

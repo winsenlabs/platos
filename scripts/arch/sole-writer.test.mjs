@@ -542,6 +542,88 @@ test("only secrets' own two directories may write its four rows", () => {
   assert.equal(rawTrespass.violations[0].model, "CredentialSecretVersion");
 });
 
+test("only providers' own two directories may write its four rows", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // Every one of the four rows is checked, not a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise sit
+  // here unnoticed behind a green case for `ProviderKey`.
+  const FOUR = [
+    ["providerKey", "ProviderKey"],
+    ["environmentProvider", "EnvironmentProvider"],
+    ["model", "Model"],
+    ["modelPrice", "ModelPrice"],
+  ];
+
+  for (const [delegate, model] of FOUR) {
+    // The delegate directory: legal, and the reason the repository can exist.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/postgres-tenancy/src/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree, because ADR M0.3 §2 forbids that package from holding the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/contexts/providers/application/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `secrets` is the pointed choice — the extraction
+    // source writes `ProviderKey` and `Credential` in ONE method, so it is the
+    // context that would most plausibly reach for a provider key, and it is
+    // exactly as refused as anything else even though its OWN rows are written
+    // from the very same adapter directory.
+    const trespass = checkWriteEnforcement(
+      fixture({ [`packages/contexts/secrets/application/x.ts`]: write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/secrets");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/providers",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And a SIBLING canonical-store adapter is not a loophole either: being an
+    // adapter is not the qualification, being THIS owner's declared store is.
+    // `model-router-providers` is the pointed choice here — `ADAPTER_BINDINGS`
+    // gives it a port whose OWNER is `providers`, and owning the port is not
+    // owning the rows.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({
+          [`packages/adapters/model-router-providers/src/x.ts`]: write(delegate, "create"),
+        }),
+      ).violations.length,
+      1,
+      `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+
+  // AND THE RAW-SQL DOOR IS JUDGED THE SAME WAY. `touchProviderKey` is a raw
+  // single-column `UPDATE` — it has to be, because `ProviderKey.updatedAt` is
+  // `@updatedAt` and the client sets it on every delegate write — so the gate
+  // attributes it to the table its SQL names. From the delegated directory it is
+  // legal; from anywhere else it is the same refusal a delegate call would be.
+  const rawTouch =
+    'db.$executeRaw`UPDATE "ProviderKey" SET "lastUsedAt" = now() WHERE "id" = \'x\'`;';
+  assert.deepEqual(
+    checkWriteEnforcement(
+      fixture({ "packages/adapters/postgres-tenancy/src/x.ts": rawTouch }),
+    ).violations,
+    [],
+  );
+  const rawTrespass = checkWriteEnforcement(
+    fixture({ "packages/contexts/secrets/application/x.ts": rawTouch }),
+  );
+  assert.equal(rawTrespass.violations.length, 1);
+  assert.equal(rawTrespass.violations[0].model, "ProviderKey");
+});
+
 test("the shared directory is not a blanket licence over the whole schema", () => {
   // The converse of the case above, and the one that would catch a delegation
   // written as "this directory may write anything". `Memory` and `Turn` live in
@@ -1108,10 +1190,53 @@ test("an element-access member that is not a delegate is still not a write", () 
 // reason: every row they need is written through the port under measurement.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 = 198. All of tranche 5's stores
-// landed in the ONE directory, so this pin is the SUM of every enumeration above
-// and no single branch's own figure — 157, 163 or 178 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 198;
+//
+// WIN-258 TRANCHE 5 adds 16 more, a FIFTH store in the SAME directory, on the
+// FOUR rows `providers` owns. Every one is on a row this tranche's own owner
+// holds, and each line was read back from the enforcer rather than counted by
+// eye:
+//
+//   src/providers-keys.ts       providerKey.create, .updateMany, .deleteMany,
+//                               and the RAW single-column
+//                               `UPDATE "ProviderKey" SET "lastUsedAt"` that
+//                               `touchProviderKey` has to use because
+//                               `updatedAt` is `@updatedAt` and the client sets
+//                               it on every delegate write                     4
+//   src/providers-links.ts      environmentProvider.upsert + .deleteMany       2
+//   src/providers-catalogue.ts  model.upsert, modelPrice.create                2
+//   src/providers-constraints.integration.test.ts
+//                               8 raw writes standing each guard beside the
+//                               rule it restates — 3 ProviderKey (2 INSERT and
+//                               the owner-immutability UPDATE), 4 ModelPrice
+//                               (2 INSERT against the rate CHECK, and the
+//                               UPDATE and DELETE the append-only triggers
+//                               refuse) and 1 Model INSERT against the INTEGER
+//                               column                                          8
+//                                                                       total = 16
+//
+// `src/providers-harness.ts` contributes ZERO, and that is the line worth
+// reading rather than a silence. It needs FOUR rows this tranche's owner does
+// not own — a `Credential` for every provider key, because
+// `ProviderKey_credential_provider_integrity` demands one, and an `Agent`, an
+// `AgentVersion` and an `AgentBinding` to make the delete trigger reachable.
+// `secrets` and `agents` are both delegated to this directory now, so the gate
+// would have PERMITTED those writes; they are seeded out of band through the
+// ORM's own CLI (`prisma db execute`) anyway, because this package holding a
+// grant is not the same as this fixture being entitled to use it, and a fixture
+// that wrote another context's rows through another context's store would be
+// testing that store rather than this one.
+// `src/providers-rules.integration.test.ts`,
+// `src/providers-transaction.integration.test.ts` and
+// `src/providers-statements.integration.test.ts` contribute zero for the reason
+// `secrets`' three do: every row they need is written through the port under
+// measurement.
+//
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 16 = 214. All of tranche 5's
+// stores landed in the ONE directory, so this pin is the SUM of every
+// enumeration above and no single branch's own figure — 157, 163, 178 or 198 —
+// survives the merge.
+const LIVE_TREE_WRITE_COUNT = 214;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1218,12 +1343,28 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "CredentialSecretVersion",
     "EnvironmentVariable",
   ]);
-  // And `providers` is NOT delegated, which is why this directory cannot write
-  // the `ProviderKey` the extraction source writes inside its own secret store.
-  // `domain/credential.ts` records that those three methods were deliberately
-  // left unextracted for exactly this reason.
-  assert.equal(CANONICAL_STORE_ADAPTERS.providers, undefined);
-  assert.deepEqual(ownerDirectories("providers"), ["packages/contexts/providers"]);
+  // WIN-258 T5: `providers` is the NINTH owner delegated to that directory, and
+  // the grant is exactly the FOUR rows ADR M0.3 §1 row 4 gives it. It is the
+  // entry the `secrets` comment above said was missing: the extraction source
+  // writes `ProviderKey` inside its own secret store, `domain/credential.ts`
+  // records that those three methods were left unextracted for exactly that
+  // reason, and the split is now the one the ADR describes — `secrets` owns the
+  // credential and its envelope, `providers` owns the row that points at them.
+  assert.deepEqual(ownerDirectories("providers"), [
+    "packages/contexts/providers",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.providers, "packages/adapters/postgres-tenancy");
+  const providerRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "providers")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(providerRows, [
+    "EnvironmentProvider",
+    "Model",
+    "ModelPrice",
+    "ProviderKey",
+  ]);
   // And `skills` is NOT delegated, which is why the adapter cannot seed the
   // `EnvironmentSkill` row its own `AgentSkill` foreign key needs and the
   // integration fixture applies that chain as SQL instead.
