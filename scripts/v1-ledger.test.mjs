@@ -869,10 +869,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // transcript, so vitest reported every case in that file SKIPPED and no
     // named case went red. Two of the six had a named case elsewhere in the
     // tree; this file is the four that had none anywhere.
-    // 1109 + 20 + 18 + 17 + 1 = 1165. ALL THREE tranche-5 stores land in
+    // 1109 + 20 + 18 + 17 + 1 = 1165, + 16 (WIN-258 tranche 5, the `channels`
+    // canonical store, in that SAME directory: nine modules, six suites and the
+    // guard ledger beside them) = 1181. ALL FOUR tranche-5 stores land in
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
-    // figure — 1129, 1127 or 1127 again — is right merged.
-    packages: 1165,
+    // figure — 1129, 1127, 1127 again or 1125 — is right merged.
+    packages: 1181,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1040,16 +1042,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   directory) = 1223, + 17 (WIN-258 tranche 5, the `cost-monitoring`
     //   canonical store, in that SAME directory) = 1240, + 1 (that tranche's
     //   second sweep, the four guards whose only witness was a crashed hook)
-    //   = 1241.
+    //   = 1241, + 16 (WIN-258 tranche 5, the `channels` canonical store, in that
+    //   SAME directory again) = 1257.
     //
-    // ALL THREE TRANCHE-5 SLICES ARE ALL `packages`, every file under
+    // ALL FOUR TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1241);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1257);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1073,7 +1076,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `tools` +20, `agents` +18 and `cost-monitoring` +17, all in ONE, plus that
     // tranche's second sweep +1); this one re-derives it by summing the per-area
     // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1241
+    rulesDocument.baseline.totalFiles + 1257
   );
 });
 
