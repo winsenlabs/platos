@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "13361bff5319ef6518956503a7c8c09f5ab9d355efaa3e22ed1160be493f2f64",
+  "evidenceSha256": "d747e987992dba454b63ee36aa949800e0e5f9731fa31308e53a69f697301b9b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "1b74476952b07709ae1907ff15f10900ab9b574aa72044cb5e24b106fac5e4a0",
+    "aggregateSha256": "3c673273de87612881ac918c75618df9b3f3f925a4f6fbf86a0ef3b627943430",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4057,7 +4057,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "a46618e4f3382ece6f10f414c42a3928a032ed07f7b5443270e61bd819bcd69b"
+        "sha256": "ea0df149ed13e91d8095890348e6633e32248e204ef4e1468f732bfe57622b37"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4069,7 +4069,7 @@
       },
       {
         "path": "docs/audits/sbom/license-index.json",
-        "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6"
+        "sha256": "7de9125362cecbb47b217f233036e55dd438a66671a4734008fb3369b3f7e596"
       },
       {
         "path": "docs/audits/sbom/license-overlay.json",
@@ -6057,7 +6057,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "3165e4a5a81a3ac8b86a56627d6da53cd205977bcc7d0375b9a53d3b1dfe55ea"
+        "sha256": "67af97befd4b875f4573dd6c6a63dd848d63a1ececeaa8c25450f0feb99096fc"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6106,6 +6106,10 @@
       {
         "path": "docs/win-236-pagination.md",
         "sha256": "1ecdca4fa62d8698e9d33304020ba5861cd88a867bdf4f1f8acb513f8a3fb256"
+      },
+      {
+        "path": "docs/win-260-mutation-ledger.json",
+        "sha256": "e89f6bc9df07bd7156dd22f77ec420a6823a6bfa9a6052d08cca9d0686ba8574"
       },
       {
         "path": "docs/writing-agents.md",
@@ -12641,7 +12645,7 @@
       },
       {
         "path": "packages/adapters/redis-cache/src/client.ts",
-        "sha256": "546a922b8f7e9efa2a9aefca5c72c175055317f06a8aa84a344a9b1d444b0a62"
+        "sha256": "78aa6263f9355f48cf084eeebfa99f240e1235b4c958b27ed031a7bb71752547"
       },
       {
         "path": "packages/adapters/redis-cache/src/harness.ts",
@@ -19481,7 +19485,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "a427a7ca9afafb7e8e5169bb2380a498a50709acaf467d0187bd5bd1e047880d"
+        "sha256": "cac0e97f0a0b7230578196327c1de76456e4ed95e3d48a048ce2d7d22a4877a4"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -19553,7 +19557,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "33f048865057f2639e6b87fdd8cd354899d5a6b7038d0bbfa119b5c97d3559f0"
+        "sha256": "4995103f42b6673b4162d1388d4d58e2e67882dc14a0070efdcc0d8bc0406705"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -30315,6 +30319,11 @@
               "line": 1
             },
             {
+              "from": "docs/win-260-mutation-ledger.json",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "docs/writing-agents.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -32327,6 +32336,10 @@
               "docs/win-236-pagination.md"
             ],
             [
+              "docs/win-260-mutation-ledger.json",
+              "docs/win-260-mutation-ledger.json"
+            ],
+            [
               "docs/writing-agents.md",
               "docs/writing-agents.md"
             ],
@@ -32905,6 +32918,7 @@
             "docs/wait.mdx",
             "docs/win-132-trigger-writer-fence.md",
             "docs/win-236-pagination.md",
+            "docs/win-260-mutation-ledger.json",
             "docs/writing-agents.md",
             "docs/writing-tasks-introduction.mdx",
             "examples/simple-agent/README.md",
@@ -33636,7 +33650,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "4778bbb9f32890260176f2f60737b76f23aa1cee4213363d138680334be35321",
+      "evidenceSha256": "f88bd2935d4d333502eef741f0569faf532e9b096b271b5a9b52006739542fc6",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -36881,7 +36895,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1323
+              "line": 1329
             }
           ],
           "reversePaths": [
@@ -36906,7 +36920,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b6f778d0b83167fb2e223640324b66facdf11159d8012c105f72937798e2b5e8",
+      "evidenceSha256": "0786a0886d1132f610a25e48b4eb545acd271b6294d4265e6eccc8745e9d8ba3",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -38037,7 +38051,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1322
+              "line": 1328
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -38262,7 +38276,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2714e2f8b8a4ce6a54f75b816b2110a5d99314fccfa576656e999975865643ec",
+      "evidenceSha256": "0a78a68170f0bd57f5daa3df9a54d7d19ba6e5f7e2e247705de32bca5fea799b",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -46684,6 +46698,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/win-260-mutation-ledger.json",
+              "kind": "reference",
+              "line": 153
+            },
+            {
               "from": "packages/adapters/outbox/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -46691,11 +46710,16 @@
           ],
           "reversePaths": [
             [
+              "docs/win-260-mutation-ledger.json",
+              "docs/win-260-mutation-ledger.json"
+            ],
+            [
               "packages/adapters/outbox/README.md",
               "packages/adapters/outbox/README.md"
             ]
           ],
           "roots": [
+            "docs/win-260-mutation-ledger.json",
             "packages/adapters/outbox/README.md"
           ]
         },
@@ -47036,7 +47060,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "b94a436aba4edaad3ec907f628d4d96f021e4f5cf186558f357043d40cf9e99a",
+      "evidenceSha256": "56b8ec74370ee007834db027a7a6fcb2fa41d9c6ae861c6d8732d45a18ca3ac2",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -47180,6 +47204,11 @@
               "line": 6
             },
             {
+              "from": "docs/win-260-mutation-ledger.json",
+              "kind": "reference",
+              "line": 131
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -47195,6 +47224,10 @@
               "docs/v1-ledger-rules.json"
             ],
             [
+              "docs/win-260-mutation-ledger.json",
+              "docs/win-260-mutation-ledger.json"
+            ],
+            [
               "packages/adapters/postgres-tenancy/README.md",
               "packages/adapters/postgres-tenancy/README.md"
             ]
@@ -47202,6 +47235,7 @@
           "roots": [
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/v1-ledger-rules.json",
+            "docs/win-260-mutation-ledger.json",
             "packages/adapters/postgres-tenancy/README.md"
           ]
         },
@@ -48908,7 +48942,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "04ce14950ace0f49972b93b9214861942087fcbd303a89e57c2d6dcf5ebfd52e",
+      "evidenceSha256": "3065aad990b38a3608885daba855c117e77d47a45bb750273917b5a9dc228a7e",
       "manifestSha256": "8b4ac128fa6e660cb1132d155aaa0668fc2e907f366422dbbb922599f2917a71",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -49042,6 +49076,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/win-260-mutation-ledger.json",
+              "kind": "reference",
+              "line": 8
+            },
+            {
               "from": "packages/adapters/redis-cache/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -49049,11 +49088,16 @@
           ],
           "reversePaths": [
             [
+              "docs/win-260-mutation-ledger.json",
+              "docs/win-260-mutation-ledger.json"
+            ],
+            [
               "packages/adapters/redis-cache/README.md",
               "packages/adapters/redis-cache/README.md"
             ]
           ],
           "roots": [
+            "docs/win-260-mutation-ledger.json",
             "packages/adapters/redis-cache/README.md"
           ]
         },
@@ -49354,7 +49398,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "c798d7eb4ef8e532f85c8bcded280056b0f7f20cbf46177b0ad2bd8df373a9f1",
+      "evidenceSha256": "f1c045068b758f7eb3df1e9af24d89d2aaf84ea245ac313ae47dd927120d3580",
       "manifestSha256": "4594e688fe6d20f3b5a81351784ff07dae38e99e71552822c1689447569c4346",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -59742,6 +59786,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/win-260-mutation-ledger.json",
+              "kind": "reference",
+              "line": 70
+            },
+            {
               "from": "packages/contexts/jobs/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -59749,11 +59798,16 @@
           ],
           "reversePaths": [
             [
+              "docs/win-260-mutation-ledger.json",
+              "docs/win-260-mutation-ledger.json"
+            ],
+            [
               "packages/contexts/jobs/README.md",
               "packages/contexts/jobs/README.md"
             ]
           ],
           "roots": [
+            "docs/win-260-mutation-ledger.json",
             "packages/contexts/jobs/README.md"
           ]
         },
@@ -60547,7 +60601,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "e9da846f91eb083745ba04dbcbeb0f3168a68597ea2c3caf6d9f3632bbb97522",
+      "evidenceSha256": "6cd760ac4b00c5badbf0c932fbced68d464c4d3a211367c8802e7c94508d2b72",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {

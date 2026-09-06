@@ -7,8 +7,8 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 789,
-  "pathSetSha256": "b24bdfa3d374e4c8ef8dfaff2d79127d69e7655fa1683c8fa8d0d592df3bf0fb",
+  "pathCount": 790,
+  "pathSetSha256": "872dcdfd043a6b438826e277011b88f0033297e48df585b92fcf54808237ba5b",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
@@ -968,7 +968,7 @@
     {
       "path": "docs/audits/sbom/license-index.json",
       "mode": "100644",
-      "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6"
+      "sha256": "7de9125362cecbb47b217f233036e55dd438a66671a4734008fb3369b3f7e596"
     },
     {
       "path": "docs/audits/sbom/license-overlay.json",
@@ -3473,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "3165e4a5a81a3ac8b86a56627d6da53cd205977bcc7d0375b9a53d3b1dfe55ea"
+      "sha256": "67af97befd4b875f4573dd6c6a63dd848d63a1ececeaa8c25450f0feb99096fc"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3534,6 +3534,11 @@
       "path": "docs/win-236-pagination.md",
       "mode": "100644",
       "sha256": "1ecdca4fa62d8698e9d33304020ba5861cd88a867bdf4f1f8acb513f8a3fb256"
+    },
+    {
+      "path": "docs/win-260-mutation-ledger.json",
+      "mode": "100644",
+      "sha256": "e89f6bc9df07bd7156dd22f77ec420a6823a6bfa9a6052d08cca9d0686ba8574"
     },
     {
       "path": "docs/writing-agents.md",
@@ -3883,7 +3888,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "a427a7ca9afafb7e8e5169bb2380a498a50709acaf467d0187bd5bd1e047880d"
+      "sha256": "cac0e97f0a0b7230578196327c1de76456e4ed95e3d48a048ce2d7d22a4877a4"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
@@ -3908,7 +3913,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "33f048865057f2639e6b87fdd8cd354899d5a6b7038d0bbfa119b5c97d3559f0"
+      "sha256": "4995103f42b6673b4162d1388d4d58e2e67882dc14a0070efdcc0d8bc0406705"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

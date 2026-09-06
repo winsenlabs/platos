@@ -123,7 +123,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "b24bdfa3d374e4c8ef8dfaff2d79127d69e7655fa1683c8fa8d0d592df3bf0fb",
+  "protectedPathSetSha256": "872dcdfd043a6b438826e277011b88f0033297e48df585b92fcf54808237ba5b",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -1397,7 +1397,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "a46618e4f3382ece6f10f414c42a3928a032ed07f7b5443270e61bd819bcd69b",
+      "sha256": "ea0df149ed13e91d8095890348e6633e32248e204ef4e1468f732bfe57622b37",
       "binds": "current-repository-truth"
     },
     {
@@ -1418,7 +1418,7 @@
       "path": "docs/audits/sbom/license-index.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6",
+      "sha256": "7de9125362cecbb47b217f233036e55dd438a66671a4734008fb3369b3f7e596",
       "sourceSnapshot": "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
       "baseline": "point-in-time registry metadata baseline; current shipping membership is checked separately",
       "date": "2026-08-30"
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4e4133de5e3ea80e37b48ce26d8ef03e102967cb7c596a6f869ed98cdcfc6f90",
+      "sha256": "0722c72b45bfb6951ebc5fd3b12d2f8e3dafd0acfe442b7ba60a9231e09b1ca9",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "75ce9154da8c4a20e23b1a4ba961d32e3ac32138efa9276002269ddc3e3fa3f5",
+      "sha256": "2a06f1d7dcbf12edf55587ec4f61849a92d67dbaf271d2b37211077c2647ea11",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "821179761cc79053fea293af34408c00477c43fb31de37410a01fccded66fab3",
+      "sha256": "8f04fdb312eb296e5c3ccbaebb600112fb6a3be83f3b37ff06d2d206d4ad2b83",
       "binds": "current-repository-truth"
     },
     {

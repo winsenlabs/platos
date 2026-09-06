@@ -1484,6 +1484,19 @@
         "evidence": "This very rules document, read by scripts/v1-ledger.mjs on every check. The ledger classifies its own inputs so a future edit to the tree cannot leave the ledger's own file unaccounted for."
       },
       {
+        "id": "docs-content.pin.win-260-mutations",
+        "match": [
+          "docs/win-260-mutation-ledger.json"
+        ],
+        "kind": "config",
+        "owner_capability": "Repository Governance",
+        "disposition": "retain",
+        "reached_via": [
+          "CI"
+        ],
+        "evidence": "WIN-260 (M2.5). The mutation ledger for this dimension's fifteen guards: the committed text, the mutant, the suites to run and the named case that must fail. It sits under docs/ rather than beside a package, unlike the twenty-two mutations-*.json ledgers under packages/adapters/*, because WIN-260's guards span three adapter directories, two contexts, the kernel and a gate script; a sweep split five ways could not be re-run as one thing. Classified retain because nothing generates it."
+      },
+      {
         "id": "docs-content.pin.error-taxonomy",
         "match": [
           "docs/error-taxonomy.json"
@@ -2068,20 +2081,20 @@
     ]
   },
   "expected": {
-    "totalFiles": 4965,
+    "totalFiles": 4966,
     "areaCounts": {
       "apps-agent": 514,
       "apps-core-api": 32,
       "apps-mcp-stdio": 7,
       "apps-webapp": 183,
-      "docs-content": 734,
+      "docs-content": 735,
       "internal-packages": 1173,
       "packages": 2043,
       "root-infra": 279
     },
     "kindCounts": {
       "asset": 155,
-      "config": 294,
+      "config": 295,
       "doc": 606,
       "fixture": 6,
       "generated": 43,
@@ -2095,10 +2108,10 @@
       "archive": 7,
       "move-refactor": 1614,
       "regenerate": 38,
-      "retain": 3304,
+      "retain": 3305,
       "unresolved": 2
     },
-    "protectedCount": 1629,
+    "protectedCount": 1630,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2160,6 +2173,7 @@
       "docs-content.pin.error-taxonomy": 1,
       "docs-content.pin.ledger-rules": 1,
       "docs-content.pin.unreferenced-media": 7,
+      "docs-content.pin.win-260-mutations": 1,
       "docs-content.product.pages": 81,
       "docs-content.reference.config": 8,
       "docs-content.reference.doc": 2,
@@ -2235,6 +2249,6 @@
       "root-infra.tooling.scripts": 76,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "04c0cefad117431d5d019e6baddebc64629af047e59244a58e7936ff62ff0312"
+    "classificationSha256": "38ddcbf25ac917ca57d56de095ea2a788cf8233435bb9f2fb12ef67e4b23b5f3"
   }
 }

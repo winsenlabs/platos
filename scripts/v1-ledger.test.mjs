@@ -1244,10 +1244,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // apps-core-api 19 -> 21, stated at its own entry above.
     // `packages` is untouched: the three codes WIN-260 mints and the port whose
     // shape it changed are edits to files that already existed.
-    "docs-content": 14,
+    // 14 -> 15. WIN-260's mutation ledger, docs/win-260-mutation-ledger.json, on
+    // a second new rule (docs-content.pin.win-260-mutations) for the same reason
+    // the taxonomy needed one: no existing docs rule matches a top-level
+    // docs/*.json, and the audits rule would call it `regenerate`, which it is
+    // not — nothing generates it.
+    "docs-content": 15,
     "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1496);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1497);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1287,10 +1292,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `root-infra`, and none in `packages`, and WIN-260's correlation half +2 in
     // `packages`, the tenth kernel port and the suite that reads the identifier
     // back out of PostgreSQL, and its idempotency half +7 in `packages`, the
-    // whole of the newly adopted `redis-cache`); this one re-derives it by
+    // whole of the newly adopted `redis-cache`, and its mutation ledger +1 in
+    // `docs-content`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1496
+    rulesDocument.baseline.totalFiles + 1497
   );
 });
 
