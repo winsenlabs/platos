@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2f9790a1a8016aeb2d6d023d109118ba9df4e7da7c36f63304940d5c2d950ad3",
+  "evidenceSha256": "1a9246518f9fcd2775ca66c9f5a06588eeb4326368f21fd447bb99b273b27255",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c47af2b08ca128d39de95a96505c42e7880a59105bb8866a2d751b4f98e97734",
+    "aggregateSha256": "2f23f9a68c313ed1322811702d8a07c44e1cb3c3b3c094248ebbc54180c26b7c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "bf38d1c93041efeb3fc82cde9f11e5726832263779d094f9b4bee76968aa2a04"
+        "sha256": "829b7314f89e2ea4a012c9af0d3b1622abc68f65587597d3c78b9d525e52e5fc"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2509,7 +2509,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "bb9bda7c19ed91b860c6d10b8226d8c39fdfd8f3d465767ec0ec5ea34e4d6169"
+        "sha256": "a6cc0c643719953e1bb40e4470da425964ef366ce92cf368699bf686bbba3a8a"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -18529,7 +18529,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "94fc4376aa47c7f152310a1205b6841dac8997f8cef436f8a50d8b9d1506e740"
+        "sha256": "4ad46693494e49e7b1d578b89452139b52f56101790873eb1ef0b0693759f14d"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -18581,7 +18581,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "e0d8ff48ed7caa334d2cbb26826deff58384c95db133a607ff2730d3fd6a1444"
+        "sha256": "84949ee7fe4bdac5a92d220d7ebf7497ba8116f79f104a91f998b4709d97c615"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -26210,7 +26210,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 581
+              "line": 591
             },
             {
               "from": "apps/webapp/package.json",
@@ -27021,7 +27021,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "170fffe5e62272249cc251fa4571c1f5d7aaf41f13362301dd8e2285e293fdf6",
+      "evidenceSha256": "692f6211dcc56f5dbf6c4a0c273b5a8e14047bfa40586ca8a56f6f0a4a72771e",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -58274,6 +58274,11 @@
               "script": "test"
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 835
+            },
+            {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
               "line": 84
@@ -58450,6 +58455,10 @@
               "packages/contexts/memory/package.json"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
               "scripts/arch/gen-v1-skeleton.test.mjs",
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
@@ -58511,6 +58520,7 @@
             "packages/contexts/memory/domain/traversal.test.ts",
             "packages/contexts/memory/domain/working-set.test.ts",
             "packages/contexts/memory/package.json",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
@@ -58641,7 +58651,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "b18ac23aa8a7a2533b94fbc2bbed4e15749818f102e15da555af1b01051ca757",
+      "evidenceSha256": "248fc9d11926b51ab1ba87b01655f65d8cd3f02b292a2c058428f76d936f0a0e",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
