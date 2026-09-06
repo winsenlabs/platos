@@ -52,7 +52,15 @@
     "every name ties FOUR ways over three hundred rows — and kills the mutation",
     "on the STATEMENT the store sends rather than on the rows it returns, which",
     "is the half that cannot depend on which sort the planner picked. M-Q19",
-    "below is that kill."
+    "below is that kill.",
+    "",
+    "AND ONE PAGED READ RETURNS TWO COUNTS UNDER TWO DIFFERENT SCOPES, ON",
+    "PURPOSE. `ApprovalPage` carries `total` — the query's filters and its",
+    "thirty-day window — beside `pendingCount`, which the port defines as",
+    "\"Pending in the WHOLE scope, not just this page\". Every other page in this",
+    "package would be defective if its two numbers disagreed; this one is",
+    "defective if they agree. M-Q24 is the plausible tidy-up that makes them",
+    "agree, and it is in the ledger so nobody can make it by accident."
   ],
   "procedure": [
     "PROVE THE SUITE SET GREEN FIRST, AND REFUSE A VACUOUS RUN. Tranche 1's",
@@ -319,6 +327,39 @@
       "suite": "plans-tools",
       "kills": [
         "plans-tools.integration.test.ts > count truth > the total does not move with the window"
+      ]
+    },
+    {
+      "name": "M-Q23 approvals: the since-window is dropped from the listing",
+      "file": "src/jobs-approvals.ts",
+      "from": "    createdAt: { gte: new Date(now.getTime() - sinceDays * 86_400_000) },",
+      "to": "",
+      "why": "COUNT TRUTH UNDER A TIME FILTER, which is the one filter no page LENGTH can see: the window narrows the set the page is drawn from and every page stays exactly as full. The fixture spreads three hundred approvals over ninety days with a hundred of them outside the store's thirty-day default, so the two totals differ by exactly that hundred while both pages hold twenty-five rows.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > the total NARROWS with the window, which is the filter a length cannot see"
+      ]
+    },
+    {
+      "name": "M-Q24 approvals: the pending count is taken under the LISTING's where",
+      "file": "src/jobs-approvals.ts",
+      "from": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...scopedWhere(scope), status: \"PENDING\" },\n        });",
+      "to": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...where, status: \"PENDING\" },\n        });",
+      "why": "THE ONE PLACE IN THIS PACKAGE WHERE MAKING TWO COUNTS AGREE IS THE DEFECT. `ApprovalPage.pendingCount` is documented as \"Pending in the WHOLE scope, not just this page — the live semantics\", so it deliberately ignores the window AND the filters that `total` honours. This edit is the plausible tidy-up — the two counts finally counted the same way — and it silently changes what an operator's badge means without changing a single page. It is here so nobody can make it by accident.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > PENDING IS COUNTED OVER THE WHOLE SCOPE, ON PURPOSE, AND DIFFERS"
+      ]
+    },
+    {
+      "name": "M-Q25 approvals: the pending count loses its SCOPE",
+      "file": "src/jobs-approvals.ts",
+      "from": "        const pendingCount = await reader.agentApproval.count({\n          where: { ...scopedWhere(scope), status: \"PENDING\" },\n        });",
+      "to": "        const pendingCount = await reader.agentApproval.count({\n          where: { status: \"PENDING\" },\n        });",
+      "why": "The other direction, and the one that is unambiguously a defect: a count over every tenant's pending approvals, rendered beside one tenant's page. It is listed separately from M-Q24 because the two are told apart by DIFFERENT cases — one asks whether the count ignores the window on purpose, the other whether it still ignores the neighbours.",
+      "suite": "plans-jobs",
+      "kills": [
+        "plans-jobs.integration.test.ts > count truth > pending is nonetheless SCOPED: another environment's pending rows are not counted"
       ]
     }
   ],

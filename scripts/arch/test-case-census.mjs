@@ -2183,7 +2183,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * PostgreSQL chose for one of them, and the rows that plan actually touched —
  * over fixtures of HUNDREDS of rows rather than two.
  *
- *   packages/adapters/postgres-tenancy   119 -> 124 files, 1310 -> 1379 cases
+ *   packages/adapters/postgres-tenancy   119 -> 125 files, 1310 -> 1393 cases
  *
  *   plans-probe.test.ts                         23  the measurement kit, measured,
  *                                                   and WITHOUT a container: a
@@ -2211,7 +2211,14 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                   5's `mutations-tools.json`
  *                                                   M09 said it needed and did
  *                                                   not have
- *                                                                    total = 69
+ *   plans-jobs.integration.test.ts               14  the approvals page, the ONE
+ *                                                   read in the tree returning
+ *                                                   TWO counts under TWO scopes
+ *                                                   on purpose — and the
+ *                                                   POSITIVE control, the one
+ *                                                   hot read whose index was
+ *                                                   already right
+ *                                                                    total = 83
  *
  * THE 13th CASE IN plans-conversations EXISTS BECAUSE A MUTATION SURVIVED.
  * `mutations-plans.json` M-Q16 reverses the thread listing's direction, and the
@@ -2224,9 +2231,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * Four of the five suites report numbers the kit produced, so the kit is the one
  * thing in the dimension that cannot be checked by another part of it.
  *
- * The tree total is 490 + 5 = 495 files and 7226 + 69 = 7295 cases. The adapters
- * term of the three-way identity carries all five, because every added file is an
- * adapter's: 138 + 5 = 143, and 349 + 3 + 143 = 495.
+ * The tree total is 490 + 6 = 496 files and 7226 + 83 = 7309 cases. The adapters
+ * term of the three-way identity carries all six, because every added file is an
+ * adapter's: 138 + 6 = 144, and 349 + 3 + 144 = 496.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2237,7 +2244,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 124, cases: 1379 },
+  "packages/adapters/postgres-tenancy": { files: 125, cases: 1393 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2423,18 +2430,18 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
- * 7226 -> 7295: the 69 cases of WIN-258 tranche 7, the indexes/query-plans/
+ * 7226 -> 7309: the 83 cases of WIN-258 tranche 7, the indexes/query-plans/
  * pagination/count-truth dimension, enumerated file by file in the block beside
- * the postgres-tenancy row. FOUR of its five suites carry `.integration.` in
- * the name and need a real PostgreSQL, so the cases this census records and
- * `pnpm test:v1-packages` does not execute go from 598 over 67 files to 644
- * over 71. The fifth, `plans-probe.test.ts`, runs in the ordinary package test
- * script and is deliberately the LARGEST of the five: it is the measurement kit
- * every other suite in the dimension reports numbers from, so it is the one
- * part that cannot be checked by another part of it, and a container is exactly
- * what it must not need in order to be skippable.
+ * the postgres-tenancy row. FIVE of its six suites carry `.integration.` in the
+ * name and need a real PostgreSQL, so the cases this census records and
+ * `pnpm test:v1-packages` does not execute go from 598 over 67 files to 658
+ * over 72. The sixth, `plans-probe.test.ts`, runs in the ordinary package test
+ * script and is deliberately the LARGEST single file of the six: it is the
+ * measurement kit every other suite in the dimension reports numbers from, so it
+ * is the one part that cannot be checked by another part of it, and a container
+ * is exactly what it must not need in order to be skippable.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7295;
+export const EXPECTED_RUNTIME_TOTAL = 7309;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
