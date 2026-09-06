@@ -128,3 +128,64 @@ export {
   UNREADABLE_ALERT_THRESHOLDS,
   UNREADABLE_CROSSING_SPEND,
 } from "./cost-rows.js";
+
+// WIN-258 T5 — `channels`' canonical store. The factory leaves the package for
+// the reason `cost-monitoring`'s does: a composition root that wanted this
+// repository WITHOUT tenancy's — an inbox poller, say — has to be able to build
+// one over the same transactions, and it takes the transactions rather than a
+// client so there is no second `AsyncLocalStorage` frame to build.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE THEY ARE DECISIONS, not messages. Three of
+// them are distinctions a caller ACTS on and cannot make any other way:
+// `scope_ancestry_forged` separates a caller lying about a tenant from
+// `unknown_environment`, which is a deleted one; `thread_link_race_lost`
+// separates a genuine concurrent loser — whose winning thread this store cannot
+// name, because the database has already aborted the transaction that would read
+// it — from the ordinary conflict, which names it; and `turn_already_linked`
+// separates two events made to share one turn from a redelivery, which the
+// in-memory double cannot tell apart at all.
+//
+// The four stores behind the composite add nothing here, deliberately, for the
+// reason cost-monitoring's three do not: building one alone would give it a
+// `TenancyTransactions` of its own, and a lease claimed on one ambient frame
+// would then be invisible to a completion serialised on another.
+export { createChannelsRepository } from "./channels-repository.js";
+export {
+  CHANNELS_SCOPE_FORGED,
+  CHANNELS_SCOPE_UNKNOWN,
+} from "./channels-connections.js";
+export { CLAIM_LIMIT_INVALID, TURN_ALREADY_LINKED } from "./channels-inbox.js";
+export { THREAD_LINK_RACE_LOST } from "./channels-links.js";
+//
+// TWO OF THEM ARE ALIASED HERE, and the collision is real rather than
+// cosmetic. `cost-monitoring` already publishes an `IDENTIFIER_NOT_UUID` and
+// `identity-access` an `UNRESOLVED_SCOPE_ANCESTRY`, and the three pairs are
+// DIFFERENT strings for different tables: cost's reads `cost.write.
+// identifier_not_uuid` while this one is the bare `identifier_not_uuid` that
+// travels inside `${operation}:${code}:${field}`. Exporting both under one name
+// is not possible and would not be honest if it were, so the newcomer takes the
+// prefix its context already puts on every error code it mints.
+export {
+  DISTRIBUTION_UNKNOWN,
+  EVENT_LEASE_INCOHERENT,
+  EVENT_STATUS_UNKNOWN,
+  GENERATION_NEGATIVE,
+  IDENTIFIER_NOT_UUID as CHANNELS_IDENTIFIER_NOT_UUID,
+  INSTALLATION_STATUS_UNKNOWN,
+  PROVIDER_UNKNOWN,
+  REFRESH_FENCE_INCOHERENT,
+  REFRESH_STATE_UNKNOWN,
+  ROUTING_NOT_ARRAY,
+  ROUTING_RULE_MALFORMED,
+  ROUTING_TOO_MANY_RULES,
+  SEALED_PAYLOAD_INVALID,
+  TEXT_LIST_INVALID,
+  THREAD_KEY_INVALID,
+} from "./channels-guards.js";
+export {
+  UNREADABLE_EVENT_STATUS,
+  UNREADABLE_INSTALLATION_STATUS,
+  UNREADABLE_REFRESH_STATE,
+  UNREADABLE_ROUTING,
+  UNRESOLVED_SCOPE_ANCESTRY as CHANNELS_UNRESOLVED_SCOPE_ANCESTRY,
+} from "./channels-rows.js";

@@ -338,6 +338,32 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // from importing the ORM, so the one package permitted to write these six rows
   // would be the one package unable to.
   "cost-monitoring": "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The SIXTH context to resolve to this directory, and the reason
+  // has not changed since T2's: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the SIX rows `channels` owns — `ChannelApp`,
+  // `ChannelAppThread`, `ChannelConnection`, `ChannelEventInbox`,
+  // `ChannelInstallation` and `ChannelThread`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Thread` or to `Turn` from
+  // this package still fails — `conversations` has no entry here — and a write
+  // to any of these six from anywhere else still fails. Six owners resolving to
+  // one directory is not six owners losing their boundaries: the boundary is the
+  // owner TAG on the row, and this entry moves no tag.
+  //
+  // IT DOES NOT GRANT WHAT `channels` NEEDS AND DOES NOT OWN, and here that is
+  // the interesting half. Every thread link is a foreign key into `Thread`,
+  // which ADR M0.3 §1 row 16 gives to `conversations`; `Credential` belongs to
+  // `secrets` and `Agent` to `agents`; none of the three has an entry here. So
+  // this directory cannot create the rows its own link write depends on, and the
+  // integration fixture seeds that chain as SQL applied by `prisma db execute` —
+  // which is honest about the fact that the rows belong to contexts whose stores
+  // do not exist yet, rather than reaching for a permission the map deliberately
+  // withholds.
+  channels: "packages/adapters/postgres-tenancy",
 });
 
 /**

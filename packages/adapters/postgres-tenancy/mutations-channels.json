@@ -1,0 +1,952 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `channels`' canonical store, the",
+    "SIXTH context owner behind the one PostgreSQL client ADR M0.3 §15 gives the",
+    "ORM. One entry per guard: per scope predicate, per vocabulary the schema does",
+    "not carry, per column a database rule refuses to move, per boundary the claim",
+    "predicate and the lease fence must agree on, and per statement the port's",
+    "contract says must be one statement. Each carries the file it lives in, the",
+    "EXACT text that implements it (`from`), the edit that removes it (`to`), and",
+    "the NAMED cases that were seen to go red (`kills`).",
+    "",
+    "IT IS A SIXTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json and mutations-cost.json rather than an extension of any",
+    "of them, for the reason the others are separate: each tranche is a separate",
+    "claim about a separate port surface, and a reader checking one should not have",
+    "to read past the rest. All of them are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. Three of the six rows are written on",
+    "the INBOUND path — the inbox, the thread link, the installation's",
+    "`lastEventAt` — which runs before anything else in the system can, at",
+    "at-least-once delivery, with several workers on one table. Its hardest",
+    "promises are all about what does NOT happen: an admitted payload that cannot",
+    "be moved, a lease that expires exactly now and is still held, an availability",
+    "that has elapsed exactly now and is claimable, and a conflicting link that",
+    "must name the thread that won. None of those is visible in a returned value",
+    "on a store with one caller, which is exactly the shape of guard a green suite",
+    "hides."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero executed case count, and classifies a run",
+    "with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "EVERY ENTRY NAMES THE WHOLE SUITE SET, AND THAT IS TRANCHE 5's LESSON RATHER",
+    "THAN CAUTION. `cost-monitoring`'s second sweep scored six of its forty entries",
+    "with zero executed cases: each edit compiled and collected, then broke the",
+    "conformance suite while it was BUILDING its transcript, in a `beforeAll`, so",
+    "vitest reported every case in that file SKIPPED and no named case went red. A",
+    "suite set that turns red only through a setup crash names no promise. This",
+    "ledger was written with the wide set from the start, and the same failure was",
+    "observed once here for real: a harness collision on",
+    "`AgentVersion(agentId, versionNumber)` skipped all ten cases of the rules",
+    "suite and the run reported nothing failing.",
+    "",
+    "THE SUITES ARE FIVE INTEGRATION FILES AND ONE PURE ONE. The pure file is the",
+    "only one `pnpm test:v1-packages` runs; the other five need a real PostgreSQL",
+    "and run in the `postgres-tenancy-repository` CI job, which FAILS rather than",
+    "skips when Docker is absent.",
+    "",
+    "THE FIRST SWEEP SCORED 47 KILLED AND ONE SURVIVOR, AND THE SURVIVOR IS WHY",
+    "THE SCENARIO HAS THIRTY-SIX OBSERVATIONS RATHER THAN THIRTY-FIVE. M-L03",
+    "labels every link read through `findThreadLink` as a `connection` link, and",
+    "the whole set stayed green: every single-link read in the scenario used a",
+    "CONNECTION owner, so reading `ChannelAppThread` and then mislabelling the row",
+    "was invisible. `findThreadLink(installation)` is the observation that closes",
+    "it — the same key, read back through the other half of the union — and it was",
+    "added to the shared scenario rather than to a suite of its own precisely",
+    "because the in-memory double answers it too, so the two transcripts compare",
+    "on it. Re-run alone, M-L03 is KILLED by",
+    "`their transcripts match, observation for observation`.",
+    "",
+    "FINAL: 48 entries, 48 KILLED by a NAMED case, 0 SURVIVED, 0 VACUOUS, 0 STALE,",
+    "0 KILLED-UNNAMED. The baseline ran 72 executed cases green before any mutation",
+    "was applied, and the mutated runs executed 72 as well — no run scored a kill",
+    "through a collection failure or a crashed hook."
+  ],
+  "mutations": [
+    {
+      "name": "M-N01 connections: the environment filter that hides another tenant's row",
+      "file": "src/channels-connections.ts",
+      "from": "    if (value.scope.environmentId !== scope.environmentId) return ok(null);",
+      "to": "    if (false) return ok(null);",
+      "note": "A scoped read answers with a row from any environment. Reporting it as found is worse than reporting it as denied: it hands the row over.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation",
+        "the scoped read really hid the row from another tenant"
+      ]
+    },
+    {
+      "name": "M-N02 connections: the forged-ancestry refusal on a scoped read",
+      "file": "src/channels-connections.ts",
+      "from": "    if (\n      value.scope.projectId !== scope.projectId ||\n      value.scope.organizationId !== scope.organizationId\n    ) {\n      return err(repositoryUnavailable(`${operation}:${CHANNELS_SCOPE_FORGED}`));\n    }\n    return ok(value);",
+      "to": "    return ok(value);",
+      "note": "A caller naming this environment under somebody else's project is answered with the row. The environment filter alone cannot see a re-parent.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a read whose scope claims the wrong parents is refused, not answered null"
+      ]
+    },
+    {
+      "name": "M-N03 connections: the ancestry check every write re-asserts",
+      "file": "src/channels-connections.ts",
+      "from": "    if (resolved.projectId !== scope.projectId || resolved.organizationId !== scope.organizationId) {\n      return err(repositoryUnavailable(`${operation}:${CHANNELS_SCOPE_FORGED}`));\n    }",
+      "to": "",
+      "note": "A row is persisted under an organization that does not own it. `enforce_domain_ancestry` checks the environment and the three references and NONE of the two parents the value claims.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an environment that does not exist is a different refusal from one that is not yours"
+      ]
+    },
+    {
+      "name": "M-N04 connections: the unknown-environment refusal, distinct from the forged one",
+      "file": "src/channels-connections.ts",
+      "from": "    if (resolved === undefined) {\n      return err(repositoryUnavailable(`${operation}:${CHANNELS_SCOPE_UNKNOWN}`));\n    }",
+      "to": "    if (resolved === undefined) return ok(true);",
+      "note": "Two different mistakes collapse into one answer: an environment that never existed and one that is not yours become indistinguishable in a log.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an environment that does not exist is a different refusal from one that is not yours"
+      ]
+    },
+    {
+      "name": "M-N05 connections: the provider vocabulary, which no CHECK stands behind",
+      "file": "src/channels-connections.ts",
+      "from": "        requireConnectionProvider<ChannelConnection>(operation, connection.provider),",
+      "to": "",
+      "note": "`\"Slack\"` is stored beside `\"slack\"`. The column is plain TEXT, so this guard is the only thing between an operator's capitalisation and a connection its own adapter registry can never find.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the provider vocabulary exists nowhere in the schema"
+      ]
+    },
+    {
+      "name": "M-N06 connections: the routing-table shape, which the _json_root CHECK cannot see",
+      "file": "src/channels-connections.ts",
+      "from": "        requireRoutingTable<ChannelConnection>(operation, connection.agentRouting),",
+      "to": "",
+      "note": "`[1, 2, 3]` satisfies `jsonb_typeof = 'array'` and is stored. Every rule in that table is then invisible to `resolveAgent`, which skips what it cannot read.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a routing table of numbers satisfies the CHECK and is refused here",
+        "a routing table that is not an array is refused by the guard AND by the CHECK"
+      ]
+    },
+    {
+      "name": "M-N07 connections: the identifier shape a raw cast would refuse anonymously",
+      "file": "src/channels-connections.ts",
+      "from": "        requireUuid<ChannelConnection>(operation, \"connectionId\", connection.connectionId),",
+      "to": "",
+      "note": "The refusal stops naming the field. SQLSTATE 22P02 names the statement, not the parameter, and the caller cannot tell WHICH id it got wrong.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a non-uuid identifier is refused by the guard AND by the column type"
+      ]
+    },
+    {
+      "name": "M-N08 connections: the owner column in the update branch",
+      "file": "src/channels-connections.ts",
+      "from": "            environmentId: connection.scope.environmentId,\n            entityId: connection.entityId,\n            provider: connection.provider,\n            displayName: connection.displayName,\n            defaultAgentId: connection.defaultAgentId,\n            agentRouting: jsonList(connection.agentRouting),\n            enabled: connection.enabled,\n            credentialId: connection.credentialId,\n          },\n          select: { id: true },",
+      "to": "            entityId: connection.entityId,\n            provider: connection.provider,\n            displayName: connection.displayName,\n            defaultAgentId: connection.defaultAgentId,\n            agentRouting: jsonList(connection.agentRouting),\n            enabled: connection.enabled,\n            credentialId: connection.credentialId,\n          },\n          select: { id: true },",
+      "note": "A re-parent becomes a silent no-op: the database's owner rule never fires, the save reports success, and the caller is told the row now lives in an environment it never moved to.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a connection cannot be moved to another environment, and does not move"
+      ]
+    },
+    {
+      "name": "M-N09 connections: the distribution vocabulary on an app",
+      "file": "src/channels-connections.ts",
+      "from": "        requireDistribution<ChannelApp>(operation, app.distribution),",
+      "to": "",
+      "note": "`\"PUBLIC\"` is stored. The column is TEXT with no CHECK, so who may install an app becomes a string comparison nobody normalises.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the distribution vocabulary exists nowhere in the schema"
+      ]
+    },
+    {
+      "name": "M-N10 connections: the string list bound for a TEXT[] column",
+      "file": "src/channels-connections.ts",
+      "from": "        requireTextList<ChannelApp>(operation, \"scopes\", app.scopes),",
+      "to": "",
+      "note": "An empty scope string reaches `scopes TEXT[]`, which takes it. A granted scope that is the empty string is a scope no provider will ever match.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an empty string in a TEXT[] is refused before the column takes it"
+      ]
+    },
+    {
+      "name": "M-N11 connections: the identifier guard on the READ path",
+      "file": "src/channels-connections.ts",
+      "from": "    const malformed = requireUuid<ChannelConnection | null>(operation, \"connectionId\", connectionId);\n    if (malformed !== null) return malformed;",
+      "to": "",
+      "note": "A non-uuid read reaches the `::uuid` cast inside a RAW statement, and the refusal names the driver instead of the parameter.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a read keyed on something that is not a uuid is refused before the cast"
+      ]
+    },
+    {
+      "name": "M-I01 installations: the projection that reads the credential's own revision",
+      "file": "src/channels-installations.ts",
+      "from": "    return rows[0]?.secretRevision ?? NO_CREDENTIAL_REVISION;",
+      "to": "    return NO_CREDENTIAL_REVISION;",
+      "note": "`credentialRevision` is always zero. It is the third axis of `RefreshExpectation` and the only one that catches a credential rotated IN PLACE, so every claim holding a dead grant would look current.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the projection answers with the credential's number, not the caller's",
+        "the happy-path reads really returned rows"
+      ]
+    },
+    {
+      "name": "M-I02 installations: the short-circuit that costs no round trip when there is no credential",
+      "file": "src/channels-installations.ts",
+      "from": "    if (credentialId === null) return NO_CREDENTIAL_REVISION;",
+      "to": "    if (false) return NO_CREDENTIAL_REVISION;",
+      "note": "Every read of an installation with no credential asks the database for the revision of a null id. The answer is already known and the statement count moves from one to two.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "each read's statement count matches its pin, over BOTH sizes"
+      ]
+    },
+    {
+      "name": "M-I03 installations: the read-back that returns the row's revision rather than the caller's",
+      "file": "src/channels-installations.ts",
+      "from": "          credentialRevision: await credentialRevision(written.credentialId),",
+      "to": "          credentialRevision: installation.credentialRevision,",
+      "note": "A save echoes back a number nothing in the database agrees with, and the NEXT refresh claim builds its expectation from it.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the projection answers with the credential's number, not the caller's"
+      ]
+    },
+    {
+      "name": "M-I04 installations: the refresh state the CHECK also refuses",
+      "file": "src/channels-installations.ts",
+      "from": "        requireRefreshState<ChannelInstallation>(operation, installation.refreshState),",
+      "to": "",
+      "note": "The refusal stops naming the field and becomes a constraint name in a driver error the caller has to parse.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an unknown refresh state is refused by the guard AND by the CHECK"
+      ]
+    },
+    {
+      "name": "M-I05 installations: the fence coherence four nullable columns cannot express",
+      "file": "src/channels-installations.ts",
+      "from": "        requireRefreshCoherence<ChannelInstallation>(\n          operation,\n          installation.refreshState,\n          installation.refreshClaimId,\n          installation.refreshStartedAt,\n          installation.refreshRepairCode,\n        ),",
+      "to": "",
+      "note": "A row parks in REFRESHING with no claim id and no start instant: a fence nobody holds, nobody can release, and `reclaimStaleRefresh` cannot see because it reads the start instant.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an incoherent refresh fence is taken by four independent nullable columns"
+      ]
+    },
+    {
+      "name": "M-I06 installations: the lifecycle vocabulary no constraint carries",
+      "file": "src/channels-installations.ts",
+      "from": "        requireInstallationStatus<ChannelInstallation>(operation, installation.status),",
+      "to": "",
+      "note": "`\"suspended\"` is stored, and the next READ refuses the row outright — an installation that can be written and not read.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an installation status outside the two is taken by the column"
+      ]
+    },
+    {
+      "name": "M-I07 installations: the monotonic counter that may not go below zero",
+      "file": "src/channels-installations.ts",
+      "from": "        requireGeneration<ChannelInstallation>(\n          operation,\n          \"tokenGeneration\",\n          installation.tokenGeneration,\n        ),",
+      "to": "",
+      "note": "A negative generation is stored. The column is INTEGER, so nothing else objects, and the fence's monotonicity — the property that makes an expectation meaningful — is gone.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a negative generation is taken by the INTEGER column"
+      ]
+    },
+    {
+      "name": "M-B01 inbox: the update branch that carries no identity and no payload",
+      "file": "src/channels-inbox.ts",
+      "from": "            update: {\n              status: event.status,",
+      "to": "            update: {\n              encryptedPayload: event.payload.ciphertext,\n              status: event.status,",
+      "note": "The database rule that makes an admitted payload immutable fires on the FIRST lease renewal of every event, so the inbox cannot advance a single row.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "saveEvent advances the row and leaves the admitted ciphertext in place",
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B02 inbox: which of the two uniques a collision landed on",
+      "file": "src/channels-inbox.ts",
+      "from": "  return collidedOnEventId(error)",
+      "to": "  return true",
+      "note": "A second event pointed at one turn is reported as a redelivery. The caller treats it as already handled and the turn silently serves two conversations.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the turn a row points at is unique across the WHOLE table"
+      ]
+    },
+    {
+      "name": "M-B03 inbox: the duplicate answer a redelivery must get",
+      "file": "src/channels-inbox.ts",
+      "from": "    ? err(eventDuplicate(eventId))",
+      "to": "    ? err(repositoryUnavailable(`${operation}:${TURN_ALREADY_LINKED}`))",
+      "note": "A redelivery stops being recognisable, so `admitChannelEvent` cannot answer 2xx and the provider's retry loop never ends.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B04 inbox: the strict expiry the claim predicate and the fence agree on",
+      "file": "src/channels-inbox.ts",
+      "from": "              { status: \"PROCESSING\", leaseExpiresAt: { lt: now } },",
+      "to": "              { status: \"PROCESSING\", leaseExpiresAt: { lte: now } },",
+      "note": "A lease that expires exactly now becomes claimable while its holder still holds it, so two workers run one turn.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B05 inbox: the inclusive availability the domain fixes",
+      "file": "src/channels-inbox.ts",
+      "from": "              { status: { in: [\"PENDING\", \"FAILED\"] }, availableAt: { lte: now } },",
+      "to": "              { status: { in: [\"PENDING\", \"FAILED\"] }, availableAt: { lt: now } },",
+      "note": "A row whose backoff has elapsed to exactly this instant stays unclaimable for as long as the clock reads that value.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B06 inbox: the claim order that stops a row being starved",
+      "file": "src/channels-inbox.ts",
+      "from": "const CLAIM_ORDER = [{ availableAt: \"asc\" }, { createdAt: \"asc\" }] as const;",
+      "to": "const CLAIM_ORDER = [{ availableAt: \"desc\" }, { createdAt: \"asc\" }] as const;",
+      "note": "The newest events are served first, so the oldest waiting row is starved for as long as new deliveries keep arriving.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B07 inbox: the page bound the poller asked for",
+      "file": "src/channels-inbox.ts",
+      "from": "          orderBy: [...CLAIM_ORDER],\n          take: limit,",
+      "to": "          orderBy: [...CLAIM_ORDER],",
+      "note": "A poller asking for two candidates is handed the whole inbox, and a lease-per-row worker claims rows it will never process.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-B08 inbox: the page size that is not a positive count",
+      "file": "src/channels-inbox.ts",
+      "from": "      if (!Number.isInteger(limit) || limit <= 0) {",
+      "to": "      if (false) {",
+      "note": "A negative `take` REVERSES the page rather than emptying it, so an unchecked limit hands a poller the newest rows and starves the oldest silently.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a claim page size that is not a positive count is refused before `take` sees it"
+      ]
+    },
+    {
+      "name": "M-B09 inbox: the lease coherence a terminal row must not break",
+      "file": "src/channels-inbox.ts",
+      "from": "      requireLeaseCoherence<ChannelEvent>(\n        operation,\n        event.status,\n        event.leaseOwner,\n        event.leaseExpiresAt,\n      ),",
+      "to": "",
+      "note": "A COMPLETED row keeps an expired lease, and `isClaimable` reads the expiry rather than the status on the PROCESSING branch — so a finished event can be claimed again.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a terminal row that kept its lease is refused before it can look claimable"
+      ]
+    },
+    {
+      "name": "M-B10 inbox: the status vocabulary the CHECK also carries",
+      "file": "src/channels-inbox.ts",
+      "from": "      requireEventStatus<ChannelEvent>(operation, event.status),",
+      "to": "",
+      "note": "The refusal stops naming the field and becomes a constraint name in a driver error.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an unknown inbox status is refused by the guard AND by the CHECK"
+      ]
+    },
+    {
+      "name": "M-B11 inbox: the sealed payload's two versions",
+      "file": "src/channels-inbox.ts",
+      "from": "      requireSealedPayload<ChannelEvent>(\n        operation,\n        event.payload.formatVersion,\n        event.payload.keyVersion,\n        event.payload.ciphertext,\n      ),",
+      "to": "",
+      "note": "A row is admitted with version zero. Both versions travel so a row stays decodable after the key rotates AND after the format changes; a zero says neither.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a sealed payload missing a version is refused before the INTEGER column takes it"
+      ]
+    },
+    {
+      "name": "M-L01 links: the probe that reads the winner before the INSERT aborts the transaction",
+      "file": "src/channels-links.ts",
+      "from": "        const already = await load(link.owner, link.channelThreadKey);\n        if (already !== null) {\n          return err(\n            threadLinkConflict(link.channelThreadKey, already.threadId, link.threadId),\n          );\n        }",
+      "to": "",
+      "note": "The conflict is answered from a failed INSERT instead, which aborts the whole PostgreSQL transaction: the refusal stops naming the winning thread AND everything written before it in the same unit is rolled back.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation",
+        "a link is its probe and its insert, and a conflict is the probe alone",
+        "the link probe refuses without touching the database, so the unit still commits"
+      ]
+    },
+    {
+      "name": "M-L02 links: the second table the erasure path depends on",
+      "file": "src/channels-links.ts",
+      "from": "        const hosted = await transactions.reader().channelAppThread.findMany({\n          where: { threadId },",
+      "to": "        const hosted = await transactions.reader().channelAppThread.findMany({\n          where: { threadId, id: \"00000000-0000-4000-8000-000000000000\" },",
+      "note": "A subject's conversation that arrived through a hosted installation is invisible to the erasure plan, so its link survives an erasure that reported success.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-L03 links: the owner kind that comes from the table the row was read out of",
+      "file": "src/channels-links.ts",
+      "from": "        return ok(row === null ? null : readLinkRow(row, owner.kind));",
+      "to": "        return ok(row === null ? null : readLinkRow(row, \"connection\"));",
+      "note": "An installation's link is reported as a connection's, so a caller re-resolving the owner reaches for a `ChannelConnection` row that does not exist. IT SURVIVED THE FIRST SWEEP: every single-link read in the scenario used a connection owner, so the mislabelling had nothing to disagree with. `findThreadLink(installation)` is the observation added to close it.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "their transcripts match, observation for observation"
+      ]
+    },
+    {
+      "name": "M-L04 links: the thread key bound the btree would not name",
+      "file": "src/channels-links.ts",
+      "from": "        requireThreadKey<ChannelThreadLink | null>(operation, channelThreadKey),",
+      "to": "",
+      "note": "An over-long key reaches the unique index, which refuses it with an error naming neither the column nor the value.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an over-long thread key is refused before the btree sees it"
+      ]
+    },
+    {
+      "name": "M-R01 rows: the refusal when an environment does not join up to a project",
+      "file": "src/channels-rows.ts",
+      "from": "  if (ancestry.projectId === null || ancestry.organizationId === null) {\n    return unreadable<ReturnType<typeof environmentScope>>(UNRESOLVED_SCOPE_ANCESTRY, where);\n  }",
+      "to": "",
+      "note": "A row whose ancestry did not resolve is given a scope built from nulls, and every containment check downstream compares against a scope that names nothing.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a row whose environment did not join up is refused rather than given a scope"
+      ]
+    },
+    {
+      "name": "M-R02 rows: the root check on a stored routing table",
+      "file": "src/channels-rows.ts",
+      "from": "  if (!Array.isArray(value)) return unreadable(UNREADABLE_ROUTING, where);",
+      "to": "  if (!Array.isArray(value)) return ok([]);",
+      "note": "An unreadable routing column reads as an empty table, so every rule an operator wrote silently stops applying and the default agent takes every message.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a routing column that is not an array is refused on the way out"
+      ]
+    },
+    {
+      "name": "M-R03 rows: the installation status a reader has no name for",
+      "file": "src/channels-rows.ts",
+      "from": "  if (!(INSTALLATION_STATUSES as readonly string[]).includes(row.status)) {\n    return unreadable(UNREADABLE_INSTALLATION_STATUS, `${where}:${row.status}`);\n  }",
+      "to": "",
+      "note": "A lifecycle word this binary does not know is carried into the domain, where `isActive` compares it to `\"active\"` and reports the installation revoked without saying so.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an installation whose lifecycle words are unknown is refused, not guessed"
+      ]
+    },
+    {
+      "name": "M-R04 rows: the inbox status a reader has no name for",
+      "file": "src/channels-rows.ts",
+      "from": "  if (!(CHANNEL_EVENT_STATUSES as readonly string[]).includes(row.status)) {\n    return unreadable(UNREADABLE_EVENT_STATUS, `ChannelEventInbox/${row.id}:${row.status}`);\n  }",
+      "to": "",
+      "note": "A status outside the five reaches `isClaimable`, which answers false for anything it does not recognise — so the row is neither claimable nor terminal and nothing ever touches it again.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "an inbox row becomes an event with its sealed payload reassembled"
+      ]
+    },
+    {
+      "name": "M-R05 rows: the SQL NULL a TEXT[] column is allowed to hold",
+      "file": "src/channels-rows.ts",
+      "from": "    scopes: row.scopes ?? [],",
+      "to": "    scopes: row.scopes as readonly string[],",
+      "note": "A row written by anything other than this client holds SQL NULL in `scopes`, and the domain's list becomes null — which every `.length` and every spread downstream throws on.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a NULL text array reads as an empty list because the column allows one"
+      ]
+    },
+    {
+      "name": "M-G01 guards: the one uuid spelling that round-trips",
+      "file": "src/channels-guards.ts",
+      "from": "const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;",
+      "to": "const UUID = /^[{}0-9a-fA-F-]+$/u;",
+      "note": "Braced and upper-case forms are admitted. PostgreSQL normalises them, so the row is written under an id that does not equal the string the caller holds and the next read finds nothing.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a canonical uuid passes and every other spelling is refused by field name"
+      ]
+    },
+    {
+      "name": "M-G02 guards: the per-rule shape check the CHECK cannot do",
+      "file": "src/channels-guards.ts",
+      "from": "  for (const [index, rule] of value.entries()) {\n    if (!isPlainObject(rule)) return refuse(operation, ROUTING_RULE_MALFORMED, `rule[${index}]`);",
+      "to": "  for (const [index, rule] of value.entries()) {\n    if (!isPlainObject(rule)) continue;",
+      "note": "A table of numbers is stored. `jsonb_typeof = 'array'` is satisfied, and the resolver skips what it cannot read — so the rules are gone and nothing said so.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a table the CHECK would accept but the resolver cannot read is refused"
+      ]
+    },
+    {
+      "name": "M-G03 guards: the claim a REFRESHING row must hold",
+      "file": "src/channels-guards.ts",
+      "from": "  if (state === \"REFRESHING\") {\n    if (claimId === null || startedAt === null) {\n      return refuse(operation, REFRESH_FENCE_INCOHERENT, \"REFRESHING without a claim\");\n    }\n    return requireUuid(operation, \"tokenRefreshClaimId\", claimId);\n  }",
+      "to": "  if (state === \"REFRESHING\") return null;",
+      "note": "The fence can be entered without a holder. `holdsRefreshClaim` then matches nobody and `reclaimStaleRefresh` reads a null start instant, so the row is stuck in REFRESHING for good.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "REFRESHING needs a claim and every other state must hold none",
+        "an incoherent refresh fence is taken by four independent nullable columns"
+      ]
+    },
+    {
+      "name": "M-G04 guards: the lease a terminal row must have released",
+      "file": "src/channels-guards.ts",
+      "from": "  return leaseOwner === null && leaseExpiresAt === null\n    ? null\n    : refuse(operation, EVENT_LEASE_INCOHERENT, `${status} holding a lease`);",
+      "to": "  return null;",
+      "note": "A COMPLETED row keeps an owner and an expiry, and the PROCESSING branch of `isClaimable` reads the expiry — so a delivered event becomes claimable again the moment its lease lapses.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a terminal inbox row may not keep a lease that would look claimable",
+        "a terminal row that kept its lease is refused before it can look claimable"
+      ]
+    },
+    {
+      "name": "M-G05 guards: the transaction-scope failure that must NOT become a Result",
+      "file": "src/channels-guards.ts",
+      "from": "    if (error instanceof Error && error.name === \"TransactionScopeError\") throw error;",
+      "to": "",
+      "note": "A write issued outside the unit of work, or inside the wrong one, is swallowed into a refusal — so a write that never ran looks like a store that was busy, and the caller retries it forever.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a write outside any transaction is not_open",
+        "a token whose transaction has already finished is scope_unknown",
+        "another live transaction's token is scope_foreign"
+      ]
+    },
+    {
+      "name": "M-G06 guards: the first refusal in a check list",
+      "file": "src/channels-guards.ts",
+      "from": "  for (const check of checks) {\n    if (check !== null) return check;\n  }",
+      "to": "",
+      "note": "Every guard on every write becomes decoration: the list is evaluated and the answer thrown away.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the first refusal wins and a clean list yields the value"
+      ]
+    },
+    {
+      "name": "M-G07 guards: the thread-key length bound",
+      "file": "src/channels-guards.ts",
+      "from": "const MAX_THREAD_KEY_LENGTH = 512;",
+      "to": "const MAX_THREAD_KEY_LENGTH = 4096;",
+      "note": "The bound stops matching `domain/thread-link.ts`, so a key the domain refuses at admission can still be handed to the store — and the two disagree about what a conversation address is.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a thread key is bounded here because the column is not",
+        "an over-long thread key is refused before the btree sees it"
+      ]
+    },
+    {
+      "name": "M-G08 guards: the monotonic counter's floor",
+      "file": "src/channels-guards.ts",
+      "from": "  return Number.isInteger(value) && value >= 0\n    ? null\n    : refuse(operation, GENERATION_NEGATIVE, `${field}=${String(value)}`);",
+      "to": "  return null;",
+      "note": "A negative or fractional generation is stored. The column is INTEGER, so a fraction is truncated silently and a negative is taken as written.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "a TEXT[] column takes non-empty strings and a counter may not go negative",
+        "a negative generation is taken by the INTEGER column"
+      ]
+    },
+    {
+      "name": "M-G09 guards: the exact comparison a vocabulary is judged by",
+      "file": "src/channels-guards.ts",
+      "from": "  return allowed.includes(value) ? null : refuse(operation, code, `${field}=${value}`);",
+      "to": "  return allowed.map((entry) => entry.toLowerCase()).includes(value.toLowerCase())\n    ? null\n    : refuse(operation, code, `${field}=${value}`);",
+      "note": "`\"Slack\"` and `\"PUBLIC\"` are admitted and stored AS WRITTEN, because case folding here decides admission and not the stored value — two spellings of one provider in one column.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the provider vocabulary exists nowhere in the schema",
+        "distribution and installation status are compared exactly"
+      ]
+    },
+    {
+      "name": "M-G10 guards: the rule cap the column has none of",
+      "file": "src/channels-guards.ts",
+      "from": "  if (value.length > MAX_AGENT_ROUTING_RULES) {\n    return refuse(operation, ROUTING_TOO_MANY_RULES, String(value.length));\n  }",
+      "to": "",
+      "note": "An unbounded rule table is stored and walked on every inbound message, on the one path this context has that runs before anything else can.",
+      "suites": [
+        "src/channels-rows.test.ts",
+        "src/channels-conformance.integration.test.ts",
+        "src/channels-constraints.integration.test.ts",
+        "src/channels-rules.integration.test.ts",
+        "src/channels-transaction.integration.test.ts",
+        "src/channels-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the rule cap is enforced here because the column has none"
+      ]
+    }
+  ]
+}
