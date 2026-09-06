@@ -1558,17 +1558,43 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The conformance suite's own 5 is unchanged, which is the point: these four
  * observations could not have been added there without being invisible.
  *
- * ALL THREE TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the three blocks
- * above SUM rather than any one standing alone. No branch's arithmetic is right
+ * WIN-258 TRANCHE 5, `governance`'s canonical store, adds SIX more suites to
+ * that same row and not one case to any context:
+ *
+ *   packages/adapters/postgres-tenancy   39 -> 45 files,  383 -> 449 cases
+ *
+ * governance-conformance.integration.test.ts    1   the differential, one case
+ *                                                  driving one scenario twice
+ * governance-constraints.integration.test.ts   12   what the migrations refuse
+ *                                                  and a double accepts, in PAIRS
+ * governance-rows.test.ts                      21   the PURE mapping branches a
+ *                                                  container suite cannot reach
+ * governance-rules.integration.test.ts         10   the database rules no port
+ *                                                  method restates
+ * governance-statements.integration.test.ts    15   every read pinned twice,
+ *                                                  small fixture and one 20x larger
+ * governance-transaction.integration.test.ts    7   failure injection and the
+ *                                                  three scope refusals
+ *
+ * THE CONFORMANCE SUITE IS ONE CASE, and that is the shape of this instrument
+ * rather than a thin suite: it drives ONE scenario against the doubles and then
+ * against the adapter and compares the two transcripts key by key, so what a
+ * second case would add is a second scenario and not a second assertion. The
+ * scenario itself records more than fifty observations, and the suite asserts
+ * that it recorded more than forty — a run that recorded nothing would satisfy
+ * every comparison in it.
+ *
+ * ALL FOUR TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the four blocks above
+ * SUM rather than any one standing alone. No branch's arithmetic is right
  * merged, and side-picking one would under-count the others by their whole
  * tranche:
  *
- *   packages/adapters/postgres-tenancy   20 -> 39 files,  199 -> 383 cases
+ *   packages/adapters/postgres-tenancy   20 -> 45 files,  199 -> 449 cases
  *
- * 20 + 6 + 6 + 7 = 39 files and 199 + 59 + 60 + 65 = 383 cases. The tree total
- * is 391 + 19 = 410 files and 6115 + 184 = 6299 cases. The adapters term of the
- * three-way identity carries all nineteen, because every added file is an
- * adapter's: 39 + 19 = 58, and 349 + 3 + 58 = 410.
+ * 20 + 6 + 6 + 7 + 6 = 45 files and 199 + 59 + 60 + 65 + 66 = 449 cases. The
+ * tree total is 391 + 25 = 416 files and 6115 + 250 = 6365 cases. The adapters
+ * term of the three-way identity carries all twenty-five, because every added
+ * file is an adapter's: 39 + 25 = 64, and 349 + 3 + 64 = 416.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1579,7 +1605,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 39, cases: 383 },
+  "packages/adapters/postgres-tenancy": { files: 45, cases: 449 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1735,13 +1761,14 @@ export const EXPECTED = Object.freeze({
  *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`, which the package's own
- * `test` script excludes. MEASURED over this tree: 183 cases across 20 files,
- * all of them in `packages/adapters/postgres-tenancy`. Tranche 5 contributes 39
- * of those over four suites; its remaining 21 (`agents-guards.test.ts` and
- * `agents-rows.test.ts`) run in the ordinary package test script, because
- * neither module has a database in it.
+ * `test` script excludes. MEASURED over this tree: 228 cases across 25 files,
+ * all of them in `packages/adapters/postgres-tenancy`. Tranche 5 contributes 84
+ * of those over nine suites; its remaining 66 (`agents-guards.test.ts`,
+ * `agents-rows.test.ts`, `cost-rows.test.ts` and `governance-rows.test.ts`) run
+ * in the ordinary package test script, because none of those modules has a
+ * database in it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6299;
+export const EXPECTED_RUNTIME_TOTAL = 6365;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

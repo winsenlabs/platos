@@ -191,7 +191,7 @@ test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first w
         agentId: asGovernanceIdentifier<AgentId>(ids.agentId),
         agentVersionId: null,
         endUserId: asGovernanceIdentifier<EndUserId>(ids.endUserId),
-        rating: -1,
+        rating: 3 as unknown as 1,
         comment: null,
         revision: 1,
       },

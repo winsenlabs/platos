@@ -490,9 +490,17 @@ const LIVE_ADAPTERS = [
       { port: "ScaffoldingRepository", owner: "agents" },
       // WIN-258 T5. The SIXTH, `cost-monitoring`'s.
       { port: "BudgetRepository", owner: "cost-monitoring" },
+      // WIN-258 T5: `governance` publishes FIVE canonical-store ports and one
+      // directory satisfies all five, because five separate rows in the one
+      // PostgreSQL database are five repositories behind one client.
+      { port: "SafetyLedger", owner: "governance" },
+      { port: "RatingsRepository", owner: "governance" },
+      { port: "CriteriaRepository", owner: "governance" },
+      { port: "EvalsRepository", owner: "governance" },
+      { port: "GoldenSetsRepository", owner: "governance" },
       // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, which now
       // carry binding slots of their own on the directory that already
-      // satisfied them. Eleven bindings on one row.
+      // satisfied them. SIXTEEN bindings on one row.
       { port: "TenancyLocks", owner: "tenancy" },
       { port: "OperatorSessionRevoker", owner: "tenancy" },
       { port: "EnvironmentAccessKeyRevocationCounter", owner: "tenancy" },

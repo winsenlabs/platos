@@ -283,7 +283,19 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `BudgetRepository`. `cost-monitoring` depends on `tenancy` and `providers`
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
-export const EXPECTED_EDGE_COUNT = 99;
+//
+// 99 -> 100 (WIN-258 T5, a fourth time). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/governance`. A SIXTH owner edge, carrying that
+// context's FIVE canonical-store ports: `SafetyEvent`, `MessageRating`,
+// `EvalCriterion`, `AgentEval` and `GoldenSet` are in the one PostgreSQL
+// database, behind the one client, so their repositories are in the one adapter
+// directory. FIVE bindings, ONE edge — a project reference is per PACKAGE, not
+// per port, which is the same shape `agents` introduced at two. `governance`
+// depends on `tenancy` and `agents` and nothing depends on it, so the
+// 17-context DAG is again unchanged and no cycle is possible. The independent
+// expectation in scripts/arch/v1-project-graph.mjs carries the same delta and
+// is maintained separately on purpose.
+export const EXPECTED_EDGE_COUNT = 100;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -403,14 +415,23 @@ export const APPLICATION_ENTRY_PROJECTS = [
 export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/tools", // WIN-258 T5 — compared against the PostgreSQL ToolsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
+  "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
 ];
 
-// BOTH TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
+// THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
 // which merged as TWO declarations of the same constant — a duplicate the
 // module loader rejects outright, and the one kind of silent merge damage that
-// cannot ship. The two entries are one list here. `agents` is absent on purpose:
-// it publishes its doubles from `application/index.js`, so it is on
+// cannot ship. The entries are ONE list here, and a fourth branch adding the
+// list again would reproduce exactly that. `agents` is absent on purpose: it
+// publishes its doubles from `application/index.js`, so it is on
 // APPLICATION_ENTRY_PROJECTS above instead.
+//
+// `governance` is the third, and it needs the entry more than either: its
+// conformance differential is measured against FIVE doubles at once —
+// `InMemorySafetyLedger`, `InMemoryRatingsRepository`,
+// `InMemoryCriteriaRepository`, `InMemoryEvalsRepository` and
+// `InMemoryGoldenSetsRepository` — and without the subpath the adapter's suites
+// do not fail an assertion, they fail to LOAD.
 //
 // Every entry must be an adopted project: an unadopted one's `application/`
 // tree is generated placeholders, so `selfCheck` fails on it.

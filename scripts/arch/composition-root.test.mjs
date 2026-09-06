@@ -300,16 +300,16 @@ test("the binding-table parser reads all TWENTY-SEVEN bindings, across twelve di
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with eleven bindings appears ELEVEN TIMES in the flattening and
-  // once in the directory set. Both halves are asserted so a change that
+  // A directory with sixteen bindings appears SIXTEEN TIMES in the flattening
+  // and once in the directory set. Both halves are asserted so a change that
   // collapsed the table back to one row per directory cannot pass here. It is
-  // eleven rather than two because WIN-258 T5 landed all three of tranche 5's
+  // sixteen rather than two because WIN-258 T5 landed all FOUR of tranche 5's
   // canonical stores in this one directory — `tools` publishes one port,
-  // `agents` two and `cost-monitoring` one, all over the same client as
-  // tenancy's and identity-access's — and WIN-258 M2.3 then gave tenancy's five
-  // NON-REPOSITORY ports slots on the same directory that already satisfied
-  // them.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 11);
+  // `agents` two, `cost-monitoring` one and `governance` FIVE, all over the same
+  // client as tenancy's and identity-access's — and WIN-258 M2.3 then gave
+  // tenancy's five NON-REPOSITORY ports slots on the same directory that already
+  // satisfied them. 1 + 1 + 1 + 2 + 1 + 5 + 5 = 16.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 16);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
 });
 
