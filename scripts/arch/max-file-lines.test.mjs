@@ -573,14 +573,25 @@ test("the live selectors scan an exact nonzero source census", () => {
   // halves have to ask the database and is a file so it cannot be asked two
   // ways.
   //
-  // NO FILE OF THIS TRANCHE IS IN THE WARNING BAND. The longest is
-  // `files-scope.integration.test.ts` at 384, and its length is its subject: one
-  // case per clause of every scoped read, each wrong in exactly ONE id, which is
-  // the only shape that can tell a missing clause from a neighbouring one.
-  // `files-conformance.ts` is 346 and its length IS the scenario; the fixture
-  // BUILDERS the other four suites share are a separate file precisely because a
-  // differential's values have to be identical on both sides and are minted from
-  // a counter it owns.
+  // ONE FILE OF THIS TRANCHE IS IN THE WARNING BAND, and it got there AFTER the
+  // mutation sweep rather than before it. `files-scope.integration.test.ts` was
+  // 384 when it was written and is 467 now, because the first sweep left seven
+  // mutants alive and six of them were closed by cases that belong in exactly
+  // this file: a sibling environment of the same project, two artifact keys in
+  // one thread, two threads in one environment, and an erasure count required to
+  // agree with the listing it plans against.
+  //
+  // ITS LENGTH IS ITS SUBJECT. The file is one case per clause of every scoped
+  // read, each wrong in exactly ONE id, which is the only shape that can tell a
+  // missing clause from a neighbouring one — and the sweep is the evidence that
+  // the enumeration has to be complete rather than representative. Splitting it
+  // along any seam would put two halves of one claim in two files and make the
+  // next reader check the shorter one.
+  //
+  // `files-conformance.ts` is the next longest at 346 and its length IS the
+  // scenario; the fixture BUILDERS the other four suites share are a separate
+  // file precisely because a differential's values have to be identical on both
+  // sides and are minted from a counter it owns.
   assert.equal(result.fileCount, 1395);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
@@ -741,6 +752,11 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/cost-rows.ts",
       effectiveLines: 465,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
+      effectiveLines: 467,
       severity: "warning",
     },
     {
