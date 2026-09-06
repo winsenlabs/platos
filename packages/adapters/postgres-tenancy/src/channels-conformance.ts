@@ -432,6 +432,25 @@ export async function runChannelsConformance(
     ? { id: hosted.value.linkId }
     : { error: hosted.error.code });
 
+  // THE SAME KEY, READ BACK THROUGH THE OTHER HALF OF THE UNION. The first
+  // sweep of `mutations-channels.json` found this observation missing: a store
+  // that reported every link as a `connection` link — reading `ChannelAppThread`
+  // and then labelling the row with the wrong owner kind — stayed green through
+  // the whole scenario, because every other read of a single link used a
+  // connection owner. A caller re-resolving that owner would look for a
+  // `ChannelConnection` row whose id is an installation's.
+  const hostedFound = await repository.findThreadLink(
+    installationOwner(world.installationId),
+    key,
+  );
+  record("findThreadLink(installation)", hostedFound.ok
+    ? {
+        thread: hostedFound.value?.threadId ?? null,
+        kind: hostedFound.value?.owner.kind ?? null,
+        id: hostedFound.value?.linkId ?? null,
+      }
+    : { error: hostedFound.error.code });
+
   const byThread = await repository.findThreadLinksByThread(world.threadId);
   record("findThreadLinksByThread", byThread.ok
     ? byThread.value.map((link) => ({ id: link.linkId, kind: link.owner.kind }))

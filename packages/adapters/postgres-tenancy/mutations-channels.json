@@ -51,7 +51,24 @@
     "THE SUITES ARE FIVE INTEGRATION FILES AND ONE PURE ONE. The pure file is the",
     "only one `pnpm test:v1-packages` runs; the other five need a real PostgreSQL",
     "and run in the `postgres-tenancy-repository` CI job, which FAILS rather than",
-    "skips when Docker is absent."
+    "skips when Docker is absent.",
+    "",
+    "THE FIRST SWEEP SCORED 47 KILLED AND ONE SURVIVOR, AND THE SURVIVOR IS WHY",
+    "THE SCENARIO HAS THIRTY-SIX OBSERVATIONS RATHER THAN THIRTY-FIVE. M-L03",
+    "labels every link read through `findThreadLink` as a `connection` link, and",
+    "the whole set stayed green: every single-link read in the scenario used a",
+    "CONNECTION owner, so reading `ChannelAppThread` and then mislabelling the row",
+    "was invisible. `findThreadLink(installation)` is the observation that closes",
+    "it — the same key, read back through the other half of the union — and it was",
+    "added to the shared scenario rather than to a suite of its own precisely",
+    "because the in-memory double answers it too, so the two transcripts compare",
+    "on it. Re-run alone, M-L03 is KILLED by",
+    "`their transcripts match, observation for observation`.",
+    "",
+    "FINAL: 48 entries, 48 KILLED by a NAMED case, 0 SURVIVED, 0 VACUOUS, 0 STALE,",
+    "0 KILLED-UNNAMED. The baseline ran 72 executed cases green before any mutation",
+    "was applied, and the mutated runs executed 72 as well — no run scored a kill",
+    "through a collection failure or a crashed hook."
   ],
   "mutations": [
     {
@@ -623,7 +640,7 @@
       "file": "src/channels-links.ts",
       "from": "        return ok(row === null ? null : readLinkRow(row, owner.kind));",
       "to": "        return ok(row === null ? null : readLinkRow(row, \"connection\"));",
-      "note": "An installation's link is reported as a connection's, so a caller re-resolving the owner reaches for a `ChannelConnection` row that does not exist.",
+      "note": "An installation's link is reported as a connection's, so a caller re-resolving the owner reaches for a `ChannelConnection` row that does not exist. IT SURVIVED THE FIRST SWEEP: every single-link read in the scenario used a connection owner, so the mislabelling had nothing to disagree with. `findThreadLink(installation)` is the observation added to close it.",
       "suites": [
         "src/channels-rows.test.ts",
         "src/channels-conformance.integration.test.ts",
