@@ -103,3 +103,53 @@ export {
   environmentVariableVersionConflict,
   secretVersionAlreadyExists,
 } from "../../domain/index.js";
+
+// WIN-259 M2.4 — the values `crypto.ts`'s THREE ports need, and the THIRD time
+// this exact omission has been found on this issue.
+//
+// WITHOUT THIS BLOCK `KeyRing`, `AeadCipher` AND `Hasher` ARE UNIMPLEMENTABLE
+// OUTSIDE THIS PACKAGE, and the two blocks above record the same discovery for
+// `SecretsRepository` and `EnvironmentVariableRepository`. `crypto.ts` declares
+// its ports in terms of `RootKeyRingState`, `SealedEnvelope`, `EnvelopeBinding`
+// and `SecretMaterial`, every one of which an adapter can now NAME — but naming
+// a type is not building a value. A `KeyRing` has to RETURN a `RootKeyRingState`
+// and a `RootKeyVersion`; an `AeadCipher` has to RETURN a `SecretMaterial`; and
+// neither constructor was reachable from here. An adapter that could not reach
+// them had exactly two options, and both are worse than this export:
+//
+//   1. Cast a structural literal to the branded type. `RootKeyVersion` is
+//      `Branded<number, "RootKeyVersion">` and `rootKeyRingState` is the ONLY
+//      thing that checks the ring's one invariant — that the active version is
+//      present. A cast skips the check, so a ring whose active key is missing
+//      would seal nothing and report success.
+//   2. Re-implement `secretMaterial`. That function is the redaction boundary:
+//      the plaintext lives in a CLOSURE and every accessor is non-enumerable, so
+//      `{ ...material }` is `{}`. A second implementation is a second redaction
+//      policy over the same plaintext, and the one that leaks wins.
+//
+// `envelopeKeyInfo` AND `envelopeAad` ARE THE WIRE FORMAT ITSELF, and they are
+// the reason this block is not merely a convenience. `envelope.ts` pins both
+// strings byte-for-byte, down to the NUL separator, because "changing a
+// separator, an order or a character makes every stored format-1 envelope
+// permanently unopenable". An adapter that could not import them would have
+// re-typed `platos:credential-secret:v1` and the field order by hand — which is
+// how the THREE mutually incompatible envelope shapes in `domain/envelope.ts`'s
+// header came to exist in the first place. Exporting them makes the domain the
+// single source of the HKDF `info` and the AEAD associated data, so a change to
+// either breaks the compile rather than the ciphertext.
+//
+// `ROOT_KEY_BYTE_LENGTH` is here for the same reason `ENVELOPE_FORMAT_VERSIONS`
+// is above: it is a CLOSED fact about the format (AES-256 keys are 32 bytes) and
+// a ring parser that carried its own literal would be a second opinion about one
+// number. `invalidKeyRing` is the one refusal `domain/errors.ts` reserves for a
+// ring that cannot satisfy the vault's invariants, and a parser that minted its
+// own would put a fourteenth code in a closed set of thirteen.
+export {
+  ROOT_KEY_BYTE_LENGTH,
+  envelopeAad,
+  envelopeKeyInfo,
+  invalidKeyRing,
+  rootKeyRingState,
+  rootKeyVersion,
+  secretMaterial,
+} from "../../domain/index.js";
